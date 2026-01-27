@@ -17,5 +17,5 @@ local.properties
 
 # Module specific builds
 /app/build/
-/live-demo/build/
+/live-demo/
 
