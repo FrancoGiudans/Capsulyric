@@ -16,6 +16,8 @@ import android.util.Log;
 import androidx.core.app.NotificationCompat;
 import android.widget.RemoteViews;
 
+import androidx.lifecycle.Observer;
+
 import com.hchen.superlyricapi.ISuperLyric;
 import com.hchen.superlyricapi.SuperLyricData;
 import com.hchen.superlyricapi.SuperLyricTool;
@@ -27,6 +29,15 @@ public class LyricService extends Service {
     
     // To debounce updates
     private String mLastLyric = "";
+
+    private final Observer<LyricRepository.LyricInfo> mLyricObserver = new Observer<LyricRepository.LyricInfo>() {
+        @Override
+        public void onChanged(LyricRepository.LyricInfo info) {
+            if (info != null) {
+                 updateNotification(info.lyric, info.sourceApp, "");
+            }
+        }
+    };
 
     private final ISuperLyric.Stub mSuperLyricStub = new ISuperLyric.Stub() {
         @Override
@@ -41,21 +52,30 @@ public class LyricService extends Service {
             if (data != null) {
                 String lyric = data.getLyric();
                 
-                // Debounce
-                if (lyric != null && lyric.equals(mLastLyric)) {
-                    return;
-                }
-                mLastLyric = lyric;
+                if (lyric != null) {
+                    // Instrumental Filter
+                    if (lyric.matches(".*(纯音乐|Instrumental|No lyrics|请欣赏|没有歌词).*")) {
+                         Log.d(TAG, "Instrumental detected: " + lyric);
+                         stopForeground(true);
+                         return;
+                    }
 
-                String pkg = data.getPackageName();
-                String appName = getAppName(pkg);
-                
-                // Update Repository
-                // Now separated from metadata. We only push lyric + app name.
-                LyricRepository.getInstance().updateLyric(lyric, appName);
-                
-                // Title = Lyric, Text = App Name, SubText = Artist
-                updateNotification(lyric, appName, "");
+                    // Debounce logic is now implicit in Repository triggers or we keep it here?
+                    // Ideally we keep it here to avoid blasting Repository, 
+                    // BUT Repository is central. 
+                    // Let's keep the filter here for the ROOT source.
+                    
+                    if (lyric.equals(mLastLyric)) {
+                         return;
+                    }
+                    mLastLyric = lyric;
+
+                    String pkg = data.getPackageName();
+                    String appName = getAppName(pkg);
+                    
+                    // Update Repository -> This triggers the Observer -> Notification
+                    LyricRepository.getInstance().updateLyric(lyric, appName);
+                }
             }
         }
     };
@@ -65,6 +85,9 @@ public class LyricService extends Service {
         super.onCreate();
         createNotificationChannel();
         SuperLyricTool.registerSuperLyric(this, mSuperLyricStub);
+        
+        // Observe Repository
+        LyricRepository.getInstance().getLiveLyric().observeForever(mLyricObserver);
     }
 
     @Override
@@ -93,6 +116,7 @@ public class LyricService extends Service {
         super.onDestroy();
         AppLogger.getInstance().log(TAG, "Service Destroyed");
         SuperLyricTool.unregisterSuperLyric(this, mSuperLyricStub);
+        LyricRepository.getInstance().getLiveLyric().removeObserver(mLyricObserver);
     }
 
     private void createNotificationChannel() {

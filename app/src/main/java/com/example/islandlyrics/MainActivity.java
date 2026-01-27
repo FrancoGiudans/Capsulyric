@@ -30,7 +30,7 @@ import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.core.graphics.Insets;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends BaseActivity {
     private static final String TAG = "IslandLyrics";
     private static final String PREFS_NAME = "IslandLyricsPrefs";
     private static final String PREF_WHITELIST = "whitelist_packages";
@@ -73,10 +73,16 @@ public class MainActivity extends AppCompatActivity {
         setupClickListeners();
         setupObservers();
         
-        checkAndRequestPermission();
-        checkNotificationListenerPermission();
+        // NO Auto-Permission Checks on Launch (Privacy First)
+        // Permissions are now handled in SettingsActivity with Disclaimer.
         
         updateVersionInfo();
+    }
+    
+    @Override
+    protected void onResume() {
+        super.onResume();
+        updateStatusCardState();
     }
     
     private void initializeDefaultWhitelist() {
@@ -100,56 +106,78 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void setupClickListeners() {
-        // Status Card -> Diagnostics
-        mCardStatus.setOnClickListener(v -> showDiagnosticsDialog());
+        // Status Card -> Settings (Diagnostics moved to Settings)
+        // mCardStatus.setOnClickListener(v -> startActivity(new Intent(this, SettingsActivity.class))); // Removed per new design, purely status now? Or keep?
+        // User requested Settings Card at bottom.
         
-        // Menu Items
-        findViewById(R.id.menu_github).setOnClickListener(v -> openGitHub());
-        findViewById(R.id.menu_log).setOnClickListener(v -> showDebugLogs());
-        findViewById(R.id.menu_settings).setOnClickListener(v -> showWhitelistDialog());
+        View cvSettings = findViewById(R.id.cv_settings);
+        if (cvSettings != null) {
+            cvSettings.setOnClickListener(v -> startActivity(new Intent(this, SettingsActivity.class)));
+        }
         
-        // Copy Lyric
-        findViewById(R.id.cv_playback).setOnClickListener(v -> {
+        findViewById(R.id.btn_copy_lyric).setOnClickListener(v -> {
             String text = mTvLyric.getText().toString();
-            android.content.ClipboardManager clipboard = (android.content.ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
-            android.content.ClipData clip = android.content.ClipData.newPlainText("Lyric", text);
-            clipboard.setPrimaryClip(clip);
-            Toast.makeText(this, "Lyric copied!", Toast.LENGTH_SHORT).show();
+            copyToClipboard("Lyric", text);
         });
 
-
+        findViewById(R.id.btn_copy_all).setOnClickListener(v -> {
+            String song = mTvSong.getText().toString();
+            String artist = mTvArtist.getText().toString();
+            String lyric = mTvLyric.getText().toString();
+            String full = song + " - " + artist + "\n" + lyric;
+            copyToClipboard("Song Info", full);
+        });
     }
 
-    private void updateStatusCard(boolean isActive) {
-        if (isActive) {
-            String source = LyricRepository.getInstance().getSourceAppName().getValue();
-            if (source == null) source = "Active";
-            
-            // Solid Green logic
-            mCardStatus.setCardBackgroundColor(ContextCompat.getColor(this, R.color.status_active));
-            mIvStatusIcon.setImageResource(R.drawable.ic_check_circle);
-            // Icons are white on solid color
-            mIvStatusIcon.setImageTintList(ColorStateList.valueOf(android.graphics.Color.WHITE));
-            
-            mTvStatusText.setText(getString(R.string.label_status_prefix) + source);
-            // Text is white
-            mTvStatusText.setTextColor(android.graphics.Color.WHITE);
+    private void copyToClipboard(String label, String text) {
+        if (text != null && !text.isEmpty() && !text.equals("-")) {
+            android.content.ClipboardManager clipboard = (android.content.ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
+            android.content.ClipData clip = android.content.ClipData.newPlainText(label, text);
+            clipboard.setPrimaryClip(clip);
+            Toast.makeText(this, label + " copied!", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void updateStatusCardState() {
+        // Check Permission
+        boolean listenerGranted = isNotificationListenerEnabled();
+        
+        if (!listenerGranted) {
+            // State: Missing Permission
+            setCardState(false, "Permission Required", R.color.status_inactive); // Red/Orange
+            // Optional: Blur playback card or show warning
         } else {
-            // Solid Red logic
-            mCardStatus.setCardBackgroundColor(ContextCompat.getColor(this, R.color.status_inactive));
-            mIvStatusIcon.setImageResource(R.drawable.ic_cancel);
-            mIvStatusIcon.setImageTintList(ColorStateList.valueOf(android.graphics.Color.WHITE));
-            
-            mTvStatusText.setText(getString(R.string.label_status_prefix) + getString(R.string.status_inactive));
-            mTvStatusText.setTextColor(android.graphics.Color.WHITE);
+             // Check Playing Status
+             Boolean isPlaying = LyricRepository.getInstance().getIsPlaying().getValue();
+             if (Boolean.TRUE.equals(isPlaying)) {
+                 String source = LyricRepository.getInstance().getSourceAppName().getValue();
+                 setCardState(true, "Active: " + (source != null ? source : "Music"), R.color.status_active);
+             } else {
+                 setCardState(true, "Service Ready (Idle)", R.color.status_active); // Or distinct color?
+             }
         }
     }
     
+    private void setCardState(boolean isActive, String text, int colorResId) {
+        mCardStatus.setCardBackgroundColor(ContextCompat.getColor(this, colorResId));
+        mTvStatusText.setText(text);
+        
+        if (isActive) {
+             mIvStatusIcon.setImageResource(R.drawable.ic_check_circle);
+        } else {
+             mIvStatusIcon.setImageResource(R.drawable.ic_cancel);
+        }
+    }
+    
+    private boolean isNotificationListenerEnabled() {
+        return android.provider.Settings.Secure.getString(getContentResolver(),
+                "enabled_notification_listeners").contains(getPackageName());
+    }
+
     private void updateVersionInfo() {
         try {
             String version = getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
             String type = (getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE) != 0 ? "Debug" : "Release";
-            // Use new format: App Version: X.X.X \n App Channel: Debug
             mTvAppVersion.setText(getString(R.string.app_version_fmt, version, type));
         } catch (PackageManager.NameNotFoundException e) {
             e.printStackTrace();
@@ -161,143 +189,24 @@ public class MainActivity extends AppCompatActivity {
 
         // Playback Status Observer
         repo.getIsPlaying().observe(this, isPlaying -> {
-            updateStatusCard(isPlaying);
+            updateStatusCardState();
         });
 
         // Lyric Observer
         repo.getCurrentLyric().observe(this, lyric -> {
-            String prefix = getString(R.string.label_lyric_prefix);
             if (lyric != null) {
-                mTvLyric.setText(prefix + lyric);
+                mTvLyric.setText(lyric);
             } else {
-                mTvLyric.setText(prefix);
+                mTvLyric.setText("-");
             }
         });
 
         // Metadata Observer
         repo.getLiveMetadata().observe(this, mediaInfo -> {
-             // Strings defined in XML: label_title_prefix, label_artist_prefix
-             // We need to fetch and explicitly set them
-             String titlePrefix = getString(R.string.label_title_prefix);
-             String artistPrefix = getString(R.string.label_artist_prefix);
-             
              if (mediaInfo == null) return;
-             if (mediaInfo.title != null) mTvSong.setText(titlePrefix + mediaInfo.title);
-             if (mediaInfo.artist != null) mTvArtist.setText(artistPrefix + mediaInfo.artist);
+             // Ensure defaults if null
+             mTvSong.setText(mediaInfo.title != null ? mediaInfo.title : "-");
+             mTvArtist.setText(mediaInfo.artist != null ? mediaInfo.artist : "-");
         });
-    }
-
-    // --- Dialogs ---
-
-    private void showDiagnosticsDialog() {
-        String source = LyricRepository.getInstance().getSourceAppName().getValue();
-        boolean isConnected = true; // Assuming permission is connected if we are here
-        
-        String message = "Service: " + (Boolean.TRUE.equals(LyricRepository.getInstance().getIsPlaying().getValue()) ? "Running" : "Idle") + "\n" +
-                         "Current Source: " + (source != null ? source : "None") + "\n" +
-                         "API Status: Connected";
-
-        new AlertDialog.Builder(this)
-                .setTitle(R.string.dialog_diagnostics_title)
-                .setMessage(message)
-                .setPositiveButton(R.string.btn_refresh_session, (dialog, which) -> {
-                    // Send command to regenerate
-                    Intent intent = new Intent(this, MediaMonitorService.class);
-                    // trigger re-bind/check (simple startService works to trigger onStartCommand if we had it, 
-                    // but for NotificationListener, we can't easily force it other than toggle.
-                    // Ideally MediaMonitorService exposes a static method or broadcast receiver.
-                    // For now, let's just log.
-                    AppLogger.getInstance().log(TAG, "User requested session refresh.");
-                    Toast.makeText(this, "Refresh requested (Check Log)", Toast.LENGTH_SHORT).show();
-                })
-                .setNegativeButton("Close", null)
-                .show();
-    }
-
-    private void showWhitelistDialog() {
-        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
-        Set<String> whitelisted = prefs.getStringSet(PREF_WHITELIST, new HashSet<>());
-        
-        // List installed music apps or just usage list
-        // For simplicity, let's show the default list + whatever is currently in prefs + common ones
-        // In a real app we might query PackageManager for Intent.CATEGORY_APP_MUSIC
-        
-        final String[] apps = DEFAULT_WHITELIST; // Use the fixed list for now to ensure stability
-        boolean[] checkedItems = new boolean[apps.length];
-        
-        for (int i = 0; i < apps.length; i++) {
-            checkedItems[i] = whitelisted.contains(apps[i]);
-        }
-
-        new AlertDialog.Builder(this)
-                .setTitle(R.string.dialog_whitelist_title)
-                .setMultiChoiceItems(apps, checkedItems, (dialog, which, isChecked) -> {
-                    checkedItems[which] = isChecked;
-                })
-                .setPositiveButton("Save", (dialog, which) -> {
-                    Set<String> newSet = new HashSet<>();
-                    for (int i = 0; i < apps.length; i++) {
-                        if (checkedItems[i]) {
-                            newSet.add(apps[i]);
-                        }
-                    }
-                    prefs.edit().putStringSet(PREF_WHITELIST, newSet).apply();
-                    Toast.makeText(this, "Saved. Service will update shortly.", Toast.LENGTH_SHORT).show();
-                })
-                .setNegativeButton("Cancel", null)
-                .show();
-    }
-
-    private void showDebugLogs() {
-        TextView logView = new TextView(this);
-        logView.setPadding(32, 32, 32, 32);
-        logView.setTextIsSelectable(true);
-        logView.setTypeface(android.graphics.Typeface.MONOSPACE);
-        
-        android.widget.ScrollView scrollView = new android.widget.ScrollView(this);
-        scrollView.addView(logView);
-
-        AlertDialog dialog = new AlertDialog.Builder(this)
-                .setTitle("Internal Logs")
-                .setView(scrollView)
-                .setPositiveButton("Close", null)
-                .create();
-        
-        AppLogger.getInstance().getLogs().observe(this, logs -> {
-            logView.setText(logs);
-            scrollView.post(() -> scrollView.fullScroll(View.FOCUS_DOWN));
-        });
-        
-        dialog.show();
-    }
-    
-    private void openGitHub() {
-        Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/HChenX/IslandLyrics")); 
-        startActivity(intent);
-    }
-
-    // --- Permissions ---
-
-    private void checkAndRequestPermission() {
-        if (Build.VERSION.SDK_INT >= 33) {
-            if (checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-                requestPermissions(new String[]{android.Manifest.permission.POST_NOTIFICATIONS}, 101);
-            }
-        }
-    }
-
-    private void checkNotificationListenerPermission() {
-        if (!android.provider.Settings.Secure.getString(getContentResolver(),
-                "enabled_notification_listeners").contains(getPackageName())) {
-            
-            new AlertDialog.Builder(this)
-                .setTitle("Permission Required")
-                .setMessage("Island Lyrics needs 'Notification Access'. Grant?")
-                .setPositiveButton("Grant", (dialog, which) -> {
-                    startActivity(new Intent(android.provider.Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS));
-                })
-                .setNegativeButton("Cancel", null)
-                .show();
-        }
     }
 }

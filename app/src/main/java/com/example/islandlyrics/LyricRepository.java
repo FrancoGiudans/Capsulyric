@@ -27,7 +27,19 @@ public class LyricRepository {
         }
     }
     
+    // New Atomic Lyric Container
+    public static class LyricInfo {
+        public final String lyric;
+        public final String sourceApp;
+        
+        public LyricInfo(String lyric, String sourceApp) {
+            this.lyric = lyric;
+            this.sourceApp = sourceApp;
+        }
+    }
+    
     private final MutableLiveData<MediaInfo> liveMetadata = new MutableLiveData<>();
+    private final MutableLiveData<LyricInfo> liveLyric = new MutableLiveData<>();
 
     private LyricRepository() {}
 
@@ -45,6 +57,7 @@ public class LyricRepository {
     public MutableLiveData<String> getSongTitle() { return songTitle; }
     public MutableLiveData<String> getArtistName() { return artistName; }
     public MutableLiveData<MediaInfo> getLiveMetadata() { return liveMetadata; }
+    public MutableLiveData<LyricInfo> getLiveLyric() { return liveLyric; }
 
     // Update methods
     public void updatePlaybackStatus(boolean playing) {
@@ -56,6 +69,11 @@ public class LyricRepository {
     public void updateLyric(String lyric, String app) {
         if (lyric != null) currentLyric.postValue(lyric);
         if (app != null) sourceAppName.postValue(app);
+        
+        // Atomic Update
+        if (lyric != null && app != null) {
+            liveLyric.postValue(new LyricInfo(lyric, app));
+        }
         
         // This method NO LONGER updates title/artist to prevent overwriting metadata from MediaMonitor
         

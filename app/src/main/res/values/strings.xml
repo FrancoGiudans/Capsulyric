@@ -9,13 +9,23 @@
     <string name="menu_github">GitHub</string>
     <string name="menu_log">Log</string>
     <string name="menu_settings">Settings</string>
-    <string name="tap_to_copy_hint">(点击复制歌词)</string>
-    <string name="app_version_fmt">App Version: %s\nApp Channel: %s</string>
+    <string name="tap_to_copy_hint">(Tap to copy logic)</string>
+    <string name="app_version_fmt">App Version: %1$s\nApp Channel: %2$s</string>
     
     <!-- UI Headers -->
-    <string name="label_playback_header">🎵 播放信息</string>
-    <string name="label_title_prefix">歌名: </string>
-    <string name="label_artist_prefix">歌手: </string>
-    <string name="label_lyric_prefix">当前歌词: </string>
+    <string name="label_playback_header">🎵 Playback Info</string>
+    <string name="label_title_prefix">Song: </string>
+    <string name="label_artist_prefix">Artist: </string>
+    <string name="label_lyric_prefix">Lyric: </string>
     <string name="label_status_prefix">Status: </string>
+
+    <!-- Settings: Appearance -->
+    <string name="settings_header_appearance">Appearance</string>
+    <string name="settings_language">Language</string>
+    <string name="settings_theme_follow_system">Follow System</string>
+    <string name="settings_theme_dark_mode">Dark Mode</string>
+    <string name="settings_theme_pure_black">Pure Black (OLED)</string>
+    <string name="settings_theme_pure_black_desc">Use true black background in dark mode</string>
+    <string name="settings_theme_dynamic_color">Dynamic Colors</string>
+    <string name="settings_theme_dynamic_color_desc">Use wallpaper colors (Material You)</string>
 </resources>

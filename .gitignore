@@ -1,6 +1,7 @@
 *.iml
 .gradle/
 .idea/
+.vscode
 /local.properties
 /.idea/caches
 /.idea/libraries
@@ -14,8 +15,6 @@
 .externalNativeBuild
 .cxx
 local.properties
-
-# Module specific builds
 /app/build/
 /live-demo/
-
+build_log*.txt

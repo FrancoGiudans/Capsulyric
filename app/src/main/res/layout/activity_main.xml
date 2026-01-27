@@ -1,4 +1,3 @@
-<?xml version="1.0" encoding="utf-8"?>
 <androidx.core.widget.NestedScrollView
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
@@ -13,192 +12,230 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="16dp"
-        android:clipToPadding="false">
+        android:padding="24dp">
 
-        <!-- Card 1: Status -->
+        <!-- Header: Icon + Title (Left Aligned) -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="24dp">
+            
+            <ImageView
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:src="@mipmap/ic_launcher_round"
+                android:layout_marginEnd="16dp"/>
+
+            <TextView
+                android:id="@+id/tv_app_title"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/app_name"
+                android:textSize="32sp"
+                android:textStyle="bold"
+                android:fontFamily="sans-serif-black"
+                android:textColor="?attr/colorOnSurface"/>
+        </LinearLayout>
+
+        <!-- Status Card (Redesigned) -->
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/cv_status"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="12dp"
-            app:cardCornerRadius="12dp"
+            android:layout_marginBottom="24dp"
+            app:cardCornerRadius="28dp"
             app:cardElevation="0dp"
-            app:strokeWidth="0dp"
-            android:clickable="true"
-            android:focusable="true">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical"
-                android:padding="16dp">
-
-                <ImageView
-                    android:id="@+id/iv_status_icon"
-                    android:layout_width="24dp"
-                    android:layout_height="24dp"
-                    android:src="@drawable/ic_cancel"
-                    app:tint="@android:color/white" />
-
-                <TextView
-                    android:id="@+id/tv_status_text"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="16dp"
-                    android:text="@string/status_inactive"
-                    android:textAppearance="?attr/textAppearanceTitleMedium"
-                    android:textStyle="bold"
-                    android:textColor="@android:color/white"/>
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
-
-        <!-- Card 2: App Info -->
-        <com.google.android.material.card.MaterialCardView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="12dp"
-            app:cardCornerRadius="12dp"
-            app:cardElevation="2dp"
             app:strokeWidth="0dp"
             app:cardBackgroundColor="?attr/colorSurfaceVariant">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="16dp">
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:padding="24dp">
 
-                <TextView
-                    android:id="@+id/tv_app_version"
-                    android:layout_width="wrap_content"
+                <!-- Icon Container -->
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    app:cardCornerRadius="24dp"
+                    app:cardBackgroundColor="?attr/colorSurfaceDim"
+                    app:strokeWidth="0dp"
+                    android:layout_marginEnd="16dp">
+                    
+                    <ImageView
+                        android:id="@+id/iv_status_icon"
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:layout_gravity="center"
+                        android:src="@drawable/shape_circle_red" 
+                        app:tint="?attr/colorOnSurface"/>
+                </com.google.android.material.card.MaterialCardView>
+
+                <LinearLayout
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:text="App Version: ..."
-                    android:textAppearance="?attr/textAppearanceBodyMedium"
-                    android:textColor="?attr/colorOnSurfaceVariant"/>
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:id="@+id/tv_status_text"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/status_inactive"
+                        android:textSize="18sp"
+                        android:textStyle="bold"
+                        android:textColor="?attr/colorOnSurface"/>
+
+                    <TextView
+                        android:id="@+id/tv_app_version"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="..."
+                        android:textSize="14sp"
+                        android:textColor="?attr/colorOnSurfaceVariant"
+                        android:layout_marginTop="2dp"/>
+                </LinearLayout>
 
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- Card 3: Playback Info -->
+        <!-- Info Card -->
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/cv_playback"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="24dp"
-            app:cardCornerRadius="12dp"
-            app:cardElevation="4dp"
-            style="@style/Widget.Material3.CardView.Elevated">
+            app:cardCornerRadius="28dp"
+            app:cardElevation="0dp"
+            app:strokeWidth="1dp"
+            app:strokeColor="?attr/colorOutline"
+            app:cardBackgroundColor="?attr/colorSurfaceVariant">
 
-            <LinearLayout
+            <androidx.constraintlayout.widget.ConstraintLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="16dp">
+                android:padding="24dp">
 
-                <!-- Header -->
                 <TextView
+                    android:id="@+id/lbl_song"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="@string/label_playback_header"
-                    android:textAppearance="?attr/textAppearanceTitleMedium"
+                    android:text="Song:"
                     android:textStyle="bold"
-                    android:textColor="?attr/colorOnSurface"
-                    android:layout_marginBottom="12dp"/>
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toTopOf="parent"/>
 
-                <!-- Song -->
                 <TextView
                     android:id="@+id/tv_song"
-                    android:layout_width="match_parent"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:text="@string/label_title_prefix"
-                    android:textAppearance="?attr/textAppearanceBodyLarge"
-                    android:textColor="?attr/colorOnSurface"
-                    android:ellipsize="end"
-                    android:maxLines="1"
-                    android:layout_marginBottom="4dp"/>
+                    android:text="-"
+                    android:layout_marginStart="8dp"
+                    app:layout_constraintStart_toEndOf="@id/lbl_song"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintTop_toTopOf="@id/lbl_song"/>
 
-                <!-- Artist -->
+                <TextView
+                    android:id="@+id/lbl_artist"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Artist:"
+                    android:textStyle="bold"
+                    android:layout_marginTop="8dp"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toBottomOf="@id/tv_song"/>
+
                 <TextView
                     android:id="@+id/tv_artist"
-                    android:layout_width="match_parent"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:text="@string/label_artist_prefix"
-                    android:textAppearance="?attr/textAppearanceBodyLarge"
-                    android:textColor="?attr/colorOnSurface"
-                    android:ellipsize="end"
-                    android:maxLines="1"
-                    android:layout_marginBottom="4dp"/>
+                    android:text="-"
+                    android:layout_marginStart="8dp"
+                    app:layout_constraintStart_toEndOf="@id/lbl_artist"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintTop_toTopOf="@id/lbl_artist"/>
 
-                <!-- Lyric -->
+                <TextView
+                    android:id="@+id/lbl_lyric"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Lyric:"
+                    android:textStyle="bold"
+                    android:layout_marginTop="16dp"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toBottomOf="@id/tv_artist"/>
+
                 <TextView
                     android:id="@+id/tv_lyric"
-                    android:layout_width="match_parent"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:text="@string/label_lyric_prefix"
-                    android:textAppearance="?attr/textAppearanceBodyLarge"
-                    android:textColor="?attr/colorOnSurface"
-                    android:minLines="2"
-                    android:layout_marginBottom="8dp"/>
+                    android:text="-"
+                    android:layout_marginTop="4dp"
+                    android:textStyle="bold"
+                    android:textSize="16sp"
+                    android:textColor="?attr/colorPrimary"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintTop_toBottomOf="@id/lbl_lyric"/>
 
-                <!-- Copy Hint -->
-                <TextView
-                    android:layout_width="match_parent"
+                <!-- Action Buttons (Bottom End) -->
+                <LinearLayout
+                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="@string/tap_to_copy_hint"
-                    android:textAppearance="?attr/textAppearanceBodySmall"
-                    android:textColor="?attr/colorOutline"
-                    android:textSize="12sp"/>
+                    android:orientation="horizontal"
+                    android:layout_marginTop="24dp"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintTop_toBottomOf="@id/tv_lyric">
 
-            </LinearLayout>
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btn_copy_lyric"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Copy Lyric"
+                        style="@style/Widget.Material3.Button.TonalButton"
+                        android:layout_marginEnd="8dp"/>
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btn_copy_all"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Copy All"
+                        style="@style/Widget.Material3.Button.TonalButton"/>
+
+                </LinearLayout>
+
+            </androidx.constraintlayout.widget.ConstraintLayout>
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- Menu List -->
-        <!-- GitHub -->
-        <TextView
-            android:id="@+id/menu_github"
+        <!-- Settings Button (Outlined & Transparent) -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/cv_settings"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/menu_github"
-            android:padding="16dp"
-            android:drawableStart="@drawable/ic_github"
-            android:drawablePadding="16dp"
-            android:gravity="center_vertical"
-            android:background="?attr/selectableItemBackground"
-            android:textAppearance="?attr/textAppearanceBodyLarge"
-            android:textColor="?attr/colorOnSurface"
-            app:drawableTint="?attr/colorOnSurface"/>
+            android:layout_height="64dp"
+            android:layout_marginTop="8dp"
+            app:cardCornerRadius="16dp"
+            app:cardElevation="0dp"
+            style="@style/Widget.Material3.CardView.Outlined"
+            app:cardBackgroundColor="@android:color/transparent"
+            app:strokeColor="?attr/colorOutline"
+            app:strokeWidth="1dp"
+            android:clickable="true"
+            android:focusable="true">
 
-        <!-- Log -->
-        <TextView
-            android:id="@+id/menu_log"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/menu_log"
-            android:padding="16dp"
-            android:drawableStart="@drawable/ic_article"
-            android:drawablePadding="16dp"
-            android:gravity="center_vertical"
-            android:background="?attr/selectableItemBackground"
-            android:textAppearance="?attr/textAppearanceBodyLarge"
-            android:textColor="?attr/colorOnSurface"
-            app:drawableTint="?attr/colorOnSurface"/>
-
-        <!-- Settings -->
-        <TextView
-            android:id="@+id/menu_settings"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/menu_settings"
-            android:padding="16dp"
-            android:drawableStart="@drawable/ic_settings"
-            android:drawablePadding="16dp"
-            android:gravity="center_vertical"
-            android:background="?attr/selectableItemBackground"
-            android:textAppearance="?attr/textAppearanceBodyLarge"
-            android:textColor="?attr/colorOnSurface"
-            app:drawableTint="?attr/colorOnSurface"/>
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:text="Settings"
+                android:textSize="20sp"
+                android:textColor="?attr/colorOnSurface"
+                android:gravity="center"
+                android:drawableEnd="@drawable/ic_settings" 
+                android:paddingEnd="24dp"/>
+        </com.google.android.material.card.MaterialCardView>
 
     </LinearLayout>
 </androidx.core.widget.NestedScrollView>

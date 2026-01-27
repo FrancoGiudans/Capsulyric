@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Capsulyric</string>
+    <string name="status_active">运行中</string>
+    <string name="status_inactive">未运行</string>
+    <string name="dialog_diagnostics_title">诊断信息</string>
+    <string name="dialog_whitelist_title">白名单管理</string>
+    <string name="btn_refresh_session">刷新会话</string>
+    <string name="menu_github">GitHub</string>
+    <string name="menu_log">日志</string>
+    <string name="menu_settings">设置</string>
+    <string name="tap_to_copy_hint">(点击复制歌词)</string>
+    <string name="app_version_fmt">版本: %1$s\n渠道: %2$s</string>
+    
+    <!-- UI Headers -->
+    <string name="label_playback_header">🎵 播放信息</string>
+    <string name="label_title_prefix">歌名: </string>
+    <string name="label_artist_prefix">歌手: </string>
+    <string name="label_lyric_prefix">当前歌词: </string>
+    <string name="label_status_prefix">状态: </string>
+
+    <!-- Settings: Appearance -->
+    <string name="settings_header_appearance">外观</string>
+    <string name="settings_language">语言</string>
+    <string name="settings_theme_follow_system">跟随系统</string>
+    <string name="settings_theme_dark_mode">深色模式</string>
+    <string name="settings_theme_pure_black">纯黑模式 (OLED)</string>
+    <string name="settings_theme_pure_black_desc">在深色模式下使用纯黑背景</string>
+    <string name="settings_theme_dynamic_color">动态取色</string>
+    <string name="settings_theme_dynamic_color_desc">使用壁纸颜色 (Material You)</string>
+</resources>

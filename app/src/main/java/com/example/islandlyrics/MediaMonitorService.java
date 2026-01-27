@@ -70,16 +70,21 @@ public class MediaMonitorService extends NotificationListenerService {
         (sharedPreferences, key) -> {
             if (PREF_WHITELIST.equals(key)) {
                 loadWhitelist();
-                // Retrigger check
-                if (mMediaSessionManager != null) {
-                    try {
-                        updateControllers(mMediaSessionManager.getActiveSessions(mComponentName));
-                    } catch (SecurityException e) {
-                        AppLogger.getInstance().log(TAG, "Error refreshing sessions: " + e.getMessage());
-                    }
-                }
+                recheckSessions();
+            } else if ("service_enabled".equals(key)) {
+                recheckSessions();
             }
         };
+
+    private void recheckSessions() {
+        if (mMediaSessionManager != null) {
+            try {
+                updateControllers(mMediaSessionManager.getActiveSessions(mComponentName));
+            } catch (SecurityException e) {
+                AppLogger.getInstance().log(TAG, "Error refreshing sessions: " + e.getMessage());
+            }
+        }
+    }
 
     private void loadWhitelist() {
         Set<String> set = mPrefs.getStringSet(PREF_WHITELIST, null);
@@ -91,121 +96,204 @@ public class MediaMonitorService extends NotificationListenerService {
              mAllowedPackages.add("com.netease.cloudmusic");
              mAllowedPackages.add("com.tencent.qqmusic");
              mAllowedPackages.add("com.spotify.music");
+             mAllowedPackages.add("com.miui.player"); // Added default
         }
         AppLogger.getInstance().log(TAG, "Whitelist updated: " + mAllowedPackages.size() + " apps.");
     }
 
-    private final List<MediaController> mActiveControllers = new java.util.ArrayList<>();
+    private final java.util.List<android.media.session.MediaController> mActiveControllers = new java.util.ArrayList<>();
 
-    private final MediaSessionManager.OnActiveSessionsChangedListener mSessionsChangedListener = 
+    private final android.media.session.MediaSessionManager.OnActiveSessionsChangedListener mSessionsChangedListener = 
             this::updateControllers;
 
+    private final android.os.Handler mHandler = new android.os.Handler(android.os.Looper.getMainLooper());
+    private final Runnable mStopRunnable = () -> {
+        AppLogger.getInstance().log(TAG, "Stopping service after debounce.");
+        android.content.Intent intent = new android.content.Intent(MediaMonitorService.this, LyricService.class);
+        intent.setAction("ACTION_STOP");
+        startService(intent);
+    };
+
     private void updateControllers(List<MediaController> controllers) {
-        AppLogger.getInstance().log(TAG, "Sessions changed. New Count: " + (controllers != null ? controllers.size() : "null"));
+        // AppLogger.getInstance().log(TAG, "Segments changed.");
         
-        // Clear references
+        // CHECK MASTER SWITCH
+        boolean isServiceEnabled = mPrefs.getBoolean("service_enabled", true);
+        if (!isServiceEnabled) {
+             AppLogger.getInstance().log(TAG, "Master Switch OFF. Ignoring updates.");
+             mActiveControllers.clear();
+             LyricRepository.getInstance().updatePlaybackStatus(false);
+             return;
+        }
+        
         mActiveControllers.clear();
-
-        if (controllers != null && !controllers.isEmpty()) {
+        if (controllers != null) {
             for (MediaController controller : controllers) {
-                String pkg = controller.getPackageName();
-                
-                if (!mAllowedPackages.contains(pkg)) {
-                    // AppLogger.getInstance().log(TAG, "Ignoring: " + pkg + " (Not Whitelisted)");
-                    continue; 
-                }
-                
-                PlaybackState currentState = controller.getPlaybackState();
-                int stateInt = currentState != null ? currentState.getState() : -1;
-               // AppLogger.getInstance().log(TAG, "Session: " + pkg + " | State: " + stateInt);
-                
-                MediaController.Callback callback = new MediaController.Callback() {
-                    @Override
-                    public void onMetadataChanged(MediaMetadata metadata) {
-                        if (metadata != null) {
-                            String title = metadata.getString(MediaMetadata.METADATA_KEY_TITLE);
-                            // boolean hasArt = metadata.getBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART) != null;
-                            AppLogger.getInstance().log(TAG, "[" + pkg + "] Meta | Title: " + title);
-                            extractMetadata(metadata, pkg);
+                if (mAllowedPackages.contains(controller.getPackageName())) {
+                    mActiveControllers.add(controller);
+                    // Re-register callbacks to ensure we catch state changes
+                    // Note: In production, careful not to double-register. 
+                    // MediaSessionManager usually returns new objects.
+                    controller.registerCallback(new MediaController.Callback() {
+                        @Override
+                        public void onPlaybackStateChanged(PlaybackState state) {
+                            checkServiceState();
                         }
-                    }
-
-                    @Override
-                    public void onPlaybackStateChanged(PlaybackState state) {
-                        int rawState = state != null ? state.getState() : -1;
-                        AppLogger.getInstance().log(TAG, "[" + pkg + "] State | Raw: " + rawState);
-                        
-                        boolean isPlaying = rawState == PlaybackState.STATE_PLAYING;
-                        LyricRepository.getInstance().updatePlaybackStatus(isPlaying);
-                        
-                        // Global Check triggered by callback
-                        checkServiceState();
-                    }
-                };
-                
-                controller.registerCallback(callback);
-                mActiveControllers.add(controller);
-                
-                // Trigger immediate update
-                MediaMetadata metadata = controller.getMetadata();
-                if (metadata != null) {
-                    extractMetadata(metadata, pkg);
+                        @Override
+                        public void onMetadataChanged(MediaMetadata metadata) {
+                            updateMetadataIfPrimary(controller);
+                        }
+                    });
                 }
             }
         }
         
-        // Also check state immediately when controllers change
+        // Initial check
         checkServiceState();
+        
+        // Force update metadata from the CURRENT primary
+        MediaController primary = getPrimaryController();
+        if (primary != null) {
+            updateMetadataIfPrimary(primary);
+        }
     }
     
     private void checkServiceState() {
-        boolean shouldRun = shouldServiceBeRunning();
-        // AppLogger.getInstance().log(TAG, "Decision: Should Service Run? " + shouldRun);
-        
-        if (shouldRun) {
+        MediaController primary = getPrimaryController();
+        boolean isPlaying = primary != null && 
+                            primary.getPlaybackState() != null &&
+                            primary.getPlaybackState().getState() == PlaybackState.STATE_PLAYING;
+
+        if (isPlaying) {
+            // Cancel any pending stop
+            mHandler.removeCallbacks(mStopRunnable);
+            
+            // Start/Update Service
+            // AppLogger.getInstance().log(TAG, "Starting/Keeping service for: " + primary.getPackageName());
             android.content.Intent intent = new android.content.Intent(MediaMonitorService.this, LyricService.class);
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
                 startForegroundService(intent);
             } else {
                 startService(intent);
             }
+            
+            // Sync State
+            LyricRepository.getInstance().updatePlaybackStatus(true);
+            
         } else {
-            // NOTE: We only stop if we are SURE nothing is playing. 
-            // In a real multi-app scenario, this logic needs to be robust. 
-            // For now, if no whitelisted app is playing, we stop.
-            android.content.Intent intent = new android.content.Intent(MediaMonitorService.this, LyricService.class);
-            intent.setAction("ACTION_STOP");
-            startService(intent);
+            // Debounce Stop
+            // Only post if not already posting? 
+            // Better: remove previous and post new to reset timer? 
+            // No, just ensure we don't have duplicates.
+            // But if we are already stopping, just let it be.
+            // If we transitioned Play -> Pause, we trigger this.
+            
+            // If already posted, do nothing? Or defer?
+            // Simple approach: Remove and Post (Reset timer)
+            mHandler.removeCallbacks(mStopRunnable);
+            mHandler.postDelayed(mStopRunnable, 500);
+            
+            LyricRepository.getInstance().updatePlaybackStatus(false);
         }
     }
 
-    private boolean shouldServiceBeRunning() {
-        if (mMediaSessionManager == null) return false;
-        
-        List<MediaController> controllers = mMediaSessionManager.getActiveSessions(mComponentName);
-        if (controllers == null) return false;
-
-        // AppLogger.getInstance().log(TAG, "--- Checking Global State ---");
-        for (MediaController controller : controllers) {
-            String pkg = controller.getPackageName();
-            if (!mAllowedPackages.contains(pkg)) continue;
-            
-            PlaybackState state = controller.getPlaybackState();
-            int stateInt = state != null ? state.getState() : -1;
-            boolean isPlaying = stateInt == PlaybackState.STATE_PLAYING;
-            
-            if (isPlaying) {
-                // AppLogger.getInstance().log(TAG, "  > Found active session: " + pkg);
-                return true; // Found at least one playing session
+    private MediaController getPrimaryController() {
+        // Priority 1: Playing
+        for (MediaController c : mActiveControllers) {
+            PlaybackState state = c.getPlaybackState();
+            if (state != null && state.getState() == PlaybackState.STATE_PLAYING) {
+                return c;
             }
         }
-        return false;
+        // Priority 2: First in list (or most recent?) - API list order usually implies recency
+        if (!mActiveControllers.isEmpty()) {
+            return mActiveControllers.get(0);
+        }
+        return null; // None active
+    }
+
+    private void updateMetadataIfPrimary(MediaController controller) {
+        MediaController primary = getPrimaryController();
+        if (primary == null) return;
+        
+        // Only update if this controller IS the primary one
+        if (controller.getPackageName().equals(primary.getPackageName())) {
+             MediaMetadata metadata = controller.getMetadata();
+             if (metadata != null) {
+                 extractMetadata(metadata, controller.getPackageName());
+             }
+        }
+    }
+
+    private void extractMetadata(MediaMetadata metadata, String pkg) {
+        if (metadata == null) return;
+        
+        String rawTitle = metadata.getString(MediaMetadata.METADATA_KEY_TITLE);
+        String rawArtist = metadata.getString(MediaMetadata.METADATA_KEY_ARTIST);
+        
+        AppLogger.getInstance().log("Meta-Debug", "📦 RAW Data from [" + pkg + "]:");
+        AppLogger.getInstance().log("Meta-Debug", "   ↳ Title : " + (rawTitle == null ? "null" : rawTitle));
+        AppLogger.getInstance().log("Meta-Debug", "   ↳ Artist: " + (rawArtist == null ? "null" : rawArtist));
+
+        String finalTitle = rawTitle;
+        String finalArtist = rawArtist;
+        String finalLyric = null; // Default to null
+
+        // Target specific apps known to use the "Car Bluetooth" hack
+        boolean isTencentBase = pkg.contains("tencent") || pkg.contains("miui.player");
+
+        if (isTencentBase) {
+            // Check if it looks like the Car Protocol (Artist field acts as container)
+            // Check if it looks like the Car Protocol (Artist field acts as container)
+            // or if we just want to try parsing it.
+            if (rawArtist != null) {
+                String separator = null;
+                int splitIndex = -1;
+                int offset = 0;
+
+                // STRATEGY 1: Look for Standard " - " (Space Hyphen Space)
+                // Use Last Index here (Safe for "Anti-Hero - Taylor Swift")
+                if (rawArtist.contains(" - ")) {
+                    separator = " - ";
+                    splitIndex = rawArtist.lastIndexOf(separator);
+                    offset = separator.length();
+                } 
+                // STRATEGY 2: Fallback to Tight "-" (Hyphen)
+                // Use FIRST Index here to protect Artist names like "HOYO-MiX"
+                // Assumption: "Song-HOYO-MiX" -> Split at 1st hyphen -> Title="Song", Artist="HOYO-MiX"
+                else if (rawArtist.contains("-")) {
+                    separator = "-";
+                    splitIndex = rawArtist.indexOf(separator);
+                    offset = separator.length();
+                }
+
+                if (splitIndex != -1) {
+                     AppLogger.getInstance().log("Parser", "⚠ Car Protocol Detected via separator [" + separator + "]");
+                     
+                     // 1. In this mode, the Title field actually holds the Lyric
+                     finalLyric = rawTitle;
+
+                     // 2. The Artist field holds "Song - Artist"
+                     finalTitle = rawArtist.substring(0, splitIndex).trim();
+                     finalArtist = rawArtist.substring(splitIndex + offset).trim();
+                }
+            }
+        }
+        
+        AppLogger.getInstance().log("Repo", "✅ Posting: Title=[" + finalTitle + "] Artist=[" + finalArtist + "] Lyric=[" + (finalLyric != null ? "YES" : "NO") + "]");
+
+        // Push Decision
+        if (finalLyric != null) {
+            LyricRepository.getInstance().updateLyric(finalLyric, getAppName(pkg));
+        }
+        LyricRepository.getInstance().updateMediaMetadata(finalTitle, finalArtist, pkg);
     }
     
-    private void extractMetadata(MediaMetadata metadata, String pkg) {
-        String title = metadata.getString(MediaMetadata.METADATA_KEY_TITLE);
-        String artist = metadata.getString(MediaMetadata.METADATA_KEY_ARTIST);
-        
-        LyricRepository.getInstance().updateMediaMetadata(title, artist, pkg);
+    private String getAppName(String packageName) {
+        if (packageName == null) return "Music";
+        if (packageName.contains("qqmusic")) return "QQ Music";
+        if (packageName.contains("netease")) return "NetEase";
+        if (packageName.contains("miui")) return "Mi Music";
+        return packageName;
     }
 }
