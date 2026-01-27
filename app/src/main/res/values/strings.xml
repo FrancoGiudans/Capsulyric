@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Capsulyric</string>
+    <string name="status_active">Active</string>
+    <string name="status_inactive">Inactive</string>
+    <string name="dialog_diagnostics_title">Diagnostics</string>
+    <string name="dialog_whitelist_title">Allowed Media Apps</string>
+    <string name="btn_refresh_session">Refresh Session</string>
+    <string name="menu_github">GitHub</string>
+    <string name="menu_log">Log</string>
+    <string name="menu_settings">Settings</string>
+    <string name="tap_to_copy_hint">(点击复制歌词)</string>
+    <string name="app_version_fmt">App Version: %s\nApp Channel: %s</string>
+    
+    <!-- UI Headers -->
+    <string name="label_playback_header">🎵 播放信息</string>
+    <string name="label_title_prefix">歌名: </string>
+    <string name="label_artist_prefix">歌手: </string>
+    <string name="label_lyric_prefix">当前歌词: </string>
+    <string name="label_status_prefix">Status: </string>
+</resources>

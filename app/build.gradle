@@ -1,0 +1,51 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'com.example.islandlyrics'
+    compileSdk 36
+
+
+    def localProperties = new Properties()
+    def localPropertiesFile = rootProject.file('local.properties')
+    if (localPropertiesFile.exists()) {
+        localProperties.load(new FileInputStream(localPropertiesFile))
+    }
+
+    signingConfigs {
+        release {
+            storeFile file(localProperties.getProperty('store.file') ?: "debug.keystore")
+            storePassword localProperties.getProperty('store.password')
+            keyAlias localProperties.getProperty('key.alias')
+            keyPassword localProperties.getProperty('key.password')
+        }
+    }
+
+    defaultConfig {
+        applicationId "com.franco.capsulyric"
+        minSdk 35
+        targetSdk 36
+        versionCode 1
+        versionName "0.0.1-Alpha"
+    }
+
+    buildTypes {
+        release {
+            signingConfig signingConfigs.release
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+}
+
+dependencies {
+    implementation 'com.github.HChenX:SuperLyricApi:2.4'
+    implementation 'androidx.core:core:1.17.0'
+    implementation 'androidx.media:media:1.7.1'
+    implementation 'com.google.android.material:material:1.13.0'
+}

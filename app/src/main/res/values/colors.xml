@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+    
+    <!-- Status Colors -->
+    <color name="status_active">#4CAF50</color> <!-- Green -->
+    <color name="status_inactive">#F44336</color> <!-- Red -->
+    <color name="status_inactive_bg">#FFEBEE</color>
+    <color name="status_active_bg">#E8F5E9</color>
+
+    <!-- Brand Colors -->
+    <color name="netease_red">#C20C0C</color>
+    <color name="qq_green">#31C27C</color>
+    <color name="spotify_green">#1DB954</color>
+    <color name="apple_red">#FC3C44</color>
+</resources>
