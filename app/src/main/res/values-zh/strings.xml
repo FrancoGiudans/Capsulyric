@@ -41,7 +41,7 @@
 
     <!-- Guide -->
     <string name="guide_title">免 Root (0-Hook) 使用指引</string>
-    <string name="guide_message">本模式利用‘蓝牙车载歌词’协议获取歌词。\n\n1. 仅支持 <b>QQ音乐</b> 和 <b>小米音乐</b>。\n2. 请在音乐 App 设置中开启‘车载蓝牙歌词’。\n3. 必须授予本应用‘通知使用权’以读取数据。</string>
+    <string name="guide_message">本模式利用‘蓝牙车载歌词’协议获取歌词。\n\n1. 支持 <b>QQ音乐</b>、<b>小米音乐</b> 和 <b>网易云音乐</b>。\n2. 网易云用户：请在‘设置 -> 工具’中开启‘外接设备蓝牙歌词’。\n3. QQ音乐用户：请在‘设置 -> QPlay与车载音乐’中开启‘车载蓝牙歌词’。\n4. 必须授予本应用‘通知使用权’，且部分版本需连接蓝牙耳机触发。</string>
     <string name="settings_guide_item">免 Root 模式设置</string>
     
     <!-- Permissions -->

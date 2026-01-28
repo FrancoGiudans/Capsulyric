@@ -233,7 +233,8 @@ public class MediaMonitorService extends NotificationListenerService {
         String finalLyric = null; // Default to null
 
         // Target specific apps known to use the "Car Bluetooth" hack
-        boolean isTencentBase = pkg.contains("tencent") || pkg.contains("miui.player");
+        // NetEase also uses a similar Title=Lyric scheme in Bluetooth broadcast
+        boolean isTencentBase = pkg.contains("tencent") || pkg.contains("miui.player") || pkg.contains("netease");
 
         if (isTencentBase) {
             // Check if it looks like the Car Protocol (Artist field acts as container)
