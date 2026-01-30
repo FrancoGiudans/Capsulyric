@@ -1,7 +1,7 @@
 *.iml
 .gradle/
 .idea/
-.vscode
+.vscode/
 /local.properties
 /.idea/caches
 /.idea/libraries
@@ -16,5 +16,4 @@
 .cxx
 local.properties
 /app/build/
-/live-demo/
 build_log*.txt

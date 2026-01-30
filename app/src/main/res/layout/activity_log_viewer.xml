@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="?android:attr/colorBackground">
+
+    <!-- Material Toolbar -->
+    <com.google.android.material.appbar.MaterialToolbar
+        android:id="@+id/toolbar"
+        android:layout_width="match_parent"
+        android:layout_height="?attr/actionBarSize"
+        android:elevation="4dp"
+        app:title="Console"
+        app:navigationIcon="@drawable/ic_music_note" 
+        android:background="?attr/colorSurface"/>
+
+    <!-- Search & Filter Area -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="12dp"
+        android:background="?attr/colorSurface"
+        android:elevation="2dp">
+
+        <!-- Search Bar -->
+        <EditText
+            android:id="@+id/et_search"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:background="@drawable/bg_search_bar"
+            android:hint="Search logs..."
+            android:paddingHorizontal="16dp"
+            android:textSize="14sp"
+            android:singleLine="true"
+            android:imeOptions="actionDone"
+            android:inputType="text"/>
+
+        <!-- Chip Filters -->
+        <HorizontalScrollView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:scrollbars="none">
+
+            <com.google.android.material.chip.ChipGroup
+                android:id="@+id/chip_group_filter"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                app:singleSelection="true"
+                app:selectionRequired="true">
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/chip_all"
+                    style="@style/Widget.MaterialComponents.Chip.Choice"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="All"
+                    android:checked="true"/>
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/chip_error"
+                    style="@style/Widget.MaterialComponents.Chip.Choice"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Errors"/>
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/chip_warn"
+                    style="@style/Widget.MaterialComponents.Chip.Choice"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Warnings"/>
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/chip_debug"
+                    style="@style/Widget.MaterialComponents.Chip.Choice"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Debug"/>
+
+            </com.google.android.material.chip.ChipGroup>
+        </HorizontalScrollView>
+    </LinearLayout>
+
+    <!-- Main Content Area: List + FABs -->
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/rv_logs"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:clipToPadding="false"
+            android:paddingBottom="88dp"
+            android:scrollbars="vertical"/>
+
+        <!-- FAB Container -->
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom|end"
+            android:orientation="vertical"
+            android:gravity="end"
+            android:padding="16dp">
+
+            <com.google.android.material.floatingactionbutton.FloatingActionButton
+                android:id="@+id/fab_scroll_down"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp"
+                app:fabSize="mini"
+                app:srcCompat="@android:drawable/arrow_down_float"
+                android:contentDescription="Scroll Down" />
+
+            <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
+                android:id="@+id/fab_export"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Export"
+                app:icon="@android:drawable/ic_menu_share" />
+
+        </LinearLayout>
+
+    </FrameLayout>
+
+</LinearLayout>

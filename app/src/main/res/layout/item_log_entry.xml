@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:paddingHorizontal="16dp"
+    android:paddingVertical="8dp"
+    android:background="?android:attr/selectableItemBackground">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <!-- Level Indicator -->
+        <View
+            android:id="@+id/view_level_indicator"
+            android:layout_width="8dp"
+            android:layout_height="8dp"
+            android:background="@drawable/bg_circle_indicator"
+            android:backgroundTint="#CCCCCC"
+            android:layout_marginEnd="12dp"/>
+
+        <!-- Tag -->
+        <TextView
+            android:id="@+id/tv_tag"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Tag"
+            android:textStyle="bold"
+            android:textColor="?android:attr/textColorPrimary"
+            android:textSize="14sp"
+            android:maxLines="1"
+            android:ellipsize="end"
+            android:layout_marginEnd="8dp"/>
+
+        <!-- Timestamp -->
+        <TextView
+            android:id="@+id/tv_timestamp"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="12:00:00.000"
+            android:textColor="?android:attr/textColorSecondary"
+            android:textSize="12sp"
+            android:gravity="end"
+            android:fontFamily="monospace"/>
+    </LinearLayout>
+
+    <!-- Message -->
+    <TextView
+        android:id="@+id/tv_message"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:layout_marginStart="20dp" 
+        android:text="Log message content..."
+        android:textColor="?android:attr/textColorSecondary"
+        android:fontFamily="sans-serif"
+        android:textSize="13sp"/>
+        
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="?android:attr/listDivider"
+        android:layout_marginTop="8dp"
+        android:alpha="0.2"/>
+
+</LinearLayout>

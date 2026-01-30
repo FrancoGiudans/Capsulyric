@@ -41,7 +41,7 @@
 
     <!-- Guide -->
     <string name="guide_title">0-Hook Guide</string>
-    <string name="guide_message">This mode uses \'Bluetooth Car Lyric\' protocol.\n\n1. Only supports <b>QQ Music</b> and <b>Xiaomi Music</b>.\n2. Enable \'Car Bluetooth Listener\' in Music App Settings.\n3. Grant \'Notification Access\' to this app.</string>
+    <string name="guide_message">This mode uses \'Bluetooth Car Lyric\' protocol.\n\n1. Supports <b>QQ Music</b>, <b>Xiaomi Music</b> and <b>NetEase Music</b>.\n2. NetEase: Enable \'Car Bluetooth Lyric\' in Settings -> Tools.\n3. QQ Music: Enable \'Car Bluetooth Lyric\' in QPlay Settings.\n4. Grant \'Notification Access\' to this app.</string>
     <string name="settings_guide_item">0-Hook Mode Setup</string>
     
     <!-- Permissions -->
@@ -60,4 +60,20 @@
     <string name="settings_general_header">General</string>
     <string name="settings_service_header">Service</string>
     <string name="settings_service_enable">Enable Service</string>
+    
+    <!-- Installer Clone Resources -->
+    <string name="installer_resolving">Resolving...</string>
+    <string name="installer_preparing">Preparing...</string>
+    <string name="installer_analysing">Analysing...</string>
+    <string name="installer_installing">Installing...</string>
+    <string name="installer_install_success">Install Success</string>
+    
+    <string name="installer_live_channel_short_text_resolving">Resolving</string>
+    <string name="installer_live_channel_name">Install Progress Live Update</string>
+    <string name="installer_live_channel_short_text_preparing">Preparing</string>
+    <string name="installer_live_channel_short_text_analysing">Analysing</string>
+    <string name="installer_live_channel_short_text_installing">Installing</string>
+    <string name="installer_live_channel_short_text_success">Success</string>
+    
+    <string name="cancel">Cancel</string>
 </resources>

@@ -39,6 +39,15 @@
                 android:textColor="?attr/colorOnSurface"/>
         </LinearLayout>
 
+        <TextView
+            android:id="@+id/tv_service_status"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="🔴 Service Status: Unknown"
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:textStyle="bold"
+            android:layout_marginBottom="12dp"/>
+
         <!-- Status Card (Redesigned) -->
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/cv_status"
@@ -182,33 +191,66 @@
                     app:layout_constraintEnd_toEndOf="parent"
                     app:layout_constraintTop_toBottomOf="@id/lbl_lyric"/>
 
-                <!-- Action Buttons (Bottom End) -->
-                <LinearLayout
+            </androidx.constraintlayout.widget.ConstraintLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- System & API Status Dashboard (Android 16) -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/cv_api_status"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="24dp"
+            app:cardCornerRadius="28dp"
+            app:cardElevation="0dp"
+            app:strokeWidth="1dp"
+            app:strokeColor="?attr/colorOutline"
+            app:cardBackgroundColor="?attr/colorSurfaceVariant">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="24dp">
+
+                <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:layout_marginTop="24dp"
-                    app:layout_constraintEnd_toEndOf="parent"
-                    app:layout_constraintTop_toBottomOf="@id/tv_lyric">
+                    android:text="System &amp; API Status (API 36)"
+                    android:textStyle="bold"
+                    android:textColor="?attr/colorPrimary"
+                    android:layout_marginBottom="12dp"/>
 
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btn_copy_lyric"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Copy Lyric"
-                        style="@style/Widget.Material3.Button.TonalButton"
-                        android:layout_marginEnd="8dp"/>
+                <TextView
+                    android:id="@+id/tv_api_permission"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Permission: Checking..."
+                    android:textColor="?attr/colorOnSurfaceVariant"
+                    android:layout_marginBottom="4dp"/>
 
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btn_copy_all"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Copy All"
-                        style="@style/Widget.Material3.Button.TonalButton"/>
+                <TextView
+                    android:id="@+id/tv_notif_capability"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Notif.hasPromotable: Waiting..."
+                    android:textColor="?attr/colorOnSurfaceVariant"
+                    android:layout_marginBottom="4dp"/>
 
-                </LinearLayout>
+                <TextView
+                    android:id="@+id/tv_notif_flag"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Flag PROMOTED_ONGOING: Waiting..."
+                    android:textColor="?attr/colorOnSurfaceVariant"
+                    android:layout_marginBottom="12dp"/>
 
-            </androidx.constraintlayout.widget.ConstraintLayout>
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_open_settings"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Open Promoted Settings"
+                    style="@style/Widget.Material3.Button.TonalButton"/>
+            </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
         <!-- Settings Button (Outlined & Transparent) -->
