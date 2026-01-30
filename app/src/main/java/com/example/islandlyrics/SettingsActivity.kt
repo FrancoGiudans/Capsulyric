@@ -333,23 +333,7 @@ class SettingsActivity : BaseActivity() {
     }
 
     private fun showLogConsole() {
-        val bottomSheet = BottomSheetDialog(this)
-
-        val logView = TextView(this)
-        logView.setPadding(32, 32, 32, 32)
-        logView.setTextIsSelectable(true)
-        logView.typeface = android.graphics.Typeface.MONOSPACE
-
-        val scroll = androidx.core.widget.NestedScrollView(this)
-        scroll.addView(logView)
-
-        bottomSheet.setContentView(scroll)
-        bottomSheet.show()
-
-        AppLogger.getInstance().logs.observe(this) { logs ->
-            logView.text = logs
-            scroll.post { scroll.fullScroll(View.FOCUS_DOWN) }
-        }
+        LogViewerActivity.start(this)
     }
 
     companion object {
