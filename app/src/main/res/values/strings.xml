@@ -93,4 +93,20 @@
     <string name="parser_separator_custom">Custom</string>
     <string name="parser_order_artist_title">Artist-Title</string>
     <string name="parser_order_title_artist">Title-Artist</string>
+
+    <!-- About & Update Checker -->
+    <string name="about_title">About</string>
+    <string name="about_version">Version</string>
+    <string name="about_build">Build</string>
+    <string name="about_commit">Commit</string>
+    <string name="update_check_title">Check for Updates</string>
+    <string name="update_available_title">Update Available: %s</string>
+    <string name="update_current_version">Current: %s</string>
+    <string name="update_changelog">What\'s New</string>
+    <string name="update_download">Download Update</string>
+    <string name="update_ignore">Ignore This Version</string>
+    <string name="update_no_update">You\'re up to date!</string>
+    <string name="update_check_failed">Failed to check for updates</string>
+    <string name="settings_auto_update">Auto-check for updates</string>
+    <string name="settings_auto_update_desc">Check for new versions on app launch</string>
 </resources>

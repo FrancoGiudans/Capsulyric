@@ -39,12 +39,14 @@ android {
     }
 
     defaultConfig {
-        def majorVersion = "1.0.1"
+        def majorVersion = "1.0"
         versionCode getGitCommitCount()
-        versionName "${majorVersion}.${getGitCommitHash()}"
+        versionName "${majorVersion}_C${getGitCommitCount()}"
         applicationId "com.franco.capsulyric"
         minSdk 35
         targetSdk 36
+        
+        buildConfigField "String", "GIT_COMMIT_HASH", "\"${getGitCommitHash()}\""
     }
 
     buildTypes {

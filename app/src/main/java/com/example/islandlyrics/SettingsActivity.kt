@@ -28,6 +28,8 @@ import com.example.islandlyrics.ThemeHelper.setLanguage
 import com.example.islandlyrics.ThemeHelper.setPureBlack
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.materialswitch.MaterialSwitch
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
 
 class SettingsActivity : BaseActivity() {
 
@@ -160,6 +162,23 @@ class SettingsActivity : BaseActivity() {
     override fun onResume() {
         super.onResume()
         checkPermissionsAndSyncUI()
+        
+        // Auto-check for updates if enabled
+        if (UpdateChecker.isAutoUpdateEnabled(this)) {
+            lifecycleScope.launch {
+                try {
+                    val release = UpdateChecker.checkForUpdate(this@SettingsActivity)
+                    if (release != null) {
+                        // Show update dialog
+                        val dialog = UpdateDialogFragment.newInstance(release)
+                        dialog.show(supportFragmentManager, "auto_update_dialog")
+                        AppLogger.getInstance().log("Settings", "Auto-update found: ${release.tagName}")
+                    }
+                } catch (e: Exception) {
+                    AppLogger.getInstance().log("Settings", "Auto-update check failed: ${e.message}")
+                }
+            }
+        }
     }
 
     @SuppressLint("InlinedApi")
@@ -253,6 +272,18 @@ class SettingsActivity : BaseActivity() {
         // Parser Rule Settings
         val itemParserRule: View = findViewById(R.id.item_parser_rule)
         itemParserRule.setOnClickListener { startActivity(Intent(this, ParserRuleActivity::class.java)) }
+
+        // Auto-Update Switch
+        val switchAutoUpdate: MaterialSwitch = findViewById(R.id.switch_auto_update)
+        switchAutoUpdate.isChecked = UpdateChecker.isAutoUpdateEnabled(this)
+        switchAutoUpdate.setOnCheckedChangeListener { _, isChecked ->
+            UpdateChecker.setAutoUpdateEnabled(this, isChecked)
+            AppLogger.getInstance().log("Settings", "Auto-update: $isChecked")
+        }
+
+        // About
+        val itemAbout: View = findViewById(R.id.item_about)
+        itemAbout.setOnClickListener { startActivity(Intent(this, AboutActivity::class.java)) }
 
 
         itemBattery.setOnClickListener {

@@ -93,4 +93,20 @@
     <string name="parser_separator_custom">自定义</string>
     <string name="parser_order_artist_title">歌手-歌名</string>
     <string name="parser_order_title_artist">歌名-歌手</string>
+
+    <!-- 关于 & 更新检测 -->
+    <string name="about_title">关于</string>
+    <string name="about_version">版本号</string>
+    <string name="about_build">内部版本号</string>
+    <string name="about_commit">内部开发号</string>
+    <string name="update_check_title">检查更新</string>
+    <string name="update_available_title">发现新版本: %s</string>
+    <string name="update_current_version">当前版本: %s</string>
+    <string name="update_changelog">更新内容</string>
+    <string name="update_download">下载更新</string>
+    <string name="update_ignore">忽略该版本</string>
+    <string name="update_no_update">已是最新版本！</string>
+    <string name="update_check_failed">检查更新失败</string>
+    <string name="settings_auto_update">自动检测更新</string>
+    <string name="settings_auto_update_desc">启动应用时检查新版本</string>
 </resources>

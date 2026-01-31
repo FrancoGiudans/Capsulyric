@@ -19,7 +19,7 @@ object ParserRuleHelper {
      */
     private val DEFAULTS = listOf(
         ParserRule("com.tencent.qqmusic", true, true, "-", FieldOrder.ARTIST_TITLE),
-        ParserRule("com.netease.cloudmusic", true, true, "-", FieldOrder.ARTIST_TITLE),
+        ParserRule("com.netease.cloudmusic", true, true, " - ", FieldOrder.ARTIST_TITLE),
         ParserRule("com.miui.player", true, true, "-", FieldOrder.ARTIST_TITLE)
     )
 
