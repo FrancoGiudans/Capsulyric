@@ -31,10 +31,21 @@ android {
 
     signingConfigs {
         release {
-            storeFile file(localProperties.getProperty('store.file') ?: "debug.keystore")
-            storePassword localProperties.getProperty('store.password')
-            keyAlias localProperties.getProperty('key.alias')
-            keyPassword localProperties.getProperty('key.password')
+            // Use custom keystore if available (local development)
+            // Otherwise use debug keystore (CI/CD environment)
+            def keystorePath = localProperties.getProperty('store.file')
+            if (keystorePath != null && file(keystorePath).exists()) {
+                storeFile file(keystorePath)
+                storePassword localProperties.getProperty('store.password')
+                keyAlias localProperties.getProperty('key.alias')
+                keyPassword localProperties.getProperty('key.password')
+            } else {
+                // Fallback to debug signing for CI/CD
+                storeFile file("${System.getProperty('user.home')}/.android/debug.keystore")
+                storePassword 'android'
+                keyAlias 'androiddebugkey'
+                keyPassword 'android'
+            }
         }
     }
 

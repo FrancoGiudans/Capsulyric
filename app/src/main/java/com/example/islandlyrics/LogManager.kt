@@ -77,11 +77,11 @@ class LogManager private constructor() {
                 BufferedReader(FileReader(logFile)).use { br ->
                     var line: String?
                     while (br.readLine().also { line = it } != null) {
-                        val matcher = LOG_PATTERN.matcher(line)
+                        val matcher = LOG_PATTERN.matcher(line ?: "")
                         if (matcher.find()) {
-                            entries.add(LogEntry(matcher.group(1), matcher.group(2), matcher.group(3), matcher.group(4)))
+                            entries.add(LogEntry(matcher.group(1) ?: "", matcher.group(2) ?: "", matcher.group(3) ?: "", matcher.group(4) ?: ""))
                         } else {
-                            entries.add(LogEntry("", "V", "System", line!!))
+                            entries.add(LogEntry("", "V", "System", line ?: ""))
                         }
                     }
                 }

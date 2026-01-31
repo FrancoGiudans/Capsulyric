@@ -72,25 +72,24 @@ class LyricService : Service() {
             if (data != null) {
                 val lyric = data.lyric
 
-                if (lyric != null) {
-                    // Instrumental Filter
-                    if (lyric.matches(".*(纯音乐|Instrumental|No lyrics|请欣赏|没有歌词).*".toRegex())) {
-                        Log.d(TAG, "Instrumental detected: $lyric")
-                        stopForeground(true)
-                        return
-                    }
-
-                    if (lyric == lastLyric) {
-                        return
-                    }
-                    lastLyric = lyric
-
-                    val pkg = data.packageName
-                    val appName = getAppName(pkg)
-
-                    // Update Repository -> This triggers the Observer -> Notification
-                    LyricRepository.getInstance().updateLyric(lyric, appName)
+                // Instrumental Filter
+                if (lyric.matches(".*(纯音乐|Instrumental|No lyrics|请欣赏|没有歌词).*".toRegex())) {
+                    Log.d(TAG, "Instrumental detected: $lyric")
+                    @Suppress("DEPRECATION")
+                    stopForeground(true)
+                    return
                 }
+
+                if (lyric == lastLyric) {
+                    return
+                }
+                lastLyric = lyric
+
+                val pkg = data.packageName
+                val appName = getAppName(pkg)
+
+                // Update Repository -> This triggers the Observer -> Notification
+                LyricRepository.getInstance().updateLyric(lyric, appName)
             }
         }
     }
@@ -164,6 +163,7 @@ class LyricService : Service() {
         AppLogger.getInstance().log(TAG, "Received Action: $action")
 
         if (intent != null && "ACTION_STOP" == intent.action) {
+            @Suppress("DEPRECATION")
             stopForeground(true)
             stopSelf()
             return START_NOT_STICKY
@@ -425,7 +425,7 @@ class LyricService : Service() {
         sendBroadcast(intent)
     }
 
-    private fun updateNotification(title: String, text: String, subText: String) {
+    private fun updateNotification(_title: String, _text: String, _subText: String) {
         val now = System.currentTimeMillis()
         if (now - lastUpdateTime < 500) return // Strict 500ms cap like InstallerX
         lastUpdateTime = now
