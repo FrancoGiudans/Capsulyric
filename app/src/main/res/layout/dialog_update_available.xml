@@ -48,16 +48,22 @@
             android:textStyle="bold"
             android:textColor="?attr/colorOnSurface"/>
 
-        <TextView
-            android:id="@+id/tv_changelog"
+        <ScrollView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:text="Loading changelog..."
-            android:textSize="14sp"
-            android:textColor="?attr/colorOnSurfaceVariant"
-            android:maxLines="10"
-            android:scrollbars="vertical"/>
+            android:maxHeight="200dp"
+            android:scrollbars="vertical">
+
+            <TextView
+                android:id="@+id/tv_changelog"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Loading changelog..."
+                android:textSize="14sp"
+                android:textColor="?attr/colorOnSurfaceVariant"/>
+
+        </ScrollView>
 
         <!-- Buttons -->
         <LinearLayout

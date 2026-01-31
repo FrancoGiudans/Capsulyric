@@ -411,6 +411,7 @@ class LyricService : Service() {
         sendBroadcast(intent)
     }
 
+    @Suppress("UNUSED_PARAMETER")
     private fun updateNotification(_title: String, _text: String, _subText: String) {
         val now = System.currentTimeMillis()
         if (now - lastUpdateTime < 500) return // Strict 500ms cap like InstallerX

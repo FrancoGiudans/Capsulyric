@@ -101,9 +101,7 @@ class UpdateDialogFragment : DialogFragment() {
     }
 
     override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
-        val dialog = super.onCreateDialog(savedInstanceState)
-        dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
-        return dialog
+        return super.onCreateDialog(savedInstanceState)
     }
 
     /**
