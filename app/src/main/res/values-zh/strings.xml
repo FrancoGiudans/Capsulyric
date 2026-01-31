@@ -76,4 +76,37 @@
     <string name="installer_live_channel_short_text_success">完成</string>
     
     <string name="cancel">取消</string>
+
+    <!-- 通知解析规则 -->
+    <string name="parser_rule_title">通知解析规则</string>
+    <string name="parser_rule_subtitle">配置音乐应用通知的解析方式</string>
+    <string name="parser_add_rule">添加音乐应用</string>
+    <string name="parser_edit">编辑</string>
+    <string name="parser_delete">删除</string>
+    <string name="parser_package_name">包名</string>
+    <string name="parser_car_protocol">使用车载协议</string>
+    <string name="parser_separator">分隔符</string>
+    <string name="parser_field_order">字段顺序</string>
+    <string name="parser_separator_tight">"-" (无空格)</string>
+    <string name="parser_separator_spaced">" - " (带空格)</string>
+    <string name="parser_separator_pipe">" | " (竖线)</string>
+    <string name="parser_separator_custom">自定义</string>
+    <string name="parser_order_artist_title">歌手-歌名</string>
+    <string name="parser_order_title_artist">歌名-歌手</string>
+
+    <!-- 关于 & 更新检测 -->
+    <string name="about_title">关于</string>
+    <string name="about_version">版本号</string>
+    <string name="about_build">内部版本号</string>
+    <string name="about_commit">内部开发号</string>
+    <string name="update_check_title">检查更新</string>
+    <string name="update_available_title">发现新版本: %s</string>
+    <string name="update_current_version">当前版本: %s</string>
+    <string name="update_changelog">更新内容</string>
+    <string name="update_download">下载更新</string>
+    <string name="update_ignore">忽略该版本</string>
+    <string name="update_no_update">已是最新版本！</string>
+    <string name="update_check_failed">检查更新失败</string>
+    <string name="settings_auto_update">自动检测更新</string>
+    <string name="settings_auto_update_desc">启动应用时检查新版本</string>
 </resources>

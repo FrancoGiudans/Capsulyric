@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/root_view"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="?android:attr/colorBackground">
+
+    <!-- Header -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/parser_rule_title"
+        android:textSize="24sp"
+        android:textStyle="bold"
+        android:textColor="?attr/colorOnSurface"
+        android:paddingHorizontal="24dp"
+        android:paddingTop="24dp"
+        android:paddingBottom="8dp"/>
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/parser_rule_subtitle"
+        android:textSize="14sp"
+        android:textColor="?attr/colorOnSurfaceVariant"
+        android:paddingHorizontal="24dp"
+        android:paddingBottom="16dp"/>
+
+    <!-- List -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/recycler_view"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:clipToPadding="false"
+        android:paddingBottom="80dp"/>
+
+    <!-- Add Button -->
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="16dp"
+        android:background="?attr/colorSurface">
+        
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_add_rule"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/parser_add_rule"
+            style="@style/Widget.Material3.Button"/>
+    </FrameLayout>
+
+</LinearLayout>

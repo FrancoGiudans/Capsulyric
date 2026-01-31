@@ -125,7 +125,7 @@ class WhitelistActivity : BaseActivity() {
 
             // Long Press to Delete
             holder.itemView.setOnLongClickListener {
-                val actualPos = holder.adapterPosition
+                val actualPos = holder.bindingAdapterPosition
                 if (actualPos != RecyclerView.NO_POSITION) {
                     AlertDialog.Builder(this@WhitelistActivity)
                         .setTitle(R.string.dialog_whitelist_title) // Reusing title

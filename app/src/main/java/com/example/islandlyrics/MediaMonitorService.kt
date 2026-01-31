@@ -204,51 +204,62 @@ class MediaMonitorService : NotificationListenerService() {
         var finalArtist = rawArtist
         var finalLyric: String? = null
 
-        // Target specific apps known to use the "Car Bluetooth" hack
-        val isTencentBase = pkg.contains("tencent") || pkg.contains("miui.player") || pkg.contains("netease")
+        // Load parser rule for this package (configurable system)
+        val rule = ParserRuleHelper.getRuleForPackage(this, pkg)
 
-        if (isTencentBase && rawArtist != null) {
-            var separator: String? = null
-            var splitIndex = -1
-            var offset = 0
-
-            // STRATEGY 1: Look for Standard " - " (Space Hyphen Space)
-            if (rawArtist.contains(" - ")) {
-                separator = " - "
-                splitIndex = rawArtist.lastIndexOf(separator)
-                offset = separator.length
-            }
-            // STRATEGY 2: Fallback to Tight "-" (Hyphen)
-            else if (rawArtist.contains("-")) {
-                separator = "-"
-                splitIndex = rawArtist.indexOf(separator)
-                offset = separator.length
-            }
-
-            if (splitIndex != -1 && separator != null) {
-                AppLogger.getInstance().log("Parser", "⚠ Car Protocol Detected via separator [$separator]")
-
-                // 1. In this mode, the Title field actually holds the Lyric
+        if (rule != null && rule.usesCarProtocol && rawArtist != null) {
+            AppLogger.getInstance().log("Parser", "⚙️ Applying rule: separator=[${rule.separatorPattern}], order=${rule.fieldOrder}")
+            
+            // Parse using configurable rule
+            val (parsedTitle, parsedArtist) = parseWithRule(rawArtist, rule)
+            
+            if (parsedTitle.isNotEmpty()) {
+                // Car protocol mode: Title field holds lyric
                 finalLyric = rawTitle
-
-                // 2. The Artist field holds "Song - Artist"
-                finalTitle = rawArtist.substring(0, splitIndex).trim()
-                finalArtist = rawArtist.substring(splitIndex + offset).trim()
+                finalTitle = parsedTitle
+                finalArtist = parsedArtist
+                AppLogger.getInstance().log("Parser", "✅ Parsed: Title=[$finalTitle], Artist=[$finalArtist]")
             }
         }
 
         AppLogger.getInstance().log("Repo", "✅ Posting: Title=[$finalTitle] Artist=[$finalArtist] Lyric=[${if (finalLyric != null) "YES" else "NO"}]")
 
-        // Push Decision
+        // Push to repository
         if (finalLyric != null) {
             LyricRepository.getInstance().updateLyric(finalLyric, getAppName(pkg))
         }
 
         val duration = metadata.getLong(MediaMetadata.METADATA_KEY_DURATION)
-        // Check for non-nullness safely? Kotlin strings can be null if coming from platform types not annotated
-        // But here we assigned them.
         LyricRepository.getInstance().updateMediaMetadata(finalTitle ?: "Unknown", finalArtist ?: "Unknown", pkg, duration)
     }
+
+    /**
+     * Parse notification text using configurable separator and field order.
+     * @param input Raw text like "Artist-Title" or "Title | Artist"
+     * @param rule Parser rule with separator and field order
+     * @return Pair of (title, artist)
+     */
+    private fun parseWithRule(input: String, rule: ParserRule): Pair<String, String> {
+        val separator = rule.separatorPattern
+        val splitIndex = input.indexOf(separator)
+        
+        if (splitIndex == -1) {
+            // Separator not found, return original with empty artist
+            AppLogger.getInstance().log("Parser", "⚠️ Separator [$separator] not found in: $input")
+            return Pair(input, "")
+        }
+
+        // Split the input
+        val part1 = input.substring(0, splitIndex).trim()
+        val part2 = input.substring(splitIndex + separator.length).trim()
+
+        // Apply field order
+        return when (rule.fieldOrder) {
+            FieldOrder.ARTIST_TITLE -> Pair(part2, part1)  // part1=artist, part2=title
+            FieldOrder.TITLE_ARTIST -> Pair(part1, part2)  // part1=title, part2=artist
+        }
+    }
+
 
     private fun getAppName(packageName: String?): String {
         if (packageName == null) return "Music"

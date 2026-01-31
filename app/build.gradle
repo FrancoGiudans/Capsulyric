@@ -29,27 +29,36 @@ android {
     namespace 'com.example.islandlyrics'
     compileSdk 36
 
+    // Check if custom keystore is available
+    def keystorePath = localProperties.getProperty('store.file')
+    def hasCustomKeystore = keystorePath != null && file(keystorePath).exists()
+
     signingConfigs {
-        release {
-            storeFile file(localProperties.getProperty('store.file') ?: "debug.keystore")
-            storePassword localProperties.getProperty('store.password')
-            keyAlias localProperties.getProperty('key.alias')
-            keyPassword localProperties.getProperty('key.password')
+        if (hasCustomKeystore) {
+            release {
+                storeFile file(keystorePath)
+                storePassword localProperties.getProperty('store.password')
+                keyAlias localProperties.getProperty('key.alias')
+                keyPassword localProperties.getProperty('key.password')
+            }
         }
     }
 
     defaultConfig {
-        def majorVersion = "1.0.1"
-        versionCode 1
-        versionName "${majorVersion}.${getGitCommitHash()}"
+        def majorVersion = "1.0"
+        versionCode getGitCommitCount()
+        versionName "${majorVersion}_C${getGitCommitCount()}"
         applicationId "com.franco.capsulyric"
         minSdk 35
         targetSdk 36
+        
+        buildConfigField "String", "GIT_COMMIT_HASH", "\"${getGitCommitHash()}\""
     }
 
     buildTypes {
         release {
-            signingConfig signingConfigs.release
+            // Use custom keystore if available, otherwise use debug signing
+            signingConfig hasCustomKeystore ? signingConfigs.release : signingConfigs.debug
             minifyEnabled true
             shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
