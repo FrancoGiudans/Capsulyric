@@ -54,7 +54,8 @@ class LyricCapsuleHandler(
     // Visual weight-based scrolling (CJK=2, Western=1)
     private var scrollOffset = 0  // Current scroll position in visual weight units
     private var lastLyricText = ""
-    private val MAX_DISPLAY_WEIGHT = 14  // Visual capacity in weight units (was 12 chars)
+    private val MAX_DISPLAY_WEIGHT = 22  // Visual capacity: ~11 CJK or ~22 Western chars
+    private val COMPENSATION_THRESHOLD = 8  // Stop scrolling if remainder < this (keeps capsule stable)
     
     // Timing constants
     private val INITIAL_PAUSE_DURATION = 1000L  // 1s to read beginning
@@ -336,7 +337,7 @@ class LyricCapsuleHandler(
         val lyricInfo = LyricRepository.getInstance().liveLyric.value
         val currentLyric = lyricInfo?.lyric ?: ""
         
-        // Scrolling Marquee Logic with Visual Weight
+        // Scrolling Marquee Logic with Visual Weight & Compensation Algorithm
         var displayLyric: String
         val totalWeight = calculateWeight(currentLyric)
         
@@ -348,54 +349,62 @@ class LyricCapsuleHandler(
             initialPauseStartTime = System.currentTimeMillis()
         }
         
-        // State machine for scroll timing
-        when (scrollState) {
-            ScrollState.INITIAL_PAUSE -> {
-                val pauseElapsed = System.currentTimeMillis() - initialPauseStartTime
-                if (pauseElapsed >= INITIAL_PAUSE_DURATION && totalWeight > MAX_DISPLAY_WEIGHT) {
-                    scrollState = ScrollState.SCROLLING
-                }
-                // Show beginning of lyric
-                displayLyric = extractByWeight(currentLyric, 0, MAX_DISPLAY_WEIGHT)
-            }
-            
-            ScrollState.SCROLLING -> {
-                // Calculate how much can still be shown
-                val remainingWeight = totalWeight - scrollOffset
-                
-                if (remainingWeight <= MAX_DISPLAY_WEIGHT) {
-                    // Last segment: switch to FINAL_PAUSE
-                    scrollState = ScrollState.FINAL_PAUSE
-                    initialPauseStartTime = System.currentTimeMillis()
-                    displayLyric = extractByWeight(currentLyric, scrollOffset, MAX_DISPLAY_WEIGHT)
-                } else {
-                    // Active scrolling
-                    displayLyric = extractByWeight(currentLyric, scrollOffset, MAX_DISPLAY_WEIGHT)
-                    
-                    // Increment scroll offset by smart step (2-3 CJK or 3-4 Western)
-                    scrollOffset += calculateSmartShiftWeight(currentLyric, scrollOffset)
-                }
-            }
-            
-            ScrollState.FINAL_PAUSE -> {
-                // Show final segment
-                displayLyric = extractByWeight(currentLyric, scrollOffset, MAX_DISPLAY_WEIGHT)
-                
-                val pauseElapsed = System.currentTimeMillis() - initialPauseStartTime
-                if (pauseElapsed >= FINAL_PAUSE_DURATION) {
-                    scrollState = ScrollState.DONE
-                }
-            }
-            
-            ScrollState.DONE -> {
-                // Keep showing last segment
-                displayLyric = extractByWeight(currentLyric, scrollOffset, MAX_DISPLAY_WEIGHT)
-            }
-        }
-        
-        // Fallback for short lyrics (no scrolling needed)
+        // Short lyric: no scrolling needed
         if (totalWeight <= MAX_DISPLAY_WEIGHT) {
             displayLyric = currentLyric
+        } else {
+            // State machine for scroll timing
+            when (scrollState) {
+                ScrollState.INITIAL_PAUSE -> {
+                    val pauseElapsed = System.currentTimeMillis() - initialPauseStartTime
+                    if (pauseElapsed >= INITIAL_PAUSE_DURATION) {
+                        scrollState = ScrollState.SCROLLING
+                    }
+                    // Show beginning of lyric
+                    displayLyric = extractByWeight(currentLyric, 0, MAX_DISPLAY_WEIGHT)
+                }
+                
+                ScrollState.SCROLLING -> {
+                    // Calculate remaining content
+                    val remainingWeight = totalWeight - scrollOffset
+                    
+                    // COMPENSATION ALGORITHM: Stop scrolling if remainder is small to keep capsule stable
+                    if (remainingWeight <= COMPENSATION_THRESHOLD) {
+                        // Show all remaining content (even if > MAX_DISPLAY_WEIGHT)
+                        scrollState = ScrollState.FINAL_PAUSE
+                        initialPauseStartTime = System.currentTimeMillis()
+                        displayLyric = extractByWeight(currentLyric, scrollOffset, remainingWeight)
+                    } else if (remainingWeight <= MAX_DISPLAY_WEIGHT) {
+                        // Last full segment: switch to FINAL_PAUSE
+                        scrollState = ScrollState.FINAL_PAUSE
+                        initialPauseStartTime = System.currentTimeMillis()
+                        displayLyric = extractByWeight(currentLyric, scrollOffset, MAX_DISPLAY_WEIGHT)
+                    } else {
+                        // Active scrolling
+                        displayLyric = extractByWeight(currentLyric, scrollOffset, MAX_DISPLAY_WEIGHT)
+                        
+                        // Increment scroll offset by smart step (2-3 CJK or 3-4 Western)
+                        scrollOffset += calculateSmartShiftWeight(currentLyric, scrollOffset)
+                    }
+                }
+                
+                ScrollState.FINAL_PAUSE -> {
+                    // Show final segment (may be > MAX_DISPLAY_WEIGHT due to compensation)
+                    val remainingWeight = totalWeight - scrollOffset
+                    displayLyric = extractByWeight(currentLyric, scrollOffset, maxOf(remainingWeight, MAX_DISPLAY_WEIGHT))
+                    
+                    val pauseElapsed = System.currentTimeMillis() - initialPauseStartTime
+                    if (pauseElapsed >= FINAL_PAUSE_DURATION) {
+                        scrollState = ScrollState.DONE
+                    }
+                }
+                
+                ScrollState.DONE -> {
+                    // Keep showing final segment
+                    val remainingWeight = totalWeight - scrollOffset
+                    displayLyric = extractByWeight(currentLyric, scrollOffset, maxOf(remainingWeight, MAX_DISPLAY_WEIGHT))
+                }
+            }
         }
         
         // Get progress
@@ -445,43 +454,21 @@ class LyricCapsuleHandler(
             )
             .setRequestPromotedOngoing(true)  // Native AndroidX method - no reflection needed!
 
+
         // 1. Get Live Lyrics from Repository
         val lyricInfo = LyricRepository.getInstance().liveLyric.value
         val currentLyric = lyricInfo?.lyric ?: "Waiting for lyrics..."
         val sourceApp = lyricInfo?.sourceApp ?: "Island Lyrics"
         
-        // Scrolling Marquee Logic for long lyrics
-        var displayLyric: String
-        
-        // Reset scroll offset if lyric changed
-        if (currentLyric != lastLyricText) {
-            lastLyricText = currentLyric
-            scrollOffset = 0
-        }
-        
-        // Apply scrolling for long lyrics (state 3 only)
-        if (currentState == 3 && currentLyric.length > 12) {
-            // Linear scrolling (no loop)
-            val totalLength = currentLyric.length
-            
-            // Calculate window
-            var start = scrollOffset
-            var end = start + 12
-            
-            // Check boundaries
-            if (end >= totalLength) {
-                // Reached end - lock to last 7 chars
-                end = totalLength
-                start = (totalLength - 12).coerceAtLeast(0)
-                // Do not increment scrollOffset anymore
+        // Use pre-calculated displayLyric from updateNotification() (weight-based scrolling)
+        // This ensures consistent behavior with the advanced scrolling logic
+        val displayLyric = lastNotifiedLyric.ifEmpty { 
+            // Fallback: if no calculated lyric yet, use visual weight extraction
+            if (calculateWeight(currentLyric) <= MAX_DISPLAY_WEIGHT) {
+                currentLyric
             } else {
-                // Continue scrolling
-                scrollOffset += 3
+                extractByWeight(currentLyric, 0, MAX_DISPLAY_WEIGHT)
             }
-            
-            displayLyric = currentLyric.substring(start, end)
-        } else {
-            displayLyric = currentLyric.take(12)
         }
         
         // CRITICAL: Island displays setShortCriticalText(), not title!

@@ -30,20 +30,20 @@
 
             <TextView
                 android:id="@+id/tv_app_title"
-                android:layout_width="wrap_content"
+                android:layout_width="174dp"
                 android:layout_height="wrap_content"
-                android:text="@string/app_name"
-                android:textSize="32sp"
-                android:textStyle="bold"
                 android:fontFamily="sans-serif-black"
-                android:textColor="?attr/colorOnSurface"/>
+                android:text="@string/app_name"
+                android:textColor="?attr/colorOnSurface"
+                android:textSize="32sp"
+                android:textStyle="bold" />
         </LinearLayout>
 
         <TextView
             android:id="@+id/tv_service_status"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="🔴 Service Status: Unknown"
+            android:text="@string/main_service_status"
             android:textColor="?attr/colorOnSurfaceVariant"
             android:textStyle="bold"
             android:layout_marginBottom="12dp"/>
@@ -90,14 +90,14 @@
                     android:layout_weight="1"
                     android:orientation="vertical">
 
-                    <TextView
-                        android:id="@+id/tv_status_text"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/status_inactive"
-                        android:textSize="18sp"
-                        android:textStyle="bold"
-                        android:textColor="?attr/colorOnSurface"/>
+                <TextView
+                    android:id="@+id/tv_status_text"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/status_inactive"
+                    android:textSize="18sp"
+                    android:textStyle="bold"
+                    android:textColor="?attr/colorOnSurface"/>
 
                     <TextView
                         android:id="@+id/tv_app_version"
@@ -133,7 +133,7 @@
                     android:id="@+id/lbl_song"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Song:"
+                    android:text="@string/label_title_prefix"
                     android:textStyle="bold"
                     app:layout_constraintStart_toStartOf="parent"
                     app:layout_constraintTop_toTopOf="parent"/>
@@ -152,7 +152,7 @@
                     android:id="@+id/lbl_artist"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Artist:"
+                    android:text="@string/label_artist_prefix"
                     android:textStyle="bold"
                     android:layout_marginTop="8dp"
                     app:layout_constraintStart_toStartOf="parent"
@@ -172,7 +172,7 @@
                     android:id="@+id/lbl_lyric"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Lyric:"
+                    android:text="@string/label_lyric_prefix"
                     android:textStyle="bold"
                     android:layout_marginTop="16dp"
                     app:layout_constraintStart_toStartOf="parent"
@@ -225,7 +225,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="System &amp; API Status (API 36)"
+                    android:text="@string/main_system_api_status"
                     android:textStyle="bold"
                     android:textColor="?attr/colorPrimary"
                     android:layout_marginBottom="12dp"/>
@@ -234,7 +234,7 @@
                     android:id="@+id/tv_api_permission"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Permission: Checking..."
+                    android:text="@string/main_permission_check"
                     android:textColor="?attr/colorOnSurfaceVariant"
                     android:layout_marginBottom="4dp"/>
 
@@ -242,7 +242,7 @@
                     android:id="@+id/tv_notif_capability"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Notif.hasPromotable: Waiting..."
+                    android:text="@string/main_notif_capability"
                     android:textColor="?attr/colorOnSurfaceVariant"
                     android:layout_marginBottom="4dp"/>
 
@@ -250,7 +250,7 @@
                     android:id="@+id/tv_notif_flag"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Flag PROMOTED_ONGOING: Waiting..."
+                    android:text="@string/main_notif_flag"
                     android:textColor="?attr/colorOnSurfaceVariant"
                     android:layout_marginBottom="12dp"/>
 
@@ -258,7 +258,7 @@
                     android:id="@+id/btn_open_settings"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Open Promoted Settings"
+                    android:text="@string/main_open_settings"
                     style="@style/Widget.Material3.Button.TonalButton"/>
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
@@ -281,7 +281,7 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
-                android:text="Settings"
+                android:text="@string/menu_settings"
                 android:textSize="20sp"
                 android:textColor="?attr/colorOnSurface"
                 android:gravity="center"

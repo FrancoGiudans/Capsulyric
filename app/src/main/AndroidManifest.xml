@@ -30,10 +30,6 @@
             android:label="Settings"
             android:parentActivityName=".MainActivity" />
         <activity
-            android:name=".WhitelistActivity"
-            android:label="Manage Whitelist"
-            android:parentActivityName=".SettingsActivity" />
-        <activity
             android:name=".ParserRuleActivity"
             android:label="@string/parser_rule_title"
             android:parentActivityName=".SettingsActivity" />

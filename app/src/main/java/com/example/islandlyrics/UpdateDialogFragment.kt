@@ -42,6 +42,7 @@ class UpdateDialogFragment : DialogFragment() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        setStyle(STYLE_NO_FRAME, R.style.Theme_IslandLyrics)
         
         // Reconstruct ReleaseInfo from arguments
         releaseInfo = UpdateChecker.ReleaseInfo(
@@ -101,7 +102,11 @@ class UpdateDialogFragment : DialogFragment() {
     }
 
     override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
-        return super.onCreateDialog(savedInstanceState)
+        val dialog = super.onCreateDialog(savedInstanceState)
+        dialog.window?.apply {
+            setBackgroundDrawableResource(android.R.color.transparent)
+        }
+        return dialog
     }
 
     /**

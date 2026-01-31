@@ -49,7 +49,7 @@
     <string name="perm_read_notif">Notification Access</string>
     <string name="perm_read_notif_desc">Required to read lyrics</string>
     <string name="perm_post_notif">Post Notification</string>
-    <string name="perm_post_notif_desc">Required to show status</string>
+    <string name="perm_post_notif_desc">Required to post live lyric notifications</string>
     
     <!-- General -->
     <string name="settings_general_whitelist">Manage Whitelist</string>
@@ -78,13 +78,13 @@
     <string name="cancel">Cancel</string>
 
     <!-- Parser Rule Settings -->
-    <string name="parser_rule_title">Notification Parser Rules</string>
+    <string name="parser_rule_title">Notification Rules</string>
     <string name="parser_rule_subtitle">Configure how to parse notifications from music apps</string>
     <string name="parser_add_rule">Add Music App</string>
     <string name="parser_edit">Edit</string>
     <string name="parser_delete">Delete</string>
     <string name="parser_package_name">Package Name</string>
-    <string name="parser_car_protocol">Use Car Protocol</string>
+    <string name="parser_car_protocol">Use Notification bar lyrics</string>
     <string name="parser_separator">Separator Pattern</string>
     <string name="parser_field_order">Field Order</string>
     <string name="parser_separator_tight">"-" (Tight)</string>
@@ -109,4 +109,14 @@
     <string name="update_check_failed">Failed to check for updates</string>
     <string name="settings_auto_update">Auto-check for updates</string>
     <string name="settings_auto_update_desc">Check for new versions on app launch</string>
+    
+    <!-- Main Activity -->
+    <string name="main_service_status">🔴 Service Status: Unknown</string>
+    <string name="main_system_api_status">System &amp; API Status (API 36)</string>
+    <string name="main_permission_check">Permission: Checking...</string>
+    <string name="main_notif_capability">Notif.hasPromotable: Waiting...</string>
+    <string name="main_notif_flag">Flag PROMOTED_ONGOING: Waiting...</string>
+    <string name="main_open_settings">Open Promoted Settings</string>
+    <string name="main_whitelist_title">Whitelisted Apps</string>
+    <string name="main_add_package">Add Package</string>
 </resources>

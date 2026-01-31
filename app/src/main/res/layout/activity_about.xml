@@ -13,15 +13,17 @@
         android:padding="32dp">
 
         <!-- Title -->
+
+        <!-- App Logo (Circular) -->
+
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="@string/about_title"
+            android:textColor="?attr/colorOnSurface"
             android:textSize="28sp"
-            android:textStyle="bold"
-            android:textColor="?attr/colorOnSurface"/>
+            android:textStyle="bold" />
 
-        <!-- App Logo (Circular) -->
         <com.google.android.material.card.MaterialCardView
             android:layout_width="120dp"
             android:layout_height="120dp"

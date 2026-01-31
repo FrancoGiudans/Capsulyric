@@ -46,7 +46,6 @@ class SettingsActivity : BaseActivity() {
     // Help & Guide UI
     private lateinit var itemGuide0Hook: View
 
-    private lateinit var itemWhitelist: View
     private lateinit var itemBattery: View
     private lateinit var itemGithub: View
     private lateinit var itemLogs: View
@@ -102,7 +101,6 @@ class SettingsActivity : BaseActivity() {
         itemDynamicColor = findViewById(R.id.item_theme_dynamic_color)
         switchDynamicColor = findViewById(R.id.switch_theme_dynamic_color)
 
-        itemWhitelist = findViewById(R.id.item_whitelist)
         itemBattery = findViewById(R.id.item_battery)
         itemGithub = findViewById(R.id.item_github)
         itemLogs = findViewById(R.id.item_logs)
@@ -266,10 +264,8 @@ class SettingsActivity : BaseActivity() {
         }
 
         // --- Other Items ---
-
-        itemWhitelist.setOnClickListener { startActivity(Intent(this, WhitelistActivity::class.java)) }
         
-        // Parser Rule Settings
+        // Parser Rule Settings (App Whitelist Management)
         val itemParserRule: View = findViewById(R.id.item_parser_rule)
         itemParserRule.setOnClickListener { startActivity(Intent(this, ParserRuleActivity::class.java)) }
 

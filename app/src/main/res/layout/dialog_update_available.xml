@@ -1,102 +1,145 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:padding="24dp">
+    android:layout_margin="24dp"
+    app:cardElevation="8dp"
+    app:cardCornerRadius="28dp"
+    app:cardBackgroundColor="?attr/colorSurface">
 
-    <LinearLayout
+    <ScrollView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:gravity="center_horizontal">
+        android:scrollbars="none">
 
-        <!-- Update Icon -->
-        <ImageView
-            android:layout_width="72dp"
-            android:layout_height="72dp"
-            android:src="@drawable/ic_music_note"
-            android:tint="?attr/colorPrimary"/>
-
-        <!-- Title -->
-        <TextView
-            android:id="@+id/tv_update_title"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:text="Update Available: v1.0_C25"
-            android:textSize="20sp"
-            android:textStyle="bold"
-            android:textColor="?attr/colorOnSurface"/>
-
-        <!-- Current Version Info -->
-        <TextView
-            android:id="@+id/tv_current_version"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="Current: v1.0_C20"
-            android:textSize="14sp"
-            android:textColor="?attr/colorOnSurfaceVariant"/>
-
-        <!-- Changelog -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="24dp"
-            android:text="@string/update_changelog"
-            android:textSize="16sp"
-            android:textStyle="bold"
-            android:textColor="?attr/colorOnSurface"/>
-
-        <ScrollView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:maxHeight="200dp"
-            android:scrollbars="vertical">
-
-            <TextView
-                android:id="@+id/tv_changelog"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Loading changelog..."
-                android:textSize="14sp"
-                android:textColor="?attr/colorOnSurfaceVariant"/>
-
-        </ScrollView>
-
-        <!-- Buttons -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="24dp"
             android:orientation="vertical"
-            android:gravity="center">
+            android:padding="32dp">
 
+            <!-- Title (Left-aligned, matching About page) -->
+            <TextView
+                android:id="@+id/tv_update_title"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="start"
+                android:text="Update Available: v1.0_C25"
+                android:textSize="28sp"
+                android:textStyle="bold"
+                android:textColor="?attr/colorOnSurface"/>
+
+            <!-- App Logo (Circular Card) -->
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="120dp"
+                android:layout_height="120dp"
+                android:layout_marginTop="24dp"
+                android:layout_gravity="center_horizontal"
+                app:cardCornerRadius="60dp"
+                app:cardElevation="4dp">
+                
+                <ImageView
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:src="@mipmap/ic_launcher"
+                    android:scaleType="centerCrop"
+                    android:contentDescription="@string/app_name"/>
+            </com.google.android.material.card.MaterialCardView>
+            
+            <!-- Current Version Info -->
+            <TextView
+                android:id="@+id/tv_current_version"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="start"
+                android:layout_marginTop="16dp"
+                android:text="Current: v1.0_C20"
+                android:textSize="14sp"
+                android:textColor="?attr/colorOnSurfaceVariant"/>
+
+            <!-- Divider -->
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginTop="24dp"
+                android:layout_marginBottom="16dp"
+                android:background="?attr/colorOutlineVariant"/>
+
+            <!-- Changelog Label -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/update_changelog"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:textColor="?attr/colorOnSurface"/>
+
+            <!-- Changelog Content with Rounded Background -->
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="0dp"
+                app:strokeWidth="1dp"
+                app:strokeColor="?attr/colorOutlineVariant"
+                app:cardBackgroundColor="?attr/colorSurfaceContainerLowest">
+
+                <ScrollView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:maxHeight="200dp"
+                    android:padding="16dp"
+                    android:scrollbars="vertical">
+
+                    <TextView
+                        android:id="@+id/tv_changelog"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Loading changelog..."
+                        android:textSize="14sp"
+                        android:lineSpacingExtra="4dp"
+                        android:textColor="?attr/colorOnSurfaceVariant"/>
+
+                </ScrollView>
+
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Buttons -->
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btn_download"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
+                android:layout_height="56dp"
+                android:layout_marginTop="24dp"
                 android:text="@string/update_download"
+                android:textSize="16sp"
+                app:icon="@drawable/ic_check_circle"
+                app:iconGravity="textStart"
+                app:cornerRadius="16dp"
                 style="@style/Widget.Material3.Button"/>
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btn_ignore"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
+                android:layout_height="56dp"
                 android:layout_marginTop="8dp"
                 android:text="@string/update_ignore"
+                android:textSize="16sp"
+                app:cornerRadius="16dp"
                 style="@style/Widget.Material3.Button.TextButton"/>
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btn_cancel"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
+                android:layout_height="56dp"
                 android:text="@string/cancel"
+                android:textSize="16sp"
+                app:cornerRadius="16dp"
                 style="@style/Widget.Material3.Button.TextButton"/>
 
         </LinearLayout>
 
-    </LinearLayout>
+    </ScrollView>
 
-</ScrollView>
+</com.google.android.material.card.MaterialCardView>

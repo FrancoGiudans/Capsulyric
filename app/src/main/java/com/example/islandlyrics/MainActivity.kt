@@ -97,7 +97,6 @@ class MainActivity : BaseActivity() {
             insets
         }
 
-        initializeDefaultWhitelist()
         bindViews()
         setupClickListeners()
         setupObservers()
@@ -112,14 +111,6 @@ class MainActivity : BaseActivity() {
             if (checkSelfPermission("android.permission.POST_PROMOTED_NOTIFICATIONS") != PackageManager.PERMISSION_GRANTED) {
                 requestPermissions(arrayOf("android.permission.POST_PROMOTED_NOTIFICATIONS"), 102)
             }
-        }
-    }
-
-    private fun initializeDefaultWhitelist() {
-        val prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
-        if (!prefs.contains(PREF_WHITELIST)) {
-            val set = HashSet(Arrays.asList(*DEFAULT_WHITELIST))
-            prefs.edit().putStringSet(PREF_WHITELIST, set).apply()
         }
     }
 
@@ -327,17 +318,5 @@ class MainActivity : BaseActivity() {
     companion object {
         private const val TAG = "IslandLyrics"
         private const val PREFS_NAME = "IslandLyricsPrefs"
-        private const val PREF_WHITELIST = "whitelist_packages"
-
-        // Default Whitelist
-        private val DEFAULT_WHITELIST = arrayOf(
-            "com.netease.cloudmusic",
-            "com.tencent.qqmusic",
-            "com.kugou.android",
-            "com.spotify.music",
-            "com.apple.android.music",
-            "com.google.android.youtube",
-            "com.google.android.apps.youtube.music"
-        )
     }
 }

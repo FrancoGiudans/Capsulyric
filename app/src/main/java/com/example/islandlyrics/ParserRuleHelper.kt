@@ -15,12 +15,19 @@ object ParserRuleHelper {
     private const val PREF_PARSER_RULES = "parser_rules_json"
 
     /**
-     * Default rules for common music apps with car protocol support.
+     * Default rules for common music apps.
+     * Apps with native notification lyric support have usesCarProtocol=true.
+     * Apps requiring superlyricapi have usesCarProtocol=false.
      */
     private val DEFAULTS = listOf(
-        ParserRule("com.tencent.qqmusic", true, true, "-", FieldOrder.ARTIST_TITLE),
-        ParserRule("com.netease.cloudmusic", true, true, " - ", FieldOrder.ARTIST_TITLE),
-        ParserRule("com.miui.player", true, true, "-", FieldOrder.ARTIST_TITLE)
+        // Native notification lyric support (car/bluetooth protocol)
+        ParserRule("com.tencent.qqmusic", enabled=true, usesCarProtocol=true, separatorPattern="-", fieldOrder=FieldOrder.ARTIST_TITLE),
+        ParserRule("com.netease.cloudmusic", enabled=true, usesCarProtocol=true, separatorPattern=" - ", fieldOrder=FieldOrder.ARTIST_TITLE),
+        ParserRule("com.miui.player", enabled=true, usesCarProtocol=true, separatorPattern="-", fieldOrder=FieldOrder.ARTIST_TITLE),
+        
+        // Require superlyricapi or other methods (car protocol disabled by default)
+        ParserRule("com.kugou.android", enabled=true, usesCarProtocol=false, separatorPattern="-", fieldOrder=FieldOrder.ARTIST_TITLE),
+        ParserRule("com.apple.android.music", enabled=true, usesCarProtocol=false, separatorPattern=" - ", fieldOrder=FieldOrder.ARTIST_TITLE)
     )
 
     /**
