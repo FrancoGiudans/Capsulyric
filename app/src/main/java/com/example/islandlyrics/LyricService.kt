@@ -41,8 +41,11 @@ class LyricService : Service() {
                 // START PROGRESS TRACKING
                 isPlaying = true
                 handler.post(updateTask)
+            } else {
+                // Capsule running: Force immediate update
+                capsuleHandler?.updateLyricImmediate(info.lyric, info.sourceApp)
             }
-            // Always update notification with new lyric
+            // Always update notification with new lyric (Legacy/Fallback)
             updateNotification(info.lyric, info.sourceApp, "")
         } else {
             // Stop Capsule when lyrics are unavailable

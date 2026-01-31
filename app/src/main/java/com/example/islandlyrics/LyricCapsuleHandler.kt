@@ -43,8 +43,8 @@ class LyricCapsuleHandler(
     // Scrolling marquee state for long lyrics
     private var scrollOffset = 0
     private var lastLyricText = ""
-    private val SCROLL_STEP = 1  // Smooth scrolling: 1 char at a time
-    private val MAX_DISPLAY_LENGTH = 7  // Trigger scroll for lyrics >7 chars
+    private val SCROLL_STEP = 3  // Jump 3 chars per step (User req: replace ~4 chars, keep rest)
+    private val MAX_DISPLAY_LENGTH = 12  // Increased for English lyrics (was 7)
 
     private val simulationRunnable = object : Runnable {
         override fun run() {
@@ -110,9 +110,22 @@ class LyricCapsuleHandler(
         // Notification updates happen in simulationRunnable line 50
     }
 
+    fun updateLyricImmediate(lyric: String, app: String) {
+        // Force immediate update and restart scroll loop
+        lastUpdateTime = 0
+        updateNotification()
+        
+        // Restart runnable loop to ensure continuous scrolling
+        if (isRunning) {
+            mainHandler.removeCallbacks(simulationRunnable)
+            mainHandler.postDelayed(simulationRunnable, SIMULATION_STEP_DELAY)
+        }
+    }
+
     private fun updateNotification() {
+        // Throttling: 50ms limit (reduced from 200ms for faster response)
         val now = System.currentTimeMillis()
-        if (now - lastUpdateTime < 500) return
+        if (now - lastUpdateTime < 50) return 
         lastUpdateTime = now
 
         // Calculate display lyric FIRST (with scroll)
@@ -200,21 +213,25 @@ class LyricCapsuleHandler(
         
         // Apply scrolling for long lyrics (state 3 only)
         if (currentState == 3 && currentLyric.length > MAX_DISPLAY_LENGTH) {
-            val paddedText = "$currentLyric   "
-            val totalLength = paddedText.length
+            // Linear scrolling (no loop)
+            val totalLength = currentLyric.length
             
-            val windowStart = scrollOffset % totalLength
-            val windowEnd = (windowStart + MAX_DISPLAY_LENGTH).coerceAtMost(totalLength)
+            // Calculate window
+            var start = scrollOffset
+            var end = start + MAX_DISPLAY_LENGTH
             
-            displayLyric = if (windowEnd - windowStart < MAX_DISPLAY_LENGTH) {
-                val part1 = paddedText.substring(windowStart)
-                val part2 = paddedText.substring(0, MAX_DISPLAY_LENGTH - part1.length)
-                part1 + part2
+            // Check boundaries
+            if (end >= totalLength) {
+                // Reached end - lock to last 7 chars
+                end = totalLength
+                start = (totalLength - MAX_DISPLAY_LENGTH).coerceAtLeast(0)
+                // Do not increment scrollOffset anymore
             } else {
-                paddedText.substring(windowStart, windowEnd)
+                // Continue scrolling
+                scrollOffset += SCROLL_STEP
             }
             
-            scrollOffset += SCROLL_STEP
+            displayLyric = currentLyric.substring(start, end)
         } else {
             displayLyric = currentLyric.take(MAX_DISPLAY_LENGTH)
         }
@@ -316,7 +333,7 @@ class LyricCapsuleHandler(
     companion object {
         private const val TAG = "LyricCapsule"
         private const val CHANNEL_ID = "lyric_capsule_channel"
-        private const val SIMULATION_STEP_DELAY = 1000L
+        private const val SIMULATION_STEP_DELAY = 1800L  // Slower scroll: 1.8s per update (was 1s)
 
         // Colors for progress bar
         private const val COLOR_PRIMARY = 0xFF6750A4.toInt()   // Material Purple

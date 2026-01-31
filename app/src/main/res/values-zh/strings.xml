@@ -60,4 +60,20 @@
     <string name="settings_general_header">通用</string>
     <string name="settings_service_header">服务</string>
     <string name="settings_service_enable">开启服务</string>
+    
+    <!-- Installer Clone / Notification Resources -->
+    <string name="installer_resolving">正在解析...</string>
+    <string name="installer_preparing">准备中...</string>
+    <string name="installer_analysing">分析中...</string>
+    <string name="installer_installing">正在安装...</string>
+    <string name="installer_install_success">安装成功</string>
+    
+    <string name="installer_live_channel_short_text_resolving">解析</string>
+    <string name="installer_live_channel_name">实时歌词更新</string>
+    <string name="installer_live_channel_short_text_preparing">准备</string>
+    <string name="installer_live_channel_short_text_analysing">分析</string>
+    <string name="installer_live_channel_short_text_installing">安装</string>
+    <string name="installer_live_channel_short_text_success">完成</string>
+    
+    <string name="cancel">取消</string>
 </resources>

@@ -42,14 +42,10 @@ class MainActivity : BaseActivity() {
     private lateinit var tvNotifCapability: TextView
     private lateinit var tvNotifFlag: TextView
     private lateinit var btnOpenPromotedSettings: MaterialButton
+    private lateinit var pbProgress: com.google.android.material.progressindicator.LinearProgressIndicator
 
     private val handler = Handler(Looper.getMainLooper())
-    private val progressRunnable = object : Runnable {
-        override fun run() {
-            updateDebugProgress()
-            handler.postDelayed(this, 1000)
-        }
-    }
+
 
     private val diagReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
@@ -143,6 +139,7 @@ class MainActivity : BaseActivity() {
         tvNotifCapability = findViewById(R.id.tv_notif_capability)
         tvNotifFlag = findViewById(R.id.tv_notif_flag)
         btnOpenPromotedSettings = findViewById(R.id.btn_open_settings)
+        pbProgress = findViewById(R.id.pb_progress)
     }
 
     private fun setupClickListeners() {
@@ -221,6 +218,14 @@ class MainActivity : BaseActivity() {
 
     // Check API Status (Reflection)
     private fun checkApiStatusForDashboard() {
+        // Only show in Debug builds
+        val cvApiStatus = findViewById<View>(R.id.cv_api_status)
+        if (!BuildConfig.DEBUG) {
+            cvApiStatus.visibility = View.GONE
+            return
+        }
+        cvApiStatus.visibility = View.VISIBLE
+
         if (Build.VERSION.SDK_INT < 36) {
             tvApiPermission.text = "Permission: N/A (Pre-API 36)"
             tvNotifCapability.text = "Notif.hasPromotable: N/A"
@@ -280,6 +285,16 @@ class MainActivity : BaseActivity() {
             tvSong.text = mediaInfo.title ?: "-"
             tvArtist.text = mediaInfo.artist ?: "-"
         }
+        
+        // Progress Observer
+        repo.liveProgress.observe(this) { progress ->
+            if (progress != null && progress.duration > 0) {
+                pbProgress.max = progress.duration.toInt()
+                pbProgress.setProgress(progress.position.toInt(), true)
+            } else {
+                pbProgress.progress = 0
+            }
+        }
     }
 
     override fun onResume() {
@@ -287,7 +302,9 @@ class MainActivity : BaseActivity() {
         updateStatusCardState()
         checkApiStatusForDashboard()
 
-        handler.post(progressRunnable)
+        checkApiStatusForDashboard()
+
+        // Removed legacy progressRunnable post
         // Register Diag Receiver
         val filter = IntentFilter()
         filter.addAction("com.example.islandlyrics.DIAG_UPDATE")
@@ -302,7 +319,6 @@ class MainActivity : BaseActivity() {
 
     override fun onPause() {
         super.onPause()
-        handler.removeCallbacks(progressRunnable)
         try {
             unregisterReceiver(diagReceiver)
         } catch (e: Exception) {

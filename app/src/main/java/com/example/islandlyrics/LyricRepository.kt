@@ -37,6 +37,9 @@ class LyricRepository private constructor() {
     val liveLyric = MutableLiveData<LyricInfo?>()
     val liveProgress = MutableLiveData<PlaybackProgress?>()
 
+    // Track previous song to detect changes
+    private var lastTrackId: String? = null
+
     // Update methods
     fun updatePlaybackStatus(playing: Boolean) {
         if (isPlaying.value != playing) {
@@ -60,6 +63,18 @@ class LyricRepository private constructor() {
     }
 
     fun updateMediaMetadata(title: String, artist: String, packageName: String, duration: Long) {
+        // Detect song change
+        val trackId = "$title|$artist"
+        val isSongChange = lastTrackId != null && lastTrackId != trackId
+        
+        if (isSongChange) {
+            AppLogger.getInstance().log("Repo", "🔄 Song changed! Clearing old lyric and progress")
+            // Clear old lyric and progress immediately
+            liveLyric.postValue(null)
+            liveProgress.postValue(null)
+        }
+        
+        lastTrackId = trackId
         AppLogger.getInstance().log("Repo", "Posting metadata for: $packageName")
         // Atomic update
         liveMetadata.postValue(MediaInfo(title, artist, packageName, duration))
