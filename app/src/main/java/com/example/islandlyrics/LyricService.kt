@@ -256,7 +256,6 @@ class LyricService : Service() {
             .setOngoing(true)
             .setOnlyAlertOnce(true)
             .setVisibility(Notification.VISIBILITY_PUBLIC)
-            .setPriority(Notification.PRIORITY_HIGH)
             .setContentIntent(
                 PendingIntent.getActivity(
                     this, 0,
@@ -322,7 +321,6 @@ class LyricService : Service() {
                 .setOngoing(true)
                 .setOnlyAlertOnce(true)
                 .setVisibility(Notification.VISIBILITY_PUBLIC)
-                .setPriority(Notification.PRIORITY_HIGH)
                 .setContentIntent(
                     PendingIntent.getActivity(
                         this, 0,
