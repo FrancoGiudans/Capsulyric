@@ -38,7 +38,7 @@ class MediaMonitorService : NotificationListenerService() {
     }
 
     private val prefListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
-        if (PREF_WHITELIST == key) {
+        if (PREF_PARSER_RULES == key) {
             loadWhitelist()
             recheckSessions()
         } else if ("service_enabled" == key) {
@@ -93,8 +93,8 @@ class MediaMonitorService : NotificationListenerService() {
     }
 
     private fun loadWhitelist() {
-        // Use Helper to get only Enabled packages
-        val set = WhitelistHelper.getEnabledPackages(this)
+        // Use ParserRuleHelper to get all enabled packages (replaces old WhitelistHelper)
+        val set = ParserRuleHelper.getEnabledPackages(this)
         allowedPackages.clear()
         allowedPackages.addAll(set)
         AppLogger.getInstance().log(TAG, "Whitelist updated: ${allowedPackages.size} enabled apps.")
@@ -208,18 +208,27 @@ class MediaMonitorService : NotificationListenerService() {
         val rule = ParserRuleHelper.getRuleForPackage(this, pkg)
 
         if (rule != null && rule.usesCarProtocol && rawArtist != null) {
-            AppLogger.getInstance().log("Parser", "⚙️ Applying rule: separator=[${rule.separatorPattern}], order=${rule.fieldOrder}")
+            // Car protocol mode: Parse artist field to extract title/artist, title field contains lyric
+            AppLogger.getInstance().log("Parser", "⚙️ Applying car protocol rule: separator=[${rule.separatorPattern}], order=${rule.fieldOrder}")
             
             // Parse using configurable rule
             val (parsedTitle, parsedArtist) = parseWithRule(rawArtist, rule)
             
             if (parsedTitle.isNotEmpty()) {
-                // Car protocol mode: Title field holds lyric
-                finalLyric = rawTitle
+                finalLyric = rawTitle  // Title field holds lyric
                 finalTitle = parsedTitle
                 finalArtist = parsedArtist
                 AppLogger.getInstance().log("Parser", "✅ Parsed: Title=[$finalTitle], Artist=[$finalArtist]")
             }
+        } else if (rule != null && !rule.usesCarProtocol) {
+            // Non-car-protocol mode: Use raw metadata directly (for apps like Kugou, Apple Music)
+            AppLogger.getInstance().log("Parser", "ℹ️ Non-car-protocol app, using raw metadata (no lyric extraction)")
+            finalTitle = rawTitle
+            finalArtist = rawArtist
+            // finalLyric remains null (no lyric support)
+        } else {
+            // No rule found, use raw data
+            AppLogger.getInstance().log("Parser", "⚠️ No parser rule found for [$pkg], using raw metadata")
         }
 
         AppLogger.getInstance().log("Repo", "✅ Posting: Title=[$finalTitle] Artist=[$finalArtist] Lyric=[${if (finalLyric != null) "YES" else "NO"}]")
@@ -272,6 +281,6 @@ class MediaMonitorService : NotificationListenerService() {
     companion object {
         private const val TAG = "MediaMonitorService"
         private const val PREFS_NAME = "IslandLyricsPrefs"
-        private const val PREF_WHITELIST = "whitelist_json"
+        private const val PREF_PARSER_RULES = "parser_rules_json"
     }
 }
