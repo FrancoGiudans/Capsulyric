@@ -2,8 +2,6 @@
 
 [![Latest Release](https://img.shields.io/github/v/release/FrancoGiudans/Capsulyric?include_prereleases&style=flat-square&label=Latest&color=orange)](https://github.com/FrancoGiudans/Capsulyric/releases/latest)
 
-[![Commit Hash](https://img.shields.io/endpoint?url=https://github-commit-badge.vercel.app/api/commit/FrancoGiudans/Capsulyric/main&style=flat-square&color=gray)](https://github.com/FrancoGiudans/Capsulyric/commits/main)
-
 [![License](https://img.shields.io/github/license/FrancoGiudans/Capsulyric?style=flat-square&color=blue)](LICENSE)
 
 > **Provides status bar lyrics based on Live Update.**
