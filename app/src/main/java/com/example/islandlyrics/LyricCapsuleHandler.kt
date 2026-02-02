@@ -170,6 +170,8 @@ class LyricCapsuleHandler(
         // Reset last notified state to force a repost
         lastNotifiedLyric = "" 
         lastNotifiedProgress = -1
+        // FIX: Reset throttler to ensure immediate update for service start
+        lastUpdateTime = 0 
         updateNotification()
     }
     
