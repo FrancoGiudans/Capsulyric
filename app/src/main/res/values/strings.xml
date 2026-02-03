@@ -60,6 +60,8 @@
     <string name="settings_general_header">General</string>
     <string name="settings_service_header">Service</string>
     <string name="settings_service_enable">Enable Service</string>
+    <string name="settings_dynamic_icon">Dynamic Metadata Icon (Experimental)</string>
+    <string name="settings_dynamic_icon_desc">Show "Song - Artist" as notification icon (HyperOS/MIUI)</string>
     
     <string name="channel_live_lyrics">Live Lyrics Updates</string>
     <string name="channel_short_live">Live</string>

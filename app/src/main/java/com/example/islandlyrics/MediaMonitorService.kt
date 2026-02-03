@@ -238,11 +238,7 @@ class MediaMonitorService : NotificationListenerService() {
 
             // Start/Update Service
             val intent = Intent(this, LyricService::class.java)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                startForegroundService(intent)
-            } else {
-                startService(intent)
-            }
+            startForegroundService(intent)
 
             // Sync State
             LyricRepository.getInstance().updatePlaybackStatus(true)

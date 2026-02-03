@@ -234,7 +234,7 @@ class LyricService : Service() {
     }
 
     private fun createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        if (true) {
             val manager = getSystemService(NotificationManager::class.java)
             if (manager != null) {
                 // Standard Channel
@@ -327,7 +327,7 @@ class LyricService : Service() {
     }
 
     private fun buildLegacyNotification(title: String, text: String, subText: String): Notification {
-        if (Build.VERSION.SDK_INT >= 35) { // Baklava / Android 15+
+        if (true) { // Baklava / Android 15+
             val builder = Notification.Builder(this, currentChannelId)
                 .setSmallIcon(R.drawable.ic_music_note)
                 .setContentTitle(title)
@@ -490,7 +490,7 @@ class LyricService : Service() {
 
         // 5. Channel Status
         var channelStatus = "Unknown"
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        if (true) {
             val channel = nm.getNotificationChannel(currentChannelId)
             if (channel != null) {
                 channelStatus = "Imp: ${channel.importance}"
@@ -510,7 +510,7 @@ class LyricService : Service() {
     }
 
     private fun checkAndHealChannel(nm: NotificationManager) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        if (true) {
             val channel = nm.getNotificationChannel(currentChannelId)
             if (channel != null) {
                 // Rule: Must be IMPORTANCE_HIGH (4).
@@ -558,7 +558,7 @@ class LyricService : Service() {
 
         // Force Channel Reset for Simulation
         val nm = getSystemService(NotificationManager::class.java)
-        if (nm != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        if (nm != null) {
              val ch = nm.getNotificationChannel(currentChannelId)
              if (ch != null && ch.importance < NotificationManager.IMPORTANCE_HIGH) {
                  nm.deleteNotificationChannel(currentChannelId)

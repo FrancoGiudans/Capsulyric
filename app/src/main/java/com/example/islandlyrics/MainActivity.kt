@@ -310,11 +310,7 @@ class MainActivity : BaseActivity() {
         filter.addAction("com.example.islandlyrics.DIAG_UPDATE")
         filter.addAction("com.example.islandlyrics.STATUS_UPDATE")
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            registerReceiver(diagReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
-        } else {
-            registerReceiver(diagReceiver, filter)
-        }
+        registerReceiver(diagReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
     }
 
     override fun onPause() {

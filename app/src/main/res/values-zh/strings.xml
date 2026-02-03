@@ -60,7 +60,8 @@
     <string name="settings_general_header">通用</string>
     <string name="settings_service_header">服务</string>
     <string name="settings_service_enable">开启服务</string>
-    
+
+    <string name="settings_dynamic_icon_desc">展示歌名-歌手，仅HyperOS 3.0.300+可用</string>
     <string name="channel_live_lyrics">实时歌词更新</string>
     <string name="channel_short_live">直播</string>
     
@@ -73,6 +74,7 @@
     <string name="parser_edit">编辑</string>
     <string name="parser_delete">删除</string>
     <string name="parser_package_name">包名</string>
+    <string name="parser_app_name">应用名称（可选）</string>
     <string name="parser_car_protocol">使用媒体通知（通知栏/车载音乐）歌词</string>
     <string name="parser_separator">分隔符</string>
     <string name="parser_field_order">字段顺序</string>
@@ -108,4 +110,5 @@
     <string name="main_open_settings">打开通知推广设置</string>
     <string name="main_whitelist_title">已添加应用</string>
     <string name="main_add_package">添加应用包名</string>
+    <string name="settings_dynamic_icon">将左侧图标设为播放信息（测试）</string>
 </resources>

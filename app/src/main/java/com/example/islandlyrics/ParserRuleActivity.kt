@@ -114,7 +114,7 @@ class ParserRuleActivity : BaseActivity() {
             switchCarProtocol.isChecked = true
         }
 
-        AlertDialog.Builder(this)
+        com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
             .setTitle(if (existingRule == null) R.string.parser_add_rule else R.string.parser_edit)
             .setView(dialogView)
             .setPositiveButton(android.R.string.ok) { _, _ ->
@@ -165,7 +165,7 @@ class ParserRuleActivity : BaseActivity() {
     }
 
     private fun confirmDelete(rule: ParserRule) {
-        AlertDialog.Builder(this)
+        com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
             .setTitle(R.string.parser_delete)
             .setMessage(getString(R.string.dialog_delete_confirm, rule.customName ?: rule.packageName))
             .setPositiveButton(android.R.string.ok) { _, _ ->

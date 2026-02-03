@@ -28,6 +28,7 @@ if (localPropertiesFile.exists()) {
 
 android {
     namespace 'com.example.islandlyrics'
+    compileSdk 36
 
     // Check if custom keystore is available
     def keystorePath = localProperties.getProperty('store.file')

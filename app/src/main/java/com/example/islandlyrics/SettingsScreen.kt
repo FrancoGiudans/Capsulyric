@@ -44,6 +44,7 @@ fun SettingsScreen(
     var darkMode by remember { mutableStateOf(prefs.getBoolean("theme_dark_mode", false)) }
     var pureBlack by remember { mutableStateOf(prefs.getBoolean("theme_pure_black", false)) }
     var dynamicColor by remember { mutableStateOf(prefs.getBoolean("theme_dynamic_color", true)) }
+    var dynamicIconEnabled by remember { mutableStateOf(prefs.getBoolean("dynamic_icon_enabled", false)) }
     
     // Dialog State
     var showLanguageDialog by remember { mutableStateOf(false) }
@@ -56,9 +57,7 @@ fun SettingsScreen(
     }
     
     // Post Notification Logic (Android 13+)
-    val postNotificationGranted = if (Build.VERSION.SDK_INT >= 33) {
-        ContextCompat.checkSelfPermission(context, android.Manifest.permission.POST_NOTIFICATIONS) == android.content.pm.PackageManager.PERMISSION_GRANTED
-    } else true
+    val postNotificationGranted = ContextCompat.checkSelfPermission(context, android.Manifest.permission.POST_NOTIFICATIONS) == android.content.pm.PackageManager.PERMISSION_GRANTED
 
     // Determine actual dark mode for AppTheme
     val isSystemDark = androidx.compose.foundation.isSystemInDarkTheme()
@@ -122,12 +121,10 @@ fun SettingsScreen(
                     checked = postNotificationGranted,
                     enabled = true,
                     onClick = {
-                         if (Build.VERSION.SDK_INT >= 33) {
+                         if (true) {
                             val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
                             intent.data = Uri.fromParts("package", context.packageName, null)
                             context.startActivity(intent)
-                        } else {
-                            Toast.makeText(context, "Not required for this Android version", Toast.LENGTH_SHORT).show()
                         }
                     },
                     onCheckedChange = {}
@@ -178,10 +175,33 @@ fun SettingsScreen(
                     onCheckedChange = {
                         pureBlack = it
                         ThemeHelper.setPureBlack(context, it)
-                        // Recreate to apply window background color potentially
-                         (context as? Activity)?.recreate()
+                        // No need to recreate; LaunchedEffect handles window background
                     }
                 )
+
+                // Dynamically update Window Background for Pure Black to prevent jitter from recreate()
+                LaunchedEffect(pureBlack, useDarkTheme) {
+                    val activity = context as? Activity
+                    if (activity != null) {
+                         if (pureBlack && useDarkTheme) {
+                             activity.window.decorView.setBackgroundColor(android.graphics.Color.BLACK)
+                             activity.window.setBackgroundDrawableResource(android.R.color.black)
+                         } else {
+                             // Reset to default (usually handled by theme, but safe to set to null or theme color)
+                             // Simple approach: Set to background color of current theme or null to let Theme handle it
+                             // activity.window.setBackgroundDrawable(null) // potentially checks theme
+                             // Better: Set to Surface color or standard background
+                             val typedValue = android.util.TypedValue()
+                             activity.theme.resolveAttribute(android.R.attr.windowBackground, typedValue, true)
+                             if (typedValue.resourceId != 0) {
+                                 activity.window.setBackgroundDrawableResource(typedValue.resourceId)
+                             } else {
+                                 activity.window.decorView.setBackgroundColor(typedValue.data)
+                             }
+                        }
+                    }
+                }
+
 
                 SettingsSwitchItem(
                     title = stringResource(R.string.settings_theme_dynamic_color),
@@ -190,6 +210,16 @@ fun SettingsScreen(
                     onCheckedChange = {
                         dynamicColor = it
                         ThemeHelper.setDynamicColor(context, it)
+                    }
+                )
+
+                SettingsSwitchItem(
+                    title = stringResource(R.string.settings_dynamic_icon),
+                    subtitle = stringResource(R.string.settings_dynamic_icon_desc),
+                    checked = dynamicIconEnabled,
+                    onCheckedChange = {
+                        dynamicIconEnabled = it
+                        prefs.edit().putBoolean("dynamic_icon_enabled", it).apply()
                     }
                 )
 

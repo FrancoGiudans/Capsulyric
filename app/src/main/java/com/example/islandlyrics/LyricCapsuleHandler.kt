@@ -325,6 +325,15 @@ class LyricCapsuleHandler(
         }
     }
 
+    // Icon State
+    private var iconScrollOffset = 0
+    private var lastIconBaseText = ""
+    private var lastNotifiedIconText = ""
+    
+    // Helper Class for Icon State
+    private data class IconFrame(val text: String, val fontSize: Float? = null)
+    private var currentIconFrame = IconFrame("")
+
     private fun updateNotification() {
         // Throttling: 50ms limit (reduced from 200ms for faster response)
         val now = System.currentTimeMillis()
@@ -406,20 +415,32 @@ class LyricCapsuleHandler(
             }
         }
         
+        // --- DYNAMIC ICON LOGIC START ---
+        val metadata = LyricRepository.getInstance().liveMetadata.value
+        val realTitle = metadata?.title ?: lyricInfo?.sourceApp ?: "Island Lyrics"
+        val realArtist = metadata?.artist ?: ""
+        
+        val newIconFrame = calculateDynamicIconFrame(realTitle, realArtist)
+        currentIconFrame = newIconFrame // Store for buildNotification
+        // --- DYNAMIC ICON LOGIC END ---
+
         // Get progress
         val progressInfo = LyricRepository.getInstance().liveProgress.value
         val currentProgress = if (progressInfo != null && progressInfo.duration > 0) {
             ((progressInfo.position.toFloat() / progressInfo.duration.toFloat()) * 100).toInt()
         } else -1
         
-        // SKIP UPDATE if DISPLAYED content unchanged
-        if (displayLyric == lastNotifiedLyric && currentProgress == lastNotifiedProgress) {
+        // SKIP UPDATE if ALL DISPLAYED content unchanged
+        if (displayLyric == lastNotifiedLyric && 
+            currentProgress == lastNotifiedProgress &&
+            currentIconFrame.text == lastNotifiedIconText) {
             return
         }
         
         // Content changed, update notification
         lastNotifiedLyric = displayLyric
         lastNotifiedProgress = currentProgress
+        lastNotifiedIconText = currentIconFrame.text
 
         try {
             val notification = buildNotification()
@@ -428,6 +449,52 @@ class LyricCapsuleHandler(
         } catch (e: Exception) {
             LogManager.getInstance().e(context, TAG, "Update Failed: $e")
         }
+    }
+    
+    private fun calculateDynamicIconFrame(title: String, artist: String): IconFrame {
+        val titleWeight = calculateWeight(title)
+        
+        // Check Metadata Change to reset scroll
+        val currentBase = "$title|$artist"
+        if (currentBase != lastIconBaseText) {
+            lastIconBaseText = currentBase
+            iconScrollOffset = 0
+        }
+
+        // Rule 1: Adaptive Fit (7-8 CJK chars -> weight 14-16)
+        // If Title is in this specific "slightly too long" range, forcing it is better than scrolling.
+        // We use CJK char count approximation or weight. 
+        // 7 CJK = 14 weight. 8 CJK = 16 weight. 
+        // Normal max is 14. 
+        if (titleWeight in 15..16) {
+             // Force Title only, scale down font
+             return IconFrame(title, fontSize = 26f) // Reduced to fit 7-8 chars comfortably
+        }
+        
+        // Rule 2: Standard Logic (Fit or Scroll)
+        val baseText = "$title - $artist"
+        val maxIconWeight = 14
+        
+        if (calculateWeight(baseText) <= maxIconWeight) {
+            // Fits perfectly
+            return IconFrame(baseText)
+        }
+        
+        // Rule 3: Circular Scrolling
+        // "Title - Artist    Title - Artist"
+        val spacer = "    " // 4 spaces = 4 weight
+        val hubText = baseText + spacer + baseText
+        val cycleWeight = calculateWeight(baseText + spacer)
+        
+        // Extract window
+        val frameText = extractByWeight(hubText, iconScrollOffset, maxIconWeight)
+        
+        // Increment offset for next frame
+        // Use a fixed shift for icon (simpler than smart shift) or reuse smart shift
+        val shift = 2 // Move 2 weight units per tick (smoother for icon)
+        iconScrollOffset = (iconScrollOffset + shift) % cycleWeight
+        
+        return IconFrame(frameText)
     }
 
     private fun buildNotification(): Notification {
@@ -455,26 +522,17 @@ class LyricCapsuleHandler(
         val sourceApp = lyricInfo?.sourceApp ?: "Island Lyrics"
         
         // Use pre-calculated displayLyric from updateNotification() (weight-based scrolling)
-        // This ensures consistent behavior with the advanced scrolling logic
         val displayLyric = lastNotifiedLyric.ifEmpty { 
-            // Fallback: if no calculated lyric yet, use visual weight extraction
-            if (calculateWeight(currentLyric) <= maxDisplayWeight) {
-                currentLyric
-            } else {
-                extractByWeight(currentLyric, 0, maxDisplayWeight)
-            }
+             currentLyric // Should be handled by updateNotification, safe fallback
         }
         
-        // CRITICAL: Island displays setShortCriticalText(), not title!
-        // So map: shortText = lyrics (scrolling), title = app name
-        val title = sourceApp  // Title = app name (for notification drawer)
-        val shortText = displayLyric  // Short text = scrolling lyrics for island
+        val title = sourceApp  // Title = app name
+        val shortText = displayLyric  // Short text = scrolling lyrics
 
         // Set text fields
         builder.setContentTitle(title)
-        builder.setContentText(currentLyric)  // Full lyrics in notification body
-        builder.setSubText(sourceApp)  // App name as subtext
-        // LogManager.getInstance().d(context, TAG, "Title: $title, Short: $shortText")
+        builder.setContentText(currentLyric)  // Full lyrics
+        builder.setSubText(sourceApp)
 
         // 2. ProgressStyle - SIMPLIFIED MUSIC-ONLY APPROACH
         if (Build.VERSION.SDK_INT >= 36) {
@@ -483,17 +541,12 @@ class LyricCapsuleHandler(
                 val progressInfo = LyricRepository.getInstance().liveProgress.value
                 
                 if (progressInfo != null && progressInfo.duration > 0) {
-                    // REAL MUSIC PROGRESS: Use single 100-unit segment
-                    // LogManager.getInstance().d(context, TAG, "Building progress: pos=${progressInfo.position}ms, dur=${progressInfo.duration}ms")
-                    
-                    // Create single segment with length = 100
                     val segment = NotificationCompat.ProgressStyle.Segment(100)
                     segment.setColor(COLOR_PRIMARY)
                     
                     val segments = ArrayList<NotificationCompat.ProgressStyle.Segment>()
                     segments.add(segment)
                     
-                    // Calculate progress: (position / duration) * 100
                     val percentage = (progressInfo.position.toFloat() / progressInfo.duration.toFloat())
                     val progressValue = (percentage * 100).toInt().coerceIn(0, 100)
                     
@@ -504,9 +557,7 @@ class LyricCapsuleHandler(
                     
                     builder.setStyle(progressStyle)
                 } else {
-                    // NO DATA: Use indeterminate progress
-                    
-                    // Single gray segment with indeterminate state
+                    // Indeterminate
                     val segment = NotificationCompat.ProgressStyle.Segment(100)
                     segment.setColor(COLOR_TERTIARY)
                     val segments = ArrayList<NotificationCompat.ProgressStyle.Segment>()
@@ -527,7 +578,79 @@ class LyricCapsuleHandler(
             }
         }
 
-        return builder.build()
+        return builder.build().apply {
+            // HyperOS Dynamic Icon Logic
+            val useDynamicIcon = context.getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE)
+                .getBoolean("dynamic_icon_enabled", false)
+            
+            if (useDynamicIcon) {
+                // Use the Frame calculated in updateNotification to ensure valid state/animation
+                // Note: currentIconFrame is updated in updateNotification before calling buildNotification
+                val iconText = currentIconFrame.text
+                val forceSize = currentIconFrame.fontSize
+                
+                // Cache check - Key includes fontSize to handle adaptive Switches
+                val cacheKey = "$iconText|$forceSize"
+                if (cachedIconKey != cacheKey) {
+                    cachedIconBitmap = textToBitmap(iconText, forceSize)
+                    cachedIconKey = cacheKey
+                }
+                
+                cachedIconBitmap?.let { bitmap ->
+                    try {
+                        val icon = android.graphics.drawable.Icon.createWithBitmap(bitmap)
+                        val field = android.app.Notification::class.java.getDeclaredField("mSmallIcon")
+                        field.isAccessible = true
+                        field.set(this, icon)
+                    } catch (e: Exception) {
+                        LogManager.getInstance().e(context, TAG, "Failed to inject Dynamic Icon: $e")
+                    }
+                }
+            }
+        }
+    }
+    
+    // Caching
+    private var cachedIconKey = ""
+    private var cachedIconBitmap: android.graphics.Bitmap? = null
+
+    private fun textToBitmap(text: String, forceFontSize: Float? = null): android.graphics.Bitmap? {
+        try {
+            // Adaptive Font Size Algorithm
+            // Base size: 40f. Minimum size: 20f.
+            // Decay: 0.8f per character over 10 chars.
+            val length = text.length
+            
+            val fontSize = forceFontSize ?: if (length <= 10) {
+                40f
+            } else {
+                (40f - (length - 10) * 0.8f).coerceAtLeast(20f)
+            }
+            
+            val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                textSize = fontSize
+                color = android.graphics.Color.WHITE
+                textAlign = android.graphics.Paint.Align.LEFT
+                typeface = android.graphics.Typeface.DEFAULT_BOLD
+            }
+            
+            val baseline = -paint.ascent() // ascent() is negative
+            // Fix: Add more buffer for wide chars in tight crops
+            val width = (paint.measureText(text) + 10).toInt() 
+            val height = (baseline + paint.descent() + 5).toInt()
+            
+            // Safety check for empty or invalid dimensions
+            if (width <= 0 || height <= 0) return null
+
+            val image = android.graphics.Bitmap.createBitmap(width, height, android.graphics.Bitmap.Config.ARGB_8888)
+            val canvas = android.graphics.Canvas(image)
+            // Draw with small left padding
+            canvas.drawText(text, 5f, baseline, paint)
+            return image
+        } catch (e: Exception) {
+            LogManager.getInstance().e(context, TAG, "Failed to generate text bitmap: $e")
+            return null
+        }
     }
 
     companion object {

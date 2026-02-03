@@ -5,6 +5,7 @@ import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
@@ -20,9 +21,15 @@ fun AppTheme(
     content: @Composable () -> Unit
 ) {
     val colorScheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
+        // Fix: Respect Pure Black even in Dynamic Color mode (Dark Theme only)
+        dynamicColor -> {
             val context = LocalContext.current
-            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+            if (darkTheme) {
+                if (pureBlack) dynamicDarkColorScheme(context).copy(background = Color.Black, surface = Color.Black)
+                else dynamicDarkColorScheme(context)
+            } else {
+                dynamicLightColorScheme(context)
+            }
         }
         darkTheme -> if (pureBlack) PureBlackColorScheme else DarkColorScheme
         else -> LightColorScheme
@@ -30,12 +37,12 @@ fun AppTheme(
 
     val view = LocalView.current
     if (!view.isInEditMode) {
-        SideEffect {
+        // Use LaunchedEffect to run only when theme changes, preventing jitter on every recomposition
+        LaunchedEffect(darkTheme, colorScheme) {
             val window = (view.context as Activity).window
-            if (Build.VERSION.SDK_INT < 35) {
-                @Suppress("DEPRECATION")
-                window.statusBarColor = colorScheme.background.toArgb() // Match background for immersive feel
-            }
+            
+            // Note: Edge-to-Edge is now handled in BaseActivity.onCreate to prevent jitter.
+            
             WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !darkTheme
         }
     }
