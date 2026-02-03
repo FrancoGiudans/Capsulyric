@@ -53,8 +53,8 @@
 ## 🛠️ Build (构建)
 
 ```bash
-git clone https://github.com/YourRepo/IslandLyrics.git
-cd IslandLyrics
+git clone https://github.com/FrancoGiudans/Capsulyric.git
+cd Capsulyric
 ./gradlew assembleDebug
 ```
 
