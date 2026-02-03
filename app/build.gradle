@@ -27,7 +27,6 @@ if (localPropertiesFile.exists()) {
 
 android {
     namespace 'com.example.islandlyrics'
-    compileSdk 36
 
     // Check if custom keystore is available
     def keystorePath = localProperties.getProperty('store.file')
@@ -45,7 +44,7 @@ android {
     }
 
     defaultConfig {
-        def majorVersion = "1.0"
+        def majorVersion = "1.1"
         versionCode getGitCommitCount()
         versionName "${majorVersion}_C${getGitCommitCount()}"
         applicationId "com.franco.capsulyric"
