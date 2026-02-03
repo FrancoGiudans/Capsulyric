@@ -61,19 +61,8 @@
     <string name="settings_service_header">Service</string>
     <string name="settings_service_enable">Enable Service</string>
     
-    <!-- Installer Clone Resources -->
-    <string name="installer_resolving">Resolving...</string>
-    <string name="installer_preparing">Preparing...</string>
-    <string name="installer_analysing">Analysing...</string>
-    <string name="installer_installing">Installing...</string>
-    <string name="installer_install_success">Install Success</string>
-    
-    <string name="installer_live_channel_short_text_resolving">Resolving</string>
-    <string name="installer_live_channel_name">Install Progress Live Update</string>
-    <string name="installer_live_channel_short_text_preparing">Preparing</string>
-    <string name="installer_live_channel_short_text_analysing">Analysing</string>
-    <string name="installer_live_channel_short_text_installing">Installing</string>
-    <string name="installer_live_channel_short_text_success">Success</string>
+    <string name="channel_live_lyrics">Live Lyrics Updates</string>
+    <string name="channel_short_live">Live</string>
     
     <string name="cancel">Cancel</string>
 

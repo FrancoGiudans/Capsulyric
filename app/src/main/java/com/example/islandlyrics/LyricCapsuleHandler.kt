@@ -27,15 +27,6 @@ class LyricCapsuleHandler(
     private var isRunning = false
     private var lastUpdateTime = 0L
     
-    // Simulation State
-    private var currentState = 0 // 0=Resolving, 1=Preparing, 2=Analysing, 3=Installing, 4=Success
-    private var installProgress = 0f // 0.0 to 1.0 for Installing phase
-
-    // State tracking fields
-    private var lastState = -1
-    private var lastNotifiedState = -1
-    private var installStartTime = 0L
-    
     // Content tracking to prevent flicker
     private var lastNotifiedLyric = ""
     private var lastNotifiedProgress = -1
@@ -54,43 +45,43 @@ class LyricCapsuleHandler(
     // Visual weight-based scrolling (CJK=2, Western=1)
     private var scrollOffset = 0  // Current scroll position in visual weight units
     private var lastLyricText = ""
-    private val MAX_DISPLAY_WEIGHT = 22  // Visual capacity: ~11 CJK or ~22 Western chars
-    private val COMPENSATION_THRESHOLD = 8  // Stop scrolling if remainder < this (keeps capsule stable)
+    private val maxDisplayWeight = 18  // Visual capacity: ~11 CJK or ~22 Western chars
+    private val compensationThreshold = 8  // Stop scrolling if remainder < this (keeps capsule stable)
     
     // Timing constants
-    private val INITIAL_PAUSE_DURATION = 1000L  // 1s to read beginning
-    private val FINAL_PAUSE_DURATION = 500L     // 0.5s before next lyric
-    private val BASE_FOCUS_DELAY = 500L         // Per-shift eye refocus time
-    private val STATIC_TIME_RESERVE = 1500L     // Initial + Final pause reserve
+    private val initialPauseDuration = 1000L  // 1s to read beginning
+    private val finalPauseDuration = 500L     // 0.5s before next lyric
+    private val baseFocusDelay = 500L         // Per-shift eye refocus time
+    private val staticTimeReserve = 1500L     // Initial + Final pause reserve
 
     // Adaptive scroll speed tracking
     private var lastLyricChangeTime: Long = 0
     private var lastLyricLength: Int = 0
     private val lyricDurations = mutableListOf<Long>()
-    private val MAX_HISTORY = 5
-    private var adaptiveDelay: Long = SIMULATION_STEP_DELAY
-    private val MIN_CHAR_DURATION = 50L
-    private val MIN_SCROLL_DELAY = 500L
-    private val MAX_SCROLL_DELAY = 5000L
+    private val maxHistory = 5
+    private var adaptiveDelay: Long = SCROLL_STEP_DELAY
+    private val minCharDuration = 50L
+    private val minScrollDelay = 500L
+    private val maxScrollDelay = 5000L
 
-    private val simulationRunnable = object : Runnable {
+    private val visualizerLoop = object : Runnable {
         override fun run() {
             if (!isRunning) return
 
             try {
-                updateSimulationState()
+                // Update the visual state
                 updateNotification()
 
-                // Loop for installation progress
-                if (currentState == 3 && installProgress < 1.0f) {
-                    mainHandler.postDelayed(this, 200)
-                } else if (currentState < 4) {
-                    mainHandler.postDelayed(this, SIMULATION_STEP_DELAY)
+                // Optimize: If scrolling is DONE, wait longer or pause until next lyric update triggers it
+                if (scrollState == ScrollState.DONE) {
+                    // Slow down loop significantly if nothing to animate, just checking for progress updates
+                    mainHandler.postDelayed(this, 1000) 
                 } else {
-                    mainHandler.postDelayed({ stop() }, 5000)
+                    // Active scrolling - use adaptive delay
+                    mainHandler.postDelayed(this, adaptiveDelay)
                 }
             } catch (t: Throwable) {
-                LogManager.getInstance().e(context, TAG, "CRASH in update loop: $t")
+                LogManager.getInstance().e(context, TAG, "CRASH in visualizer loop: $t")
                 stop()
             }
         }
@@ -103,51 +94,43 @@ class LyricCapsuleHandler(
     fun start() {
         if (isRunning) return
         isRunning = true
-        currentState = 3
-        installProgress = 0f
-        installStartTime = System.currentTimeMillis()
         
         // Reset adaptive scroll history for new song
         lastLyricChangeTime = 0
         lastLyricLength = 0
-        lyricDurations.clear()
-        adaptiveDelay = SIMULATION_STEP_DELAY
+        synchronized(lyricDurations) {
+            lyricDurations.clear()
+        }
+        adaptiveDelay = SCROLL_STEP_DELAY
         
         // Reset scroll state machine
         scrollState = ScrollState.INITIAL_PAUSE
-        initialPauseStartTime = 0
+        initialPauseStartTime = System.currentTimeMillis() // Start pause immediately
         scrollOffset = 0
-        lastLyricText = ""
+        lastLyricText = "" // Force reset in next updateNotification
         
-        mainHandler.post(simulationRunnable)
+        mainHandler.post(visualizerLoop)
     }
 
     fun stop() {
         isRunning = false
-        mainHandler.removeCallbacks(simulationRunnable)
+        mainHandler.removeCallbacks(visualizerLoop)
         manager?.cancel(1001)
     }
 
     fun isRunning() = isRunning
 
     private fun createChannel() {
-        if (Build.VERSION.SDK_INT >= 26) {
-            val channel = NotificationChannel(
-                CHANNEL_ID,
-                context.getString(R.string.installer_live_channel_name),
-                NotificationManager.IMPORTANCE_HIGH // Critical: IMPORTANCE_HIGH
-            ).apply {
-                setSound(null, null)
-                setShowBadge(false)
-                lockscreenVisibility = Notification.VISIBILITY_PUBLIC
-            }
-            manager?.createNotificationChannel(channel)
+        val channel = NotificationChannel(
+            CHANNEL_ID,
+            context.getString(R.string.channel_live_lyrics),
+            NotificationManager.IMPORTANCE_HIGH // Critical: IMPORTANCE_HIGH
+        ).apply {
+            setSound(null, null)
+            setShowBadge(false)
+            lockscreenVisibility = Notification.VISIBILITY_PUBLIC
         }
-    }
-
-    private fun updateSimulationState() {
-        // NO STATE MACHINE - currentState permanently at 3
-        // Notification updates happen in simulationRunnable line 50
+        manager?.createNotificationChannel(channel)
     }
 
     fun updateLyricImmediate(lyric: String, @Suppress("UNUSED_PARAMETER") app: String) {
@@ -156,12 +139,12 @@ class LyricCapsuleHandler(
         
         // Force immediate update and restart scroll loop
         lastUpdateTime = 0
-        updateNotification()
+        // Important: Update checks happen inside updateNotification
         
         // Restart runnable loop with adaptive delay
         if (isRunning) {
-            mainHandler.removeCallbacks(simulationRunnable)
-            mainHandler.postDelayed(simulationRunnable, adaptiveDelay)
+            mainHandler.removeCallbacks(visualizerLoop)
+            mainHandler.post(visualizerLoop)
         }
     }
 
@@ -189,7 +172,7 @@ class LyricCapsuleHandler(
         val avgCharDuration = if (lastLyricLength > 0) duration / lastLyricLength else 0
         
         // Filter noise: ignore if too fast (< 50ms per char)
-        if (avgCharDuration < MIN_CHAR_DURATION) {
+        if (avgCharDuration < minCharDuration) {
             LogManager.getInstance().d(context, TAG, "Ignoring fast update: ${avgCharDuration}ms/char")
             return
         }
@@ -203,9 +186,11 @@ class LyricCapsuleHandler(
         }
         
         // Add to history (sliding window)
-        lyricDurations.add(duration)
-        if (lyricDurations.size > MAX_HISTORY) {
-            lyricDurations.removeAt(0)
+        synchronized(lyricDurations) {
+            lyricDurations.add(duration)
+            if (lyricDurations.size > maxHistory) {
+                lyricDurations.removeAt(0)
+            }
         }
         
         // Update state
@@ -217,19 +202,19 @@ class LyricCapsuleHandler(
     }
     
     private fun calculateAdaptiveDelay() {
-        if (lyricDurations.isEmpty()) {
-            adaptiveDelay = SIMULATION_STEP_DELAY
-            return
+        val avgDuration = synchronized(lyricDurations) {
+            if (lyricDurations.isEmpty()) {
+                adaptiveDelay = SCROLL_STEP_DELAY
+                return
+            }
+            lyricDurations.average().toLong()
         }
-        
-        // Calculate average duration
-        val avgDuration = lyricDurations.average().toLong()
         
         // Calculate total visual weight of recent lyric
         val avgLyricWeight = calculateWeight(lastLyricText)
         
-        if (avgLyricWeight == 0 || avgDuration < STATIC_TIME_RESERVE) {
-            adaptiveDelay = SIMULATION_STEP_DELAY
+        if (avgLyricWeight == 0 || avgDuration < staticTimeReserve) {
+            adaptiveDelay = SCROLL_STEP_DELAY
             return
         }
         
@@ -237,7 +222,7 @@ class LyricCapsuleHandler(
         val estimatedSteps = maxOf(1, (avgLyricWeight / 5))  // ~5 weight per shift
         
         // T_per_unit = (T_total - T_static - N*T_base) / L_total
-        val availableTime = avgDuration - STATIC_TIME_RESERVE - (estimatedSteps * BASE_FOCUS_DELAY)
+        val availableTime = avgDuration - staticTimeReserve - (estimatedSteps * baseFocusDelay)
         val timePerUnit = if (availableTime > 0 && avgLyricWeight > 0) {
             availableTime / avgLyricWeight
         } else {
@@ -247,10 +232,10 @@ class LyricCapsuleHandler(
         // T_wait = T_base + (T_per_unit × W_shift)
         // Assume average shift weight ~5 (2-3 CJK or 3-4 Western)
         val avgShiftWeight = 5
-        val calculatedDelay = BASE_FOCUS_DELAY + (timePerUnit * avgShiftWeight)
+        val calculatedDelay = baseFocusDelay + (timePerUnit * avgShiftWeight)
         
         // Clamp to reasonable range
-        adaptiveDelay = calculatedDelay.coerceIn(MIN_SCROLL_DELAY, MAX_SCROLL_DELAY)
+        adaptiveDelay = calculatedDelay.coerceIn(minScrollDelay, maxScrollDelay)
         
         LogManager.getInstance().d(context, TAG, "Adaptive scroll: ${adaptiveDelay}ms (avgWeight: $avgLyricWeight, timePerUnit: ${timePerUnit}ms)")
     }
@@ -299,6 +284,9 @@ class LyricCapsuleHandler(
             endIndex = i + 1
         }
         
+        // Fix: Ensure we don't return partial string if extracted length is 0 but start index is valid
+        // Actually the logic seems fine, if start reached but maxWeight is 0, it returns empty.
+        
         return if (endIndex > startIndex) text.substring(startIndex, endIndex) else ""
     }
     
@@ -327,10 +315,10 @@ class LyricCapsuleHandler(
             val spaceIndex = segment.indexOf(' ', 2)  // Look for space after 2 chars
             if (spaceIndex in 2..4) {
                 // Shift to space
-                calculateWeight(segment.substring(0, spaceIndex + 1))
+                calculateWeight(segment.take(spaceIndex + 1))
             } else if (segment.length >= 3) {
                 // Shift 3 chars
-                calculateWeight(segment.substring(0, minOf(3, segment.length)))
+                calculateWeight(segment.take(3))
             } else {
                 3  // Fallback
             }
@@ -360,18 +348,19 @@ class LyricCapsuleHandler(
         }
         
         // Short lyric: no scrolling needed
-        if (totalWeight <= MAX_DISPLAY_WEIGHT) {
+        if (totalWeight <= maxDisplayWeight) {
             displayLyric = currentLyric
+            scrollState = ScrollState.DONE // Mark done immediately for short lyrics
         } else {
             // State machine for scroll timing
             when (scrollState) {
                 ScrollState.INITIAL_PAUSE -> {
                     val pauseElapsed = System.currentTimeMillis() - initialPauseStartTime
-                    if (pauseElapsed >= INITIAL_PAUSE_DURATION) {
+                    if (pauseElapsed >= initialPauseDuration) {
                         scrollState = ScrollState.SCROLLING
                     }
                     // Show beginning of lyric
-                    displayLyric = extractByWeight(currentLyric, 0, MAX_DISPLAY_WEIGHT)
+                    displayLyric = extractByWeight(currentLyric, 0, maxDisplayWeight)
                 }
                 
                 ScrollState.SCROLLING -> {
@@ -379,19 +368,19 @@ class LyricCapsuleHandler(
                     val remainingWeight = totalWeight - scrollOffset
                     
                     // COMPENSATION ALGORITHM: Stop scrolling if remainder is small to keep capsule stable
-                    if (remainingWeight <= COMPENSATION_THRESHOLD) {
-                        // Show all remaining content (even if > MAX_DISPLAY_WEIGHT)
+                    if (remainingWeight <= compensationThreshold) {
+                        // Show all remaining content (even if > maxDisplayWeight)
                         scrollState = ScrollState.FINAL_PAUSE
                         initialPauseStartTime = System.currentTimeMillis()
                         displayLyric = extractByWeight(currentLyric, scrollOffset, remainingWeight)
-                    } else if (remainingWeight <= MAX_DISPLAY_WEIGHT) {
+                    } else if (remainingWeight <= maxDisplayWeight) {
                         // Last full segment: switch to FINAL_PAUSE
                         scrollState = ScrollState.FINAL_PAUSE
                         initialPauseStartTime = System.currentTimeMillis()
-                        displayLyric = extractByWeight(currentLyric, scrollOffset, MAX_DISPLAY_WEIGHT)
+                        displayLyric = extractByWeight(currentLyric, scrollOffset, maxDisplayWeight)
                     } else {
                         // Active scrolling
-                        displayLyric = extractByWeight(currentLyric, scrollOffset, MAX_DISPLAY_WEIGHT)
+                        displayLyric = extractByWeight(currentLyric, scrollOffset, maxDisplayWeight)
                         
                         // Increment scroll offset by smart step (2-3 CJK or 3-4 Western)
                         scrollOffset += calculateSmartShiftWeight(currentLyric, scrollOffset)
@@ -399,12 +388,12 @@ class LyricCapsuleHandler(
                 }
                 
                 ScrollState.FINAL_PAUSE -> {
-                    // Show final segment (may be > MAX_DISPLAY_WEIGHT due to compensation)
+                    // Show final segment (may be > maxDisplayWeight due to compensation)
                     val remainingWeight = totalWeight - scrollOffset
-                    displayLyric = extractByWeight(currentLyric, scrollOffset, maxOf(remainingWeight, MAX_DISPLAY_WEIGHT))
+                    displayLyric = extractByWeight(currentLyric, scrollOffset, maxOf(remainingWeight, maxDisplayWeight))
                     
                     val pauseElapsed = System.currentTimeMillis() - initialPauseStartTime
-                    if (pauseElapsed >= FINAL_PAUSE_DURATION) {
+                    if (pauseElapsed >= finalPauseDuration) {
                         scrollState = ScrollState.DONE
                     }
                 }
@@ -412,7 +401,7 @@ class LyricCapsuleHandler(
                 ScrollState.DONE -> {
                     // Keep showing final segment
                     val remainingWeight = totalWeight - scrollOffset
-                    displayLyric = extractByWeight(currentLyric, scrollOffset, maxOf(remainingWeight, MAX_DISPLAY_WEIGHT))
+                    displayLyric = extractByWeight(currentLyric, scrollOffset, maxOf(remainingWeight, maxDisplayWeight))
                 }
             }
         }
@@ -432,17 +421,12 @@ class LyricCapsuleHandler(
         lastNotifiedLyric = displayLyric
         lastNotifiedProgress = currentProgress
 
-        // Update whenever state changes OR when in lyrics mode (state 3)
-        if (currentState != lastNotifiedState || currentState == 3) {
-            lastNotifiedState = currentState
-
-            try {
-                val notification = buildNotification()
-                service.startForeground(1001, notification)
-                service.inspectNotification(notification, manager!!)
-            } catch (e: Exception) {
-                LogManager.getInstance().e(context, TAG, "Update Failed: $e")
-            }
+        try {
+            val notification = buildNotification()
+            service.startForeground(1001, notification)
+            service.inspectNotification(notification, manager!!)
+        } catch (e: Exception) {
+            LogManager.getInstance().e(context, TAG, "Update Failed: $e")
         }
     }
 
@@ -474,49 +458,23 @@ class LyricCapsuleHandler(
         // This ensures consistent behavior with the advanced scrolling logic
         val displayLyric = lastNotifiedLyric.ifEmpty { 
             // Fallback: if no calculated lyric yet, use visual weight extraction
-            if (calculateWeight(currentLyric) <= MAX_DISPLAY_WEIGHT) {
+            if (calculateWeight(currentLyric) <= maxDisplayWeight) {
                 currentLyric
             } else {
-                extractByWeight(currentLyric, 0, MAX_DISPLAY_WEIGHT)
+                extractByWeight(currentLyric, 0, maxDisplayWeight)
             }
         }
         
         // CRITICAL: Island displays setShortCriticalText(), not title!
         // So map: shortText = lyrics (scrolling), title = app name
-        var title = sourceApp  // Title = app name (for notification drawer)
-        var shortText = displayLyric  // Short text = scrolling lyrics for island
-
-        // Override with installation states only for initial setup phases
-        when (currentState) {
-            0 -> {
-                title = context.getString(R.string.installer_resolving)
-                shortText = context.getString(R.string.installer_live_channel_short_text_resolving)
-            }
-            1 -> {
-                title = context.getString(R.string.installer_preparing)
-                shortText = context.getString(R.string.installer_live_channel_short_text_preparing)
-                builder.addAction(0, context.getString(R.string.cancel), null)
-            }
-            2 -> {
-                title = context.getString(R.string.installer_analysing)
-                shortText = context.getString(R.string.installer_live_channel_short_text_analysing)
-            }
-            3 -> {
-                // State 3 = Show Live Lyrics (use lyricInfo from above)
-                // title and shortText already set from lyricInfo
-            }
-            4 -> {
-                title = context.getString(R.string.installer_install_success)
-                shortText = context.getString(R.string.installer_live_channel_short_text_success)
-                builder.setOngoing(false).setOnlyAlertOnce(false)
-            }
-        }
+        val title = sourceApp  // Title = app name (for notification drawer)
+        val shortText = displayLyric  // Short text = scrolling lyrics for island
 
         // Set text fields
         builder.setContentTitle(title)
         builder.setContentText(currentLyric)  // Full lyrics in notification body
         builder.setSubText(sourceApp)  // App name as subtext
-        LogManager.getInstance().d(context, TAG, "State: 3 (lyrics), Title: $title, Short: $shortText")
+        // LogManager.getInstance().d(context, TAG, "Title: $title, Short: $shortText")
 
         // 2. ProgressStyle - SIMPLIFIED MUSIC-ONLY APPROACH
         if (Build.VERSION.SDK_INT >= 36) {
@@ -526,7 +484,7 @@ class LyricCapsuleHandler(
                 
                 if (progressInfo != null && progressInfo.duration > 0) {
                     // REAL MUSIC PROGRESS: Use single 100-unit segment
-                    LogManager.getInstance().d(context, TAG, "Building progress: pos=${progressInfo.position}ms, dur=${progressInfo.duration}ms")
+                    // LogManager.getInstance().d(context, TAG, "Building progress: pos=${progressInfo.position}ms, dur=${progressInfo.duration}ms")
                     
                     // Create single segment with length = 100
                     val segment = NotificationCompat.ProgressStyle.Segment(100)
@@ -544,11 +502,9 @@ class LyricCapsuleHandler(
                         .setStyledByProgress(true)
                         .setProgress(progressValue)
                     
-                    LogManager.getInstance().d(context, TAG, "✓ Real music progress: ${progressValue}/100 (${(percentage * 100).toInt()}%)")
                     builder.setStyle(progressStyle)
                 } else {
                     // NO DATA: Use indeterminate progress
-                    LogManager.getInstance().d(context, TAG, "⚠ No progress data available (pos=${progressInfo?.position}, dur=${progressInfo?.duration})")
                     
                     // Single gray segment with indeterminate state
                     val segment = NotificationCompat.ProgressStyle.Segment(100)
@@ -565,7 +521,6 @@ class LyricCapsuleHandler(
 
                 // Set ShortCriticalText (AndroidX native method)
                 builder.setShortCriticalText(shortText)
-                LogManager.getInstance().d(context, TAG, "Set ShortCriticalText: $shortText")
 
             } catch (e: Exception) {
                 LogManager.getInstance().e(context, TAG, "ProgressStyle failed: $e")
@@ -578,7 +533,7 @@ class LyricCapsuleHandler(
     companion object {
         private const val TAG = "LyricCapsule"
         private const val CHANNEL_ID = "lyric_capsule_channel"
-        private const val SIMULATION_STEP_DELAY = 1800L  // Slower scroll: 1.8s per update (was 1s)
+        private const val SCROLL_STEP_DELAY = 1800L  // Slower scroll: 1.8s per update (was 1s)
 
         // Colors for progress bar
         private const val COLOR_PRIMARY = 0xFF6750A4.toInt()   // Material Purple

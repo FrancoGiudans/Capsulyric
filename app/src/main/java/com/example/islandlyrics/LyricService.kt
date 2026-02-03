@@ -215,14 +215,6 @@ class LyricService : Service() {
             }
             startSimulation()
             return START_STICKY
-        } else if (intent != null && "com.example.islandlyrics.ACTION_SIMULATE_CLONE" == intent.action) {
-            simulationMode = "CLONE"
-            LogManager.getInstance().d(this, TAG, "Starting Clone Mode Simulation")
-            broadcastStatus("🧬 Running (Clone)")
-
-            // Start the handler
-            capsuleHandler?.start()
-            return START_STICKY
         }
 
         return START_STICKY
@@ -256,18 +248,6 @@ class LyricService : Service() {
                     lockscreenVisibility = Notification.VISIBILITY_PUBLIC
                 }
                 manager.createNotificationChannel(serviceChannel)
-
-                // Clone Channel (InstallerX)
-                val cloneChannel = NotificationChannel(
-                    CHANNEL_ID_CLONE,
-                    "Installer Live",
-                    NotificationManager.IMPORTANCE_HIGH
-                ).apply {
-                    setSound(null, null)
-                    setShowBadge(false)
-                    lockscreenVisibility = Notification.VISIBILITY_PUBLIC
-                }
-                manager.createNotificationChannel(cloneChannel)
             }
         }
     }
@@ -300,7 +280,7 @@ class LyricService : Service() {
                 )
             )
 
-        // Use ProgressStyle via Reflection (InstallerX Method)
+        // Use ProgressStyle via Reflection
         if (Build.VERSION.SDK_INT >= 36) {
             try {
                 // 1. Create ProgressStyle
@@ -310,7 +290,7 @@ class LyricService : Service() {
                 // 2. Set "StyledByProgress" (Critical for appearance)
                 styleClass.getMethod("setStyledByProgress", Boolean::class.javaPrimitiveType).invoke(style, true)
 
-                // 3. Create a dummy Segment (Required by InstallerX logic)
+                // 3. Create a dummy Segment (Required by internal logic)
                 val segmentClass = Class.forName("android.app.Notification\$ProgressStyle\$Segment")
                 val segment = segmentClass.getConstructor(Int::class.javaPrimitiveType).newInstance(1)
 
@@ -414,7 +394,7 @@ class LyricService : Service() {
 
         // 2. Set Promoted Ongoing (Crucial for Chip visibility)
         try {
-            // EXACT SIGNATURE from InstallerX: setRequestPromotedOngoing(boolean)
+            // EXACT SIGNATURE: setRequestPromotedOngoing(boolean)
             val method = Notification.Builder::class.java.getMethod("setRequestPromotedOngoing", Boolean::class.javaPrimitiveType)
             method.invoke(builder, true)
             LogManager.getInstance().d(this, "Capsulyric", "✅ Promoted Flag Set")
@@ -450,10 +430,10 @@ class LyricService : Service() {
     @Suppress("UNUSED_PARAMETER")
     private fun updateNotification(_title: String, _text: String, _subText: String) {
         val now = System.currentTimeMillis()
-        if (now - lastUpdateTime < 500) return // Strict 500ms cap like InstallerX
+        if (now - lastUpdateTime < 500) return // Strict 500ms cap
         lastUpdateTime = now
 
-        // DISABLED: InstallerCloneHandler now handles all Capsule notifications
+        // DISABLED: LyricCapsuleHandler now handles all Capsule notifications
         // val notification = buildNotification(title, text, subText)
         // val nm = getSystemService(NotificationManager::class.java)
         // if (nm != null) {
@@ -467,7 +447,7 @@ class LyricService : Service() {
         // }
         
         // Log for debugging but don't send notification
-        LogManager.getInstance().d(this, TAG, "LyricService updateNotification called (skipped - using InstallerCloneHandler)")
+        LogManager.getInstance().d(this, TAG, "LyricService updateNotification called (skipped - using CapsuleHandler)")
     }
 
     internal fun inspectNotification(notification: Notification, nm: NotificationManager) {
@@ -565,9 +545,6 @@ class LyricService : Service() {
     }
 
     private fun startSimulation() {
-        if ("CLONE" == simulationMode) {
-            return // Handled by InstallerCloneHandler
-        }
         isSimulating = true
         currentPosition = 0
         duration = 252000 // 4:12
@@ -720,7 +697,6 @@ class LyricService : Service() {
     companion object {
         private const val TAG = "LyricService"
         private const val CHANNEL_ID = "capsulyric_live_high_v1"
-        private const val CHANNEL_ID_CLONE = "installer_live_channel"
         private const val NOTIFICATION_ID = 1001
     }
 }

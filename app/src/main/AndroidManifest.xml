@@ -33,10 +33,6 @@
             android:name=".ParserRuleActivity"
             android:label="@string/parser_rule_title"
             android:parentActivityName=".SettingsActivity" />
-        <activity
-            android:name=".AboutActivity"
-            android:label="@string/about_title"
-            android:parentActivityName=".SettingsActivity" />
 
         <service 
             android:name=".LyricService"
