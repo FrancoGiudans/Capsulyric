@@ -75,6 +75,7 @@ class ParserRuleActivity : BaseActivity() {
     private fun showEditDialog(existingRule: ParserRule?) {
         val dialogView = layoutInflater.inflate(R.layout.dialog_edit_parser_rule, null)
         
+        val etAppName = dialogView.findViewById<TextInputEditText>(R.id.et_app_name)
         val etPackageName = dialogView.findViewById<TextInputEditText>(R.id.et_package_name)
         val switchCarProtocol = dialogView.findViewById<MaterialSwitch>(R.id.switch_car_protocol)
         val spinnerSeparator = dialogView.findViewById<Spinner>(R.id.spinner_separator)
@@ -103,6 +104,7 @@ class ParserRuleActivity : BaseActivity() {
 
         // Populate existing data
         if (existingRule != null) {
+            etAppName.setText(existingRule.customName)
             etPackageName.setText(existingRule.packageName)
             etPackageName.isEnabled = false  // Can't change package name
             switchCarProtocol.isChecked = existingRule.usesCarProtocol
@@ -117,6 +119,8 @@ class ParserRuleActivity : BaseActivity() {
             .setView(dialogView)
             .setPositiveButton(android.R.string.ok) { _, _ ->
                 val pkg = etPackageName.text.toString().trim()
+                val name = etAppName.text.toString().trim().ifEmpty { null }
+                
                 if (pkg.isEmpty()) {
                     Toast.makeText(this, "Package name cannot be empty", Toast.LENGTH_SHORT).show()
                     return@setPositiveButton
@@ -127,6 +131,7 @@ class ParserRuleActivity : BaseActivity() {
 
                 val newRule = ParserRule(
                     packageName = pkg,
+                    customName = name,
                     enabled = existingRule?.enabled ?: true,
                     usesCarProtocol = switchCarProtocol.isChecked,
                     separatorPattern = selectedSeparator,
@@ -142,7 +147,7 @@ class ParserRuleActivity : BaseActivity() {
                         ruleList.sort()
                         saveData()
                         adapter.notifyDataSetChanged()
-                        AppLogger.getInstance().log("ParserRule", "Added: $pkg")
+                        AppLogger.getInstance().log("ParserRule", "Added: $pkg ($name)")
                     }
                 } else {
                     // Update existing
@@ -151,7 +156,7 @@ class ParserRuleActivity : BaseActivity() {
                         ruleList[index] = newRule
                         saveData()
                         adapter.notifyItemChanged(index)
-                        AppLogger.getInstance().log("ParserRule", "Updated: $pkg")
+                        AppLogger.getInstance().log("ParserRule", "Updated: $pkg ($name)")
                     }
                 }
             }
@@ -162,7 +167,7 @@ class ParserRuleActivity : BaseActivity() {
     private fun confirmDelete(rule: ParserRule) {
         AlertDialog.Builder(this)
             .setTitle(R.string.parser_delete)
-            .setMessage(getString(R.string.dialog_delete_confirm, rule.packageName))
+            .setMessage(getString(R.string.dialog_delete_confirm, rule.customName ?: rule.packageName))
             .setPositiveButton(android.R.string.ok) { _, _ ->
                 val index = ruleList.indexOf(rule)
                 if (index >= 0) {
@@ -192,7 +197,13 @@ class ParserRuleAdapter(
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val rule = rules[position]
         
-        holder.tvPackageName.text = rule.packageName
+        // Display Logic: "Name (package.name)" or just "package.name"
+        if (!rule.customName.isNullOrEmpty()) {
+            holder.tvPackageName.text = "${rule.customName} (${rule.packageName})"
+        } else {
+            holder.tvPackageName.text = rule.packageName
+        }
+        
         holder.tvDetails.text = buildRuleDetails(rule)
         
         // Unbind listener before setting state

@@ -175,10 +175,16 @@ class MainActivity : BaseActivity() {
             val isPlaying = LyricRepository.getInstance().isPlaying.value
             if (java.lang.Boolean.TRUE == isPlaying) {
                 // Use liveLyric for source app name, or fallback to liveMetadata package if needed
-                val source = LyricRepository.getInstance().liveLyric.value?.sourceApp 
+                val rawPackage = LyricRepository.getInstance().liveLyric.value?.sourceApp 
                              ?: LyricRepository.getInstance().liveMetadata.value?.packageName 
-                             ?: "Music"
-                setCardState(true, "Active: $source", R.color.status_active)
+                
+                val sourceName = if (rawPackage != null) {
+                    ParserRuleHelper.getAppNameForPackage(this, rawPackage)
+                } else {
+                    "Music"
+                }
+
+                setCardState(true, "Active: $sourceName", R.color.status_active)
             } else {
                 setCardState(true, "Service Ready (Idle)", R.color.status_active) // Or distinct color?
             }

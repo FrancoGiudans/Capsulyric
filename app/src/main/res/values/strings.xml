@@ -72,7 +72,8 @@
     <string name="parser_add_rule">Add Music App</string>
     <string name="parser_edit">Edit</string>
     <string name="parser_delete">Delete</string>
-    <string name="parser_package_name">Package Name</string>
+    <string name="parser_package_name">Package Name (e.g. com.example)</string>
+    <string name="parser_app_name">App Name (Optional)</string>
     <string name="parser_car_protocol">Use Media Notification (Notification Bar/Car Music) Lyrics</string>
     <string name="parser_separator">Separator Pattern</string>
     <string name="parser_field_order">Field Order</string>
