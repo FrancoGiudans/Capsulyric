@@ -27,7 +27,7 @@ import java.util.ArrayList
 class LyricService : Service() {
 
     private var lastUpdateTime = 0L
-    private var simulationMode = "LEGACY"
+    private var simulationMode = "MODERN"
 
     // To debounce updates
     private var lastLyric = ""
@@ -204,11 +204,11 @@ class LyricService : Service() {
             stopSelf()
             return START_NOT_STICKY
         } else if (intent != null && "com.example.islandlyrics.ACTION_SIMULATE" == intent.action) {
-            // Read Mode: "LEGACY" (Default) or "MODERN"
+            // Read Mode: "MODERN" (Default)
             val mode = intent.getStringExtra("SIMULATION_MODE")
-            simulationMode = mode ?: "LEGACY"
+            simulationMode = mode ?: "MODERN"
             LogManager.getInstance().d(this, TAG, "Starting Simulation Mode: $simulationMode")
-            broadcastStatus(if (mode != null && mode == "MODERN") "🔵 Running (Modern)" else "🟢 Running (Legacy)")
+            broadcastStatus("🔵 Running (Modern)")
             
             if ("MODERN" == simulationMode) {
                  // huntForPromotedApi() // Not implemented in Java, skipped for now or inline?
@@ -253,16 +253,11 @@ class LyricService : Service() {
     }
 
     private fun buildNotification(title: String, text: String, subText: String): Notification {
-        return if ("MODERN" == simulationMode && Build.VERSION.SDK_INT >= 36) {
-            buildModernNotification(title, text, subText)
-        } else {
-            buildLegacyNotification(title, text, subText)
-        }
+        return buildModernNotification(title, text, subText)
     }
 
     private fun buildModernNotification(title: String, text: String, subText: String): Notification {
         LogManager.getInstance().d(this, TAG, "Building Modern Notification (ProgressStyle)")
-        if (Build.VERSION.SDK_INT < 36) return buildLegacyNotification(title, text, subText)
 
         val builder = Notification.Builder(this, currentChannelId)
             .setSmallIcon(R.drawable.ic_music_note)
@@ -281,30 +276,28 @@ class LyricService : Service() {
             )
 
         // Use ProgressStyle via Reflection
-        if (Build.VERSION.SDK_INT >= 36) {
-            try {
-                // 1. Create ProgressStyle
-                val styleClass = Class.forName("android.app.Notification\$ProgressStyle")
-                val style = styleClass.getConstructor().newInstance()
+        try {
+            // 1. Create ProgressStyle
+            val styleClass = Class.forName("android.app.Notification\$ProgressStyle")
+            val style = styleClass.getConstructor().newInstance()
 
-                // 2. Set "StyledByProgress" (Critical for appearance)
-                styleClass.getMethod("setStyledByProgress", Boolean::class.javaPrimitiveType).invoke(style, true)
+            // 2. Set "StyledByProgress" (Critical for appearance)
+            styleClass.getMethod("setStyledByProgress", Boolean::class.javaPrimitiveType).invoke(style, true)
 
-                // 3. Create a dummy Segment (Required by internal logic)
-                val segmentClass = Class.forName("android.app.Notification\$ProgressStyle\$Segment")
-                val segment = segmentClass.getConstructor(Int::class.javaPrimitiveType).newInstance(1)
+            // 3. Create a dummy Segment (Required by internal logic)
+            val segmentClass = Class.forName("android.app.Notification\$ProgressStyle\$Segment")
+            val segment = segmentClass.getConstructor(Int::class.javaPrimitiveType).newInstance(1)
 
-                // 4. Set Segments List
-                val segments = ArrayList<Any>()
-                segments.add(segment)
-                styleClass.getMethod("setProgressSegments", List::class.java).invoke(style, segments)
+            // 4. Set Segments List
+            val segments = ArrayList<Any>()
+            segments.add(segment)
+            styleClass.getMethod("setProgressSegments", List::class.java).invoke(style, segments)
 
-                // 5. Apply Style to Builder
-                builder.style = style as Notification.Style
-                LogManager.getInstance().d(this, "Capsulyric", "✅ ProgressStyle applied")
-            } catch (e: Exception) {
-                LogManager.getInstance().e(this, "Capsulyric", "❌ ProgressStyle failed: $e")
-            }
+            // 5. Apply Style to Builder
+            builder.style = style as Notification.Style
+            LogManager.getInstance().d(this, "Capsulyric", "✅ ProgressStyle applied")
+        } catch (e: Exception) {
+            LogManager.getInstance().e(this, "Capsulyric", "❌ ProgressStyle failed: $e")
         }
 
         // Unified Attributes (Chip, Promotion)
@@ -326,54 +319,9 @@ class LyricService : Service() {
         return notification
     }
 
-    private fun buildLegacyNotification(title: String, text: String, subText: String): Notification {
-        if (true) { // Baklava / Android 15+
-            val builder = Notification.Builder(this, currentChannelId)
-                .setSmallIcon(R.drawable.ic_music_note)
-                .setContentTitle(title)
-                .setContentText(text)
-                .setSubText(subText)
-                .setStyle(Notification.BigTextStyle().bigText(title))
-                .setOngoing(true)
-                .setOnlyAlertOnce(true)
-                .setVisibility(Notification.VISIBILITY_PUBLIC)
-                .setContentIntent(
-                    PendingIntent.getActivity(
-                        this, 0,
-                        Intent(this, MainActivity::class.java).setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP),
-                        PendingIntent.FLAG_IMMUTABLE
-                    )
-                )
 
-            // Unified Attributes
-            applyLiveAttributes(builder, text)
-
-            return builder.build()
-        }
-
-        // Fallback for older Android
-        return NotificationCompat.Builder(this, currentChannelId)
-            .setSmallIcon(R.drawable.ic_music_note)
-            .setContentTitle(title)
-            .setContentText(text)
-            .setSubText(subText)
-            .setStyle(NotificationCompat.BigTextStyle().bigText(title))
-            .setOngoing(true)
-            .setOnlyAlertOnce(true)
-            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setContentIntent(
-                PendingIntent.getActivity(
-                    this, 0,
-                    Intent(this, MainActivity::class.java).setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP),
-                    PendingIntent.FLAG_IMMUTABLE
-                )
-            )
-            .build()
-    }
 
     private fun applyLiveAttributes(builder: Notification.Builder, text: String) {
-        if (Build.VERSION.SDK_INT < 36) return
 
         // 1. Set Status Chip Text
         try {
@@ -456,7 +404,7 @@ class LyricService : Service() {
         intent.setPackage(packageName)
 
         // 1. General Status
-        val modeStatus = if ("MODERN" == simulationMode && Build.VERSION.SDK_INT >= 36) "🔵 Modern (API 36)" else "🟢 Legacy"
+        val modeStatus = "🔵 Modern (API 36)"
         intent.putExtra("status", modeStatus)
 
         // 2. Promotable Characteristics (API 36)

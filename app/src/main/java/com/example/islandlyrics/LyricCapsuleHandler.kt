@@ -535,9 +535,8 @@ class LyricCapsuleHandler(
         builder.setSubText(sourceApp)
 
         // 2. ProgressStyle - SIMPLIFIED MUSIC-ONLY APPROACH
-        if (Build.VERSION.SDK_INT >= 36) {
-            try {
-                // Get real-time music progress
+        try {
+            // Get real-time music progress
                 val progressInfo = LyricRepository.getInstance().liveProgress.value
                 
                 if (progressInfo != null && progressInfo.duration > 0) {
@@ -573,9 +572,8 @@ class LyricCapsuleHandler(
                 // Set ShortCriticalText (AndroidX native method)
                 builder.setShortCriticalText(shortText)
 
-            } catch (e: Exception) {
-                LogManager.getInstance().e(context, TAG, "ProgressStyle failed: $e")
-            }
+        } catch (e: Exception) {
+            LogManager.getInstance().e(context, TAG, "ProgressStyle failed: $e")
         }
 
         return builder.build().apply {
