@@ -338,6 +338,11 @@ class MediaMonitorService : NotificationListenerService() {
 
         val duration = metadata.getLong(MediaMetadata.METADATA_KEY_DURATION)
         LyricRepository.getInstance().updateMediaMetadata(finalTitle ?: "Unknown", finalArtist ?: "Unknown", pkg, duration)
+
+        // Extract Album Art immediately on metadata change
+        val art = metadata.getBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART)
+            ?: metadata.getBitmap(MediaMetadata.METADATA_KEY_ART)
+        LyricRepository.getInstance().updateAlbumArt(art)
     }
 
     /**

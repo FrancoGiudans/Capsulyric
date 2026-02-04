@@ -619,10 +619,8 @@ class LyricService : Service() {
                      Log.d(TAG, "Updating progress: pos=$currentPos, dur=$duration")
                      LyricRepository.getInstance().updateProgress(currentPos, duration)
                      
-                     // Extract Album Art
-                     val art = meta?.getBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART)
-                         ?: meta?.getBitmap(MediaMetadata.METADATA_KEY_ART)
-                     LyricRepository.getInstance().updateAlbumArt(art)
+                     // Album art now handled by MediaMonitorService on metadata change
+                     // to decouple it from playback/lyric state loops.
 
                      Log.d(TAG, "Progress updated in repository")
 

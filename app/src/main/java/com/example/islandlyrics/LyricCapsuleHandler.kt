@@ -476,8 +476,8 @@ class LyricCapsuleHandler(
         val maxIconWeight = 14
         
         if (calculateWeight(baseText) <= maxIconWeight) {
-            // Fits perfectly
-            return IconFrame(baseText)
+            // Fits perfectly but force reduced font size to match adaptive case
+            return IconFrame(baseText, fontSize = 26f) 
         }
         
         // Rule 3: Circular Scrolling
@@ -494,7 +494,7 @@ class LyricCapsuleHandler(
         val shift = 2 // Move 2 weight units per tick (smoother for icon)
         iconScrollOffset = (iconScrollOffset + shift) % cycleWeight
         
-        return IconFrame(frameText)
+        return IconFrame(frameText, fontSize = 26f)
     }
 
     private fun buildNotification(): Notification {
