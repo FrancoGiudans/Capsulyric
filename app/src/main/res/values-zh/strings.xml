@@ -60,20 +60,10 @@
     <string name="settings_general_header">通用</string>
     <string name="settings_service_header">服务</string>
     <string name="settings_service_enable">开启服务</string>
-    
-    <!-- Installer Clone / Notification Resources -->
-    <string name="installer_resolving">正在解析...</string>
-    <string name="installer_preparing">准备中...</string>
-    <string name="installer_analysing">分析中...</string>
-    <string name="installer_installing">正在安装...</string>
-    <string name="installer_install_success">安装成功</string>
-    
-    <string name="installer_live_channel_short_text_resolving">解析</string>
-    <string name="installer_live_channel_name">实时歌词更新</string>
-    <string name="installer_live_channel_short_text_preparing">准备</string>
-    <string name="installer_live_channel_short_text_analysing">分析</string>
-    <string name="installer_live_channel_short_text_installing">安装</string>
-    <string name="installer_live_channel_short_text_success">完成</string>
+
+    <string name="settings_dynamic_icon_desc">展示歌名-歌手，仅HyperOS 3.0.300+可用</string>
+    <string name="channel_live_lyrics">实时歌词更新</string>
+    <string name="channel_short_live">直播</string>
     
     <string name="cancel">取消</string>
 
@@ -84,6 +74,7 @@
     <string name="parser_edit">编辑</string>
     <string name="parser_delete">删除</string>
     <string name="parser_package_name">包名</string>
+    <string name="parser_app_name">应用名称（可选）</string>
     <string name="parser_car_protocol">使用媒体通知（通知栏/车载音乐）歌词</string>
     <string name="parser_separator">分隔符</string>
     <string name="parser_field_order">字段顺序</string>
@@ -111,6 +102,7 @@
     <string name="settings_auto_update_desc">启动应用时检查新版本</string>
 
     <!-- Main Activity -->
+    <string name="dialog_prerelease_warning_message">预发布版本可能存在严重问题，不适合日常使用。您确定要接收这些更新吗？</string>
     <string name="main_service_status">🔴 服务状态: 未知</string>
     <string name="main_system_api_status">系统与 API 状态 (API 36)</string>
     <string name="main_permission_check">权限检查: 检测中...</string>
@@ -119,4 +111,8 @@
     <string name="main_open_settings">打开通知推广设置</string>
     <string name="main_whitelist_title">已添加应用</string>
     <string name="main_add_package">添加应用包名</string>
+    <string name="settings_dynamic_icon">将左侧图标设为播放信息（测试）</string>
+    <string name="settings_prerelease_update">接收预发布版本</string>
+    <string name="settings_prerelease_update_desc">检查测试版本更新（不是CI自动编译版本）</string>
+    <string name="dialog_prerelease_warning_title">确认接收预发布版本？</string>
 </resources>

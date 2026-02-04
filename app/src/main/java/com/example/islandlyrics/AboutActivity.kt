@@ -42,7 +42,7 @@ class AboutActivity : BaseActivity() {
         
         lifecycleScope.launch {
             try {
-                val release = UpdateChecker.checkForUpdate(this@AboutActivity)
+                val release = UpdateChecker. checkForUpdate(this@AboutActivity)
                 
                 view.isEnabled = true
                 

@@ -21,13 +21,13 @@ object ParserRuleHelper {
      */
     private val DEFAULTS = listOf(
         // Native notification lyric support (car/bluetooth protocol)
-        ParserRule("com.tencent.qqmusic", enabled=true, usesCarProtocol=true, separatorPattern="-", fieldOrder=FieldOrder.ARTIST_TITLE),
-        ParserRule("com.netease.cloudmusic", enabled=true, usesCarProtocol=true, separatorPattern=" - ", fieldOrder=FieldOrder.ARTIST_TITLE),
-        ParserRule("com.miui.player", enabled=true, usesCarProtocol=true, separatorPattern="-", fieldOrder=FieldOrder.ARTIST_TITLE),
+        ParserRule("com.tencent.qqmusic", customName="QQ Music", enabled=true, usesCarProtocol=true, separatorPattern="-", fieldOrder=FieldOrder.ARTIST_TITLE),
+        ParserRule("com.netease.cloudmusic", customName="NetEase Cloud Music", enabled=true, usesCarProtocol=true, separatorPattern=" - ", fieldOrder=FieldOrder.ARTIST_TITLE),
+        ParserRule("com.miui.player", customName="Mi Music", enabled=true, usesCarProtocol=true, separatorPattern="-", fieldOrder=FieldOrder.ARTIST_TITLE),
         
         // Require superlyricapi or other methods (car protocol disabled by default)
-        ParserRule("com.kugou.android", enabled=true, usesCarProtocol=false, separatorPattern="-", fieldOrder=FieldOrder.ARTIST_TITLE),
-        ParserRule("com.apple.android.music", enabled=true, usesCarProtocol=false, separatorPattern=" - ", fieldOrder=FieldOrder.ARTIST_TITLE)
+        ParserRule("com.kugou.android", customName="KuGou Music", enabled=true, usesCarProtocol=false, separatorPattern="-", fieldOrder=FieldOrder.ARTIST_TITLE),
+        ParserRule("com.apple.android.music", customName="Apple Music", enabled=true, usesCarProtocol=false, separatorPattern=" - ", fieldOrder=FieldOrder.ARTIST_TITLE)
     )
 
     /**
@@ -45,9 +45,13 @@ object ParserRuleHelper {
                 val array = JSONArray(json)
                 for (i in 0 until array.length()) {
                     val obj = array.getJSONObject(i)
+                    // Backward compatibility: "name" might not exist, defaults to null (which is fine)
+                    val name = if (obj.has("name")) obj.getString("name") else null
+                    
                     rules.add(
                         ParserRule(
                             packageName = obj.getString("pkg"),
+                            customName = name,
                             enabled = obj.optBoolean("enabled", true),
                             usesCarProtocol = obj.optBoolean("usesCarProtocol", true),
                             separatorPattern = obj.optString("separator", "-"),
@@ -81,6 +85,7 @@ object ParserRuleHelper {
             try {
                 val obj = JSONObject()
                 obj.put("pkg", rule.packageName)
+                obj.put("name", rule.customName)
                 obj.put("enabled", rule.enabled)
                 obj.put("usesCarProtocol", rule.usesCarProtocol)
                 obj.put("separator", rule.separatorPattern)
@@ -101,6 +106,16 @@ object ParserRuleHelper {
     fun getRuleForPackage(context: Context, packageName: String): ParserRule? {
         val rules = loadRules(context)
         return rules.find { it.packageName == packageName && it.enabled }
+    }
+    
+    /**
+     * Get display name for a package.
+     * Returns custom name if set, otherwise package name (or unknown).
+     * If rule doesn't exist, returns package name.
+     */
+    fun getAppNameForPackage(context: Context, packageName: String): String {
+        val rule = loadRules(context).find { it.packageName == packageName }
+        return rule?.customName ?: packageName
     }
 
     /**

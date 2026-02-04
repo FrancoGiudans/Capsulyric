@@ -9,6 +9,22 @@
         android:orientation="vertical"
         android:padding="24dp">
 
+        <!-- App Name -->
+        <com.google.android.material.textfield.TextInputLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp"
+            android:hint="@string/parser_app_name"
+            style="@style/Widget.Material3.TextInputLayout.OutlinedBox">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/et_app_name"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="textCapWords"
+                android:text=""/>
+        </com.google.android.material.textfield.TextInputLayout>
+
         <!-- Package Name -->
         <com.google.android.material.textfield.TextInputLayout
             android:layout_width="match_parent"
@@ -33,22 +49,6 @@
             android:text="@string/parser_car_protocol"
             android:checked="true"/>
 
-        <!-- Separator Pattern -->
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:text="@string/parser_separator"
-            android:textSize="14sp"
-            android:textColor="?attr/colorOnSurface"/>
-
-        <Spinner
-            android:id="@+id/spinner_separator"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:minHeight="48dp"/>
-
         <!-- Field Order -->
         <TextView
             android:layout_width="match_parent"
@@ -60,6 +60,22 @@
 
         <Spinner
             android:id="@+id/spinner_field_order"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:minHeight="48dp"/>
+
+        <!-- Separator Pattern -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="@string/parser_separator"
+            android:textSize="14sp"
+            android:textColor="?attr/colorOnSurface"/>
+
+        <Spinner
+            android:id="@+id/spinner_separator"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"

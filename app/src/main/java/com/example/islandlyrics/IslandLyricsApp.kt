@@ -10,9 +10,11 @@ class IslandLyricsApp : Application() {
         // Apply saved theme preferences (Mode, Language)
         ThemeHelper.applyTheme(this)
 
-        // Enable Dynamic Colors if allowed
-        if (ThemeHelper.isDynamicColorEnabled(this)) {
-            DynamicColors.applyToActivitiesIfAvailable(this)
-        }
+        // Recommended way to handle Dynamic Color toggle for XML activities
+        com.google.android.material.color.DynamicColors.applyToActivitiesIfAvailable(this, 
+            com.google.android.material.color.DynamicColorsOptions.Builder()
+                .setPrecondition { _, _ -> ThemeHelper.isDynamicColorEnabled(this) }
+                .build()
+        )
     }
 }

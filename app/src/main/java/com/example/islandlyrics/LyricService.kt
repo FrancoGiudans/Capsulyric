@@ -27,7 +27,7 @@ import java.util.ArrayList
 class LyricService : Service() {
 
     private var lastUpdateTime = 0L
-    private var simulationMode = "LEGACY"
+    private var simulationMode = "MODERN"
 
     // To debounce updates
     private var lastLyric = ""
@@ -204,24 +204,16 @@ class LyricService : Service() {
             stopSelf()
             return START_NOT_STICKY
         } else if (intent != null && "com.example.islandlyrics.ACTION_SIMULATE" == intent.action) {
-            // Read Mode: "LEGACY" (Default) or "MODERN"
+            // Read Mode: "MODERN" (Default)
             val mode = intent.getStringExtra("SIMULATION_MODE")
-            simulationMode = mode ?: "LEGACY"
+            simulationMode = mode ?: "MODERN"
             LogManager.getInstance().d(this, TAG, "Starting Simulation Mode: $simulationMode")
-            broadcastStatus(if (mode != null && mode == "MODERN") "🔵 Running (Modern)" else "🟢 Running (Legacy)")
+            broadcastStatus("🔵 Running (Modern)")
             
             if ("MODERN" == simulationMode) {
                  // huntForPromotedApi() // Not implemented in Java, skipped for now or inline?
             }
             startSimulation()
-            return START_STICKY
-        } else if (intent != null && "com.example.islandlyrics.ACTION_SIMULATE_CLONE" == intent.action) {
-            simulationMode = "CLONE"
-            LogManager.getInstance().d(this, TAG, "Starting Clone Mode Simulation")
-            broadcastStatus("🧬 Running (Clone)")
-
-            // Start the handler
-            capsuleHandler?.start()
             return START_STICKY
         }
 
@@ -242,7 +234,7 @@ class LyricService : Service() {
     }
 
     private fun createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        if (true) {
             val manager = getSystemService(NotificationManager::class.java)
             if (manager != null) {
                 // Standard Channel
@@ -256,33 +248,16 @@ class LyricService : Service() {
                     lockscreenVisibility = Notification.VISIBILITY_PUBLIC
                 }
                 manager.createNotificationChannel(serviceChannel)
-
-                // Clone Channel (InstallerX)
-                val cloneChannel = NotificationChannel(
-                    CHANNEL_ID_CLONE,
-                    "Installer Live",
-                    NotificationManager.IMPORTANCE_HIGH
-                ).apply {
-                    setSound(null, null)
-                    setShowBadge(false)
-                    lockscreenVisibility = Notification.VISIBILITY_PUBLIC
-                }
-                manager.createNotificationChannel(cloneChannel)
             }
         }
     }
 
     private fun buildNotification(title: String, text: String, subText: String): Notification {
-        return if ("MODERN" == simulationMode && Build.VERSION.SDK_INT >= 36) {
-            buildModernNotification(title, text, subText)
-        } else {
-            buildLegacyNotification(title, text, subText)
-        }
+        return buildModernNotification(title, text, subText)
     }
 
     private fun buildModernNotification(title: String, text: String, subText: String): Notification {
         LogManager.getInstance().d(this, TAG, "Building Modern Notification (ProgressStyle)")
-        if (Build.VERSION.SDK_INT < 36) return buildLegacyNotification(title, text, subText)
 
         val builder = Notification.Builder(this, currentChannelId)
             .setSmallIcon(R.drawable.ic_music_note)
@@ -300,31 +275,29 @@ class LyricService : Service() {
                 )
             )
 
-        // Use ProgressStyle via Reflection (InstallerX Method)
-        if (Build.VERSION.SDK_INT >= 36) {
-            try {
-                // 1. Create ProgressStyle
-                val styleClass = Class.forName("android.app.Notification\$ProgressStyle")
-                val style = styleClass.getConstructor().newInstance()
+        // Use ProgressStyle via Reflection
+        try {
+            // 1. Create ProgressStyle
+            val styleClass = Class.forName("android.app.Notification\$ProgressStyle")
+            val style = styleClass.getConstructor().newInstance()
 
-                // 2. Set "StyledByProgress" (Critical for appearance)
-                styleClass.getMethod("setStyledByProgress", Boolean::class.javaPrimitiveType).invoke(style, true)
+            // 2. Set "StyledByProgress" (Critical for appearance)
+            styleClass.getMethod("setStyledByProgress", Boolean::class.javaPrimitiveType).invoke(style, true)
 
-                // 3. Create a dummy Segment (Required by InstallerX logic)
-                val segmentClass = Class.forName("android.app.Notification\$ProgressStyle\$Segment")
-                val segment = segmentClass.getConstructor(Int::class.javaPrimitiveType).newInstance(1)
+            // 3. Create a dummy Segment (Required by internal logic)
+            val segmentClass = Class.forName("android.app.Notification\$ProgressStyle\$Segment")
+            val segment = segmentClass.getConstructor(Int::class.javaPrimitiveType).newInstance(1)
 
-                // 4. Set Segments List
-                val segments = ArrayList<Any>()
-                segments.add(segment)
-                styleClass.getMethod("setProgressSegments", List::class.java).invoke(style, segments)
+            // 4. Set Segments List
+            val segments = ArrayList<Any>()
+            segments.add(segment)
+            styleClass.getMethod("setProgressSegments", List::class.java).invoke(style, segments)
 
-                // 5. Apply Style to Builder
-                builder.style = style as Notification.Style
-                LogManager.getInstance().d(this, "Capsulyric", "✅ ProgressStyle applied")
-            } catch (e: Exception) {
-                LogManager.getInstance().e(this, "Capsulyric", "❌ ProgressStyle failed: $e")
-            }
+            // 5. Apply Style to Builder
+            builder.style = style as Notification.Style
+            LogManager.getInstance().d(this, "Capsulyric", "✅ ProgressStyle applied")
+        } catch (e: Exception) {
+            LogManager.getInstance().e(this, "Capsulyric", "❌ ProgressStyle failed: $e")
         }
 
         // Unified Attributes (Chip, Promotion)
@@ -346,54 +319,9 @@ class LyricService : Service() {
         return notification
     }
 
-    private fun buildLegacyNotification(title: String, text: String, subText: String): Notification {
-        if (Build.VERSION.SDK_INT >= 35) { // Baklava / Android 15+
-            val builder = Notification.Builder(this, currentChannelId)
-                .setSmallIcon(R.drawable.ic_music_note)
-                .setContentTitle(title)
-                .setContentText(text)
-                .setSubText(subText)
-                .setStyle(Notification.BigTextStyle().bigText(title))
-                .setOngoing(true)
-                .setOnlyAlertOnce(true)
-                .setVisibility(Notification.VISIBILITY_PUBLIC)
-                .setContentIntent(
-                    PendingIntent.getActivity(
-                        this, 0,
-                        Intent(this, MainActivity::class.java).setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP),
-                        PendingIntent.FLAG_IMMUTABLE
-                    )
-                )
 
-            // Unified Attributes
-            applyLiveAttributes(builder, text)
-
-            return builder.build()
-        }
-
-        // Fallback for older Android
-        return NotificationCompat.Builder(this, currentChannelId)
-            .setSmallIcon(R.drawable.ic_music_note)
-            .setContentTitle(title)
-            .setContentText(text)
-            .setSubText(subText)
-            .setStyle(NotificationCompat.BigTextStyle().bigText(title))
-            .setOngoing(true)
-            .setOnlyAlertOnce(true)
-            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setContentIntent(
-                PendingIntent.getActivity(
-                    this, 0,
-                    Intent(this, MainActivity::class.java).setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP),
-                    PendingIntent.FLAG_IMMUTABLE
-                )
-            )
-            .build()
-    }
 
     private fun applyLiveAttributes(builder: Notification.Builder, text: String) {
-        if (Build.VERSION.SDK_INT < 36) return
 
         // 1. Set Status Chip Text
         try {
@@ -414,7 +342,7 @@ class LyricService : Service() {
 
         // 2. Set Promoted Ongoing (Crucial for Chip visibility)
         try {
-            // EXACT SIGNATURE from InstallerX: setRequestPromotedOngoing(boolean)
+            // EXACT SIGNATURE: setRequestPromotedOngoing(boolean)
             val method = Notification.Builder::class.java.getMethod("setRequestPromotedOngoing", Boolean::class.javaPrimitiveType)
             method.invoke(builder, true)
             LogManager.getInstance().d(this, "Capsulyric", "✅ Promoted Flag Set")
@@ -450,10 +378,10 @@ class LyricService : Service() {
     @Suppress("UNUSED_PARAMETER")
     private fun updateNotification(_title: String, _text: String, _subText: String) {
         val now = System.currentTimeMillis()
-        if (now - lastUpdateTime < 500) return // Strict 500ms cap like InstallerX
+        if (now - lastUpdateTime < 500) return // Strict 500ms cap
         lastUpdateTime = now
 
-        // DISABLED: InstallerCloneHandler now handles all Capsule notifications
+        // DISABLED: LyricCapsuleHandler now handles all Capsule notifications
         // val notification = buildNotification(title, text, subText)
         // val nm = getSystemService(NotificationManager::class.java)
         // if (nm != null) {
@@ -467,7 +395,7 @@ class LyricService : Service() {
         // }
         
         // Log for debugging but don't send notification
-        LogManager.getInstance().d(this, TAG, "LyricService updateNotification called (skipped - using InstallerCloneHandler)")
+        LogManager.getInstance().d(this, TAG, "LyricService updateNotification called (skipped - using CapsuleHandler)")
     }
 
     internal fun inspectNotification(notification: Notification, nm: NotificationManager) {
@@ -476,7 +404,7 @@ class LyricService : Service() {
         intent.setPackage(packageName)
 
         // 1. General Status
-        val modeStatus = if ("MODERN" == simulationMode && Build.VERSION.SDK_INT >= 36) "🔵 Modern (API 36)" else "🟢 Legacy"
+        val modeStatus = "🔵 Modern (API 36)"
         intent.putExtra("status", modeStatus)
 
         // 2. Promotable Characteristics (API 36)
@@ -510,7 +438,7 @@ class LyricService : Service() {
 
         // 5. Channel Status
         var channelStatus = "Unknown"
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        if (true) {
             val channel = nm.getNotificationChannel(currentChannelId)
             if (channel != null) {
                 channelStatus = "Imp: ${channel.importance}"
@@ -530,7 +458,7 @@ class LyricService : Service() {
     }
 
     private fun checkAndHealChannel(nm: NotificationManager) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        if (true) {
             val channel = nm.getNotificationChannel(currentChannelId)
             if (channel != null) {
                 // Rule: Must be IMPORTANCE_HIGH (4).
@@ -565,9 +493,6 @@ class LyricService : Service() {
     }
 
     private fun startSimulation() {
-        if ("CLONE" == simulationMode) {
-            return // Handled by InstallerCloneHandler
-        }
         isSimulating = true
         currentPosition = 0
         duration = 252000 // 4:12
@@ -581,7 +506,7 @@ class LyricService : Service() {
 
         // Force Channel Reset for Simulation
         val nm = getSystemService(NotificationManager::class.java)
-        if (nm != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        if (nm != null) {
              val ch = nm.getNotificationChannel(currentChannelId)
              if (ch != null && ch.importance < NotificationManager.IMPORTANCE_HIGH) {
                  nm.deleteNotificationChannel(currentChannelId)
@@ -693,6 +618,10 @@ class LyricService : Service() {
                      // Update Repository with progress
                      Log.d(TAG, "Updating progress: pos=$currentPos, dur=$duration")
                      LyricRepository.getInstance().updateProgress(currentPos, duration)
+                     
+                     // Album art now handled by MediaMonitorService on metadata change
+                     // to decouple it from playback/lyric state loops.
+
                      Log.d(TAG, "Progress updated in repository")
 
                      val info = LyricRepository.getInstance().liveLyric.value
@@ -720,7 +649,6 @@ class LyricService : Service() {
     companion object {
         private const val TAG = "LyricService"
         private const val CHANNEL_ID = "capsulyric_live_high_v1"
-        private const val CHANNEL_ID_CLONE = "installer_live_channel"
         private const val NOTIFICATION_ID = 1001
     }
 }

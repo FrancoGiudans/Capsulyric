@@ -31,6 +31,7 @@ class MainActivity : BaseActivity() {
     private lateinit var cardStatus: MaterialCardView
     private lateinit var ivStatusIcon: ImageView
     private lateinit var tvStatusText: TextView
+    private lateinit var ivAlbumArt: ImageView // New Album Art View
     private lateinit var tvAppVersion: TextView
 
     private lateinit var tvSong: TextView
@@ -124,6 +125,7 @@ class MainActivity : BaseActivity() {
         tvSong = findViewById(R.id.tv_song)
         tvArtist = findViewById(R.id.tv_artist)
         tvLyric = findViewById(R.id.tv_lyric)
+        ivAlbumArt = findViewById(R.id.iv_album_art) // Bind View
 
         // Dashboard Bindings
         tvApiPermission = findViewById(R.id.tv_api_permission)
@@ -175,10 +177,16 @@ class MainActivity : BaseActivity() {
             val isPlaying = LyricRepository.getInstance().isPlaying.value
             if (java.lang.Boolean.TRUE == isPlaying) {
                 // Use liveLyric for source app name, or fallback to liveMetadata package if needed
-                val source = LyricRepository.getInstance().liveLyric.value?.sourceApp 
+                val rawPackage = LyricRepository.getInstance().liveLyric.value?.sourceApp 
                              ?: LyricRepository.getInstance().liveMetadata.value?.packageName 
-                             ?: "Music"
-                setCardState(true, "Active: $source", R.color.status_active)
+                
+                val sourceName = if (rawPackage != null) {
+                    ParserRuleHelper.getAppNameForPackage(this, rawPackage)
+                } else {
+                    "Music"
+                }
+
+                setCardState(true, "Active: $sourceName", R.color.status_active)
             } else {
                 setCardState(true, "Service Ready (Idle)", R.color.status_active) // Or distinct color?
             }
@@ -290,6 +298,17 @@ class MainActivity : BaseActivity() {
                 pbProgress.progress = 0
             }
         }
+        
+        // Album Art Observer
+        repo.liveAlbumArt.observe(this) { bitmap ->
+            if (bitmap != null) {
+                ivAlbumArt.setImageBitmap(bitmap)
+                ivAlbumArt.visibility = View.VISIBLE
+            } else {
+                ivAlbumArt.setImageDrawable(null)
+                ivAlbumArt.visibility = View.GONE
+            }
+        }
     }
 
     override fun onResume() {
@@ -304,11 +323,7 @@ class MainActivity : BaseActivity() {
         filter.addAction("com.example.islandlyrics.DIAG_UPDATE")
         filter.addAction("com.example.islandlyrics.STATUS_UPDATE")
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            registerReceiver(diagReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
-        } else {
-            registerReceiver(diagReceiver, filter)
-        }
+        registerReceiver(diagReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
     }
 
     override fun onPause() {

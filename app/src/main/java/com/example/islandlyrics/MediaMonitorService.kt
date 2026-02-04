@@ -24,6 +24,8 @@ class MediaMonitorService : NotificationListenerService() {
     
     // Explicitly use fully qualified names to avoid conflicts or ambiguity if imported
     private val activeControllers = java.util.ArrayList<MediaController>()
+    // Fix: A Map to hold callbacks so we can unregister them later
+    private val controllerCallbacks = java.util.HashMap<MediaController, MediaController.Callback>()
     
     // Deduplication: Track last metadata hash to avoid processing duplicates
     private var lastMetadataHash: Int = 0
@@ -79,6 +81,15 @@ class MediaMonitorService : NotificationListenerService() {
     override fun onListenerDisconnected() {
         super.onListenerDisconnected()
         mediaSessionManager?.removeOnActiveSessionsChangedListener(sessionsChangedListener)
+        
+        // Clean up all callbacks
+        synchronized(activeControllers) {
+            controllerCallbacks.forEach { (controller, callback) ->
+                controller.unregisterCallback(callback)
+            }
+            controllerCallbacks.clear()
+            activeControllers.clear()
+        }
     }
 
     override fun onDestroy() {
@@ -109,47 +120,101 @@ class MediaMonitorService : NotificationListenerService() {
         val isServiceEnabled = prefs?.getBoolean("service_enabled", true) ?: true
         if (!isServiceEnabled) {
             AppLogger.getInstance().log(TAG, "Master Switch OFF. Ignoring updates.")
-            activeControllers.clear()
+            synchronized(activeControllers) {
+                controllerCallbacks.forEach { (controller, callback) ->
+                    controller.unregisterCallback(callback)
+                }
+                controllerCallbacks.clear()
+                activeControllers.clear()
+            }
             LyricRepository.getInstance().updatePlaybackStatus(false)
             return
         }
 
-        activeControllers.clear()
-        controllers?.forEach { controller ->
-            if (allowedPackages.contains(controller.packageName)) {
-                activeControllers.add(controller)
-                // Re-register callbacks to ensure we catch state changes
-                controller.registerCallback(object : MediaController.Callback() {
-                    // Debounce handler to prevent rapid/incomplete updates
-                    private val debounceHandler = android.os.Handler(android.os.Looper.getMainLooper())
-                    private val updateRunnable = Runnable {
-                        // Double check state before updating
-                        if (controller.playbackState?.state == PlaybackState.STATE_PLAYING) {
-                            updateMetadataIfPrimary(controller)
-                        } else {
-                            // If paused/stopped, update immediately to reflect state change
-                            updateMetadataIfPrimary(controller)
+        if (controllers == null) return
+
+        synchronized(activeControllers) {
+            // 1. Identify valid new controllers (whitelisted)
+            val newControllers = controllers.filter { allowedPackages.contains(it.packageName) }
+            
+            // 2. Find controllers to remove (present in old list but not in new list)
+            // Note: MediaController equals() might not be reliable, checking by reference or token is better.
+            // But usually session token is key. Here we iterate our map keys.
+            val toRemove = ArrayList<MediaController>()
+            controllerCallbacks.keys.forEach { existingController ->
+                // Check if existingController is present in newControllers (by comparing session token or just object equality if valid)
+                // MediaController.equals() checks internal mSessionBinder
+                val stillExists = newControllers.any { it.sessionToken == existingController.sessionToken }
+                if (!stillExists) {
+                    toRemove.add(existingController)
+                }
+            }
+
+            // 3. Remove old callbacks
+            toRemove.forEach { controller ->
+                val cb = controllerCallbacks.remove(controller)
+                if (cb != null) {
+                    controller.unregisterCallback(cb)
+                }
+                activeControllers.remove(controller) // Should use iterator if iterating, but we are iterating toRemove
+            }
+            
+            // Refill activeControllers to match the new filtered list order (important for priority)
+            activeControllers.clear()
+            activeControllers.addAll(newControllers)
+
+            // 4. Add new callbacks
+            newControllers.forEach { controller ->
+                // Check if we already have a callback for this controller (by token)
+                val isRegistered = controllerCallbacks.keys.any { it.sessionToken == controller.sessionToken }
+                
+                if (!isRegistered) {
+                    val callback = object : MediaController.Callback() {
+                        // Debounce handler to prevent rapid/incomplete updates
+                        private val debounceHandler = android.os.Handler(android.os.Looper.getMainLooper())
+                        private val updateRunnable = Runnable {
+                            // Double check state before updating
+                            if (controller.playbackState?.state == PlaybackState.STATE_PLAYING) {
+                                updateMetadataIfPrimary(controller)
+                            } else {
+                                // If paused/stopped, update immediately to reflect state change
+                                updateMetadataIfPrimary(controller)
+                            }
+                        }
+
+                        override fun onPlaybackStateChanged(state: PlaybackState?) {
+                            // CRITICAL FIX: Do NOT update repository here directly!
+                            // That bypasses the debounce logic in checkServiceState.
+                            // Just trigger the check.
+                            
+                            val isPlaying = state?.state == PlaybackState.STATE_PLAYING
+                            AppLogger.getInstance().log("Playback", "⏯️ State changed: ${if (isPlaying) "PLAYING" else "PAUSED/STOPPED"}")
+                            
+                            checkServiceState()
+                        }
+
+                        override fun onMetadataChanged(metadata: MediaMetadata?) {
+                            // Add small delay (50ms) to allow notification to fully populate
+                            // This helps with apps that update state before metadata (race condition)
+                            debounceHandler.removeCallbacks(updateRunnable)
+                            debounceHandler.postDelayed(updateRunnable, 50)
+                        }
+                        
+                        override fun onSessionDestroyed() {
+                            super.onSessionDestroyed()
+                            // Self-cleanup if session dies
+                            // We need to run this on the handler thread or safely
+                            handler.post {
+                                controllerCallbacks.remove(controller)
+                                activeControllers.remove(controller)
+                                checkServiceState()
+                            }
                         }
                     }
-
-                    override fun onPlaybackStateChanged(state: PlaybackState?) {
-                        // CRITICAL FIX: Do NOT update repository here directly!
-                        // That bypasses the debounce logic in checkServiceState.
-                        // Just trigger the check.
-                        
-                        val isPlaying = state?.state == PlaybackState.STATE_PLAYING
-                        AppLogger.getInstance().log("Playback", "⏯️ State changed: ${if (isPlaying) "PLAYING" else "PAUSED/STOPPED"}")
-                        
-                        checkServiceState()
-                    }
-
-                    override fun onMetadataChanged(metadata: MediaMetadata?) {
-                        // Add small delay (50ms) to allow notification to fully populate
-                        // This helps with apps that update state before metadata (race condition)
-                        debounceHandler.removeCallbacks(updateRunnable)
-                        debounceHandler.postDelayed(updateRunnable, 50)
-                    }
-                })
+                    
+                    controller.registerCallback(callback)
+                    controllerCallbacks[controller] = callback
+                }
             }
         }
 
@@ -173,11 +238,7 @@ class MediaMonitorService : NotificationListenerService() {
 
             // Start/Update Service
             val intent = Intent(this, LyricService::class.java)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                startForegroundService(intent)
-            } else {
-                startService(intent)
-            }
+            startForegroundService(intent)
 
             // Sync State
             LyricRepository.getInstance().updatePlaybackStatus(true)
@@ -192,18 +253,20 @@ class MediaMonitorService : NotificationListenerService() {
     }
 
     private fun getPrimaryController(): MediaController? {
-        // Priority 1: Playing
-        for (c in activeControllers) {
-            val state = c.playbackState
-            if (state != null && state.state == PlaybackState.STATE_PLAYING) {
-                return c
+        synchronized(activeControllers) {
+            // Priority 1: Playing
+            for (c in activeControllers) {
+                val state = c.playbackState
+                if (state != null && state.state == PlaybackState.STATE_PLAYING) {
+                    return c
+                }
             }
+            // Priority 2: First in list (or most recent?) - API list order usually implies recency
+            if (activeControllers.isNotEmpty()) {
+                return activeControllers[0]
+            }
+            return null // None active
         }
-        // Priority 2: First in list (or most recent?) - API list order usually implies recency
-        if (activeControllers.isNotEmpty()) {
-            return activeControllers[0]
-        }
-        return null // None active
     }
 
     private fun updateMetadataIfPrimary(controller: MediaController) {
@@ -275,6 +338,11 @@ class MediaMonitorService : NotificationListenerService() {
 
         val duration = metadata.getLong(MediaMetadata.METADATA_KEY_DURATION)
         LyricRepository.getInstance().updateMediaMetadata(finalTitle ?: "Unknown", finalArtist ?: "Unknown", pkg, duration)
+
+        // Extract Album Art immediately on metadata change
+        val art = metadata.getBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART)
+            ?: metadata.getBitmap(MediaMetadata.METADATA_KEY_ART)
+        LyricRepository.getInstance().updateAlbumArt(art)
     }
 
     /**
@@ -307,10 +375,13 @@ class MediaMonitorService : NotificationListenerService() {
 
     private fun getAppName(packageName: String?): String {
         if (packageName == null) return "Music"
-        if (packageName.contains("qqmusic")) return "QQ Music"
-        if (packageName.contains("netease")) return "NetEase"
-        if (packageName.contains("miui")) return "Mi Music"
-        return packageName
+        return try {
+            val pm = packageManager
+            val info = pm.getApplicationInfo(packageName, 0)
+            pm.getApplicationLabel(info).toString()
+        } catch (e: Exception) {
+            packageName // Fallback to package name if not found
+        }
     }
 
     companion object {

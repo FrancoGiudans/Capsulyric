@@ -1,20 +1,21 @@
 plugins {
     id 'com.android.application'
     id 'org.jetbrains.kotlin.android'
+    alias(libs.plugins.kotlin.compose)
 }
 
-def getGitCommitHash() {
+static def getGitCommitHash() {
     try {
         return 'git rev-parse --short HEAD'.execute().text.trim()
-    } catch (Exception e) {
+    } catch (Exception ignored) {
         return "Dev"
     }
 }
 
-def getGitCommitCount() {
+static def getGitCommitCount() {
     try {
         return 'git rev-list --count HEAD'.execute().text.trim().toInteger()
-    } catch (Exception e) {
+    } catch (Exception ignored) {
         return 1
     }
 }
@@ -45,11 +46,11 @@ android {
     }
 
     defaultConfig {
-        def majorVersion = "1.0"
+        def majorVersion = "1.1"
         versionCode getGitCommitCount()
         versionName "${majorVersion}_C${getGitCommitCount()}"
         applicationId "com.franco.capsulyric"
-        minSdk 35
+        minSdk 36
         targetSdk 36
         
         buildConfigField "String", "GIT_COMMIT_HASH", "\"${getGitCommitHash()}\""
@@ -73,6 +74,7 @@ android {
     }
     buildFeatures {
         buildConfig true
+        compose true
     }
 }
 
@@ -84,10 +86,21 @@ tasks.configureEach { task ->
 }
 
 dependencies {
-    implementation 'com.github.HChenX:SuperLyricApi:2.4'
-    implementation 'androidx.core:core-ktx:1.17.0'  // Upgraded for Android 16 NotificationCompat support
-    implementation 'androidx.media:media:1.7.1'
-    implementation 'com.google.android.material:material:1.13.0'
-    implementation platform('org.jetbrains.kotlin:kotlin-bom:1.9.24')
-    implementation 'org.jetbrains.kotlin:kotlin-stdlib'
+    implementation libs.super.lyric.api
+    implementation libs.core.ktx  // Upgraded for Android 16 NotificationCompat support
+    implementation libs.media
+    implementation libs.material
+    implementation platform(libs.kotlin.bom)
+    implementation libs.kotlin.stdlib
+
+    // Compose
+    implementation platform(libs.compose.bom)
+    implementation libs.activity.compose
+    implementation libs.ui
+    implementation libs.ui.graphics
+    implementation libs.ui.tooling.preview
+    implementation libs.material3
+    
+    debugImplementation libs.ui.tooling
+    debugImplementation libs.ui.test.manifest
 }

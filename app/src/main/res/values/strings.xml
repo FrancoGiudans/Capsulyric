@@ -60,20 +60,11 @@
     <string name="settings_general_header">General</string>
     <string name="settings_service_header">Service</string>
     <string name="settings_service_enable">Enable Service</string>
+    <string name="settings_dynamic_icon">Dynamic Metadata Icon (Experimental)</string>
+    <string name="settings_dynamic_icon_desc">Show "Song - Artist" as notification icon (HyperOS/MIUI)</string>
     
-    <!-- Installer Clone Resources -->
-    <string name="installer_resolving">Resolving...</string>
-    <string name="installer_preparing">Preparing...</string>
-    <string name="installer_analysing">Analysing...</string>
-    <string name="installer_installing">Installing...</string>
-    <string name="installer_install_success">Install Success</string>
-    
-    <string name="installer_live_channel_short_text_resolving">Resolving</string>
-    <string name="installer_live_channel_name">Install Progress Live Update</string>
-    <string name="installer_live_channel_short_text_preparing">Preparing</string>
-    <string name="installer_live_channel_short_text_analysing">Analysing</string>
-    <string name="installer_live_channel_short_text_installing">Installing</string>
-    <string name="installer_live_channel_short_text_success">Success</string>
+    <string name="channel_live_lyrics">Live Lyrics Updates</string>
+    <string name="channel_short_live">Live</string>
     
     <string name="cancel">Cancel</string>
 
@@ -83,7 +74,8 @@
     <string name="parser_add_rule">Add Music App</string>
     <string name="parser_edit">Edit</string>
     <string name="parser_delete">Delete</string>
-    <string name="parser_package_name">Package Name</string>
+    <string name="parser_package_name">Package Name (e.g. com.example)</string>
+    <string name="parser_app_name">App Name (Optional)</string>
     <string name="parser_car_protocol">Use Media Notification (Notification Bar/Car Music) Lyrics</string>
     <string name="parser_separator">Separator Pattern</string>
     <string name="parser_field_order">Field Order</string>
@@ -109,6 +101,10 @@
     <string name="update_check_failed">Failed to check for updates</string>
     <string name="settings_auto_update">Auto-check for updates</string>
     <string name="settings_auto_update_desc">Check for new versions on app launch</string>
+    <string name="settings_prerelease_update">Receive Prerelease Updates</string>
+    <string name="settings_prerelease_update_desc">Check for Alpha/Beta versions</string>
+    <string name="dialog_prerelease_warning_title">Enable Prerelease Updates?</string>
+    <string name="dialog_prerelease_warning_message">Prerelease versions (Alpha/Beta) may contain bugs and are not suitable for daily use.  Are you sure you want to receive these updates?</string>
     
     <!-- Main Activity -->
     <string name="main_service_status">🔴 Service Status: Unknown</string>

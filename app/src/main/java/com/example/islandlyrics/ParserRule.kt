@@ -8,9 +8,11 @@ package com.example.islandlyrics
  * @param usesCarProtocol Whether to parse notifications using car protocol
  * @param separatorPattern The separator to split artist/title (e.g., "-", " - ", " | ")
  * @param fieldOrder The order of fields in the notification (ARTIST_TITLE or TITLE_ARTIST)
+ * @param customName User-defined friendly name (e.g., "QQ Music"). If null, falls back to package name.
  */
 data class ParserRule(
     val packageName: String,
+    val customName: String? = null,
     val enabled: Boolean = true,
     val usesCarProtocol: Boolean = true,
     val separatorPattern: String = "-",  // Default: tight hyphen
