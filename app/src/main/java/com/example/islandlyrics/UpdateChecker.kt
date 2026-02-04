@@ -27,10 +27,6 @@ object UpdateChecker {
         val name: String,            // Release title
         val body: String,            // Changelog (Markdown)
         val htmlUrl: String,         // GitHub release page URL
-        val tagName: String,        // e.g., "v1.0_C25"
-        val name: String,            // Release title
-        val body: String,            // Changelog (Markdown)
-        val htmlUrl: String,         // GitHub release page URL
         val publishedAt: String,      // ISO 8601 timestamp
         val prerelease: Boolean = false
     )
@@ -49,6 +45,7 @@ object UpdateChecker {
     fun setAutoUpdateEnabled(context: Context, enabled: Boolean) {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         prefs.edit().putBoolean(KEY_AUTO_UPDATE, enabled).apply()
+    }
     /**
      * Check if prerelease updates are enabled.
      */
