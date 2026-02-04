@@ -31,6 +31,7 @@ class MainActivity : BaseActivity() {
     private lateinit var cardStatus: MaterialCardView
     private lateinit var ivStatusIcon: ImageView
     private lateinit var tvStatusText: TextView
+    private lateinit var ivAlbumArt: ImageView // New Album Art View
     private lateinit var tvAppVersion: TextView
 
     private lateinit var tvSong: TextView
@@ -124,6 +125,7 @@ class MainActivity : BaseActivity() {
         tvSong = findViewById(R.id.tv_song)
         tvArtist = findViewById(R.id.tv_artist)
         tvLyric = findViewById(R.id.tv_lyric)
+        ivAlbumArt = findViewById(R.id.iv_album_art) // Bind View
 
         // Dashboard Bindings
         tvApiPermission = findViewById(R.id.tv_api_permission)
@@ -294,6 +296,17 @@ class MainActivity : BaseActivity() {
                 pbProgress.setProgress(progress.position.toInt(), true)
             } else {
                 pbProgress.progress = 0
+            }
+        }
+        
+        // Album Art Observer
+        repo.liveAlbumArt.observe(this) { bitmap ->
+            if (bitmap != null) {
+                ivAlbumArt.setImageBitmap(bitmap)
+                ivAlbumArt.visibility = View.VISIBLE
+            } else {
+                ivAlbumArt.setImageDrawable(null)
+                ivAlbumArt.visibility = View.GONE
             }
         }
     }

@@ -52,6 +52,7 @@
                   android:label="Developer Logs"
                   android:parentActivityName=".MainActivity" />
 
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"

@@ -1,5 +1,6 @@
 package com.example.islandlyrics
 
+import android.graphics.Bitmap
 import androidx.lifecycle.MutableLiveData
 
 /**
@@ -34,6 +35,7 @@ class LyricRepository private constructor() {
     val liveMetadata = MutableLiveData<MediaInfo?>()
     val liveLyric = MutableLiveData<LyricInfo?>()
     val liveProgress = MutableLiveData<PlaybackProgress?>()
+    val liveAlbumArt = MutableLiveData<Bitmap?>()
 
     // Track previous song to detect changes
     private var lastTrackId: String? = null
@@ -64,6 +66,10 @@ class LyricRepository private constructor() {
 
     fun updateProgress(position: Long, duration: Long) {
         liveProgress.postValue(PlaybackProgress(position, duration))
+    }
+
+    fun updateAlbumArt(bitmap: Bitmap?) {
+        liveAlbumArt.postValue(bitmap)
     }
 
     companion object {

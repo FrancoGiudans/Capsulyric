@@ -129,14 +129,26 @@
                 android:layout_height="wrap_content"
                 android:padding="24dp">
 
+                <!-- Album Art (Top Left, Fixed Size) -->
+                <com.google.android.material.imageview.ShapeableImageView
+                    android:id="@+id/iv_album_art"
+                    android:layout_width="80dp"
+                    android:layout_height="80dp"
+                    android:scaleType="centerCrop"
+                    app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Medium"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toTopOf="parent"/>
+
+                <!-- Song Title Info (Right of Art) -->
                 <TextView
                     android:id="@+id/lbl_song"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="@string/label_title_prefix"
                     android:textStyle="bold"
-                    app:layout_constraintStart_toStartOf="parent"
-                    app:layout_constraintTop_toTopOf="parent"/>
+                    android:layout_marginStart="16dp"
+                    app:layout_constraintStart_toEndOf="@id/iv_album_art"
+                    app:layout_constraintTop_toTopOf="@id/iv_album_art"/>
 
                 <TextView
                     android:id="@+id/tv_song"
@@ -148,6 +160,7 @@
                     app:layout_constraintEnd_toEndOf="parent"
                     app:layout_constraintTop_toTopOf="@id/lbl_song"/>
 
+                <!-- Artist Info (Below Title, Right of Art) -->
                 <TextView
                     android:id="@+id/lbl_artist"
                     android:layout_width="wrap_content"
@@ -155,7 +168,8 @@
                     android:text="@string/label_artist_prefix"
                     android:textStyle="bold"
                     android:layout_marginTop="8dp"
-                    app:layout_constraintStart_toStartOf="parent"
+                    android:layout_marginStart="16dp"
+                    app:layout_constraintStart_toEndOf="@id/iv_album_art"
                     app:layout_constraintTop_toBottomOf="@id/tv_song"/>
 
                 <TextView
@@ -168,15 +182,17 @@
                     app:layout_constraintEnd_toEndOf="parent"
                     app:layout_constraintTop_toTopOf="@id/lbl_artist"/>
 
+                <!-- Lyrics (Below Art/Metadata Block) -->
                 <TextView
                     android:id="@+id/lbl_lyric"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="@string/label_lyric_prefix"
                     android:textStyle="bold"
-                    android:layout_marginTop="16dp"
+                    android:layout_marginTop="24dp"
                     app:layout_constraintStart_toStartOf="parent"
-                    app:layout_constraintTop_toBottomOf="@id/tv_artist"/>
+                    app:layout_constraintTop_toBottomOf="@id/iv_album_art"
+                    app:layout_goneMarginTop="16dp"/>
 
                 <TextView
                     android:id="@+id/tv_lyric"
@@ -201,6 +217,7 @@
                     app:layout_constraintStart_toStartOf="parent"
                     app:layout_constraintEnd_toEndOf="parent"
                     app:layout_constraintTop_toBottomOf="@id/tv_lyric"/>
+
             </androidx.constraintlayout.widget.ConstraintLayout>
         </com.google.android.material.card.MaterialCardView>
 
