@@ -31,6 +31,9 @@
         <item name="colorOnSurface">#E0E0E0</item>
         <item name="colorSurfaceVariant">#424242</item>
         <item name="colorOnSurfaceVariant">#EEEEEE</item>
+        <item name="colorSurfaceContainer">#1E1E1E</item>
+        <item name="colorSurfaceContainerLow">#1A1A1A</item>
+        <item name="colorSurfaceContainerLowest">#0A0A0A</item>
         <item name="android:colorBackground">#121212</item>
 
         <!-- Outline -->

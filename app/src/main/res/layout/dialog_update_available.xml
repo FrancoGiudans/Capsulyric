@@ -3,9 +3,9 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_margin="24dp"
-    app:cardElevation="8dp"
-    app:cardCornerRadius="28dp"
+    android:layout_margin="16dp"
+    app:cardElevation="12dp"
+    app:cardCornerRadius="20dp"
     app:cardBackgroundColor="?attr/colorSurface">
 
     <ScrollView
@@ -17,54 +17,47 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="32dp">
+            android:padding="20dp">
 
-            <!-- Title (Left-aligned, matching About page) -->
-            <TextView
-                android:id="@+id/tv_update_title"
-                android:layout_width="wrap_content"
+            <!-- Header with Icon and Title -->
+            <LinearLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_gravity="start"
-                android:text="Update Available: v1.0_C25"
-                android:textSize="28sp"
-                android:textStyle="bold"
-                android:textColor="?attr/colorOnSurface"/>
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="16dp">
 
-            <!-- App Logo (Circular Card) -->
-            <com.google.android.material.card.MaterialCardView
-                android:layout_width="120dp"
-                android:layout_height="120dp"
-                android:layout_marginTop="24dp"
-                android:layout_gravity="center_horizontal"
-                app:cardCornerRadius="60dp"
-                app:cardElevation="4dp">
-                
+                <!-- Small Icon -->
                 <ImageView
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:layout_marginEnd="12dp"
                     android:src="@mipmap/ic_launcher"
                     android:scaleType="centerCrop"
                     android:contentDescription="@string/app_name"/>
-            </com.google.android.material.card.MaterialCardView>
-            
+
+                <!-- Title -->
+                <TextView
+                    android:id="@+id/tv_update_title"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Update Available: v1.0_C25"
+                    android:textSize="20sp"
+                    android:textStyle="bold"
+                    android:textColor="?attr/colorOnSurface"/>
+
+            </LinearLayout>
+
             <!-- Current Version Info -->
             <TextView
                 android:id="@+id/tv_current_version"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_gravity="start"
-                android:layout_marginTop="16dp"
+                android:layout_marginBottom="16dp"
                 android:text="Current: v1.0_C20"
                 android:textSize="14sp"
                 android:textColor="?attr/colorOnSurfaceVariant"/>
-
-            <!-- Divider -->
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:layout_marginTop="24dp"
-                android:layout_marginBottom="16dp"
-                android:background="?attr/colorOutlineVariant"/>
 
             <!-- Changelog Label -->
             <TextView
@@ -75,12 +68,13 @@
                 android:textStyle="bold"
                 android:textColor="?attr/colorOnSurface"/>
 
-            <!-- Changelog Content with Rounded Background -->
+            <!-- Changelog Content -->
             <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
-                app:cardCornerRadius="16dp"
+                android:layout_marginTop="8dp"
+                android:layout_marginBottom="16dp"
+                app:cardCornerRadius="12dp"
                 app:cardElevation="0dp"
                 app:strokeWidth="1dp"
                 app:strokeColor="?attr/colorOutlineVariant"
@@ -89,8 +83,8 @@
                 <ScrollView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:maxHeight="200dp"
-                    android:padding="16dp"
+                    android:maxHeight="180dp"
+                    android:padding="12dp"
                     android:scrollbars="vertical">
 
                     <TextView
@@ -106,37 +100,45 @@
 
             </com.google.android.material.card.MaterialCardView>
 
-            <!-- Buttons -->
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btn_download"
+            <!-- Buttons Row -->
+            <LinearLayout
                 android:layout_width="match_parent"
-                android:layout_height="56dp"
-                android:layout_marginTop="24dp"
-                android:text="@string/update_download"
-                android:textSize="16sp"
-                app:icon="@drawable/ic_check_circle"
-                app:iconGravity="textStart"
-                app:cornerRadius="16dp"
-                style="@style/Widget.Material3.Button"/>
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="end">
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btn_ignore"
-                android:layout_width="match_parent"
-                android:layout_height="56dp"
-                android:layout_marginTop="8dp"
-                android:text="@string/update_ignore"
-                android:textSize="16sp"
-                app:cornerRadius="16dp"
-                style="@style/Widget.Material3.Button.TextButton"/>
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_cancel"
+                    android:layout_width="wrap_content"
+                    android:layout_height="48dp"
+                    android:text="@string/cancel"
+                    android:textSize="14sp"
+                    app:cornerRadius="12dp"
+                    style="@style/Widget.Material3.Button.TextButton"/>
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btn_cancel"
-                android:layout_width="match_parent"
-                android:layout_height="56dp"
-                android:text="@string/cancel"
-                android:textSize="16sp"
-                app:cornerRadius="16dp"
-                style="@style/Widget.Material3.Button.TextButton"/>
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_ignore"
+                    android:layout_width="wrap_content"
+                    android:layout_height="48dp"
+                    android:layout_marginStart="8dp"
+                    android:text="@string/update_ignore"
+                    android:textSize="14sp"
+                    app:cornerRadius="12dp"
+                    style="@style/Widget.Material3.Button.TextButton"/>
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_download"
+                    android:layout_width="wrap_content"
+                    android:layout_height="48dp"
+                    android:layout_marginStart="8dp"
+                    android:text="@string/update_download"
+                    android:textSize="14sp"
+                    app:icon="@drawable/ic_check_circle"
+                    app:iconGravity="textStart"
+                    app:cornerRadius="12dp"
+                    style="@style/Widget.Material3.Button"/>
+
+            </LinearLayout>
 
         </LinearLayout>
 
