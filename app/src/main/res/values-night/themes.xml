@@ -4,5 +4,42 @@
     <style name="Theme.IslandLyrics" parent="Theme.Material3.DayNight.NoActionBar">
         <!-- Customize your dark theme here. -->
         <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>
+        <item name="android:enforceNavigationBarContrast">false</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <!-- Primary Brand Colors -->
+        <item name="colorPrimary">#9E9E9E</item>
+        <item name="colorOnPrimary">#000000</item>
+        <item name="colorPrimaryContainer">#212121</item>
+        <item name="colorOnPrimaryContainer">#BDBDBD</item>
+
+        <!-- Secondary -->
+        <item name="colorSecondary">#757575</item>
+        <item name="colorOnSecondary">#000000</item>
+        <item name="colorSecondaryContainer">#212121</item>
+        <item name="colorOnSecondaryContainer">#BDBDBD</item>
+
+        <!-- Tertiary -->
+        <item name="colorTertiary">#616161</item>
+        <item name="colorOnTertiary">#FFFFFF</item>
+        <item name="colorTertiaryContainer">#212121</item>
+        <item name="colorOnTertiaryContainer">#BDBDBD</item>
+
+        <!-- Surface & Background -->
+        <item name="colorSurface">#121212</item>
+        <item name="colorOnSurface">#E0E0E0</item>
+        <item name="colorSurfaceVariant">#424242</item>
+        <item name="colorOnSurfaceVariant">#EEEEEE</item>
+        <item name="android:colorBackground">#121212</item>
+
+        <!-- Outline -->
+        <item name="colorOutline">#757575</item>
+        <item name="colorOutlineVariant">#616161</item>
+
+        <!-- Inverse -->
+        <item name="colorSurfaceInverse">#E0E0E0</item>
+        <item name="colorOnSurfaceInverse">#121212</item>
+        <item name="colorPrimaryInverse">#424242</item>
     </style>
 </resources>

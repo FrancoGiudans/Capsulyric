@@ -10,8 +10,15 @@ import androidx.appcompat.app.AppCompatActivity
  */
 open class BaseActivity : AppCompatActivity() {
 
+    private var currentDynamicColorEnabled: Boolean = false
+    private var currentPureBlackEnabled: Boolean = false
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Track initial state
+        currentDynamicColorEnabled = ThemeHelper.isDynamicColorEnabled(this)
+        currentPureBlackEnabled = ThemeHelper.isPureBlackEnabled(this)
 
         // Enforce Edge-to-Edge globally to prevent layout jumps/trembling during state changes
         androidx.core.view.WindowCompat.setDecorFitsSystemWindows(window, false)
@@ -20,9 +27,28 @@ open class BaseActivity : AppCompatActivity() {
         updatePureBlackMode()
     }
 
+    override fun setContentView(layoutResID: Int) {
+        super.setContentView(layoutResID)
+        updatePureBlackMode()
+    }
+
+    override fun setContentView(view: android.view.View?) {
+        super.setContentView(view)
+        updatePureBlackMode()
+    }
+
     override fun onResume() {
         super.onResume()
-        // Re-check Pure Black mode on resume (e.g. returning from Settings)
+        
+        // Check for changes that require recreation (Dynamic Color)
+        val newDynamicColor = ThemeHelper.isDynamicColorEnabled(this)
+        if (newDynamicColor != currentDynamicColorEnabled) {
+            // Log for debugging (if possible)
+            recreate()
+            return
+        }
+
+        // Check for Pure Black changes (can be applied without recreate)
         updatePureBlackMode()
     }
 
@@ -37,13 +63,24 @@ open class BaseActivity : AppCompatActivity() {
             window.decorView.setBackgroundColor(Color.BLACK)
             window.setBackgroundDrawableResource(android.R.color.black)
         } else {
-            // Revert to default theme background
+            // Revert to default theme background (using colorSurface to match default layout look)
             val typedValue = android.util.TypedValue()
-            theme.resolveAttribute(android.R.attr.windowBackground, typedValue, true)
-            if (typedValue.resourceId != 0) {
-                window.setBackgroundDrawableResource(typedValue.resourceId)
+            // Try colorSurface first, fallback to windowBackground
+            val attr = com.google.android.material.R.attr.colorSurface
+            if (theme.resolveAttribute(attr, typedValue, true)) {
+                if (typedValue.resourceId != 0) {
+                   window.setBackgroundDrawableResource(typedValue.resourceId)
+                } else {
+                   window.decorView.setBackgroundColor(typedValue.data)
+                }
             } else {
-                window.decorView.setBackgroundColor(typedValue.data)
+                // Fallback to windowBackground
+                theme.resolveAttribute(android.R.attr.windowBackground, typedValue, true)
+                if (typedValue.resourceId != 0) {
+                    window.setBackgroundDrawableResource(typedValue.resourceId)
+                } else {
+                    window.decorView.setBackgroundColor(typedValue.data)
+                }
             }
         }
     }

@@ -8,6 +8,39 @@
         <item name="android:enforceNavigationBarContrast">false</item>
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
-        <!-- <item name="colorPrimary">@color/my_light_primary</item> -->
+        <!-- Primary Brand Colors -->
+        <item name="colorPrimary">#424242</item>
+        <item name="colorOnPrimary">#FFFFFF</item>
+        <item name="colorPrimaryContainer">#E0E0E0</item>
+        <item name="colorOnPrimaryContainer">#121212</item>
+
+        <!-- Secondary (Accents) -->
+        <item name="colorSecondary">#616161</item>
+        <item name="colorOnSecondary">#FFFFFF</item>
+        <item name="colorSecondaryContainer">#EEEEEE</item>
+        <item name="colorOnSecondaryContainer">#121212</item>
+
+        <!-- Tertiary -->
+        <item name="colorTertiary">#757575</item>
+        <item name="colorOnTertiary">#FFFFFF</item>
+        <item name="colorTertiaryContainer">#F5F5F5</item>
+        <item name="colorOnTertiaryContainer">#121212</item>
+
+        <!-- Surface & Background -->
+        <item name="colorSurface">#FFFFFF</item>
+        <item name="colorOnSurface">#121212</item>
+        <item name="colorSurfaceVariant">#EEEEEE</item>
+        <item name="colorOnSurfaceVariant">#616161</item>
+        <item name="android:colorBackground">#FFFFFF</item>
+
+        <!-- Outline -->
+        <item name="colorOutline">#757575</item>
+        <item name="colorOutlineVariant">#E0E0E0</item>
+
+        <!-- Inverse -->
+        <item name="colorSurfaceInverse">#121212</item>
+        <item name="colorOnSurfaceInverse">#FFFFFF</item>
+        <item name="colorPrimaryInverse">#E0E0E0</item>
+
     </style>
 </resources>

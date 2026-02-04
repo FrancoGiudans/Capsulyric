@@ -656,8 +656,8 @@ class LyricCapsuleHandler(
         private const val CHANNEL_ID = "lyric_capsule_channel"
         private const val SCROLL_STEP_DELAY = 1800L  // Slower scroll: 1.8s per update (was 1s)
 
-        // Colors for progress bar
-        private const val COLOR_PRIMARY = 0xFF6750A4.toInt()   // Material Purple
-        private const val COLOR_TERTIARY = 0xFF7D5260.toInt() // Material Tertiary
+        // Colors for progress bar (Grayscale by default)
+        private const val COLOR_PRIMARY = 0xFF757575.toInt()   // Grey 600
+        private const val COLOR_TERTIARY = 0xFFBDBDBD.toInt() // Grey 400
     }
 }
