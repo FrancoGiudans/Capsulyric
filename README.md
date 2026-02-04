@@ -1,4 +1,4 @@
-# Capsulyric 🏝️
+# Capsulyric
 
 [![Latest Release](https://img.shields.io/github/v/release/FrancoGiudans/Capsulyric?include_prereleases&style=flat-square&label=Latest&color=orange)](https://github.com/FrancoGiudans/Capsulyric/releases/latest)
 
@@ -9,7 +9,7 @@
 
 ---
 
-## 📱 Compatibility (兼容性)
+## Compatibility (兼容性)
 
 | Component | Requirements |
 | :--- | :--- |
@@ -19,13 +19,13 @@
 
 ---
 
-## ⚙️ Working Modes (工作模式)
+## Working Modes (工作模式)
 
-### 🚀 Mode 1: LSPosed (Recommended)
+### Mode 1: LSPosed (Recommended)
 **Requirement**: [SuperLyric](https://github.com/HChenX/SuperLyric) installed and activated.
 > 要求安装并激活 SuperLyric。支持所有 SuperLyric 适配的音乐应用。
 
-### 🛡️ Mode 2: 0-Hook (No Root)
+### Mode 2: 0-Hook (No Root)
 **Supported Apps (默认支持列表)**:
 
 | App | Package Name |
@@ -41,7 +41,7 @@
 
 ---
 
-## 🛡️ Privacy & Disclaimer (隐私与免责)
+## Privacy & Disclaimer (隐私与免责)
 
 * **Local Only**: No internet permission. No data transmission.
 * **Safe**: Zero hooking mechanisms in the app itself.
@@ -50,7 +50,7 @@
 
 ---
 
-## 🛠️ Build (构建)
+## Build (构建)
 
 ```bash
 git clone https://github.com/FrancoGiudans/Capsulyric.git
@@ -60,7 +60,7 @@ cd Capsulyric
 
 ---
 
-## 📜 开源协议 / License
+## 开源协议 / License
 
 本项目基于 [GPL-3.0](LICENSE) 协议开源。
 
@@ -68,7 +68,7 @@ cd Capsulyric
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 
-## 🤝 Credits (致谢)
+## Credits (致谢)
 
 * [SuperLyric](https://github.com/HChenX/SuperLyric) (GPL-3.0)
 * [SuperLyricAPI](https://github.com/HChenX/SuperLyricApi) (LGPL-2.1)
