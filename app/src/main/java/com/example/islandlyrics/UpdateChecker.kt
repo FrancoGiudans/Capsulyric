@@ -20,13 +20,19 @@ object UpdateChecker {
     private const val KEY_IGNORED_VERSION = "ignored_update_version"
     private const val KEY_AUTO_UPDATE = "auto_check_updates"
     private const val KEY_LAST_CHECK = "last_update_check_time"
+    private const val KEY_PRERELEASE_UPDATES = "allow_prerelease_updates"
 
     data class ReleaseInfo(
         val tagName: String,        // e.g., "v1.0_C25"
         val name: String,            // Release title
         val body: String,            // Changelog (Markdown)
         val htmlUrl: String,         // GitHub release page URL
-        val publishedAt: String      // ISO 8601 timestamp
+        val tagName: String,        // e.g., "v1.0_C25"
+        val name: String,            // Release title
+        val body: String,            // Changelog (Markdown)
+        val htmlUrl: String,         // GitHub release page URL
+        val publishedAt: String,      // ISO 8601 timestamp
+        val prerelease: Boolean = false
     )
 
     /**
@@ -43,6 +49,20 @@ object UpdateChecker {
     fun setAutoUpdateEnabled(context: Context, enabled: Boolean) {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         prefs.edit().putBoolean(KEY_AUTO_UPDATE, enabled).apply()
+    /**
+     * Check if prerelease updates are enabled.
+     */
+    fun isPrereleaseEnabled(context: Context): Boolean {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        return prefs.getBoolean(KEY_PRERELEASE_UPDATES, false)
+    }
+
+    /**
+     * Set prerelease update preference.
+     */
+    fun setPrereleaseEnabled(context: Context, enabled: Boolean) {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        prefs.edit().putBoolean(KEY_PRERELEASE_UPDATES, enabled).apply()
     }
 
     /**
@@ -107,7 +127,16 @@ object UpdateChecker {
         try {
             updateLastCheckTime(context)
             
-            val url = URL(GITHUB_API_URL)
+            val includePrerelease = isPrereleaseEnabled(context)
+            // If Prerelease enabled, use LIST API ("releases") to see all. 
+            // If Disabled, use LATEST API ("releases/latest") which GitHub filters for us.
+            val apiUrl = if (includePrerelease) {
+                "https://api.github.com/repos/FrancoGiudans/Capsulyric/releases"
+            } else {
+                GITHUB_API_URL
+            }
+            
+            val url = URL(apiUrl)
             val connection = url.openConnection() as HttpURLConnection
             connection.requestMethod = "GET"
             connection.setRequestProperty("Accept", "application/vnd.github.v3+json")
@@ -116,35 +145,49 @@ object UpdateChecker {
 
             if (connection.responseCode == 200) {
                 val response = connection.inputStream.bufferedReader().use { it.readText() }
-                val json = JSONObject(response)
-
-                val release = ReleaseInfo(
-                    tagName = json.getString("tag_name"),
-                    name = json.getString("name"),
-                    body = json.getString("body"),
-                    htmlUrl = json.getString("html_url"),
-                    publishedAt = json.getString("published_at")
-                )
-
-                Log.d(TAG, "Latest release: ${release.tagName}")
-
-                // Compare versions
-                val currentVersion = BuildConfig.VERSION_NAME
-                val remoteVersion = release.tagName.removePrefix("v")
-
-                if (compareVersions(remoteVersion, currentVersion) > 0) {
-                    // Check if this version is ignored
-                    val ignoredVersion = getIgnoredVersion(context)
-                    if (ignoredVersion != null && release.tagName == ignoredVersion) {
-                        Log.d(TAG, "Update available but ignored: ${release.tagName}")
-                        return@withContext null
+                
+                var validReleases = emptyList<ReleaseInfo>()
+                
+                if (includePrerelease) {
+                    // Parse ARRAY
+                    val jsonArray = org.json.JSONArray(response)
+                    val list = mutableListOf<ReleaseInfo>()
+                    for (i in 0 until jsonArray.length()) {
+                        val json = jsonArray.getJSONObject(i)
+                        list.add(parseRelease(json))
                     }
-                    
-                    Log.d(TAG, "Update available: $remoteVersion > $currentVersion")
-                    return@withContext release
+                    validReleases = list
                 } else {
-                    Log.d(TAG, "No update available (current: $currentVersion, remote: $remoteVersion)")
+                    // Parse OBJECT
+                    val json = JSONObject(response)
+                    validReleases = listOf(parseRelease(json))
                 }
+
+                // Find the newest version that is > current
+                val currentVersion = BuildConfig.VERSION_NAME
+                
+                // Sort by version descending (assuming API returns chronological, but safer to sort or just pick first valid)
+                // GitHub API returns reverse chronological (newest first). 
+                // We verify each until we find one that is an upgrade.
+                
+                for (release in validReleases) {
+                    val remoteVersion = release.tagName.removePrefix("v")
+                    
+                    if (compareVersions(remoteVersion, currentVersion) > 0) {
+                        // Check if ignored
+                        val ignoredVersion = getIgnoredVersion(context)
+                        if (ignoredVersion != null && release.tagName == ignoredVersion) {
+                            Log.d(TAG, "Skipping ignored version: ${release.tagName}")
+                            continue
+                        }
+                        
+                        Log.d(TAG, "Update available: ${release.tagName} (Prerelease: ${release.prerelease})")
+                        return@withContext release
+                    }
+                }
+                
+                Log.d(TAG, "No suitable updates found.")
+                
             } else {
                 Log.e(TAG, "GitHub API error: ${connection.responseCode}")
             }
@@ -155,6 +198,17 @@ object UpdateChecker {
             Log.e(TAG, "Failed to check for updates", e)
             null
         }
+    }
+
+    private fun parseRelease(json: JSONObject): ReleaseInfo {
+        return ReleaseInfo(
+            tagName = json.getString("tag_name"),
+            name = json.getString("name"),
+            body = json.getString("body"),
+            htmlUrl = json.getString("html_url"),
+            publishedAt = json.getString("published_at"),
+            prerelease = json.optBoolean("prerelease", false)
+        )
     }
 
     /**

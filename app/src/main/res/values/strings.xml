@@ -101,6 +101,10 @@
     <string name="update_check_failed">Failed to check for updates</string>
     <string name="settings_auto_update">Auto-check for updates</string>
     <string name="settings_auto_update_desc">Check for new versions on app launch</string>
+    <string name="settings_prerelease_update">Receive Prerelease Updates</string>
+    <string name="settings_prerelease_update_desc">Check for Alpha/Beta versions</string>
+    <string name="dialog_prerelease_warning_title">Enable Prerelease Updates?</string>
+    <string name="dialog_prerelease_warning_message">Prerelease versions (Alpha/Beta) may contain bugs and are not suitable for daily use.  Are you sure you want to receive these updates?</string>
     
     <!-- Main Activity -->
     <string name="main_service_status">🔴 Service Status: Unknown</string>

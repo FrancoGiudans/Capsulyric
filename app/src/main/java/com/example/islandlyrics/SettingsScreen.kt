@@ -244,6 +244,46 @@ fun SettingsScreen(
                     }
                 )
 
+                // Prerelease Updates
+                var prereleaseEnabled by remember { mutableStateOf(UpdateChecker.isPrereleaseEnabled(context)) }
+                var showPrereleaseDialog by remember { mutableStateOf(false) }
+
+                SettingsSwitchItem(
+                    title = stringResource(R.string.settings_prerelease_update),
+                    subtitle = stringResource(R.string.settings_prerelease_update_desc),
+                    checked = prereleaseEnabled,
+                    onCheckedChange = { checked ->
+                        if (checked) {
+                            showPrereleaseDialog = true
+                        } else {
+                            prereleaseEnabled = false
+                            UpdateChecker.setPrereleaseEnabled(context, false)
+                        }
+                    }
+                )
+
+                if (showPrereleaseDialog) {
+                    AlertDialog(
+                        onDismissRequest = { showPrereleaseDialog = false },
+                        title = { Text(stringResource(R.string.dialog_prerelease_warning_title)) },
+                        text = { Text(stringResource(R.string.dialog_prerelease_warning_message)) },
+                        confirmButton = {
+                            TextButton(onClick = {
+                                prereleaseEnabled = true
+                                UpdateChecker.setPrereleaseEnabled(context, true)
+                                showPrereleaseDialog = false
+                            }) {
+                                Text(stringResource(android.R.string.ok))
+                            }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = { showPrereleaseDialog = false }) {
+                                Text(stringResource(android.R.string.cancel))
+                            }
+                        }
+                    )
+                }
+
                 SettingsActionItem(
                     title = "Ignore Battery Optimization",
                     icon = R.drawable.ic_music_note,

@@ -102,6 +102,7 @@
     <string name="settings_auto_update_desc">启动应用时检查新版本</string>
 
     <!-- Main Activity -->
+    <string name="dialog_prerelease_warning_message">预发布版本可能存在严重问题，不适合日常使用。您确定要接收这些更新吗？</string>
     <string name="main_service_status">🔴 服务状态: 未知</string>
     <string name="main_system_api_status">系统与 API 状态 (API 36)</string>
     <string name="main_permission_check">权限检查: 检测中...</string>
@@ -111,4 +112,7 @@
     <string name="main_whitelist_title">已添加应用</string>
     <string name="main_add_package">添加应用包名</string>
     <string name="settings_dynamic_icon">将左侧图标设为播放信息（测试）</string>
+    <string name="settings_prerelease_update">接收预发布版本</string>
+    <string name="settings_prerelease_update_desc">检查测试版本更新（不是CI自动编译版本）</string>
+    <string name="dialog_prerelease_warning_title">确认接收预发布版本？</string>
 </resources>
