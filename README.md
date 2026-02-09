@@ -1,11 +1,15 @@
-# Capsulyric 🏝️
+# Capsulyric
+
+[![Latest Release](https://img.shields.io/github/v/release/FrancoGiudans/Capsulyric?include_prereleases&style=flat-square&label=Latest&color=orange)](https://github.com/FrancoGiudans/Capsulyric/releases/latest)
+
+[![License](https://img.shields.io/github/license/FrancoGiudans/Capsulyric?style=flat-square&color=blue)](LICENSE)
 
 > **Provides status bar lyrics based on Live Update.**
 > **提供基于 Live Update 机制的状态栏歌词。**
 
 ---
 
-## 📱 Compatibility (兼容性)
+## Compatibility (兼容性)
 
 | Component | Requirements |
 | :--- | :--- |
@@ -15,17 +19,17 @@
 
 ---
 
-## ⚙️ Working Modes (工作模式)
+## Working Modes (工作模式)
 
-### 🚀 Mode 1: LSPosed (Recommended)
+### Mode 1: LSPosed (Recommended)
 **Requirement**: [SuperLyric](https://github.com/HChenX/SuperLyric) installed and activated.
 > 要求安装并激活 SuperLyric。支持所有 SuperLyric 适配的音乐应用。
 
-### 🛡️ Mode 2: 0-Hook (No Root)
+### Mode 2: 0-Hook (No Root)
 **Supported Apps (默认支持列表)**:
 
-| App | Package Name | Setup (设置) |
-| :--- | :--- | :--- |
+| App | Package Name |
+| :--- | :--- |
 | **QQ Music**<br>(QQ音乐) | `com.tencent.qqmusic` |
 | **NetEase Music**<br>(网易云音乐) | `com.netease.cloudmusic` | 
 | **Xiaomi Music**<br>(小米音乐) | `com.miui.player` | 
@@ -37,7 +41,7 @@
 
 ---
 
-## 🛡️ Privacy & Disclaimer (隐私与免责)
+## Privacy & Disclaimer (隐私与免责)
 
 * **Local Only**: No internet permission. No data transmission.
 * **Safe**: Zero hooking mechanisms in the app itself.
@@ -46,17 +50,25 @@
 
 ---
 
-## 🛠️ Build (构建)
+## Build (构建)
 
 ```bash
-git clone https://github.com/YourRepo/IslandLyrics.git
-cd IslandLyrics
+git clone https://github.com/FrancoGiudans/Capsulyric.git
+cd Capsulyric
 ./gradlew assembleDebug
 ```
 
 ---
 
-## 🤝 Credits (致谢)
+## 开源协议 / License
+
+本项目基于 [GPL-3.0](LICENSE) 协议开源。
+
+这意味着你可以自由地使用、修改和分发本项目的代码，但**如果你分发了修改后的版本，你也必须使用 GPL-3.0 协议开源**。
+
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+
+## Credits (致谢)
 
 * [SuperLyric](https://github.com/HChenX/SuperLyric) (GPL-3.0)
 * [SuperLyricAPI](https://github.com/HChenX/SuperLyricApi) (LGPL-2.1)
