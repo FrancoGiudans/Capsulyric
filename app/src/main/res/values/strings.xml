@@ -85,6 +85,13 @@
     <string name="parser_separator_custom">Custom</string>
     <string name="parser_order_artist_title">Artist-Title</string>
     <string name="parser_order_title_artist">Title-Artist</string>
+    <string name="parser_lyric_settings">Lyric Settings</string>
+    
+    <!-- Online Lyrics Settings -->
+    <string name="settings_use_online_lyrics">Use Online Lyrics API</string>
+    <string name="settings_use_online_lyrics_desc">Fetch timestamped lyrics from multiple online sources (Kugou/Netease/LrcApi)</string>
+    <string name="settings_use_superlyric_api">Use SuperLyric API</string>
+    <string name="settings_use_superlyric_api_desc">(Reserved) Enhanced lyric API integration</string>
 
     <!-- About & Update Checker -->
     <string name="about_title">About</string>
@@ -115,4 +122,13 @@
     <string name="main_open_settings">Open Promoted Settings</string>
     <string name="main_whitelist_title">Whitelisted Apps</string>
     <string name="main_add_package">Add Package</string>
+    
+    <!-- Dynamic Icon Style Settings -->
+    <string name="settings_icon_style">Icon Style</string>
+    <string name="icon_style_classic">Classic</string>
+    <string name="icon_style_classic_desc">Scrolling text with song and artist</string>
+    <string name="icon_style_advanced">Advanced</string>
+    <string name="icon_style_advanced_desc">Dual-line layout with album art</string>
+    <string name="dialog_icon_style_title">Select Icon Style</string>
+
 </resources>

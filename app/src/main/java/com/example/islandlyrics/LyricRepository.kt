@@ -36,6 +36,16 @@ class LyricRepository private constructor() {
     val liveLyric = MutableLiveData<LyricInfo?>()
     val liveProgress = MutableLiveData<PlaybackProgress?>()
     val liveAlbumArt = MutableLiveData<Bitmap?>()
+    
+    // Parsed lyrics from online sources (for syllable-based scrolling)
+    data class ParsedLyricsInfo(
+        val lines: List<OnlineLyricFetcher.LyricLine>,
+        val hasSyllable: Boolean
+    )
+    val liveParsedLyrics = MutableLiveData<ParsedLyricsInfo?>()
+    
+    // Valid timing-rich lyric line for the current position
+    val liveCurrentLine = MutableLiveData<OnlineLyricFetcher.LyricLine?>()
 
     // Track previous song to detect changes
     private var lastTrackId: String? = null
@@ -70,6 +80,16 @@ class LyricRepository private constructor() {
 
     fun updateAlbumArt(bitmap: Bitmap?) {
         liveAlbumArt.postValue(bitmap)
+    }
+    
+    fun updateParsedLyrics(lines: List<OnlineLyricFetcher.LyricLine>, hasSyllable: Boolean) {
+        liveParsedLyrics.postValue(ParsedLyricsInfo(lines, hasSyllable))
+        AppLogger.getInstance().log("Repo", "📝 Parsed lyrics updated: ${lines.size} lines, syllable: $hasSyllable")
+    }
+    
+    fun updateCurrentLine(line: OnlineLyricFetcher.LyricLine?) {
+        // Atomic update for timing-critical components
+        liveCurrentLine.postValue(line)
     }
 
     companion object {

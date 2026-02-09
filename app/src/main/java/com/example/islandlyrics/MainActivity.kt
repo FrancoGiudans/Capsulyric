@@ -139,6 +139,10 @@ class MainActivity : BaseActivity() {
         val cvSettings = findViewById<View>(R.id.cv_settings)
         cvSettings?.setOnClickListener { startActivity(Intent(this, SettingsActivity::class.java)) }
 
+        // Debug button
+        val cvDebug = findViewById<View>(R.id.cv_debug)
+        cvDebug?.setOnClickListener { startActivity(Intent(this, DebugLyricActivity::class.java)) }
+
         // Open Promoted Settings
         btnOpenPromotedSettings.setOnClickListener {
             try {
@@ -189,6 +193,18 @@ class MainActivity : BaseActivity() {
                 setCardState(true, "Active: $sourceName", R.color.status_active)
             } else {
                 setCardState(true, "Service Ready (Idle)", R.color.status_active) // Or distinct color?
+            }
+            
+            // Check for Service Disconnection despite permission
+            if (!MediaMonitorService.isConnected) {
+                setCardState(false, "Service Disconnected\nTap to Reconnect", R.color.status_inactive)
+                cardStatus.setOnClickListener {
+                     MediaMonitorService.requestRebind(this)
+                     Toast.makeText(this, "Requesting Rebind...", Toast.LENGTH_SHORT).show()
+                }
+            } else {
+                // Reset click listener to nothing (or just disable it)
+                 cardStatus.setOnClickListener(null)
             }
         }
     }
@@ -315,6 +331,45 @@ class MainActivity : BaseActivity() {
         super.onResume()
         updateStatusCardState()
         checkApiStatusForDashboard()
+        
+        // DIAGNOSTIC: Check actual permission state
+        val listenerString = Settings.Secure.getString(contentResolver, "enabled_notification_listeners")
+        val isPermissionGranted = listenerString?.contains(packageName) == true
+        val serviceConnected = MediaMonitorService.isConnected
+        
+        AppLogger.getInstance().log("MainActivity", "=== Service Status ===")
+        AppLogger.getInstance().log("MainActivity", "Permission Granted: $isPermissionGranted")
+        AppLogger.getInstance().log("MainActivity", "Service Connected: $serviceConnected")
+        AppLogger.getInstance().log("MainActivity", "Enabled Listeners: $listenerString")
+        
+        // ENHANCED: Auto-Rebind Check with detailed logging
+        if (isPermissionGranted && !serviceConnected) {
+            AppLogger.getInstance().log("MainActivity", "⚠️ Permission OK but service disconnected - attempting rebind")
+            MediaMonitorService.requestRebind(this)
+            
+            // Retry after 500ms if still disconnected
+            handler.postDelayed({
+                if (!MediaMonitorService.isConnected) {
+                    AppLogger.getInstance().log("MainActivity", "⚠️ Second rebind attempt (still disconnected)")
+                    MediaMonitorService.requestRebind(this)
+                    
+                    // Final check after 1 second
+                    handler.postDelayed({
+                        if (!MediaMonitorService.isConnected) {
+                            AppLogger.getInstance().log("MainActivity", "❌ REBIND FAILED - Manual intervention may be needed")
+                        } else {
+                            AppLogger.getInstance().log("MainActivity", "✅ Service connected after retry")
+                        }
+                    }, 1000)
+                } else {
+                    AppLogger.getInstance().log("MainActivity", "✅ Service connected after first retry")
+                }
+            }, 500)
+        } else if (!isPermissionGranted) {
+            AppLogger.getInstance().log("MainActivity", "❌ Notification Listener Permission NOT granted!")
+        } else {
+            AppLogger.getInstance().log("MainActivity", "✅ Service already connected")
+        }
 
         checkApiStatusForDashboard()
 

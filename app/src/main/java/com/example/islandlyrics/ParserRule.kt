@@ -16,7 +16,11 @@ data class ParserRule(
     val enabled: Boolean = true,
     val usesCarProtocol: Boolean = true,
     val separatorPattern: String = "-",  // Default: tight hyphen
-    val fieldOrder: FieldOrder = FieldOrder.ARTIST_TITLE
+    val fieldOrder: FieldOrder = FieldOrder.ARTIST_TITLE,
+    
+    // Lyric source settings (per-app)
+    val useOnlineLyrics: Boolean = false,      // Whether to fetch lyrics from online APIs
+    val useSuperLyricApi: Boolean = true       // Whether to use SuperLyric API callbacks
 ) : Comparable<ParserRule> {
     override fun compareTo(other: ParserRule): Int {
         return packageName.compareTo(other.packageName)

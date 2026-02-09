@@ -80,6 +80,8 @@ class ParserRuleActivity : BaseActivity() {
         val switchCarProtocol = dialogView.findViewById<MaterialSwitch>(R.id.switch_car_protocol)
         val spinnerSeparator = dialogView.findViewById<Spinner>(R.id.spinner_separator)
         val spinnerFieldOrder = dialogView.findViewById<Spinner>(R.id.spinner_field_order)
+        val switchUseSuperLyricApi = dialogView.findViewById<MaterialSwitch>(R.id.switch_use_superlyric_api)
+        val switchUseOnlineLyrics = dialogView.findViewById<MaterialSwitch>(R.id.switch_use_online_lyrics)
 
         // Setup Separator Spinner
         val separators = listOf("-", " - ", " | ")
@@ -110,8 +112,12 @@ class ParserRuleActivity : BaseActivity() {
             switchCarProtocol.isChecked = existingRule.usesCarProtocol
             spinnerSeparator.setSelection(separators.indexOf(existingRule.separatorPattern).coerceAtLeast(0))
             spinnerFieldOrder.setSelection(fieldOrders.indexOf(existingRule.fieldOrder).coerceAtLeast(0))
+            switchUseSuperLyricApi.isChecked = existingRule.useSuperLyricApi
+            switchUseOnlineLyrics.isChecked = existingRule.useOnlineLyrics
         } else {
             switchCarProtocol.isChecked = true
+            switchUseSuperLyricApi.isChecked = true  // Default: SuperLyric enabled
+            switchUseOnlineLyrics.isChecked = false  // Default: Online lyrics disabled
         }
 
         com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
@@ -135,7 +141,9 @@ class ParserRuleActivity : BaseActivity() {
                     enabled = existingRule?.enabled ?: true,
                     usesCarProtocol = switchCarProtocol.isChecked,
                     separatorPattern = selectedSeparator,
-                    fieldOrder = selectedFieldOrder
+                    fieldOrder = selectedFieldOrder,
+                    useSuperLyricApi = switchUseSuperLyricApi.isChecked,
+                    useOnlineLyrics = switchUseOnlineLyrics.isChecked
                 )
 
                 if (existingRule == null) {

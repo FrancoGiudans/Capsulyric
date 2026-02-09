@@ -26,6 +26,29 @@ class AboutActivity : BaseActivity() {
         tvVersion.text = BuildConfig.VERSION_NAME
         tvBuild.text = BuildConfig.VERSION_CODE.toString()
         tvCommit.text = BuildConfig.GIT_COMMIT_HASH
+        
+        // Setup hidden log trigger (7 clicks)
+        var commitClickCount = 0
+        var lastCommitClickTime = 0L
+        
+        tvCommit.setOnClickListener {
+            val now = System.currentTimeMillis()
+            if (now - lastCommitClickTime > 2000) {
+                commitClickCount = 0
+            }
+            lastCommitClickTime = now
+            commitClickCount++
+            
+            if (commitClickCount == 7) {
+                commitClickCount = 0
+                val logger = AppLogger.getInstance()
+                val newState = !logger.isLogEnabled
+                logger.enableLogging(newState)
+                
+                val status = if (newState) "Enabled" else "Disabled"
+                android.widget.Toast.makeText(this, "Debug Logging $status", android.widget.Toast.LENGTH_SHORT).show()
+            }
+        }
 
         // Check for updates button
         val btnCheckUpdate = findViewById<MaterialButton>(R.id.btn_check_update)

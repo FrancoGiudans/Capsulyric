@@ -84,6 +84,13 @@
     <string name="parser_separator_custom">自定义</string>
     <string name="parser_order_artist_title">歌手-歌名</string>
     <string name="parser_order_title_artist">歌名-歌手</string>
+    <string name="parser_lyric_settings">歌词设置</string>
+    
+    <!-- 在线歌词设置 -->
+    <string name="settings_use_online_lyrics">使用在线歌词 API</string>
+    <string name="settings_use_online_lyrics_desc">从多个在线源(酷狗/网易/LrcApi)获取带时间轴的歌词</string>
+    <string name="settings_use_superlyric_api">使用 SuperLyric API</string>
+    <string name="settings_use_superlyric_api_desc">(预留) 增强歌词API集成</string>
 
     <!-- 关于 & 更新检测 -->
     <string name="about_title">关于</string>
@@ -115,4 +122,13 @@
     <string name="settings_prerelease_update">接收预发布版本</string>
     <string name="settings_prerelease_update_desc">检查测试版本更新（不是CI自动编译版本）</string>
     <string name="dialog_prerelease_warning_title">确认接收预发布版本？</string>
+    
+    <!-- 动态图标样式设置 -->
+    <string name="settings_icon_style">左侧图标样式</string>
+    <string name="icon_style_classic">经典样式</string>
+    <string name="icon_style_classic_desc">歌名-歌手滚动显示</string>
+    <string name="icon_style_advanced">高级样式</string>
+    <string name="icon_style_advanced_desc">专辑封面+双行布局</string>
+    <string name="dialog_icon_style_title">设置左侧图标样式</string>
+
 </resources>

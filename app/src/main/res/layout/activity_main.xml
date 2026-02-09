@@ -305,5 +305,31 @@
                 android:paddingEnd="24dp"/>
         </com.google.android.material.card.MaterialCardView>
 
+        <!-- Debug Button (Temporary) -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/cv_debug"
+            android:layout_width="match_parent"
+            android:layout_height="64dp"
+            android:layout_marginTop="8dp"
+            app:cardCornerRadius="16dp"
+            app:cardElevation="0dp"
+            style="@style/Widget.Material3.CardView.Outlined"
+            app:cardBackgroundColor="@android:color/transparent"
+            app:strokeColor="?attr/colorOutline"
+            app:strokeWidth="1dp"
+            android:clickable="true"
+            android:focusable="true">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:text="调试歌词API"
+                android:textSize="20sp"
+                android:textColor="?attr/colorOnSurface"
+                android:gravity="center"
+                android:drawableEnd="@drawable/ic_sync" 
+                android:paddingEnd="24dp"/>
+        </com.google.android.material.card.MaterialCardView>
+
     </LinearLayout>
 </androidx.core.widget.NestedScrollView>

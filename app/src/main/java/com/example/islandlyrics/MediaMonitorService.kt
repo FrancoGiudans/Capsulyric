@@ -42,6 +42,27 @@ class MediaMonitorService : NotificationListenerService() {
         intent.action = "ACTION_STOP"
         startService(intent)
     }
+    
+    // Health check mechanism
+    private val healthCheckRunnable = object : Runnable {
+        override fun run() {
+            // Verify connection is still valid
+            if (isConnected && mediaSessionManager != null && componentName != null) {
+                try {
+                    // Test access - this will throw if permission is revoked
+                    mediaSessionManager?.getActiveSessions(componentName)
+                    AppLogger.getInstance().log(TAG, "Health Check: OK")
+                } catch (e: SecurityException) {
+                    AppLogger.getInstance().log(TAG, "Health Check: FAILED - Permission lost")
+                    isConnected = false
+                    // Request rebind
+                    requestRebind(this@MediaMonitorService)
+                }
+            }
+            // Schedule next check
+            handler.postDelayed(this, 30000) // Every 30 seconds
+        }
+    }
 
     private val prefListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
         if (PREF_PARSER_RULES == key) {
@@ -63,23 +84,60 @@ class MediaMonitorService : NotificationListenerService() {
 
     override fun onListenerConnected() {
         super.onListenerConnected()
-        Log.d(TAG, "onListenerConnected")
+        isConnected = true
+        AppLogger.getInstance().log(TAG, "onListenerConnected - Service binding initiated")
+        
+        // CRITICAL FIX: Ensure SharedPreferences is initialized
+        // This may be called before onCreate() in some rebind scenarios
+        if (prefs == null) {
+            prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+            prefs?.registerOnSharedPreferenceChangeListener(prefListener)
+            AppLogger.getInstance().log(TAG, "SharedPreferences initialized in onListenerConnected")
+        }
+        
+        // CRITICAL FIX: Reload whitelist to ensure it's current
+        // This prevents stale or empty whitelist after service restart
+        loadWhitelist()
+        
         mediaSessionManager = getSystemService(Context.MEDIA_SESSION_SERVICE) as MediaSessionManager
         componentName = ComponentName(this, MediaMonitorService::class.java)
 
         mediaSessionManager?.addOnActiveSessionsChangedListener(sessionsChangedListener, componentName)
 
-        // Initial check
-        try {
-            val controllers = mediaSessionManager?.getActiveSessions(componentName)
-            updateControllers(controllers)
-        } catch (e: SecurityException) {
-             AppLogger.getInstance().log(TAG, "Security Error on Connect: ${e.message}")
-        }
+        // Start health check monitoring
+        handler.postDelayed(healthCheckRunnable, 30000)
+
+        // CRITICAL FIX: Add delayed retry mechanism for getActiveSessions
+        // Permissions may not be fully effective immediately after rebind
+        handler.postDelayed({
+            try {
+                val controllers = mediaSessionManager?.getActiveSessions(componentName)
+                AppLogger.getInstance().log(TAG, "Successfully retrieved ${controllers?.size ?: 0} active sessions")
+                updateControllers(controllers)
+            } catch (e: SecurityException) {
+                AppLogger.getInstance().log(TAG, "Security Error on initial check: ${e.message}")
+                // Retry once after 200ms in case permission is still being granted
+                handler.postDelayed({
+                    try {
+                        val controllers = mediaSessionManager?.getActiveSessions(componentName)
+                        AppLogger.getInstance().log(TAG, "Retry successful: ${controllers?.size ?: 0} sessions")
+                        updateControllers(controllers)
+                    } catch (e2: SecurityException) {
+                        AppLogger.getInstance().log(TAG, "Retry failed: ${e2.message} - Permission may need manual grant")
+                    }
+                }, 200)
+            }
+        }, 100)
     }
 
     override fun onListenerDisconnected() {
         super.onListenerDisconnected()
+        isConnected = false
+        AppLogger.getInstance().log(TAG, "onListenerDisconnected - Service unbound")
+        
+        // Stop health check
+        handler.removeCallbacks(healthCheckRunnable)
+        
         mediaSessionManager?.removeOnActiveSessionsChangedListener(sessionsChangedListener)
         
         // Clean up all callbacks
@@ -388,5 +446,17 @@ class MediaMonitorService : NotificationListenerService() {
         private const val TAG = "MediaMonitorService"
         private const val PREFS_NAME = "IslandLyricsPrefs"
         private const val PREF_PARSER_RULES = "parser_rules_json"
+        
+        var isConnected = false
+        
+        fun requestRebind(context: Context) {
+            val componentName = ComponentName(context, MediaMonitorService::class.java)
+            Log.d(TAG, "Requesting rebind for $componentName")
+            try {
+                NotificationListenerService.requestRebind(componentName)
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to request rebind", e)
+            }
+        }
     }
 }

@@ -55,7 +55,9 @@ object ParserRuleHelper {
                             enabled = obj.optBoolean("enabled", true),
                             usesCarProtocol = obj.optBoolean("usesCarProtocol", true),
                             separatorPattern = obj.optString("separator", "-"),
-                            fieldOrder = FieldOrder.valueOf(obj.optString("fieldOrder", "ARTIST_TITLE"))
+                            fieldOrder = FieldOrder.valueOf(obj.optString("fieldOrder", "ARTIST_TITLE")),
+                            useOnlineLyrics = obj.optBoolean("useOnlineLyrics", false),
+                            useSuperLyricApi = obj.optBoolean("useSuperLyricApi", true)
                         )
                     )
                 }
@@ -90,6 +92,8 @@ object ParserRuleHelper {
                 obj.put("usesCarProtocol", rule.usesCarProtocol)
                 obj.put("separator", rule.separatorPattern)
                 obj.put("fieldOrder", rule.fieldOrder.name)
+                obj.put("useOnlineLyrics", rule.useOnlineLyrics)
+                obj.put("useSuperLyricApi", rule.useSuperLyricApi)
                 array.put(obj)
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -124,5 +128,22 @@ object ParserRuleHelper {
     fun getEnabledPackages(context: Context): Set<String> {
         val rules = loadRules(context)
         return rules.filter { it.enabled }.map { it.packageName }.toSet()
+    }
+    
+    /**
+     * Create a transient default rule for a package that doesn't have one.
+     * Default to: Online Lyrics ENABLED, SuperLyric ENABLED.
+     */
+    fun createDefaultRule(packageName: String): ParserRule {
+        return ParserRule(
+            packageName = packageName,
+            customName = null,
+            enabled = true,
+            usesCarProtocol = true, // Assume car protocol by default as it's common
+            separatorPattern = "-",
+            fieldOrder = FieldOrder.ARTIST_TITLE,
+            useOnlineLyrics = true, // ENABLE ONLINE LYRICS BY DEFAULT
+            useSuperLyricApi = true
+        )
     }
 }

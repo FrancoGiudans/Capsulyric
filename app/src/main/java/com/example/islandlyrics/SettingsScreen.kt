@@ -45,9 +45,11 @@ fun SettingsScreen(
     var pureBlack by remember { mutableStateOf(prefs.getBoolean("theme_pure_black", false)) }
     var dynamicColor by remember { mutableStateOf(prefs.getBoolean("theme_dynamic_color", true)) }
     var dynamicIconEnabled by remember { mutableStateOf(prefs.getBoolean("dynamic_icon_enabled", false)) }
+    var iconStyle by remember { mutableStateOf(prefs.getString("dynamic_icon_style", "classic") ?: "classic") }
     
     // Dialog State
     var showLanguageDialog by remember { mutableStateOf(false) }
+    var showIconStyleDialog by remember { mutableStateOf(false) }
     var showGuideDialog by remember { mutableStateOf(false) }
     var showPrivacyDialog by remember { mutableStateOf(false) }
 
@@ -222,6 +224,19 @@ fun SettingsScreen(
                         prefs.edit().putBoolean("dynamic_icon_enabled", it).apply()
                     }
                 )
+                
+                // Icon Style Selection (only visible when dynamic icon is enabled)
+                if (dynamicIconEnabled) {
+                    val styleDisplayName = when (iconStyle) {
+                        "advanced" -> stringResource(R.string.icon_style_advanced)
+                        else -> stringResource(R.string.icon_style_classic)
+                    }
+                    SettingsTextItem(
+                        title = stringResource(R.string.settings_icon_style),
+                        value = styleDisplayName,
+                        onClick = { showIconStyleDialog = true }
+                    )
+                }
 
                 // --- General ---
                 SettingsSectionHeader(text = stringResource(R.string.settings_general_header), marginTop = 16.dp)
@@ -406,6 +421,18 @@ fun SettingsScreen(
                     }
                 )
             }
+            
+            if (showIconStyleDialog) {
+                IconStyleSelectionDialog(
+                    currentStyle = iconStyle,
+                    onStyleSelected = { style ->
+                        iconStyle = style
+                        prefs.edit().putString("dynamic_icon_style", style).apply()
+                        showIconStyleDialog = false
+                    },
+                    onDismiss = { showIconStyleDialog = false }
+                )
+            }
         }
     }
 }
@@ -447,6 +474,64 @@ fun LanguageSelectionDialog(onDismiss: () -> Unit) {
         }
     )
 }
+
+@Composable
+fun IconStyleSelectionDialog(
+    currentStyle: String,
+    onStyleSelected: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val styles = listOf(
+        "classic" to R.string.icon_style_classic to R.string.icon_style_classic_desc,
+        "advanced" to R.string.icon_style_advanced to R.string.icon_style_advanced_desc
+    )
+    
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.dialog_icon_style_title)) },
+        text = {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                styles.forEach { (styleInfo, descId) ->
+                    val (styleId, nameId) = styleInfo
+                    val isSelected = currentStyle == styleId
+                    
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onStyleSelected(styleId) }
+                            .padding(vertical = 12.dp, horizontal = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(
+                            selected = isSelected,
+                            onClick = { onStyleSelected(styleId) }
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = stringResource(nameId),
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = stringResource(descId),
+                                fontSize = 14.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(android.R.string.ok))
+            }
+        }
+    )
+}
+
 
 @Composable
 fun SettingsSectionHeader(text: String, marginTop: androidx.compose.ui.unit.Dp = 8.dp) {
@@ -499,7 +584,13 @@ fun SettingsSwitchItem(
         }
         Switch(
             checked = checked, 
-            onCheckedChange = { onCheckedChange(it) },
+            onCheckedChange = { 
+                if (onClick != null) {
+                    onClick()
+                } else {
+                    onCheckedChange(it)
+                }
+            },
             enabled = enabled
         )
     }
