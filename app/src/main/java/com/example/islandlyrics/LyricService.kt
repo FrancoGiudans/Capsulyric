@@ -39,6 +39,7 @@ class LyricService : Service() {
     // Online lyric fetcher
     private val onlineLyricFetcher = OnlineLyricFetcher()
     private val serviceScope = CoroutineScope(Dispatchers.Main + Job())
+    private var fetchJob: Job? = null
 
     private val lyricObserver = Observer<LyricRepository.LyricInfo?> { info ->
         if (info != null && info.lyric.isNotBlank()) {
@@ -395,13 +396,26 @@ class LyricService : Service() {
         // The one inside coroutine (added in previous step) might be redundant but okay.
         AppLogger.getInstance().i(TAG, "🚀 PREPARING FETCH: $title - $artist [$pkg]")
         
+        // Cancel any pending fetch to avoid race conditions (e.g. rapid song skipping)
+        fetchJob?.cancel()
+
         // Launch coroutine to fetch lyrics
-        serviceScope.launch {
+        fetchJob = serviceScope.launch {
             try {
                 // Info: Start of fetch is important
                 AppLogger.getInstance().i(TAG, "🚀 STARTING ONLINE FETCH: $title - $artist [$pkg]")
                 
                 val result = onlineLyricFetcher.fetchBestLyrics(title, artist)
+
+                // CONSISTENCY CHECK: Ensure we are still playing the same song
+                val currentMetadata = LyricRepository.getInstance().liveMetadata.value
+                val currentTitle = currentMetadata?.title
+                val currentArtist = currentMetadata?.artist
+                
+                if (currentTitle != title || currentArtist != artist) {
+                    AppLogger.getInstance().i(TAG, "⚠️ Discarding stale lyric result (Song changed during fetch). Expected: $title, Found: $currentTitle")
+                    return@launch
+                }
                 
                 if (result != null && result.parsedLines != null && result.parsedLines.isNotEmpty()) {
                     AppLogger.getInstance().i(TAG, "在线歌词获取成功 [${result.api}] 逐字:${result.hasSyllable}")
@@ -427,7 +441,11 @@ class LyricService : Service() {
                     AppLogger.getInstance().i(TAG, "在线歌词获取失败：无有效结果")
                 }
             } catch (e: Exception) {
-                AppLogger.getInstance().e(TAG, "在线歌词获取异常: ${e.message}")
+                if (e is kotlinx.coroutines.CancellationException) {
+                     AppLogger.getInstance().d(TAG, "Online fetch cancelled (Song changed)")
+                } else {
+                     AppLogger.getInstance().e(TAG, "在线歌词获取异常: ${e.message}")
+                }
             }
         }
     }
