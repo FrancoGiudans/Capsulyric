@@ -108,8 +108,8 @@ class LyricCapsuleHandler(
                     // Check if we are in TIMED mode (fast refresh needed)
                     val currentLine = LyricRepository.getInstance().liveCurrentLine.value
                     if (currentLine != null) {
-                         // Timed Mode: Refresh at 100ms (or sync with progress updates)
-                         mainHandler.postDelayed(this, 100)
+                         // Timed Mode: Refresh at 200ms (reduced from 100ms to avoid island lag)
+                         mainHandler.postDelayed(this, 200)
                     } else {
                          // Adaptive Mode: Use calculated delay
                          mainHandler.postDelayed(this, adaptiveDelay)
@@ -394,11 +394,27 @@ class LyricCapsuleHandler(
         // MODE SELECTION: Syllable > LRC > Weight-Based Fallback
         if (useSyllableScrolling && currentParsedLines != null) {
             // --- SYLLABLE SCROLLING MODE ---
-            val currentIndex = currentParsedLines?.indexOfFirst { 
-                currentPosition >= it.startTime && currentPosition < it.endTime 
-            } ?: -1
+            // Use nearest-line lookup instead of strict range match to prevent capsule disappearance in gaps
+            val lines = currentParsedLines!!
+            var currentIndex = -1
+            // Find the line whose range contains currentPosition (strict match first)
+            for (i in lines.indices) {
+                if (currentPosition >= lines[i].startTime && currentPosition < lines[i].endTime) {
+                    currentIndex = i
+                    break
+                }
+            }
+            // Fallback: if in a gap, find the last line that started before current position
+            if (currentIndex == -1) {
+                for (i in lines.indices.reversed()) {
+                    if (currentPosition >= lines[i].startTime) {
+                        currentIndex = i
+                        break
+                    }
+                }
+            }
             
-            val currentLine = if (currentIndex != -1) currentParsedLines?.get(currentIndex) else null
+            val currentLine = if (currentIndex != -1) lines[currentIndex] else null
             
             if (currentLine != null && currentLine.syllables != null && currentLine.syllables.isNotEmpty()) {
                 // Find sung and unsung portions
@@ -406,22 +422,18 @@ class LyricCapsuleHandler(
                 val unsungSyllables = currentLine.syllables.filter { it.startTime > currentPosition }
                 
                 val sungText = sungSyllables.joinToString("") { it.text }
-                var unsungText = unsungSyllables.joinToString("") { it.text }
+                val unsungText = unsungSyllables.joinToString("") { it.text }
                 
-                // Only look ahead if the WHOLE line is shorter than maxDisplayWeight (Very short line case)
-                // Otherwise, let the sung text fill the window (handled by calculateSyllableWindow)
-                if (calculateWeight(sungText + unsungText) < maxDisplayWeight) {
-                    val nextLine = currentParsedLines?.getOrNull(currentIndex + 1)
-                    if (nextLine != null) {
-                        unsungText += " " + nextLine.text 
-                    }
-                }
+                // No next-line lookahead — strictly display current line only
                 
-                // Use refined syllable window calculation
+                // Use deferred-start syllable window calculation
                 displayLyric = calculateSyllableWindow(sungText, unsungText)
                 scrollState = ScrollState.SCROLLING // Managed by timing
+            } else if (currentLine != null) {
+                // Line exists but no syllable data, show the line text with weight constraint
+                displayLyric = extractByWeight(currentLine.text, 0, maxDisplayWeight)
             } else {
-                // No syllable data for this position, fallback
+                // No line found at all, use last known lyric
                 displayLyric = if (currentLyric.isNotEmpty()) {
                     extractByWeight(currentLyric, 0, maxDisplayWeight)
                 } else ""
@@ -429,32 +441,49 @@ class LyricCapsuleHandler(
             
         } else if (useLrcScrolling && currentParsedLines != null) {
             // --- LRC SCROLLING MODE ---
-            val currentLine = currentParsedLines?.find { 
-                currentPosition >= it.startTime && currentPosition < it.endTime 
+            // Use nearest-line lookup to prevent capsule disappearance in gaps
+            val lines = currentParsedLines!!
+            var foundLine: OnlineLyricFetcher.LyricLine? = null
+            // Strict range match first
+            for (line in lines) {
+                if (currentPosition >= line.startTime && currentPosition < line.endTime) {
+                    foundLine = line
+                    break
+                }
+            }
+            // Fallback: find last line that started before current position
+            if (foundLine == null) {
+                for (i in lines.indices.reversed()) {
+                    if (currentPosition >= lines[i].startTime) {
+                        foundLine = lines[i]
+                        break
+                    }
+                }
             }
             
-            if (currentLine != null) {
-                val lineDuration = currentLine.endTime - currentLine.startTime
+            if (foundLine != null) {
+                val lineDuration = foundLine.endTime - foundLine.startTime
                 val lineProgress = if (lineDuration > 0) {
-                    ((currentPosition - currentLine.startTime).toFloat() / lineDuration.toFloat()).coerceIn(0f, 1f)
+                    ((currentPosition - foundLine.startTime).toFloat() / lineDuration.toFloat()).coerceIn(0f, 1f)
                 } else 0f
                 
                 // Calculate scroll offset based on time progress
-                val totalWeight = calculateWeight(currentLine.text)
+                val totalWeight = calculateWeight(foundLine.text)
                 
                 if (totalWeight <= maxDisplayWeight) {
                     // Line fits completely, no scrolling needed
-                    displayLyric = currentLine.text
+                    displayLyric = foundLine.text
                 } else {
-                    // Scroll proportionally to time
+                    // Deferred-start LRC scrolling: don't scroll in the first 30% of the line
+                    val deferredProgress = ((lineProgress - 0.3f) / 0.7f).coerceIn(0f, 1f)
                     val scrollableWeight = totalWeight - maxDisplayWeight
-                    val targetWeightOffset = (lineProgress * scrollableWeight).toInt()
+                    val targetWeightOffset = (deferredProgress * scrollableWeight).toInt()
                     
-                    displayLyric = extractByWeight(currentLine.text, targetWeightOffset, maxDisplayWeight)
+                    displayLyric = extractByWeight(foundLine.text, targetWeightOffset, maxDisplayWeight)
                 }
                 scrollState = ScrollState.SCROLLING // Managed by timing
             } else {
-                // No line data for this position, fallback
+                // No line found at all, use last known lyric
                 displayLyric = if (currentLyric.isNotEmpty()) {
                     extractByWeight(currentLyric, 0, maxDisplayWeight)
                 } else ""
@@ -725,7 +754,8 @@ class LyricCapsuleHandler(
     
     /**
      * Calculate display window for syllable-based scrolling.
-     * Prioritizes showing sung text + as much unsung text as fits.
+     * Uses DEFERRED-START scrolling: no scroll until sung text reaches threshold,
+     * then scrolls left keeping sung tail + unsung head within maxDisplayWeight.
      */
     private fun calculateSyllableWindow(sung: String, unsung: String): String {
         val sungWeight = calculateWeight(sung)
@@ -737,32 +767,21 @@ class LyricCapsuleHandler(
             return sung + unsung
         }
         
-        // Dynamic Allocation Strategy:
-        // 1. Calculate how much space unsung NEEDS (up to maxDisplayWeight)
-        // 2. Give remaining space to sung (priority to unsung)
+        // DEFERRED-START SCROLLING:
+        // Phase 1: sungWeight < scrollStartThreshold → show from line start, no scroll
+        // Phase 2: sungWeight >= threshold → scroll left, keeping sung tail context
+        val scrollStartThreshold = 8 // Start scrolling after ~4 CJK chars or ~8 Western chars
         
-        val unsungDisplayWeight = minOf(unsungWeight, maxDisplayWeight)
-        val availableForSung = maxDisplayWeight - unsungDisplayWeight
+        val fullText = sung + unsung
         
-        // If we have extra space (because unsung is short), sung can take it!
-        // But we want to keep some sung context generally.
-        // Let's ensure we show at least *some* sung text if possible, but here 
-        // the priority is to FILL the window.
-        
-        val sungDisplay = if (sungWeight > availableForSung) {
-            // Sung is too long for the available slot, take the END of it
-            extractByWeight(sung, sungWeight - availableForSung, availableForSung)
-        } else {
-            sung
+        if (sungWeight < scrollStartThreshold) {
+            // Don't scroll yet, just show from the beginning, strictly within maxDisplayWeight
+            return extractByWeight(fullText, 0, maxDisplayWeight)
         }
         
-        val unsungDisplay = if (unsungWeight > maxDisplayWeight - calculateWeight(sungDisplay)) {
-             extractByWeight(unsung, 0, maxDisplayWeight - calculateWeight(sungDisplay))
-        } else {
-             unsung
-        }
-        
-        return sungDisplay + unsungDisplay
+        // Calculate scroll offset: shift left by how much sung text exceeds threshold
+        val scrollAmount = sungWeight - scrollStartThreshold
+        return extractByWeight(fullText, scrollAmount, maxDisplayWeight)
     }
     
     private fun calculateTimedScroll(text: String, line: OnlineLyricFetcher.LyricLine, currentPos: Long): String {

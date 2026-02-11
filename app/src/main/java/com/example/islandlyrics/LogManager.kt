@@ -16,6 +16,7 @@ import java.util.regex.Pattern
 class LogManager private constructor() {
 
     private var logFile: File? = null
+    private val isDebug = BuildConfig.DEBUG
 
     class LogEntry(val timestamp: String, val level: String, val tag: String, val message: String)
 
@@ -27,6 +28,7 @@ class LogManager private constructor() {
 
     @Synchronized
     fun d(context: Context, tag: String, msg: String) {
+        if (!isDebug) return
         init(context)
         val logLine = String.format("%s D/%s: %s", DATE_FORMAT.format(Date()), tag, msg)
         Log.d(tag, msg)
@@ -35,6 +37,7 @@ class LogManager private constructor() {
 
     @Synchronized
     fun e(context: Context, tag: String, msg: String) {
+        // ERROR level always writes, even in release (for crash tracking)
         init(context)
         val logLine = String.format("%s E/%s: %s", DATE_FORMAT.format(Date()), tag, msg)
         Log.e(tag, msg)
@@ -43,6 +46,7 @@ class LogManager private constructor() {
 
     @Synchronized
     fun w(context: Context, tag: String, msg: String) {
+        if (!isDebug) return
         init(context)
         val logLine = String.format("%s W/%s: %s", DATE_FORMAT.format(Date()), tag, msg)
         Log.w(tag, msg)
@@ -51,6 +55,7 @@ class LogManager private constructor() {
 
     @Synchronized
     fun i(context: Context, tag: String, msg: String) {
+        if (!isDebug) return
         init(context)
         val logLine = String.format("%s I/%s: %s", DATE_FORMAT.format(Date()), tag, msg)
         Log.i(tag, msg)

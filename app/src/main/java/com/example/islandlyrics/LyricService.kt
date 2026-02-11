@@ -198,8 +198,8 @@ class LyricService : Service() {
                      updateCurrentLyricLine(parsedInfo.lines)
                 }
                 
-                // Increase frequency for smoother lyric updates (was 1000)
-                handler.postDelayed(this, 100)
+                // Balanced frequency: 250ms (reduced from 100ms to avoid island lag with visualizerLoop)
+                handler.postDelayed(this, 250)
             } else {
                 AppLogger.getInstance().log(TAG, "⏸️ updateTask stopped (isPlaying=false)")
             }
