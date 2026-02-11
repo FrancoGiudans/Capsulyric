@@ -21,174 +21,19 @@ import com.google.android.material.textfield.TextInputEditText
 
 class ParserRuleActivity : BaseActivity() {
 
-    private lateinit var adapter: ParserRuleAdapter
-    private lateinit var recyclerView: RecyclerView
-    private var ruleList: MutableList<ParserRule> = ArrayList()
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_parser_rule)
-
-        // Fix Insets (Status Bar)
-        val rootView = findViewById<View>(R.id.root_view)
-        rootView?.let {
-            ViewCompat.setOnApplyWindowInsetsListener(it) { v, insets ->
-                val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-                v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
-                insets
-            }
-        }
-
-        // Load Data
-        loadData()
-
-        // Setup RecyclerView
-        recyclerView = findViewById(R.id.recycler_view)
-        recyclerView.layoutManager = LinearLayoutManager(this)
-        adapter = ParserRuleAdapter(this, ruleList) { rule, action ->
-            when (action) {
-                "edit" -> showEditDialog(rule)
-                "delete" -> confirmDelete(rule)
-                "toggle" -> {
-                    saveData()
-                }
-            }
-        }
-        recyclerView.adapter = adapter
-
-        // Add Button
-        findViewById<Button>(R.id.btn_add_rule).setOnClickListener {
-            showEditDialog(null)
-        }
-    }
-
-    private fun loadData() {
-        ruleList.clear()
-        ruleList.addAll(ParserRuleHelper.loadRules(this))
-    }
-
-    private fun saveData() {
-        ParserRuleHelper.saveRules(this, ruleList)
-        AppLogger.getInstance().log("ParserRule", "Rules saved: ${ruleList.size} entries")
-    }
-
-    private fun showEditDialog(existingRule: ParserRule?) {
-        val dialogView = layoutInflater.inflate(R.layout.dialog_edit_parser_rule, null)
         
-        val etAppName = dialogView.findViewById<TextInputEditText>(R.id.et_app_name)
-        val etPackageName = dialogView.findViewById<TextInputEditText>(R.id.et_package_name)
-        val switchCarProtocol = dialogView.findViewById<MaterialSwitch>(R.id.switch_car_protocol)
-        val spinnerSeparator = dialogView.findViewById<Spinner>(R.id.spinner_separator)
-        val spinnerFieldOrder = dialogView.findViewById<Spinner>(R.id.spinner_field_order)
-        val switchUseSuperLyricApi = dialogView.findViewById<MaterialSwitch>(R.id.switch_use_superlyric_api)
-        val switchUseOnlineLyrics = dialogView.findViewById<MaterialSwitch>(R.id.switch_use_online_lyrics)
-
-        // Setup Separator Spinner
-        val separators = listOf("-", " - ", " | ")
-        val separatorLabels = listOf(
-            getString(R.string.parser_separator_tight),
-            getString(R.string.parser_separator_spaced),
-            getString(R.string.parser_separator_pipe)
-        )
-        spinnerSeparator.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, separatorLabels).apply {
-            setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
-        }
-
-        // Setup Field Order Spinner
-        val fieldOrders = listOf(FieldOrder.ARTIST_TITLE, FieldOrder.TITLE_ARTIST)
-        val fieldOrderLabels = listOf(
-            getString(R.string.parser_order_artist_title),
-            getString(R.string.parser_order_title_artist)
-        )
-        spinnerFieldOrder.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, fieldOrderLabels).apply {
-            setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
-        }
-
-        // Populate existing data
-        if (existingRule != null) {
-            etAppName.setText(existingRule.customName)
-            etPackageName.setText(existingRule.packageName)
-            etPackageName.isEnabled = false  // Can't change package name
-            switchCarProtocol.isChecked = existingRule.usesCarProtocol
-            spinnerSeparator.setSelection(separators.indexOf(existingRule.separatorPattern).coerceAtLeast(0))
-            spinnerFieldOrder.setSelection(fieldOrders.indexOf(existingRule.fieldOrder).coerceAtLeast(0))
-            switchUseSuperLyricApi.isChecked = existingRule.useSuperLyricApi
-            switchUseOnlineLyrics.isChecked = existingRule.useOnlineLyrics
-        } else {
-            switchCarProtocol.isChecked = true
-            switchUseSuperLyricApi.isChecked = true  // Default: SuperLyric enabled
-            switchUseOnlineLyrics.isChecked = false  // Default: Online lyrics disabled
-        }
-
-        com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
-            .setTitle(if (existingRule == null) R.string.parser_add_rule else R.string.parser_edit)
-            .setView(dialogView)
-            .setPositiveButton(android.R.string.ok) { _, _ ->
-                val pkg = etPackageName.text.toString().trim()
-                val name = etAppName.text.toString().trim().ifEmpty { null }
-                
-                if (pkg.isEmpty()) {
-                    Toast.makeText(this, "Package name cannot be empty", Toast.LENGTH_SHORT).show()
-                    return@setPositiveButton
-                }
-
-                val selectedSeparator = separators[spinnerSeparator.selectedItemPosition]
-                val selectedFieldOrder = fieldOrders[spinnerFieldOrder.selectedItemPosition]
-
-                val newRule = ParserRule(
-                    packageName = pkg,
-                    customName = name,
-                    enabled = existingRule?.enabled ?: true,
-                    usesCarProtocol = switchCarProtocol.isChecked,
-                    separatorPattern = selectedSeparator,
-                    fieldOrder = selectedFieldOrder,
-                    useSuperLyricApi = switchUseSuperLyricApi.isChecked,
-                    useOnlineLyrics = switchUseOnlineLyrics.isChecked
+        // Use Compose
+        androidx.activity.compose.setContent {
+            AppTheme {
+                ParserRuleScreen(
+                    onBack = { finish() }
                 )
-
-                if (existingRule == null) {
-                    // Add new
-                    if (ruleList.any { it.packageName == pkg }) {
-                        Toast.makeText(this, "Package already exists", Toast.LENGTH_SHORT).show()
-                    } else {
-                        ruleList.add(newRule)
-                        ruleList.sort()
-                        saveData()
-                        adapter.notifyDataSetChanged()
-                        AppLogger.getInstance().log("ParserRule", "Added: $pkg ($name)")
-                    }
-                } else {
-                    // Update existing
-                    val index = ruleList.indexOf(existingRule)
-                    if (index >= 0) {
-                        ruleList[index] = newRule
-                        saveData()
-                        adapter.notifyItemChanged(index)
-                        AppLogger.getInstance().log("ParserRule", "Updated: $pkg ($name)")
-                    }
-                }
             }
-            .setNegativeButton(R.string.cancel, null)
-            .show()
+        }
     }
 
-    private fun confirmDelete(rule: ParserRule) {
-        com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
-            .setTitle(R.string.parser_delete)
-            .setMessage(getString(R.string.dialog_delete_confirm, rule.customName ?: rule.packageName))
-            .setPositiveButton(android.R.string.ok) { _, _ ->
-                val index = ruleList.indexOf(rule)
-                if (index >= 0) {
-                    ruleList.removeAt(index)
-                    saveData()
-                    adapter.notifyItemRemoved(index)
-                    AppLogger.getInstance().log("ParserRule", "Deleted: ${rule.packageName}")
-                }
-            }
-            .setNegativeButton(R.string.cancel, null)
-            .show()
-    }
-}
 
 // Adapter
 class ParserRuleAdapter(

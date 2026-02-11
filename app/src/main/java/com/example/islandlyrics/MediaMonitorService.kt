@@ -369,17 +369,27 @@ class MediaMonitorService : NotificationListenerService() {
         val rule = ParserRuleHelper.getRuleForPackage(this, pkg)
 
         if (rule != null && rule.usesCarProtocol && rawArtist != null) {
-            // Car protocol mode: Parse artist field to extract title/artist, title field contains lyric
-            AppLogger.getInstance().log("Parser", "⚙️ Applying car protocol rule: separator=[${rule.separatorPattern}], order=${rule.fieldOrder}")
+            // Car protocol mode with SMART DETECTION
+            // Logic: Only assume it's Car Mode (Lyric in Title) if the Artist field actually matches the separator pattern.
             
-            // Parse using configurable rule
-            val (parsedTitle, parsedArtist) = parseWithRule(rawArtist, rule)
+            AppLogger.getInstance().log("Parser", "⚙️ Checking car protocol: separator=[${rule.separatorPattern}] for app [$pkg]")
             
-            if (parsedTitle.isNotEmpty()) {
+            // Try to parse via rule
+            val (parsedTitle, parsedArtist, isSuccess) = parseWithRule(rawArtist, rule)
+            
+            if (isSuccess && parsedTitle.isNotEmpty()) {
+                // Success! It IS in Car Mode
                 finalLyric = rawTitle  // Title field holds lyric
                 finalTitle = parsedTitle
                 finalArtist = parsedArtist
-                AppLogger.getInstance().log("Parser", "✅ Parsed: Title=[$finalTitle], Artist=[$finalArtist]")
+                AppLogger.getInstance().log("Parser", "✅ Smart Match: Treated as Lyric. Title=[$finalTitle], Artist=[$finalArtist]")
+            } else {
+                // Failed to parse (Separator not found)
+                // Fallback to Normal Mode (Assume Bluetooth is off or app is not sending lyrics)
+                AppLogger.getInstance().log("Parser", "⚠️ Separator [${rule.separatorPattern}] NOT found in Artist field [$rawArtist]. Assuming NORMAL MODE (No Lyrics).")
+                finalTitle = rawTitle
+                finalArtist = rawArtist
+                // finalLyric = null
             }
         } else if (rule != null && !rule.usesCarProtocol) {
             // Non-car-protocol mode: Use raw metadata directly (for apps like Kugou, Apple Music)
@@ -410,16 +420,16 @@ class MediaMonitorService : NotificationListenerService() {
      * Parse notification text using configurable separator and field order.
      * @param input Raw text like "Artist-Title" or "Title | Artist"
      * @param rule Parser rule with separator and field order
-     * @return Pair of (title, artist)
+     * @return Triple(title, artist, isSuccess)
      */
-    private fun parseWithRule(input: String, rule: ParserRule): Pair<String, String> {
+    private fun parseWithRule(input: String, rule: ParserRule): Triple<String, String, Boolean> {
         val separator = rule.separatorPattern
         val splitIndex = input.indexOf(separator)
         
         if (splitIndex == -1) {
-            // Separator not found, return original with empty artist
-            AppLogger.getInstance().log("Parser", "⚠️ Separator [$separator] not found in: $input")
-            return Pair(input, "")
+            // Separator not found, return original with empty artist, and FALSE for success
+            // AppLogger.getInstance().log("Parser", "⚠️ Separator [$separator] not found in: $input")
+            return Triple(input, "", false)
         }
 
         // Split the input
@@ -428,8 +438,8 @@ class MediaMonitorService : NotificationListenerService() {
 
         // Apply field order
         return when (rule.fieldOrder) {
-            FieldOrder.ARTIST_TITLE -> Pair(part2, part1)  // part1=artist, part2=title
-            FieldOrder.TITLE_ARTIST -> Pair(part1, part2)  // part1=title, part2=artist
+            FieldOrder.ARTIST_TITLE -> Triple(part2, part1, true)  // part1=artist, part2=title
+            FieldOrder.TITLE_ARTIST -> Triple(part1, part2, true)  // part1=title, part2=artist
         }
     }
 
