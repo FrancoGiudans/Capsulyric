@@ -337,7 +337,9 @@ class LyricCapsuleHandler(
             val charAtCut = text[endIndex]
             val charBeforeCut = text[endIndex - 1]
             
-            if (Character.isLetterOrDigit(charAtCut) && Character.isLetterOrDigit(charBeforeCut)) {
+            // Only apply to Western characters (weight 1). CJK (weight 2) can be split anywhere.
+            if (charWeight(charAtCut) == 1 && charWeight(charBeforeCut) == 1 &&
+                Character.isLetterOrDigit(charAtCut) && Character.isLetterOrDigit(charBeforeCut)) {
                 // We are inside a word. Try to backtrack to a space.
                 var spaceIndex = -1
                 for (i in endIndex - 1 downTo startIndex) {
@@ -479,43 +481,56 @@ class LyricCapsuleHandler(
             // --- LRC SCROLLING MODE ---
             // Use nearest-line lookup to prevent capsule disappearance in gaps
             val lines = currentParsedLines!!
-            var foundLine: OnlineLyricFetcher.LyricLine? = null
+            var foundIndex = -1
+            
             // Strict range match first
-            for (line in lines) {
-                if (currentPosition >= line.startTime && currentPosition < line.endTime) {
-                    foundLine = line
+            for (i in lines.indices) {
+                if (currentPosition >= lines[i].startTime && currentPosition < lines[i].endTime) {
+                    foundIndex = i
                     break
                 }
             }
+            
             // Fallback: find last line that started before current position
-            if (foundLine == null) {
+            if (foundIndex == -1) {
                 for (i in lines.indices.reversed()) {
                     if (currentPosition >= lines[i].startTime) {
-                        foundLine = lines[i]
+                        foundIndex = i
                         break
                     }
                 }
             }
             
-            if (foundLine != null) {
+            if (foundIndex != -1) {
+                val foundLine = lines[foundIndex]
+                
                 val lineDuration = foundLine.endTime - foundLine.startTime
                 val lineProgress = if (lineDuration > 0) {
                     ((currentPosition - foundLine.startTime).toFloat() / lineDuration.toFloat()).coerceIn(0f, 1f)
                 } else 0f
                 
                 // Calculate scroll offset based on time progress
-                val totalWeight = calculateWeight(foundLine.text)
+                val currentLineWeight = calculateWeight(foundLine.text)
                 
-                if (totalWeight <= maxDisplayWeight) {
+                if (currentLineWeight <= maxDisplayWeight) {
                     // Line fits completely, no scrolling needed
                     displayLyric = foundLine.text
                 } else {
                     // Deferred-start LRC scrolling: don't scroll in the first 30% of the line
                     val deferredProgress = ((lineProgress - 0.3f) / 0.7f).coerceIn(0f, 1f)
-                    val scrollableWeight = totalWeight - maxDisplayWeight
+                    
+                    val scrollableWeight = currentLineWeight - maxDisplayWeight
                     val targetWeightOffset = (deferredProgress * scrollableWeight).toInt()
                     
-                    displayLyric = extractByWeight(foundLine.text, targetWeightOffset, maxDisplayWeight)
+                    // LENGTH CONSTRAINT: Maintain minimum visual length (14 weight units)
+                    // Even if line is finishing, keep 14 units visible until line switch
+                    // Ensure that: currentLineWeight - finalOffset >= 14
+                    val minVisibleWeight = 14
+                    val maxAllowedScroll = maxOf(0, currentLineWeight - minVisibleWeight)
+                    
+                    val finalOffset = minOf(targetWeightOffset, maxAllowedScroll)
+                    
+                    displayLyric = extractByWeight(foundLine.text, finalOffset, maxDisplayWeight)
                 }
                 scrollState = ScrollState.SCROLLING // Managed by timing
             } else {
