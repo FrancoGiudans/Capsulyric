@@ -227,7 +227,7 @@ class LyricService : Service() {
             
             // Update Repository
             val metadata = LyricRepository.getInstance().liveMetadata.value
-            val source = "Online Lyrics" // Or app name
+            val source = "Online Lyrics" // Reverted to rule out crash
             
             LyricRepository.getInstance().updateLyric(line.text, source)
             LyricRepository.getInstance().updateCurrentLine(line)

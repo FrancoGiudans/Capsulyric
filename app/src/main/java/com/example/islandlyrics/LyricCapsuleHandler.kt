@@ -6,10 +6,11 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
-import android.os.Build
+
 import android.os.Handler
 import android.os.Looper
 import androidx.core.app.NotificationCompat
+
 
 /**
  * LyricCapsuleHandler
@@ -136,9 +137,7 @@ class LyricCapsuleHandler(
         // Reset adaptive scroll history for new song
         lastLyricChangeTime = 0
         lastLyricLength = 0
-        synchronized(lyricDurations) {
-            lyricDurations.clear()
-        }
+        lyricDurations.clear()
         adaptiveDelay = SCROLL_STEP_DELAY
         
         // Reset scroll state machine
@@ -229,11 +228,9 @@ class LyricCapsuleHandler(
         }
         
         // Add to history (sliding window)
-        synchronized(lyricDurations) {
-            lyricDurations.add(duration)
-            if (lyricDurations.size > maxHistory) {
-                lyricDurations.removeAt(0)
-            }
+        lyricDurations.add(duration)
+        if (lyricDurations.size > maxHistory) {
+            lyricDurations.removeAt(0)
         }
         
         // Update state
@@ -245,13 +242,11 @@ class LyricCapsuleHandler(
     }
     
     private fun calculateAdaptiveDelay() {
-        val avgDuration = synchronized(lyricDurations) {
-            if (lyricDurations.isEmpty()) {
-                adaptiveDelay = SCROLL_STEP_DELAY
-                return
-            }
-            lyricDurations.average().toLong()
+        if (lyricDurations.isEmpty()) {
+            adaptiveDelay = SCROLL_STEP_DELAY
+            return
         }
+        val avgDuration = lyricDurations.average().toLong()
         
         // Calculate total visual weight of recent lyric
         val avgLyricWeight = calculateWeight(lastLyricText)
@@ -444,13 +439,13 @@ class LyricCapsuleHandler(
             
             val currentLine = if (currentIndex != -1) lines[currentIndex] else null
             
-            if (currentLine != null && currentLine.syllables != null && currentLine.syllables.isNotEmpty()) {
+            if (currentLine != null && !currentLine.syllables.isNullOrEmpty()) {
                 // Find sung and unsung portions
                 val sungSyllables = currentLine.syllables.filter { it.startTime <= currentPosition }
                 val unsungSyllables = currentLine.syllables.filter { it.startTime > currentPosition }
                 
                 val sungText = sungSyllables.joinToString("") { it.text }
-                var unsungText = unsungSyllables.joinToString("") { it.text }
+                val unsungText = unsungSyllables.joinToString("") { it.text }
                 
                 // BUFFER NEXT LINE REMOVED per user request (V3.3/V3.4)
                 // We rely solely on calculateSyllableWindow's length constraint to keep 14 units visible.
@@ -836,62 +831,7 @@ class LyricCapsuleHandler(
         return extractByWeight(fullText, finalScrollAmount, maxDisplayWeight)
     }
     
-    private fun calculateTimedScroll(text: String, line: OnlineLyricFetcher.LyricLine, currentPos: Long): String {
-        // 1. Syllable-Based Scrolling
-        if (line.syllables != null && line.syllables.isNotEmpty()) {
-             // Find current syllable
-             val relativeTime = currentPos - line.startTime
-             var activeSyllableIndex = -1
-             
-             // Simple Logic: Show from active syllable onwards? 
-             // Or center active syllable?
-             // Notification capsule is small. Usually we show "Active... Future"
-             
-             var cumulativeOffset = 0L
-             for (i in line.syllables.indices) {
-                 val syl = line.syllables[i]
-                 if (relativeTime >= syl.startTime) {
-                     activeSyllableIndex = i
-                 }
-             }
-             
-             if (activeSyllableIndex != -1) {
-                 // Calculate character offset of active syllable
-                 var charOffset = 0
-                 for (i in 0 until activeSyllableIndex) {
-                     charOffset += line.syllables[i].text.length
-                 }
-                 
-                 // Smart Scroll:
-                 // If total weight fits, show all.
-                 // Else, extract starting from charOffset.
-                 if (calculateWeight(text) <= maxDisplayWeight) return text
-                 
-                 val remainingWeight = calculateWeight(text.substring(charOffset))
-                 return extractByWeight(text.substring(charOffset), 0, maxDisplayWeight)
-             }
-             // Before first syllable? Show start.
-             return extractByWeight(text, 0, maxDisplayWeight)
-        } 
-        
-        // 2. LRC-Based Scrolling (Time Interpolation)
-        // Calculate average char duration
-        val duration = line.endTime - line.startTime
-        if (duration <= 0) return extractByWeight(text, 0, maxDisplayWeight)
-        
-        val progress = (currentPos - line.startTime).coerceIn(0, duration).toFloat() / duration.toFloat()
-        
-        if (calculateWeight(text) <= maxDisplayWeight) return text
 
-        // Scroll proportional to time
-        // Total weight to scroll = TotalWeight - MaxDisplayWeight
-        val scrollableWeight = calculateWeight(text) - maxDisplayWeight
-        if (scrollableWeight <= 0) return text
-        
-        val targetWeightOffset = (progress * scrollableWeight).toInt()
-        
-        return extractByWeight(text, targetWeightOffset, maxDisplayWeight)
-    }
 
     private fun calculateAdaptiveScroll(currentLyric: String, totalWeight: Int): String {
         // Reset scroll offset if lyric changed
@@ -902,7 +842,7 @@ class LyricCapsuleHandler(
             initialPauseStartTime = System.currentTimeMillis()
         }
         
-        var displayLyric = ""
+        val displayLyric: String
         
         // Short lyric: no scrolling needed
         if (totalWeight <= maxDisplayWeight) {
