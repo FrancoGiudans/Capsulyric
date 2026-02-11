@@ -452,17 +452,8 @@ class LyricCapsuleHandler(
                 val sungText = sungSyllables.joinToString("") { it.text }
                 var unsungText = unsungSyllables.joinToString("") { it.text }
                 
-                // BUFFER NEXT LINE: Ensure visual continuity
-                // If unsung text is short (< 10 weight units), append next line to prevent "short capsule" or "sudden emptiness"
-                // Only if available space permits (we want to fill maxDisplayWeight)
-                if (calculateWeight(unsungText) < 10) {
-                     val nextLine = lines.getOrNull(currentIndex + 1)
-                     if (nextLine != null) {
-                         // Add spacer and next line
-                         val spacedNextLine = "   " + nextLine.text // 3 spaces = 3 weight
-                         unsungText += spacedNextLine
-                     }
-                }
+                // BUFFER NEXT LINE REMOVED per user request (V3.3/V3.4)
+                // We rely solely on calculateSyllableWindow's length constraint to keep 14 units visible.
                 
                 // Use refined syllable window calculation with deferred start
                 displayLyric = calculateSyllableWindow(sungText, unsungText)
