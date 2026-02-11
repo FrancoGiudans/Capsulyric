@@ -403,24 +403,39 @@ class OnlineLyricFetcher {
                 score += 20
             }
             
-            // API质量：Kugou KRC=10分，其他=5分
+            // API质量与信任分
             when (result.api) {
                 "Kugou" -> score += if (result.hasSyllable) 10 else 5
-                "Netease", "LrcApi" -> score += 5
+                // LrcApi: 基础分5 + 信任分50 = 55 (弥补无标题缺失)
+                "LrcApi" -> score += 55 
+                "Netease" -> score += 5
             }
             
-            // 模糊匹配加分
-            // 如果API返回了匹配的标题/歌手，且与目标高度一致，加分
-            val matchedTitle = result.matchedTitle ?: ""
-            val matchedArtist = result.matchedArtist ?: ""
+            // 标题匹配加分逻辑 (V3 优化)
+            val matchedTitle = result.matchedTitle
             
-            if (matchedTitle.isNotEmpty()) {
-                if (matchedTitle.contains(targetTitle, ignoreCase = true) || targetTitle.contains(matchedTitle, ignoreCase = true)) {
-                    score += 10
+            if (matchedTitle != null && matchedTitle.isNotEmpty()) {
+                if (matchedTitle.equals(targetTitle, ignoreCase = true)) {
+                    // 原标题完全匹配：+50
+                    score += 50
+                } else {
+                    val cleanTarget = cleanTitle(targetTitle)
+                    val cleanMatched = cleanTitle(matchedTitle)
+                    
+                    if (cleanMatched.equals(cleanTarget, ignoreCase = true)) {
+                        // 清洗后标题匹配：+20
+                        score += 20
+                    } else {
+                        // 清洗后仍不匹配：-50 (强力惩罚)
+                        score -= 50
+                    }
                 }
+            } else {
+                // 无标题信息，视为风险，微扣分
+                score -= 10
             }
             
-             // 过滤纯音/无歌词
+            // 过滤纯音/无歌词
              if (result.lyrics?.contains("纯音乐", ignoreCase = true) == true || 
                  result.lyrics?.contains("No lyrics", ignoreCase = true) == true) {
                  score -= 100 // 惩罚纯音乐，除非没有其他选择
