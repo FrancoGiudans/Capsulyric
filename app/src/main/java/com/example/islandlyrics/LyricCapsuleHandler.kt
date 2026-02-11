@@ -302,7 +302,9 @@ class LyricCapsuleHandler(
         return text.sumOf { charWeight(it) }
     }
     
-    // Extract substring by visual weight (not character count)
+    // Extract substring by visual weight with SMART WORD TRUNCATION
+    // - Respects word boundaries (backtracks to space if cut point is mid-word)
+    // - Forces cut only if word is longer than maxWeight (unbreakable)
     private fun extractByWeight(text: String, startWeight: Int, maxWeight: Int): String {
         var currentWeight = 0
         var startIndex = 0
@@ -317,7 +319,7 @@ class LyricCapsuleHandler(
             currentWeight += charWeight(text[i])
         }
         
-        // Find end position
+        // Find rough end position
         currentWeight = 0
         for (i in startIndex until text.length) {
             currentWeight += charWeight(text[i])
@@ -327,10 +329,34 @@ class LyricCapsuleHandler(
             endIndex = i + 1
         }
         
-        // Fix: Ensure we don't return partial string if extracted length is 0 but start index is valid
-        // Actually the logic seems fine, if start reached but maxWeight is 0, it returns empty.
+        if (endIndex <= startIndex) return ""
         
-        return if (endIndex > startIndex) text.substring(startIndex, endIndex) else ""
+        // SMART TRUNCATION: Avoid splitting words
+        // If cut point is mid-word (alphanumeric chars on both sides), backtrack to space
+        if (endIndex < text.length) {
+            val charAtCut = text[endIndex]
+            val charBeforeCut = text[endIndex - 1]
+            
+            if (Character.isLetterOrDigit(charAtCut) && Character.isLetterOrDigit(charBeforeCut)) {
+                // We are inside a word. Try to backtrack to a space.
+                var spaceIndex = -1
+                for (i in endIndex - 1 downTo startIndex) {
+                    if (Character.isWhitespace(text[i])) {
+                        spaceIndex = i
+                        break
+                    }
+                }
+                
+                // Only backtrack if we found a space and it's not too far back (e.g., keep at least 50% of window?)
+                // Actually, for lyrics, readability is key. Backtrack to space if found.
+                // Exception: If the word is HUGE (covers entire window), we must split it.
+                if (spaceIndex != -1) {
+                    endIndex = spaceIndex
+                }
+            }
+        }
+        
+        return text.substring(startIndex, endIndex).trimEnd()
     }
     
     // Calculate smart shift weight (CJK: 2-3 chars=4-6 weight, Western: 3-4 chars=3-4 weight)
@@ -422,11 +448,21 @@ class LyricCapsuleHandler(
                 val unsungSyllables = currentLine.syllables.filter { it.startTime > currentPosition }
                 
                 val sungText = sungSyllables.joinToString("") { it.text }
-                val unsungText = unsungSyllables.joinToString("") { it.text }
+                var unsungText = unsungSyllables.joinToString("") { it.text }
                 
-                // No next-line lookahead — strictly display current line only
+                // BUFFER NEXT LINE: Ensure visual continuity
+                // If unsung text is short (< 10 weight units), append next line to prevent "short capsule" or "sudden emptiness"
+                // Only if available space permits (we want to fill maxDisplayWeight)
+                if (calculateWeight(unsungText) < 10) {
+                     val nextLine = lines.getOrNull(currentIndex + 1)
+                     if (nextLine != null) {
+                         // Add spacer and next line
+                         val spacedNextLine = "   " + nextLine.text // 3 spaces = 3 weight
+                         unsungText += spacedNextLine
+                     }
+                }
                 
-                // Use deferred-start syllable window calculation
+                // Use refined syllable window calculation with deferred start
                 displayLyric = calculateSyllableWindow(sungText, unsungText)
                 scrollState = ScrollState.SCROLLING // Managed by timing
             } else if (currentLine != null) {
@@ -774,14 +810,24 @@ class LyricCapsuleHandler(
         
         val fullText = sung + unsung
         
-        if (sungWeight < scrollStartThreshold) {
-            // Don't scroll yet, just show from the beginning, strictly within maxDisplayWeight
-            return extractByWeight(fullText, 0, maxDisplayWeight)
+        // Calculate target scroll amount (how much sung text EXCEEDS threshold)
+        val targetScrollAmount = if (sungWeight < scrollStartThreshold) {
+            0
+        } else {
+            sungWeight - scrollStartThreshold
         }
         
-        // Calculate scroll offset: shift left by how much sung text exceeds threshold
-        val scrollAmount = sungWeight - scrollStartThreshold
-        return extractByWeight(fullText, scrollAmount, maxDisplayWeight)
+        // LENGTH CONSTRAINT: Maintain minimum visual length of current line (14 weight units)
+        // Ensure that: totalWeight - scrollAmount >= 14
+        // If totalWeight < 14, maxAllowedScroll will be 0 (no scrolling allowed)
+        val minVisibleWeight = 14
+        val maxAllowedScroll = maxOf(0, totalWeight - minVisibleWeight)
+        
+        // Final scroll amount is the smaller of target and max allowed
+        // This ensures that as unsung text runs out, we stop scrolling to keep sung text visible
+        val finalScrollAmount = minOf(targetScrollAmount, maxAllowedScroll)
+        
+        return extractByWeight(fullText, finalScrollAmount, maxDisplayWeight)
     }
     
     private fun calculateTimedScroll(text: String, line: OnlineLyricFetcher.LyricLine, currentPos: Long): String {
