@@ -343,9 +343,14 @@ class MediaMonitorService : NotificationListenerService() {
         val rawTitle = metadata.getString(MediaMetadata.METADATA_KEY_TITLE)
         val rawArtist = metadata.getString(MediaMetadata.METADATA_KEY_ARTIST)
 
-        // DEDUPLICATION: Skip if metadata is identical to last update
-        // Some apps (e.g., ink.trantor.coneplayer) send rapid duplicate metadata updates
-        val metadataHash = java.util.Objects.hash(rawTitle, rawArtist, pkg)
+        // DEDUPLICATION: Include Duration and Bitmap to catch partial updates
+        // Some apps send title first, then update duration or album art later.
+        val duration = metadata.getLong(MediaMetadata.METADATA_KEY_DURATION)
+        val artBitmap = metadata.getBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART) 
+                        ?: metadata.getBitmap(MediaMetadata.METADATA_KEY_ART)
+        val artHash = artBitmap?.hashCode() ?: 0
+        
+        val metadataHash = java.util.Objects.hash(rawTitle, rawArtist, pkg, duration, artHash)
         if (metadataHash == lastMetadataHash) {
             AppLogger.getInstance().log("Meta-Debug", "⏭️ Skipping duplicate metadata for [$pkg]")
             return
@@ -394,13 +399,11 @@ class MediaMonitorService : NotificationListenerService() {
             LyricRepository.getInstance().updateLyric(finalLyric, getAppName(pkg))
         }
 
-        val duration = metadata.getLong(MediaMetadata.METADATA_KEY_DURATION)
+        // Use already extracted duration
         LyricRepository.getInstance().updateMediaMetadata(finalTitle ?: "Unknown", finalArtist ?: "Unknown", pkg, duration)
 
-        // Extract Album Art immediately on metadata change
-        val art = metadata.getBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART)
-            ?: metadata.getBitmap(MediaMetadata.METADATA_KEY_ART)
-        LyricRepository.getInstance().updateAlbumArt(art)
+        // Use already extracted artBitmap
+        LyricRepository.getInstance().updateAlbumArt(artBitmap)
     }
 
     /**

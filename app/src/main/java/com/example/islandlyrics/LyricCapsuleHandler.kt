@@ -427,17 +427,12 @@ class LyricCapsuleHandler(
                     break
                 }
             }
-            // Fallback: if in a gap, find the last line that started before current position
-            if (currentIndex == -1) {
-                for (i in lines.indices.reversed()) {
-                    if (currentPosition >= lines[i].startTime) {
-                        currentIndex = i
-                        break
-                    }
-                }
-            }
+            // Fallback REMOVED: In a gap, show SPACE (per user request V3.5 Revised)
+            // if (currentIndex == -1) ...
             
             val currentLine = if (currentIndex != -1) lines[currentIndex] else null
+            
+
             
             if (currentLine != null && !currentLine.syllables.isNullOrEmpty()) {
                 // Find sung and unsung portions
@@ -457,10 +452,8 @@ class LyricCapsuleHandler(
                 // Line exists but no syllable data, show the line text with weight constraint
                 displayLyric = extractByWeight(currentLine.text, 0, maxDisplayWeight)
             } else {
-                // No line found at all, use last known lyric
-                displayLyric = if (currentLyric.isNotEmpty()) {
-                    extractByWeight(currentLyric, 0, maxDisplayWeight)
-                } else ""
+                // GAP detected: Show SPACE to keep notification alive but visually empty
+                displayLyric = " " 
             }
             
         } else if (useLrcScrolling && currentParsedLines != null) {
@@ -477,15 +470,8 @@ class LyricCapsuleHandler(
                 }
             }
             
-            // Fallback: find last line that started before current position
-            if (foundIndex == -1) {
-                for (i in lines.indices.reversed()) {
-                    if (currentPosition >= lines[i].startTime) {
-                        foundIndex = i
-                        break
-                    }
-                }
-            }
+            // Fallback REMOVED: In a gap, show SPACE (per user request V3.5 Revised)
+            // if (foundIndex == -1) ...
             
             if (foundIndex != -1) {
                 val foundLine = lines[foundIndex]
@@ -520,10 +506,8 @@ class LyricCapsuleHandler(
                 }
                 scrollState = ScrollState.SCROLLING // Managed by timing
             } else {
-                // No line found at all, use last known lyric
-                displayLyric = if (currentLyric.isNotEmpty()) {
-                    extractByWeight(currentLyric, 0, maxDisplayWeight)
-                } else ""
+                 // GAP detected: Show SPACE to keep notification alive but visually empty
+                 displayLyric = " "
             }
             
         } else {
@@ -637,9 +621,12 @@ class LyricCapsuleHandler(
         val currentLyric = lyricInfo?.lyric ?: "Waiting for lyrics..."
         val sourceApp = lyricInfo?.sourceApp ?: "Island Lyrics"
         
-        // Use pre-calculated displayLyric from updateNotification() (weight-based scrolling)
-        val displayLyric = lastNotifiedLyric.ifEmpty { 
-             currentLyric // Should be handled by updateNotification, safe fallback
+        // Use pre-calculated displayLyric from updateNotification()
+        // In Syllable/LRC mode, keep SPACE " " (gap). Only fallback in legacy modes.
+        val displayLyric = if (useSyllableScrolling || useLrcScrolling) {
+             lastNotifiedLyric 
+        } else {
+             lastNotifiedLyric.ifEmpty { currentLyric }
         }
         
         val title = sourceApp  // Title = app name

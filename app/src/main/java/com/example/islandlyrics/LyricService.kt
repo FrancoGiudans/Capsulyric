@@ -227,7 +227,8 @@ class LyricService : Service() {
             
             // Update Repository
             val metadata = LyricRepository.getInstance().liveMetadata.value
-            val source = "Online Lyrics" // Reverted to rule out crash
+            // Use actual app name (safe cached call)
+            val source = metadata?.packageName?.let { getAppName(it) } ?: "Online Lyrics"
             
             LyricRepository.getInstance().updateLyric(line.text, source)
             LyricRepository.getInstance().updateCurrentLine(line)
@@ -847,11 +848,22 @@ class LyricService : Service() {
         }
     }
 
+    // Cache for App Names to avoid IPC overhead
+    private val appNameCache = java.util.concurrent.ConcurrentHashMap<String, String>()
+
     private fun getAppName(pkg: String): String {
+        // Return cached name if available
+        appNameCache[pkg]?.let { return it }
+        
         return try {
             val pm = packageManager
             val info = pm.getApplicationInfo(pkg, 0)
-            pm.getApplicationLabel(info).toString()
+            val name = pm.getApplicationLabel(info).toString()
+            // Cache the result
+            if (name.isNotEmpty()) {
+                appNameCache[pkg] = name
+            }
+            name
         } catch (e: Exception) {
             pkg
         }
