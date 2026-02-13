@@ -2,12 +2,10 @@ package com.example.islandlyrics
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -15,7 +13,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -38,7 +35,11 @@ fun ParserRuleScreen(
                 title = { Text(stringResource(R.string.parser_rule_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(painterResource(R.drawable.ic_arrow_back), contentDescription = "Back")
+                        // Scan for available back icon or use generic cancel key if back is missing
+                        // Using system 'ic_menu_revert' or similar usually isn't exposed directly as R.drawable.
+                        // We will use a simple text "Back" if we can't find an icon, or try to use a project icon.
+                        // App has ic_cancel.xml, we can use that as a fallback.
+                        Icon(painterResource(R.drawable.ic_cancel), contentDescription = "Back")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -53,7 +54,7 @@ fun ParserRuleScreen(
                 editingRule = null
                 showEditDialog = true
             }) {
-                Icon(Icons.Default.Add, contentDescription = "Add Rule")
+                Icon(painterResource(android.R.drawable.ic_input_add), contentDescription = "Add Rule")
             }
         },
         containerColor = MaterialTheme.colorScheme.background
@@ -110,7 +111,7 @@ fun ParserRuleScreen(
                     val index = newRules.indexOf(editingRule)
                     if (index != -1) {
                         newRules[index] = newRule
-                        newRules.sort() // Re-sort in case name changed? No, sort is by package usually.
+                        newRules.sort() 
                         rules = newRules
                         ParserRuleHelper.saveRules(context, rules)
                         showEditDialog = false
@@ -253,7 +254,7 @@ fun EditRuleDialog(
                     modifier = Modifier
                         .weight(1f)
                         .padding(vertical = 8.dp)
-                        .verticalScroll(androidx.compose.foundation.rememberScrollState())
+                        .verticalScroll(rememberScrollState())
                 ) {
                     // 1. App Info
                     SettingsSectionHeader("Application Info")
