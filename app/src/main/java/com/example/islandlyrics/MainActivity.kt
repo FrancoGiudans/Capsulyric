@@ -32,6 +32,7 @@ class MainActivity : BaseActivity() {
     private lateinit var ivStatusIcon: ImageView
     private lateinit var tvStatusText: TextView
     private lateinit var ivAlbumArt: ImageView // New Album Art View
+    private lateinit var tvIdleMessage: TextView // Idle State Message
     private lateinit var tvAppVersion: TextView
 
     private lateinit var tvSong: TextView
@@ -54,12 +55,8 @@ class MainActivity : BaseActivity() {
                 // ... logic for raw logs if needed
             } else if ("com.example.islandlyrics.STATUS_UPDATE" == intent.action) {
 
-                // General Service Status
-                val status = intent.getStringExtra("status")
-                val tvStatus = findViewById<TextView>(R.id.tv_service_status)
-                if (tvStatus != null && status != null) {
-                    tvStatus.text = "Status: $status"
-                }
+                // General Service Status - MOVED: Logic removed as tv_service_status is gone
+
 
                 // API Dashboard Data (from LyricService inspection)
                 if (intent.hasExtra("hasPromotable")) {
@@ -126,6 +123,7 @@ class MainActivity : BaseActivity() {
         tvArtist = findViewById(R.id.tv_artist)
         tvLyric = findViewById(R.id.tv_lyric)
         ivAlbumArt = findViewById(R.id.iv_album_art) // Bind View
+        tvIdleMessage = findViewById(R.id.tv_idle_message)
 
         // Dashboard Bindings
         tvApiPermission = findViewById(R.id.tv_api_permission)
@@ -283,8 +281,9 @@ class MainActivity : BaseActivity() {
         val repo = LyricRepository.getInstance()
 
         // Playback Status Observer
-        repo.isPlaying.observe(this) { _ ->
+        repo.isPlaying.observe(this) { isPlaying ->
             updateStatusCardState()
+            updatePlaybackView(java.lang.Boolean.TRUE == isPlaying)
         }
 
         // Lyric Observer
@@ -317,13 +316,51 @@ class MainActivity : BaseActivity() {
         
         // Album Art Observer
         repo.liveAlbumArt.observe(this) { bitmap ->
+             val isPlaying = java.lang.Boolean.TRUE == repo.isPlaying.value
+             if (!isPlaying) {
+                 // Force placeholder if idle
+                 ivAlbumArt.setImageResource(R.mipmap.ic_launcher_round)
+                 return@observe
+             }
+             
             if (bitmap != null) {
                 ivAlbumArt.setImageBitmap(bitmap)
-                ivAlbumArt.visibility = View.VISIBLE
             } else {
-                ivAlbumArt.setImageDrawable(null)
-                ivAlbumArt.visibility = View.GONE
+                ivAlbumArt.setImageResource(R.mipmap.ic_launcher_round)
             }
+        }
+    }
+
+    private fun updatePlaybackView(isPlaying: Boolean) {
+        // Toggle visibility of playback controls vs idle message
+        val visibility = if (isPlaying) View.VISIBLE else View.GONE
+        val idleVisibility = if (isPlaying) View.GONE else View.VISIBLE
+
+        tvSong.visibility = visibility
+        tvArtist.visibility = visibility
+        tvLyric.visibility = visibility
+        pbProgress.visibility = visibility
+        
+        // Also toggle labels if they exist, but I didn't bind them. Assuming they are okay to stay or I should hide them too?
+        // Just hiding the content might be enough, but typically we hide the labels too.
+        // For simplicity, let's look at ID references.
+        findViewById<View>(R.id.lbl_song)?.visibility = visibility
+        findViewById<View>(R.id.lbl_artist)?.visibility = visibility
+        findViewById<View>(R.id.lbl_lyric)?.visibility = visibility
+
+        tvIdleMessage.visibility = idleVisibility
+        
+        if (!isPlaying) {
+            ivAlbumArt.setImageResource(R.mipmap.ic_launcher_round)
+        } else {
+             // Let observer handle it, or restore if needed.
+             // Observer will trigger if data changes, but if we switch from False -> True without data change, we need to restore.
+             val bmp = LyricRepository.getInstance().liveAlbumArt.value
+             if (bmp != null) {
+                 ivAlbumArt.setImageBitmap(bmp)
+             } else {
+                 ivAlbumArt.setImageResource(R.mipmap.ic_launcher_round)
+             }
         }
     }
 

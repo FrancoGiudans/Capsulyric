@@ -3,6 +3,7 @@
     <string name="app_name">Capsulyric</string>
     <string name="status_active">运行中</string>
     <string name="status_inactive">未运行</string>
+    <string name="status_idle_waiting">尚未播放...</string>
     <string name="dialog_diagnostics_title">诊断信息</string>
     <string name="dialog_whitelist_title">白名单管理</string>
     <string name="btn_refresh_session">刷新会话</string>

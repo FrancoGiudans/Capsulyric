@@ -38,14 +38,7 @@
                 android:textStyle="bold" />
         </LinearLayout>
 
-        <TextView
-            android:id="@+id/tv_service_status"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/main_service_status"
-            android:textColor="?attr/colorOnSurfaceVariant"
-            android:textStyle="bold"
-            android:layout_marginBottom="12dp"/>
+
 
         <!-- Status Card (Redesigned) -->
         <com.google.android.material.card.MaterialCardView
@@ -216,6 +209,21 @@
                     app:layout_constraintStart_toStartOf="parent"
                     app:layout_constraintEnd_toEndOf="parent"
                     app:layout_constraintTop_toBottomOf="@id/tv_lyric"/>
+
+                <!-- IDLE STATE MESSAGE -->
+                <TextView
+                    android:id="@+id/tv_idle_message"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/status_idle_waiting"
+                    android:textSize="18sp"
+                    android:textStyle="italic"
+                    android:textColor="?attr/colorOnSurfaceVariant"
+                    android:visibility="gone"
+                    app:layout_constraintTop_toTopOf="parent"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintEnd_toEndOf="parent"/>
 
             </androidx.constraintlayout.widget.ConstraintLayout>
         </com.google.android.material.card.MaterialCardView>

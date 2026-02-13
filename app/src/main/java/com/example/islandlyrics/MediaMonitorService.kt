@@ -59,8 +59,8 @@ class MediaMonitorService : NotificationListenerService() {
                     requestRebind(this@MediaMonitorService)
                 }
             }
-            // Schedule next check
-            handler.postDelayed(this, 30000) // Every 30 seconds
+            // Schedule next check - REFACTORED: Removed per user request to reduce overhead
+            // handler.postDelayed(this, 30000)
         }
     }
 
