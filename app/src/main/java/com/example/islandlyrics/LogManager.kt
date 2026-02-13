@@ -23,7 +23,83 @@ class LogManager private constructor() {
     private fun init(context: Context) {
         if (logFile == null) {
             logFile = File(context.filesDir, FILE_NAME)
+            cleanOldLogs(context)
         }
+    }
+
+    private fun cleanOldLogs(context: Context) {
+        Thread {
+            try {
+                val prefs = context.getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE)
+                val lastCleanup = prefs.getLong("last_log_cleanup_time", 0)
+                val now = System.currentTimeMillis()
+
+                // Run once every 24 hours
+                if (now - lastCleanup < 24 * 60 * 60 * 1000) {
+                    return@Thread
+                }
+
+                // Update cleanup time immediately to prevent multiple runs
+                prefs.edit().putLong("last_log_cleanup_time", now).apply()
+
+                if (logFile == null || !logFile!!.exists()) return@Thread
+
+                val cutoffTime = now - 48 * 60 * 60 * 1000 // 48 hours ago
+                val tempFile = File(context.filesDir, "app_log.tmp")
+                val writer = java.io.BufferedWriter(java.io.FileWriter(tempFile))
+                val reader = java.io.BufferedReader(java.io.FileReader(logFile!!))
+
+                var keepCurrentEntry = false
+                var line: String? = reader.readLine()
+                
+                while (line != null) {
+                    val matcher = LOG_PATTERN.matcher(line)
+                    if (matcher.find()) {
+                        // New Log Entry
+                        val dateStr = matcher.group(1)
+                        if (dateStr != null) {
+                            try {
+                                val date = DATE_FORMAT.parse(dateStr)
+                                if (date != null && date.time >= cutoffTime) {
+                                    keepCurrentEntry = true
+                                    writer.write(line)
+                                    writer.newLine()
+                                } else {
+                                    keepCurrentEntry = false
+                                }
+                            } catch (e: Exception) {
+                                // Date parse error, keep safely if we kept previous
+                                if (keepCurrentEntry) {
+                                    writer.write(line)
+                                    writer.newLine()
+                                }
+                            }
+                        }
+                    } else {
+                        // Continuation line (stack trace etc)
+                        if (keepCurrentEntry) {
+                            writer.write(line)
+                            writer.newLine()
+                        }
+                    }
+                    line = reader.readLine()
+                }
+
+                reader.close()
+                writer.close()
+
+                if (logFile!!.delete()) {
+                    tempFile.renameTo(logFile!!)
+                } else {
+                    tempFile.delete()
+                }
+                
+                Log.d("LogManager", "Log cleanup completed. Retained logs < 48h.")
+
+            } catch (e: Exception) {
+                Log.e("LogManager", "Failed to clean logs: ${e.message}")
+            }
+        }.start()
     }
 
     @Synchronized
@@ -128,8 +204,8 @@ class LogManager private constructor() {
     companion object {
         private var instance: LogManager? = null
         private const val FILE_NAME = "app_log.txt"
-        private val DATE_FORMAT = SimpleDateFormat("MM-dd HH:mm:ss.SSS", Locale.US)
-        private val LOG_PATTERN = Pattern.compile("^(\\d{2}-\\d{2}\\s\\d{2}:\\d{2}:\\d{2}\\.\\d{3})\\s([A-Z])/(.+?):\\s(.*)$")
+        private val DATE_FORMAT = SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", Locale.US)
+        private val LOG_PATTERN = Pattern.compile("^(\\d{4}-\\d{2}-\\d{2}\\s\\d{2}:\\d{2}:\\d{2}\\.\\d{3})\\s([A-Z])/(.+?):\\s(.*)$")
 
         @Synchronized
         fun getInstance(): LogManager {
