@@ -1,13 +1,9 @@
 package com.example.islandlyrics
 
 import android.content.BroadcastReceiver
-import java.util.Arrays
-import android.content.ClipboardManager
-import android.content.ClipData
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.content.SharedPreferences
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.os.Build
@@ -15,70 +11,41 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
-import android.view.View
-import android.widget.ImageView
-import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.compose.setContent
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
-import com.google.android.material.button.MaterialButton
-import com.google.android.material.card.MaterialCardView
 
 class MainActivity : BaseActivity() {
 
-    // UI Elements
-    private lateinit var cardStatus: MaterialCardView
-    private lateinit var ivStatusIcon: ImageView
-    private lateinit var tvStatusText: TextView
-    private lateinit var ivAlbumArt: ImageView // New Album Art View
-    private lateinit var tvIdleMessage: TextView // Idle State Message
-    private lateinit var tvAppVersion: TextView
-
-    private lateinit var tvSong: TextView
-    private lateinit var tvArtist: TextView
-    private lateinit var tvLyric: TextView
-
-    // Dashboard UI
-    private lateinit var tvApiPermission: TextView
-    private lateinit var tvNotifCapability: TextView
-    private lateinit var tvNotifFlag: TextView
-    private lateinit var btnOpenPromotedSettings: MaterialButton
-    private lateinit var pbProgress: com.google.android.material.progressindicator.LinearProgressIndicator
-
     private val handler = Handler(Looper.getMainLooper())
 
+    // Compose state for API dashboard (driven by BroadcastReceiver + reflection checks)
+    private var apiPermissionText by mutableStateOf("Permission: Checking...")
+    private var apiCapabilityText by mutableStateOf("Notif.hasPromotable: Waiting...")
+    private var apiFlagText by mutableStateOf("Flag PROMOTED_ONGOING: Waiting...")
+    private var apiPermissionActive by mutableStateOf(false)
+    private var apiCapabilityActive by mutableStateOf(false)
+    private var apiFlagActive by mutableStateOf(false)
+    private var showApiCard by mutableStateOf(false)
+    private var versionText by mutableStateOf("...")
 
     private val diagReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
-            if ("com.example.islandlyrics.DIAG_UPDATE" == intent.action) {
-                // ... logic for raw logs if needed
-            } else if ("com.example.islandlyrics.STATUS_UPDATE" == intent.action) {
-
-                // General Service Status - MOVED: Logic removed as tv_service_status is gone
-
-
-                // API Dashboard Data (from LyricService inspection)
+            if ("com.example.islandlyrics.STATUS_UPDATE" == intent.action) {
                 if (intent.hasExtra("hasPromotable")) {
                     val hasPromotable = intent.getBooleanExtra("hasPromotable", false)
-                    tvNotifCapability.text = "Notif.hasPromotable: $hasPromotable"
-                    tvNotifCapability.setTextColor(
-                        ContextCompat.getColor(
-                            context,
-                            if (hasPromotable) R.color.status_active else R.color.status_inactive
-                        )
-                    )
+                    apiCapabilityText = "Notif.hasPromotable: $hasPromotable"
+                    apiCapabilityActive = hasPromotable
                 }
-
                 if (intent.hasExtra("isPromoted")) {
                     val isPromoted = intent.getBooleanExtra("isPromoted", false)
-                    tvNotifFlag.text = "Flag PROMOTED_ONGOING: $isPromoted"
-                    tvNotifFlag.setTextColor(
-                        ContextCompat.getColor(
-                            context,
-                            if (isPromoted) R.color.status_active else R.color.status_inactive
-                        )
-                    )
+                    apiFlagText = "Flag PROMOTED_ONGOING: $isPromoted"
+                    apiFlagActive = isPromoted
                 }
             }
         }
@@ -86,21 +53,33 @@ class MainActivity : BaseActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
 
-        // Handle Edge-to-Edge / Status Bar Insets
-        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
-            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
-            insets
+        updateVersionInfo()
+
+        setContent {
+            AppTheme {
+                MainScreen(
+                    versionText = versionText,
+                    isDebugBuild = BuildConfig.DEBUG,
+                    onOpenSettings = { startActivity(Intent(this, SettingsActivity::class.java)) },
+                    onOpenDebug = { startActivity(Intent(this, DebugLyricActivity::class.java)) },
+                    onOpenPromotedSettings = { openPromotedSettings() },
+                    onStatusCardTap = {
+                        MediaMonitorService.requestRebind(this)
+                        Toast.makeText(this, "Requesting Rebind...", Toast.LENGTH_SHORT).show()
+                    },
+                    apiPermissionText = apiPermissionText,
+                    apiCapabilityText = apiCapabilityText,
+                    apiFlagText = apiFlagText,
+                    apiPermissionActive = apiPermissionActive,
+                    apiCapabilityActive = apiCapabilityActive,
+                    apiFlagActive = apiFlagActive,
+                    showApiCard = showApiCard,
+                )
+            }
         }
 
-        bindViews()
-        setupClickListeners()
-        setupObservers()
-
         checkPromotedNotificationPermission()
-        updateVersionInfo()
     }
 
     // API 36 Permission Check (Standard Runtime Permission)
@@ -112,126 +91,24 @@ class MainActivity : BaseActivity() {
         }
     }
 
-    private fun bindViews() {
-        cardStatus = findViewById(R.id.cv_status)
-        ivStatusIcon = findViewById(R.id.iv_status_icon)
-        tvStatusText = findViewById(R.id.tv_status_text)
-
-        tvAppVersion = findViewById(R.id.tv_app_version)
-
-        tvSong = findViewById(R.id.tv_song)
-        tvArtist = findViewById(R.id.tv_artist)
-        tvLyric = findViewById(R.id.tv_lyric)
-        ivAlbumArt = findViewById(R.id.iv_album_art) // Bind View
-        tvIdleMessage = findViewById(R.id.tv_idle_message)
-
-        // Dashboard Bindings
-        tvApiPermission = findViewById(R.id.tv_api_permission)
-        tvNotifCapability = findViewById(R.id.tv_notif_capability)
-        tvNotifFlag = findViewById(R.id.tv_notif_flag)
-        btnOpenPromotedSettings = findViewById(R.id.btn_open_settings)
-        pbProgress = findViewById(R.id.pb_progress)
-    }
-
-    private fun setupClickListeners() {
-        val cvSettings = findViewById<View>(R.id.cv_settings)
-        cvSettings?.setOnClickListener { startActivity(Intent(this, SettingsActivity::class.java)) }
-
-        // Debug button - Only for DEBUG builds
-        val cvDebug = findViewById<View>(R.id.cv_debug)
-        if (BuildConfig.DEBUG) {
-            cvDebug?.visibility = View.VISIBLE
-            cvDebug?.setOnClickListener { startActivity(Intent(this, DebugLyricActivity::class.java)) }
-        } else {
-            cvDebug?.visibility = View.GONE
+    private fun openPromotedSettings() {
+        try {
+            val intent = Intent("android.settings.MANAGE_APP_PROMOTED_NOTIFICATIONS")
+            intent.putExtra(Settings.EXTRA_APP_PACKAGE, packageName)
+            startActivity(intent)
+        } catch (e: Exception) {
+            val intent = Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+            intent.putExtra(Settings.EXTRA_APP_PACKAGE, packageName)
+            startActivity(intent)
+            Toast.makeText(this, "Promoted Settings not found, opening Notification Settings", Toast.LENGTH_SHORT).show()
         }
-
-        // Open Promoted Settings
-        btnOpenPromotedSettings.setOnClickListener {
-            try {
-                // Try specific API 36 Settings Action
-                val intent = Intent("android.settings.MANAGE_APP_PROMOTED_NOTIFICATIONS")
-                intent.putExtra(Settings.EXTRA_APP_PACKAGE, packageName)
-                startActivity(intent)
-            } catch (e: Exception) {
-                // Fallback to App Notification Settings
-                val intent = Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
-                intent.putExtra(Settings.EXTRA_APP_PACKAGE, packageName)
-                startActivity(intent)
-                Toast.makeText(this, "Promoted Settings not found, opening Notification Settings", Toast.LENGTH_SHORT).show()
-            }
-        }
-    }
-
-    private fun copyToClipboard(label: String, text: String?) {
-        if (!text.isNullOrEmpty() && text != "-") {
-            val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-            val clip = ClipData.newPlainText(label, text)
-            clipboard.setPrimaryClip(clip)
-            Toast.makeText(this, "$label copied!", Toast.LENGTH_SHORT).show()
-        }
-    }
-
-    private fun updateStatusCardState() {
-        // Check Permission
-        val listenerGranted = isNotificationListenerEnabled()
-
-        if (!listenerGranted) {
-            // State: Missing Permission
-            setCardState(false, "Permission Required", R.color.status_inactive) // Red/Orange
-        } else {
-            // Check Playing Status
-            val isPlaying = LyricRepository.getInstance().isPlaying.value
-            if (java.lang.Boolean.TRUE == isPlaying) {
-                // Use liveLyric for source app name, or fallback to liveMetadata package if needed
-                val rawPackage = LyricRepository.getInstance().liveLyric.value?.sourceApp 
-                             ?: LyricRepository.getInstance().liveMetadata.value?.packageName 
-                
-                val sourceName = if (rawPackage != null) {
-                    ParserRuleHelper.getAppNameForPackage(this, rawPackage)
-                } else {
-                    "Music"
-                }
-
-                setCardState(true, "Active: $sourceName", R.color.status_active)
-            } else {
-                setCardState(true, "Service Ready (Idle)", R.color.status_active) // Or distinct color?
-            }
-            
-            // Check for Service Disconnection despite permission
-            if (!MediaMonitorService.isConnected) {
-                setCardState(false, "Service Disconnected\nTap to Reconnect", R.color.status_inactive)
-                cardStatus.setOnClickListener {
-                     MediaMonitorService.requestRebind(this)
-                     Toast.makeText(this, "Requesting Rebind...", Toast.LENGTH_SHORT).show()
-                }
-            } else {
-                // Reset click listener to nothing (or just disable it)
-                 cardStatus.setOnClickListener(null)
-            }
-        }
-    }
-
-    private fun setCardState(isActive: Boolean, text: String, colorResId: Int) {
-        cardStatus.setCardBackgroundColor(ContextCompat.getColor(this, colorResId))
-        tvStatusText.text = text
-
-        if (isActive) {
-            ivStatusIcon.setImageResource(R.drawable.ic_check_circle)
-        } else {
-            ivStatusIcon.setImageResource(R.drawable.ic_cancel)
-        }
-    }
-
-    private fun isNotificationListenerEnabled(): Boolean {
-        return Settings.Secure.getString(contentResolver, "enabled_notification_listeners").contains(packageName)
     }
 
     private fun updateVersionInfo() {
         try {
             val version = packageManager.getPackageInfo(packageName, 0).versionName
             val type = if ((applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0) "Debug" else "Release"
-            tvAppVersion.text = getString(R.string.app_version_fmt, version, type)
+            versionText = getString(R.string.app_version_fmt, version, type)
         } catch (e: PackageManager.NameNotFoundException) {
             e.printStackTrace()
         }
@@ -239,18 +116,16 @@ class MainActivity : BaseActivity() {
 
     // Check API Status (Reflection)
     private fun checkApiStatusForDashboard() {
-        // Only show in Debug builds
-        val cvApiStatus = findViewById<View>(R.id.cv_api_status)
         if (!BuildConfig.DEBUG) {
-            cvApiStatus.visibility = View.GONE
+            showApiCard = false
             return
         }
-        cvApiStatus.visibility = View.VISIBLE
+        showApiCard = true
 
         if (Build.VERSION.SDK_INT < 36) {
-            tvApiPermission.text = "Permission: N/A (Pre-API 36)"
-            tvNotifCapability.text = "Notif.hasPromotable: N/A"
-            tvNotifFlag.text = "Flag PROMOTED: N/A"
+            apiPermissionText = "Permission: N/A (Pre-API 36)"
+            apiCapabilityText = "Notif.hasPromotable: N/A"
+            apiFlagText = "Flag PROMOTED: N/A"
             return
         }
 
@@ -260,166 +135,42 @@ class MainActivity : BaseActivity() {
             val granted = m.invoke(nm) as Boolean
 
             if (granted) {
-                tvApiPermission.text = "Permission (canPost): GRANTED ✅"
-                tvApiPermission.setTextColor(ContextCompat.getColor(this, R.color.status_active))
+                apiPermissionText = "Permission (canPost): GRANTED ✅"
+                apiPermissionActive = true
             } else {
-                tvApiPermission.text = "Permission (canPost): DENIED ❌"
-                tvApiPermission.setTextColor(ContextCompat.getColor(this, R.color.status_inactive))
+                apiPermissionText = "Permission (canPost): DENIED ❌"
+                apiPermissionActive = false
             }
         } catch (e: Exception) {
-            tvApiPermission.text = "Permission Check Failed: ${e.message}"
+            apiPermissionText = "Permission Check Failed: ${e.message}"
+            apiPermissionActive = false
         }
-    }
-
-    private fun updateDebugProgress() {
-        // No-op for now as UI removed
-    }
-
-    private fun formatTime(ms: Long): String {
-        var seconds = ms / 1000
-        val minutes = seconds / 60
-        seconds = seconds % 60
-        return String.format("%02d:%02d", minutes, seconds)
-    }
-
-    private fun setupObservers() {
-        val repo = LyricRepository.getInstance()
-
-        // Playback Status Observer
-        repo.isPlaying.observe(this) { isPlaying ->
-            updateStatusCardState()
-            updatePlaybackView(java.lang.Boolean.TRUE == isPlaying)
-        }
-
-        // Lyric Observer
-        repo.liveLyric.observe(this) { info ->
-            val lyric = info?.lyric
-            if (lyric != null) {
-                tvLyric.text = lyric
-            } else {
-                tvLyric.text = "-"
-            }
-        }
-
-        // Metadata Observer
-        repo.liveMetadata.observe(this) { mediaInfo ->
-            if (mediaInfo == null) return@observe
-            // Ensure defaults if null
-            tvSong.text = mediaInfo.title
-            tvArtist.text = mediaInfo.artist
-        }
-        
-        // Progress Observer
-        repo.liveProgress.observe(this) { progress ->
-            if (progress != null && progress.duration > 0) {
-                pbProgress.max = progress.duration.toInt()
-                pbProgress.setProgress(progress.position.toInt(), true)
-            } else {
-                pbProgress.progress = 0
-            }
-        }
-        
-        // Album Art Observer
-        repo.liveAlbumArt.observe(this) { bitmap ->
-             val isPlaying = java.lang.Boolean.TRUE == repo.isPlaying.value
-             if (!isPlaying) {
-                 // Force placeholder if idle
-                 ivAlbumArt.setImageResource(R.drawable.ic_music_note)
-                 return@observe
-             }
-             
-            if (bitmap != null) {
-                ivAlbumArt.setPadding(0, 0, 0, 0)
-                ivAlbumArt.scaleType = ImageView.ScaleType.FIT_CENTER
-                ivAlbumArt.setImageBitmap(bitmap)
-                ivAlbumArt.clearColorFilter() // Clear tint for actual art
-            } else {
-                val padding = dpToPx(16)
-                ivAlbumArt.setPadding(padding, padding, padding, padding)
-                ivAlbumArt.setImageResource(R.drawable.ic_music_note)
-                ivAlbumArt.scaleType = ImageView.ScaleType.FIT_CENTER
-                // Ensure tint matches text for a "placeholder" look
-                ivAlbumArt.setColorFilter(ContextCompat.getColor(this, android.R.color.tab_indicator_text), android.graphics.PorterDuff.Mode.SRC_IN)
-                // Actually colorOnSurfaceVariant is better: ?attr/colorOnSurfaceVariant
-                // But getting attr programmatically is verbose. 
-                // Let's rely on the vector's own tint if possible, or use a standard grey color.
-                ivAlbumArt.clearColorFilter() // Vector has its own tint "?attr/colorControlNormal"
-            }
-        }
-    }
-
-    private fun updatePlaybackView(isPlaying: Boolean) {
-        // Toggle visibility of playback controls vs idle message
-        val visibility = if (isPlaying) View.VISIBLE else View.GONE
-        val idleVisibility = if (isPlaying) View.GONE else View.VISIBLE
-
-        tvSong.visibility = visibility
-        tvArtist.visibility = visibility
-        tvLyric.visibility = visibility
-        pbProgress.visibility = visibility
-        
-        // Also toggle labels
-        findViewById<View>(R.id.lbl_song)?.visibility = visibility
-        findViewById<View>(R.id.lbl_artist)?.visibility = visibility
-        findViewById<View>(R.id.lbl_lyric)?.visibility = visibility
-
-        tvIdleMessage.visibility = idleVisibility
-        
-        if (!isPlaying) {
-            val padding = dpToPx(16)
-            ivAlbumArt.setPadding(padding, padding, padding, padding)
-            ivAlbumArt.setImageResource(R.drawable.ic_music_note)
-            ivAlbumArt.scaleType = ImageView.ScaleType.FIT_CENTER
-            ivAlbumArt.clearColorFilter() // Use vector tint
-        } else {
-             // Let observer handle it, or restore if needed.
-             val bmp = LyricRepository.getInstance().liveAlbumArt.value
-             if (bmp != null) {
-                 ivAlbumArt.setPadding(0, 0, 0, 0)
-                 ivAlbumArt.scaleType = ImageView.ScaleType.FIT_CENTER
-                 ivAlbumArt.setImageBitmap(bmp)
-                 ivAlbumArt.clearColorFilter()
-             } else {
-                 val padding = dpToPx(16)
-                 ivAlbumArt.setPadding(padding, padding, padding, padding)
-                 ivAlbumArt.setImageResource(R.drawable.ic_music_note)
-                 ivAlbumArt.scaleType = ImageView.ScaleType.FIT_CENTER
-                 ivAlbumArt.clearColorFilter()
-             }
-        }
-    }
-    
-    private fun dpToPx(dp: Int): Int {
-        return (dp * resources.displayMetrics.density).toInt()
     }
 
     override fun onResume() {
         super.onResume()
-        updateStatusCardState()
         checkApiStatusForDashboard()
-        
+
         // DIAGNOSTIC: Check actual permission state
         val listenerString = Settings.Secure.getString(contentResolver, "enabled_notification_listeners")
         val isPermissionGranted = listenerString?.contains(packageName) == true
         val serviceConnected = MediaMonitorService.isConnected
-        
+
         AppLogger.getInstance().log("MainActivity", "=== Service Status ===")
         AppLogger.getInstance().log("MainActivity", "Permission Granted: $isPermissionGranted")
         AppLogger.getInstance().log("MainActivity", "Service Connected: $serviceConnected")
         AppLogger.getInstance().log("MainActivity", "Enabled Listeners: $listenerString")
-        
+
         // ENHANCED: Auto-Rebind Check with detailed logging
         if (isPermissionGranted && !serviceConnected) {
             AppLogger.getInstance().log("MainActivity", "⚠️ Permission OK but service disconnected - attempting rebind")
             MediaMonitorService.requestRebind(this)
-            
-            // Retry after 500ms if still disconnected
+
             handler.postDelayed({
                 if (!MediaMonitorService.isConnected) {
                     AppLogger.getInstance().log("MainActivity", "⚠️ Second rebind attempt (still disconnected)")
                     MediaMonitorService.requestRebind(this)
-                    
-                    // Final check after 1 second
+
                     handler.postDelayed({
                         if (!MediaMonitorService.isConnected) {
                             AppLogger.getInstance().log("MainActivity", "❌ REBIND FAILED - Manual intervention may be needed")
