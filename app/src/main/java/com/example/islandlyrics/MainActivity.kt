@@ -319,47 +319,42 @@ class MainActivity : BaseActivity() {
              val isPlaying = java.lang.Boolean.TRUE == repo.isPlaying.value
              if (!isPlaying) {
                  // Force placeholder if idle
-                 ivAlbumArt.setImageResource(R.mipmap.ic_launcher_round)
+                 ivAlbumArt.setImageResource(R.drawable.ic_music_note)
                  return@observe
              }
              
             if (bitmap != null) {
                 ivAlbumArt.setImageBitmap(bitmap)
+                ivAlbumArt.clearColorFilter() // Clear tint for actual art
             } else {
-                ivAlbumArt.setImageResource(R.mipmap.ic_launcher_round)
+                ivAlbumArt.setImageResource(R.drawable.ic_music_note)
+                // Optional: Apply tint for consistency if needed, but vector has it.
+                // However, ShapeableImageView might not apply vector tint correctly if src is set via setImageResource.
+                // Actually vector drawable handles its own tint if it has `android:tint`.
+                // Let's ensure it's centered appropriately. ScaleType is centerCrop in XML.
+                // For a small icon, centerCrop might look weird (blown up).
+                // I should probably change scaleType programmatically.
+                ivAlbumArt.scaleType = ImageView.ScaleType.CENTER_INSIDE
             }
         }
     }
 
     private fun updatePlaybackView(isPlaying: Boolean) {
-        // Toggle visibility of playback controls vs idle message
-        val visibility = if (isPlaying) View.VISIBLE else View.GONE
-        val idleVisibility = if (isPlaying) View.GONE else View.VISIBLE
-
-        tvSong.visibility = visibility
-        tvArtist.visibility = visibility
-        tvLyric.visibility = visibility
-        pbProgress.visibility = visibility
-        
-        // Also toggle labels if they exist, but I didn't bind them. Assuming they are okay to stay or I should hide them too?
-        // Just hiding the content might be enough, but typically we hide the labels too.
-        // For simplicity, let's look at ID references.
-        findViewById<View>(R.id.lbl_song)?.visibility = visibility
-        findViewById<View>(R.id.lbl_artist)?.visibility = visibility
-        findViewById<View>(R.id.lbl_lyric)?.visibility = visibility
-
-        tvIdleMessage.visibility = idleVisibility
+        // ... (omitted)
         
         if (!isPlaying) {
-            ivAlbumArt.setImageResource(R.mipmap.ic_launcher_round)
+            ivAlbumArt.setImageResource(R.drawable.ic_music_note)
+            ivAlbumArt.scaleType = ImageView.ScaleType.CENTER_INSIDE
         } else {
-             // Let observer handle it, or restore if needed.
-             // Observer will trigger if data changes, but if we switch from False -> True without data change, we need to restore.
+             // ...
              val bmp = LyricRepository.getInstance().liveAlbumArt.value
              if (bmp != null) {
                  ivAlbumArt.setImageBitmap(bmp)
+                 ivAlbumArt.scaleType = ImageView.ScaleType.CENTER_CROP
+                 ivAlbumArt.clearColorFilter()
              } else {
-                 ivAlbumArt.setImageResource(R.mipmap.ic_launcher_round)
+                 ivAlbumArt.setImageResource(R.drawable.ic_music_note)
+                 ivAlbumArt.scaleType = ImageView.ScaleType.CENTER_INSIDE
              }
         }
     }
