@@ -464,11 +464,11 @@ class MediaMonitorService : NotificationListenerService() {
         
         fun requestRebind(context: Context) {
             val componentName = ComponentName(context, MediaMonitorService::class.java)
-            Log.d(TAG, "Requesting rebind for $componentName")
+            AppLogger.getInstance().d(TAG, "Requesting rebind for $componentName")
             try {
                 NotificationListenerService.requestRebind(componentName)
             } catch (e: Exception) {
-                Log.e(TAG, "Failed to request rebind", e)
+                AppLogger.getInstance().e(TAG, "Failed to request rebind: ${e.message}")
             }
         }
     }

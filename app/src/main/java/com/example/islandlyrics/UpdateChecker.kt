@@ -74,7 +74,7 @@ object UpdateChecker {
         if (ignored != null) {
             val currentVersion = BuildConfig.VERSION_NAME
             if (compareVersions(currentVersion, ignored) >= 0) {
-                Log.d(TAG, "Auto-clearing outdated ignored version: $ignored (current: $currentVersion)")
+                AppLogger.getInstance().d(TAG, "Auto-clearing outdated ignored version: $ignored (current: $currentVersion)")
                 clearIgnoredVersion(context)
                 return null
             }
@@ -89,7 +89,7 @@ object UpdateChecker {
     fun setIgnoredVersion(context: Context, version: String) {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         prefs.edit().putString(KEY_IGNORED_VERSION, version).apply()
-        Log.d(TAG, "Ignored version set to: $version")
+        AppLogger.getInstance().d(TAG, "Ignored version set to: $version")
     }
 
     /**
@@ -174,25 +174,25 @@ object UpdateChecker {
                         // Check if ignored
                         val ignoredVersion = getIgnoredVersion(context)
                         if (ignoredVersion != null && release.tagName == ignoredVersion) {
-                            Log.d(TAG, "Skipping ignored version: ${release.tagName}")
+                            AppLogger.getInstance().d(TAG, "Skipping ignored version: ${release.tagName}")
                             continue
                         }
                         
-                        Log.d(TAG, "Update available: ${release.tagName} (Prerelease: ${release.prerelease})")
+                        AppLogger.getInstance().d(TAG, "Update available: ${release.tagName} (Prerelease: ${release.prerelease})")
                         return@withContext release
                     }
                 }
                 
-                Log.d(TAG, "No suitable updates found.")
+                AppLogger.getInstance().d(TAG, "No suitable updates found.")
                 
             } else {
-                Log.e(TAG, "GitHub API error: ${connection.responseCode}")
+                AppLogger.getInstance().e(TAG, "GitHub API error: ${connection.responseCode}")
             }
 
             connection.disconnect()
             null
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to check for updates", e)
+            AppLogger.getInstance().e(TAG, "Failed to check for updates", e)
             null
         }
     }
@@ -220,7 +220,7 @@ object UpdateChecker {
             
             return commit1.compareTo(commit2)
         } catch (e: Exception) {
-            Log.e(TAG, "Version comparison error", e)
+            AppLogger.getInstance().e(TAG, "Version comparison error", e)
             return 0
         }
     }

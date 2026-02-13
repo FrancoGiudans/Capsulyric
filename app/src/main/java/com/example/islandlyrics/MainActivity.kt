@@ -137,9 +137,14 @@ class MainActivity : BaseActivity() {
         val cvSettings = findViewById<View>(R.id.cv_settings)
         cvSettings?.setOnClickListener { startActivity(Intent(this, SettingsActivity::class.java)) }
 
-        // Debug button
+        // Debug button - Only for DEBUG builds
         val cvDebug = findViewById<View>(R.id.cv_debug)
-        cvDebug?.setOnClickListener { startActivity(Intent(this, DebugLyricActivity::class.java)) }
+        if (BuildConfig.DEBUG) {
+            cvDebug?.visibility = View.VISIBLE
+            cvDebug?.setOnClickListener { startActivity(Intent(this, DebugLyricActivity::class.java)) }
+        } else {
+            cvDebug?.visibility = View.GONE
+        }
 
         // Open Promoted Settings
         btnOpenPromotedSettings.setOnClickListener {

@@ -122,7 +122,7 @@ class LyricService : Service() {
 
     private val superLyricStub = object : ISuperLyric.Stub() {
         override fun onStop(data: SuperLyricData?) {
-            Log.d(TAG, "API onStop: ${data?.packageName}")
+            AppLogger.getInstance().d(TAG, "API onStop: ${data?.packageName}")
             LyricRepository.getInstance().updatePlaybackStatus(false)
             
             // CRITICAL FIX: Don't stop capsule here - let playback state observer control lifecycle
@@ -147,7 +147,7 @@ class LyricService : Service() {
 
                 // Instrumental Filter
                 if (lyric.matches(".*(纯音乐|Instrumental|No lyrics|请欣赏|没有歌词).*".toRegex())) {
-                    Log.d(TAG, "Instrumental detected: $lyric")
+                    AppLogger.getInstance().d(TAG, "Instrumental detected: $lyric")
                     @Suppress("DEPRECATION")
                     stopForeground(true)
                     return
