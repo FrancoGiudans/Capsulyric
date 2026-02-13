@@ -56,12 +56,32 @@ fun SettingsScreen(
     var showPrivacyDialog by remember { mutableStateOf(false) }
 
     // Logic for permissions status
-    val notificationGranted = remember(LocalContext.current) {
-        NotificationManagerCompat.getEnabledListenerPackages(context).contains(context.packageName)
+    fun checkNotificationPermission(): Boolean {
+        return NotificationManagerCompat.getEnabledListenerPackages(context).contains(context.packageName)
     }
-    
-    // Post Notification Logic (Android 13+)
-    val postNotificationGranted = ContextCompat.checkSelfPermission(context, android.Manifest.permission.POST_NOTIFICATIONS) == android.content.pm.PackageManager.PERMISSION_GRANTED
+    fun checkPostNotificationPermission(): Boolean {
+         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            return ContextCompat.checkSelfPermission(context, android.Manifest.permission.POST_NOTIFICATIONS) == android.content.pm.PackageManager.PERMISSION_GRANTED
+         }
+         return true
+    }
+
+    var notificationGranted by remember { mutableStateOf(checkNotificationPermission()) }
+    var postNotificationGranted by remember { mutableStateOf(checkPostNotificationPermission()) }
+
+    val lifecycleOwner = androidx.compose.ui.platform.LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+                notificationGranted = checkNotificationPermission()
+                postNotificationGranted = checkPostNotificationPermission()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
 
     // Determine actual dark mode for AppTheme
     val isSystemDark = androidx.compose.foundation.isSystemInDarkTheme()
