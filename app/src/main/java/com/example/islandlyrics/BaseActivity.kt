@@ -1,5 +1,6 @@
 package com.example.islandlyrics
 
+import android.app.ActivityManager
 import android.content.res.Configuration
 import android.graphics.Color
 import android.os.Bundle
@@ -9,6 +10,11 @@ import androidx.appcompat.app.AppCompatActivity
  * Base Activity to handle common UI logic like Pure Black mode.
  */
 open class BaseActivity : AppCompatActivity() {
+
+    companion object {
+        /** Tracks the number of started (visible) activities across the app. */
+        private var startedActivityCount = 0
+    }
 
     private var currentDynamicColorEnabled: Boolean = false
     private var currentPureBlackEnabled: Boolean = false
@@ -37,6 +43,19 @@ open class BaseActivity : AppCompatActivity() {
         updatePureBlackMode()
     }
 
+    override fun onStart() {
+        super.onStart()
+        startedActivityCount++
+        // When app comes to foreground, re-include in recents
+        if (startedActivityCount == 1) {
+            val prefs = getSharedPreferences("IslandLyricsPrefs", MODE_PRIVATE)
+            if (prefs.getBoolean("hide_recents_enabled", false)) {
+                val am = getSystemService(ACTIVITY_SERVICE) as ActivityManager
+                am.appTasks.firstOrNull()?.setExcludeFromRecents(false)
+            }
+        }
+    }
+
     override fun onResume() {
         super.onResume()
         
@@ -54,9 +73,14 @@ open class BaseActivity : AppCompatActivity() {
 
     override fun onStop() {
         super.onStop()
-        val prefs = getSharedPreferences("IslandLyricsPrefs", MODE_PRIVATE)
-        if (prefs.getBoolean("hide_recents_enabled", false)) {
-            finishAndRemoveTask()
+        startedActivityCount--
+        // When ALL activities are stopped, the app is truly in the background
+        if (startedActivityCount == 0) {
+            val prefs = getSharedPreferences("IslandLyricsPrefs", MODE_PRIVATE)
+            if (prefs.getBoolean("hide_recents_enabled", false)) {
+                val am = getSystemService(ACTIVITY_SERVICE) as ActivityManager
+                am.appTasks.firstOrNull()?.setExcludeFromRecents(true)
+            }
         }
     }
 
@@ -93,3 +117,4 @@ open class BaseActivity : AppCompatActivity() {
         }
     }
 }
+
