@@ -319,6 +319,14 @@ fun SettingsScreen(
                     onClick = { showGuideDialog = true }
                 )
 
+                SettingsActionItem(
+                    title = stringResource(R.string.faq_title),
+                    icon = android.R.drawable.ic_menu_help,
+                    onClick = { 
+                        context.startActivity(Intent(context, FAQActivity::class.java))
+                    }
+                )
+
                 // --- About ---
                 SettingsSectionHeader(text = "About", marginTop = 16.dp)
 

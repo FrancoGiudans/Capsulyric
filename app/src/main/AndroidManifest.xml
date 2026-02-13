@@ -30,6 +30,10 @@
             android:label="Settings"
             android:parentActivityName=".MainActivity" />
         <activity
+            android:name=".FAQActivity"
+            android:label="@string/faq_title"
+            android:exported="false" />
+        <activity
             android:name=".ParserRuleActivity"
             android:label="@string/parser_rule_title"
             android:parentActivityName=".SettingsActivity" />

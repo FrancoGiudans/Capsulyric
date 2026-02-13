@@ -131,4 +131,36 @@
     <string name="icon_style_advanced_desc">专辑封面+双行布局</string>
     <string name="dialog_icon_style_title">设置左侧图标样式</string>
 
+    <!-- FAQ Strings -->
+    <string name="faq_title">常见问题解答</string>
+    <string name="faq_cat_func">🛠️ 功能异常类</string>
+    <string name="faq_q_no_lyrics">Q：为什么我看不到歌词？</string>
+    <string name="faq_a_no_lyrics">A： 请按照以下步骤逐一排查：\n
+1. <b>检查权限</b>： 请确保应用已获得所有必要的系统权限（尤其是通知使用权）。\n
+2. <b>确认系统版本</b>：\n
+   - 推荐环境： Android 16 及以上，或 HyperOS 3.0.300 及以上。\n
+   - 兼容性警告： 其他系统版本尚未经过完整测试，可能存在不稳定性。\n
+   - HyperOS 特别说明： 低于 3.0.300 的版本无法显示原生实时通知。\n
+3. <b>检查第三方音乐App设置</b>：\n
+   - QQ音乐/网易云/小米音乐等： 若使用车载蓝牙歌词或通知栏歌词功能，部分版本可能需要连接耳机才能触发显示。\n
+   - Apple Music 等： 此类依赖 SuperLyric API 的应用，必须安装 SuperLyric 模块（需要 LSPosed 环境支持）。\n
+4. <b>在线歌词限制</b>： 如果使用的是在线获取歌词功能，可能因 API 限制暂时无法获取该歌曲的准确歌词。</string>
+
+    <string name="faq_q_service_error">Q：为什么首页一直提示“无法连接到服务”？</string>
+    <string name="faq_a_service_error">A： 这通常是由于系统自动回收了权限导致的。\n
+<b>原因</b>： 部分系统会限制应用“通知使用权”的授权持续时间。\n
+<b>解决</b>： 请尝试前往系统设置，重新授予本应用的通知使用权。</string>
+    
+    <string name="faq_cat_feedback">📝 反馈与日志类</string>
+    <string name="faq_q_unresolved">Q：以上内容都无法解决我的问题，怎么办？</string>
+    <string name="faq_a_unresolved">A： 请前往反馈页面提交 Issue。\n
+- <b>推荐渠道</b>： GitHub Issues（处理效率最高）。\n
+- <b>备用渠道</b>： WPS 表单（可能需要登录）。\n
+<b>重要</b>： 提交反馈时，请务必附带 <b>日志（Log）</b> 以便我们要排查问题。</string>
+
+    <string name="faq_q_get_log">Q：如何获取日志（Log）？</string>
+    <string name="faq_a_get_log">A： 根据你安装的版本，获取方式略有不同：\n
+- <b>Debug 版本</b>： 自带 Log Console（日志控制台），可直接查看输出的完整日志。\n
+- <b>Release / Pre-release 版本</b>： 在应用内找到版本号或 Commit 号，连续点击即可唤出 Log Console。</string>
+
 </resources>
