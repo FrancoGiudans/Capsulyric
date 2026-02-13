@@ -133,33 +133,33 @@
 
     <!-- FAQ Strings -->
     <string name="faq_title">FAQ</string>
-    <string name="faq_cat_func">🛠️ Functionality Issues</string>
-    <string name="faq_q_no_lyrics">Q: Why can't I see lyrics?</string>
-    <string name="faq_a_no_lyrics">A: Please check the following steps:\n
-1. <b>Check Permissions</b>: Ensure the app has all necessary permissions (especially Notification Access).\n
+    <string name="faq_cat_func">Functionality Issues</string>
+    <string name="faq_q_no_lyrics">Q: Why can\'t I see lyrics?</string>
+    <string name="faq_a_no_lyrics">A: Please check the following steps:\n\n
+1. <b>Check Permissions</b>: Ensure the app has all necessary permissions (especially Notification Access).\n\n
 2. <b>Check System Version</b>:\n
    - Recommended: Android 16+ or HyperOS 3.0.300+.\n
    - Compatibility Warning: Other versions are not fully tested and may be unstable.\n
-   - HyperOS Note: Versions below 3.0.300 cannot display native live notifications.\n
+   - HyperOS Note: Versions below 3.0.300 cannot display native live notifications.\n\n
 3. <b>Check Music App Settings</b>:\n
-   - QQ Music/Netease/Xiaomi Music etc.: Some versions may require connecting headphones to trigger "Car Bluetooth Lyrics" or "Notification Lyrics".\n
-   - Apple Music etc.: Apps relying on SuperLyric API must have the SuperLyric module installed (requires LSPosed).\n
+   - QQ Music/Netease/Xiaomi Music etc.: Some versions may require connecting headphones to trigger \"Car Bluetooth Lyrics\" or \"Notification Lyrics\".\n
+   - Apple Music etc.: Apps relying on SuperLyric API must have the SuperLyric module installed (requires LSPosed).\n\n
 4. <b>Online Lyric Limits</b>: If using online lyrics, API limitations may temporarily prevent fetching accurate lyrics.</string>
 
     <string name="faq_q_service_error">Q: Why does the home page say "Cannot connect to service"?</string>
-    <string name="faq_a_service_error">A: This is usually because the system automatically revoked permissions.\n
+    <string name="faq_a_service_error">A: This is usually because the system automatically revoked permissions.\n\n
 <b>Reason</b>: Some systems limit the duration of "Notification Access" authorization.\n
 <b>Solution</b>: Please go to system settings and re-grant Notification Access to this app.</string>
     
-    <string name="faq_cat_feedback">📝 Feedback &amp; Logs</string>
+    <string name="faq_cat_feedback">Feedback &amp; Logs</string>
     <string name="faq_q_unresolved">Q: None of the above solved my problem. What should I do?</string>
-    <string name="faq_a_unresolved">A: Please submit an Issue on the feedback page.\n
+    <string name="faq_a_unresolved">A: Please submit an Issue on the feedback page.\n\n
 - <b>Recommended</b>: GitHub Issues (Highest efficiency).\n
-- <b>Alternative</b>: WPS Form (May require login).\n
+- <b>Alternative</b>: WPS Form (May require login).\n\n
 <b>Important</b>: When submitting feedback, please attach <b>Logs</b> to help us troubleshoot.</string>
 
     <string name="faq_q_get_log">Q: How do I get logs?</string>
-    <string name="faq_a_get_log">A: It depends on your version:\n
+    <string name="faq_a_get_log">A: It depends on your version:\n\n
 - <b>Debug Version</b>: Has a built-in Log Console to view full logs directly.\n
 - <b>Release / Pre-release Version</b>: Tap the version number or Commit hash in the app multiple times to open the Log Console.</string>
 
