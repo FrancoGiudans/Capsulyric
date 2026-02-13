@@ -11,6 +11,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -24,6 +25,7 @@ import androidx.compose.ui.unit.sp
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     onCheckUpdate: () -> Unit,
@@ -50,7 +52,7 @@ fun SettingsScreen(
     // Dialog State
     var showLanguageDialog by remember { mutableStateOf(false) }
     var showIconStyleDialog by remember { mutableStateOf(false) }
-    var showGuideDialog by remember { mutableStateOf(false) }
+
     var showPrivacyDialog by remember { mutableStateOf(false) }
 
     // Logic for permissions status
@@ -70,7 +72,20 @@ fun SettingsScreen(
         dynamicColor = dynamicColor,
         pureBlack = pureBlack && useDarkTheme
     ) {
+        val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
         Scaffold(
+            modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+            topBar = {
+                LargeTopAppBar(
+                    title = { Text("Settings") },
+                    scrollBehavior = scrollBehavior,
+                    colors = TopAppBarDefaults.largeTopAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.background,
+                        scrolledContainerColor = MaterialTheme.colorScheme.background,
+                        titleContentColor = MaterialTheme.colorScheme.onBackground
+                    )
+                )
+            },
             containerColor = MaterialTheme.colorScheme.background
         ) { paddingValues ->
             Column(
@@ -79,14 +94,6 @@ fun SettingsScreen(
                     .fillMaxSize()
                     .verticalScroll(scrollState)
             ) {
-                // Header
-                Text(
-                    text = "Settings",
-                    fontSize = 32.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.padding(24.dp)
-                )
 
                 // --- Service ---
                 SettingsSectionHeader(text = "Service")
@@ -313,11 +320,6 @@ fun SettingsScreen(
 
                 // --- Help ---
                 SettingsSectionHeader(text = "Help")
-                SettingsActionItem(
-                    title = stringResource(R.string.settings_guide_item),
-                    icon = android.R.drawable.ic_menu_help,
-                    onClick = { showGuideDialog = true }
-                )
 
                 SettingsActionItem(
                     title = stringResource(R.string.faq_title),
@@ -390,24 +392,7 @@ fun SettingsScreen(
                 )
             }
 
-            if (showGuideDialog) {
-                AlertDialog(
-                    onDismissRequest = { showGuideDialog = false },
-                    title = { Text(text = stringResource(R.string.guide_title)) },
-                    text = { 
-                        // Compose doesn't support HTML easily. 
-                        // For now we strip or just show simple text, or use AndroidView for Html.fromHtml
-                        // Let's assume the string is simple enough or we just show it.
-                        // Ideally we use a simple text or replicate the logic.
-                        Text(text = stringResource(R.string.guide_message)) 
-                    },
-                    confirmButton = {
-                        TextButton(onClick = { showGuideDialog = false }) {
-                            Text(stringResource(android.R.string.ok))
-                        }
-                    }
-                )
-            }
+
 
             if (showPrivacyDialog) {
                 AlertDialog(

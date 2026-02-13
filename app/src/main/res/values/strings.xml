@@ -133,6 +133,9 @@
 
     <!-- FAQ Strings -->
     <string name="faq_title">FAQ</string>
+    <string name="faq_cat_guide">Setup Guide</string>
+    <string name="faq_q_guide">Q: How do I set up the no-Root (0-Hook) mode?</string>
+    <string name="faq_a_guide">A: This mode uses \'Bluetooth Car Lyric\' protocol.\n\n1. Supports <b>QQ Music</b>, <b>Xiaomi Music</b> and <b>NetEase Music</b>.\n2. NetEase: Enable \'Car Bluetooth Lyric\' in Settings -> Tools.\n3. QQ Music: Enable \'Car Bluetooth Lyric\' in QPlay Settings.\n4. Grant \'Notification Access\' to this app.</string>
     <string name="faq_cat_func">Functionality Issues</string>
     <string name="faq_q_no_lyrics">Q: Why can\'t I see lyrics?</string>
     <string name="faq_a_no_lyrics">A: Please check the following steps:\n\n

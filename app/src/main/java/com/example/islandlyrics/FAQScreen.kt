@@ -18,6 +18,7 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.path
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -30,13 +31,17 @@ import androidx.compose.ui.viewinterop.AndroidView
 fun FAQScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     
-    // Data Structure holding text as CharSequence to preserve spans (bold, etc.)
     data class QAItem(val question: CharSequence, val answer: CharSequence)
     data class FAQCategory(val title: String, val items: List<QAItem>)
 
-    // Load data using getText() to preserve formatting
     val faqData = remember {
         listOf(
+            FAQCategory(
+                context.getString(R.string.faq_cat_guide),
+                listOf(
+                    QAItem(context.resources.getText(R.string.faq_q_guide), context.resources.getText(R.string.faq_a_guide))
+                )
+            ),
             FAQCategory(
                 context.getString(R.string.faq_cat_func),
                 listOf(
@@ -54,23 +59,28 @@ fun FAQScreen(onBack: () -> Unit) {
         )
     }
 
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     Scaffold(
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
-             CenterAlignedTopAppBar(
-                title = { Text(stringResource(R.string.faq_title), fontWeight = FontWeight.Bold) },
+            LargeTopAppBar(
+                title = { Text(stringResource(R.string.faq_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
-                            imageVector = LocalIcons.ArrowBack,
+                            imageVector = FAQLocalIcons.ArrowBack,
                             contentDescription = "Back"
                         )
                     }
                 },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                scrollBehavior = scrollBehavior,
+                colors = TopAppBarDefaults.largeTopAppBarColors(
                     containerColor = MaterialTheme.colorScheme.background,
-                    titleContentColor = MaterialTheme.colorScheme.onBackground
+                    scrolledContainerColor = MaterialTheme.colorScheme.background,
+                    titleContentColor = MaterialTheme.colorScheme.onBackground,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onBackground
                 )
-             )
+            )
         },
         containerColor = MaterialTheme.colorScheme.background
     ) { paddingValues ->
@@ -114,9 +124,8 @@ fun FAQItem(question: CharSequence, answer: CharSequence) {
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.fillMaxWidth()
         ) {
-            // Question Text
             Text(
-                text = question.toString(), // Question usually doesn't have complex formatting, safe to toString
+                text = question.toString(),
                 fontSize = 18.sp,
                 color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.weight(1f)
@@ -125,7 +134,7 @@ fun FAQItem(question: CharSequence, answer: CharSequence) {
             Spacer(modifier = Modifier.width(8.dp))
             
             Icon(
-                imageVector = LocalIcons.KeyboardArrowDown,
+                imageVector = FAQLocalIcons.KeyboardArrowDown,
                 contentDescription = "Expand",
                 modifier = Modifier.rotate(rotationState),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant
@@ -135,7 +144,6 @@ fun FAQItem(question: CharSequence, answer: CharSequence) {
         AnimatedVisibility(visible = expanded) {
             Column {
                 Spacer(modifier = Modifier.height(12.dp))
-                // Answer Text with formatting support
                 FormattedText(
                     text = answer,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -150,7 +158,7 @@ fun FAQItem(question: CharSequence, answer: CharSequence) {
 fun FormattedText(
     text: CharSequence,
     color: androidx.compose.ui.graphics.Color,
-    fontSize: Float, // in sp
+    fontSize: Float,
     modifier: Modifier = Modifier
 ) {
     val linkColor = MaterialTheme.colorScheme.primary.toArgb()
@@ -175,21 +183,7 @@ fun FormattedText(
     )
 }
 
-// Reusing the Section Header style from SettingsScreen for consistency
-@Composable
-fun SettingsSectionHeader(text: String) {
-    Text(
-        text = text,
-        color = MaterialTheme.colorScheme.primary,
-        fontSize = 14.sp,
-        fontWeight = FontWeight.Bold,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(start = 24.dp, top = 24.dp, bottom = 8.dp)
-    )
-}
-
-private object LocalIcons {
+private object FAQLocalIcons {
     val ArrowBack: ImageVector
         get() {
             if (_arrowBack != null) return _arrowBack!!
@@ -200,7 +194,7 @@ private object LocalIcons {
                 viewportWidth = 24f,
                 viewportHeight = 24f
             ).apply {
-                path(fill = SolidColor(Color.Black), fillAlpha = 1f, stroke = null, strokeAlpha = 1f) {
+                path(fill = SolidColor(Color.Black)) {
                     moveTo(20f, 11f)
                     horizontalLineTo(7.83f)
                     lineTo(13.42f, 5.41f)
@@ -227,7 +221,7 @@ private object LocalIcons {
                 viewportWidth = 24f,
                 viewportHeight = 24f
             ).apply {
-                path(fill = SolidColor(Color.Black), fillAlpha = 1f, stroke = null, strokeAlpha = 1f) {
+                path(fill = SolidColor(Color.Black)) {
                     moveTo(7.41f, 8.59f)
                     lineTo(12f, 13.17f)
                     lineTo(16.59f, 8.59f)

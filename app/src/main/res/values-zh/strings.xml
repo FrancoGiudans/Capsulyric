@@ -133,6 +133,9 @@
 
     <!-- FAQ Strings -->
     <string name="faq_title">常见问题解答</string>
+    <string name="faq_cat_guide">使用指引</string>
+    <string name="faq_q_guide">Q：如何使用免 Root（0-Hook）模式？</string>
+    <string name="faq_a_guide">A：本模式利用"通知栏歌词"或各应用的"蓝牙歌词"获取歌词。\n\n1. 支持 <b>QQ音乐</b>、<b>小米音乐</b> 和 <b>网易云音乐</b>。\n2. 网易云用户：设置 -> 工具 -> 开启"外接设备蓝牙歌词"。\n3. QQ音乐用户：设置 -> QPlay与车载音乐 -> 开启"车载蓝牙歌词"。\n4. 必须授予本应用"通知使用权"，并确保音乐 App 通知栏显示正常。</string>
     <string name="faq_cat_func">功能异常类</string>
     <string name="faq_q_no_lyrics">Q：为什么我看不到歌词？</string>
     <string name="faq_a_no_lyrics">A： 请按照以下步骤逐一排查：\n\n

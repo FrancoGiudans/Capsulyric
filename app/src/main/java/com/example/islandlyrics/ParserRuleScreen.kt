@@ -10,6 +10,11 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.vector.path
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -29,21 +34,24 @@ fun ParserRuleScreen(
     var editingRule by remember { mutableStateOf<ParserRule?>(null) }
     var showDeleteDialog by remember { mutableStateOf<ParserRule?>(null) }
 
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     Scaffold(
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
-            TopAppBar(
+            LargeTopAppBar(
                 title = { Text(stringResource(R.string.parser_rule_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        // Scan for available back icon or use generic cancel key if back is missing
-                        // Using system 'ic_menu_revert' or similar usually isn't exposed directly as R.drawable.
-                        // We will use a simple text "Back" if we can't find an icon, or try to use a project icon.
-                        // App has ic_cancel.xml, we can use that as a fallback.
-                        Icon(painterResource(R.drawable.ic_cancel), contentDescription = "Back")
+                        Icon(
+                            imageVector = ParserLocalIcons.ArrowBack,
+                            contentDescription = "Back"
+                        )
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(
+                scrollBehavior = scrollBehavior,
+                colors = TopAppBarDefaults.largeTopAppBarColors(
                     containerColor = MaterialTheme.colorScheme.background,
+                    scrolledContainerColor = MaterialTheme.colorScheme.background,
                     titleContentColor = MaterialTheme.colorScheme.onBackground,
                     navigationIconContentColor = MaterialTheme.colorScheme.onBackground
                 )
@@ -407,4 +415,33 @@ fun SwitchRow(
         }
         Switch(checked = checked, onCheckedChange = onCheckedChange)
     }
+}
+
+private object ParserLocalIcons {
+    val ArrowBack: ImageVector
+        get() {
+            if (_arrowBack != null) return _arrowBack!!
+            _arrowBack = ImageVector.Builder(
+                name = "ArrowBack",
+                defaultWidth = 24.dp,
+                defaultHeight = 24.dp,
+                viewportWidth = 24f,
+                viewportHeight = 24f
+            ).apply {
+                path(fill = SolidColor(Color.Black)) {
+                    moveTo(20f, 11f)
+                    horizontalLineTo(7.83f)
+                    lineTo(13.42f, 5.41f)
+                    lineTo(12f, 4f)
+                    lineTo(4f, 12f)
+                    lineTo(12f, 20f)
+                    lineTo(13.41f, 18.59f)
+                    lineTo(7.83f, 13f)
+                    horizontalLineTo(20f)
+                    close()
+                }
+            }.build()
+            return _arrowBack!!
+        }
+    private var _arrowBack: ImageVector? = null
 }
