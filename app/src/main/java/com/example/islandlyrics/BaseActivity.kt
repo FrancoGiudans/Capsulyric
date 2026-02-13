@@ -52,6 +52,14 @@ open class BaseActivity : AppCompatActivity() {
         updatePureBlackMode()
     }
 
+    override fun onStop() {
+        super.onStop()
+        val prefs = getSharedPreferences("IslandLyricsPrefs", MODE_PRIVATE)
+        if (prefs.getBoolean("hide_recents_enabled", false)) {
+            finishAndRemoveTask()
+        }
+    }
+
     private fun updatePureBlackMode() {
         val isPureBlack = ThemeHelper.isPureBlackEnabled(this)
         

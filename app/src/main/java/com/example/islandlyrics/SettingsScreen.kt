@@ -336,6 +336,17 @@ fun SettingsScreen(
                     }
                 )
 
+                var hideRecentsEnabled by remember { mutableStateOf(prefs.getBoolean("hide_recents_enabled", false)) }
+                SettingsSwitchItem(
+                    title = stringResource(R.string.settings_hide_recents),
+                    subtitle = stringResource(R.string.settings_hide_recents_desc),
+                    checked = hideRecentsEnabled,
+                    onCheckedChange = {
+                        hideRecentsEnabled = it
+                        prefs.edit().putBoolean("hide_recents_enabled", it).apply()
+                    }
+                )
+
                  HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
                 // --- Help ---

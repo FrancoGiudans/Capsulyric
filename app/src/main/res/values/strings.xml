@@ -133,6 +133,8 @@
     <string name="dialog_icon_style_title">Select Icon Style</string>
 
     <string name="settings_feedback">Feedback</string>
+    <string name="settings_hide_recents">Hide from Recents</string>
+    <string name="settings_hide_recents_desc">Automatically remove from recents when app goes to background</string>
     <!-- FAQ Strings -->
     <string name="faq_title">FAQ</string>
     <string name="faq_cat_guide">Setup Guide</string>

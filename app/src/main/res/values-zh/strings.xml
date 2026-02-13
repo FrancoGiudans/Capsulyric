@@ -133,6 +133,8 @@
     <string name="dialog_icon_style_title">设置左侧图标样式</string>
 
     <string name="settings_feedback">反馈</string>
+    <string name="settings_hide_recents">隐藏后台窗口</string>
+    <string name="settings_hide_recents_desc">划到后台时自动从最近任务中移除</string>
     <!-- FAQ Strings -->
     <string name="faq_title">常见问题解答</string>
     <string name="faq_cat_guide">使用指引</string>
