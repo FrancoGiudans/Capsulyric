@@ -46,12 +46,24 @@ class AppLogger private constructor() {
 
     // ERROR: Always to Logcat (for Crashlytics), but Buffer only if enabled
     fun e(tag: String, message: String) {
+        e(tag, message, null)
+    }
+
+    fun e(tag: String, message: String, tr: Throwable?) {
         // Always log error to system for crash reporting
-        Log.e(tag, message)
+        if (tr != null) {
+            Log.e(tag, message, tr)
+        } else {
+            Log.e(tag, message)
+        }
         
         // Only show in UI if enabled
         if (isLogEnabled) {
-            appendToBuffer("E", tag, message)
+            val sb = StringBuilder(message)
+            if (tr != null) {
+                sb.append("\n").append(Log.getStackTraceString(tr))
+            }
+            appendToBuffer("E", tag, sb.toString())
         }
     }
 

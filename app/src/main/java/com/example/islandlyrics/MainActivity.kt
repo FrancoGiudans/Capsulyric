@@ -330,7 +330,7 @@ class MainActivity : BaseActivity() {
              
             if (bitmap != null) {
                 ivAlbumArt.setPadding(0, 0, 0, 0)
-                ivAlbumArt.scaleType = ImageView.ScaleType.CENTER_CROP
+                ivAlbumArt.scaleType = ImageView.ScaleType.FIT_CENTER
                 ivAlbumArt.setImageBitmap(bitmap)
                 ivAlbumArt.clearColorFilter() // Clear tint for actual art
             } else {
@@ -376,7 +376,7 @@ class MainActivity : BaseActivity() {
              val bmp = LyricRepository.getInstance().liveAlbumArt.value
              if (bmp != null) {
                  ivAlbumArt.setPadding(0, 0, 0, 0)
-                 ivAlbumArt.scaleType = ImageView.ScaleType.CENTER_CROP
+                 ivAlbumArt.scaleType = ImageView.ScaleType.FIT_CENTER
                  ivAlbumArt.setImageBitmap(bmp)
                  ivAlbumArt.clearColorFilter()
              } else {
