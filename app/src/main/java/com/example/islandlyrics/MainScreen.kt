@@ -9,6 +9,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -87,6 +88,7 @@ fun MainScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .systemBarsPadding()
             .verticalScroll(rememberScrollState())
             .padding(24.dp)
     ) {
@@ -95,10 +97,23 @@ fun MainScreen(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.padding(bottom = 24.dp)
         ) {
+            // Load adaptive icon as bitmap (painterResource doesn't support adaptive icons)
+            val appIconBitmap = remember {
+                val drawable = context.packageManager.getApplicationIcon(context.packageName)
+                val bitmap = android.graphics.Bitmap.createBitmap(
+                    128, 128, android.graphics.Bitmap.Config.ARGB_8888
+                )
+                val canvas = android.graphics.Canvas(bitmap)
+                drawable.setBounds(0, 0, 128, 128)
+                drawable.draw(canvas)
+                bitmap
+            }
             Image(
-                painter = painterResource(R.mipmap.ic_launcher_round),
+                bitmap = appIconBitmap.asImageBitmap(),
                 contentDescription = "App Icon",
-                modifier = Modifier.size(48.dp)
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(CircleShape)
             )
             Spacer(modifier = Modifier.width(16.dp))
             Text(
