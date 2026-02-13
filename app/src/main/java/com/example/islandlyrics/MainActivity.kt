@@ -324,39 +324,68 @@ class MainActivity : BaseActivity() {
              }
              
             if (bitmap != null) {
+                ivAlbumArt.setPadding(0, 0, 0, 0)
+                ivAlbumArt.scaleType = ImageView.ScaleType.CENTER_CROP
                 ivAlbumArt.setImageBitmap(bitmap)
                 ivAlbumArt.clearColorFilter() // Clear tint for actual art
             } else {
+                val padding = dpToPx(16)
+                ivAlbumArt.setPadding(padding, padding, padding, padding)
                 ivAlbumArt.setImageResource(R.drawable.ic_music_note)
-                // Optional: Apply tint for consistency if needed, but vector has it.
-                // However, ShapeableImageView might not apply vector tint correctly if src is set via setImageResource.
-                // Actually vector drawable handles its own tint if it has `android:tint`.
-                // Let's ensure it's centered appropriately. ScaleType is centerCrop in XML.
-                // For a small icon, centerCrop might look weird (blown up).
-                // I should probably change scaleType programmatically.
-                ivAlbumArt.scaleType = ImageView.ScaleType.CENTER_INSIDE
+                ivAlbumArt.scaleType = ImageView.ScaleType.FIT_CENTER
+                // Ensure tint matches text for a "placeholder" look
+                ivAlbumArt.setColorFilter(ContextCompat.getColor(this, android.R.color.tab_indicator_text), android.graphics.PorterDuff.Mode.SRC_IN)
+                // Actually colorOnSurfaceVariant is better: ?attr/colorOnSurfaceVariant
+                // But getting attr programmatically is verbose. 
+                // Let's rely on the vector's own tint if possible, or use a standard grey color.
+                ivAlbumArt.clearColorFilter() // Vector has its own tint "?attr/colorControlNormal"
             }
         }
     }
 
     private fun updatePlaybackView(isPlaying: Boolean) {
-        // ... (omitted)
+        // Toggle visibility of playback controls vs idle message
+        val visibility = if (isPlaying) View.VISIBLE else View.GONE
+        val idleVisibility = if (isPlaying) View.GONE else View.VISIBLE
+
+        tvSong.visibility = visibility
+        tvArtist.visibility = visibility
+        tvLyric.visibility = visibility
+        pbProgress.visibility = visibility
+        
+        // Also toggle labels
+        findViewById<View>(R.id.lbl_song)?.visibility = visibility
+        findViewById<View>(R.id.lbl_artist)?.visibility = visibility
+        findViewById<View>(R.id.lbl_lyric)?.visibility = visibility
+
+        tvIdleMessage.visibility = idleVisibility
         
         if (!isPlaying) {
+            val padding = dpToPx(16)
+            ivAlbumArt.setPadding(padding, padding, padding, padding)
             ivAlbumArt.setImageResource(R.drawable.ic_music_note)
-            ivAlbumArt.scaleType = ImageView.ScaleType.CENTER_INSIDE
+            ivAlbumArt.scaleType = ImageView.ScaleType.FIT_CENTER
+            ivAlbumArt.clearColorFilter() // Use vector tint
         } else {
-             // ...
+             // Let observer handle it, or restore if needed.
              val bmp = LyricRepository.getInstance().liveAlbumArt.value
              if (bmp != null) {
-                 ivAlbumArt.setImageBitmap(bmp)
+                 ivAlbumArt.setPadding(0, 0, 0, 0)
                  ivAlbumArt.scaleType = ImageView.ScaleType.CENTER_CROP
+                 ivAlbumArt.setImageBitmap(bmp)
                  ivAlbumArt.clearColorFilter()
              } else {
+                 val padding = dpToPx(16)
+                 ivAlbumArt.setPadding(padding, padding, padding, padding)
                  ivAlbumArt.setImageResource(R.drawable.ic_music_note)
-                 ivAlbumArt.scaleType = ImageView.ScaleType.CENTER_INSIDE
+                 ivAlbumArt.scaleType = ImageView.ScaleType.FIT_CENTER
+                 ivAlbumArt.clearColorFilter()
              }
         }
+    }
+    
+    private fun dpToPx(dp: Int): Int {
+        return (dp * resources.displayMetrics.density).toInt()
     }
 
     override fun onResume() {
