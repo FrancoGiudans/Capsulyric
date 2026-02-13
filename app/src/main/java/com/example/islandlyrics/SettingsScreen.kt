@@ -69,7 +69,7 @@ fun SettingsScreen(
     var notificationGranted by remember { mutableStateOf(checkNotificationPermission()) }
     var postNotificationGranted by remember { mutableStateOf(checkPostNotificationPermission()) }
 
-    val lifecycleOwner = androidx.compose.ui.platform.LocalLifecycleOwner.current
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
             if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
@@ -99,7 +99,7 @@ fun SettingsScreen(
                 LargeTopAppBar(
                     title = { Text("Settings") },
                     scrollBehavior = scrollBehavior,
-                    colors = TopAppBarDefaults.largeTopAppBarColors(
+                    colors = TopAppBarDefaults.topAppBarColors(
                         containerColor = MaterialTheme.colorScheme.background,
                         scrolledContainerColor = MaterialTheme.colorScheme.background,
                         titleContentColor = MaterialTheme.colorScheme.onBackground

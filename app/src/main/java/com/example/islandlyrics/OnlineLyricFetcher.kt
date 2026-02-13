@@ -75,6 +75,7 @@ class OnlineLyricFetcher {
         return null
     }
 
+    @OptIn(ExperimentalCoroutinesApi::class)
     private suspend fun fetchBestLyricsInternal(title: String, artist: String): LyricResult? {
         return withContext(Dispatchers.IO) {
             try {

@@ -164,7 +164,7 @@ class LyricService : Service() {
                 LyricRepository.getInstance().updateLyric(lyric, appName)
                 
                 // If online lyrics enabled for this app AND SuperLyric doesn't provide syllable info
-                if (rule != null && rule.useOnlineLyrics && !lyric.contains("<")) {
+                if (rule.useOnlineLyrics && !lyric.contains("<")) {
                     AppLogger.getInstance().log(TAG, "[$pkg] SuperLyric无逐字信息，尝试在线获取")
                     tryFetchOnlineLyrics()
                 }
@@ -290,7 +290,7 @@ class LyricService : Service() {
                 val rule = ParserRuleHelper.getRuleForPackage(this, info.packageName)
                            ?: ParserRuleHelper.createDefaultRule(info.packageName)
                 
-                AppLogger.getInstance().log(TAG, "Metadata Change: ${info.title} (${info.packageName}) | Rule: ${if (rule != null) "FOUND" else "DEFAULT"} | Online: ${rule.useOnlineLyrics} | Car: ${rule.usesCarProtocol}")
+                AppLogger.getInstance().log(TAG, "Metadata Change: ${info.title} (${info.packageName}) | Rule: Active | Online: ${rule.useOnlineLyrics} | Car: ${rule.usesCarProtocol}")
                 
                 if (rule.useOnlineLyrics) {
                     // Strategy:
