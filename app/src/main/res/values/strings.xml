@@ -131,6 +131,7 @@
     <string name="icon_style_advanced_desc">Dual-line layout with album art</string>
     <string name="dialog_icon_style_title">Select Icon Style</string>
 
+    <string name="settings_feedback">Feedback</string>
     <!-- FAQ Strings -->
     <string name="faq_title">FAQ</string>
     <string name="faq_cat_guide">Setup Guide</string>

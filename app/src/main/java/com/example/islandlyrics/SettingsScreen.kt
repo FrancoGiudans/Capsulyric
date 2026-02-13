@@ -349,6 +349,15 @@ fun SettingsScreen(
                     }
                 )
 
+                SettingsActionItem(
+                    title = stringResource(R.string.settings_feedback),
+                    icon = android.R.drawable.ic_menu_send,
+                    onClick = {
+                        val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://francogiudans.github.io/CapsulyricFeed/"))
+                        context.startActivity(browserIntent)
+                    }
+                )
+
                 // --- About ---
                 SettingsSectionHeader(text = "About", marginTop = 16.dp)
 

@@ -131,6 +131,7 @@
     <string name="icon_style_advanced_desc">专辑封面+双行布局</string>
     <string name="dialog_icon_style_title">设置左侧图标样式</string>
 
+    <string name="settings_feedback">反馈</string>
     <!-- FAQ Strings -->
     <string name="faq_title">常见问题解答</string>
     <string name="faq_cat_guide">使用指引</string>
