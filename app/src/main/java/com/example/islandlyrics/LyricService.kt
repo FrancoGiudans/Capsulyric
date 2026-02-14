@@ -333,6 +333,12 @@ class LyricService : Service() {
             stopForeground(true)
             stopSelf()
             return START_NOT_STICKY
+        } else if (intent != null && "ACTION_MEDIA_PAUSE" == intent.action) {
+            handleMediaPause()
+            return START_STICKY
+        } else if (intent != null && "ACTION_MEDIA_NEXT" == intent.action) {
+            handleMediaNext()
+            return START_STICKY
         } else if (intent != null && "com.example.islandlyrics.ACTION_SIMULATE" == intent.action) {
             // Read Mode: "MODERN" (Default)
             val mode = intent.getStringExtra("SIMULATION_MODE")
@@ -884,6 +890,47 @@ class LyricService : Service() {
             name
         } catch (e: Exception) {
             pkg
+        }
+    }
+
+    private fun handleMediaPause() {
+        try {
+            val mm = getSystemService(Context.MEDIA_SESSION_SERVICE) as MediaSessionManager
+            val component = android.content.ComponentName(this, MediaMonitorService::class.java)
+            val controllers = mm.getActiveSessions(component)
+            
+            for (c in controllers) {
+                val state = c.playbackState
+                if (state != null && state.state == PlaybackState.STATE_PLAYING) {
+                    c.transportControls.pause()
+                    AppLogger.getInstance().log(TAG, "⏸️ Media paused via notification action")
+                    return
+                }
+            }
+            AppLogger.getInstance().log(TAG, "⚠️ No playing controller found for pause")
+        } catch (e: Exception) {
+            AppLogger.getInstance().e(TAG, "Pause action failed: ${e.message}")
+        }
+    }
+
+    private fun handleMediaNext() {
+        try {
+            val mm = getSystemService(Context.MEDIA_SESSION_SERVICE) as MediaSessionManager
+            val component = android.content.ComponentName(this, MediaMonitorService::class.java)
+            val controllers = mm.getActiveSessions(component)
+            
+            // Skip to next on the first active controller (playing or paused)
+            for (c in controllers) {
+                val state = c.playbackState
+                if (state != null && (state.state == PlaybackState.STATE_PLAYING || state.state == PlaybackState.STATE_PAUSED)) {
+                    c.transportControls.skipToNext()
+                    AppLogger.getInstance().log(TAG, "⏭️ Skipped to next via notification action")
+                    return
+                }
+            }
+            AppLogger.getInstance().log(TAG, "⚠️ No active controller found for skip next")
+        } catch (e: Exception) {
+            AppLogger.getInstance().e(TAG, "Next action failed: ${e.message}")
         }
     }
 

@@ -76,6 +76,42 @@ fun DebugCenterScreen(
                     }
                 }
             )
+
+            // ── Notification Action Buttons Toggle ──
+            val prefs = remember { context.getSharedPreferences("IslandLyricsPrefs", android.content.Context.MODE_PRIVATE) }
+            var actionsEnabled by remember { mutableStateOf(prefs.getBoolean("notification_actions_enabled", false)) }
+
+            OutlinedCard(
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier
+                        .padding(16.dp)
+                        .fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Notification Actions",
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "Show Pause/Next buttons on live lyrics notification",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Switch(
+                        checked = actionsEnabled,
+                        onCheckedChange = { enabled ->
+                            actionsEnabled = enabled
+                            prefs.edit().putBoolean("notification_actions_enabled", enabled).apply()
+                        }
+                    )
+                }
+            }
         }
     }
 

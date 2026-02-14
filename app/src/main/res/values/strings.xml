@@ -171,4 +171,8 @@
 - <b>Release / Pre-release Version</b>: Tap the version number or Commit hash in the app multiple times to open the Log Console.</string>
 
 
+    <!-- Notification Action Buttons -->
+    <string name="action_pause">Pause</string>
+    <string name="action_next">Next</string>
+
 </resources>

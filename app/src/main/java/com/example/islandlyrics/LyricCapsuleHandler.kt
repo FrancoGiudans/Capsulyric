@@ -615,6 +615,23 @@ class LyricCapsuleHandler(
             )
             .setRequestPromotedOngoing(true)  // Native AndroidX method - no reflection needed!
 
+        // Action Buttons (controlled by Debug Center toggle)
+        val actionPrefs = context.getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE)
+        if (actionPrefs.getBoolean("notification_actions_enabled", false)) {
+            val pauseIntent = PendingIntent.getService(
+                context, 1,
+                Intent(context, LyricService::class.java).setAction("ACTION_MEDIA_PAUSE"),
+                PendingIntent.FLAG_IMMUTABLE
+            )
+            val nextIntent = PendingIntent.getService(
+                context, 2,
+                Intent(context, LyricService::class.java).setAction("ACTION_MEDIA_NEXT"),
+                PendingIntent.FLAG_IMMUTABLE
+            )
+            builder.addAction(0, context.getString(R.string.action_pause), pauseIntent)
+            builder.addAction(0, context.getString(R.string.action_next), nextIntent)
+        }
+
 
         // 1. Get Live Lyrics from Repository
         val lyricInfo = LyricRepository.getInstance().liveLyric.value
