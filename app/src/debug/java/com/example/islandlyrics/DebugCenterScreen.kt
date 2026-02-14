@@ -66,7 +66,7 @@ fun DebugCenterScreen(
                     try {
                         val intent = Intent()
                         intent.component = android.content.ComponentName(
-                            "com.android.systemui",
+                            "miui.systemui.plugin",
                             "miui.systemui.miplay.MiPlayDetailActivity"
                         )
                         intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
