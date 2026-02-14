@@ -61,7 +61,7 @@ class MainActivity : BaseActivity() {
                     onOpenSettings = { startActivity(Intent(this, SettingsActivity::class.java)) },
                     onOpenDebug = {
                         try {
-                            val clazz = Class.forName("com.example.islandlyrics.DebugLyricActivity")
+                            val clazz = Class.forName("com.example.islandlyrics.DebugCenterActivity")
                             startActivity(Intent(this, clazz))
                         } catch (e: Exception) {
                             Toast.makeText(this, "Debug Activity not found", Toast.LENGTH_SHORT).show()

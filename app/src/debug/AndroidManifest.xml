@@ -3,8 +3,11 @@
     <uses-permission android:name="android.permission.SET_ACTIVITY_WATCHER" />
     <uses-permission android:name="android.permission.POST_PROMOTED_NOTIFICATIONS" />
     <application>
+        <activity android:name=".DebugCenterActivity"
+                  android:label="Debug Center"
+                  android:parentActivityName=".MainActivity" />
         <activity android:name=".DebugLyricActivity"
                   android:label="Debug Lyric API"
-                  android:parentActivityName=".MainActivity" />
+                  android:parentActivityName=".DebugCenterActivity" />
     </application>
 </manifest>
