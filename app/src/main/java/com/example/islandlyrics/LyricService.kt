@@ -85,7 +85,7 @@ class LyricService : Service() {
                 handler.post(updateTask)
             } else {
                 // Capsule running: Force immediate update
-                capsuleHandler?.updateLyricImmediate(info.lyric, info.sourceApp)
+                capsuleHandler?.updateLyricImmediate(info.lyric)
             }
         }
     }
@@ -103,7 +103,7 @@ class LyricService : Service() {
                 handler.post(updateTask)
                 
                 // Force immediate update with current lyric
-                capsuleHandler?.updateLyricImmediate(currentLyric.lyric, currentLyric.sourceApp)
+                capsuleHandler?.updateLyricImmediate(currentLyric.lyric)
                 AppLogger.getInstance().log(TAG, "▶️ Capsule started: Playback resumed")
             }
         } else {

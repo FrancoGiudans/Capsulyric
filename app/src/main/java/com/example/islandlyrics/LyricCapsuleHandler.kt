@@ -176,7 +176,7 @@ class LyricCapsuleHandler(
         manager?.createNotificationChannel(channel)
     }
 
-    fun updateLyricImmediate(lyric: String, @Suppress("UNUSED_PARAMETER") app: String) {
+    fun updateLyricImmediate(lyric: String) {
         // Record timing for adaptive scroll
         recordLyricChange(lyric)
         
@@ -401,6 +401,16 @@ class LyricCapsuleHandler(
     private data class IconFrame(val text: String, val fontSize: Float? = null)
     private var currentIconFrame = IconFrame("")
 
+    // Helper to find current line in strict time range
+    private fun findCurrentLine(lines: List<OnlineLyricFetcher.LyricLine>, position: Long): OnlineLyricFetcher.LyricLine? {
+        for (line in lines) {
+            if (position >= line.startTime && position < line.endTime) {
+                return line
+            }
+        }
+        return null
+    }
+
     private fun updateNotification() {
         // Throttling: 50ms limit (reduced from 200ms for faster response)
         val now = System.currentTimeMillis()
@@ -410,6 +420,7 @@ class LyricCapsuleHandler(
         // Get current lyric and position
         val lyricInfo = LyricRepository.getInstance().liveLyric.value
         val currentLyric = lyricInfo?.lyric ?: ""
+        val sourceApp = lyricInfo?.sourceApp ?: "Island Lyrics" // Extract sourceApp here
         val progressInfo = LyricRepository.getInstance().liveProgress.value
         val currentPosition = progressInfo?.position ?: 0L
 
@@ -418,22 +429,7 @@ class LyricCapsuleHandler(
         // MODE SELECTION: Syllable > LRC > Weight-Based Fallback
         if (useSyllableScrolling && currentParsedLines != null) {
             // --- SYLLABLE SCROLLING MODE ---
-            // Use nearest-line lookup instead of strict range match to prevent capsule disappearance in gaps
-            val lines = currentParsedLines!!
-            var currentIndex = -1
-            // Find the line whose range contains currentPosition (strict match first)
-            for (i in lines.indices) {
-                if (currentPosition >= lines[i].startTime && currentPosition < lines[i].endTime) {
-                    currentIndex = i
-                    break
-                }
-            }
-            // Fallback REMOVED: In a gap, show SPACE (per user request V3.5 Revised)
-            // if (currentIndex == -1) ...
-            
-            val currentLine = if (currentIndex != -1) lines[currentIndex] else null
-            
-
+            val currentLine = findCurrentLine(currentParsedLines!!, currentPosition)
             
             if (currentLine != null && !currentLine.syllables.isNullOrEmpty()) {
                 // Find sung and unsung portions
@@ -442,9 +438,6 @@ class LyricCapsuleHandler(
                 
                 val sungText = sungSyllables.joinToString("") { it.text }
                 val unsungText = unsungSyllables.joinToString("") { it.text }
-                
-                // BUFFER NEXT LINE REMOVED per user request (V3.3/V3.4)
-                // We rely solely on calculateSyllableWindow's length constraint to keep 14 units visible.
                 
                 // Use refined syllable window calculation with deferred start
                 displayLyric = calculateSyllableWindow(sungText, unsungText)
@@ -459,24 +452,9 @@ class LyricCapsuleHandler(
             
         } else if (useLrcScrolling && currentParsedLines != null) {
             // --- LRC SCROLLING MODE ---
-            // Use nearest-line lookup to prevent capsule disappearance in gaps
-            val lines = currentParsedLines!!
-            var foundIndex = -1
+            val foundLine = findCurrentLine(currentParsedLines!!, currentPosition)
             
-            // Strict range match first
-            for (i in lines.indices) {
-                if (currentPosition >= lines[i].startTime && currentPosition < lines[i].endTime) {
-                    foundIndex = i
-                    break
-                }
-            }
-            
-            // Fallback REMOVED: In a gap, show SPACE (per user request V3.5 Revised)
-            // if (foundIndex == -1) ...
-            
-            if (foundIndex != -1) {
-                val foundLine = lines[foundIndex]
-                
+            if (foundLine != null) {
                 val lineDuration = foundLine.endTime - foundLine.startTime
                 val lineProgress = if (lineDuration > 0) {
                     ((currentPosition - foundLine.startTime).toFloat() / lineDuration.toFloat()).coerceIn(0f, 1f)
@@ -496,8 +474,6 @@ class LyricCapsuleHandler(
                     val targetWeightOffset = (deferredProgress * scrollableWeight).toInt()
                     
                     // LENGTH CONSTRAINT: Maintain minimum visual length (14 weight units)
-                    // Even if line is finishing, keep 14 units visible until line switch
-                    // Ensure that: currentLineWeight - finalOffset >= 14
                     val minVisibleWeight = 14
                     val maxAllowedScroll = maxOf(0, currentLineWeight - minVisibleWeight)
                     
@@ -519,7 +495,7 @@ class LyricCapsuleHandler(
         
         // --- DYNAMIC ICON LOGIC START ---
         val metadata = LyricRepository.getInstance().liveMetadata.value
-        val realTitle = metadata?.title ?: lyricInfo?.sourceApp ?: "Island Lyrics"
+        val realTitle = metadata?.title ?: sourceApp
         val realArtist = metadata?.artist ?: ""
         
         val newIconFrame = calculateDynamicIconFrame(realTitle, realArtist)
@@ -544,9 +520,15 @@ class LyricCapsuleHandler(
         lastNotifiedIconText = currentIconFrame.text
 
         try {
-            val notification = buildNotification()
+            // Pass all calculated values to avoid re-calculation
+            val notification = buildNotification(
+                displayLyric, 
+                currentLyric, 
+                sourceApp, 
+                currentProgress, 
+                currentIconFrame
+            )
             service.startForeground(1001, notification)
-            // service.inspectNotification(notification, manager!!)
         } catch (e: Exception) {
             LogManager.getInstance().e(context, TAG, "Update Failed: $e")
         }
@@ -598,7 +580,13 @@ class LyricCapsuleHandler(
         return IconFrame(frameText, fontSize = 26f)
     }
 
-    private fun buildNotification(): Notification {
+    private fun buildNotification(
+        displayLyric: String,
+        fullLyric: String,
+        sourceApp: String,
+        progressPercent: Int,
+        iconFrame: IconFrame
+    ): Notification {
         // CRITICAL: Use NotificationCompat.Builder from androidx.core 1.17.0+
         // This provides native .setRequestPromotedOngoing() without reflection!
         val builder = NotificationCompat.Builder(context, CHANNEL_ID)
@@ -652,22 +640,12 @@ class LyricCapsuleHandler(
             }
         }
 
-
-        // 1. Get Live Lyrics from Repository
-        val lyricInfo = LyricRepository.getInstance().liveLyric.value
-        val currentLyric = lyricInfo?.lyric ?: "Waiting for lyrics..."
-        val sourceApp = lyricInfo?.sourceApp ?: "Island Lyrics"
-        
-        // Use pre-calculated displayLyric from updateNotification()
-        // In Syllable/LRC mode, keep SPACE " " (gap). Only fallback in legacy modes.
-        val displayLyric = if (useSyllableScrolling || useLrcScrolling) {
-             lastNotifiedLyric 
-        } else {
-             lastNotifiedLyric.ifEmpty { currentLyric }
-        }
-        
+        // Use passed values
+        val currentLyric = fullLyric.ifEmpty { "Waiting for lyrics..." }
         val title = sourceApp  // Title = app name
-        val shortText = displayLyric  // Short text = scrolling lyrics
+        
+        // Ensure displayLyric is valid
+        val shortText = displayLyric.ifEmpty { currentLyric }
 
         // Set text fields
         builder.setContentTitle(title)
@@ -681,18 +659,14 @@ class LyricCapsuleHandler(
                 val barColor = if (useAlbumColor) extractAlbumColor() else COLOR_PRIMARY
                 val barColorIndeterminate = if (useAlbumColor) extractAlbumColor() else COLOR_TERTIARY
 
-            // Get real-time music progress
-                val progressInfo = LyricRepository.getInstance().liveProgress.value
-                
-                if (progressInfo != null && progressInfo.duration > 0) {
+                if (progressPercent >= 0) {
                     val segment = NotificationCompat.ProgressStyle.Segment(100)
                     segment.setColor(barColor)
                     
                     val segments = ArrayList<NotificationCompat.ProgressStyle.Segment>()
                     segments.add(segment)
                     
-                    val percentage = (progressInfo.position.toFloat() / progressInfo.duration.toFloat())
-                    val progressValue = (percentage * 100).toInt().coerceIn(0, 100)
+                    val progressValue = progressPercent.coerceIn(0, 100)
                     
                     val progressStyle = NotificationCompat.ProgressStyle()
                         .setProgressSegments(segments)
@@ -747,8 +721,8 @@ class LyricCapsuleHandler(
                     }
                     else -> {
                         // Classic style: Scrolling text
-                        val iconText = currentIconFrame.text
-                        val forceSize = currentIconFrame.fontSize
+                        val iconText = iconFrame.text
+                        val forceSize = iconFrame.fontSize
                         
                         // Cache check - Key includes fontSize to handle adaptive switches
                         val cacheKey = "classic|$iconText|$forceSize"
