@@ -176,4 +176,16 @@
     <string name="action_next">Next</string>
     <string name="action_miplay">MiPlay</string>
 
+    <!-- Notification Settings -->
+    <string name="settings_notification_header">Notification</string>
+    <string name="settings_notification_actions">Notification Actions</string>
+    <string name="settings_action_style_off">Off</string>
+    <string name="settings_action_style_off_desc">No action buttons on notification</string>
+    <string name="settings_action_style_media">Pause / Next</string>
+    <string name="settings_action_style_media_desc">Media control buttons (Pause, Next Track)</string>
+    <string name="settings_action_style_miplay">MiPlay</string>
+    <string name="settings_action_style_miplay_desc">Launch Xiaomi MiPlay panel</string>
+    <string name="settings_progress_color">Colorize Progress Bar</string>
+    <string name="settings_progress_color_desc">Extract album art color for notification progress bar</string>
+
 </resources>

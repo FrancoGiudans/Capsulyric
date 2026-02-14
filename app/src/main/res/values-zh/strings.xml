@@ -170,4 +170,16 @@
 - <b>Debug 版本</b>： 自带 Log Console（日志控制台），可直接查看输出的完整日志。\n
 - <b>Release / Pre-release 版本</b>： 在应用内找到版本号或 Commit 号，连续点击即可唤出 Log Console。</string>
 
+    <!-- 通知设置 -->
+    <string name="settings_notification_header">通知</string>
+    <string name="settings_notification_actions">通知按键</string>
+    <string name="settings_action_style_off">关闭</string>
+    <string name="settings_action_style_off_desc">不显示通知按键</string>
+    <string name="settings_action_style_media">暂停 / 下一首</string>
+    <string name="settings_action_style_media_desc">媒体控制按键（暂停、下一曲）</string>
+    <string name="settings_action_style_miplay">妙播</string>
+    <string name="settings_action_style_miplay_desc">打开小米妙播面板</string>
+    <string name="settings_progress_color">为进度条着色</string>
+    <string name="settings_progress_color_desc">从专辑封面提取颜色应用到通知进度条</string>
+
 </resources>

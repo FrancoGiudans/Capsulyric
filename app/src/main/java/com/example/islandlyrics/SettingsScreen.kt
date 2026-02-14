@@ -266,6 +266,37 @@ fun SettingsScreen(
                     )
                 }
 
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+
+                // --- Notification ---
+                SettingsSectionHeader(text = stringResource(R.string.settings_notification_header))
+
+                // Notification Action Style
+                var actionStyle by remember { mutableStateOf(prefs.getString("notification_actions_style", "disabled") ?: "disabled") }
+                var showActionStyleDialog by remember { mutableStateOf(false) }
+                val actionStyleDisplay = when (actionStyle) {
+                    "media_controls" -> stringResource(R.string.settings_action_style_media)
+                    "miplay" -> stringResource(R.string.settings_action_style_miplay)
+                    else -> stringResource(R.string.settings_action_style_off)
+                }
+                SettingsTextItem(
+                    title = stringResource(R.string.settings_notification_actions),
+                    value = actionStyleDisplay,
+                    onClick = { showActionStyleDialog = true }
+                )
+
+                // Progress Bar Colorize
+                var progressColorEnabled by remember { mutableStateOf(prefs.getBoolean("progress_bar_color_enabled", false)) }
+                SettingsSwitchItem(
+                    title = stringResource(R.string.settings_progress_color),
+                    subtitle = stringResource(R.string.settings_progress_color_desc),
+                    checked = progressColorEnabled,
+                    onCheckedChange = {
+                        progressColorEnabled = it
+                        prefs.edit().putBoolean("progress_bar_color_enabled", it).apply()
+                    }
+                )
+
                 // --- General ---
                 SettingsSectionHeader(text = stringResource(R.string.settings_general_header), marginTop = 16.dp)
                 
@@ -473,6 +504,18 @@ fun SettingsScreen(
                     onDismiss = { showIconStyleDialog = false }
                 )
             }
+
+            if (showActionStyleDialog) {
+                NotificationActionsDialog(
+                    currentStyle = actionStyle,
+                    onStyleSelected = { style ->
+                        actionStyle = style
+                        prefs.edit().putString("notification_actions_style", style).apply()
+                        showActionStyleDialog = false
+                    },
+                    onDismiss = { showActionStyleDialog = false }
+                )
+            }
         }
     }
 }
@@ -535,6 +578,64 @@ fun IconStyleSelectionDialog(
                     val (styleId, nameId) = styleInfo
                     val isSelected = currentStyle == styleId
                     
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onStyleSelected(styleId) }
+                            .padding(vertical = 12.dp, horizontal = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(
+                            selected = isSelected,
+                            onClick = { onStyleSelected(styleId) }
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = stringResource(nameId),
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = stringResource(descId),
+                                fontSize = 14.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(android.R.string.ok))
+            }
+        }
+    )
+}
+
+@Composable
+fun NotificationActionsDialog(
+    currentStyle: String,
+    onStyleSelected: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val styles = listOf(
+        "disabled" to R.string.settings_action_style_off to R.string.settings_action_style_off_desc,
+        "media_controls" to R.string.settings_action_style_media to R.string.settings_action_style_media_desc,
+        "miplay" to R.string.settings_action_style_miplay to R.string.settings_action_style_miplay_desc
+    )
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.settings_notification_actions)) },
+        text = {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                styles.forEach { (styleInfo, descId) ->
+                    val (styleId, nameId) = styleInfo
+                    val isSelected = currentStyle == styleId
+
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
