@@ -124,6 +124,41 @@ fun DebugCenterScreen(
                     }
                 }
             }
+
+            // ── Progress Bar Colorize Toggle ──
+            var colorEnabled by remember { mutableStateOf(prefs.getBoolean("progress_bar_color_enabled", false)) }
+
+            OutlinedCard(
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier
+                        .padding(16.dp)
+                        .fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "为进度条着色",
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "Extract album art color (Monet) for notification progress bar",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Switch(
+                        checked = colorEnabled,
+                        onCheckedChange = { enabled ->
+                            colorEnabled = enabled
+                            prefs.edit().putBoolean("progress_bar_color_enabled", enabled).apply()
+                        }
+                    )
+                }
+            }
         }
     }
 

@@ -10,6 +10,7 @@ import android.content.Intent
 import android.os.Handler
 import android.os.Looper
 import androidx.core.app.NotificationCompat
+import androidx.palette.graphics.Palette
 
 
 /**
@@ -675,12 +676,17 @@ class LyricCapsuleHandler(
 
         // 2. ProgressStyle - SIMPLIFIED MUSIC-ONLY APPROACH
         try {
+            // Determine progress bar color (album art extraction or default)
+                val useAlbumColor = actionPrefs.getBoolean("progress_bar_color_enabled", false)
+                val barColor = if (useAlbumColor) extractAlbumColor() else COLOR_PRIMARY
+                val barColorIndeterminate = if (useAlbumColor) extractAlbumColor() else COLOR_TERTIARY
+
             // Get real-time music progress
                 val progressInfo = LyricRepository.getInstance().liveProgress.value
                 
                 if (progressInfo != null && progressInfo.duration > 0) {
                     val segment = NotificationCompat.ProgressStyle.Segment(100)
-                    segment.setColor(COLOR_PRIMARY)
+                    segment.setColor(barColor)
                     
                     val segments = ArrayList<NotificationCompat.ProgressStyle.Segment>()
                     segments.add(segment)
@@ -697,7 +703,7 @@ class LyricCapsuleHandler(
                 } else {
                     // Indeterminate
                     val segment = NotificationCompat.ProgressStyle.Segment(100)
-                    segment.setColor(COLOR_TERTIARY)
+                    segment.setColor(barColorIndeterminate)
                     val segments = ArrayList<NotificationCompat.ProgressStyle.Segment>()
                     segments.add(segment)
                     
@@ -771,6 +777,37 @@ class LyricCapsuleHandler(
     // Caching
     private var cachedIconKey = ""
     private var cachedIconBitmap: android.graphics.Bitmap? = null
+
+    // Album art color extraction cache
+    private var cachedAlbumArtHash: Int = 0
+    private var cachedAlbumColor: Int = COLOR_PRIMARY
+
+    /**
+     * Extract dominant color from album art using Palette API (Monet-style).
+     * Returns cached color if album art hasn't changed.
+     */
+    private fun extractAlbumColor(): Int {
+        val albumArt = LyricRepository.getInstance().liveAlbumArt.value ?: return COLOR_PRIMARY
+        val artHash = albumArt.hashCode()
+        if (artHash == cachedAlbumArtHash && cachedAlbumColor != COLOR_PRIMARY) {
+            return cachedAlbumColor
+        }
+        return try {
+            val palette = Palette.from(albumArt).generate()
+            // Priority: Vibrant > Muted > DominantSwatch > fallback
+            val color = palette.getVibrantColor(
+                palette.getMutedColor(
+                    palette.getDominantColor(COLOR_PRIMARY)
+                )
+            )
+            cachedAlbumArtHash = artHash
+            cachedAlbumColor = color
+            color
+        } catch (e: Exception) {
+            LogManager.getInstance().e(context, TAG, "Palette extraction failed: $e")
+            COLOR_PRIMARY
+        }
+    }
 
     private fun textToBitmap(text: String, forceFontSize: Float? = null): android.graphics.Bitmap? {
         try {

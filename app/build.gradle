@@ -109,6 +109,9 @@ dependencies {
     implementation libs.material3
     implementation 'androidx.compose.runtime:runtime-livedata'
     
+    // Palette for album art color extraction (Monet-style)
+    implementation 'androidx.palette:palette-ktx:1.0.0'
+    
     // Network for debug lyric API
     implementation 'com.squareup.okhttp3:okhttp:4.12.0'
     
