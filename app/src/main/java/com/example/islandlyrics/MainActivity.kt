@@ -59,7 +59,14 @@ class MainActivity : BaseActivity() {
                     versionText = versionText,
                     isDebugBuild = BuildConfig.DEBUG,
                     onOpenSettings = { startActivity(Intent(this, SettingsActivity::class.java)) },
-                    onOpenDebug = { startActivity(Intent(this, DebugLyricActivity::class.java)) },
+                    onOpenDebug = {
+                        try {
+                            val clazz = Class.forName("com.example.islandlyrics.DebugLyricActivity")
+                            startActivity(Intent(this, clazz))
+                        } catch (e: Exception) {
+                            Toast.makeText(this, "Debug Activity not found", Toast.LENGTH_SHORT).show()
+                        }
+                    },
                     onOpenPromotedSettings = { openPromotedSettings() },
                     onStatusCardTap = {
                         MediaMonitorService.requestRebind(this)

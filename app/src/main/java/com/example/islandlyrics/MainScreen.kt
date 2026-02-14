@@ -172,7 +172,7 @@ fun MainScreen(
         if (isDebugBuild) {
             Spacer(modifier = Modifier.height(8.dp))
             NavigationButton(
-                text = "调试歌词API",
+                text = "Debug Lyric API",
                 iconRes = R.drawable.ic_sync,
                 onClick = onOpenDebug
             )

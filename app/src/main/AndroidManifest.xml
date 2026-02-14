@@ -55,9 +55,7 @@
         <activity android:name="com.example.islandlyrics.LogViewerActivity"
                   android:label="Developer Logs"
                   android:parentActivityName=".MainActivity" />
-        <activity android:name=".DebugLyricActivity"
-                  android:label="调试歌词API"
-                  android:parentActivityName=".MainActivity" />
+
 
         <provider
             android:name="androidx.core.content.FileProvider"
