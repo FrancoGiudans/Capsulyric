@@ -120,13 +120,57 @@ object UpdateChecker {
      * Check for updates from GitHub Releases API.
      * @return ReleaseInfo if newer version available, null otherwise
      */
+    /**
+     * Fetch the latest release information from GitHub without comparing versions.
+     */
+    suspend fun fetchLatestRelease(context: Context): ReleaseInfo? = withContext(Dispatchers.IO) {
+        try {
+            val includePrerelease = isPrereleaseEnabled(context)
+            val apiUrl = if (includePrerelease) {
+                "https://api.github.com/repos/FrancoGiudans/Capsulyric/releases"
+            } else {
+                GITHUB_API_URL
+            }
+            
+            val url = URL(apiUrl)
+            val connection = url.openConnection() as HttpURLConnection
+            connection.requestMethod = "GET"
+            connection.setRequestProperty("Accept", "application/vnd.github.v3+json")
+            connection.connectTimeout = 10000
+            connection.readTimeout = 10000
+
+            if (connection.responseCode == 200) {
+                val response = connection.inputStream.bufferedReader().use { it.readText() }
+                
+                 if (includePrerelease) {
+                    val jsonArray = org.json.JSONArray(response)
+                    if (jsonArray.length() > 0) {
+                        return@withContext parseRelease(jsonArray.getJSONObject(0))
+                    }
+                } else {
+                    val json = JSONObject(response)
+                    return@withContext parseRelease(json)
+                }
+            } else {
+                AppLogger.getInstance().e(TAG, "GitHub API error: ${connection.responseCode}")
+            }
+            connection.disconnect()
+            null
+        } catch (e: Exception) {
+             AppLogger.getInstance().e(TAG, "Failed to fetch latest release", e)
+             null
+        }
+    }
+
+    /**
+     * Check for updates from GitHub Releases API.
+     * @return ReleaseInfo if newer version available, null otherwise
+     */
     suspend fun checkForUpdate(context: Context): ReleaseInfo? = withContext(Dispatchers.IO) {
         try {
             updateLastCheckTime(context)
             
             val includePrerelease = isPrereleaseEnabled(context)
-            // If Prerelease enabled, use LIST API ("releases") to see all. 
-            // If Disabled, use LATEST API ("releases/latest") which GitHub filters for us.
             val apiUrl = if (includePrerelease) {
                 "https://api.github.com/repos/FrancoGiudans/Capsulyric/releases"
             } else {
@@ -162,10 +206,6 @@ object UpdateChecker {
 
                 // Find the newest version that is > current
                 val currentVersion = BuildConfig.VERSION_NAME
-                
-                // Sort by version descending (assuming API returns chronological, but safer to sort or just pick first valid)
-                // GitHub API returns reverse chronological (newest first). 
-                // We verify each until we find one that is an upgrade.
                 
                 for (release in validReleases) {
                     val remoteVersion = release.tagName.removePrefix("v")

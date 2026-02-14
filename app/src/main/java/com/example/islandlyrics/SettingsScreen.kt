@@ -29,6 +29,7 @@ import androidx.core.content.ContextCompat
 @Composable
 fun SettingsScreen(
     onCheckUpdate: () -> Unit,
+    onForceUpdate: () -> Unit,
     onShowLogs: () -> Unit,
     updateVersionText: String,
     updateBuildText: String
@@ -418,6 +419,12 @@ fun SettingsScreen(
                          title = stringResource(R.string.settings_console_log),
                          icon = android.R.drawable.ic_menu_info_details,
                          onClick = onShowLogs
+                     )
+                     
+                     SettingsActionItem(
+                         title = "Force Update Dialog",
+                         icon = R.drawable.ic_sync,
+                         onClick = onForceUpdate
                      )
                 }
                 
