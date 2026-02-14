@@ -94,12 +94,24 @@ class LyricCapsuleHandler(
         }
     }
 
+    // Observer for album art changes — triggers async Palette extraction
+    private val albumArtObserver = androidx.lifecycle.Observer<android.graphics.Bitmap?> { bitmap ->
+        if (bitmap != null) {
+            preExtractAlbumColor(bitmap)
+        }
+    }
+
+    // Progress tracking state (consolidated from LyricService.updateTask)
+    private var progressLogCounter = 0
+    private var lastLineIndex = -1
+
     private val visualizerLoop = object : Runnable {
         override fun run() {
             if (!isRunning) return
 
             try {
-                // Update the visual state
+                // UNIFIED LOOP: Drive progress tracking + visual update in one cycle
+                refreshProgress()
                 updateNotification()
 
                 // Optimize: If scrolling is DONE, wait longer or pause until next lyric update triggers it
@@ -110,8 +122,8 @@ class LyricCapsuleHandler(
                     // Check if we are in TIMED mode (fast refresh needed)
                     val currentLine = LyricRepository.getInstance().liveCurrentLine.value
                     if (currentLine != null) {
-                         // Timed Mode: Refresh at 200ms (reduced from 100ms to avoid island lag)
-                         mainHandler.postDelayed(this, 200)
+                         // Timed Mode: Refresh at 250ms
+                         mainHandler.postDelayed(this, 250)
                     } else {
                          // Adaptive Mode: Use calculated delay
                          mainHandler.postDelayed(this, adaptiveDelay)
@@ -132,8 +144,9 @@ class LyricCapsuleHandler(
         if (isRunning) return
         isRunning = true
         
-        // Register observer for parsed lyrics
+        // Register observers
         LyricRepository.getInstance().liveParsedLyrics.observeForever(parsedLyricsObserver)
+        LyricRepository.getInstance().liveAlbumArt.observeForever(albumArtObserver)
         
         // Reset adaptive scroll history for new song
         lastLyricChangeTime = 0
@@ -146,6 +159,7 @@ class LyricCapsuleHandler(
         initialPauseStartTime = System.currentTimeMillis() // Start pause immediately
         scrollOffset = 0
         lastLyricText = "" // Force reset in next updateNotification
+        lastLineIndex = -1
         
         mainHandler.post(visualizerLoop)
     }
@@ -154,8 +168,9 @@ class LyricCapsuleHandler(
         if (!isRunning) return
         isRunning = false
         
-        // Unregister observer
+        // Unregister observers
         LyricRepository.getInstance().liveParsedLyrics.removeObserver(parsedLyricsObserver)
+        LyricRepository.getInstance().liveAlbumArt.removeObserver(albumArtObserver)
         
         mainHandler.removeCallbacks(visualizerLoop)
         manager?.cancel(1001)
@@ -753,34 +768,33 @@ class LyricCapsuleHandler(
     private var cachedIconBitmap: android.graphics.Bitmap? = null
 
     // Album art color extraction cache
-    private var cachedAlbumArtHash: Int = 0
-    private var cachedAlbumColor: Int = COLOR_PRIMARY
+    @Volatile private var cachedAlbumArtHash: Int = 0
+    @Volatile private var cachedAlbumColor: Int = COLOR_PRIMARY
 
     /**
-     * Extract dominant color from album art using Palette API (Monet-style).
-     * Returns cached color if album art hasn't changed.
+     * Pre-extract album art color asynchronously when album art changes.
+     * Called by albumArtObserver. Palette extraction runs on a background thread.
+     */
+    private fun preExtractAlbumColor(albumArt: android.graphics.Bitmap) {
+        val artHash = albumArt.hashCode()
+        if (artHash == cachedAlbumArtHash) return // Already extracted for this art
+        Palette.from(albumArt).generate { palette ->
+            if (palette != null) {
+                cachedAlbumColor = palette.getVibrantColor(
+                    palette.getMutedColor(
+                        palette.getDominantColor(COLOR_PRIMARY)
+                    )
+                )
+                cachedAlbumArtHash = artHash
+            }
+        }
+    }
+
+    /**
+     * Returns cached album color. Zero-blocking — color is pre-extracted asynchronously.
      */
     private fun extractAlbumColor(): Int {
-        val albumArt = LyricRepository.getInstance().liveAlbumArt.value ?: return COLOR_PRIMARY
-        val artHash = albumArt.hashCode()
-        if (artHash == cachedAlbumArtHash && cachedAlbumColor != COLOR_PRIMARY) {
-            return cachedAlbumColor
-        }
-        return try {
-            val palette = Palette.from(albumArt).generate()
-            // Priority: Vibrant > Muted > DominantSwatch > fallback
-            val color = palette.getVibrantColor(
-                palette.getMutedColor(
-                    palette.getDominantColor(COLOR_PRIMARY)
-                )
-            )
-            cachedAlbumArtHash = artHash
-            cachedAlbumColor = color
-            color
-        } catch (e: Exception) {
-            LogManager.getInstance().e(context, TAG, "Palette extraction failed: $e")
-            COLOR_PRIMARY
-        }
+        return cachedAlbumColor
     }
 
     private fun textToBitmap(text: String, forceFontSize: Float? = null): android.graphics.Bitmap? {
@@ -925,6 +939,54 @@ class LyricCapsuleHandler(
             }
         }
         return displayLyric
+    }
+
+    /**
+     * Refresh playback progress from MediaController and update lyric line position.
+     * Consolidated from LyricService.updateTask — runs as part of the unified visualizer loop.
+     */
+    private fun refreshProgress() {
+        progressLogCounter++
+        val shouldLog = (progressLogCounter % 20 == 0)  // Log every ~5s at 250ms interval
+
+        // Delegate to service for MediaController access (simulation mode handled internally)
+        service.updateProgressFromController(shouldLog)
+
+        // Drive lyric line updates if we have parsed lyrics
+        val parsedInfo = LyricRepository.getInstance().liveParsedLyrics.value
+        if (parsedInfo != null && parsedInfo.lines.isNotEmpty()) {
+            updateCurrentLyricLine(parsedInfo.lines)
+        }
+    }
+
+    /**
+     * Find and update the current lyric line based on playback position.
+     * Consolidated from LyricService.updateCurrentLyricLine.
+     */
+    private fun updateCurrentLyricLine(lines: List<OnlineLyricFetcher.LyricLine>) {
+        val progressInfo = LyricRepository.getInstance().liveProgress.value
+        val position = progressInfo?.position ?: return
+
+        // Find last line where startTime <= position
+        var index = -1
+        for (i in lines.indices) {
+            if (position >= lines[i].startTime) {
+                index = i
+            } else {
+                break
+            }
+        }
+
+        if (index != -1 && index != lastLineIndex) {
+            lastLineIndex = index
+            val line = lines[index]
+
+            val metadata = LyricRepository.getInstance().liveMetadata.value
+            val source = metadata?.packageName?.let { service.getAppName(it) } ?: "Online Lyrics"
+
+            LyricRepository.getInstance().updateLyric(line.text, source)
+            LyricRepository.getInstance().updateCurrentLine(line)
+        }
     }
 
     companion object {

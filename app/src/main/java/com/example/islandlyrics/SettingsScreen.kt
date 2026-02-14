@@ -53,8 +53,11 @@ fun SettingsScreen(
     // Dialog State
     var showLanguageDialog by remember { mutableStateOf(false) }
     var showIconStyleDialog by remember { mutableStateOf(false) }
-
     var showPrivacyDialog by remember { mutableStateOf(false) }
+
+    // Notification Action Style State
+    var actionStyle by remember { mutableStateOf(prefs.getString("notification_actions_style", "disabled") ?: "disabled") }
+    var showActionStyleDialog by remember { mutableStateOf(false) }
 
     // Logic for permissions status
     fun checkNotificationPermission(): Boolean {
@@ -272,8 +275,7 @@ fun SettingsScreen(
                 SettingsSectionHeader(text = stringResource(R.string.settings_notification_header))
 
                 // Notification Action Style
-                var actionStyle by remember { mutableStateOf(prefs.getString("notification_actions_style", "disabled") ?: "disabled") }
-                var showActionStyleDialog by remember { mutableStateOf(false) }
+
                 val actionStyleDisplay = when (actionStyle) {
                     "media_controls" -> stringResource(R.string.settings_action_style_media)
                     "miplay" -> stringResource(R.string.settings_action_style_miplay)
