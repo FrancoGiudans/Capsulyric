@@ -174,5 +174,6 @@
     <!-- Notification Action Buttons -->
     <string name="action_pause">Pause</string>
     <string name="action_next">Next</string>
+    <string name="action_miplay">MiPlay</string>
 
 </resources>

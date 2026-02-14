@@ -77,39 +77,51 @@ fun DebugCenterScreen(
                 }
             )
 
-            // ── Notification Action Buttons Toggle ──
+            // ── Notification Action Style Selector ──
             val prefs = remember { context.getSharedPreferences("IslandLyricsPrefs", android.content.Context.MODE_PRIVATE) }
-            var actionsEnabled by remember { mutableStateOf(prefs.getBoolean("notification_actions_enabled", false)) }
+            var actionStyle by remember { mutableStateOf(prefs.getString("notification_actions_style", "disabled") ?: "disabled") }
+
+            val styleOptions = listOf(
+                "disabled" to "Off",
+                "media_controls" to "A: Pause/Next",
+                "miplay" to "B: MiPlay"
+            )
 
             OutlinedCard(
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Row(
+                Column(
                     modifier = Modifier
                         .padding(16.dp)
-                        .fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                        .fillMaxWidth()
                 ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "Notification Actions",
-                            style = MaterialTheme.typography.titleMedium
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = "Show Pause/Next buttons on live lyrics notification",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    Switch(
-                        checked = actionsEnabled,
-                        onCheckedChange = { enabled ->
-                            actionsEnabled = enabled
-                            prefs.edit().putBoolean("notification_actions_enabled", enabled).apply()
-                        }
+                    Text(
+                        text = "Notification Actions",
+                        style = MaterialTheme.typography.titleMedium
                     )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "A: Pause/Next media controls  B: Launch Xiaomi MiPlay",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    SingleChoiceSegmentedButtonRow(
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        styleOptions.forEachIndexed { index, (value, label) ->
+                            SegmentedButton(
+                                selected = actionStyle == value,
+                                onClick = {
+                                    actionStyle = value
+                                    prefs.edit().putString("notification_actions_style", value).apply()
+                                },
+                                shape = SegmentedButtonDefaults.itemShape(index, styleOptions.size)
+                            ) {
+                                Text(label, fontSize = 12.sp)
+                            }
+                        }
+                    }
                 }
             }
         }

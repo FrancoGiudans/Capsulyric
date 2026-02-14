@@ -615,21 +615,40 @@ class LyricCapsuleHandler(
             )
             .setRequestPromotedOngoing(true)  // Native AndroidX method - no reflection needed!
 
-        // Action Buttons (controlled by Debug Center toggle)
+        // Action Buttons (controlled by Debug Center style selector)
         val actionPrefs = context.getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE)
-        if (actionPrefs.getBoolean("notification_actions_enabled", false)) {
-            val pauseIntent = PendingIntent.getService(
-                context, 1,
-                Intent(context, LyricService::class.java).setAction("ACTION_MEDIA_PAUSE"),
-                PendingIntent.FLAG_IMMUTABLE
-            )
-            val nextIntent = PendingIntent.getService(
-                context, 2,
-                Intent(context, LyricService::class.java).setAction("ACTION_MEDIA_NEXT"),
-                PendingIntent.FLAG_IMMUTABLE
-            )
-            builder.addAction(0, context.getString(R.string.action_pause), pauseIntent)
-            builder.addAction(0, context.getString(R.string.action_next), nextIntent)
+        val actionStyle = actionPrefs.getString("notification_actions_style", "disabled") ?: "disabled"
+        
+        when (actionStyle) {
+            "media_controls" -> {
+                // Style A: Pause + Next
+                val pauseIntent = PendingIntent.getService(
+                    context, 1,
+                    Intent(context, LyricService::class.java).setAction("ACTION_MEDIA_PAUSE"),
+                    PendingIntent.FLAG_IMMUTABLE
+                )
+                val nextIntent = PendingIntent.getService(
+                    context, 2,
+                    Intent(context, LyricService::class.java).setAction("ACTION_MEDIA_NEXT"),
+                    PendingIntent.FLAG_IMMUTABLE
+                )
+                builder.addAction(0, context.getString(R.string.action_pause), pauseIntent)
+                builder.addAction(0, context.getString(R.string.action_next), nextIntent)
+            }
+            "miplay" -> {
+                // Style B: Launch Xiaomi MiPlay
+                val miplayIntent = Intent().apply {
+                    component = android.content.ComponentName(
+                        "miui.systemui.plugin",
+                        "miui.systemui.miplay.MiPlayDetailActivity"
+                    )
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                }
+                val miplayPendingIntent = PendingIntent.getActivity(
+                    context, 3, miplayIntent, PendingIntent.FLAG_IMMUTABLE
+                )
+                builder.addAction(0, context.getString(R.string.action_miplay), miplayPendingIntent)
+            }
         }
 
 
