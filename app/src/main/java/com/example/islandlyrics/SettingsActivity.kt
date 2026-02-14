@@ -3,10 +3,15 @@ package com.example.islandlyrics
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.compose.setContent
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
 
 class SettingsActivity : BaseActivity() {
+
+    private var updateReleaseInfo by mutableStateOf<UpdateChecker.ReleaseInfo?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -31,6 +36,17 @@ class SettingsActivity : BaseActivity() {
                     updateVersionText = version,
                     updateBuildText = build
                 )
+
+                if (updateReleaseInfo != null) {
+                    UpdateDialog(
+                        releaseInfo = updateReleaseInfo!!,
+                        onDismiss = { updateReleaseInfo = null },
+                        onIgnore = { tag ->
+                            UpdateChecker.setIgnoredVersion(this, tag)
+                            AppLogger.getInstance().log("Update", "Ignored version: $tag")
+                        }
+                    )
+                }
             }
         }
     }
@@ -44,8 +60,7 @@ class SettingsActivity : BaseActivity() {
                 
                 if (release != null) {
                     // Show update dialog
-                    val dialog = UpdateDialogFragment.newInstance(release)
-                    dialog.show(supportFragmentManager, "update_dialog")
+                    updateReleaseInfo = release
                     
                     AppLogger.getInstance().log("Settings", "Update found: ${release.tagName}")
                 } else {
