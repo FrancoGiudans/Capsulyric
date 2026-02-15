@@ -625,47 +625,30 @@ class LyricCapsuleHandler(
     private fun calculateDynamicIconFrame(title: String, artist: String): IconFrame {
         val titleWeight = calculateWeight(title)
         
-        // Check Metadata Change to reset scroll
+        // Check Metadata Change to reset scroll (logic kept for safety, though scrolling is removed)
         val currentBase = "$title|$artist"
         if (currentBase != lastIconBaseText) {
             lastIconBaseText = currentBase
             iconScrollOffset = 0
         }
 
-        // Rule 1: Adaptive Fit (7-8 CJK chars -> weight 14-16)
-        // If Title is in this specific "slightly too long" range, forcing it is better than scrolling.
-        // We use CJK char count approximation or weight. 
-        // 7 CJK = 14 weight. 8 CJK = 16 weight. 
-        // Normal max is 14. 
-        if (titleWeight in 15..16) {
-             // Force Title only, scale down font
-             return IconFrame(title, fontSize = 26f) // Reduced to fit 7-8 chars comfortably
-        }
-        
-        // Rule 2: Standard Logic (Fit or Scroll)
+        // FIX: Strict Truncation Logic
+        // Max weight 17 (approx 17 Western or 8 CJK chars)
+        // No scrolling, no font shrinking.
         val baseText = "$title - $artist"
-        val maxIconWeight = 14
+        val maxIconWeight = 17
         
-        if (calculateWeight(baseText) <= maxIconWeight) {
-            // Fits perfectly but force reduced font size to match adaptive case
-            return IconFrame(baseText, fontSize = 26f) 
-        }
+        // Truncate directly locally
+        val displayText = extractByWeight(baseText, 0, maxIconWeight)
         
-        // Rule 3: Circular Scrolling
-        // "Title - Artist    Title - Artist"
-        val spacer = "    " // 4 spaces = 4 weight
-        val hubText = baseText + spacer + baseText
-        val cycleWeight = calculateWeight(baseText + spacer)
+        // Remove " - " dangling at end if artist was cut
+        val cleanText = displayText.removeSuffix(" -").removeSuffix(" - ")
         
-        // Extract window
-        val frameText = extractByWeight(hubText, iconScrollOffset, maxIconWeight)
+        // Check if we need ellipsis? User said "Truncate directly". 
+        // usually icons don't have ellipsis space.
         
-        // Increment offset for next frame
-        // Use a fixed shift for icon (simpler than smart shift) or reuse smart shift
-        val shift = 2 // Move 2 weight units per tick (smoother for icon)
-        iconScrollOffset = (iconScrollOffset + shift) % cycleWeight
-        
-        return IconFrame(frameText, fontSize = 26f)
+        // Use default font size (40f) by not passing argument
+        return IconFrame(cleanText)
     }
 
     private fun buildNotification(
@@ -800,8 +783,8 @@ class LyricCapsuleHandler(
                         cachedIconBitmap
                     }
                     else -> {
-                        // Classic style: Scrolling text
-                        val iconText = iconFrame.text
+                        // Classic style: Text only
+                        val iconText = iconFrame.text 
                         val forceSize = iconFrame.fontSize
                         
                         // Cache check - Key includes fontSize to handle adaptive switches
@@ -847,16 +830,9 @@ class LyricCapsuleHandler(
 
     private fun textToBitmap(text: String, forceFontSize: Float? = null): android.graphics.Bitmap? {
         try {
-            // Adaptive Font Size Algorithm
-            // Base size: 40f. Minimum size: 20f.
-            // Decay: 0.8f per character over 10 chars.
-            val length = text.length
-            
-            val fontSize = forceFontSize ?: if (length <= 10) {
-                40f
-            } else {
-                (40f - (length - 10) * 0.8f).coerceAtLeast(20f)
-            }
+            // Adaptive Font Size Algorithm REMOVED
+            // User requested fixed size, no shrinking.
+            val fontSize = forceFontSize ?: 40f
             
             val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
                 textSize = fontSize
