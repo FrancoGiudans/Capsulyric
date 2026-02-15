@@ -6,10 +6,13 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.content.SharedPreferences
+import android.graphics.Bitmap
 
 import android.os.Handler
 import android.os.Looper
 import androidx.core.app.NotificationCompat
+import androidx.lifecycle.Observer
 import androidx.palette.graphics.Palette
 
 
@@ -32,6 +35,35 @@ class LyricCapsuleHandler(
     // Content tracking to prevent flicker
     private var lastNotifiedLyric = ""
     private var lastNotifiedProgress = -1
+    
+    // Cached preferences (Fix 3: avoid repeated SharedPreferences reads in hot loop)
+    private var cachedActionStyle = "disabled"
+    private var cachedUseAlbumColor = false
+    private var cachedUseDynamicIcon = false
+    private var cachedIconStyle = "classic"
+    
+    private val prefChangeListener = SharedPreferences.OnSharedPreferenceChangeListener { prefs, key ->
+        when (key) {
+            "notification_actions_style" -> cachedActionStyle = prefs.getString(key, "disabled") ?: "disabled"
+            "progress_bar_color_enabled" -> cachedUseAlbumColor = prefs.getBoolean(key, false)
+            "dynamic_icon_enabled" -> cachedUseDynamicIcon = prefs.getBoolean(key, false)
+            "dynamic_icon_style" -> cachedIconStyle = prefs.getString(key, "classic") ?: "classic"
+        }
+    }
+    
+    private fun loadPreferences() {
+        val prefs = context.getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE)
+        cachedActionStyle = prefs.getString("notification_actions_style", "disabled") ?: "disabled"
+        cachedUseAlbumColor = prefs.getBoolean("progress_bar_color_enabled", false)
+        cachedUseDynamicIcon = prefs.getBoolean("dynamic_icon_enabled", false)
+        cachedIconStyle = prefs.getString("dynamic_icon_style", "classic") ?: "classic"
+        prefs.registerOnSharedPreferenceChangeListener(prefChangeListener)
+    }
+    
+    private fun unloadPreferences() {
+        context.getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE)
+            .unregisterOnSharedPreferenceChangeListener(prefChangeListener)
+    }
 
     // Scroll state machine
     private enum class ScrollState {
@@ -72,7 +104,7 @@ class LyricCapsuleHandler(
     private var currentParsedLines: List<OnlineLyricFetcher.LyricLine>? = null
 
     // Observer for parsed lyrics
-    private val parsedLyricsObserver = androidx.lifecycle.Observer<LyricRepository.ParsedLyricsInfo?> { parsedInfo ->
+    private val parsedLyricsObserver = Observer<LyricRepository.ParsedLyricsInfo?> { parsedInfo ->
         if (parsedInfo != null && parsedInfo.hasSyllable) {
             // Switch to syllable scrolling mode
             useSyllableScrolling = true
@@ -94,24 +126,34 @@ class LyricCapsuleHandler(
         }
     }
 
-    // Observer for album art changes — triggers async Palette extraction
-    private val albumArtObserver = androidx.lifecycle.Observer<android.graphics.Bitmap?> { bitmap ->
-        if (bitmap != null) {
-            preExtractAlbumColor(bitmap)
+    // Observer for album art changes - async color extraction (Fix 1: avoid blocking main thread)
+    private val albumArtObserver = Observer<Bitmap?> { bitmap ->
+        if (bitmap == null) {
+            cachedAlbumColor = COLOR_PRIMARY
+            cachedAlbumArtHash = 0
+            return@Observer
+        }
+        val artHash = bitmap.hashCode()
+        if (artHash == cachedAlbumArtHash) return@Observer
+        // Async extraction - callback runs on main thread but extraction is off-main
+        Palette.from(bitmap).generate { palette ->
+            if (palette != null) {
+                cachedAlbumColor = palette.getVibrantColor(
+                    palette.getMutedColor(
+                        palette.getDominantColor(COLOR_PRIMARY)
+                    )
+                )
+                cachedAlbumArtHash = artHash
+            }
         }
     }
-
-    // Progress tracking state (consolidated from LyricService.updateTask)
-    private var progressLogCounter = 0
-    private var lastLineIndex = -1
 
     private val visualizerLoop = object : Runnable {
         override fun run() {
             if (!isRunning) return
 
             try {
-                // UNIFIED LOOP: Drive progress tracking + visual update in one cycle
-                refreshProgress()
+                // Update the visual state
                 updateNotification()
 
                 // Optimize: If scrolling is DONE, wait longer or pause until next lyric update triggers it
@@ -122,8 +164,8 @@ class LyricCapsuleHandler(
                     // Check if we are in TIMED mode (fast refresh needed)
                     val currentLine = LyricRepository.getInstance().liveCurrentLine.value
                     if (currentLine != null) {
-                         // Timed Mode: Refresh at 250ms
-                         mainHandler.postDelayed(this, 250)
+                         // Timed Mode: Refresh at 200ms (reduced from 100ms to avoid island lag)
+                         mainHandler.postDelayed(this, 200)
                     } else {
                          // Adaptive Mode: Use calculated delay
                          mainHandler.postDelayed(this, adaptiveDelay)
@@ -148,6 +190,9 @@ class LyricCapsuleHandler(
         LyricRepository.getInstance().liveParsedLyrics.observeForever(parsedLyricsObserver)
         LyricRepository.getInstance().liveAlbumArt.observeForever(albumArtObserver)
         
+        // Load and listen for preference changes (Fix 3)
+        loadPreferences()
+        
         // Reset adaptive scroll history for new song
         lastLyricChangeTime = 0
         lastLyricLength = 0
@@ -159,7 +204,6 @@ class LyricCapsuleHandler(
         initialPauseStartTime = System.currentTimeMillis() // Start pause immediately
         scrollOffset = 0
         lastLyricText = "" // Force reset in next updateNotification
-        lastLineIndex = -1
         
         mainHandler.post(visualizerLoop)
     }
@@ -171,6 +215,9 @@ class LyricCapsuleHandler(
         // Unregister observers
         LyricRepository.getInstance().liveParsedLyrics.removeObserver(parsedLyricsObserver)
         LyricRepository.getInstance().liveAlbumArt.removeObserver(albumArtObserver)
+        
+        // Unregister preference listener (Fix 3)
+        unloadPreferences()
         
         mainHandler.removeCallbacks(visualizerLoop)
         manager?.cancel(1001)
@@ -360,9 +407,7 @@ class LyricCapsuleHandler(
                     }
                 }
                 
-                // Only backtrack if we found a space and it's not too far back (e.g., keep at least 50% of window?)
-                // Actually, for lyrics, readability is key. Backtrack to space if found.
-                // Exception: If the word is HUGE (covers entire window), we must split it.
+                // Only backtrack if we found a space and it's not too far back.
                 if (spaceIndex != -1) {
                     endIndex = spaceIndex
                 }
@@ -405,6 +450,28 @@ class LyricCapsuleHandler(
                 3  // Fallback
             }
         }
+    }
+
+    // Helper to find the nearest word boundary (space) before the target weight
+    // Returns the weight position AFTER the space (start of next word)
+    private fun findSnapOffset(text: String, targetWeight: Int): Int {
+        var currentWeight = 0
+        var lastSnapPoint = 0
+        
+        for (i in text.indices) {
+            val c = text[i]
+            val w = charWeight(c)
+            
+            // If including this char exceeds target, fallback to last snap point
+            if (currentWeight + w > targetWeight) return lastSnapPoint
+            
+            currentWeight += w
+            
+            if (Character.isWhitespace(c)) {
+                lastSnapPoint = currentWeight // Snap to character AFTER space
+            }
+        }
+        return lastSnapPoint
     }
 
     // Icon State
@@ -482,17 +549,23 @@ class LyricCapsuleHandler(
                     // Line fits completely, no scrolling needed
                     displayLyric = foundLine.text
                 } else {
-                    // Deferred-start LRC scrolling: don't scroll in the first 30% of the line
-                    val deferredProgress = ((lineProgress - 0.3f) / 0.7f).coerceIn(0f, 1f)
+                    // FIX: Use Play Head Tracking logic (same as Syllable mode) instead of Relative Scaling
+                    // This ensures the scroll target moves 1:1 with the reading position, preventing lag.
+                    val currentProgressWeight = (lineProgress * currentLineWeight).toInt()
                     
-                    val scrollableWeight = currentLineWeight - maxDisplayWeight
-                    val targetWeightOffset = (deferredProgress * scrollableWeight).toInt()
+                    val scrollStartThreshold = 8
+                    val targetWeightOffset = if (currentProgressWeight < scrollStartThreshold) {
+                        0
+                    } else {
+                        currentProgressWeight - scrollStartThreshold
+                    }
                     
                     // LENGTH CONSTRAINT: Maintain minimum visual length (14 weight units)
                     val minVisibleWeight = 14
                     val maxAllowedScroll = maxOf(0, currentLineWeight - minVisibleWeight)
                     
-                    val finalOffset = minOf(targetWeightOffset, maxAllowedScroll)
+                    // Apply Snapping + Fallback (consistent with Syllable mode)
+                    val finalOffset = calculateSnappedScroll(foundLine.text, targetWeightOffset, maxAllowedScroll)
                     
                     displayLyric = extractByWeight(foundLine.text, finalOffset, maxDisplayWeight)
                 }
@@ -619,11 +692,8 @@ class LyricCapsuleHandler(
             )
             .setRequestPromotedOngoing(true)  // Native AndroidX method - no reflection needed!
 
-        // Action Buttons (controlled by Debug Center style selector)
-        val actionPrefs = context.getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE)
-        val actionStyle = actionPrefs.getString("notification_actions_style", "disabled") ?: "disabled"
-        
-        when (actionStyle) {
+        // Action Buttons (using cached preferences - Fix 3)
+        when (cachedActionStyle) {
             "media_controls" -> {
                 // Style A: Pause + Next
                 val pauseIntent = PendingIntent.getService(
@@ -669,10 +739,9 @@ class LyricCapsuleHandler(
 
         // 2. ProgressStyle - SIMPLIFIED MUSIC-ONLY APPROACH
         try {
-            // Determine progress bar color (album art extraction or default)
-                val useAlbumColor = actionPrefs.getBoolean("progress_bar_color_enabled", false)
-                val barColor = if (useAlbumColor) extractAlbumColor() else COLOR_PRIMARY
-                val barColorIndeterminate = if (useAlbumColor) extractAlbumColor() else COLOR_TERTIARY
+            // Determine progress bar color (using cached preference - Fix 3)
+                val barColor = if (cachedUseAlbumColor) extractAlbumColor() else COLOR_PRIMARY
+                val barColorIndeterminate = if (cachedUseAlbumColor) extractAlbumColor() else COLOR_TERTIARY
 
                 if (progressPercent >= 0) {
                     val segment = NotificationCompat.ProgressStyle.Segment(100)
@@ -711,13 +780,9 @@ class LyricCapsuleHandler(
         }
 
         return builder.build().apply {
-            // HyperOS Dynamic Icon Logic
-            val prefs = context.getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE)
-            val useDynamicIcon = prefs.getBoolean("dynamic_icon_enabled", false)
-            val iconStyle = prefs.getString("dynamic_icon_style", "classic") ?: "classic"
-            
-            if (useDynamicIcon) {
-                val bitmap = when (iconStyle) {
+            // HyperOS Dynamic Icon Logic (using cached preferences - Fix 3)
+            if (cachedUseDynamicIcon) {
+                val bitmap = when (cachedIconStyle) {
                     "advanced" -> {
                         // Advanced style: Use album art + dual-line layout
                         val metadata = LyricRepository.getInstance().liveMetadata.value
@@ -768,30 +833,13 @@ class LyricCapsuleHandler(
     private var cachedIconBitmap: android.graphics.Bitmap? = null
 
     // Album art color extraction cache
-    @Volatile private var cachedAlbumArtHash: Int = 0
-    @Volatile private var cachedAlbumColor: Int = COLOR_PRIMARY
+    private var cachedAlbumArtHash: Int = 0
+    private var cachedAlbumColor: Int = COLOR_PRIMARY
 
     /**
-     * Pre-extract album art color asynchronously when album art changes.
-     * Called by albumArtObserver. Palette extraction runs on a background thread.
-     */
-    private fun preExtractAlbumColor(albumArt: android.graphics.Bitmap) {
-        val artHash = albumArt.hashCode()
-        if (artHash == cachedAlbumArtHash) return // Already extracted for this art
-        Palette.from(albumArt).generate { palette ->
-            if (palette != null) {
-                cachedAlbumColor = palette.getVibrantColor(
-                    palette.getMutedColor(
-                        palette.getDominantColor(COLOR_PRIMARY)
-                    )
-                )
-                cachedAlbumArtHash = artHash
-            }
-        }
-    }
-
-    /**
-     * Returns cached album color. Zero-blocking — color is pre-extracted asynchronously.
+     * Extract dominant color from album art using Palette API (Monet-style).
+     * Color is pre-extracted asynchronously by albumArtObserver when album art changes.
+     * This method is now a pure cache read - no blocking.
      */
     private fun extractAlbumColor(): Int {
         return cachedAlbumColor
@@ -837,6 +885,21 @@ class LyricCapsuleHandler(
     }
 
     
+    // Helper to calculate final scroll amount with Snapping + Fallback
+    private fun calculateSnappedScroll(text: String, targetScroll: Int, maxScroll: Int): Int {
+        // FIX: Snap to word boundaries
+        val snapScroll = findSnapOffset(text, targetScroll)
+        
+        // Safety Fallback for giant words
+        val effectiveScroll = if (targetScroll - snapScroll > 12) {
+             targetScroll
+        } else {
+             snapScroll
+        }
+        
+        return minOf(effectiveScroll, maxScroll)
+    }
+
     /**
      * Calculate display window for syllable-based scrolling.
      * Uses DEFERRED-START scrolling: no scroll until sung text reaches threshold,
@@ -867,14 +930,11 @@ class LyricCapsuleHandler(
         }
         
         // LENGTH CONSTRAINT: Maintain minimum visual length of current line (14 weight units)
-        // Ensure that: totalWeight - scrollAmount >= 14
-        // If totalWeight < 14, maxAllowedScroll will be 0 (no scrolling allowed)
         val minVisibleWeight = 14
         val maxAllowedScroll = maxOf(0, totalWeight - minVisibleWeight)
         
-        // Final scroll amount is the smaller of target and max allowed
-        // This ensures that as unsung text runs out, we stop scrolling to keep sung text visible
-        val finalScrollAmount = minOf(targetScrollAmount, maxAllowedScroll)
+        // Apply Snapping + Fallback
+        val finalScrollAmount = calculateSnappedScroll(fullText, targetScrollAmount, maxAllowedScroll)
         
         return extractByWeight(fullText, finalScrollAmount, maxDisplayWeight)
     }
@@ -939,54 +999,6 @@ class LyricCapsuleHandler(
             }
         }
         return displayLyric
-    }
-
-    /**
-     * Refresh playback progress from MediaController and update lyric line position.
-     * Consolidated from LyricService.updateTask — runs as part of the unified visualizer loop.
-     */
-    private fun refreshProgress() {
-        progressLogCounter++
-        val shouldLog = (progressLogCounter % 20 == 0)  // Log every ~5s at 250ms interval
-
-        // Delegate to service for MediaController access (simulation mode handled internally)
-        service.updateProgressFromController(shouldLog)
-
-        // Drive lyric line updates if we have parsed lyrics
-        val parsedInfo = LyricRepository.getInstance().liveParsedLyrics.value
-        if (parsedInfo != null && parsedInfo.lines.isNotEmpty()) {
-            updateCurrentLyricLine(parsedInfo.lines)
-        }
-    }
-
-    /**
-     * Find and update the current lyric line based on playback position.
-     * Consolidated from LyricService.updateCurrentLyricLine.
-     */
-    private fun updateCurrentLyricLine(lines: List<OnlineLyricFetcher.LyricLine>) {
-        val progressInfo = LyricRepository.getInstance().liveProgress.value
-        val position = progressInfo?.position ?: return
-
-        // Find last line where startTime <= position
-        var index = -1
-        for (i in lines.indices) {
-            if (position >= lines[i].startTime) {
-                index = i
-            } else {
-                break
-            }
-        }
-
-        if (index != -1 && index != lastLineIndex) {
-            lastLineIndex = index
-            val line = lines[index]
-
-            val metadata = LyricRepository.getInstance().liveMetadata.value
-            val source = metadata?.packageName?.let { service.getAppName(it) } ?: "Online Lyrics"
-
-            LyricRepository.getInstance().updateLyric(line.text, source)
-            LyricRepository.getInstance().updateCurrentLine(line)
-        }
     }
 
     companion object {

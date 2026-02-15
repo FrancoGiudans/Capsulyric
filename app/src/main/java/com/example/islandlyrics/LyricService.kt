@@ -80,8 +80,9 @@ class LyricService : Service() {
             if (capsuleHandler?.isRunning() != true) {
                 capsuleHandler?.start()
                 
-                // Track playback state
+                // START PROGRESS TRACKING
                 isPlaying = true
+                handler.post(updateTask)
             } else {
                 // Capsule running: Force immediate update
                 capsuleHandler?.updateLyricImmediate(info.lyric)
@@ -97,23 +98,20 @@ class LyricService : Service() {
             if (currentLyric != null && currentLyric.lyric.isNotBlank() && capsuleHandler?.isRunning() != true) {
                 capsuleHandler?.start()
                 
-                // Track playback state
-                isPlaying = true
-                
                 // Force immediate update with current lyric
                 capsuleHandler?.updateLyricImmediate(currentLyric.lyric)
                 AppLogger.getInstance().log(TAG, "▶️ Capsule started: Playback resumed")
             }
+            // Start progress tracking (merged from second observer)
+            startProgressUpdater()
         } else {
             // Stop capsule ONLY when playback actually stops
             if (capsuleHandler?.isRunning() == true) {
                 capsuleHandler?.stop()
-                
-                // Track playback state
-                isPlaying = false
-                
                 AppLogger.getInstance().log(TAG, "🛑 Capsule stopped: Playback stopped")
             }
+            // Stop progress tracking (merged from second observer)
+            stopProgressUpdater()
         }
     }
 
@@ -170,10 +168,68 @@ class LyricService : Service() {
     }
 
     // Progress Logic
+    // Progress Logic
     private var currentPosition = 0L
     private var duration = 0L
     private var isPlaying = false
+    private var lastLineIndex = -1
     private val handler = Handler(Looper.getMainLooper())
+    private val updateTask = object : Runnable {
+        private var logCounter = 0
+        
+        override fun run() {
+            if (isPlaying) {
+                logCounter++
+                val shouldLog = (logCounter % 10 == 0)
+                
+                if (shouldLog) {
+                    AppLogger.getInstance().log(TAG, "🔄 updateTask running...")
+                }
+                
+                updateProgressFromController(shouldLog)
+                
+                // Drive Lyric Updates if we have parsed lyrics
+                val parsedInfo = LyricRepository.getInstance().liveParsedLyrics.value
+                if (parsedInfo != null && parsedInfo.lines.isNotEmpty()) {
+                     updateCurrentLyricLine(parsedInfo.lines)
+                }
+                
+                // Balanced frequency: 250ms (reduced from 100ms to avoid island lag with visualizerLoop)
+                handler.postDelayed(this, 250)
+            } else {
+                AppLogger.getInstance().log(TAG, "⏸️ updateTask stopped (isPlaying=false)")
+            }
+        }
+    }
+    
+    private fun updateCurrentLyricLine(lines: List<OnlineLyricFetcher.LyricLine>) {
+        // Find current line based on position + offset (e.g. 500ms lookahead?)
+        // Standard: Find last line where startTime <= position
+        val position = currentPosition
+        var index = -1
+        
+        for (i in lines.indices) {
+            val line = lines[i]
+            if (position >= line.startTime) {
+                index = i
+            } else {
+                break
+            }
+        }
+        
+        if (index != -1 && index != lastLineIndex) {
+            lastLineIndex = index
+            val line = lines[index]
+            
+            // Update Repository
+            val metadata = LyricRepository.getInstance().liveMetadata.value
+            // Use actual app name (safe cached call)
+            val source = metadata?.packageName?.let { getAppName(it) } ?: "Online Lyrics"
+            
+            LyricRepository.getInstance().updateLyric(line.text, source)
+            LyricRepository.getInstance().updateCurrentLine(line)
+        }
+    }
 
     // --- Mock Implementation ---
     private var isSimulating = false
@@ -203,8 +259,7 @@ class LyricService : Service() {
         // Observe Repository
         val repo = LyricRepository.getInstance()
         repo.liveLyric.observeForever(lyricObserver)
-        repo.isPlaying.observeForever(playbackObserver)  // ← NEW: Control capsule lifecycle
-
+        repo.isPlaying.observeForever(playbackObserver)  // Controls capsule lifecycle + progress tracking
 
         repo.liveMetadata.observeForever { info ->
             if (info != null) {
@@ -215,6 +270,7 @@ class LyricService : Service() {
                 // Reset parsed lyrics on song change
                 LyricRepository.getInstance().updateParsedLyrics(emptyList(), false)
                 LyricRepository.getInstance().updateCurrentLine(null)
+                lastLineIndex = -1
 
                 // Proactive online lyric fetching logic
                 val rule = ParserRuleHelper.getRuleForPackage(this, info.packageName)
@@ -359,13 +415,15 @@ class LyricService : Service() {
                     // Store parsed lyrics in repository
                     LyricRepository.getInstance().updateParsedLyrics(result.parsedLines, result.hasSyllable)
                     
+                    // Reset line tracker
+                    lastLineIndex = -1
                     AppLogger.getInstance().d(TAG, "在线歌词就绪，检查播放状态")
                     
-                    // Ensure playback state is tracked if music is playing
+                    // CRITICAL FIX: If music is already playing, start the progress updater
                     val repoPlaying = LyricRepository.getInstance().isPlaying.value
                     if (repoPlaying == true && !isPlaying) {
-                        AppLogger.getInstance().d(TAG, "⚡ 音乐正在播放，同步播放状态")
-                        isPlaying = true
+                        AppLogger.getInstance().d(TAG, "⚡ 音乐正在播放，启动进度追踪器")
+                        startProgressUpdater()
                     } else if (repoPlaying == true && isPlaying) {
                         AppLogger.getInstance().d(TAG, "✅ 进度追踪器已运行")
                     } else {
@@ -631,6 +689,21 @@ class LyricService : Service() {
         }
     }
 
+    private fun startProgressUpdater() {
+        AppLogger.getInstance().log(TAG, "▶️ startProgressUpdater() called, isPlaying=$isPlaying")
+        if (!isPlaying) {
+            isPlaying = true
+            handler.post(updateTask)
+            AppLogger.getInstance().log(TAG, "✅ Posted updateTask to handler")
+        } else {
+            AppLogger.getInstance().log(TAG, "⚠️ Already playing, skipping post")
+        }
+    }
+
+    private fun stopProgressUpdater() {
+        isPlaying = false
+        handler.removeCallbacks(updateTask)
+    }
 
     private fun startSimulation() {
         isSimulating = true
@@ -655,12 +728,9 @@ class LyricService : Service() {
              }
         }
 
-        // Start progress tracking via unified capsule loop
-        isPlaying = true
-        if (capsuleHandler?.isRunning() != true) {
-            capsuleHandler?.start()
-        }
+        // [Fix Task 3] Update IMMEDIATELY with Real Data
         updateProgressFromController()
+        startProgressUpdater()
     }
 
     private fun loadMockLyrics() {
@@ -695,7 +765,7 @@ class LyricService : Service() {
         }
     }
 
-    internal fun updateProgressFromController(shouldLog: Boolean = true) {
+    private fun updateProgressFromController(shouldLog: Boolean = true) {
         if (shouldLog) {
             AppLogger.getInstance().log(TAG, "⚙️ updateProgressFromController() called")
         }
@@ -718,15 +788,8 @@ class LyricService : Service() {
                 if (currentMockLineIndex >= mockLyrics.size) {
                     currentMockLineIndex = 0 // Loop
                 }
-
-                val currentLine = mockLyrics[currentMockLineIndex]
-                val title = "一吻天荒"
-                updateNotification(currentLine, title, "Mock Live Test")
-            } else {
-                 val currentLine = mockLyrics[currentMockLineIndex]
-                 val title = "一吻天荒"
-                 updateNotification(currentLine, title, "Mock Live Test")
             }
+            // Notification updates handled by LyricCapsuleHandler.visualizerLoop
             return
         }
 
@@ -769,13 +832,7 @@ class LyricService : Service() {
                      LyricRepository.getInstance().updateProgress(currentPos, duration)
                      
                      // Album art now handled by MediaMonitorService on metadata change
-                     // to decouple it from playback/lyric state loops.
-
-                     val info = LyricRepository.getInstance().liveLyric.value
-                     val lyric = info?.lyric ?: lastLyric
-                     val pkg = info?.sourceApp ?: "Island Lyrics"
-                     
-                     updateNotification(lyric, pkg, "")
+                     // Notification updates handled by LyricCapsuleHandler.visualizerLoop
                 }
             } else {
                 // No active MediaController found
@@ -791,7 +848,7 @@ class LyricService : Service() {
     // Cache for App Names to avoid IPC overhead
     private val appNameCache = java.util.concurrent.ConcurrentHashMap<String, String>()
 
-    internal fun getAppName(pkg: String): String {
+    private fun getAppName(pkg: String): String {
         // Return cached name if available
         appNameCache[pkg]?.let { return it }
         
