@@ -852,6 +852,15 @@ class LyricService : Service() {
         // Return cached name if available
         appNameCache[pkg]?.let { return it }
         
+        // 1. Check for Custom Name rule first
+        val rule = ParserRuleHelper.getRuleForPackage(this, pkg)
+        if (rule?.customName != null && rule.customName.isNotBlank()) {
+            val customName = rule.customName
+            appNameCache[pkg] = customName
+            return customName
+        }
+
+        // 2. Fallback to System Label
         return try {
             val pm = packageManager
             val info = pm.getApplicationInfo(pkg, 0)

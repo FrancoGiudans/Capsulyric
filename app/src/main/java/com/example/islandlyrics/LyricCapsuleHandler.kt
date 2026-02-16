@@ -615,9 +615,13 @@ class LyricCapsuleHandler(
 
         try {
             // Pass all calculated values to avoid re-calculation
+            // Construct "Title - Artist" string
+            val displayTitle = if (realArtist.isNotBlank()) "$realTitle - $realArtist" else realTitle
+
             val notification = buildNotification(
                 displayLyric, 
                 currentLyric, 
+                displayTitle,
                 sourceApp, 
                 currentProgress, 
                 currentIconFrame
@@ -660,6 +664,7 @@ class LyricCapsuleHandler(
     private fun buildNotification(
         displayLyric: String,
         fullLyric: String,
+        title: String,
         sourceApp: String,
         progressPercent: Int,
         iconFrame: IconFrame
@@ -716,7 +721,6 @@ class LyricCapsuleHandler(
 
         // Use passed values
         val currentLyric = fullLyric.ifEmpty { "Waiting for lyrics..." }
-        val title = sourceApp  // Title = app name
         
         // Ensure displayLyric is valid
         val shortText = displayLyric.ifEmpty { currentLyric }
