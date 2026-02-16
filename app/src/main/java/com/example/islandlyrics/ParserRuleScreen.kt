@@ -8,6 +8,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -57,13 +58,67 @@ fun ParserRuleScreen(
                 )
             )
         },
+
         floatingActionButton = {
-            FloatingActionButton(onClick = {
-                editingRule = null
-                showEditDialog = true
-            }) {
-                Icon(painterResource(android.R.drawable.ic_input_add), contentDescription = "Add Rule")
+            // Recommendation Logic
+            val recommendEnabled = remember { 
+                context.getSharedPreferences("IslandLyricsPrefs", android.content.Context.MODE_PRIVATE)
+                    .getBoolean("recommend_media_app", true) 
             }
+            
+            val metadata by LyricRepository.getInstance().liveMetadata.observeAsState()
+            val currentPkg = metadata?.packageName
+            
+            // Check if current app is already in rules
+            val isKnownApp = remember(rules, currentPkg) {
+                if (currentPkg == null) true // Don't recommend if no music
+                else rules.any { it.packageName == currentPkg }
+            }
+            
+            val showRecommendation = recommendEnabled && !isKnownApp && currentPkg != null
+
+            ExtendedFloatingActionButton(
+                onClick = {
+                    if (showRecommendation) {
+                        // Pre-fill dialog with current app info
+                        val pkg = currentPkg!!
+                        // Try to get label
+                        val label = try {
+                            val pm = context.packageManager
+                            val info = pm.getApplicationInfo(pkg, 0)
+                            pm.getApplicationLabel(info).toString()
+                        } catch (e: Exception) {
+                            ""
+                        }
+                        
+                        editingRule = ParserRuleHelper.createDefaultRule(pkg).copy(customName = label)
+                        showEditDialog = true
+                    } else {
+                        // Standard Add
+                        editingRule = null
+                        showEditDialog = true
+                    }
+                },
+                expanded = showRecommendation,
+                icon = { Icon(painterResource(android.R.drawable.ic_input_add), contentDescription = null) },
+                text = { 
+                    if (showRecommendation) {
+                        // Extract app name for display
+                        val appLabel = remember(currentPkg) {
+                            try {
+                                val pm = context.packageManager
+                                val info = pm.getApplicationInfo(currentPkg!!, 0)
+                                pm.getApplicationLabel(info).toString()
+                            } catch (e: Exception) {
+                                null
+                            }
+                        }
+                        Text(text = "Add ${appLabel ?: "Current App"}")
+                    } else {
+                        Text(text = stringResource(R.string.parser_add_rule))
+                    } 
+                }
+            )
         },
         containerColor = MaterialTheme.colorScheme.background
     ) { padding ->

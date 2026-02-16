@@ -386,6 +386,19 @@ fun SettingsScreen(
                     }
                 )
 
+
+                // Suggest Current App
+                var recommendMediaAppEnabled by remember { mutableStateOf(prefs.getBoolean("recommend_media_app", true)) }
+                SettingsSwitchItem(
+                    title = stringResource(R.string.settings_recommend_media_app),
+                    subtitle = stringResource(R.string.settings_recommend_media_app_desc),
+                    checked = recommendMediaAppEnabled,
+                    onCheckedChange = {
+                        recommendMediaAppEnabled = it
+                        prefs.edit().putBoolean("recommend_media_app", it).apply()
+                    }
+                )
+
                 HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
                 // ═══════════════════════════════════════

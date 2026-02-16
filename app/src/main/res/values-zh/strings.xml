@@ -61,6 +61,8 @@
     <string name="settings_general_header">通用</string>
     <string name="settings_core_services_header">核心服务</string>
     <string name="settings_personalization_header">个性化</string>
+    <string name="settings_recommend_media_app">推荐当前播放应用</string>
+    <string name="settings_recommend_media_app_desc">进入通知白名单和解析规则界面时自动推荐当前播放应用</string>
     <string name="settings_help_about_header">帮助与关于</string>
 
     <string name="settings_dynamic_icon_desc">展示歌名-歌手，仅HyperOS 3.0.300+可用</string>
