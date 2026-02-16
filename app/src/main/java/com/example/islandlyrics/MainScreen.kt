@@ -5,6 +5,7 @@ import android.provider.Settings
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -112,27 +113,26 @@ fun MainScreen(
                 bitmap = appIconBitmap.asImageBitmap(),
                 contentDescription = "App Icon",
                 modifier = Modifier
-                    .size(48.dp)
+                    .size(32.dp)
                     .clip(CircleShape)
             )
-            Spacer(modifier = Modifier.width(16.dp))
+            Spacer(modifier = Modifier.width(12.dp))
             Text(
                 text = stringResource(R.string.app_name),
-                fontSize = 32.sp,
-                fontWeight = FontWeight.Black,
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface
             )
         }
 
-        // ── Status Card ──
-        StatusCard(
+        // ── Status Pill ──
+        StatusPill(
             statusText = statusText,
-            versionText = versionText,
             isActive = statusActive,
             onTap = if (!serviceConnected && listenerEnabled) onStatusCardTap else null
         )
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
         // ── Now Playing Card ──
         NowPlayingCard(
@@ -147,99 +147,73 @@ fun MainScreen(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // ── API Status Card (Debug only) ──
-        if (showApiCard) {
-            ApiStatusCard(
-                permissionText = apiPermissionText,
-                capabilityText = apiCapabilityText,
-                flagText = apiFlagText,
-                permissionActive = apiPermissionActive,
-                capabilityActive = apiCapabilityActive,
-                flagActive = apiFlagActive,
-                onOpenSettings = onOpenPromotedSettings,
+        // ── Action Buttons ──
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            // Settings Button
+            ActionButton(
+                text = stringResource(R.string.menu_settings),
+                iconRes = R.drawable.ic_settings,
+                onClick = onOpenSettings,
+                modifier = Modifier.weight(1f)
             )
-            Spacer(modifier = Modifier.height(24.dp))
-        }
 
-        // ── Settings Button ──
-        NavigationButton(
-            text = stringResource(R.string.menu_settings),
-            iconRes = R.drawable.ic_settings,
-            onClick = onOpenSettings
-        )
-
-        // ── Debug Button (Debug builds only) ──
-        if (isDebugBuild) {
-            Spacer(modifier = Modifier.height(8.dp))
-            NavigationButton(
-                text = "Debug Center",
-                iconRes = R.drawable.ic_sync,
-                onClick = onOpenDebug
-            )
+            // Debug Button (Always visible logic in UI, but content depends on isDebugBuild?)
+            // The prompt implies "Debug" button is always there in the reference image.
+            // But we should probably keep the isDebugBuild check for functional safety or just show it.
+            // The user request "Bottom Action Buttons (Settings, Debug)" suggests showing it.
+            // Let's assume for now we show it if isDebugBuild is true, or maybe we want to make it always visible?
+            // The original code hid it. The design shows it. I'll respect the boolean for now but lay it out.
+            if (isDebugBuild) {
+                ActionButton(
+                    text = "Debug",
+                    iconRes = R.drawable.ic_bug_report,
+                    onClick = onOpenDebug,
+                    modifier = Modifier.weight(1f)
+                )
+            }
         }
     }
 }
 
-// ── Status Card ──
+// ── Status Pill ──
 @Composable
-private fun StatusCard(
+private fun StatusPill(
     statusText: String,
-    versionText: String,
     isActive: Boolean,
     onTap: (() -> Unit)?,
 ) {
-    Card(
-        shape = RoundedCornerShape(28.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = if (isActive) StatusActive else StatusInactive
-        ),
-        elevation = CardDefaults.cardElevation(0.dp),
+    Surface(
+        shape = RoundedCornerShape(50), // Pill shape
+        color = MaterialTheme.colorScheme.surfaceVariant,
         modifier = Modifier
             .fillMaxWidth()
             .then(if (onTap != null) Modifier.clickable { onTap() } else Modifier)
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(24.dp)
+            horizontalArrangement = Arrangement.Start,
+            modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp)
         ) {
-            // Icon Container
-            Surface(
-                shape = CircleShape,
-                color = MaterialTheme.colorScheme.surfaceDim,
-                modifier = Modifier.size(48.dp)
-            ) {
-                Icon(
-                    painter = painterResource(
-                        if (isActive) R.drawable.ic_check_circle else R.drawable.ic_cancel
-                    ),
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier
-                        .padding(12.dp)
-                        .size(24.dp)
-                )
+            // Indicator Dot
+            Canvas(modifier = Modifier.size(12.dp)) {
+                drawCircle(color = if (isActive) StatusActive else StatusInactive)
             }
 
-            Spacer(modifier = Modifier.width(16.dp))
+            Spacer(modifier = Modifier.width(12.dp))
 
-            Column {
-                Text(
-                    text = statusText,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White
-                )
-                Text(
-                    text = versionText,
-                    fontSize = 14.sp,
-                    color = Color.White.copy(alpha = 0.8f),
-                    modifier = Modifier.padding(top = 2.dp)
-                )
-            }
+            Text(
+                text = statusText,
+                fontSize = 16.sp,
+                color = MaterialTheme.colorScheme.onSurface
+            )
         }
     }
 }
 
+// ── Now Playing Card ──
 // ── Now Playing Card ──
 @Composable
 private fun NowPlayingCard(
@@ -256,206 +230,137 @@ private fun NowPlayingCard(
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant
         ),
-        border = CardDefaults.outlinedCardBorder(),
         elevation = CardDefaults.cardElevation(0.dp),
         modifier = Modifier.fillMaxWidth()
     ) {
-        Column(modifier = Modifier.padding(24.dp)) {
-            // Idle state (centered)
-            AnimatedVisibility(
-                visible = !isPlaying,
-                enter = fadeIn(),
-                exit = fadeOut(),
+        // Idle state (centered)
+        if (!isPlaying) {
+             Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .defaultMinSize(minHeight = 120.dp)
+                    .padding(24.dp)
             ) {
-                Box(
-                    contentAlignment = Alignment.Center,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .defaultMinSize(minHeight = 120.dp)
-                ) {
-                    Text(
-                        text = stringResource(R.string.status_idle_waiting),
-                        fontSize = 18.sp,
-                        fontStyle = FontStyle.Italic,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
+                Text(
+                    text = stringResource(R.string.status_idle_waiting),
+                    fontSize = 18.sp,
+                    fontStyle = FontStyle.Italic,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
-
+        } else {
             // Playing state
-            AnimatedVisibility(
-                visible = isPlaying,
-                enter = fadeIn(),
-                exit = fadeOut(),
-            ) {
-                Column {
-                    // Album Art + Metadata row
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        // Album Art
-                        if (albumArt != null) {
-                            Image(
-                                bitmap = albumArt.asImageBitmap(),
-                                contentDescription = "Album Art",
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier
-                                    .size(72.dp)
-                                    .clip(RoundedCornerShape(12.dp))
-                            )
-                        } else {
-                            // Placeholder
-                            Surface(
-                                shape = RoundedCornerShape(12.dp),
-                                color = MaterialTheme.colorScheme.surfaceDim,
-                                modifier = Modifier.size(72.dp)
-                            ) {
-                                Icon(
-                                    painter = painterResource(R.drawable.ic_music_note),
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier
-                                        .padding(16.dp)
-                                )
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.width(16.dp))
-
-                        // Song title + Artist (vertically stacked)
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = songTitle ?: "-",
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurface,
-                                maxLines = 2,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = artist ?: "-",
-                                fontSize = 14.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(20.dp))
-
-                    // Lyric label
-                    Text(
-                        text = stringResource(R.string.label_lyric_prefix),
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-
-                    // Lyric text
-                    Text(
-                        text = lyric ?: "-",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary,
-                    )
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    // Progress bar
-                    if (progressDuration > 0) {
-                        LinearProgressIndicator(
-                            progress = {
-                                (progressPosition.toFloat() / progressDuration.toFloat()).coerceIn(0f, 1f)
-                            },
+            Column(modifier = Modifier.padding(20.dp)) {
+                // Top Row: Album Art + Song Info
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    // Album Art - Large rounded square
+                    if (albumArt != null) {
+                        Image(
+                            bitmap = albumArt.asImageBitmap(),
+                            contentDescription = "Album Art",
+                            contentScale = ContentScale.Crop,
                             modifier = Modifier
-                                .fillMaxWidth()
-                                .height(4.dp)
-                                .clip(RoundedCornerShape(4.dp)),
-                            trackColor = MaterialTheme.colorScheme.surfaceDim,
+                                .size(80.dp)
+                                .clip(RoundedCornerShape(16.dp))
                         )
                     } else {
-                        LinearProgressIndicator(
-                            progress = { 0f },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(4.dp)
-                                .clip(RoundedCornerShape(4.dp)),
-                            trackColor = MaterialTheme.colorScheme.surfaceDim,
+                        // Placeholder
+                        Surface(
+                            shape = RoundedCornerShape(16.dp),
+                            color = MaterialTheme.colorScheme.surfaceDim,
+                            modifier = Modifier.size(80.dp)
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_music_note),
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier
+                                    .padding(24.dp)
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.width(16.dp))
+
+                    // Song title + Artist
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = songTitle ?: "-",
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = artist ?: "-",
+                            fontSize = 16.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
                         )
                     }
+                }
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                // Lyric label
+                Text(
+                    text = "Lyric:",
+                    fontSize = 14.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Lyric text - Prominent Blue
+                Text(
+                    text = lyric ?: "-",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Normal, // Based on image looks normal weight but blue and distinct
+                    minLines = 2,
+                    color = Color(0xFF64B5F6), // Light Blue for lyrics
+                    lineHeight = 24.sp
+                )
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                // Progress bar - Blue
+                if (progressDuration > 0) {
+                    LinearProgressIndicator(
+                        progress = {
+                            (progressPosition.toFloat() / progressDuration.toFloat()).coerceIn(0f, 1f)
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(4.dp)
+                            .clip(RoundedCornerShape(4.dp)),
+                        color = Color(0xFF64B5F6), // Match lyrics color
+                        trackColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f),
+                    )
                 }
             }
         }
     }
 }
 
-// ── API Status Card (Debug Only) ──
-@Composable
-private fun ApiStatusCard(
-    permissionText: String,
-    capabilityText: String,
-    flagText: String,
-    permissionActive: Boolean,
-    capabilityActive: Boolean,
-    flagActive: Boolean,
-    onOpenSettings: () -> Unit,
-) {
-    Card(
-        shape = RoundedCornerShape(28.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
-        ),
-        border = CardDefaults.outlinedCardBorder(),
-        elevation = CardDefaults.cardElevation(0.dp),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Column(modifier = Modifier.padding(24.dp)) {
-            Text(
-                text = stringResource(R.string.main_system_api_status),
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(bottom = 12.dp)
-            )
-            Text(
-                text = permissionText,
-                color = if (permissionActive) StatusActive else MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(bottom = 4.dp)
-            )
-            Text(
-                text = capabilityText,
-                color = if (capabilityActive) StatusActive else MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(bottom = 4.dp)
-            )
-            Text(
-                text = flagText,
-                color = if (flagActive) StatusActive else MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(bottom = 12.dp)
-            )
-            Button(
-                onClick = onOpenSettings,
-                modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.filledTonalButtonColors()
-            ) {
-                Text(text = stringResource(R.string.main_open_settings))
-            }
-        }
-    }
-}
 
-// ── Navigation Button ──
+
+// ── Action Button ──
 @Composable
-private fun NavigationButton(
+private fun ActionButton(
     text: String,
     iconRes: Int,
     onClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     OutlinedCard(
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.outlinedCardColors(
             containerColor = Color.Transparent
         ),
-        modifier = Modifier
-            .fillMaxWidth()
+        modifier = modifier
             .height(64.dp)
             .clickable { onClick() }
     ) {
@@ -464,20 +369,20 @@ private fun NavigationButton(
             horizontalArrangement = Arrangement.Center,
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 24.dp)
+                .padding(horizontal = 16.dp)
         ) {
-            Spacer(modifier = Modifier.weight(1f))
-            Text(
-                text = text,
-                fontSize = 20.sp,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-            Spacer(modifier = Modifier.weight(1f))
             Icon(
                 painter = painterResource(iconRes),
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.size(24.dp)
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            Text(
+                text = text,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSurface,
             )
         }
     }
