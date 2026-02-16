@@ -195,7 +195,7 @@
     <string name="oobe_welcome_title">Welcome to Capsulyric</string>
     <string name="oobe_welcome_subtitle">Based on Live Update. Experience dynamic lyrics in your status bar.</string>
     <string name="oobe_warning_hyperos_unsupported">⚠️ System Not Supported Your HyperOS version is less than 3.0.300. The dynamic notifications feature requires HyperOS 3.0.300+ to function properly.</string>
-    <string name="oobe_warning_rom_untested">⚠️ Compatibility Warning This app is optimized for HyperOS. Other systems have not been fully tested and may experience instability or missing features.</string>
+    <string name="oobe_warning_rom_untested">⚠️ Compatibility Warning This system have not been fully tested and may experience instability or missing features.</string>
     <string name="oobe_privacy_notice">🔒 Privacy First\nThis app runs entirely locally. Internet access is ONLY used if you explicitly enable "Online Lyrics". We never collect or transmit your personal data.</string>
     
     <string name="oobe_step_permissions">Permissions</string>

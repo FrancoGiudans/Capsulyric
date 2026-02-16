@@ -39,6 +39,7 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import com.example.islandlyrics.ParserRuleActivity
 import com.example.islandlyrics.R
+import com.example.islandlyrics.RomUtils
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -110,7 +111,7 @@ fun OobeScreen(onFinish: () -> Unit) {
     }
 }
 
-import com.example.islandlyrics.RomUtils
+
 
 @Composable
 fun WelcomeStep() {
@@ -151,7 +152,6 @@ fun WelcomeStep() {
             val (color, textRes) = when (systemStatus) {
                 SystemStatus.HyperOsUnsupported -> MaterialTheme.colorScheme.errorContainer to R.string.oobe_warning_hyperos_unsupported
                 SystemStatus.RomUntested -> MaterialTheme.colorScheme.tertiaryContainer to R.string.oobe_warning_rom_untested
-                else -> MaterialTheme.colorScheme.surfaceVariant to 0 // Should not happen
             }
             
             Card(

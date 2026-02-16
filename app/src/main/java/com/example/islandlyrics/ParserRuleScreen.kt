@@ -50,7 +50,7 @@ fun ParserRuleScreen(
                     }
                 },
                 scrollBehavior = scrollBehavior,
-                colors = TopAppBarDefaults.largeTopAppBarColors(
+                colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.background,
                     scrolledContainerColor = MaterialTheme.colorScheme.background,
                     titleContentColor = MaterialTheme.colorScheme.onBackground,
@@ -81,7 +81,7 @@ fun ParserRuleScreen(
                 onClick = {
                     if (showRecommendation) {
                         // Pre-fill dialog with current app info
-                        val pkg = currentPkg!!
+                        val pkg = currentPkg
                         // Try to get label
                         val label = try {
                             val pm = context.packageManager
@@ -107,7 +107,7 @@ fun ParserRuleScreen(
                         val appLabel = remember(currentPkg) {
                             try {
                                 val pm = context.packageManager
-                                val info = pm.getApplicationInfo(currentPkg!!, 0)
+                                val info = pm.getApplicationInfo(currentPkg, 0)
                                 pm.getApplicationLabel(info).toString()
                             } catch (e: Exception) {
                                 null
