@@ -189,6 +189,8 @@
     <!-- OOBE -->
     <string name="oobe_welcome_title">欢迎使用 Capsulyric</string>
     <string name="oobe_welcome_subtitle">基于Live Update。 在你的状态栏体验灵动歌词。</string>
+    <string name="oobe_warning_hyperos_unsupported">⚠️ 系统暂不支持\n检测到您的 HyperOS 版本低于 3.0.300。灵动歌词功能依赖 HyperOS 3.0.300+ 原生支持，当前版本可能无法使用。</string>
+    <string name="oobe_warning_rom_untested">⚠️ 兼容性警告 在此操作系统上未经过完整测试，可能存在功能缺失或不稳定的情况。</string>
     <string name="oobe_privacy_notice">🔒 隐私优先\n本应用完全在本地运行。只有在您明确开启“在线歌词”时才会使用网络权限。我们绝不收集或传输您的个人数据。</string>
     
     <string name="oobe_step_permissions">权限设置</string>
@@ -222,7 +224,6 @@
 
     <string name="oobe_next">下一步</string>
     <string name="oobe_skip">跳过设置</string>
-    <string name="action_pause">暂停</string>
     <string name="action_pause">暂停</string>
     <string name="action_next">下一首</string>
 

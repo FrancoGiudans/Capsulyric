@@ -110,12 +110,17 @@ fun OobeScreen(onFinish: () -> Unit) {
     }
 }
 
+import com.example.islandlyrics.RomUtils
+
 @Composable
 fun WelcomeStep() {
+    val systemStatus = remember { checkSystemStatus() }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(32.dp),
+            .padding(32.dp)
+            .verticalScroll(rememberScrollState()),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
@@ -141,6 +146,28 @@ fun WelcomeStep() {
         )
         Spacer(modifier = Modifier.height(48.dp))
         
+        // System Compatibility Warning
+        if (systemStatus != SystemStatus.Compatible) {
+            val (color, textRes) = when (systemStatus) {
+                SystemStatus.HyperOsUnsupported -> MaterialTheme.colorScheme.errorContainer to R.string.oobe_warning_hyperos_unsupported
+                SystemStatus.RomUntested -> MaterialTheme.colorScheme.tertiaryContainer to R.string.oobe_warning_rom_untested
+                else -> MaterialTheme.colorScheme.surfaceVariant to 0 // Should not happen
+            }
+            
+            Card(
+                colors = CardDefaults.cardColors(containerColor = color),
+                modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
+            ) {
+                Text(
+                    text = stringResource(textRes),
+                    modifier = Modifier.padding(16.dp),
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
+        }
+        
         Card(
             colors = CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f)
@@ -153,6 +180,25 @@ fun WelcomeStep() {
                 textAlign = TextAlign.Start
             )
         }
+    }
+}
+
+enum class SystemStatus {
+    Compatible,
+    HyperOsUnsupported,
+    RomUntested
+}
+
+private fun checkSystemStatus(): SystemStatus {
+    val romType = RomUtils.getRomType()
+    if (romType == "HyperOS") {
+        return if (RomUtils.isHyperOsVersionAtLeast(3, 0, 300)) {
+            SystemStatus.Compatible
+        } else {
+            SystemStatus.HyperOsUnsupported
+        }
+    } else {
+        return SystemStatus.RomUntested
     }
 }
 
