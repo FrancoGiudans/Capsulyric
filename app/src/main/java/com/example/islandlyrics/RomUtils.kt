@@ -99,10 +99,19 @@ object RomUtils {
     }
 
     fun isHyperOsVersionAtLeast(major: Int, minor: Int, patch: Int): Boolean {
-        val versionStr = getSystemProperty("ro.mi.os.version.name")
+        // Check primary version name
+        if (checkVersionString(getSystemProperty("ro.mi.os.version.name"), major, minor, patch)) return true
+        
+        // Check incremental version (often contains the full version, e.g. 3.0.300.7)
+        if (checkVersionString(getSystemProperty("ro.build.version.incremental"), major, minor, patch)) return true
+        
+        return false
+    }
+
+    private fun checkVersionString(versionStr: String, major: Int, minor: Int, patch: Int): Boolean {
         if (versionStr.isEmpty()) return false
 
-        // Remove "OS" prefix if present (e.g. "OS1.0.1.0")
+        // Remove "OS" prefix if present
         val cleanVersion = versionStr.removePrefix("OS").trim()
         
         // Split by dots
