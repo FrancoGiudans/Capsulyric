@@ -83,6 +83,11 @@ android {
         compose true
         resValues true
     }
+    packaging {
+        jniLibs {
+            keepDebugSymbols += ['libandroidx.graphics.path.so']
+        }
+    }
 }
 
 // Disable the failing check tasks
