@@ -60,6 +60,31 @@ object RomUtils {
         return ""
     }
 
+    fun isHyperOsVersionAtLeast(major: Int, minor: Int, patch: Int): Boolean {
+        val versionStr = getSystemProperty("ro.mi.os.version.name")
+        if (versionStr.isEmpty()) return false
+
+        // Remove "OS" prefix if present (e.g. "OS1.0.1.0")
+        val cleanVersion = versionStr.removePrefix("OS").trim()
+        
+        // Split by dots
+        val parts = cleanVersion.split(".")
+        if (parts.isEmpty()) return false
+
+        try {
+            val vMajor = parts.getOrNull(0)?.toIntOrNull() ?: 0
+            val vMinor = parts.getOrNull(1)?.toIntOrNull() ?: 0
+            val vPatch = parts.getOrNull(2)?.toIntOrNull() ?: 0
+
+            return vMajor > major || 
+                   (vMajor == major && vMinor > minor) || 
+                   (vMajor == major && vMinor == minor && vPatch >= patch)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            return false
+        }
+    }
+
     @SuppressLint("PrivateApi")
     fun getSystemProperty(key: String): String {
         try {

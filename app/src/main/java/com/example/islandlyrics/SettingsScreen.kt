@@ -57,6 +57,9 @@ fun SettingsScreen(
     var actionStyle by remember { mutableStateOf(prefs.getString("notification_actions_style", "disabled") ?: "disabled") }
     var showActionStyleDialog by remember { mutableStateOf(false) }
 
+    // Check for HyperOS 3.0.300+
+    val isHyperOsSupported = remember { RomUtils.isHyperOsVersionAtLeast(3, 0, 300) }
+
     // Logic for permissions status
     fun checkNotificationPermission(): Boolean {
         return NotificationManagerCompat.getEnabledListenerPackages(context).contains(context.packageName)
@@ -71,6 +74,22 @@ fun SettingsScreen(
     var notificationGranted by remember { mutableStateOf(checkNotificationPermission()) }
     var postNotificationGranted by remember { mutableStateOf(checkPostNotificationPermission()) }
 
+    // ... (lifecycle observer) ...
+
+    // Force disable unsupported features if they were previously enabled
+    LaunchedEffect(isHyperOsSupported) {
+        if (!isHyperOsSupported) {
+            if (dynamicIconEnabled) {
+                dynamicIconEnabled = false
+                prefs.edit().putBoolean("dynamic_icon_enabled", false).apply()
+            }
+            if (actionStyle == "miplay") {
+                actionStyle = "disabled"
+                prefs.edit().putString("notification_actions_style", "disabled").apply()
+            }
+        }
+    }
+    
     val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
@@ -84,6 +103,7 @@ fun SettingsScreen(
             lifecycleOwner.lifecycle.removeObserver(observer)
         }
     }
+
 
     // Determine actual dark mode for AppTheme
     val isSystemDark = androidx.compose.foundation.isSystemInDarkTheme()
@@ -240,27 +260,29 @@ fun SettingsScreen(
                     }
                 )
 
-                SettingsSwitchItem(
-                    title = stringResource(R.string.settings_dynamic_icon),
-                    subtitle = stringResource(R.string.settings_dynamic_icon_desc),
-                    checked = dynamicIconEnabled,
-                    onCheckedChange = {
-                        dynamicIconEnabled = it
-                        prefs.edit().putBoolean("dynamic_icon_enabled", it).apply()
-                    }
-                )
-
-                // Icon Style Selection (only visible when dynamic icon is enabled)
-                if (dynamicIconEnabled) {
-                    val styleDisplayName = when (iconStyle) {
-                        "advanced" -> stringResource(R.string.icon_style_advanced)
-                        else -> stringResource(R.string.icon_style_classic)
-                    }
-                    SettingsTextItem(
-                        title = stringResource(R.string.settings_icon_style),
-                        value = styleDisplayName,
-                        onClick = { showIconStyleDialog = true }
+                if (isHyperOsSupported) {
+                    SettingsSwitchItem(
+                        title = stringResource(R.string.settings_dynamic_icon),
+                        subtitle = stringResource(R.string.settings_dynamic_icon_desc),
+                        checked = dynamicIconEnabled,
+                        onCheckedChange = {
+                            dynamicIconEnabled = it
+                            prefs.edit().putBoolean("dynamic_icon_enabled", it).apply()
+                        }
                     )
+                    
+                    // Icon Style Selection (only visible when dynamic icon is enabled)
+                    if (dynamicIconEnabled) {
+                        val styleDisplayName = when (iconStyle) {
+                            "advanced" -> stringResource(R.string.icon_style_advanced)
+                            else -> stringResource(R.string.icon_style_classic)
+                        }
+                        SettingsTextItem(
+                            title = stringResource(R.string.settings_icon_style),
+                            value = styleDisplayName,
+                            onClick = { showIconStyleDialog = true }
+                        )
+                    }
                 }
 
                 // Notification
@@ -484,6 +506,7 @@ fun SettingsScreen(
             if (showActionStyleDialog) {
                 NotificationActionsDialog(
                     currentStyle = actionStyle,
+                    isHyperOsSupported = isHyperOsSupported,
                     onStyleSelected = { style ->
                         actionStyle = style
                         prefs.edit().putString("notification_actions_style", style).apply()
@@ -594,14 +617,21 @@ fun IconStyleSelectionDialog(
 @Composable
 fun NotificationActionsDialog(
     currentStyle: String,
+    isHyperOsSupported: Boolean,
     onStyleSelected: (String) -> Unit,
     onDismiss: () -> Unit
 ) {
-    val styles = listOf(
+    val allStyles = listOf(
         "disabled" to R.string.settings_action_style_off to R.string.settings_action_style_off_desc,
         "media_controls" to R.string.settings_action_style_media to R.string.settings_action_style_media_desc,
         "miplay" to R.string.settings_action_style_miplay to R.string.settings_action_style_miplay_desc
     )
+    
+    val styles = allStyles.filter { 
+        val (styleInfo, _) = it
+        val (styleId, _) = styleInfo
+        if (styleId == "miplay") isHyperOsSupported else true
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
