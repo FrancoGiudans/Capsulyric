@@ -142,7 +142,7 @@
     <string name="faq_title">FAQ</string>
     <string name="faq_cat_guide">Setup Guide</string>
     <string name="faq_q_guide">Q: How do I set up the no-Root (0-Hook) mode?</string>
-    <string name="faq_a_guide">A: This mode uses \'Bluetooth Car Lyric\' protocol.\n\n1. Supports <b>QQ Music</b>, <b>Xiaomi Music</b> and <b>NetEase Music</b>.\n2. NetEase: Enable \'Car Bluetooth Lyric\' in Settings -> Tools.\n3. QQ Music: Enable \'Car Bluetooth Lyric\' in QPlay Settings.\n4. Grant \'Notification Access\' to this app.</string>
+    <string name="faq_a_guide">A: This mode uses \'Bluetooth Car Lyric\' protocol.\n\n1. Supports <b>QQ Music</b>, <b>Xiaomi Music</b> and <b>NetEase Music</b>.\n\n<b>NetEase Music:</b>\n1. Connect a Bluetooth audio device first.\n2. Go to <b>Menu (Top Left)</b> -> <b>Settings</b> -> <b>General</b>.\n3. Find and enable <b>External Device Bluetooth Lyrics</b>.\n\n<b>QQ Music:</b>\n1. Connect a Bluetooth audio device first.\n2. Go to <b>Me</b> -> <b>Menu (Top Right 3-lines)</b> -> <b>Settings</b>.\n3. Find and enable <b>Car Bluetooth Lyrics</b>.\n\nGrant \'Notification Access\' to this app.</string>
     <string name="faq_cat_func">Functionality Issues</string>
     <string name="faq_q_no_lyrics">Q: Why can\'t I see lyrics?</string>
     <string name="faq_a_no_lyrics">A: Please check the following steps:\n\n
@@ -215,9 +215,9 @@
     <string name="oobe_tab_xiaomi">Xiaomi Music by TME</string>
     <string name="oobe_tab_apple">Apple Music</string>
     
-    <string name="oobe_guide_qq">1. Connect a Bluetooth audio device.\n2. Go to <b>Me</b> -> <b>Menu (Top Right)</b> -> <b>Settings</b>.\n3. Find <b>QPlay &amp; Car</b>.\n4. Enable <b>Car Bluetooth Lyrics</b>.</string>
-    <string name="oobe_guide_netease">1. Connect a Bluetooth audio device.\n2. Go to <b>Menu (Top Left)</b> -> <b>Settings</b>.\n3. Find <b>Tools</b>.\n4. Enable <b>Car Bluetooth Lyrics</b>.</string>
-    <string name="oobe_guide_xiaomi">1. Go to <b>Me</b> -> <b>Menu (Top Right)</b>.\n2. Go to <b>General Settings</b>.\n3. Enable <b>Notification Bar Lyrics</b>.</string>
+    <string name="oobe_guide_qq">1. Connect a Bluetooth audio device first.\n2. Go to <b>Me</b> -> <b>Menu (Top Right 3-lines)</b> -> <b>Settings</b>.\n3. Find and enable <b>Car Bluetooth Lyrics</b>.</string>
+    <string name="oobe_guide_netease">1. Connect a Bluetooth audio device first.\n2. Go to <b>Menu (Top Left)</b> -> <b>Settings</b> -> <b>General</b>.\n3. Find and enable <b>External Device Bluetooth Lyrics</b>.</string>
+    <string name="oobe_guide_xiaomi">1. Go to <b>Me</b> -> <b>Menu (Top Right 3-lines)</b> -> <b>General Settings</b>.\n2. Enable <b>Notification Bar Lyrics</b>.</string>
     <string name="oobe_guide_apple">1. Requires <b>Root</b> (Magisk/KernelSU).\n2. Install <b>LSPosed</b> framework.\n3. Install the <b>SuperLyric</b> module.\n4. Enable the module for Apple Music.</string>
     
     <string name="oobe_app_not_in_list">My app is not in this list?</string>
