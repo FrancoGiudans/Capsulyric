@@ -51,6 +51,14 @@ class MainActivity : BaseActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        // OOBE Check
+        val prefs = getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE)
+        if (!prefs.getBoolean("is_setup_complete", false)) {
+            startActivity(Intent(this, com.example.islandlyrics.oobe.OobeActivity::class.java))
+            finish()
+            return
+        }
+
         updateVersionInfo()
 
         setContent {

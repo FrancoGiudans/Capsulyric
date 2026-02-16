@@ -57,6 +57,12 @@
                   android:parentActivityName=".MainActivity" />
 
 
+        <activity
+            android:name=".oobe.OobeActivity"
+            android:label="@string/oobe_welcome_title"
+            android:theme="@style/Theme.IslandLyrics"
+            android:exported="false" />
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"
