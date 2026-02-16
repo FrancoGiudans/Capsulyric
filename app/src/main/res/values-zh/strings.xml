@@ -184,5 +184,42 @@
     <string name="settings_action_style_miplay_desc">打开小米妙播面板</string>
     <string name="settings_progress_color">为进度条着色</string>
     <string name="settings_progress_color_desc">从专辑封面提取颜色应用到通知进度条</string>
+    
+    <!-- OOBE -->
+    <string name="oobe_welcome_title">欢迎使用 Capsulyric</string>
+    <string name="oobe_welcome_subtitle">让音乐可视化。\n在你的状态栏体验灵动歌词。</string>
+    <string name="oobe_privacy_notice">🔒 隐私优先\n本应用完全在本地运行。只有在您明确开启“在线歌词”时才会使用网络权限。我们绝不收集或传输您的个人数据。</string>
+    
+    <string name="oobe_step_permissions">权限设置</string>
+    <string name="oobe_perm_listener_title">通知监听权限</string>
+    <string name="oobe_perm_listener_desc">用于读取音乐App的歌词通知。</string>
+    <string name="oobe_perm_post_title">发送通知权限</string>
+    <string name="oobe_perm_post_desc">用于显示歌词胶囊。</string>
+    <string name="oobe_perm_battery_title">电池优化</string>
+    <string name="oobe_perm_battery_desc">允许后台运行以保持歌词更新。</string>
+    <string name="oobe_btn_grant">授权</string>
+    <string name="oobe_btn_granted">已授权</string>
+    
+    <string name="oobe_step_apps">应用设置</string>
+    <string name="oobe_apps_intro">为了广播歌词，您必须在音乐App中开启“车载/蓝牙歌词”功能。</string>
+    <string name="oobe_tab_qq">QQ音乐</string>
+    <string name="oobe_tab_netease">网易云音乐</string>
+    <string name="oobe_tab_xiaomi">小米音乐</string>
+    <string name="oobe_tab_apple">Apple Music</string>
+    
+    <string name="oobe_guide_qq">1. 连接蓝牙音频设备。\n2. 进入 <b>我的</b> -> <b>菜单 (右上角)</b> -> <b>设置</b>。\n3. 找到 <b>QPlay与车载歌词</b>。\n4. 开启 <b>车载蓝牙歌词</b>。</string>
+    <string name="oobe_guide_netease">1. 连接蓝牙音频设备。\n2. 进入 <b>菜单 (左上角)</b> -> <b>设置</b>。\n3. 找到 <b>工具</b>。\n4. 开启 <b>车载蓝牙歌词</b>。</string>
+    <string name="oobe_guide_xiaomi">1. 进入 <b>我的</b> -> <b>菜单 (右上角)</b>。\n2. 进入 <b>通用设置</b>。\n3. 开启 <b>通知栏歌词</b>。</string>
+    <string name="oobe_guide_apple">1. 需要 <b>Root</b> 权限 (Magisk/KernelSU)。\n2. 安装 <b>LSPosed</b> 框架。\n3. 安装 <b>SuperLyric</b> 模块。\n4. 在模块中启用 Apple Music。</string>
+    
+    <string name="oobe_app_not_in_list">我的应用不在列表中？</string>
+    
+    <string name="oobe_step_finish">准备就绪！</string>
+    <string name="oobe_finish_title">一切准备就绪</string>
+    <string name="oobe_finish_subtitle">正在启动“灵动歌词”服务...</string>
+    <string name="oobe_btn_start">开始使用</string>
+
+    <string name="oobe_next">下一步</string>
+    <string name="oobe_skip">跳过设置</string>
 
 </resources>

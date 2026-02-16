@@ -24,7 +24,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.vector.path
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -344,7 +347,7 @@ fun SetupGuideItem(name: String, guide: String, initiallyExpanded: Boolean = fal
             // Scaled chevron
             val rotation = if (expanded) 180f else 0f
             Icon(
-                painter = painterResource(id = android.R.drawable.arrow_down_float), // Use system drawable or path
+                imageVector = OobeIcons.KeyboardArrowDown,
                 contentDescription = if (expanded) "Collapse" else "Expand",
                 modifier = Modifier
                     .rotate(rotation)
@@ -417,4 +420,30 @@ fun checkPostNotification(context: Context): Boolean {
         return ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == android.content.pm.PackageManager.PERMISSION_GRANTED
     }
     return true
+}
+
+private object OobeIcons {
+    val KeyboardArrowDown: ImageVector
+        get() {
+            if (_keyboardArrowDown != null) return _keyboardArrowDown!!
+            _keyboardArrowDown = ImageVector.Builder(
+                name = "KeyboardArrowDown",
+                defaultWidth = 24.dp,
+                defaultHeight = 24.dp,
+                viewportWidth = 24f,
+                viewportHeight = 24f
+            ).apply {
+                path(fill = SolidColor(Color.Black)) {
+                    moveTo(7.41f, 8.59f)
+                    lineTo(12f, 13.17f)
+                    lineTo(16.59f, 8.59f)
+                    lineTo(18f, 10f)
+                    lineTo(12f, 16f)
+                    lineTo(6f, 10f)
+                    close()
+                }
+            }.build()
+            return _keyboardArrowDown!!
+        }
+    private var _keyboardArrowDown: ImageVector? = null
 }
