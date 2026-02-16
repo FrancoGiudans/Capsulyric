@@ -59,8 +59,9 @@
     <string name="settings_about_github">GitHub 仓库</string>
     <string name="settings_console_log">日志控制台</string>
     <string name="settings_general_header">通用</string>
-    <string name="settings_service_header">服务</string>
-    <string name="settings_service_enable">开启服务</string>
+    <string name="settings_core_services_header">核心服务</string>
+    <string name="settings_personalization_header">个性化</string>
+    <string name="settings_help_about_header">帮助与关于</string>
 
     <string name="settings_dynamic_icon_desc">展示歌名-歌手，仅HyperOS 3.0.300+可用</string>
     <string name="channel_live_lyrics">实时歌词更新</string>
