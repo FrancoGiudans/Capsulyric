@@ -60,6 +60,33 @@ object RomUtils {
         return ""
     }
 
+    fun getRomType(): String {
+        // HyperOS / MIUI
+        if (getSystemProperty("ro.mi.os.version.name").isNotEmpty()) return "HyperOS"
+        
+        // ColorOS / OxygenOS
+        if (getSystemProperty("ro.build.version.opporom").isNotEmpty()) return "ColorOS"
+        
+        // FuntouchOS / OriginOS
+        if (getSystemProperty("ro.vivo.os.version").isNotEmpty()) {
+             val version = getSystemProperty("ro.vivo.os.version")
+             // Simple heuristic: newer versions likely OriginOS, but name isn't always clear
+             // Just return "OriginOS/FuntouchOS" to be safe or check specific props if known
+             return "OriginOS/FuntouchOS"
+        }
+        
+        // Flyme
+        if (getSystemProperty("ro.flyme.ui.version.name").isNotEmpty()) return "Flyme"
+
+        // Custom ROMs
+        if (getSystemProperty("ro.derpfest.version").isNotEmpty()) return "DerpFest"
+        if (getSystemProperty("ro.lineage.version").isNotEmpty()) return "LineageOS"
+        if (getSystemProperty("org.pixelexperience.version").isNotEmpty()) return "PixelExperience"
+        if (getSystemProperty("ro.evolution.version").isNotEmpty()) return "Evolution X"
+        
+        return "AOSP"
+    }
+
     fun isHyperOsVersionAtLeast(major: Int, minor: Int, patch: Int): Boolean {
         val versionStr = getSystemProperty("ro.mi.os.version.name")
         if (versionStr.isEmpty()) return false

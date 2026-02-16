@@ -97,6 +97,10 @@ fun DebugCenterScreen(
                             if (romInfo.isNotEmpty()) {
                                 Text("ROM Version: $romInfo", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
                             }
+                            // Device Type
+                            val deviceType = remember { "${android.os.Build.MANUFACTURER}/${RomUtils.getRomType()}" }
+                            Text("Device Type: $deviceType", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.secondary)
+                            
                             Text("Build ID: ${android.os.Build.DISPLAY}")
                             Text("Manufacturer: ${android.os.Build.MANUFACTURER}")
                             Text("Model: ${android.os.Build.MODEL} (${android.os.Build.DEVICE})")
