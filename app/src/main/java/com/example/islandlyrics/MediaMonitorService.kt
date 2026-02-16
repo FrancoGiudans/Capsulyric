@@ -295,14 +295,28 @@ class MediaMonitorService : NotificationListenerService() {
 
     private fun getPrimaryController(): MediaController? {
         synchronized(activeControllers) {
-            // Priority 1: Playing
-            for (c in activeControllers) {
-                val state = c.playbackState
-                if (state != null && state.state == PlaybackState.STATE_PLAYING) {
-                    return c
-                }
+            // Priority 1: Whitelisted + Playing/Buffering (Always prefer our rules)
+            val whitelistedPlaying = activeControllers.firstOrNull { 
+                allowedPackages.contains(it.packageName) && 
+                (it.playbackState?.state == PlaybackState.STATE_PLAYING || 
+                 it.playbackState?.state == PlaybackState.STATE_BUFFERING ||
+                 it.playbackState?.state == PlaybackState.STATE_CONNECTING)
             }
-            // Priority 2: First in list
+            if (whitelistedPlaying != null) return whitelistedPlaying
+
+            // Priority 2: Any Playing (To allow Suggestion feature to detect new apps)
+            val anyPlaying = activeControllers.firstOrNull {
+                it.playbackState?.state == PlaybackState.STATE_PLAYING
+            }
+            if (anyPlaying != null) return anyPlaying
+
+            // Priority 3: Whitelisted + Paused (Prefer known app over unknown paused junk)
+            val whitelistedPaused = activeControllers.firstOrNull {
+                 allowedPackages.contains(it.packageName)
+            }
+            if (whitelistedPaused != null) return whitelistedPaused
+
+            // Priority 4: Fallback (Most recent active controller)
             if (activeControllers.isNotEmpty()) {
                 return activeControllers[0]
             }
@@ -330,16 +344,19 @@ class MediaMonitorService : NotificationListenerService() {
                         ?: metadata.getBitmap(MediaMetadata.METADATA_KEY_ART)
         val artHash = artBitmap?.hashCode() ?: 0
         
-        // Always update metadata for the "Suggest Current App" UI
-        LyricRepository.getInstance().updateMediaMetadata(rawTitle ?: "Unknown", rawArtist ?: "Unknown", pkg, duration)
-        
-        // CHECK WHITELIST - Block logic for unknown apps
+
+
+        // CHECK WHITELIST - Strict global handling
         if (!allowedPackages.contains(pkg)) {
-            AppLogger.getInstance().log("Meta", "ℹ️ Package $pkg not whitelisted. Metadata updated for UI only.")
+            AppLogger.getInstance().log("Meta", "ℹ️ Package $pkg not whitelisted. Sending identity only.")
+            // Only update identity so ParserRuleScreen can suggest it. BLOCK content.
+            // Use Application Label as Title for cleaner UI in MainScreen
+            val appName = getAppName(pkg)
+            LyricRepository.getInstance().updateMediaMetadata(appName, pkg, pkg, 0)
+            LyricRepository.getInstance().updateAlbumArt(null)
             return
         }
 
-        // Logic continues only for whitelisted apps...
         val metadataHash = java.util.Objects.hash(rawTitle, rawArtist, pkg, duration, artHash)
         if (metadataHash == lastMetadataHash) {
             AppLogger.getInstance().log("Meta-Debug", "⏭️ Skipping duplicate metadata for [$pkg]")
@@ -356,26 +373,18 @@ class MediaMonitorService : NotificationListenerService() {
         // Load parser rule for this package
         val rule = ParserRuleHelper.getRuleForPackage(this, pkg)
 
-        if (rule != null && rule.usesCarProtocol && rawArtist != null) {
-            val (parsedTitle, parsedArtist, isSuccess) = parseWithRule(rawArtist, rule)
-            
-            if (isSuccess && parsedTitle.isNotEmpty()) {
-                finalLyric = rawTitle 
-                finalTitle = parsedTitle
-                finalArtist = parsedArtist
-                AppLogger.getInstance().log("Parser", "✅ Smart Match: Treated as Lyric.")
-            } else {
-                finalTitle = rawTitle
-                finalArtist = rawArtist
-            }
-        } else {
-             // Non-protocol or no rule
-             finalTitle = rawTitle
-             finalArtist = rawArtist
-        }
+
+        // Calculate finalTitle, finalArtist, finalLyric... (Already done above)
+
+        // ALWAYS Update Media Metadata for UI (using PARSED results)
+        // This ensures "Suggestion" UI shows correct App Name/Title/Artist
+        LyricRepository.getInstance().updateMediaMetadata(finalTitle ?: "Unknown", finalArtist ?: "Unknown", pkg, duration)
+
+
 
         AppLogger.getInstance().log("Repo", "✅ Posting: Lyric=[${if (finalLyric != null) "YES" else "NO"}]")
-
+        
+        // Update Lyric if available AND whitelisted
         if (finalLyric != null) {
             LyricRepository.getInstance().updateLyric(finalLyric, getAppName(pkg))
         }
