@@ -79,7 +79,13 @@ class LyricCapsuleHandler(
     // Visual weight-based scrolling (CJK=2, Western=1)
     private var scrollOffset = 0  // Current scroll position in visual weight units
     private var lastLyricText = ""
-    private val maxDisplayWeight = 18  // Visual capacity: ~11 CJK or ~22 Western chars
+    
+    // Determine max display weight based on ROM type
+    // Heavy skins (HyperOS, OneUI, etc.) support wider display (~18 weight)
+    // AOSP/Stock-like ROMs restricted to ~10 weight
+    private val heavySkinRoms = setOf("HyperOS", "ColorOS", "OriginOS/FuntouchOS", "Flyme", "OneUI", "MagicOS", "RealmeUI")
+    private val isHeavySkin = RomUtils.getRomType() in heavySkinRoms
+    private val maxDisplayWeight = if (isHeavySkin) 18 else 10
     private val compensationThreshold = 8  // Stop scrolling if remainder < this (keeps capsule stable)
     
     // Timing constants

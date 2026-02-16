@@ -78,6 +78,17 @@ object RomUtils {
         // Flyme
         if (getSystemProperty("ro.flyme.ui.version.name").isNotEmpty()) return "Flyme"
 
+        // OneUI (Samsung)
+        if (getSystemProperty("ro.build.version.sem").isNotEmpty() || 
+            getSystemProperty("ro.build.version.sep").isNotEmpty() ||
+            android.os.Build.MANUFACTURER.equals("samsung", ignoreCase = true)) return "OneUI"
+
+        // MagicOS (Honor)
+        if (getSystemProperty("ro.build.version.magic").isNotEmpty()) return "MagicOS"
+        
+        // RealmeUI (often covered by ColorOS check, but just in case)
+        if (getSystemProperty("ro.build.version.realmerom").isNotEmpty()) return "RealmeUI"
+
         // Custom ROMs
         if (getSystemProperty("ro.derpfest.version").isNotEmpty()) return "DerpFest"
         if (getSystemProperty("ro.lineage.version").isNotEmpty()) return "LineageOS"
