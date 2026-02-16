@@ -193,7 +193,7 @@
 
     <!-- OOBE -->
     <string name="oobe_welcome_title">Welcome to Capsulyric</string>
-    <string name="oobe_welcome_subtitle">Your music, visually enhanced.\nExperience dynamic lyrics in your status bar.</string>
+    <string name="oobe_welcome_subtitle">Based on Live Update. Experience dynamic lyrics in your status bar.</string>
     <string name="oobe_privacy_notice">🔒 Privacy First\nThis app runs entirely locally. Internet access is ONLY used if you explicitly enable "Online Lyrics". We never collect or transmit your personal data.</string>
     
     <string name="oobe_step_permissions">Permissions</string>
@@ -201,7 +201,7 @@
     <string name="oobe_perm_listener_desc">Required to read lyrics from music apps.</string>
     <string name="oobe_perm_post_title">Post Notifications</string>
     <string name="oobe_perm_post_desc">Required to display the lyrics capsule.</string>
-    <string name="oobe_perm_battery_title">Battery Optimization</string>
+    <string name="oobe_perm_battery_title">Battery Optimization (optional)</string>
     <string name="oobe_perm_battery_desc">Allow background running to keep lyrics alive.</string>
     <string name="oobe_btn_grant">Grant</string>
     <string name="oobe_btn_granted">Granted</string>
@@ -209,9 +209,9 @@
     <string name="oobe_step_apps">App Setup</string>
     <string name="oobe_apps_intro">To broadcast lyrics, you must enable "Bluetooth/Car Lyrics" in your music app.</string>
     <string name="oobe_tab_qq">QQ Music</string>
-    <string name="oobe_tab_netease">Netease</string>
-    <string name="oobe_tab_xiaomi">Xiaomi</string>
-    <string name="oobe_tab_apple">Apple</string>
+    <string name="oobe_tab_netease">Netease Music</string>
+    <string name="oobe_tab_xiaomi">Xiaomi Music by TME</string>
+    <string name="oobe_tab_apple">Apple Music</string>
     
     <string name="oobe_guide_qq">1. Connect a Bluetooth audio device.\n2. Go to <b>Me</b> -> <b>Menu (Top Right)</b> -> <b>Settings</b>.\n3. Find <b>QPlay &amp; Car</b>.\n4. Enable <b>Car Bluetooth Lyrics</b>.</string>
     <string name="oobe_guide_netease">1. Connect a Bluetooth audio device.\n2. Go to <b>Menu (Top Left)</b> -> <b>Settings</b>.\n3. Find <b>Tools</b>.\n4. Enable <b>Car Bluetooth Lyrics</b>.</string>

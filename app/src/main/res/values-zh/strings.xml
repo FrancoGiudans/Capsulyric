@@ -174,6 +174,7 @@
 - <b>Release / Pre-release 版本</b>： 在应用内找到版本号或 Commit 号，连续点击即可唤出 Log Console。</string>
 
     <!-- 通知设置 -->
+    <string name="action_miplay">小米妙播</string>
     <string name="settings_notification_header">通知</string>
     <string name="settings_notification_actions">通知按键</string>
     <string name="settings_action_style_off">关闭</string>
@@ -187,7 +188,7 @@
     
     <!-- OOBE -->
     <string name="oobe_welcome_title">欢迎使用 Capsulyric</string>
-    <string name="oobe_welcome_subtitle">让音乐可视化。\n在你的状态栏体验灵动歌词。</string>
+    <string name="oobe_welcome_subtitle">基于Live Update。 在你的状态栏体验灵动歌词。</string>
     <string name="oobe_privacy_notice">🔒 隐私优先\n本应用完全在本地运行。只有在您明确开启“在线歌词”时才会使用网络权限。我们绝不收集或传输您的个人数据。</string>
     
     <string name="oobe_step_permissions">权限设置</string>
@@ -195,7 +196,7 @@
     <string name="oobe_perm_listener_desc">用于读取音乐App的歌词通知。</string>
     <string name="oobe_perm_post_title">发送通知权限</string>
     <string name="oobe_perm_post_desc">用于显示歌词胶囊。</string>
-    <string name="oobe_perm_battery_title">电池优化</string>
+    <string name="oobe_perm_battery_title">电池优化 （可选）</string>
     <string name="oobe_perm_battery_desc">允许后台运行以保持歌词更新。</string>
     <string name="oobe_btn_grant">授权</string>
     <string name="oobe_btn_granted">已授权</string>
@@ -214,12 +215,15 @@
     
     <string name="oobe_app_not_in_list">我的应用不在列表中？</string>
     
-    <string name="oobe_step_finish">准备就绪！</string>
+    <string name="oobe_step_finish">进入应用</string>
     <string name="oobe_finish_title">一切准备就绪</string>
     <string name="oobe_finish_subtitle">正在启动“灵动歌词”服务...</string>
     <string name="oobe_btn_start">开始使用</string>
 
     <string name="oobe_next">下一步</string>
     <string name="oobe_skip">跳过设置</string>
+    <string name="action_pause">暂停</string>
+    <string name="action_pause">暂停</string>
+    <string name="action_next">下一首</string>
 
 </resources>
