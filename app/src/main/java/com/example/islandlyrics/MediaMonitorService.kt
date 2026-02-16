@@ -374,7 +374,30 @@ class MediaMonitorService : NotificationListenerService() {
         val rule = ParserRuleHelper.getRuleForPackage(this, pkg)
 
 
-        // Calculate finalTitle, finalArtist, finalLyric... (Already done above)
+        // Apply parsing rules if enabled
+        if (rule != null && rule.enabled) {
+            // Case 1: Title contains "Artist - Title" (or similar)
+            val titleParse = parseWithRule(rawTitle ?: "", rule)
+            if (titleParse.third) {
+                finalTitle = titleParse.first
+                finalArtist = titleParse.second
+                // finalLyric remains null
+            } else {
+                // Case 2: Artist contains "Artist - Title" AND Title contains Lyrics
+                // This matches the user's reported issue: "歌名部分显示为歌词，歌手部分显示为歌名-歌手"
+                val artistParse = parseWithRule(rawArtist ?: "", rule)
+                if (artistParse.third) {
+                    finalTitle = artistParse.first
+                    finalArtist = artistParse.second
+                    // If we successfully parsed the artist field, the "Title" field was likely lyrics
+                    if (!rawTitle.isNullOrEmpty()) {
+                        finalLyric = rawTitle
+                        AppLogger.getInstance().log("Parser", "💡 Detected Lyrics in Title field! Swapped.")
+                    }
+                }
+            }
+        } 
+
 
         // ALWAYS Update Media Metadata for UI (using PARSED results)
         // This ensures "Suggestion" UI shows correct App Name/Title/Artist
