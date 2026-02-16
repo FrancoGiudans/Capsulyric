@@ -76,6 +76,43 @@ fun DebugCenterScreen(
                     }
                 }
             )
+
+            // ── System Info ──
+            var showSystemInfoDialog by remember { mutableStateOf(false) }
+            DebugMenuButton(
+                text = "Show System Info",
+                description = "Display Android version, ROM, and device info",
+                onClick = { showSystemInfoDialog = true }
+            )
+
+            if (showSystemInfoDialog) {
+                AlertDialog(
+                    onDismissRequest = { showSystemInfoDialog = false },
+                    title = { Text("System Info") },
+                    text = {
+                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text("Android Version: ${android.os.Build.VERSION.RELEASE} (SDK ${android.os.Build.VERSION.SDK_INT})")
+                            // Extended ROM Info
+                            val romInfo = remember { RomUtils.getRomInfo() }
+                            if (romInfo.isNotEmpty()) {
+                                Text("ROM Version: $romInfo", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
+                            }
+                            Text("Build ID: ${android.os.Build.DISPLAY}")
+                            Text("Manufacturer: ${android.os.Build.MANUFACTURER}")
+                            Text("Model: ${android.os.Build.MODEL} (${android.os.Build.DEVICE})")
+                            Text("Brand: ${android.os.Build.BRAND}")
+                            Text("Product: ${android.os.Build.PRODUCT}")
+                            Text("Hardware: ${android.os.Build.HARDWARE}")
+                            Text("Fingerprint:\n${android.os.Build.FINGERPRINT}", style = MaterialTheme.typography.bodySmall)
+                        }
+                    },
+                    confirmButton = {
+                        TextButton(onClick = { showSystemInfoDialog = false }) {
+                            Text("Generic OK") // Matches user's typical style if any, but "OK" is fine
+                        }
+                    }
+                )
+            }
         }
     }
 
