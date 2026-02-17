@@ -4,6 +4,7 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
+import android.content.pm.PackageManager
 import android.media.MediaMetadata
 import android.media.session.MediaController
 import android.media.session.MediaSessionManager
@@ -170,10 +171,13 @@ class MediaMonitorService : NotificationListenerService() {
         val set = ParserRuleHelper.getEnabledPackages(this)
         allowedPackages.clear()
         allowedPackages.addAll(set)
-        AppLogger.getInstance().log(TAG, "Whitelist updated: ${allowedPackages.size} enabled apps.")
+        AppLogger.getInstance().log(TAG, "Whitelist updated: ${allowedPackages.size} enabled apps: ${allowedPackages.joinToString()}")
     }
 
     private fun updateControllers(controllers: List<MediaController>?) {
+        // Force reload whitelist to ensure we are always up to date
+        loadWhitelist()
+
         // CHECK MASTER SWITCH
         val isServiceEnabled = prefs?.getBoolean("service_enabled", true) ?: true
         if (!isServiceEnabled) {
@@ -188,73 +192,53 @@ class MediaMonitorService : NotificationListenerService() {
             LyricRepository.getInstance().updatePlaybackStatus(false)
             return
         }
-
-        if (controllers == null) return
-
+        
+        // Robust update: Wipe and Replace
+        // This eliminates stale state issues at the cost of slight overhead
         synchronized(activeControllers) {
-            // 1. Identify valid new controllers (Track ALL for suggestion feature)
-            val newControllers = controllers // No filter here!
-            
-            // 2. Find controllers to remove (present in old list but not in new list)
-            val toRemove = ArrayList<MediaController>()
-            controllerCallbacks.keys.forEach { existingController ->
-                val stillExists = newControllers.any { it.sessionToken == existingController.sessionToken }
-                if (!stillExists) {
-                    toRemove.add(existingController)
-                }
+            // 1. Unregister ALL old
+            controllerCallbacks.forEach { (controller, callback) ->
+                try {
+                    controller.unregisterCallback(callback)
+                } catch (e: Exception) { /* Ignore */ }
             }
-
-            // 3. Remove old callbacks
-            toRemove.forEach { controller ->
-                val cb = controllerCallbacks.remove(controller)
-                if (cb != null) {
-                    controller.unregisterCallback(cb)
-                }
-                activeControllers.remove(controller)
-            }
-            
-            // Refill activeControllers
+            controllerCallbacks.clear()
             activeControllers.clear()
-            activeControllers.addAll(newControllers)
 
-            // 4. Add new callbacks
-            newControllers.forEach { controller ->
-                val isRegistered = controllerCallbacks.keys.any { it.sessionToken == controller.sessionToken }
-                
-                if (!isRegistered) {
-                    val callback = object : MediaController.Callback() {
-                        private val debounceHandler = android.os.Handler(android.os.Looper.getMainLooper())
-                        private val updateRunnable = Runnable {
-                            if (controller.playbackState?.state == PlaybackState.STATE_PLAYING) {
-                                updateMetadataIfPrimary(controller)
-                            } else {
+            // 2. Register ALL new (if valid)
+            if (controllers != null) {
+                controllers.forEach { controller ->
+                    try {
+                        val callback = object : MediaController.Callback() {
+                            private val debounceHandler = android.os.Handler(android.os.Looper.getMainLooper())
+                            private val updateRunnable = Runnable {
                                 updateMetadataIfPrimary(controller)
                             }
-                        }
 
-                        override fun onPlaybackStateChanged(state: PlaybackState?) {
-                            val isPlaying = state?.state == PlaybackState.STATE_PLAYING
-                            AppLogger.getInstance().log("Playback", "⏯️ State changed: ${if (isPlaying) "PLAYING" else "PAUSED/STOPPED"}")
-                            checkServiceState()
-                        }
+                            override fun onPlaybackStateChanged(state: PlaybackState?) {
+                                checkServiceState() // Priority might have changed
+                                updateMetadataIfPrimary(controller)
+                            }
 
-                        override fun onMetadataChanged(metadata: MediaMetadata?) {
-                            debounceHandler.removeCallbacks(updateRunnable)
-                            debounceHandler.postDelayed(updateRunnable, 50)
+                            override fun onMetadataChanged(metadata: MediaMetadata?) {
+                                debounceHandler.removeCallbacks(updateRunnable)
+                                debounceHandler.postDelayed(updateRunnable, 100)
+                            }
+                            
+                            override fun onSessionDestroyed() {
+                                handler.post {
+                                    recheckSessions() // Force full refresh
+                                }
+                            }
                         }
                         
-                        override fun onSessionDestroyed() {
-                            super.onSessionDestroyed()
-                            handler.post {
-                                controllerCallbacks.remove(controller)
-                                activeControllers.remove(controller)
-                                checkServiceState()
-                            }
-                        }
+                        controller.registerCallback(callback)
+                        controllerCallbacks[controller] = callback
+                        activeControllers.add(controller)
+                        
+                    } catch (e: Exception) {
+                        AppLogger.getInstance().e(TAG, "Failed to hook controller: ${controller.packageName}")
                     }
-                    
-                    controller.registerCallback(callback)
-                    controllerCallbacks[controller] = callback
                 }
             }
         }
@@ -262,16 +246,27 @@ class MediaMonitorService : NotificationListenerService() {
         // Initial check
         checkServiceState()
 
-        // Force update metadata from the CURRENT primary
+        // Force update from primary
         val primary = getPrimaryController()
         if (primary != null) {
             updateMetadataIfPrimary(primary)
         }
+        
+        // Report Diagnostics
+        val diag = ServiceDiagnostics(
+            isConnected = isConnected,
+            totalControllers = activeControllers.size,
+            whitelistedControllers = activeControllers.count { allowedPackages.contains(it.packageName) },
+            primaryPackage = primary?.packageName ?: "None",
+            whitelistSize = allowedPackages.size,
+            lastUpdateParams = "Playing: ${primary?.playbackState?.state == PlaybackState.STATE_PLAYING}"
+        )
+        LyricRepository.getInstance().updateDiagnostics(diag)
     }
 
     private fun checkServiceState() {
         val primary = getPrimaryController()
-        // FIX: Ensure apps must be explicitly enabled to start the service
+        // STRICT: Only start service if primary is WHITELISTED
         val isWhitelisted = allowedPackages.contains(primary?.packageName)
         val isPlaying = isWhitelisted && primary?.playbackState?.state == PlaybackState.STATE_PLAYING
 
@@ -295,76 +290,84 @@ class MediaMonitorService : NotificationListenerService() {
 
     private fun getPrimaryController(): MediaController? {
         synchronized(activeControllers) {
-            // Priority 1: Whitelisted + Playing/Buffering (Always prefer our rules)
+            // Priority 1: Whitelisted + Playing/Buffering
+            // We want to show lyrics for these immediately
             val whitelistedPlaying = activeControllers.firstOrNull { 
                 allowedPackages.contains(it.packageName) && 
                 (it.playbackState?.state == PlaybackState.STATE_PLAYING || 
-                 it.playbackState?.state == PlaybackState.STATE_BUFFERING ||
-                 it.playbackState?.state == PlaybackState.STATE_CONNECTING)
+                 it.playbackState?.state == PlaybackState.STATE_BUFFERING)
             }
-            if (whitelistedPlaying != null) return whitelistedPlaying
-
-            // Priority 2: Any Playing (To allow Suggestion feature to detect new apps)
-            val anyPlaying = activeControllers.firstOrNull {
-                it.playbackState?.state == PlaybackState.STATE_PLAYING
+            if (whitelistedPlaying != null) {
+                // AppLogger.getInstance().log("Select", "Selected Priority 1 (Whitelisted+Playing): ${whitelistedPlaying.packageName}")
+                return whitelistedPlaying
             }
-            if (anyPlaying != null) return anyPlaying
 
-            // Priority 3: Whitelisted + Paused (Prefer known app over unknown paused junk)
+            // Priority 2: Whitelisted + Paused
+            // Keep showing lyrics if user just paused music
             val whitelistedPaused = activeControllers.firstOrNull {
                  allowedPackages.contains(it.packageName)
             }
-            if (whitelistedPaused != null) return whitelistedPaused
-
-            // Priority 4: Fallback (Most recent active controller)
-            if (activeControllers.isNotEmpty()) {
-                return activeControllers[0]
+            if (whitelistedPaused != null) {
+                // AppLogger.getInstance().log("Select", "Selected Priority 2 (Whitelisted+Paused): ${whitelistedPaused.packageName}")
+                return whitelistedPaused
             }
-            return null // None active
+
+            // Priority 3: Any Playing (Propagate for SUGGESTION only)
+            // This is critical for the "Add Rule" feature to discover new apps
+            val anyPlaying = activeControllers.firstOrNull {
+                it.playbackState?.state == PlaybackState.STATE_PLAYING
+            }
+            if (anyPlaying != null) {
+                // AppLogger.getInstance().log("Select", "Selected Priority 3 (Any+Playing): ${anyPlaying.packageName}")
+                return anyPlaying
+            }
+
+            // Priority 4: Oldest active (Fallback)
+            return activeControllers.firstOrNull()
         }
     }
 
     private fun updateMetadataIfPrimary(controller: MediaController) {
         val primary = getPrimaryController() ?: return
 
-        // Only update if this controller IS the primary one
-        if (controller.packageName == primary.packageName) {
-            val metadata = controller.metadata
-            if (metadata != null) {
-                extractMetadata(metadata, controller.packageName)
-            }
-        }
-    }
+        // Only process if this IS the primary controller
+        if (controller.packageName != primary.packageName) return
 
-    private fun extractMetadata(metadata: MediaMetadata, pkg: String) {
+        val metadata = controller.metadata ?: return
+        val playbackState = controller.playbackState
+        val pkg = controller.packageName
+        
         val rawTitle = metadata.getString(MediaMetadata.METADATA_KEY_TITLE)
         val rawArtist = metadata.getString(MediaMetadata.METADATA_KEY_ARTIST)
         val duration = metadata.getLong(MediaMetadata.METADATA_KEY_DURATION)
+        
+        // 1. ALWAYS propogate via SUGGESTION channel (for ParserRuleScreen)
+        LyricRepository.getInstance().updateSuggestionMetadata(
+            title = rawTitle ?: "Unknown",
+            artist = rawArtist ?: "Unknown",
+            packageName = pkg,
+            duration = duration
+        )
+
+        // 2. CHECK WHITELIST - Strict blocking for Main UI
+        if (!allowedPackages.contains(pkg)) {
+            AppLogger.getInstance().log("Meta", "⛔ Ignored non-whitelisted: $pkg (Sent to suggestion only)")
+            return 
+        }
+
+        // --- VALID WHITELISTED PROCESSING BELOW ---
+
         val artBitmap = metadata.getBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART) 
                         ?: metadata.getBitmap(MediaMetadata.METADATA_KEY_ART)
         val artHash = artBitmap?.hashCode() ?: 0
         
-
-
-        // CHECK WHITELIST - Strict global handling
-        if (!allowedPackages.contains(pkg)) {
-            AppLogger.getInstance().log("Meta", "ℹ️ Package $pkg not whitelisted. Sending identity only.")
-            // Only update identity so ParserRuleScreen can suggest it. BLOCK content.
-            // Use Application Label as Title for cleaner UI in MainScreen
-            val appName = getAppName(pkg)
-            LyricRepository.getInstance().updateMediaMetadata(appName, pkg, pkg, 0)
-            LyricRepository.getInstance().updateAlbumArt(null)
-            return
-        }
-
         val metadataHash = java.util.Objects.hash(rawTitle, rawArtist, pkg, duration, artHash)
         if (metadataHash == lastMetadataHash) {
-            AppLogger.getInstance().log("Meta-Debug", "⏭️ Skipping duplicate metadata for [$pkg]")
             return
         }
         lastMetadataHash = metadataHash
 
-        AppLogger.getInstance().log("Meta-Debug", "📦 RAW Data from [$pkg]: Title=$rawTitle, Artist=$rawArtist")
+        AppLogger.getInstance().log("Meta", "✅ Processing Whitelisted: $pkg - $rawTitle")
 
         var finalTitle = rawTitle
         var finalArtist = rawArtist
@@ -399,15 +402,10 @@ class MediaMonitorService : NotificationListenerService() {
         } 
 
 
-        // ALWAYS Update Media Metadata for UI (using PARSED results)
-        // This ensures "Suggestion" UI shows correct App Name/Title/Artist
+        // Update PUBLIC Metadata (Main UI)
         LyricRepository.getInstance().updateMediaMetadata(finalTitle ?: "Unknown", finalArtist ?: "Unknown", pkg, duration)
 
-
-
-        AppLogger.getInstance().log("Repo", "✅ Posting: Lyric=[${if (finalLyric != null) "YES" else "NO"}]")
-        
-        // Update Lyric if available AND whitelisted
+        // Update Lyric if available
         if (finalLyric != null) {
             LyricRepository.getInstance().updateLyric(finalLyric, getAppName(pkg))
         }
@@ -470,6 +468,32 @@ class MediaMonitorService : NotificationListenerService() {
             } catch (e: Exception) {
                 AppLogger.getInstance().e(TAG, "Failed to request rebind: ${e.message}")
             }
+        }
+
+        fun forceRebind(context: Context) {
+             val pm = context.packageManager
+             val componentName = ComponentName(context, MediaMonitorService::class.java)
+             AppLogger.getInstance().log(TAG, "☢️ Executing FORCE REBIND (Component Toggle) for $componentName")
+             
+             try {
+                 // Disable
+                 pm.setComponentEnabledSetting(
+                     componentName,
+                     PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
+                     PackageManager.DONT_KILL_APP
+                 )
+                 
+                 // Enable
+                 pm.setComponentEnabledSetting(
+                     componentName,
+                     PackageManager.COMPONENT_ENABLED_STATE_ENABLED,
+                     PackageManager.DONT_KILL_APP
+                 )
+                 
+                 AppLogger.getInstance().log(TAG, "☢️ Force Rebind Toggle Complete")
+             } catch (e: Exception) {
+                 AppLogger.getInstance().e(TAG, "Failed to force rebind: ${e.message}")
+             }
         }
     }
 }

@@ -66,7 +66,7 @@ fun ParserRuleScreen(
                     .getBoolean("recommend_media_app", true) 
             }
             
-            val metadata by LyricRepository.getInstance().liveMetadata.observeAsState()
+            val metadata by LyricRepository.getInstance().liveSuggestionMetadata.observeAsState()
             val currentPkg = metadata?.packageName
             
             // Check if current app is already in rules
