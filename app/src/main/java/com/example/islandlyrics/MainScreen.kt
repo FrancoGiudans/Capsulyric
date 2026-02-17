@@ -32,6 +32,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import android.media.MediaMetadata
+import android.media.session.MediaController
+import android.media.session.MediaSessionManager
+import android.media.session.PlaybackState
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
+import com.example.islandlyrics.ParserRuleHelper
 
 // Status colors matching colors.xml
 private val StatusActive = Color(0xFF4CAF50)
@@ -57,11 +64,49 @@ fun MainScreen(
     val context = LocalContext.current
 
     // Observe LiveData as Compose State
-    val isPlaying by repo.isPlaying.observeAsState(false)
-    val metadata by repo.liveMetadata.observeAsState()
-    val lyricInfo by repo.liveLyric.observeAsState()
-    val albumArt by repo.liveAlbumArt.observeAsState()
-    val progress by repo.liveProgress.observeAsState()
+    // Observe LiveData as Compose State
+    val repoPlaying by repo.isPlaying.observeAsState(false)
+    val repoMetadata by repo.liveMetadata.observeAsState()
+    val repoLyric by repo.liveLyric.observeAsState()
+    val repoAlbumArt by repo.liveAlbumArt.observeAsState()
+    val repoProgress by repo.liveProgress.observeAsState()
+
+    // ── Session Management ──
+    var activeControllers by remember { mutableStateOf<List<MediaController>>(emptyList()) }
+    
+    // Listen for active sessions
+    DisposableEffect(Unit) {
+        val mediaSessionManager = context.getSystemService(android.content.Context.MEDIA_SESSION_SERVICE) as MediaSessionManager
+        val componentName = android.content.ComponentName(context, MediaMonitorService::class.java)
+
+        val listener = MediaSessionManager.OnActiveSessionsChangedListener { controllers ->
+            activeControllers = controllers ?: emptyList()
+        }
+
+        try {
+            // Initial load
+            activeControllers = mediaSessionManager.getActiveSessions(componentName)
+            // Register listener
+            mediaSessionManager.addOnActiveSessionsChangedListener(listener, componentName)
+        } catch (e: Exception) {
+            // Permission might not be granted yet, handled by UI state
+        }
+
+        onDispose {
+            try {
+                mediaSessionManager.removeOnActiveSessionsChangedListener(listener)
+            } catch (e: Exception) {}
+        }
+    }
+
+    // Filter by Whitelist
+    val whitelistedSessions = remember(activeControllers) {
+        val enabledPackages = ParserRuleHelper.getEnabledPackages(context)
+        activeControllers.filter { enabledPackages.contains(it.packageName) }
+    }
+    
+    // Determine overall status based on actual sessions
+    val hasActiveSession = whitelistedSessions.isNotEmpty()
 
     // Derive status card state
     val listenerEnabled = remember(Unit) {
@@ -73,14 +118,22 @@ fun MainScreen(
 
     val statusText = when {
         !listenerEnabled -> "Permission Required"
-        !serviceConnected -> "Service Disconnected\nTap to Reconnect"
-        isPlaying -> {
-            val rawPackage = lyricInfo?.sourceApp ?: metadata?.packageName
-            val sourceName = if (rawPackage != null) {
-                ParserRuleHelper.getAppNameForPackage(context, rawPackage)
-            } else "Music"
-            "Active: $sourceName"
+        hasActiveSession -> {
+            // Show status of the PRIMARY (playing) session if possible, else the first one
+            // We can trust Repo for the "Active" one
+            // Only consider it "Active" if Repo says so OR if we have valid metadata
+            if (repoPlaying || repoMetadata != null) {
+                 val rawPackage = repoLyric?.sourceApp ?: repoMetadata?.packageName ?: whitelistedSessions.firstOrNull()?.packageName
+                 val sourceName = if (rawPackage != null) {
+                    ParserRuleHelper.getAppNameForPackage(context, rawPackage)
+                } else "Music"
+                "Active: $sourceName"
+            } else {
+                // If nothing playing but sessions exist
+                "Ready: ${whitelistedSessions.size} Session(s)"
+            }
         }
+        !serviceConnected -> "Service Disconnected\nTap to Reconnect"
         else -> "Service Ready (Idle)"
     }
 
@@ -134,16 +187,57 @@ fun MainScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // ── Now Playing Card ──
-        NowPlayingCard(
-            isPlaying = isPlaying,
-            songTitle = metadata?.title,
-            artist = metadata?.artist,
-            lyric = lyricInfo?.lyric,
-            albumArt = albumArt,
-            progressPosition = progress?.position ?: 0L,
-            progressDuration = progress?.duration ?: 0L,
-        )
+        // ── Now Playing / Session Pager ──
+        if (whitelistedSessions.isEmpty()) {
+            // Idle State
+            IdleCard()
+        } else {
+             val pagerState = androidx.compose.foundation.pager.rememberPagerState(pageCount = { whitelistedSessions.size })
+             
+             Column {
+                HorizontalPager(
+                    state = pagerState,
+                    pageSpacing = 16.dp,
+                    contentPadding = PaddingValues(horizontal = 0.dp) // Card handles padding
+                ) { page ->
+                    val controller = whitelistedSessions[page]
+                    
+                    // Check if this is the PRIMARY session (matching Repo)
+                    val isPrimary = controller.packageName == repoMetadata?.packageName
+                    
+                    // Use Repo data if primary, else extract from controller
+                    MediaSessionCard(
+                        controller = controller,
+                        isPrimary = isPrimary,
+                        // If primary, inject repo data. If not, pass null to let card extract from controller.
+                        primaryMetadata = if (isPrimary) repoMetadata else null,
+                        primaryLyric = if (isPrimary) repoLyric?.lyric else null,
+                        primaryAlbumArt = if (isPrimary) repoAlbumArt else null,
+                        primaryProgress = if (isPrimary) repoProgress else null
+                    )
+                }
+                
+                // Pager Indicator
+                if (whitelistedSessions.size > 1) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        repeat(whitelistedSessions.size) { iteration ->
+                            val color = if (pagerState.currentPage == iteration) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant
+                            Box(
+                                modifier = Modifier
+                                    .padding(4.dp)
+                                    .size(8.dp)
+                                    .clip(CircleShape)
+                                    .background(color)
+                            )
+                        }
+                    }
+                }
+             }
+        }
 
         Spacer(modifier = Modifier.height(24.dp))
 
@@ -215,16 +309,9 @@ private fun StatusPill(
 
 // ── Now Playing Card ──
 // ── Now Playing Card ──
+// ── Idle Card ──
 @Composable
-private fun NowPlayingCard(
-    isPlaying: Boolean,
-    songTitle: String?,
-    artist: String?,
-    lyric: String?,
-    albumArt: Bitmap?,
-    progressPosition: Long,
-    progressDuration: Long,
-) {
+private fun IdleCard() {
     Card(
         shape = RoundedCornerShape(28.dp),
         colors = CardDefaults.cardColors(
@@ -233,15 +320,20 @@ private fun NowPlayingCard(
         elevation = CardDefaults.cardElevation(0.dp),
         modifier = Modifier.fillMaxWidth()
     ) {
-        // Idle state (centered)
-        if (!isPlaying) {
-             Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .defaultMinSize(minHeight = 120.dp)
-                    .padding(24.dp)
-            ) {
+         Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier
+                .fillMaxWidth()
+                .defaultMinSize(minHeight = 160.dp) // Match height roughly
+                .padding(24.dp)
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                 Icon(
+                    painter = painterResource(R.drawable.ic_music_note),
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                    modifier = Modifier.size(48.dp).padding(bottom = 16.dp)
+                )
                 Text(
                     text = stringResource(R.string.status_idle_waiting),
                     fontSize = 18.sp,
@@ -249,95 +341,210 @@ private fun NowPlayingCard(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-        } else {
-            // Playing state
-            Column(modifier = Modifier.padding(20.dp)) {
-                // Top Row: Album Art + Song Info
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    // Album Art - Large rounded square
-                    if (albumArt != null) {
-                        Image(
-                            bitmap = albumArt.asImageBitmap(),
-                            contentDescription = "Album Art",
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier
-                                .size(80.dp)
-                                .clip(RoundedCornerShape(16.dp))
-                        )
-                    } else {
-                        // Placeholder
-                        Surface(
-                            shape = RoundedCornerShape(16.dp),
-                            color = MaterialTheme.colorScheme.surfaceDim,
-                            modifier = Modifier.size(80.dp)
-                        ) {
-                            Icon(
-                                painter = painterResource(R.drawable.ic_music_note),
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier
-                                    .padding(24.dp)
-                            )
-                        }
-                    }
+        }
+    }
+}
 
-                    Spacer(modifier = Modifier.width(16.dp))
+// ── Media Session Card (Replaces NowPlayingCard) ──
+@Composable
+private fun MediaSessionCard(
+    controller: MediaController,
+    isPrimary: Boolean,
+    primaryMetadata: LyricRepository.MediaInfo?,
+    primaryLyric: String?,
+    primaryAlbumArt: Bitmap?,
+    primaryProgress: LyricRepository.PlaybackProgress?
+) {
+    // If not primary, we need to observe the controller directly
+    var localMetadata by remember(controller) { mutableStateOf(controller.metadata) }
+    var localPlaybackState by remember(controller) { mutableStateOf(controller.playbackState) }
 
-                    // Song title + Artist
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = songTitle ?: "-",
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = artist ?: "-",
-                            fontSize = 16.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
+    if (!isPrimary) {
+        DisposableEffect(controller) {
+            val callback = object : MediaController.Callback() {
+                override fun onPlaybackStateChanged(state: PlaybackState?) { localPlaybackState = state }
+                override fun onMetadataChanged(meta: MediaMetadata?) { localMetadata = meta }
+            }
+            controller.registerCallback(callback)
+            onDispose { controller.unregisterCallback(callback) }
+        }
+    }
+
+    // Resolve Data
+    val title = if (isPrimary) primaryMetadata?.title else localMetadata?.getString(MediaMetadata.METADATA_KEY_TITLE)
+    val artist = if (isPrimary) primaryMetadata?.artist else localMetadata?.getString(MediaMetadata.METADATA_KEY_ARTIST)
+    // Album art for non-primary is tricky because loading Bitmap from Metadata object in Composables can be slow/main-thread heavy?
+    // But `getBitmap` returns what's in memory.
+    val albumArt = if (isPrimary) primaryAlbumArt else (localMetadata?.getBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART) ?: localMetadata?.getBitmap(MediaMetadata.METADATA_KEY_ART))
+    
+    val lyric = if (isPrimary) primaryLyric else null // Non-primary has no lyrics
+    
+    // Progress
+    // Only primary has live progress from repo (which might be polled or event based).
+    // For non-primary, we might not have real-time progress unless we poll.
+    // Let's just use Repo progress for primary, and 0 for others to keep it simple, or static.
+    val duration = if (isPrimary) primaryMetadata?.duration ?: 0L else localMetadata?.getLong(MediaMetadata.METADATA_KEY_DURATION) ?: 0L
+    val position = if (isPrimary) primaryProgress?.position ?: 0L else localPlaybackState?.position ?: 0L
+
+    val isPlaying = if (isPrimary) localPlaybackState?.state == PlaybackState.STATE_PLAYING else localPlaybackState?.state == PlaybackState.STATE_PLAYING
+
+    Card(
+        shape = RoundedCornerShape(28.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        ),
+        elevation = CardDefaults.cardElevation(0.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(modifier = Modifier.padding(20.dp)) {
+            // Top Row: Album Art + Song Info
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                // Album Art
+                if (albumArt != null) {
+                    Image(
+                        bitmap = albumArt.asImageBitmap(),
+                        contentDescription = "Album Art",
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .size(80.dp)
+                            .clip(RoundedCornerShape(16.dp))
+                    )
+                } else {
+                    Surface(
+                        shape = RoundedCornerShape(16.dp),
+                        color = MaterialTheme.colorScheme.surfaceDim,
+                        modifier = Modifier.size(80.dp)
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_music_note),
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(24.dp)
                         )
                     }
                 }
 
-                Spacer(modifier = Modifier.height(20.dp))
+                Spacer(modifier = Modifier.width(16.dp))
 
-                // Lyric label
+                // Song title + Artist
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = title ?: "Unknown Title",
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = artist ?: "Unknown Artist",
+                        fontSize = 16.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                     Spacer(modifier = Modifier.height(4.dp))
+                     // App Name (Context)
+                     val context = LocalContext.current
+                     val appName = remember(controller.packageName) { ParserRuleHelper.getAppNameForPackage(context, controller.packageName) }
+                     Text(
+                        text = appName,
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.primary, // Highlight app name
+                        maxLines = 1,
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            // Lyric Section (Only if available)
+            if (lyric != null) {
                 Text(
                     text = "Lyric:",
                     fontSize = 14.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Spacer(modifier = Modifier.height(8.dp))
-
-                // Lyric text - Prominent Blue
+                // Lyric text
                 Text(
-                    text = lyric ?: "-",
+                    text = lyric,
                     fontSize = 18.sp,
-                    fontWeight = FontWeight.Normal, // Based on image looks normal weight but blue and distinct
+                    fontWeight = FontWeight.Normal,
                     minLines = 2,
-                    color = Color(0xFF64B5F6), // Light Blue for lyrics
+                    color = Color(0xFF64B5F6),
                     lineHeight = 24.sp
                 )
+            } else {
+                // Placeholder for layout stability or message?
+                // Or "Switch to this app to see lyrics" if not primary?
+                 Text(
+                    text = if (isPrimary) "Waiting for lyrics..." else "Lyrics unavailable (Not providing)",
+                    fontSize = 16.sp,
+                    fontStyle = FontStyle.Italic,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                    modifier = Modifier.padding(vertical = 12.dp)
+                )
+            }
 
-                Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(20.dp))
 
-                // Progress bar - Blue
-                if (progressDuration > 0) {
-                    LinearProgressIndicator(
-                        progress = {
-                            (progressPosition.toFloat() / progressDuration.toFloat()).coerceIn(0f, 1f)
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(4.dp)
-                            .clip(RoundedCornerShape(4.dp)),
-                        color = Color(0xFF64B5F6), // Match lyrics color
-                        trackColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f),
+            // Progress bar
+            LinearProgressIndicator(
+                progress = {
+                    if (duration > 0) (position.toFloat() / duration.toFloat()).coerceIn(0f, 1f) else 0f
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(4.dp)
+                    .clip(RoundedCornerShape(4.dp)),
+                color = Color(0xFF64B5F6),
+                trackColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f),
+            )
+            
+            Spacer(modifier = Modifier.height(20.dp))
+            
+            // ── Media Controls ──
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Previous
+                IconButton(onClick = { controller.transportControls.skipToPrevious() }) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_skip_previous),
+                        contentDescription = "Previous",
+                        tint = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.size(32.dp)
+                    )
+                }
+
+                // Play / Pause
+                IconButton(
+                    onClick = {
+                        if (isPlaying) controller.transportControls.pause() else controller.transportControls.play()
+                    },
+                    modifier = Modifier
+                        .size(56.dp)
+                        .background(MaterialTheme.colorScheme.primaryContainer, CircleShape)
+                ) {
+                    Icon(
+                        painter = painterResource(if (isPlaying) R.drawable.ic_pause else R.drawable.ic_play_arrow),
+                        contentDescription = if (isPlaying) "Pause" else "Play",
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.size(32.dp)
+                    )
+                }
+
+                // Next
+                IconButton(onClick = { controller.transportControls.skipToNext() }) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_skip_next),
+                        contentDescription = "Next",
+                        tint = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.size(32.dp)
                     )
                 }
             }
