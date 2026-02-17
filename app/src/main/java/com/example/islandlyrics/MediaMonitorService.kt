@@ -284,7 +284,14 @@ class MediaMonitorService : NotificationListenerService() {
         } else {
             // Debounce Stop
             handler.removeCallbacks(stopRunnable)
-            handler.postDelayed(stopRunnable, 500)
+            
+            // Fix: Use user preference for delay
+            // Default 500ms debounce for "Immediate" to handle track switches
+            val dismissDelay = prefs?.getLong("notification_dismiss_delay", 0L) ?: 0L
+            val finalDelay = if (dismissDelay == 0L) 500L else dismissDelay
+
+            AppLogger.getInstance().log(TAG, "⏸️ Playback stopped/paused. Scheduling Stop in ${finalDelay}ms")
+            handler.postDelayed(stopRunnable, finalDelay)
         }
     }
 

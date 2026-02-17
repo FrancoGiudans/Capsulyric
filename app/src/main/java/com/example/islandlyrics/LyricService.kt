@@ -118,19 +118,24 @@ class LyricService : Service() {
         } else {
             // Stop progress tracking (merged from second observer)
             stopProgressUpdater()
+            
+            // Debounce: Cancel pending stop to restart timer if we get multiple 'false' events
+            handler.removeCallbacks(delayedStopRunnable)
 
             // Get delay preference
             val prefs = getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE)
             val delay = prefs.getLong("notification_dismiss_delay", 0L)
+            
+            AppLogger.getInstance().log(TAG, "🛑 Playback stopped. Delay=$delay ms")
 
             if (delay > 0) {
-                 AppLogger.getInstance().log(TAG, "⏳ Playback stopped. Scheduling capsule stop in ${delay}ms")
+                 AppLogger.getInstance().log(TAG, "⏳ Scheduling capsule stop in ${delay}ms")
                  handler.postDelayed(delayedStopRunnable, delay)
             } else {
                  // Immediate stop
                  if (capsuleHandler?.isRunning() == true) {
                     capsuleHandler?.stop()
-                    AppLogger.getInstance().log(TAG, "🛑 Capsule stopped: Playback stopped")
+                    AppLogger.getInstance().log(TAG, "🛑 Capsule stopped immediately (Delay=0)")
                  }
             }
         }
