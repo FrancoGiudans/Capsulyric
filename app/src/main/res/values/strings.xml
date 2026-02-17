@@ -190,6 +190,13 @@
     <string name="settings_action_style_miplay_desc">Launch Xiaomi MiPlay panel</string>
     <string name="settings_progress_color">Colorize Progress Bar</string>
     <string name="settings_progress_color_desc">Extract album art color for notification progress bar</string>
+    <string name="settings_dismiss_delay_title">Dismiss Delay</string>
+    <string name="settings_dismiss_delay_desc">Delay before hiding notification after playback stops</string>
+    <string name="dismiss_delay_immediate">Immediately</string>
+    <string name="dismiss_delay_1s">1 Second</string>
+    <string name="dismiss_delay_3s">3 Seconds</string>
+    <string name="dismiss_delay_5s">5 Seconds</string>
+    <string name="dialog_dismiss_delay_title">Select Dismiss Delay</string>
 
     <!-- OOBE -->
     <string name="oobe_welcome_title">Welcome to Capsulyric</string>

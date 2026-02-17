@@ -185,6 +185,13 @@
     <string name="settings_action_style_miplay_desc">打开小米妙播面板</string>
     <string name="settings_progress_color">为进度条着色</string>
     <string name="settings_progress_color_desc">从专辑封面提取颜色应用到通知进度条</string>
+    <string name="settings_dismiss_delay_title">消失延迟</string>
+    <string name="settings_dismiss_delay_desc">播放停止后延迟隐藏通知的时间</string>
+    <string name="dismiss_delay_immediate">立即消失</string>
+    <string name="dismiss_delay_1s">1 秒</string>
+    <string name="dismiss_delay_3s">3 秒</string>
+    <string name="dismiss_delay_5s">5 秒</string>
+    <string name="dialog_dismiss_delay_title">选择消失延迟</string>
     
     <!-- OOBE -->
     <string name="oobe_welcome_title">欢迎使用 Capsulyric</string>

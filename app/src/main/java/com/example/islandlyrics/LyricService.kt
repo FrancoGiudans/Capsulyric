@@ -90,9 +90,20 @@ class LyricService : Service() {
         }
     }
     
+    // Delayed Stop Logic
+    private val delayedStopRunnable = Runnable {
+        if (capsuleHandler?.isRunning() == true) {
+            capsuleHandler?.stop()
+            AppLogger.getInstance().log(TAG, "🛑 Capsule stopped: Playback stopped (Delayed)")
+        }
+    }
+
     // NEW: Playback state observer - controls capsule lifecycle
     private val playbackObserver = Observer<Boolean> { playing ->
         if (playing) {
+            // Cancel any pending stop
+            handler.removeCallbacks(delayedStopRunnable)
+
             // Resume/Start capsule if we have valid lyrics
             val currentLyric = LyricRepository.getInstance().liveLyric.value
             if (currentLyric != null && currentLyric.lyric.isNotBlank() && capsuleHandler?.isRunning() != true) {
@@ -105,13 +116,23 @@ class LyricService : Service() {
             // Start progress tracking (merged from second observer)
             startProgressUpdater()
         } else {
-            // Stop capsule ONLY when playback actually stops
-            if (capsuleHandler?.isRunning() == true) {
-                capsuleHandler?.stop()
-                AppLogger.getInstance().log(TAG, "🛑 Capsule stopped: Playback stopped")
-            }
             // Stop progress tracking (merged from second observer)
             stopProgressUpdater()
+
+            // Get delay preference
+            val prefs = getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE)
+            val delay = prefs.getLong("notification_dismiss_delay", 0L)
+
+            if (delay > 0) {
+                 AppLogger.getInstance().log(TAG, "⏳ Playback stopped. Scheduling capsule stop in ${delay}ms")
+                 handler.postDelayed(delayedStopRunnable, delay)
+            } else {
+                 // Immediate stop
+                 if (capsuleHandler?.isRunning() == true) {
+                    capsuleHandler?.stop()
+                    AppLogger.getInstance().log(TAG, "🛑 Capsule stopped: Playback stopped")
+                 }
+            }
         }
     }
 

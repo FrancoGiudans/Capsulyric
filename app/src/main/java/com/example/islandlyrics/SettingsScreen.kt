@@ -61,6 +61,10 @@ fun SettingsScreen(
     var notificationClickStyle by remember { mutableStateOf(prefs.getString("notification_click_style", "default") ?: "default") }
     var showNotificationClickDialog by remember { mutableStateOf(false) }
 
+    // Dismiss Delay State
+    var dismissDelay by remember { mutableLongStateOf(prefs.getLong("notification_dismiss_delay", 0L)) }
+    var showDismissDelayDialog by remember { mutableStateOf(false) }
+
     // Check for HyperOS 3.0.300+
     val isHyperOsSupported = remember { RomUtils.isHyperOsVersionAtLeast(3, 0, 300) }
 
@@ -321,6 +325,21 @@ fun SettingsScreen(
                         progressColorEnabled = it
                         prefs.edit().putBoolean("progress_bar_color_enabled", it).apply()
                     }
+                    }
+                )
+
+                // Dismiss Delay
+                val dismissDelayText = when (dismissDelay) {
+                    0L -> stringResource(R.string.dismiss_delay_immediate)
+                    1000L -> stringResource(R.string.dismiss_delay_1s)
+                    3000L -> stringResource(R.string.dismiss_delay_3s)
+                    5000L -> stringResource(R.string.dismiss_delay_5s)
+                    else -> stringResource(R.string.dismiss_delay_immediate)
+                }
+                SettingsTextItem(
+                    title = stringResource(R.string.settings_dismiss_delay_title),
+                    value = dismissDelayText,
+                    onClick = { showDismissDelayDialog = true }
                 )
 
                 HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
@@ -555,6 +574,18 @@ fun SettingsScreen(
                     onDismiss = { showNotificationClickDialog = false }
                 )
             }
+
+            if (showDismissDelayDialog) {
+                DismissDelaySelectionDialog(
+                    currentDelay = dismissDelay,
+                    onDelaySelected = { delay ->
+                        dismissDelay = delay
+                        prefs.edit().putLong("notification_dismiss_delay", delay).apply()
+                        showDismissDelayDialog = false
+                    },
+                    onDismiss = { showDismissDelayDialog = false }
+                )
+            }
         }
     }
 }
@@ -611,6 +642,57 @@ fun NotificationClickDialog(
         confirmButton = {
             TextButton(onClick = onDismiss) {
                 Text(stringResource(android.R.string.ok))
+            }
+        }
+    )
+    )
+}
+
+@Composable
+fun DismissDelaySelectionDialog(
+    currentDelay: Long,
+    onDelaySelected: (Long) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val options = listOf(
+        0L to R.string.dismiss_delay_immediate,
+        1000L to R.string.dismiss_delay_1s,
+        3000L to R.string.dismiss_delay_3s,
+        5000L to R.string.dismiss_delay_5s
+    )
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.dialog_dismiss_delay_title)) },
+        text = {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                options.forEach { (delay, labelRes) ->
+                    val isSelected = currentDelay == delay
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onDelaySelected(delay) }
+                            .padding(vertical = 12.dp, horizontal = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(
+                            selected = isSelected,
+                            onClick = { onDelaySelected(delay) }
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = stringResource(labelRes),
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(android.R.string.cancel))
             }
         }
     )
