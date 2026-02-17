@@ -99,10 +99,15 @@ fun MainScreen(
         }
     }
 
-    // Filter by Whitelist
+    // Filter and Sort: Ensure Playing sessions are prioritized (at the start)
     val whitelistedSessions = remember(activeControllers) {
         val enabledPackages = ParserRuleHelper.getEnabledPackages(context)
-        activeControllers.filter { enabledPackages.contains(it.packageName) }
+        activeControllers
+            .filter { enabledPackages.contains(it.packageName) }
+            .sortedByDescending { 
+                val state = it.playbackState?.state
+                state == PlaybackState.STATE_PLAYING || state == PlaybackState.STATE_BUFFERING
+            }
     }
     
     // Determine overall status based on actual sessions
@@ -362,12 +367,36 @@ private fun MediaSessionCard(
     if (!isPrimary) {
         DisposableEffect(controller) {
             val callback = object : MediaController.Callback() {
-                override fun onPlaybackStateChanged(state: PlaybackState?) { localPlaybackState = state }
+                override fun onPlaybackStateChanged(state: PlaybackState?) { 
+                    localPlaybackState = state 
+                }
                 override fun onMetadataChanged(meta: MediaMetadata?) { localMetadata = meta }
             }
             controller.registerCallback(callback)
             onDispose { controller.unregisterCallback(callback) }
         }
+    }
+    
+    // Explicitly observe primary state if isPrimary to ensure UI updates
+    // Compose state `repoPlaying` is already observed in parent, but `isPlaying` here calculates from `localPlaybackState`
+    // We need to ensure `localPlaybackState` is correct for primary too if we use it, 
+    // OR just rely entirely on `repoPlaying` for primary.
+    // The previous logic `val isPlaying = if (isPrimary) localPlaybackState?.state ...` 
+    // used `localPlaybackState` which wasn't updated for Primary because we didn't register the callback!
+    // FIX: For primary, use the `repoPlaying` passed down (we need to pass it) OR register callback for primary too.
+    // Better: Register callback for ALL controllers to get immediate transport state updates.
+    
+    DisposableEffect(controller) {
+        val callback = object : MediaController.Callback() {
+            override fun onPlaybackStateChanged(state: PlaybackState?) { 
+                localPlaybackState = state 
+            }
+             override fun onMetadataChanged(meta: MediaMetadata?) { 
+                 localMetadata = meta 
+             }
+        }
+        controller.registerCallback(callback)
+        onDispose { controller.unregisterCallback(callback) }
     }
 
     // Resolve Data
@@ -386,7 +415,7 @@ private fun MediaSessionCard(
     val duration = if (isPrimary) primaryMetadata?.duration ?: 0L else localMetadata?.getLong(MediaMetadata.METADATA_KEY_DURATION) ?: 0L
     val position = if (isPrimary) primaryProgress?.position ?: 0L else localPlaybackState?.position ?: 0L
 
-    val isPlaying = if (isPrimary) localPlaybackState?.state == PlaybackState.STATE_PLAYING else localPlaybackState?.state == PlaybackState.STATE_PLAYING
+    val isPlaying = localPlaybackState?.state == PlaybackState.STATE_PLAYING || localPlaybackState?.state == PlaybackState.STATE_BUFFERING
 
     Card(
         shape = RoundedCornerShape(28.dp),
@@ -459,33 +488,60 @@ private fun MediaSessionCard(
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // Lyric Section (Only if available)
-            if (lyric != null) {
-                Text(
-                    text = "Lyric:",
-                    fontSize = 14.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                // Lyric text
-                Text(
-                    text = lyric,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Normal,
-                    minLines = 2,
-                    color = Color(0xFF64B5F6),
-                    lineHeight = 24.sp
-                )
-            } else {
-                // Placeholder for layout stability or message?
-                // Or "Switch to this app to see lyrics" if not primary?
-                 Text(
-                    text = if (isPrimary) "Waiting for lyrics..." else "Lyrics unavailable (Not providing)",
-                    fontSize = 16.sp,
-                    fontStyle = FontStyle.Italic,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                    modifier = Modifier.padding(vertical = 12.dp)
-                )
+            // Lyric Section (Fixed Height for consistency)
+            // Even if no lyric, we reserve space for 3 lines (Label + 2 lines text)
+            // Label: 14sp + 8dp padding
+            // Text: 2 lines * 24sp line height = 48sp
+            // Total approx 80-90dp
+            
+            Column(modifier = Modifier.height(90.dp)) {
+                if (lyric != null) {
+                    Text(
+                        text = "Lyric:",
+                        fontSize = 14.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    // Lyric text
+                    Text(
+                        text = lyric,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Normal,
+                        minLines = 2,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        color = Color(0xFF64B5F6),
+                        lineHeight = 24.sp
+                    )
+                } else if (isPrimary) {
+                     // Primary but no lyrics yet
+                     Text(
+                        text = "Lyric:",
+                        fontSize = 14.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                     Spacer(modifier = Modifier.height(8.dp))
+                     Text(
+                        text = "Waiting for lyrics...",
+                        fontSize = 16.sp,
+                        fontStyle = FontStyle.Italic,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                    )
+                } else {
+                    // Non-primary
+                     Text(
+                        text = "Lyric:",
+                        fontSize = 14.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                     Spacer(modifier = Modifier.height(8.dp))
+                     Text(
+                        text = "Lyrics unavailable",
+                        fontSize = 16.sp,
+                        fontStyle = FontStyle.Italic,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(20.dp))
