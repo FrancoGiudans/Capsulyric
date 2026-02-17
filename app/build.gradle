@@ -85,7 +85,7 @@ android {
     }
     packaging {
         jniLibs {
-            keepDebugSymbols += ['libandroidx.graphics.path.so']
+            keepDebugSymbols += ['**/libandroidx.graphics.path.so']
         }
     }
 }
