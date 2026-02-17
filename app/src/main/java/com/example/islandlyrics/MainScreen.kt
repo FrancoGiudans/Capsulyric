@@ -546,17 +546,36 @@ private fun MediaSessionCard(
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // Progress bar
-            LinearProgressIndicator(
-                progress = {
-                    if (duration > 0) (position.toFloat() / duration.toFloat()).coerceIn(0f, 1f) else 0f
+            // Progress bar (Interactive Slider)
+            var isDragging by remember { mutableStateOf(false) }
+            var dragProgress by remember { mutableFloatStateOf(0f) }
+
+            val currentProgress = if (isDragging) {
+                dragProgress
+            } else {
+                if (duration > 0) (position.toFloat() / duration.toFloat()).coerceIn(0f, 1f) else 0f
+            }
+
+            Slider(
+                value = currentProgress,
+                onValueChange = { 
+                    isDragging = true
+                    dragProgress = it
                 },
+                onValueChangeFinished = {
+                    if (duration > 0) {
+                         controller.transportControls.seekTo((dragProgress * duration).toLong())
+                    }
+                    isDragging = false
+                },
+                colors = SliderDefaults.colors(
+                    thumbColor = Color(0xFF64B5F6),
+                    activeTrackColor = Color(0xFF64B5F6),
+                    inactiveTrackColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f)
+                ),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(4.dp)
-                    .clip(RoundedCornerShape(4.dp)),
-                color = Color(0xFF64B5F6),
-                trackColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f),
+                    .height(20.dp) // Slightly reduce touch target height to fit better if needed, but standard is fine
             )
             
             Spacer(modifier = Modifier.height(20.dp))
