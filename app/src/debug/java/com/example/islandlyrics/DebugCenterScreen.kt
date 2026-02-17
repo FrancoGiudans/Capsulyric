@@ -12,6 +12,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import android.media.MediaMetadata
+import android.media.session.MediaController
+import android.media.session.MediaSessionManager
+import android.media.session.PlaybackState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -58,24 +62,17 @@ fun DebugCenterScreen(
                 onClick = { showUpdateDialog = true }
             )
 
-            // ── Xiaomi Mi Play ──
+            // ── Media Controls ──
+            var showMediaControlDialog by remember { mutableStateOf(false) }
             DebugMenuButton(
-                text = "Launch Xiaomi Mi Play",
-                description = "Try to launch miui.systemui.miplay.MiPlayDetailActivity",
-                onClick = {
-                    try {
-                        val intent = Intent()
-                        intent.component = android.content.ComponentName(
-                            "miui.systemui.plugin",
-                            "miui.systemui.miplay.MiPlayDetailActivity"
-                        )
-                        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                        context.startActivity(intent)
-                    } catch (e: Exception) {
-                        android.widget.Toast.makeText(context, "Failed: ${e.message}", android.widget.Toast.LENGTH_SHORT).show()
-                    }
-                }
+                text = "Media Controls",
+                description = "Control playback, open app, or launch Mi Play",
+                onClick = { showMediaControlDialog = true }
             )
+
+            if (showMediaControlDialog) {
+                MediaControlDialog(onDismiss = { showMediaControlDialog = false })
+            }
 
             // ── System Info ──
             var showSystemInfoDialog by remember { mutableStateOf(false) }
@@ -173,4 +170,133 @@ private fun DebugMenuButton(
             )
         }
     }
+}
+
+@Composable
+private fun MediaControlDialog(onDismiss: () -> Unit) {
+    val context = LocalContext.current
+    var activeControllers by remember { mutableStateOf<List<MediaController>>(emptyList()) }
+    var statusMessage by remember { mutableStateOf("Scanning...") }
+
+    // Load controllers
+    LaunchedEffect(Unit) {
+        try {
+            val componentName = android.content.ComponentName(context, MediaMonitorService::class.java)
+            val mediaSessionManager = context.getSystemService(android.content.Context.MEDIA_SESSION_SERVICE) as MediaSessionManager
+            activeControllers = mediaSessionManager.getActiveSessions(componentName)
+            statusMessage = "Found ${activeControllers.size} sessions"
+        } catch (e: SecurityException) {
+            statusMessage = "Permission Required (Notification Listener)"
+        } catch (e: Exception) {
+            statusMessage = "Error: ${e.message}"
+        }
+    }
+
+    // Pick primary (Playing > Paused > First)
+    val primaryController = remember(activeControllers) {
+        activeControllers.firstOrNull { it.playbackState?.state == PlaybackState.STATE_PLAYING }
+            ?: activeControllers.firstOrNull { it.playbackState?.state == PlaybackState.STATE_PAUSED }
+            ?: activeControllers.firstOrNull()
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Media Controls") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                // Status
+                Text(text = statusMessage, style = MaterialTheme.typography.bodySmall)
+
+                if (primaryController != null) {
+                    val meta = primaryController.metadata
+                    val title = meta?.getString(MediaMetadata.METADATA_KEY_TITLE) ?: "Unknown Title"
+                    val artist = meta?.getString(MediaMetadata.METADATA_KEY_ARTIST) ?: "Unknown Artist"
+                    val pkg = primaryController.packageName
+
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Text(text = pkg, style = MaterialTheme.typography.labelSmall)
+                            Text(text = title, style = MaterialTheme.typography.titleMedium, maxLines = 1)
+                            Text(text = artist, style = MaterialTheme.typography.bodyMedium, maxLines = 1)
+                        }
+                    }
+
+                    // Playback Controls
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceEvenly
+                    ) {
+                        IconButton(onClick = { primaryController.transportControls.skipToPrevious() }) {
+                            Icon(painterResource(R.drawable.ic_skip_previous), "Prev")
+                        }
+                        IconButton(onClick = {
+                            val state = primaryController.playbackState?.state
+                            if (state == PlaybackState.STATE_PLAYING) {
+                                primaryController.transportControls.pause()
+                            } else {
+                                primaryController.transportControls.play()
+                            }
+                        }) {
+                             val isPlaying = primaryController.playbackState?.state == PlaybackState.STATE_PLAYING
+                             Icon(painterResource(if (isPlaying) R.drawable.ic_pause else R.drawable.ic_play_arrow), "Toggle")
+                        }
+                        IconButton(onClick = { primaryController.transportControls.skipToNext() }) {
+                            Icon(painterResource(R.drawable.ic_skip_next), "Next")
+                        }
+                    }
+
+                    // Actions
+                    Button(
+                        onClick = {
+                            try {
+                                val launchIntent = context.packageManager.getLaunchIntentForPackage(pkg)
+                                if (launchIntent != null) {
+                                    context.startActivity(launchIntent)
+                                } else {
+                                    android.widget.Toast.makeText(context, "Cannot open $pkg", android.widget.Toast.LENGTH_SHORT).show()
+                                }
+                            } catch (e: Exception) {
+                                android.widget.Toast.makeText(context, "Error: ${e.message}", android.widget.Toast.LENGTH_SHORT).show()
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Open Current App")
+                    }
+                } else {
+                    Text("No active media sessions found.")
+                }
+
+                Divider()
+
+                // Mi Play (Always available)
+                OutlinedButton(
+                    onClick = {
+                        try {
+                            val intent = Intent()
+                            intent.component = android.content.ComponentName(
+                                "miui.systemui.plugin",
+                                "miui.systemui.miplay.MiPlayDetailActivity"
+                            )
+                            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                            context.startActivity(intent)
+                        } catch (e: Exception) {
+                            android.widget.Toast.makeText(context, "Mi Play Failed: ${e.message}", android.widget.Toast.LENGTH_SHORT).show()
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Launch Xiaomi Mi Play")
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Close")
+            }
+        }
+    )
 }
