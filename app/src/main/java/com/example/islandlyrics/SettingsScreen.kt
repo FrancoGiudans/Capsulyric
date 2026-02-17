@@ -325,7 +325,6 @@ fun SettingsScreen(
                         progressColorEnabled = it
                         prefs.edit().putBoolean("progress_bar_color_enabled", it).apply()
                     }
-                    }
                 )
 
                 // Dismiss Delay
@@ -644,7 +643,6 @@ fun NotificationClickDialog(
                 Text(stringResource(android.R.string.ok))
             }
         }
-    )
     )
 }
 
