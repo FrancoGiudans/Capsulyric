@@ -230,4 +230,26 @@
     <string name="oobe_next">Next</string>
     <string name="oobe_skip">Skip setup</string>
 
+    <!-- Media Control Dialog -->
+    <string name="media_control_title">Media Controls</string>
+    <string name="media_control_scanning">Scanning...</string>
+    <string name="media_control_found_sessions">Found %1$d raw sessions</string>
+    <string name="media_control_perm_required">Permission Required (Notification Listener)</string>
+    <string name="media_control_error_prefix">Error: %1$s</string>
+    <string name="media_control_no_sessions">No whitelisted media sessions found. Check Parser Rules or play music in a supported app.</string>
+    <string name="media_control_launch_miplay">Launch Xiaomi Mi Play</string>
+    <string name="media_control_close">Close</string>
+    <string name="media_control_unknown_title">Unknown Title</string>
+    <string name="media_control_unknown_artist">Unknown Artist</string>
+    <string name="media_control_open_app">Open App</string>
+    <string name="media_control_miplay_failed">Mi Play Failed: %1$s</string>
+    <string name="media_control_cannot_open">Cannot open %1$s</string>
+
+    <!-- Notification Click Settings -->
+    <string name="settings_click_action_title">Notification Click Action</string>
+    <string name="settings_click_action_default">Open App (Default)</string>
+    <string name="settings_click_action_default_desc">Brings the app to foreground</string>
+    <string name="settings_click_action_media">Open Media Controls</string>
+    <string name="settings_click_action_media_desc">Shows a popup without opening the app</string>
+
 </resources>

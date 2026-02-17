@@ -22,7 +22,7 @@ import androidx.compose.ui.unit.dp
 fun MediaControlDialog(onDismiss: () -> Unit) {
     val context = LocalContext.current
     var activeControllers by remember { mutableStateOf<List<MediaController>>(emptyList()) }
-    var statusMessage by remember { mutableStateOf("Scanning...") }
+    var statusMessage by remember { mutableStateOf(context.getString(R.string.media_control_scanning)) }
 
     // Load controllers & Listen for changes
     DisposableEffect(Unit) {
@@ -31,19 +31,19 @@ fun MediaControlDialog(onDismiss: () -> Unit) {
 
         val listener = MediaSessionManager.OnActiveSessionsChangedListener { controllers ->
             activeControllers = controllers ?: emptyList()
-            statusMessage = "Found ${activeControllers.size} raw sessions"
+            statusMessage = context.getString(R.string.media_control_found_sessions, activeControllers.size)
         }
 
         try {
             // Initial load
             activeControllers = mediaSessionManager.getActiveSessions(componentName)
-            statusMessage = "Found ${activeControllers.size} raw sessions"
+            statusMessage = context.getString(R.string.media_control_found_sessions, activeControllers.size)
             // Register listener
             mediaSessionManager.addOnActiveSessionsChangedListener(listener, componentName)
         } catch (e: SecurityException) {
-            statusMessage = "Permission Required (Notification Listener)"
+            statusMessage = context.getString(R.string.media_control_perm_required)
         } catch (e: Exception) {
-            statusMessage = "Error: ${e.message}"
+            statusMessage = context.getString(R.string.media_control_error_prefix, e.message)
         }
 
         onDispose {
@@ -63,7 +63,7 @@ fun MediaControlDialog(onDismiss: () -> Unit) {
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Media Controls") },
+        title = { Text(androidx.compose.ui.res.stringResource(R.string.media_control_title)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 // Status
@@ -105,7 +105,7 @@ fun MediaControlDialog(onDismiss: () -> Unit) {
                     }
 
                 } else {
-                    Text("No whitelisted media sessions found.\nCheck Parser Rules or play music in a supported app.", color = MaterialTheme.colorScheme.error)
+                    Text(androidx.compose.ui.res.stringResource(R.string.media_control_no_sessions), color = MaterialTheme.colorScheme.error)
                 }
 
                 Divider()
@@ -122,18 +122,18 @@ fun MediaControlDialog(onDismiss: () -> Unit) {
                             intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
                             context.startActivity(intent)
                         } catch (e: Exception) {
-                            android.widget.Toast.makeText(context, "Mi Play Failed: ${e.message}", android.widget.Toast.LENGTH_SHORT).show()
+                            android.widget.Toast.makeText(context, context.getString(R.string.media_control_miplay_failed, e.message), android.widget.Toast.LENGTH_SHORT).show()
                         }
                     },
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Launch Xiaomi Mi Play")
+                    Text(androidx.compose.ui.res.stringResource(R.string.media_control_launch_miplay))
                 }
             }
         },
         confirmButton = {
             TextButton(onClick = onDismiss) {
-                Text("Close")
+                Text(androidx.compose.ui.res.stringResource(R.string.media_control_close))
             }
         }
     )
@@ -160,8 +160,8 @@ fun MediaSessionCard(controller: MediaController, context: Context) {
         }
     }
 
-    val title = metadata?.getString(MediaMetadata.METADATA_KEY_TITLE) ?: "Unknown Title"
-    val artist = metadata?.getString(MediaMetadata.METADATA_KEY_ARTIST) ?: "Unknown Artist"
+    val title = metadata?.getString(MediaMetadata.METADATA_KEY_TITLE) ?: androidx.compose.ui.res.stringResource(R.string.media_control_unknown_title)
+    val artist = metadata?.getString(MediaMetadata.METADATA_KEY_ARTIST) ?: androidx.compose.ui.res.stringResource(R.string.media_control_unknown_artist)
     val pkg = controller.packageName
     val appName = remember(pkg) { ParserRuleHelper.getAppNameForPackage(context, pkg) }
 
@@ -208,15 +208,15 @@ fun MediaSessionCard(controller: MediaController, context: Context) {
                         if (launchIntent != null) {
                             context.startActivity(launchIntent)
                         } else {
-                            android.widget.Toast.makeText(context, "Cannot open $pkg", android.widget.Toast.LENGTH_SHORT).show()
+                            android.widget.Toast.makeText(context, context.getString(R.string.media_control_cannot_open, pkg), android.widget.Toast.LENGTH_SHORT).show()
                         }
                     } catch (e: Exception) {
-                        android.widget.Toast.makeText(context, "Error: ${e.message}", android.widget.Toast.LENGTH_SHORT).show()
+                        android.widget.Toast.makeText(context, context.getString(R.string.media_control_error_prefix, e.message), android.widget.Toast.LENGTH_SHORT).show()
                     }
                 },
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text("Open App")
+                Text(androidx.compose.ui.res.stringResource(R.string.media_control_open_app))
             }
         }
     }

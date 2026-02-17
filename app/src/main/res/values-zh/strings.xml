@@ -226,5 +226,23 @@
     <string name="oobe_skip">跳过设置</string>
     <string name="action_pause">暂停</string>
     <string name="action_next">下一首</string>
+    <string name="media_control_title">媒体控制</string>
+    <string name="media_control_scanning">检索中...</string>
+    <string name="media_control_found_sessions">发现 %1$d 个·媒体通知</string>
+    <string name="media_control_perm_required">需要通知使用权</string>
+    <string name="media_control_error_prefix">错误：%1$s</string>
+    <string name="media_control_no_sessions">没有发现白名单内的媒体通知。</string>
+    <string name="media_control_launch_miplay">启动小米妙播</string>
+    <string name="media_control_close">关闭</string>
+    <string name="media_control_unknown_title">未知标题</string>
+    <string name="media_control_unknown_artist">未知歌手</string>
+    <string name="media_control_open_app">打开app</string>
+    <string name="media_control_miplay_failed">启动小米妙播失败：%1$s</string>
+    <string name="media_control_cannot_open">无法启动应用：</string>
+    <string name="settings_click_action_title">通知点击动作</string>
+    <string name="settings_click_action_default">打开本应用（默认）</string>
+    <string name="settings_click_action_default_desc">在前台打开本应用</string>
+    <string name="settings_click_action_media">打开媒体控制弹窗</string>
+    <string name="settings_click_action_media_desc">在不打开本应用的情况下展示媒体控制弹窗</string>
 
 </resources>

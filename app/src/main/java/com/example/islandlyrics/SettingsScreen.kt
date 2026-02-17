@@ -303,11 +303,11 @@ fun SettingsScreen(
 
                 // Notification Click Action
                 val clickStyleDisplay = when (notificationClickStyle) {
-                    "media_controls" -> "Open Media Controls"
-                    else -> "Open App (Default)"
+                    "media_controls" -> stringResource(R.string.settings_click_action_media)
+                    else -> stringResource(R.string.settings_click_action_default)
                 }
                 SettingsTextItem(
-                    title = "Notification Click Action",
+                    title = stringResource(R.string.settings_click_action_title),
                     value = clickStyleDisplay,
                     onClick = { showNotificationClickDialog = true }
                 )
@@ -566,13 +566,13 @@ fun NotificationClickDialog(
     onDismiss: () -> Unit
 ) {
     val styles = listOf(
-        "default" to "Open App (Default)" to "Brings the app to foreground",
-        "media_controls" to "Open Media Controls" to "Shows a popup without opening the app"
+        "default" to stringResource(R.string.settings_click_action_default) to stringResource(R.string.settings_click_action_default_desc),
+        "media_controls" to stringResource(R.string.settings_click_action_media) to stringResource(R.string.settings_click_action_media_desc)
     )
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Notification Click Action") },
+        title = { Text(stringResource(R.string.settings_click_action_title)) },
         text = {
             Column(modifier = Modifier.fillMaxWidth()) {
                 styles.forEach { (styleInfo, desc) ->
