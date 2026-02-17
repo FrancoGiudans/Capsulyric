@@ -117,6 +117,14 @@ fun DebugCenterScreen(
                     }
                 )
             }
+            // ── OOBE ──
+            DebugMenuButton(
+                text = "Launch OOBE",
+                description = "Open Onboarding Screen directly",
+                onClick = {
+                    context.startActivity(Intent(context, com.example.islandlyrics.oobe.OobeActivity::class.java))
+                }
+            )
         }
     }
 
