@@ -57,6 +57,10 @@ fun SettingsScreen(
     var actionStyle by remember { mutableStateOf(prefs.getString("notification_actions_style", "disabled") ?: "disabled") }
     var showActionStyleDialog by remember { mutableStateOf(false) }
 
+    // Notification Click Action State
+    var notificationClickStyle by remember { mutableStateOf(prefs.getString("notification_click_style", "default") ?: "default") }
+    var showNotificationClickDialog by remember { mutableStateOf(false) }
+
     // Check for HyperOS 3.0.300+
     val isHyperOsSupported = remember { RomUtils.isHyperOsVersionAtLeast(3, 0, 300) }
 
@@ -297,6 +301,17 @@ fun SettingsScreen(
                     onClick = { showActionStyleDialog = true }
                 )
 
+                // Notification Click Action
+                val clickStyleDisplay = when (notificationClickStyle) {
+                    "media_controls" -> "Open Media Controls"
+                    else -> "Open App (Default)"
+                }
+                SettingsTextItem(
+                    title = "Notification Click Action",
+                    value = clickStyleDisplay,
+                    onClick = { showNotificationClickDialog = true }
+                )
+
                 var progressColorEnabled by remember { mutableStateOf(prefs.getBoolean("progress_bar_color_enabled", false)) }
                 SettingsSwitchItem(
                     title = stringResource(R.string.settings_progress_color),
@@ -528,8 +543,77 @@ fun SettingsScreen(
                     onDismiss = { showActionStyleDialog = false }
                 )
             }
+
+            if (showNotificationClickDialog) {
+                NotificationClickDialog(
+                    currentStyle = notificationClickStyle,
+                    onStyleSelected = { style ->
+                        notificationClickStyle = style
+                        prefs.edit().putString("notification_click_style", style).apply()
+                        showNotificationClickDialog = false
+                    },
+                    onDismiss = { showNotificationClickDialog = false }
+                )
+            }
         }
     }
+}
+
+@Composable
+fun NotificationClickDialog(
+    currentStyle: String,
+    onStyleSelected: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val styles = listOf(
+        "default" to "Open App (Default)" to "Brings the app to foreground",
+        "media_controls" to "Open Media Controls" to "Shows a popup without opening the app"
+    )
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Notification Click Action") },
+        text = {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                styles.forEach { (styleInfo, desc) ->
+                    val (styleId, name) = styleInfo
+                    val isSelected = currentStyle == styleId
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onStyleSelected(styleId) }
+                            .padding(vertical = 12.dp, horizontal = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(
+                            selected = isSelected,
+                            onClick = { onStyleSelected(styleId) }
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = name,
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = desc,
+                                fontSize = 14.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(android.R.string.ok))
+            }
+        }
+    )
 }
 
 @Composable

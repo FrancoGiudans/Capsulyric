@@ -41,6 +41,7 @@ class LyricCapsuleHandler(
     private var cachedUseAlbumColor = false
     private var cachedUseDynamicIcon = false
     private var cachedIconStyle = "classic"
+    private var cachedClickStyle = "default" // New preference
     
     private val prefChangeListener = SharedPreferences.OnSharedPreferenceChangeListener { prefs, key ->
         when (key) {
@@ -48,6 +49,7 @@ class LyricCapsuleHandler(
             "progress_bar_color_enabled" -> cachedUseAlbumColor = prefs.getBoolean(key, false)
             "dynamic_icon_enabled" -> cachedUseDynamicIcon = prefs.getBoolean(key, false)
             "dynamic_icon_style" -> cachedIconStyle = prefs.getString(key, "classic") ?: "classic"
+            "notification_click_style" -> cachedClickStyle = prefs.getString(key, "default") ?: "default"
         }
     }
     
@@ -57,6 +59,7 @@ class LyricCapsuleHandler(
         cachedUseAlbumColor = prefs.getBoolean("progress_bar_color_enabled", false)
         cachedUseDynamicIcon = prefs.getBoolean("dynamic_icon_enabled", false)
         cachedIconStyle = prefs.getString("dynamic_icon_style", "classic") ?: "classic"
+        cachedClickStyle = prefs.getString("notification_click_style", "default") ?: "default"
         prefs.registerOnSharedPreferenceChangeListener(prefChangeListener)
     }
     
@@ -677,14 +680,31 @@ class LyricCapsuleHandler(
             .setOnlyAlertOnce(true)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setContentIntent(
-                PendingIntent.getActivity(
-                    context, 0,
-                    Intent(context, MainActivity::class.java).setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP),
-                    PendingIntent.FLAG_IMMUTABLE
-                )
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            
+        // Notification Click Action (Fix 4: Configurable)
+        val contentIntent: PendingIntent = if (cachedClickStyle == "media_controls") {
+            // Option B: Open Media Controls (Transparent Activity)
+            val intent = Intent(context, MediaControlActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            }
+            PendingIntent.getActivity(
+                context, 0, intent, 
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
             )
-            .setRequestPromotedOngoing(true)  // Native AndroidX method - no reflection needed!
+        } else {
+            // Option A: Default (Open App)
+            val intent = Intent(context, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_SINGLE_TOP
+            }
+            PendingIntent.getActivity(
+                context, 0, intent,
+                PendingIntent.FLAG_IMMUTABLE
+            )
+        }
+            
+        builder.setContentIntent(contentIntent)
+        builder.setRequestPromotedOngoing(true)  // Native AndroidX method - no reflection needed!
 
         // Action Buttons (using cached preferences - Fix 3)
         when (cachedActionStyle) {

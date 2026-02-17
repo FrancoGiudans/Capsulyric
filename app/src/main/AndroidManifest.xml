@@ -52,9 +52,17 @@
                 <action android:name="android.service.notification.NotificationListenerService" />
             </intent-filter>
         </service>
+
         <activity android:name="com.example.islandlyrics.LogViewerActivity"
                   android:label="Developer Logs"
                   android:parentActivityName=".MainActivity" />
+
+        <activity android:name=".MediaControlActivity"
+                  android:theme="@style/Theme.IslandLyrics.Transparent"
+                  android:exported="false"
+                  android:excludeFromRecents="true"
+                  android:taskAffinity=""
+                  android:launchMode="singleInstance" />
 
 
         <activity
