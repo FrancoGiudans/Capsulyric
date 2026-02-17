@@ -85,7 +85,9 @@ fun MediaControlDialog(onDismiss: () -> Unit) {
     // Repo for lyrics
     val repo = remember { LyricRepository.getInstance() }
     val repoMetadata by repo.liveMetadata.observeAsState()
+
     val repoLyric by repo.liveLyric.observeAsState()
+    val repoProgress by repo.liveProgress.observeAsState()
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -127,7 +129,8 @@ fun MediaControlDialog(onDismiss: () -> Unit) {
                                 controller = controller, 
                                 context = context,
                                 isPrimary = isPrimary,
-                                primaryLyric = if (isPrimary) repoLyric?.lyric else null
+                                primaryLyric = if (isPrimary) repoLyric?.lyric else null,
+                                primaryProgress = if (isPrimary) repoProgress else null
                             )
                         }
                     }
@@ -191,8 +194,10 @@ fun MediaControlDialog(onDismiss: () -> Unit) {
 fun MediaSessionCard(
     controller: MediaController, 
     context: Context,
+
     isPrimary: Boolean,
-    primaryLyric: String?
+    primaryLyric: String?,
+    primaryProgress: LyricRepository.PlaybackProgress?
 ) {
     // Observable state for the controller
     var playbackState by remember(controller) { mutableStateOf(controller.playbackState) }
@@ -221,6 +226,8 @@ fun MediaSessionCard(
     val appName = remember(pkg) { ParserRuleHelper.getAppNameForPackage(context, pkg) }
 
     val isPlaying = playbackState?.state == PlaybackState.STATE_PLAYING || playbackState?.state == PlaybackState.STATE_BUFFERING
+    val duration = metadata?.getLong(MediaMetadata.METADATA_KEY_DURATION) ?: 0L
+    val position = if (isPrimary) primaryProgress?.position ?: 0L else playbackState?.position ?: 0L
 
     Card(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
@@ -284,6 +291,40 @@ fun MediaSessionCard(
                 }
             }
             if (isPrimary && primaryLyric != null) Spacer(modifier = Modifier.height(12.dp))
+
+            // Progress Bar (Interactive Slider)
+            var isDragging by remember { mutableStateOf(false) }
+            var dragProgress by remember { mutableFloatStateOf(0f) }
+
+            val currentProgress = if (isDragging) {
+                dragProgress
+            } else {
+                if (duration > 0) (position.toFloat() / duration.toFloat()).coerceIn(0f, 1f) else 0f
+            }
+
+            Slider(
+                value = currentProgress,
+                onValueChange = { 
+                    isDragging = true
+                    dragProgress = it
+                },
+                onValueChangeFinished = {
+                    if (duration > 0) {
+                         controller.transportControls.seekTo((dragProgress * duration).toLong())
+                    }
+                    isDragging = false
+                },
+                colors = SliderDefaults.colors(
+                    thumbColor = MaterialTheme.colorScheme.primary,
+                    activeTrackColor = MaterialTheme.colorScheme.primary,
+                    inactiveTrackColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f)
+                ),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(20.dp) 
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
 
             // Playback Controls
             Row(
