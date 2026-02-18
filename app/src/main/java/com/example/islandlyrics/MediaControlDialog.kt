@@ -99,14 +99,14 @@ fun MediaControlDialog(onDismiss: () -> Unit) {
                 .wrapContentHeight() // Hug content
         ) {
             Column(
-                modifier = Modifier.padding(24.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 // Title Row
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         text = stringResource(R.string.media_control_title),
-                        style = MaterialTheme.typography.headlineSmall
+                        style = MaterialTheme.typography.titleMedium
                     )
                     Spacer(modifier = Modifier.weight(1f))
 
@@ -172,7 +172,7 @@ fun MediaControlDialog(onDismiss: () -> Unit) {
                     // Simple Pager Indicator
                     if (whitelistedControllers.size > 1) {
                          Row(
-                            modifier = Modifier.fillMaxWidth().height(10.dp),
+                            modifier = Modifier.fillMaxWidth().height(8.dp),
                             horizontalArrangement = Arrangement.Center
                         ) {
                             repeat(whitelistedControllers.size) { iteration ->
@@ -180,22 +180,22 @@ fun MediaControlDialog(onDismiss: () -> Unit) {
                                 Box(
                                     modifier = Modifier
                                         .padding(2.dp)
-                                        .size(8.dp)
+                                        .size(6.dp)
                                         .background(color, CircleShape)
                                 )
                             }
                         }
                     }
                 } else {
-                    Box(modifier = Modifier.fillMaxWidth().height(100.dp), contentAlignment = Alignment.Center) {
+                    Box(modifier = Modifier.fillMaxWidth().height(80.dp), contentAlignment = Alignment.Center) {
                         Text(stringResource(R.string.media_control_no_sessions), color = MaterialTheme.colorScheme.error)
                     }
                 }
                 
-                // Close Button - Right Aligned or Full Width? Full width is easier to hit
-                TextButton(
+                // Close Button - Full Width Outlined Button
+                OutlinedButton(
                     onClick = onDismiss,
-                    modifier = Modifier.align(Alignment.End)
+                    modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(stringResource(R.string.media_control_close))
                 }
@@ -323,7 +323,8 @@ fun MediaSessionCard(
         modifier = Modifier.fillMaxWidth()
     ) {
         // Overlay for tint if we have a dynamic color
-        Box(modifier = Modifier.fillMaxSize().background(
+        // Overlay for tint if we have a dynamic color
+        Box(modifier = Modifier.fillMaxWidth().background(
             if (cardBackgroundColor != Color.Unspecified) cardBackgroundColor else Color.Transparent
         )) {
             Column(modifier = Modifier.padding(20.dp)) {
@@ -368,10 +369,12 @@ fun MediaSessionCard(
 
                 Spacer(modifier = Modifier.height(20.dp))
                 
-                // Lyrics (if primary)
+                // Lyrics (primary or parsed from title)
+                val effectiveLyric = if (isPrimary && !primaryLyric.isNullOrBlank()) primaryLyric else parsedLyricFromTitle
+
                 // Use fixed height to match Homepage card style
                 Column(modifier = Modifier.height(90.dp)) {
-                    if (isPrimary && primaryLyric != null) {
+                    if (!effectiveLyric.isNullOrBlank()) {
                         Text(
                             text = "Lyric:",
                             style = MaterialTheme.typography.labelMedium,
@@ -379,12 +382,12 @@ fun MediaSessionCard(
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = primaryLyric,
+                            text = effectiveLyric,
                             style = MaterialTheme.typography.bodyLarge,
                             minLines = 2,
                             maxLines = 2,
                             overflow = TextOverflow.Ellipsis,
-                            color = MaterialTheme.colorScheme.onSurface, // Or use a dynamic color if possible, effectively secondary
+                            color = MaterialTheme.colorScheme.onSurface, 
                             lineHeight = 24.sp
                         )
                     } else {
@@ -403,8 +406,6 @@ fun MediaSessionCard(
                     }
                 }
                 
-                Spacer(modifier = Modifier.height(20.dp))
-
                 // Progress Bar (Interactive Slider)
                 var isDragging by remember { mutableStateOf(false) }
                 var dragProgress by remember { mutableFloatStateOf(0f) }
@@ -466,15 +467,15 @@ fun MediaSessionCard(
                              "Toggle",
                              tint = MaterialTheme.colorScheme.onPrimaryContainer,
                              modifier = Modifier.size(32.dp)
-                         )
+                        )
                     }
                     
                     IconButton(onClick = { controller.transportControls.skipToNext() }) {
-                        Icon(painterResource(R.drawable.ic_skip_next), "Next", modifier = Modifier.size(32.dp))
+                        Icon(painterResource(R.drawable.ic_skip_next), "Next", modifier = Modifier.size(28.dp))
                     }
                 }
                 
-                Spacer(modifier = Modifier.height(20.dp))
+                Spacer(modifier = Modifier.height(12.dp))
                 
                 // Actions
                 Button(
