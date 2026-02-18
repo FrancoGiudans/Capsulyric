@@ -273,6 +273,22 @@ fun MediaSessionCard(
 
     val albumArtBitmap = metadata?.getBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART) ?: metadata?.getBitmap(MediaMetadata.METADATA_KEY_ART)
     val appName = remember(pkg) { ParserRuleHelper.getAppNameForPackage(context, pkg) }
+    val appIcon = remember(pkg) {
+        try {
+            val pm = context.packageManager
+            val drawable = pm.getApplicationIcon(pkg)
+            val bitmap = (drawable as? android.graphics.drawable.BitmapDrawable)?.bitmap ?: run {
+                val bmp = Bitmap.createBitmap(drawable.intrinsicWidth, drawable.intrinsicHeight, Bitmap.Config.ARGB_8888)
+                val canvas = android.graphics.Canvas(bmp)
+                drawable.setBounds(0, 0, canvas.width, canvas.height)
+                drawable.draw(canvas)
+                bmp
+            }
+            bitmap
+        } catch (e: Exception) {
+            null
+        }
+    }
 
     val isPlaying = playbackState?.state == PlaybackState.STATE_PLAYING || playbackState?.state == PlaybackState.STATE_BUFFERING
     val duration = metadata?.getLong(MediaMetadata.METADATA_KEY_DURATION) ?: 0L
@@ -363,7 +379,18 @@ fun MediaSessionCard(
                         Text(text = title, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         Text(text = artist, style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         Spacer(modifier = Modifier.height(4.dp))
-                        Text(text = "$appName ($pkg)", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            if (appIcon != null) {
+                                Image(
+                                    bitmap = appIcon.asImageBitmap(),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp), // Match labelSmall roughly (11sp is small, 16dp is good icon size)
+                                    contentScale = ContentScale.Fit
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                            }
+                            Text(text = "$appName ($pkg)", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                        }
                     }
                 }
 

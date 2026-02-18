@@ -183,22 +183,7 @@ fun CustomSettingsScreen(
                 ) {
                     when (page) {
                         0 -> { // App Body
-                             // Language
-                            val currentLangCode = prefs.getString("language_code", "")
-                            val currentLangText = when(currentLangCode) {
-                                "en" -> "English"
-                                "zh-CN" -> "简体中文"
-                                else -> stringResource(R.string.settings_theme_follow_system)
-                            }
-                            SettingsTextItem(
-                                title = stringResource(R.string.settings_language),
-                                value = currentLangText,
-                                onClick = { showLanguageDialog = true }
-                            )
-                            
-                            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-
-                            // Theme
+                             // Theme
                             SettingsSectionHeader(text = stringResource(R.string.settings_personalization_header)) // Using header for structure
                              SettingsSwitchItem(
                                 title = stringResource(R.string.settings_theme_follow_system),
@@ -236,165 +221,16 @@ fun CustomSettingsScreen(
                                     ThemeHelper.setDynamicColor(context, it)
                                 }
                             )
-
-                            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-
-                            // General
-                            SettingsSectionHeader(text = stringResource(R.string.settings_general_header))
-
-                            SettingsSwitchItem(
-                                title = stringResource(R.string.settings_auto_update),
-                                subtitle = stringResource(R.string.settings_auto_update_desc),
-                                checked = autoUpdateEnabled,
-                                onCheckedChange = {
-                                    autoUpdateEnabled = it
-                                    UpdateChecker.setAutoUpdateEnabled(context, it)
-                                }
-                            )
-                            
-                            // Prerelease Updates
-                            var prereleaseEnabled by remember { mutableStateOf(UpdateChecker.isPrereleaseEnabled(context)) }
-                            var showPrereleaseDialog by remember { mutableStateOf(false) }
-
-                            SettingsSwitchItem(
-                                title = stringResource(R.string.settings_prerelease_update),
-                                subtitle = stringResource(R.string.settings_prerelease_update_desc),
-                                checked = prereleaseEnabled,
-                                onCheckedChange = { checked ->
-                                    if (checked) {
-                                        showPrereleaseDialog = true
-                                    } else {
-                                        prereleaseEnabled = false
-                                        UpdateChecker.setPrereleaseEnabled(context, false)
-                                    }
-                                }
-                            )
-                            
-                             if (showPrereleaseDialog) {
-                                AlertDialog(
-                                    onDismissRequest = { showPrereleaseDialog = false },
-                                    title = { Text(stringResource(R.string.dialog_prerelease_warning_title)) },
-                                    text = { Text(stringResource(R.string.dialog_prerelease_warning_message)) },
-                                    confirmButton = {
-                                        TextButton(onClick = {
-                                            prereleaseEnabled = true
-                                            UpdateChecker.setPrereleaseEnabled(context, true)
-                                            showPrereleaseDialog = false
-                                        }) {
-                                            Text(stringResource(android.R.string.ok))
-                                        }
-                                    },
-                                    dismissButton = {
-                                        TextButton(onClick = { showPrereleaseDialog = false }) {
-                                            Text(stringResource(android.R.string.cancel))
-                                        }
-                                    }
-                                )
-                            }
-
-                            SettingsActionItem(
-                                title = stringResource(R.string.settings_general_battery),
-                                icon = R.drawable.ic_music_note,
-                                onClick = {
-                                    val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
-                                    intent.data = Uri.parse("package:${context.packageName}")
-                                    context.startActivity(intent)
-                                }
-                            )
-                            
-                            SettingsSwitchItem(
-                                title = stringResource(R.string.settings_hide_recents),
-                                subtitle = stringResource(R.string.settings_hide_recents_desc),
-                                checked = hideRecentsEnabled,
-                                onCheckedChange = {
-                                    hideRecentsEnabled = it
-                                    prefs.edit().putBoolean("hide_recents_enabled", it).apply()
-                                }
-                            )
-
-                            SettingsSwitchItem(
-                                title = stringResource(R.string.settings_recommend_media_app),
-                                subtitle = stringResource(R.string.settings_recommend_media_app_desc),
-                                checked = recommendMediaAppEnabled,
-                                onCheckedChange = {
-                                    recommendMediaAppEnabled = it
-                                    prefs.edit().putBoolean("recommend_media_app", it).apply()
-                                }
-                            )
-
-                            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-                            
-                            // Help & About
-                            SettingsSectionHeader(text = stringResource(R.string.settings_help_about_header))
-
-                             SettingsActionItem(
-                                title = stringResource(R.string.faq_title),
-                                icon = android.R.drawable.ic_menu_help,
-                                onClick = {
-                                    context.startActivity(Intent(context, FAQActivity::class.java))
-                                }
-                            )
-
-                            SettingsActionItem(
-                                title = stringResource(R.string.settings_feedback),
-                                icon = android.R.drawable.ic_menu_send,
-                                onClick = {
-                                    val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://francogiudans.github.io/CapsulyricFeed/"))
-                                    context.startActivity(browserIntent)
-                                }
-                            )
-
-                            SettingsActionItem(
-                                title = stringResource(R.string.settings_about_github),
-                                icon = R.drawable.ic_link,
-                                onClick = {
-                                     val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/FrancoGiudans/Capsulyric"))
-                                     context.startActivity(browserIntent)
-                                }
-                            )
-                            
-                             SettingsValueItem(
-                                title = stringResource(R.string.about_version),
-                                value = updateVersionText
-                            )
-                            
-                            // Build Number (Dev Trigger)
-                            var devStepCount by remember { mutableIntStateOf(0) }
-                            val isDevMode = remember { prefs.getBoolean("dev_mode_enabled", false) }
-                            var showLogs by remember { mutableStateOf(BuildConfig.DEBUG || isDevMode) }
-            
-                            SettingsValueItem(
-                                title = stringResource(R.string.about_commit),
-                                value = updateBuildText,
-                                onClick = {
-                                    devStepCount++
-                                     if (devStepCount in 3..6) {
-                                         Toast.makeText(context, "${7 - devStepCount} steps away from developer mode...", Toast.LENGTH_SHORT).show()
-                                     } else if (devStepCount == 7) {
-                                        prefs.edit().putBoolean("dev_mode_enabled", true).apply()
-                                        showLogs = true
-                                        Toast.makeText(context, "Developer Mode Enabled! 👩‍💻", Toast.LENGTH_SHORT).show()
-                                     }
-                                }
-                            )
-                            
-                            SettingsActionItem(
-                                 title = stringResource(R.string.update_check_title),
-                                 icon = R.drawable.ic_sync,
-                                 onClick = onCheckUpdate
-                            )
-            
-                            if (showLogs) {
-                                 SettingsActionItem(
-                                     title = stringResource(R.string.settings_console_log),
-                                     icon = android.R.drawable.ic_menu_info_details,
-                                     onClick = onShowLogs
-                                 )
-                            }
-
                         }
                         1 -> { // Capsule
                             SettingsSectionHeader(text = "Capsule Settings")
+                            
+                            // Preview
+                            CapsulePreview(
+                                dynamicIconEnabled = dynamicIconEnabled,
+                                iconStyle = iconStyle
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
 
                             if (isHyperOsSupported) {
                                 SettingsSwitchItem(
@@ -419,6 +255,24 @@ fun CustomSettingsScreen(
                                     )
                                 }
                             }
+                        }
+                        2 -> { // Notification
+                             SettingsSectionHeader(text = "Notification Settings")
+                             
+                             // Preview
+                             NotificationPreview(
+                                 progressColorEnabled = progressColorEnabled,
+                                 actionStyle = actionStyle
+                             )
+                             Spacer(modifier = Modifier.height(16.dp))
+                             
+                             SettingsActionItem(
+                                title = stringResource(R.string.parser_rule_title),
+                                icon = android.R.drawable.ic_menu_edit,
+                                onClick = {
+                                    context.startActivity(Intent(context, ParserRuleActivity::class.java))
+                                }
+                            )
 
                              SettingsSwitchItem(
                                 title = stringResource(R.string.settings_progress_color),
@@ -427,46 +281,6 @@ fun CustomSettingsScreen(
                                 onCheckedChange = {
                                     progressColorEnabled = it
                                     prefs.edit().putBoolean("progress_bar_color_enabled", it).apply()
-                                }
-                            )
-                        }
-                        2 -> { // Notification
-                             SettingsSectionHeader(text = "Notification Settings")
-                             
-                             // Permissions
-                            SettingsSwitchItem(
-                                title = stringResource(R.string.perm_read_notif),
-                                subtitle = stringResource(R.string.perm_read_notif_desc),
-                                checked = notificationGranted,
-                                enabled = true,
-                                onClick = {
-                                    if (notificationGranted) {
-                                        context.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
-                                    } else {
-                                        showPrivacyDialog = true
-                                    }
-                                },
-                                onCheckedChange = {}
-                            )
-            
-                            SettingsSwitchItem(
-                                title = stringResource(R.string.perm_post_notif),
-                                subtitle = stringResource(R.string.perm_post_notif_desc),
-                                checked = postNotificationGranted,
-                                enabled = true,
-                                onClick = {
-                                    val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
-                                    intent.data = Uri.fromParts("package", context.packageName, null)
-                                    context.startActivity(intent)
-                                },
-                                onCheckedChange = {}
-                            )
-                            
-                             SettingsActionItem(
-                                title = stringResource(R.string.parser_rule_title),
-                                icon = android.R.drawable.ic_menu_edit,
-                                onClick = {
-                                    context.startActivity(Intent(context, ParserRuleActivity::class.java))
                                 }
                             )
                             
@@ -506,7 +320,6 @@ fun CustomSettingsScreen(
                                 value = dismissDelayText,
                                 onClick = { showDismissDelayDialog = true }
                             )
-
                         }
                     }
                     Spacer(modifier = Modifier.height(24.dp))
