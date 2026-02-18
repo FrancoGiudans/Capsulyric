@@ -16,6 +16,10 @@ import java.util.regex.Pattern
 class LogManager private constructor() {
 
     private var logHandler: android.os.Handler? = null
+    private var logFile: File? = null
+    private val isDebug = BuildConfig.DEBUG
+
+    class LogEntry(val timestamp: String, val level: String, val tag: String, val message: String)
 
     private fun init(context: Context) {
         if (logFile == null) {
