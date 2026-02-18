@@ -490,6 +490,18 @@ fun CompletionStep(onFinish: () -> Unit) {
         )
         Spacer(modifier = Modifier.height(32.dp))
         
+        // Personalization Button
+        OutlinedButton(
+            onClick = {
+                val intent = Intent(context, com.example.islandlyrics.CustomSettingsActivity::class.java)
+                context.startActivity(intent)
+            }
+        ) {
+            Text(text = stringResource(R.string.page_title_personalization))
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
         // Open Settings Button
         OutlinedButton(
             onClick = {
