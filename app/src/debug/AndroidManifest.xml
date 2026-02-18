@@ -12,5 +12,8 @@
         <activity android:name=".DebugLyricActivity"
                   android:label="Debug Lyric API"
                   android:parentActivityName=".DebugCenterActivity" />
+        <activity android:name=".CustomSettingsActivity"
+                  android:label="Custom Settings"
+                  android:parentActivityName=".DebugCenterActivity" />
     </application>
 </manifest>
