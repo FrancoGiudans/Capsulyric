@@ -171,7 +171,7 @@ fun ParserRuleScreen(
                         showEditDialog = false
                     }
                 } else {
-                    // Update
+                    // Update or Add Recommendation
                     val index = newRules.indexOf(editingRule)
                     if (index != -1) {
                         newRules[index] = newRule
@@ -179,6 +179,17 @@ fun ParserRuleScreen(
                         rules = newRules
                         ParserRuleHelper.saveRules(context, rules)
                         showEditDialog = false
+                    } else {
+                        // Recommendation case: editingRule not in list
+                        if (newRules.any { it.packageName == newRule.packageName }) {
+                            android.widget.Toast.makeText(context, "Package already exists", android.widget.Toast.LENGTH_SHORT).show()
+                        } else {
+                            newRules.add(newRule)
+                            newRules.sort()
+                            rules = newRules
+                            ParserRuleHelper.saveRules(context, rules)
+                            showEditDialog = false
+                        }
                     }
                 }
             }
