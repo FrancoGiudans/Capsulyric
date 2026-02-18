@@ -573,8 +573,9 @@ class LyricCapsuleHandler(
                     val minVisibleWeight = 14
                     val maxAllowedScroll = maxOf(0, currentLineWeight - minVisibleWeight)
                     
-                    // Apply Snapping + Fallback (consistent with Syllable mode)
-                    val finalOffset = calculateSnappedScroll(foundLine.text, targetWeightOffset, maxAllowedScroll)
+                    // FIX: Direct scrolling for LRC (User preference: No word segmentation for LRC)
+                    // Even for Western text, just scroll linearly. Do not snap.
+                    val finalOffset = minOf(targetWeightOffset, maxAllowedScroll)
                     
                     displayLyric = extractByWeight(foundLine.text, finalOffset, maxDisplayWeight)
                 }
