@@ -824,11 +824,24 @@ class LyricService : Service() {
             val component = android.content.ComponentName(this, MediaMonitorService::class.java)
             val controllers = mm.getActiveSessions(component)
             
+            // [Fix Task 2] Strict Controller Matching
+            // Prioritize the controller that matches the currently displayed metadata
+            val currentMetadata = LyricRepository.getInstance().liveMetadata.value
+            val targetPackage = currentMetadata?.packageName
+
             var activeController: android.media.session.MediaController? = null
-            for (c in controllers) {
-                if (c.playbackState != null && c.playbackState?.state == PlaybackState.STATE_PLAYING) {
-                    activeController = c
-                    break
+
+            if (targetPackage != null) {
+                // strict match
+                activeController = controllers.firstOrNull { it.packageName == targetPackage }
+                
+                if (activeController == null && shouldLog) {
+                    AppLogger.getInstance().d(TAG, "⚠️ Target package '$targetPackage' has no active controller session")
+                }
+            } else {
+                // Fallback: No metadata? Use first playing (Legacy)
+                 activeController = controllers.firstOrNull {
+                    it.playbackState != null && it.playbackState?.state == PlaybackState.STATE_PLAYING
                 }
             }
 
@@ -844,7 +857,14 @@ class LyricService : Service() {
                      val lastUpdateTimeVal = state.lastPositionUpdateTime
                      val speed = state.playbackSpeed
                      
-                     var currentPos = lastPosition + ((android.os.SystemClock.elapsedRealtime() - lastUpdateTimeVal) * speed).toLong()
+                     // Verify state freshness - if last update was too long ago (> 1 sec) and we are playing, 
+                     // we might extrapolate only if state is genuinely playing.
+                     
+                     var currentPos = lastPosition
+                     if (state.state == PlaybackState.STATE_PLAYING) {
+                        val timeDelta = android.os.SystemClock.elapsedRealtime() - lastUpdateTimeVal
+                        currentPos += (timeDelta * speed).toLong()
+                     }
 
                      if (duration > 0 && currentPos > duration) currentPos = duration
                      if (currentPos < 0) currentPos = 0
@@ -853,7 +873,7 @@ class LyricService : Service() {
 
                      // Update Repository with progress
                      if (shouldLog) {
-                        AppLogger.getInstance().log(TAG, "📍 Progress: ${currentPos}ms / ${duration}ms")
+                        AppLogger.getInstance().log(TAG, "📍 Progress [${activeController.packageName}]: ${currentPos}ms / ${duration}ms")
                      }
                      LyricRepository.getInstance().updateProgress(currentPos, duration)
                      
@@ -863,7 +883,7 @@ class LyricService : Service() {
             } else {
                 // No active MediaController found
                 if (shouldLog) {
-                    AppLogger.getInstance().log(TAG, "⚠️ No active MediaController found")
+                    AppLogger.getInstance().log(TAG, "⚠️ No matching active MediaController found")
                 }
             }
         } catch (e: Exception) {
