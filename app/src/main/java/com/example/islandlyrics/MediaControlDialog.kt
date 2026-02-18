@@ -88,62 +88,73 @@ fun MediaControlDialog(onDismiss: () -> Unit) {
     val repoLyric by repo.liveLyric.observeAsState()
     val repoProgress by repo.liveProgress.observeAsState()
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(stringResource(R.string.media_control_title))
-                Spacer(modifier = Modifier.weight(1f))
+    androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
+        Surface(
+            shape = RoundedCornerShape(24.dp), // Slightly smaller corner than card to nest nicely
+            color = MaterialTheme.colorScheme.surface,
+            tonalElevation = 6.dp,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 24.dp) // Reduce vertical size usage
+                .wrapContentHeight() // Hug content
+        ) {
+            Column(
+                modifier = Modifier.padding(24.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // Title Row
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = stringResource(R.string.media_control_title),
+                        style = MaterialTheme.typography.headlineSmall
+                    )
+                    Spacer(modifier = Modifier.weight(1f))
 
-                // Mi Play Action (Top Right)
-                if (isHyperOsSupported) {
-                    IconButton(onClick = {
-                        try {
-                            val intent = Intent()
-                            intent.component = android.content.ComponentName(
-                                "miui.systemui.plugin",
-                                "miui.systemui.miplay.MiPlayDetailActivity"
+                    // Mi Play Action (Top Right)
+                    if (isHyperOsSupported) {
+                        IconButton(onClick = {
+                            try {
+                                val intent = Intent()
+                                intent.component = android.content.ComponentName(
+                                    "miui.systemui.plugin",
+                                    "miui.systemui.miplay.MiPlayDetailActivity"
+                                )
+                                intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                                context.startActivity(intent)
+                                onDismiss() 
+                            } catch (e: Exception) {
+                                Toast.makeText(context, context.getString(R.string.media_control_miplay_failed, e.message), Toast.LENGTH_SHORT).show()
+                            }
+                        }) {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_miplay),
+                                contentDescription = "Mi Play",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
-                            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                            context.startActivity(intent)
-                            onDismiss() // Optional: dismiss dialog when opening Mi Play
-                        } catch (e: Exception) {
-                            Toast.makeText(context, context.getString(R.string.media_control_miplay_failed, e.message), Toast.LENGTH_SHORT).show()
                         }
+                    }
+                
+                    // Small info icon for status
+                    IconButton(onClick = { 
+                         Toast.makeText(context, "$statusMessage (Whitelisted: ${whitelistedControllers.size})", Toast.LENGTH_SHORT).show()
                     }) {
                         Icon(
-                            painter = painterResource(R.drawable.ic_miplay),
-                            contentDescription = "Mi Play",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            painter = painterResource(R.drawable.ic_info),
+                            contentDescription = "Status",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(20.dp)
                         )
                     }
                 }
-            
-                // Small info icon for status
-                IconButton(onClick = { 
-                     Toast.makeText(context, "$statusMessage (Whitelisted: ${whitelistedControllers.size})", Toast.LENGTH_SHORT).show()
-                }) {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_info),
-                        contentDescription = "Status",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-            }
-        },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                
+
                 if (whitelistedControllers.isNotEmpty()) {
                     val pagerState = androidx.compose.foundation.pager.rememberPagerState(pageCount = { whitelistedControllers.size })
                     
                     androidx.compose.foundation.pager.HorizontalPager(
                         state = pagerState,
-                        contentPadding = PaddingValues(horizontal = 4.dp),
-                        pageSpacing = 8.dp
+                        contentPadding = PaddingValues(horizontal = 0.dp), // No extra padding needed
+                        pageSpacing = 16.dp // Separation between cards
                     ) { page ->
-                        // Use a key to ensure we don't reuse state incorrectly when the list changes
                         key(whitelistedControllers[page].packageName) {
                             val controller = whitelistedControllers[page]
                             val isPrimary = controller.packageName == repoMetadata?.packageName
@@ -175,18 +186,22 @@ fun MediaControlDialog(onDismiss: () -> Unit) {
                             }
                         }
                     }
-
                 } else {
-                    Text(stringResource(R.string.media_control_no_sessions), color = MaterialTheme.colorScheme.error)
+                    Box(modifier = Modifier.fillMaxWidth().height(100.dp), contentAlignment = Alignment.Center) {
+                        Text(stringResource(R.string.media_control_no_sessions), color = MaterialTheme.colorScheme.error)
+                    }
+                }
+                
+                // Close Button - Right Aligned or Full Width? Full width is easier to hit
+                TextButton(
+                    onClick = onDismiss,
+                    modifier = Modifier.align(Alignment.End)
+                ) {
+                    Text(stringResource(R.string.media_control_close))
                 }
             }
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) {
-                Text(stringResource(R.string.media_control_close))
-            }
         }
-    )
+    }
 }
 
 @Composable
@@ -217,18 +232,53 @@ fun MediaSessionCard(
         }
     }
 
-    val title = metadata?.getString(MediaMetadata.METADATA_KEY_TITLE) ?: stringResource(R.string.media_control_unknown_title)
-    val artist = metadata?.getString(MediaMetadata.METADATA_KEY_ARTIST) ?: stringResource(R.string.media_control_unknown_artist)
-    val albumArtBitmap = metadata?.getBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART) ?: metadata?.getBitmap(MediaMetadata.METADATA_KEY_ART)
-    
     val pkg = controller.packageName
+    
+    // --- PARSING LOGIC ---
+    var title by remember { mutableStateOf(context.getString(R.string.media_control_unknown_title)) }
+    var artist by remember { mutableStateOf(context.getString(R.string.media_control_unknown_artist)) }
+    var parsedLyricFromTitle by remember { mutableStateOf<String?>(null) }
+    
+    val rawTitle = metadata?.getString(MediaMetadata.METADATA_KEY_TITLE)
+    val rawArtist = metadata?.getString(MediaMetadata.METADATA_KEY_ARTIST)
+
+    LaunchedEffect(rawTitle, rawArtist, pkg) {
+        var finalTitle = rawTitle ?: context.getString(R.string.media_control_unknown_title)
+        var finalArtist = rawArtist ?: context.getString(R.string.media_control_unknown_artist)
+        parsedLyricFromTitle = null
+        
+        val rule = ParserRuleHelper.getRuleForPackage(context, pkg)
+        if (rule != null && rule.enabled) {
+             // Case 1: Title parsing
+             val titleParse = ParserRuleHelper.parseWithRule(rawTitle ?: "", rule)
+             if (titleParse.third) {
+                 finalTitle = titleParse.first
+                 finalArtist = titleParse.second
+             } else {
+                 // Case 2: Artist parsing + Title is Lyric
+                 val artistParse = ParserRuleHelper.parseWithRule(rawArtist ?: "", rule)
+                 if (artistParse.third) {
+                     finalTitle = artistParse.first
+                     finalArtist = artistParse.second
+                     if (!rawTitle.isNullOrEmpty()) {
+                         parsedLyricFromTitle = rawTitle
+                     }
+                 }
+             }
+        }
+        title = finalTitle
+        artist = finalArtist
+    }
+    // ---------------------
+
+    val albumArtBitmap = metadata?.getBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART) ?: metadata?.getBitmap(MediaMetadata.METADATA_KEY_ART)
     val appName = remember(pkg) { ParserRuleHelper.getAppNameForPackage(context, pkg) }
 
     val isPlaying = playbackState?.state == PlaybackState.STATE_PLAYING || playbackState?.state == PlaybackState.STATE_BUFFERING
     val duration = metadata?.getLong(MediaMetadata.METADATA_KEY_DURATION) ?: 0L
     val position = if (isPrimary) primaryProgress?.position ?: 0L else playbackState?.position ?: 0L
 
-    // Dynamic Color Extraction
+    // Dynamic Color - Same as before ...
     var cardBackgroundColor by remember { mutableStateOf(Color.Unspecified) }
     val defaultSurfaceVariant = MaterialTheme.colorScheme.surfaceVariant
 

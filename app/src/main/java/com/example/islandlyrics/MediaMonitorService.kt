@@ -387,7 +387,7 @@ class MediaMonitorService : NotificationListenerService() {
         // Apply parsing rules if enabled
         if (rule != null && rule.enabled) {
             // Case 1: Title contains "Artist - Title" (or similar)
-            val titleParse = parseWithRule(rawTitle ?: "", rule)
+            val titleParse = ParserRuleHelper.parseWithRule(rawTitle ?: "", rule)
             if (titleParse.third) {
                 finalTitle = titleParse.first
                 finalArtist = titleParse.second
@@ -395,7 +395,7 @@ class MediaMonitorService : NotificationListenerService() {
             } else {
                 // Case 2: Artist contains "Artist - Title" AND Title contains Lyrics
                 // This matches the user's reported issue: "歌名部分显示为歌词，歌手部分显示为歌名-歌手"
-                val artistParse = parseWithRule(rawArtist ?: "", rule)
+                val artistParse = ParserRuleHelper.parseWithRule(rawArtist ?: "", rule)
                 if (artistParse.third) {
                     finalTitle = artistParse.first
                     finalArtist = artistParse.second
@@ -427,26 +427,7 @@ class MediaMonitorService : NotificationListenerService() {
      * @param rule Parser rule with separator and field order
      * @return Triple(title, artist, isSuccess)
      */
-    private fun parseWithRule(input: String, rule: ParserRule): Triple<String, String, Boolean> {
-        val separator = rule.separatorPattern
-        val splitIndex = input.indexOf(separator)
-        
-        if (splitIndex == -1) {
-            // Separator not found, return original with empty artist, and FALSE for success
-            // AppLogger.getInstance().log("Parser", "⚠️ Separator [$separator] not found in: $input")
-            return Triple(input, "", false)
-        }
-
-        // Split the input
-        val part1 = input.substring(0, splitIndex).trim()
-        val part2 = input.substring(splitIndex + separator.length).trim()
-
-        // Apply field order
-        return when (rule.fieldOrder) {
-            FieldOrder.ARTIST_TITLE -> Triple(part2, part1, true)  // part1=artist, part2=title
-            FieldOrder.TITLE_ARTIST -> Triple(part1, part2, true)  // part1=title, part2=artist
-        }
-    }
+    // Removed private parseWithRule, use ParserRuleHelper instead
 
 
     private fun getAppName(packageName: String?): String {
