@@ -353,4 +353,33 @@ class LogManager private constructor() {
         
         return sb.toString()
     }
+
+    fun saveLogToDownloads(context: Context, content: String, filename: String): android.net.Uri? {
+        val contentValues = android.content.ContentValues().apply {
+            put(android.provider.MediaStore.MediaColumns.DISPLAY_NAME, filename)
+            put(android.provider.MediaStore.MediaColumns.MIME_TYPE, "text/plain")
+            put(android.provider.MediaStore.MediaColumns.RELATIVE_PATH, android.os.Environment.DIRECTORY_DOWNLOADS)
+        }
+
+        val resolver = context.contentResolver
+        val uri = resolver.insert(android.provider.MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues)
+
+        return if (uri != null) {
+            try {
+                resolver.openOutputStream(uri)?.use { outputStream ->
+                    outputStream.write(content.toByteArray())
+                }
+                uri
+            } catch (e: Exception) {
+                e.printStackTrace()
+                // If writing fails, try to delete the empty file
+                try {
+                    resolver.delete(uri, null, null)
+                } catch (ignored: Exception) {}
+                null
+            }
+        } else {
+            null
+        }
+    }
 }
