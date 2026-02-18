@@ -40,6 +40,14 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import com.example.islandlyrics.ParserRuleHelper
 
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.FormatListBulleted
+import androidx.compose.material.icons.filled.BugReport
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.ui.graphics.vector.ImageVector
+
 // Status colors matching colors.xml
 private val StatusActive = Color(0xFF4CAF50)
 private val StatusInactive = Color(0xFFF44336)
@@ -49,6 +57,8 @@ fun MainScreen(
     versionText: String,
     isDebugBuild: Boolean,
     onOpenSettings: () -> Unit,
+    onOpenPersonalization: () -> Unit,
+    onOpenWhitelist: () -> Unit,
     onOpenDebug: () -> Unit,
     onOpenPromotedSettings: () -> Unit,
     onStatusCardTap: () -> Unit,
@@ -247,31 +257,52 @@ fun MainScreen(
         Spacer(modifier = Modifier.height(24.dp))
 
         // ── Action Buttons ──
-        Row(
+        Column(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Settings Button
-            ActionButton(
-                text = stringResource(R.string.menu_settings),
-                iconRes = R.drawable.ic_settings,
-                onClick = onOpenSettings,
-                modifier = Modifier.weight(1f)
-            )
-
-            // Debug Button (Always visible logic in UI, but content depends on isDebugBuild?)
-            // The prompt implies "Debug" button is always there in the reference image.
-            // But we should probably keep the isDebugBuild check for functional safety or just show it.
-            // The user request "Bottom Action Buttons (Settings, Debug)" suggests showing it.
-            // Let's assume for now we show it if isDebugBuild is true, or maybe we want to make it always visible?
-            // The original code hid it. The design shows it. I'll respect the boolean for now but lay it out.
-            if (isDebugBuild) {
+            // Row 1: Personalization & Whitelist
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
                 ActionButton(
-                    text = "Debug",
-                    iconRes = R.drawable.ic_bug_report,
-                    onClick = onOpenDebug,
+                    text = stringResource(R.string.page_title_personalization),
+                    icon = Icons.Filled.Palette,
+                    onClick = onOpenPersonalization,
                     modifier = Modifier.weight(1f)
                 )
+
+                ActionButton(
+                    text = stringResource(R.string.title_parser_whitelist_manager),
+                    icon = Icons.Filled.FormatListBulleted,
+                    onClick = onOpenWhitelist,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
+            // Row 2: App Settings & Debug
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                 ActionButton(
+                    text = stringResource(R.string.title_app_settings),
+                    icon = Icons.Filled.Settings,
+                    onClick = onOpenSettings,
+                    modifier = Modifier.weight(1f)
+                )
+
+                if (isDebugBuild) {
+                    ActionButton(
+                        text = "Debug",
+                        icon = Icons.Filled.BugReport,
+                        onClick = onOpenDebug,
+                        modifier = Modifier.weight(1f)
+                    )
+                } else {
+                    Spacer(modifier = Modifier.weight(1f))
+                }
             }
         }
     }
@@ -629,11 +660,12 @@ private fun MediaSessionCard(
 
 
 
+
 // ── Action Button ──
 @Composable
 private fun ActionButton(
     text: String,
-    iconRes: Int,
+    icon: ImageVector,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -654,7 +686,7 @@ private fun ActionButton(
                 .padding(horizontal = 16.dp)
         ) {
             Icon(
-                painter = painterResource(iconRes),
+                imageVector = icon,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.size(24.dp)

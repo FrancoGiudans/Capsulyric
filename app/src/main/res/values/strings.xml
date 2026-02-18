@@ -57,6 +57,8 @@
     <string name="settings_general_battery">Ignore Battery Optimization</string>
     <string name="settings_about_header">About</string>
     <string name="settings_about_github">GitHub Repository</string>
+    <string name="title_app_settings">App Settings</string>
+    <string name="title_parser_whitelist_manager">Parser Whitelist Management</string>
     <string name="settings_console_log">Log Console</string>
     <string name="settings_general_header">General</string>
     <string name="settings_core_services_header">Core Services</string>

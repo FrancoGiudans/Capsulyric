@@ -57,6 +57,8 @@
     <string name="settings_general_battery">忽略电池优化</string>
     <string name="settings_about_header">关于</string>
     <string name="settings_about_github">GitHub 仓库</string>
+    <string name="title_app_settings">应用设置</string>
+    <string name="title_parser_whitelist_manager">解析白名单管理</string>
     <string name="settings_console_log">日志控制台</string>
     <string name="settings_general_header">通用</string>
     <string name="settings_core_services_header">核心服务</string>

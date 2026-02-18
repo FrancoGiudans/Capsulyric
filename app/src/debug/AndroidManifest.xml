@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
-    <uses-permission android:name="android.permission.SET_ACTIVITY_WATCHER" />
     <uses-permission android:name="android.permission.POST_PROMOTED_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES"
         tools:ignore="QueryAllPackagesPermission" />
@@ -12,8 +11,6 @@
         <activity android:name=".DebugLyricActivity"
                   android:label="Debug Lyric API"
                   android:parentActivityName=".DebugCenterActivity" />
-        <activity android:name=".CustomSettingsActivity"
-                  android:label="Custom Settings"
-                  android:parentActivityName=".DebugCenterActivity" />
+
     </application>
 </manifest>

@@ -99,10 +99,16 @@ object RomUtils {
     }
 
     fun isHyperOsVersionAtLeast(major: Int, minor: Int, patch: Int): Boolean {
+        // STRICT CHECK: Must be HyperOS first
+        val hyperOsVersion = getSystemProperty("ro.mi.os.version.name")
+        if (hyperOsVersion.isEmpty()) {
+            return false // Not HyperOS
+        }
+
         // Check primary version name
-        if (checkVersionString(getSystemProperty("ro.mi.os.version.name"), major, minor, patch)) return true
+        if (checkVersionString(hyperOsVersion, major, minor, patch)) return true
         
-        // Check incremental version (often contains the full version, e.g. 3.0.300.7)
+        // Check incremental version (only if we confirmed it is HyperOS above)
         if (checkVersionString(getSystemProperty("ro.build.version.incremental"), major, minor, patch)) return true
         
         return false

@@ -27,7 +27,11 @@
         </activity>
         <activity
             android:name=".SettingsActivity"
-            android:label="Settings"
+            android:label="@string/title_app_settings"
+            android:parentActivityName=".MainActivity" />
+        <activity
+            android:name=".CustomSettingsActivity"
+            android:label="@string/page_title_personalization"
             android:parentActivityName=".MainActivity" />
         <activity
             android:name=".FAQActivity"
@@ -35,8 +39,8 @@
             android:exported="false" />
         <activity
             android:name=".ParserRuleActivity"
-            android:label="@string/parser_rule_title"
-            android:parentActivityName=".SettingsActivity" />
+            android:label="@string/title_parser_whitelist_manager"
+            android:parentActivityName=".MainActivity" />
 
         <service 
             android:name=".LyricService"

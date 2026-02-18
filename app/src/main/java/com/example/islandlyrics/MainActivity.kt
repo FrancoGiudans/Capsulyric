@@ -67,6 +67,8 @@ class MainActivity : BaseActivity() {
                     versionText = versionText,
                     isDebugBuild = BuildConfig.DEBUG,
                     onOpenSettings = { startActivity(Intent(this, SettingsActivity::class.java)) },
+                    onOpenPersonalization = { startActivity(Intent(this, CustomSettingsActivity::class.java)) },
+                    onOpenWhitelist = { startActivity(Intent(this, ParserRuleActivity::class.java)) },
                     onOpenDebug = {
                         try {
                             val clazz = Class.forName("com.example.islandlyrics.DebugCenterActivity")
