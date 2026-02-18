@@ -680,7 +680,7 @@ private fun ActionButton(
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Center,
+            horizontalArrangement = Arrangement.Start,
             modifier = Modifier
                 .fillMaxSize()
                 .padding(horizontal = 16.dp)

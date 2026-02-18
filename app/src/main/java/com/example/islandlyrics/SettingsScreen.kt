@@ -161,7 +161,51 @@ fun SettingsScreen(
             ) {
 
                 // ═══════════════════════════════════════
-                // ── 1. Core Services ──
+                // ── 1. General ──
+                // ═══════════════════════════════════════
+                SettingsSectionHeader(text = stringResource(R.string.settings_general_header))
+
+                // Language
+                val currentLangCode = prefs.getString("language_code", "")
+                val currentLangText = when(currentLangCode) {
+                    "en" -> "English"
+                    "zh-CN" -> "简体中文"
+                    else -> stringResource(R.string.settings_theme_follow_system)
+                }
+                SettingsTextItem(
+                    title = stringResource(R.string.settings_language),
+                    value = currentLangText,
+                    onClick = { showLanguageDialog = true }
+                )
+
+                // Suggest Current App
+                var recommendMediaAppEnabled by remember { mutableStateOf(prefs.getBoolean("recommend_media_app", true)) }
+                SettingsSwitchItem(
+                    title = stringResource(R.string.settings_recommend_media_app),
+                    subtitle = stringResource(R.string.settings_recommend_media_app_desc),
+                    checked = recommendMediaAppEnabled,
+                    onCheckedChange = {
+                        recommendMediaAppEnabled = it
+                        prefs.edit().putBoolean("recommend_media_app", it).apply()
+                    }
+                )
+
+                // Hide Recents
+                var hideRecentsEnabled by remember { mutableStateOf(prefs.getBoolean("hide_recents_enabled", false)) }
+                SettingsSwitchItem(
+                    title = stringResource(R.string.settings_hide_recents),
+                    subtitle = stringResource(R.string.settings_hide_recents_desc),
+                    checked = hideRecentsEnabled,
+                    onCheckedChange = {
+                        hideRecentsEnabled = it
+                        prefs.edit().putBoolean("hide_recents_enabled", it).apply()
+                    }
+                )
+
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+
+                // ═══════════════════════════════════════
+                // ── 2. System & Permissions ──
                 // ═══════════════════════════════════════
                 SettingsSectionHeader(text = stringResource(R.string.settings_core_services_header))
 
@@ -194,25 +238,23 @@ fun SettingsScreen(
                     onCheckedChange = {}
                 )
 
-                // Language
-                val currentLangCode = prefs.getString("language_code", "")
-                val currentLangText = when(currentLangCode) {
-                    "en" -> "English"
-                    "zh-CN" -> "简体中文"
-                    else -> stringResource(R.string.settings_theme_follow_system)
-                }
-                SettingsTextItem(
-                    title = stringResource(R.string.settings_language),
-                    value = currentLangText,
-                    onClick = { showLanguageDialog = true }
+                // Battery
+                SettingsActionItem(
+                    title = stringResource(R.string.settings_general_battery),
+                    icon = Icons.Filled.MusicNote,
+                    onClick = {
+                        val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
+                        intent.data = Uri.parse("package:${context.packageName}")
+                        context.startActivity(intent)
+                    }
                 )
 
                 HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
                 // ═══════════════════════════════════════
-                // ── 2. General ──
+                // ── 3. Updates ──
                 // ═══════════════════════════════════════
-                SettingsSectionHeader(text = stringResource(R.string.settings_general_header))
+                SettingsSectionHeader(text = stringResource(R.string.update_check_title))
 
                 SettingsSwitchItem(
                     title = stringResource(R.string.settings_auto_update),
@@ -265,43 +307,15 @@ fun SettingsScreen(
                 }
 
                 SettingsActionItem(
-                    title = stringResource(R.string.settings_general_battery),
-                    icon = Icons.Filled.MusicNote,
-                    onClick = {
-                        val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
-                        intent.data = Uri.parse("package:${context.packageName}")
-                        context.startActivity(intent)
-                    }
-                )
-
-                var hideRecentsEnabled by remember { mutableStateOf(prefs.getBoolean("hide_recents_enabled", false)) }
-                SettingsSwitchItem(
-                    title = stringResource(R.string.settings_hide_recents),
-                    subtitle = stringResource(R.string.settings_hide_recents_desc),
-                    checked = hideRecentsEnabled,
-                    onCheckedChange = {
-                        hideRecentsEnabled = it
-                        prefs.edit().putBoolean("hide_recents_enabled", it).apply()
-                    }
-                )
-
-
-                // Suggest Current App
-                var recommendMediaAppEnabled by remember { mutableStateOf(prefs.getBoolean("recommend_media_app", true)) }
-                SettingsSwitchItem(
-                    title = stringResource(R.string.settings_recommend_media_app),
-                    subtitle = stringResource(R.string.settings_recommend_media_app_desc),
-                    checked = recommendMediaAppEnabled,
-                    onCheckedChange = {
-                        recommendMediaAppEnabled = it
-                        prefs.edit().putBoolean("recommend_media_app", it).apply()
-                    }
+                     title = stringResource(R.string.update_check_title),
+                     icon = Icons.Filled.Sync,
+                     onClick = onCheckUpdate
                 )
 
                 HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
                 // ═══════════════════════════════════════
-                // ── 3. Help & About ──
+                // ── 4. Help & About ──
                 // ═══════════════════════════════════════
                 SettingsSectionHeader(text = stringResource(R.string.settings_help_about_header))
 
@@ -355,12 +369,6 @@ fun SettingsScreen(
                             Toast.makeText(context, "Developer Mode Enabled! 👩‍💻", Toast.LENGTH_SHORT).show()
                          }
                     }
-                )
-
-                SettingsActionItem(
-                     title = stringResource(R.string.update_check_title),
-                     icon = Icons.Filled.Sync,
-                     onClick = onCheckUpdate
                 )
 
                 if (showLogs) {
