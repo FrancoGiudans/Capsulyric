@@ -143,7 +143,9 @@ class LyricService : Service() {
 
     private val superLyricStub = object : ISuperLyric.Stub() {
         override fun onStop(data: SuperLyricData?) {
-            AppLogger.getInstance().d(TAG, "API onStop: ${data?.packageName}")
+            if (BuildConfig.DEBUG) {
+                AppLogger.getInstance().d(TAG, "API onStop: ${data?.packageName}")
+            }
             LyricRepository.getInstance().updatePlaybackStatus(false)
             
             // CRITICAL FIX: Don't stop capsule here - let playback state observer control lifecycle
@@ -152,6 +154,10 @@ class LyricService : Service() {
         }
 
         override fun onSuperLyric(data: SuperLyricData?) {
+            if (BuildConfig.DEBUG) {
+                AppLogger.getInstance().d(TAG, "API onSuperLyric received: ${data?.lyric?.take(50)}")
+            }
+
             if (data != null) {
                 val pkg = data.packageName
                 val lyric = data.lyric
@@ -161,20 +167,27 @@ class LyricService : Service() {
                            ?: ParserRuleHelper.createDefaultRule(pkg)
 
                 if (!rule.useSuperLyricApi) {
-                    AppLogger.getInstance().log(TAG, "[$pkg] SuperLyric API disabled for this app")
+                    if (BuildConfig.DEBUG) {
+                        AppLogger.getInstance().d(TAG, "[$pkg] SuperLyric API disabled for this app")
+                    }
                     // Don't fetch here - metadata observer already handles it for non-CarProtocol apps
                     return
                 }
 
                 // Instrumental Filter
                 if (lyric.matches(".*(纯音乐|Instrumental|No lyrics|请欣赏|没有歌词).*".toRegex())) {
-                    AppLogger.getInstance().d(TAG, "Instrumental detected: $lyric")
+                    if (BuildConfig.DEBUG) {
+                        AppLogger.getInstance().d(TAG, "Instrumental detected: $lyric")
+                    }
                     @Suppress("DEPRECATION")
                     stopForeground(true)
                     return
                 }
 
                 if (lyric == lastLyric) {
+                    if (BuildConfig.DEBUG) {
+                        AppLogger.getInstance().d(TAG, "Duplicate lyric ignored")
+                    }
                     return
                 }
                 lastLyric = lyric
@@ -186,8 +199,14 @@ class LyricService : Service() {
                 
                 // If online lyrics enabled for this app AND SuperLyric doesn't provide syllable info
                 if (rule.useOnlineLyrics && !lyric.contains("<")) {
-                    AppLogger.getInstance().log(TAG, "[$pkg] SuperLyric无逐字信息，尝试在线获取")
+                    if (BuildConfig.DEBUG) {
+                        AppLogger.getInstance().d(TAG, "[$pkg] SuperLyric无逐字信息，尝试在线获取")
+                    }
                     tryFetchOnlineLyrics()
+                }
+            } else {
+                if (BuildConfig.DEBUG) {
+                    AppLogger.getInstance().d(TAG, "API onSuperLyric received NULL data")
                 }
             }
         }
@@ -280,7 +299,9 @@ class LyricService : Service() {
         
         // Always register SuperLyric for detection (check per-app settings in callback)
         SuperLyricTool.registerSuperLyric(this, superLyricStub)
-        AppLogger.getInstance().log(TAG, "SuperLyric API: Registered for detection")
+        if (BuildConfig.DEBUG) {
+            AppLogger.getInstance().d(TAG, "SuperLyric API: Registered for detection")
+        }
 
         // Observe Repository
         val repo = LyricRepository.getInstance()
@@ -382,6 +403,9 @@ class LyricService : Service() {
         val useSuperLyricApi = prefs.getBoolean("use_superlyric_api", true)
         if (useSuperLyricApi) {
             SuperLyricTool.unregisterSuperLyric(this, superLyricStub)
+            if (BuildConfig.DEBUG) {
+                AppLogger.getInstance().d(TAG, "SuperLyric API: Unregistered")
+            }
         }
         
         LyricRepository.getInstance().liveLyric.removeObserver(lyricObserver)
