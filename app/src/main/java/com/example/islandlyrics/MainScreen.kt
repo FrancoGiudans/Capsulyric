@@ -43,7 +43,7 @@ import com.example.islandlyrics.ParserRuleHelper
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Palette
-import androidx.compose.material.icons.filled.FormatListBulleted
+import androidx.compose.material.icons.automirrored.filled.FormatListBulleted
 import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -275,7 +275,7 @@ fun MainScreen(
 
                 ActionButton(
                     text = stringResource(R.string.title_parser_whitelist_manager),
-                    icon = Icons.Filled.FormatListBulleted,
+                    icon = Icons.AutoMirrored.Filled.FormatListBulleted,
                     onClick = onOpenWhitelist,
                     modifier = Modifier.weight(1f)
                 )

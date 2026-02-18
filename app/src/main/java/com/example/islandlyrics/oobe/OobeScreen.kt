@@ -163,7 +163,7 @@ fun WelcomeStep() {
             val (color, textRes) = when (systemStatus) {
                 SystemStatus.HyperOsUnsupported -> MaterialTheme.colorScheme.errorContainer to R.string.oobe_warning_hyperos_unsupported
                 SystemStatus.RomUntested -> MaterialTheme.colorScheme.tertiaryContainer to R.string.oobe_warning_rom_untested
-                else -> MaterialTheme.colorScheme.surface to 0 // Should not happen
+
             }
             
             Card(

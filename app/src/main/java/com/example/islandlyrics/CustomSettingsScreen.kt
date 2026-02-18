@@ -184,7 +184,7 @@ fun CustomSettingsScreen(
                             }
                         }
                     )
-                    TabRow(selectedTabIndex = pagerState.currentPage) {
+                    PrimaryTabRow(selectedTabIndex = pagerState.currentPage) {
                         tabs.forEachIndexed { index, title ->
                             Tab(
                                 selected = pagerState.currentPage == index,
