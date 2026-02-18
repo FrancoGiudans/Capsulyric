@@ -15,132 +15,149 @@ import java.util.regex.Pattern
 
 class LogManager private constructor() {
 
-    private var logFile: File? = null
-    private val isDebug = BuildConfig.DEBUG
-
-    class LogEntry(val timestamp: String, val level: String, val tag: String, val message: String)
+    private var logHandler: android.os.Handler? = null
 
     private fun init(context: Context) {
         if (logFile == null) {
             logFile = File(context.filesDir, FILE_NAME)
-            cleanOldLogs(context)
+            
+            // Initialize background thread for file I/O
+            val thread = android.os.HandlerThread("LogWorker")
+            thread.start()
+            logHandler = android.os.Handler(thread.looper)
+            
+            // cleanup on background thread
+            logHandler?.post {
+                cleanOldLogs(context)
+            }
         }
     }
 
     private fun cleanOldLogs(context: Context) {
-        Thread {
-            try {
-                val prefs = context.getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE)
-                val lastCleanup = prefs.getLong("last_log_cleanup_time", 0)
-                val now = System.currentTimeMillis()
+        try {
+            val prefs = context.getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE)
+            val lastCleanup = prefs.getLong("last_log_cleanup_time", 0)
+            val now = System.currentTimeMillis()
 
-                // Run once every 24 hours
-                if (now - lastCleanup < 24 * 60 * 60 * 1000) {
-                    return@Thread
-                }
+            // Run once every 24 hours
+            if (now - lastCleanup < 24 * 60 * 60 * 1000) {
+                return
+            }
 
-                // Update cleanup time immediately to prevent multiple runs
-                prefs.edit().putLong("last_log_cleanup_time", now).apply()
+            // Update cleanup time immediately
+            prefs.edit().putLong("last_log_cleanup_time", now).apply()
 
-                if (logFile == null || !logFile!!.exists()) return@Thread
+            if (logFile == null || !logFile!!.exists()) return
 
-                val cutoffTime = now - 48 * 60 * 60 * 1000 // 48 hours ago
-                val tempFile = File(context.filesDir, "app_log.tmp")
-                val writer = java.io.BufferedWriter(java.io.FileWriter(tempFile))
-                val reader = java.io.BufferedReader(java.io.FileReader(logFile!!))
+            val cutoffTime = now - 48 * 60 * 60 * 1000 // 48 hours ago
+            val tempFile = File(context.filesDir, "app_log.tmp")
+            val writer = java.io.BufferedWriter(java.io.FileWriter(tempFile))
+            val reader = java.io.BufferedReader(java.io.FileReader(logFile!!))
 
-                var keepCurrentEntry = false
-                var line: String? = reader.readLine()
-                
-                while (line != null) {
-                    val matcher = LOG_PATTERN.matcher(line)
-                    if (matcher.find()) {
-                        // New Log Entry
-                        val dateStr = matcher.group(1)
-                        if (dateStr != null) {
-                            try {
-                                val date = DATE_FORMAT.parse(dateStr)
-                                if (date != null && date.time >= cutoffTime) {
-                                    keepCurrentEntry = true
-                                    writer.write(line)
-                                    writer.newLine()
-                                } else {
-                                    keepCurrentEntry = false
-                                }
-                            } catch (e: Exception) {
-                                // Date parse error, keep safely if we kept previous
-                                if (keepCurrentEntry) {
-                                    writer.write(line)
-                                    writer.newLine()
-                                }
+            var keepCurrentEntry = false
+            var line: String? = reader.readLine()
+            
+            while (line != null) {
+                val matcher = LOG_PATTERN.matcher(line)
+                if (matcher.find()) {
+                    // New Log Entry
+                    val dateStr = matcher.group(1)
+                    if (dateStr != null) {
+                        try {
+                            val date = DATE_FORMAT.parse(dateStr)
+                            if (date != null && date.time >= cutoffTime) {
+                                keepCurrentEntry = true
+                                writer.write(line)
+                                writer.newLine()
+                            } else {
+                                keepCurrentEntry = false
+                            }
+                        } catch (e: Exception) {
+                            // Date parse error, keep safely if we kept previous
+                            if (keepCurrentEntry) {
+                                writer.write(line)
+                                writer.newLine()
                             }
                         }
-                    } else {
-                        // Continuation line (stack trace etc)
-                        if (keepCurrentEntry) {
-                            writer.write(line)
-                            writer.newLine()
-                        }
                     }
-                    line = reader.readLine()
-                }
-
-                reader.close()
-                writer.close()
-
-                if (logFile!!.delete()) {
-                    tempFile.renameTo(logFile!!)
                 } else {
-                    tempFile.delete()
+                    // Continuation line (stack trace etc)
+                    if (keepCurrentEntry) {
+                        writer.write(line)
+                        writer.newLine()
+                    }
                 }
-                
-                Log.d("LogManager", "Log cleanup completed. Retained logs < 48h.")
-
-            } catch (e: Exception) {
-                Log.e("LogManager", "Failed to clean logs: ${e.message}")
+                line = reader.readLine()
             }
-        }.start()
+
+            reader.close()
+            writer.close()
+
+            if (logFile!!.delete()) {
+                tempFile.renameTo(logFile!!)
+            } else {
+                tempFile.delete()
+            }
+            
+            Log.d("LogManager", "Log cleanup completed. Retained logs < 48h.")
+
+        } catch (e: Exception) {
+            Log.e("LogManager", "Failed to clean logs: ${e.message}")
+        }
     }
 
     @Synchronized
     fun d(context: Context, tag: String, msg: String) {
         if (!isDebug) return
         init(context)
-        val logLine = String.format("%s D/%s: %s", DATE_FORMAT.format(Date()), tag, msg)
         Log.d(tag, msg)
-        appendToFile(logLine)
+        
+        val logLine = String.format("%s D/%s: %s", DATE_FORMAT.format(Date()), tag, msg)
+        logHandler?.post {
+            appendToFile(logLine)
+        }
     }
 
     @Synchronized
     fun e(context: Context, tag: String, msg: String) {
         // ERROR level always writes, even in release (for crash tracking)
         init(context)
-        val logLine = String.format("%s E/%s: %s", DATE_FORMAT.format(Date()), tag, msg)
         Log.e(tag, msg)
-        appendToFile(logLine)
+        
+        val logLine = String.format("%s E/%s: %s", DATE_FORMAT.format(Date()), tag, msg)
+        logHandler?.post {
+            appendToFile(logLine)
+        }
     }
 
     @Synchronized
     fun w(context: Context, tag: String, msg: String) {
         if (!isDebug) return
         init(context)
-        val logLine = String.format("%s W/%s: %s", DATE_FORMAT.format(Date()), tag, msg)
         Log.w(tag, msg)
-        appendToFile(logLine)
+        
+        val logLine = String.format("%s W/%s: %s", DATE_FORMAT.format(Date()), tag, msg)
+        logHandler?.post {
+            appendToFile(logLine)
+        }
     }
 
     @Synchronized
     fun i(context: Context, tag: String, msg: String) {
         if (!isDebug) return
         init(context)
-        val logLine = String.format("%s I/%s: %s", DATE_FORMAT.format(Date()), tag, msg)
         Log.i(tag, msg)
-        appendToFile(logLine)
+        
+        val logLine = String.format("%s I/%s: %s", DATE_FORMAT.format(Date()), tag, msg)
+        logHandler?.post {
+            appendToFile(logLine)
+        }
     }
 
     private fun appendToFile(line: String) {
         if (logFile == null) return
         try {
+            // This now runs on the background thread
             FileWriter(logFile, true).use { fw ->
                 fw.append(line).append("\n")
             }

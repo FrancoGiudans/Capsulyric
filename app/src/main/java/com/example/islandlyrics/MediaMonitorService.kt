@@ -31,8 +31,17 @@ class MediaMonitorService : NotificationListenerService() {
     // Deduplication: Track last metadata hash to avoid processing duplicates
     private var lastMetadataHash: Int = 0
 
+    // Debounce Token
+    private val updateToken = Any()
+    
+    // Deduplication: Track last controller signatures
+    private var lastControllerSignatures: String = ""
+
     private val sessionsChangedListener = MediaSessionManager.OnActiveSessionsChangedListener { controllers ->
-        updateControllers(controllers)
+        // Debounce updates (200ms)
+        handler.removeCallbacksAndMessages(updateToken)
+        val r = Runnable { updateControllers(controllers) }
+        handler.postAtTime(r, updateToken, android.os.SystemClock.uptimeMillis() + 200)
     }
 
     private val handler = Handler(Looper.getMainLooper())
@@ -192,6 +201,15 @@ class MediaMonitorService : NotificationListenerService() {
             LyricRepository.getInstance().updatePlaybackStatus(false)
             return
         }
+        
+        // DEDUPLICATION CHECK
+        val currentSignatures = controllers?.joinToString("|") { "${it.packageName}@${it.hashCode()}" } ?: "null"
+        if (currentSignatures == lastControllerSignatures) {
+             AppLogger.getInstance().d(TAG, "Duplicate session update ignored.")
+             return
+        }
+        lastControllerSignatures = currentSignatures
+        AppLogger.getInstance().d(TAG, "Processing new session update: $currentSignatures")
         
         // Robust update: Wipe and Replace
         // This eliminates stale state issues at the cost of slight overhead

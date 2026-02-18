@@ -10,11 +10,10 @@ import java.util.Locale
 
 class AppLogger private constructor() {
 
-    val logs = MutableLiveData("")
-    private val logBuffer = StringBuilder()
-    private val dateFormat = SimpleDateFormat("HH:mm:ss", Locale.US)
-    private val mainHandler = Handler(Looper.getMainLooper())
-
+    // Simplified: No buffering, no LiveData
+    // val logs = MutableLiveData("") 
+    // private val logBuffer = StringBuilder()
+    
     // Check Debug Flag (Static build config)
     private val isDebug = BuildConfig.DEBUG
     
@@ -31,20 +30,16 @@ class AppLogger private constructor() {
     // DEBUG: Only if Enabled
     fun d(tag: String, message: String) {
         if (!isLogEnabled) return
-        
         Log.d(tag, message)
-        appendToBuffer("D", tag, message)
     }
 
     // INFO: Only if Enabled (Release builds default to OFF)
     fun i(tag: String, message: String) {
         if (!isLogEnabled) return
-        
         Log.i(tag, message)
-        appendToBuffer("I", tag, message)
     }
 
-    // ERROR: Always to Logcat (for Crashlytics), but Buffer only if enabled
+    // ERROR: Always to Logcat (for Crashlytics)
     fun e(tag: String, message: String) {
         e(tag, message, null)
     }
@@ -56,37 +51,16 @@ class AppLogger private constructor() {
         } else {
             Log.e(tag, message)
         }
-        
-        // Only show in UI if enabled
-        if (isLogEnabled) {
-            val sb = StringBuilder(message)
-            if (tr != null) {
-                sb.append("\n").append(Log.getStackTraceString(tr))
-            }
-            appendToBuffer("E", tag, sb.toString())
-        }
     }
 
     // Legacy support: map 'log' to 'd' (Debug) or 'i' (Info) depending on importance
-    // For now, map to Debug to hide spam in release.
     fun log(tag: String, message: String) {
         d(tag, message)
     }
-
+    
+    // Legacy: No-op for buffer
     private fun appendToBuffer(level: String, tag: String, message: String) {
-        val timestamp = dateFormat.format(Date())
-        val logLine = String.format(Locale.US, "%s [%s/%s] %s\n", timestamp, level, tag, message)
-
-        mainHandler.post {
-            logBuffer.append(logLine)
-            if (logBuffer.length > 12000) {
-                val index = logBuffer.indexOf("\n", 4000)
-                if (index != -1) {
-                    logBuffer.delete(0, index + 1)
-                }
-            }
-            logs.value = logBuffer.toString()
-        }
+        // No-op
     }
 
     companion object {
