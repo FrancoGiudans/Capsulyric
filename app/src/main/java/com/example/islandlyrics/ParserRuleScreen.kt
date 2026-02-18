@@ -1,6 +1,7 @@
 package com.example.islandlyrics
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -209,6 +210,7 @@ fun ParserRuleScreen(
     }
 }
 
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 fun ParserRuleItem(
     rule: ParserRule,
@@ -219,7 +221,10 @@ fun ParserRuleItem(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onEdit() }
+            .combinedClickable(
+                onClick = onEdit,
+                onLongClick = onDelete
+            )
             .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
