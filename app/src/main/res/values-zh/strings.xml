@@ -61,6 +61,10 @@
     <string name="settings_general_header">通用</string>
     <string name="settings_core_services_header">核心服务</string>
     <string name="settings_personalization_header">个性化</string>
+    <string name="page_title_personalization">个性化设置</string>
+    <string name="tab_capsule">胶囊</string>
+    <string name="tab_notification">通知</string>
+    <string name="tab_app_ui">App界面</string>
     <string name="settings_recommend_media_app">推荐当前播放应用</string>
     <string name="settings_recommend_media_app_desc">进入通知白名单和解析规则界面时自动推荐当前播放应用</string>
     <string name="settings_help_about_header">帮助与关于</string>

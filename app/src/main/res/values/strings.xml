@@ -61,6 +61,10 @@
     <string name="settings_general_header">General</string>
     <string name="settings_core_services_header">Core Services</string>
     <string name="settings_personalization_header">Personalization</string>
+    <string name="page_title_personalization">Personalization Settings</string>
+    <string name="tab_capsule">Capsule</string>
+    <string name="tab_notification">Notification</string>
+    <string name="tab_app_ui">App UI</string>
     <string name="settings_recommend_media_app">Recommend current media app</string>
     <string name="settings_recommend_media_app_desc">Automatically recommend the current media app when entering rule settings</string>
     <string name="settings_help_about_header">Help &amp; About</string>
