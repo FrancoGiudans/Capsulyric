@@ -15,7 +15,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -33,7 +32,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.runtime.livedata.observeAsState
-
+import androidx.palette.graphics.Palette
 
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
@@ -95,6 +94,30 @@ fun MediaControlDialog(onDismiss: () -> Unit) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(stringResource(R.string.media_control_title))
                 Spacer(modifier = Modifier.weight(1f))
+
+                // Mi Play Action (Top Right)
+                if (isHyperOsSupported) {
+                    IconButton(onClick = {
+                        try {
+                            val intent = Intent()
+                            intent.component = android.content.ComponentName(
+                                "miui.systemui.plugin",
+                                "miui.systemui.miplay.MiPlayDetailActivity"
+                            )
+                            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                            context.startActivity(intent)
+                            onDismiss() // Optional: dismiss dialog when opening Mi Play
+                        } catch (e: Exception) {
+                            Toast.makeText(context, context.getString(R.string.media_control_miplay_failed, e.message), Toast.LENGTH_SHORT).show()
+                        }
+                    }) {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_miplay),
+                            contentDescription = "Mi Play",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
             
                 // Small info icon for status
                 IconButton(onClick = { 
@@ -156,30 +179,6 @@ fun MediaControlDialog(onDismiss: () -> Unit) {
                 } else {
                     Text(stringResource(R.string.media_control_no_sessions), color = MaterialTheme.colorScheme.error)
                 }
-
-                HorizontalDivider()
-
-                // Mi Play (HyperOS 3.0.300+ only)
-                if (isHyperOsSupported) {
-                    OutlinedButton(
-                        onClick = {
-                            try {
-                                val intent = Intent()
-                                intent.component = android.content.ComponentName(
-                                    "miui.systemui.plugin",
-                                    "miui.systemui.miplay.MiPlayDetailActivity"
-                                )
-                                intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                                context.startActivity(intent)
-                            } catch (e: Exception) {
-                                Toast.makeText(context, context.getString(R.string.media_control_miplay_failed, e.message), Toast.LENGTH_SHORT).show()
-                            }
-                        },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(stringResource(R.string.media_control_launch_miplay))
-                    }
-                }
             }
         },
         confirmButton = {
@@ -229,157 +228,222 @@ fun MediaSessionCard(
     val duration = metadata?.getLong(MediaMetadata.METADATA_KEY_DURATION) ?: 0L
     val position = if (isPrimary) primaryProgress?.position ?: 0L else playbackState?.position ?: 0L
 
+    // Dynamic Color Extraction
+    var cardBackgroundColor by remember { mutableStateOf(Color.Unspecified) }
+    val defaultSurfaceVariant = MaterialTheme.colorScheme.surfaceVariant
+
+    LaunchedEffect(albumArtBitmap) {
+        if (albumArtBitmap != null) {
+            Palette.from(albumArtBitmap).generate { palette ->
+                val vibrant = palette?.vibrantSwatch?.rgb
+                val dominant = palette?.dominantSwatch?.rgb
+                val colorInt = vibrant ?: dominant
+                if (colorInt != null) {
+                    // Apply alpha to blend with surface, or use as is
+                    // Let's use it as a tint mixed with surface for better readability, or just the color if it's light enough?
+                    // Usually we want a container color.
+                    cardBackgroundColor = Color(colorInt).copy(alpha = 0.3f) // Add transparency
+                }
+            }
+        } else {
+            cardBackgroundColor = Color.Unspecified
+        }
+    }
+    
+    // Fuse extracted color with surface variant default
+    val finalContainerColor = if (cardBackgroundColor != Color.Unspecified) {
+        // Composite over surface to make it opaque-ish
+        // Actually, just using the color with alpha over SurfaceVariant is fine for a tint effect
+         MaterialTheme.colorScheme.surfaceVariant // fallback base
+         // We will apply the tint via a Box or modify CardDefaults?
+         // Let's just use the color directly if available, but ensure it's not too dark/light compared to text
+         // A safe bet is mixing it with Surface.
+    } else {
+        MaterialTheme.colorScheme.surfaceVariant
+    }
+
     Card(
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+        shape = RoundedCornerShape(28.dp),
+        colors = CardDefaults.cardColors(
+             containerColor = if (cardBackgroundColor != Color.Unspecified) 
+                MaterialTheme.colorScheme.surface.copy(alpha = 1f) // Reset to surface then overlay
+             else MaterialTheme.colorScheme.surfaceVariant
+        ),
+        elevation = CardDefaults.cardElevation(0.dp),
         modifier = Modifier.fillMaxWidth()
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            
-            // Top Row: Album Art + Info
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                // Album Art
-                if (albumArtBitmap != null) {
-                    Image(
-                        bitmap = albumArtBitmap.asImageBitmap(),
-                        contentDescription = "Album Art",
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier
-                            .size(64.dp)
-                            .clip(RoundedCornerShape(8.dp))
-                    )
-                } else {
-                    Surface(
-                        shape = RoundedCornerShape(8.dp),
-                        color = MaterialTheme.colorScheme.surfaceDim,
-                        modifier = Modifier.size(64.dp)
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.ic_music_note),
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(16.dp)
+        // Overlay for tint if we have a dynamic color
+        Box(modifier = Modifier.fillMaxSize().background(
+            if (cardBackgroundColor != Color.Unspecified) cardBackgroundColor else Color.Transparent
+        )) {
+            Column(modifier = Modifier.padding(20.dp)) {
+                
+                // Top Row: Album Art + Info
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    // Album Art
+                    if (albumArtBitmap != null) {
+                        Image(
+                            bitmap = albumArtBitmap.asImageBitmap(),
+                            contentDescription = "Album Art",
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier
+                                .size(80.dp)
+                                .clip(RoundedCornerShape(16.dp))
+                        )
+                    } else {
+                        Surface(
+                            shape = RoundedCornerShape(16.dp),
+                            color = MaterialTheme.colorScheme.surfaceDim,
+                            modifier = Modifier.size(80.dp)
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_music_note),
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(24.dp)
+                            )
+                        }
+                    }
+                    
+                    Spacer(modifier = Modifier.width(16.dp))
+                    
+                    // Info
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(text = title, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(text = artist, style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(text = "$appName ($pkg)", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(20.dp))
+                
+                // Lyrics (if primary)
+                // Use fixed height to match Homepage card style
+                Column(modifier = Modifier.height(90.dp)) {
+                    if (isPrimary && primaryLyric != null) {
+                        Text(
+                            text = "Lyric:",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = primaryLyric,
+                            style = MaterialTheme.typography.bodyLarge,
+                            minLines = 2,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                            color = MaterialTheme.colorScheme.onSurface, // Or use a dynamic color if possible, effectively secondary
+                            lineHeight = 24.sp
+                        )
+                    } else {
+                         Text(
+                            text = "Lyric:",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = stringResource(R.string.media_control_no_sessions), // placeholder text or empty
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontStyle = FontStyle.Italic,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                         )
                     }
                 }
                 
-                Spacer(modifier = Modifier.width(16.dp))
-                
-                // Info
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(text = title, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text(text = artist, style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(text = "$appName ($pkg)", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                Spacer(modifier = Modifier.height(20.dp))
+
+                // Progress Bar (Interactive Slider)
+                var isDragging by remember { mutableStateOf(false) }
+                var dragProgress by remember { mutableFloatStateOf(0f) }
+
+                val currentProgress = if (isDragging) {
+                    dragProgress
+                } else {
+                    if (duration > 0) (position.toFloat() / duration.toFloat()).coerceIn(0f, 1f) else 0f
                 }
-            }
 
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            // Lyrics (if primary)
-             Column(modifier = Modifier.height(if (isPrimary && primaryLyric != null) 60.dp else 0.dp)) {
-                if (isPrimary && primaryLyric != null) {
-                    Text(
-                        text = primaryLyric,
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Normal,
-                        minLines = 2,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                        color = MaterialTheme.colorScheme.secondary,
-                        lineHeight = 22.sp
-                    )
-                }
-            }
-            if (isPrimary && primaryLyric != null) Spacer(modifier = Modifier.height(12.dp))
+                Slider(
+                    value = currentProgress,
+                    onValueChange = { 
+                        isDragging = true
+                        dragProgress = it
+                    },
+                    onValueChangeFinished = {
+                        if (duration > 0) {
+                             controller.transportControls.seekTo((dragProgress * duration).toLong())
+                        }
+                        isDragging = false
+                    },
+                    colors = SliderDefaults.colors(
+                        thumbColor = MaterialTheme.colorScheme.primary,
+                        activeTrackColor = MaterialTheme.colorScheme.primary,
+                        inactiveTrackColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f)
+                    ),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(20.dp) 
+                )
 
-            // Progress Bar (Interactive Slider)
-            var isDragging by remember { mutableStateOf(false) }
-            var dragProgress by remember { mutableFloatStateOf(0f) }
+                Spacer(modifier = Modifier.height(20.dp))
 
-            val currentProgress = if (isDragging) {
-                dragProgress
-            } else {
-                if (duration > 0) (position.toFloat() / duration.toFloat()).coerceIn(0f, 1f) else 0f
-            }
-
-            Slider(
-                value = currentProgress,
-                onValueChange = { 
-                    isDragging = true
-                    dragProgress = it
-                },
-                onValueChangeFinished = {
-                    if (duration > 0) {
-                         controller.transportControls.seekTo((dragProgress * duration).toLong())
+                // Playback Controls
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(onClick = { controller.transportControls.skipToPrevious() }) {
+                        Icon(painterResource(R.drawable.ic_skip_previous), "Prev", modifier = Modifier.size(32.dp))
                     }
-                    isDragging = false
-                },
-                colors = SliderDefaults.colors(
-                    thumbColor = MaterialTheme.colorScheme.primary,
-                    activeTrackColor = MaterialTheme.colorScheme.primary,
-                    inactiveTrackColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f)
-                ),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(20.dp) 
-            )
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // Playback Controls
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(onClick = { controller.transportControls.skipToPrevious() }) {
-                    Icon(painterResource(R.drawable.ic_skip_previous), "Prev", modifier = Modifier.size(28.dp))
+                    
+                    IconButton(
+                        onClick = {
+                            if (isPlaying) {
+                                controller.transportControls.pause()
+                            } else {
+                                controller.transportControls.play()
+                            }
+                        },
+                        modifier = Modifier
+                            .size(56.dp) // Larger play button
+                            .background(MaterialTheme.colorScheme.primaryContainer, CircleShape)
+                    ) {
+                         Icon(
+                             painterResource(if (isPlaying) R.drawable.ic_pause else R.drawable.ic_play_arrow), 
+                             "Toggle",
+                             tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                             modifier = Modifier.size(32.dp)
+                         )
+                    }
+                    
+                    IconButton(onClick = { controller.transportControls.skipToNext() }) {
+                        Icon(painterResource(R.drawable.ic_skip_next), "Next", modifier = Modifier.size(32.dp))
+                    }
                 }
                 
-                IconButton(
+                Spacer(modifier = Modifier.height(20.dp))
+                
+                // Actions
+                Button(
                     onClick = {
-                        if (isPlaying) {
-                            controller.transportControls.pause()
-                        } else {
-                            controller.transportControls.play()
+                        try {
+                            val launchIntent = context.packageManager.getLaunchIntentForPackage(pkg)
+                            if (launchIntent != null) {
+                                context.startActivity(launchIntent)
+                            } else {
+                                Toast.makeText(context, context.getString(R.string.media_control_cannot_open, pkg), Toast.LENGTH_SHORT).show()
+                            }
+                        } catch (e: Exception) {
+                            Toast.makeText(context, context.getString(R.string.media_control_error_prefix, e.message), Toast.LENGTH_SHORT).show()
                         }
                     },
-                    modifier = Modifier
-                        .size(48.dp)
-                        .background(MaterialTheme.colorScheme.primaryContainer, CircleShape)
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                     Icon(
-                         painterResource(if (isPlaying) R.drawable.ic_pause else R.drawable.ic_play_arrow), 
-                         "Toggle",
-                         tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                         modifier = Modifier.size(24.dp)
-                     )
+                    Text(stringResource(R.string.media_control_open_app))
                 }
-                
-                IconButton(onClick = { controller.transportControls.skipToNext() }) {
-                    Icon(painterResource(R.drawable.ic_skip_next), "Next", modifier = Modifier.size(28.dp))
-                }
-            }
-            
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            // Actions
-            Button(
-                onClick = {
-                    try {
-                        val launchIntent = context.packageManager.getLaunchIntentForPackage(pkg)
-                        if (launchIntent != null) {
-                            context.startActivity(launchIntent)
-                        } else {
-                            Toast.makeText(context, context.getString(R.string.media_control_cannot_open, pkg), Toast.LENGTH_SHORT).show()
-                        }
-                    } catch (e: Exception) {
-                        Toast.makeText(context, context.getString(R.string.media_control_error_prefix, e.message), Toast.LENGTH_SHORT).show()
-                    }
-                },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(stringResource(R.string.media_control_open_app))
             }
         }
     }
