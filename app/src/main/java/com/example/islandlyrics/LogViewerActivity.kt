@@ -70,8 +70,23 @@ class LogViewerActivity : AppCompatActivity() {
 
         val fabExport = findViewById<ExtendedFloatingActionButton>(R.id.fab_export)
         fabExport.setOnClickListener {
-            LogManager.getInstance().exportLog(this)
+            showExportDialog()
         }
+    }
+
+    private fun showExportDialog() {
+        val options = arrayOf("Last 1 Hour", "Last 24 Hours", "All Time")
+        com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+            .setTitle("Export Logs")
+            .setItems(options) { _, which ->
+                val timeRange = when (which) {
+                    0 -> 60 * 60 * 1000L // 1 Hour
+                    1 -> 24 * 60 * 60 * 1000L // 24 Hours
+                    else -> -1L // All
+                }
+                LogManager.getInstance().exportLog(this, timeRange)
+            }
+            .show()
     }
 
     private fun setupListeners() {

@@ -236,4 +236,121 @@ class LogManager private constructor() {
             return instance!!
         }
     }
+
+    fun exportLog(context: Context, timeRangeMs: Long = -1) {
+        init(context)
+        if (logFile == null || logFile?.exists() == false) return
+
+        Thread {
+            try {
+                // 1. Filter Logs
+                val filteredLogs = if (timeRangeMs > 0) {
+                    val cutoff = System.currentTimeMillis() - timeRangeMs
+                    val sb = StringBuilder()
+                    try {
+                        BufferedReader(FileReader(logFile)).use { br ->
+                            var line: String?
+                            var includeEntry = false
+                            while (br.readLine().also { line = it } != null) {
+                                val matcher = LOG_PATTERN.matcher(line ?: "")
+                                if (matcher.find()) {
+                                    val dateStr = matcher.group(1)
+                                    val date = DATE_FORMAT.parse(dateStr ?: "")
+                                    if (date != null && date.time >= cutoff) {
+                                        includeEntry = true
+                                        sb.append(line).append("\n")
+                                    } else {
+                                        includeEntry = false
+                                    }
+                                } else if (includeEntry) {
+                                    sb.append(line).append("\n")
+                                }
+                            }
+                        }
+                    } catch (e: Exception) {
+                        sb.append("Error filtering logs: ${e.message}\n")
+                    }
+                    sb.toString()
+                } else {
+                    logFile?.readText() ?: ""
+                }
+
+                // 2. Generate Device Info
+                val deviceInfo = getDeviceInfo(context)
+
+                // 3. Create ZIP
+                val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
+                val zipFileName = "Log_Export_$timestamp.zip"
+                val zipFile = File(context.cacheDir, zipFileName)
+
+                java.util.zip.ZipOutputStream(java.io.FileOutputStream(zipFile)).use { zos ->
+                    // Add Log File
+                    val logEntry = java.util.zip.ZipEntry("app_log.txt")
+                    zos.putNextEntry(logEntry)
+                    zos.write(filteredLogs.toByteArray())
+                    zos.closeEntry()
+
+                    // Add Device Info
+                    val deviceEntry = java.util.zip.ZipEntry("device_info.txt")
+                    zos.putNextEntry(deviceEntry)
+                    zos.write(deviceInfo.toByteArray())
+                    zos.closeEntry()
+                }
+
+                // 4. Share
+                val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", zipFile)
+                val intent = Intent(Intent.ACTION_SEND)
+                intent.type = "application/zip"
+                intent.putExtra(Intent.EXTRA_STREAM, uri)
+                intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+
+                val chooser = Intent.createChooser(intent, "Export Logs")
+                chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                context.startActivity(chooser)
+
+            } catch (e: Exception) {
+                e.printStackTrace()
+                logHandler?.post {
+                    android.widget.Toast.makeText(context, "Export failed: ${e.message}", android.widget.Toast.LENGTH_SHORT).show()
+                }
+            }
+        }.start()
+    }
+
+    private fun getDeviceInfo(context: Context): String {
+        val sb = StringBuilder()
+        sb.append("=== Device Information ===\n")
+        sb.append("Manufacturer: ${android.os.Build.MANUFACTURER}\n")
+        sb.append("Model: ${android.os.Build.MODEL}\n")
+        sb.append("Device: ${android.os.Build.DEVICE}\n")
+        sb.append("Product: ${android.os.Build.PRODUCT}\n")
+        sb.append("Brand: ${android.os.Build.BRAND}\n")
+        sb.append("Android Version: ${android.os.Build.VERSION.RELEASE} (SDK ${android.os.Build.VERSION.SDK_INT})\n")
+        sb.append("Build ID: ${android.os.Build.DISPLAY}\n")
+        sb.append("Hardware: ${android.os.Build.HARDWARE}\n")
+        sb.append("Fingerprint: ${android.os.Build.FINGERPRINT}\n")
+        sb.append("\n")
+        
+        // ROM Utils
+        sb.append("=== ROM Information ===\n")
+        sb.append("ROM Name: ${RomUtils.getRomInfo()}\n")
+        sb.append("ROM Type: ${RomUtils.getRomType()}\n")
+        sb.append("Is Heavy Skin: ${RomUtils.isHeavySkin()}\n")
+        sb.append("\n")
+
+        // Settings (Simple check of some shared prefs if possible, or just skip for now as per user request to include setting status)
+        // Since we are in LogManager, properly accessing all settings might be invasive, but we can dump SharedPreferences
+        sb.append("=== App Settings ===\n")
+        try {
+            val prefs = context.getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE)
+            val allEntries = prefs.all
+            for ((key, value) in allEntries) {
+                 sb.append("$key: $value\n")
+            }
+        } catch (e: Exception) {
+             sb.append("Could not read settings: ${e.message}\n")
+        }
+        
+        return sb.toString()
+    }
 }

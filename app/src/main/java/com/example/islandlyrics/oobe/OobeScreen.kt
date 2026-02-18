@@ -45,7 +45,7 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun OobeScreen(onFinish: () -> Unit) {
-    val pagerState = rememberPagerState(pageCount = { 5 }) // Added FeatureIntroStep
+    val pagerState = rememberPagerState(pageCount = { 4 })
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
 
@@ -116,85 +116,10 @@ fun OobeScreen(onFinish: () -> Unit) {
         ) { page ->
             when (page) {
                 0 -> WelcomeStep()
-                1 -> FeatureIntroStep()
-                2 -> PermissionsStep()
-                3 -> AppSetupStep()
-                4 -> CompletionStep(onFinish)
+                1 -> PermissionsStep()
+                2 -> AppSetupStep()
+                3 -> CompletionStep(onFinish)
             }
-        }
-    }
-}
-
-@Composable
-fun FeatureIntroStep() {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(24.dp)
-            .verticalScroll(rememberScrollState()),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Text(
-            text = stringResource(R.string.oobe_step_features),
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold
-        )
-        Spacer(modifier = Modifier.height(32.dp))
-        
-        FeatureItem(
-            icon = R.drawable.ic_music_note, // Placeholder
-            title = stringResource(R.string.oobe_feat_island_title),
-            desc = stringResource(R.string.oobe_feat_island_desc)
-        )
-        Spacer(modifier = Modifier.height(24.dp))
-        FeatureItem(
-            icon = R.drawable.ic_music_note, // Placeholder, usually would use distinct icons
-            title = stringResource(R.string.oobe_feat_source_title),
-            desc = stringResource(R.string.oobe_feat_source_desc)
-        )
-        Spacer(modifier = Modifier.height(24.dp))
-        FeatureItem(
-            icon = R.drawable.ic_music_note, // Placeholder
-            title = stringResource(R.string.oobe_feat_style_title),
-            desc = stringResource(R.string.oobe_feat_style_desc)
-        )
-    }
-}
-
-@Composable
-fun FeatureItem(icon: Int, title: String, desc: String) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        // Icon Box
-        Box(
-            modifier = Modifier
-                .size(56.dp)
-                .clip(RoundedCornerShape(16.dp))
-                .background(MaterialTheme.colorScheme.secondaryContainer),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                painter = painterResource(id = icon),
-                contentDescription = null,
-                modifier = Modifier.size(28.dp),
-                tint = MaterialTheme.colorScheme.onSecondaryContainer
-            )
-        }
-        Spacer(modifier = Modifier.width(16.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
-            )
-            Text(
-                text = desc,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
         }
     }
 }
@@ -537,6 +462,7 @@ fun Modifier.rotate(degrees: Float): Modifier = this.then(
 
 @Composable
 fun CompletionStep(onFinish: () -> Unit) {
+    val context = LocalContext.current
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -562,6 +488,17 @@ fun CompletionStep(onFinish: () -> Unit) {
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
+        Spacer(modifier = Modifier.height(32.dp))
+        
+        // Open Settings Button
+        OutlinedButton(
+            onClick = {
+                val intent = Intent(context, com.example.islandlyrics.SettingsActivity::class.java)
+                context.startActivity(intent)
+            }
+        ) {
+            Text(text = stringResource(R.string.oobe_btn_settings))
+        }
     }
 }
 

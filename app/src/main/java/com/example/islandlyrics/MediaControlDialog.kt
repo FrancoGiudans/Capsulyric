@@ -379,17 +379,32 @@ fun MediaSessionCard(
                         Text(text = title, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         Text(text = artist, style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         Spacer(modifier = Modifier.height(4.dp))
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            if (appIcon != null) {
-                                Image(
-                                    bitmap = appIcon.asImageBitmap(),
-                                    contentDescription = null,
-                                    modifier = Modifier.size(16.dp), // Match labelSmall roughly (11sp is small, 16dp is good icon size)
-                                    contentScale = ContentScale.Fit
+                        Column {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                if (appIcon != null) {
+                                    Image(
+                                        bitmap = appIcon.asImageBitmap(),
+                                        contentDescription = null,
+                                        modifier = Modifier.size(16.dp),
+                                        contentScale = ContentScale.Fit
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                }
+                                Text(
+                                    text = appName, 
+                                    style = MaterialTheme.typography.labelMedium, 
+                                    color = MaterialTheme.colorScheme.primary,
+                                    fontWeight = FontWeight.Bold
                                 )
-                                Spacer(modifier = Modifier.width(4.dp))
                             }
-                            Text(text = "$appName ($pkg)", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                            // Package Name on next line
+                            Text(
+                                text = pkg, 
+                                style = MaterialTheme.typography.labelSmall, 
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                                fontSize = 10.sp,
+                                modifier = Modifier.padding(start = if (appIcon != null) 22.dp else 0.dp) // Indent to align with text
+                            )
                         }
                     }
                 }
@@ -520,7 +535,7 @@ fun MediaSessionCard(
                     },
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text(stringResource(R.string.media_control_open_app))
+                    Text(stringResource(R.string.media_control_open_app, appName))
                 }
             }
         }

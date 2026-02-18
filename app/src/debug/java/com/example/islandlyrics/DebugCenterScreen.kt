@@ -128,6 +128,14 @@ fun DebugCenterScreen(
                     }
                 )
             }
+            // ── Log Console ──
+            DebugMenuButton(
+                text = "Log Console",
+                description = "View and export application logs",
+                onClick = {
+                    LogViewerActivity.start(context)
+                }
+            )
             // ── OOBE ──
             DebugMenuButton(
                 text = "Launch OOBE",

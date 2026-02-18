@@ -233,6 +233,7 @@
     <string name="oobe_finish_title">Ready to Go</string>
     <string name="oobe_finish_subtitle">Starting "Island Lyrics" service...</string>
     <string name="oobe_finish_start">Get Started</string>
+    <string name="oobe_btn_settings">Customize Settings</string>
 
     <string name="oobe_next">Next</string>
     <string name="oobe_back">Back</string>
@@ -262,7 +263,7 @@
     <string name="media_control_close">Close</string>
     <string name="media_control_unknown_title">Unknown Title</string>
     <string name="media_control_unknown_artist">Unknown Artist</string>
-    <string name="media_control_open_app">Open App</string>
+    <string name="media_control_open_app">Open %1$s</string>
     <string name="media_control_miplay_failed">Mi Play Failed: %1$s</string>
     <string name="media_control_cannot_open">Cannot open %1$s</string>
 
