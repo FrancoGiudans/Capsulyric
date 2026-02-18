@@ -335,11 +335,6 @@ class MediaMonitorService : NotificationListenerService() {
     }
 
     private fun updateMetadataIfPrimary(controller: MediaController) {
-        val primary = getPrimaryController() ?: return
-
-        // Only process if this IS the primary controller
-        if (controller.packageName != primary.packageName) return
-
         val metadata = controller.metadata ?: return
         val playbackState = controller.playbackState
         val pkg = controller.packageName
@@ -347,15 +342,23 @@ class MediaMonitorService : NotificationListenerService() {
         val rawTitle = metadata.getString(MediaMetadata.METADATA_KEY_TITLE)
         val rawArtist = metadata.getString(MediaMetadata.METADATA_KEY_ARTIST)
         val duration = metadata.getLong(MediaMetadata.METADATA_KEY_DURATION)
-        
-        // 1. ALWAYS propogate via SUGGESTION channel (for ParserRuleScreen)
-        LyricRepository.getInstance().updateSuggestionMetadata(
-            title = rawTitle ?: "Unknown",
-            artist = rawArtist ?: "Unknown",
-            packageName = pkg,
-            duration = duration
-        )
 
+        // 1. ALWAYS propogate via SUGGESTION channel (for ParserRuleScreen)
+        // Logic Fix: Allow ANY playing app to update suggestion, even if not primary
+        if (playbackState?.state == PlaybackState.STATE_PLAYING) {
+            LyricRepository.getInstance().updateSuggestionMetadata(
+                title = rawTitle ?: "Unknown",
+                artist = rawArtist ?: "Unknown",
+                packageName = pkg,
+                duration = duration
+            )
+        }
+
+        val primary = getPrimaryController() ?: return
+
+        // Only process if this IS the primary controller
+        if (controller.packageName != primary.packageName) return
+        
         // 2. CHECK WHITELIST - Strict blocking for Main UI
         if (!allowedPackages.contains(pkg)) {
             AppLogger.getInstance().log("Meta", "⛔ Ignored non-whitelisted: $pkg (Sent to suggestion only)")
