@@ -45,7 +45,7 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun OobeScreen(onFinish: () -> Unit) {
-    val pagerState = rememberPagerState(pageCount = { 4 })
+    val pagerState = rememberPagerState(pageCount = { 5 }) // Added FeatureIntroStep
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
 
@@ -76,21 +76,34 @@ fun OobeScreen(onFinish: () -> Unit) {
                     }
                 }
 
-                Button(
-                    onClick = {
-                        if (pagerState.currentPage < pagerState.pageCount - 1) {
-                            scope.launch { pagerState.animateScrollToPage(pagerState.currentPage + 1) }
-                        } else {
-                            onFinish()
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    // Back Button (only if not on first page)
+                    if (pagerState.currentPage > 0) {
+                        TextButton(
+                            onClick = {
+                                scope.launch { pagerState.animateScrollToPage(pagerState.currentPage - 1) }
+                            }
+                        ) {
+                            Text(text = stringResource(R.string.oobe_back))
                         }
                     }
-                ) {
-                    Text(
-                        text = if (pagerState.currentPage == pagerState.pageCount - 1) 
-                            stringResource(R.string.oobe_btn_start) 
-                        else 
-                            stringResource(R.string.oobe_next)
-                    )
+
+                    Button(
+                        onClick = {
+                            if (pagerState.currentPage < pagerState.pageCount - 1) {
+                                scope.launch { pagerState.animateScrollToPage(pagerState.currentPage + 1) }
+                            } else {
+                                onFinish()
+                            }
+                        }
+                    ) {
+                        Text(
+                            text = if (pagerState.currentPage == pagerState.pageCount - 1) 
+                                stringResource(R.string.oobe_finish_start) 
+                            else 
+                                stringResource(R.string.oobe_next)
+                        )
+                    }
                 }
             }
         }
@@ -103,15 +116,88 @@ fun OobeScreen(onFinish: () -> Unit) {
         ) { page ->
             when (page) {
                 0 -> WelcomeStep()
-                1 -> PermissionsStep()
-                2 -> AppSetupStep()
-                3 -> CompletionStep(onFinish)
+                1 -> FeatureIntroStep()
+                2 -> PermissionsStep()
+                3 -> AppSetupStep()
+                4 -> CompletionStep(onFinish)
             }
         }
     }
 }
 
+@Composable
+fun FeatureIntroStep() {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(24.dp)
+            .verticalScroll(rememberScrollState()),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Text(
+            text = stringResource(R.string.oobe_step_features),
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.Bold
+        )
+        Spacer(modifier = Modifier.height(32.dp))
+        
+        FeatureItem(
+            icon = R.drawable.ic_music_note, // Placeholder
+            title = stringResource(R.string.oobe_feat_island_title),
+            desc = stringResource(R.string.oobe_feat_island_desc)
+        )
+        Spacer(modifier = Modifier.height(24.dp))
+        FeatureItem(
+            icon = R.drawable.ic_music_note, // Placeholder, usually would use distinct icons
+            title = stringResource(R.string.oobe_feat_source_title),
+            desc = stringResource(R.string.oobe_feat_source_desc)
+        )
+        Spacer(modifier = Modifier.height(24.dp))
+        FeatureItem(
+            icon = R.drawable.ic_music_note, // Placeholder
+            title = stringResource(R.string.oobe_feat_style_title),
+            desc = stringResource(R.string.oobe_feat_style_desc)
+        )
+    }
+}
 
+@Composable
+fun FeatureItem(icon: Int, title: String, desc: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // Icon Box
+        Box(
+            modifier = Modifier
+                .size(56.dp)
+                .clip(RoundedCornerShape(16.dp))
+                .background(MaterialTheme.colorScheme.secondaryContainer),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                painter = painterResource(id = icon),
+                contentDescription = null,
+                modifier = Modifier.size(28.dp),
+                tint = MaterialTheme.colorScheme.onSecondaryContainer
+            )
+        }
+        Spacer(modifier = Modifier.width(16.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                text = desc,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
 
 @Composable
 fun WelcomeStep() {
@@ -152,6 +238,7 @@ fun WelcomeStep() {
             val (color, textRes) = when (systemStatus) {
                 SystemStatus.HyperOsUnsupported -> MaterialTheme.colorScheme.errorContainer to R.string.oobe_warning_hyperos_unsupported
                 SystemStatus.RomUntested -> MaterialTheme.colorScheme.tertiaryContainer to R.string.oobe_warning_rom_untested
+                else -> MaterialTheme.colorScheme.surface to 0 // Should not happen
             }
             
             Card(
@@ -210,13 +297,18 @@ fun PermissionsStep() {
     // Permission States
     var listenerGranted by remember { mutableStateOf(checkNotificationListener(context)) }
     var postGranted by remember { mutableStateOf(checkPostNotification(context)) }
-    var batteryGranted by remember { mutableStateOf(true) } // Battery optimization is hard to check reliably sync, simplified for now
+    var batteryGranted by remember { mutableStateOf(checkBatteryOptimization(context)) }
+    
+    // Autostart Logic
+    val autostartIntent = remember { RomUtils.getAutostartPermissionIntent(context) }
+    val showAutostart = RomUtils.isHeavySkin() && autostartIntent != null
     
     DisposableEffect(lifecycleOwner) {
         val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
             if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
                 listenerGranted = checkNotificationListener(context)
                 postGranted = checkPostNotification(context)
+                batteryGranted = checkBatteryOptimization(context)
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -258,11 +350,27 @@ fun PermissionsStep() {
             )
         }
         
+        // Autostart (High Priority for Heavy Skins)
+        if (showAutostart) {
+            PermissionItem(
+                title = stringResource(R.string.oobe_perm_autostart_title),
+                desc = stringResource(R.string.oobe_perm_autostart_desc),
+                granted = false, // Cannot reliably check, so always allow click
+                buttonText = stringResource(R.string.oobe_btn_grant), // Or "Manage"
+                onClick = {
+                     try {
+                         context.startActivity(autostartIntent)
+                     } catch (e: Exception) {
+                         // Fallback just in case
+                     }
+                }
+            )
+        }
+        
         PermissionItem(
             title = stringResource(R.string.oobe_perm_battery_title),
             desc = stringResource(R.string.oobe_perm_battery_desc),
-            granted = false, // Always allow user to click
-            buttonText = stringResource(R.string.oobe_btn_grant),
+            granted = batteryGranted,
             onClick = {
                 val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
                     data = Uri.parse("package:${context.packageName}")
@@ -299,7 +407,7 @@ fun PermissionItem(
         Spacer(modifier = Modifier.width(8.dp))
         Button(
             onClick = onClick,
-            enabled = !granted || buttonText == stringResource(R.string.oobe_btn_grant), // Allow clicking battery opt even if "granted" logic is vague
+            enabled = !granted || buttonText == stringResource(R.string.oobe_btn_grant), // Allow clicking battery opt/autostart
             colors = if (granted) ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondaryContainer, contentColor = MaterialTheme.colorScheme.onSecondaryContainer) else ButtonDefaults.buttonColors()
         ) {
             Text(text = buttonText)
@@ -466,6 +574,11 @@ fun checkPostNotification(context: Context): Boolean {
         return ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == android.content.pm.PackageManager.PERMISSION_GRANTED
     }
     return true
+}
+
+fun checkBatteryOptimization(context: Context): Boolean {
+    val pm = context.getSystemService(Context.POWER_SERVICE) as android.os.PowerManager
+    return pm.isIgnoringBatteryOptimizations(context.packageName)
 }
 
 private object OobeIcons {

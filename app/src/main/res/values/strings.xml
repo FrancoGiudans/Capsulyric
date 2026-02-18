@@ -232,10 +232,24 @@
     <string name="oobe_step_finish">All Set!</string>
     <string name="oobe_finish_title">Ready to Go</string>
     <string name="oobe_finish_subtitle">Starting "Island Lyrics" service...</string>
-    <string name="oobe_btn_start">Get Started</string>
+    <string name="oobe_finish_start">Get Started</string>
 
     <string name="oobe_next">Next</string>
+    <string name="oobe_back">Back</string>
     <string name="oobe_skip">Skip setup</string>
+
+    <!-- OOBE Feature Intro -->
+    <string name="oobe_step_features">Features</string>
+    <string name="oobe_feat_island_title">Dynamic Island</string>
+    <string name="oobe_feat_island_desc">Lyrics displayed elegantly in the status bar area, inspired by Dynamic Island.</string>
+    <string name="oobe_feat_source_title">Multiple Sources</string>
+    <string name="oobe_feat_source_desc">Support for "Car Bluetooth" lyrics from major music apps, plus online fallback.</string>
+    <string name="oobe_feat_style_title">Customizable</string>
+    <string name="oobe_feat_style_desc">Adjust colors, icons, and behavior to match your style.</string>
+    
+    <!-- OOBE Autostart -->
+    <string name="oobe_perm_autostart_title">Background Autostart (Optional)</string>
+    <string name="oobe_perm_autostart_desc">Required on this device to keep service running.</string>
 
     <!-- Media Control Dialog -->
     <string name="media_control_title">Media Controls</string>
@@ -258,5 +272,6 @@
     <string name="settings_click_action_default_desc">Brings the app to foreground</string>
     <string name="settings_click_action_media">Open Media Controls</string>
     <string name="settings_click_action_media_desc">Shows a popup without opening the app</string>
+    <string name="oobe_btn_start">Start</string>
 
 </resources>

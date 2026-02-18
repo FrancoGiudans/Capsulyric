@@ -144,4 +144,50 @@ object RomUtils {
             return ""
         }
     }
+
+    fun isHeavySkin(): Boolean {
+        val type = getRomType()
+        return type == "HyperOS" || type == "ColorOS" || type == "OriginOS/FuntouchOS" || type == "Flyme" || type == "OneUI"
+    }
+
+    fun getAutostartPermissionIntent(context: android.content.Context): android.content.Intent? {
+        val intent = android.content.Intent()
+        val type = getRomType()
+        
+        try {
+            when (type) {
+                "HyperOS" -> {
+                    intent.component = android.content.ComponentName("com.miui.securitycenter", "com.miui.permcenter.autostart.AutoStartManagementActivity")
+                }
+                "ColorOS", "RealmeUI" -> {
+                    intent.component = android.content.ComponentName("com.coloros.safecenter", "com.coloros.safecenter.permission.startup.StartupAppListActivity")
+                    if (context.packageManager.resolveActivity(intent, 0) == null) {
+                         intent.component = android.content.ComponentName("com.oppo.safe", "com.oppo.safe.permission.startup.StartupAppListActivity")
+                    }
+                }
+                "OriginOS/FuntouchOS" -> {
+                    intent.component = android.content.ComponentName("com.vivo.permissionmanager", "com.vivo.permissionmanager.activity.BgStartUpManagerActivity")
+                }
+                "Flyme" -> {
+                     intent.component = android.content.ComponentName("com.meizu.safe", "com.meizu.safe.security.SHOW_APPSEC")
+                     intent.addCategory(android.content.Intent.CATEGORY_DEFAULT)
+                     intent.putExtra("packageName", context.packageName)
+                }
+                "OneUI" -> {
+                    // Samsung usually doesn't have a direct "Autostart" activity accessible, 
+                    // but "Battery > Background usage limits" is close.
+                    // For now, return null to avoid confusion, or link to Battery optimization
+                    return null 
+                }
+                else -> return null
+            }
+            
+            if (context.packageManager.resolveActivity(intent, 0) != null) {
+                return intent
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+        return null
+    }
 }

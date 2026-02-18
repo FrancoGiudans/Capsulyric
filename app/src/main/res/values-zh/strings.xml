@@ -227,10 +227,25 @@
     <string name="oobe_step_finish">进入应用</string>
     <string name="oobe_finish_title">一切准备就绪</string>
     <string name="oobe_finish_subtitle">正在启动“灵动歌词”服务...</string>
-    <string name="oobe_btn_start">开始使用</string>
+    <string name="oobe_finish_start">开启旅程</string>
+    <string name="oobe_btn_start">下一步</string>
 
     <string name="oobe_next">下一步</string>
+    <string name="oobe_back">上一步</string>
     <string name="oobe_skip">跳过设置</string>
+
+    <!-- OOBE Feature Intro -->
+    <string name="oobe_step_features">功能介绍</string>
+    <string name="oobe_feat_island_title">灵动岛体验</string>
+    <string name="oobe_feat_island_desc">灵感源自 Dynamic Island，在状态栏优雅地展示歌词。</string>
+    <string name="oobe_feat_source_title">多源支持</string>
+    <string name="oobe_feat_source_desc">支持主流音乐App的“车载/蓝牙歌词”，并提供在线歌词作为候补。</string>
+    <string name="oobe_feat_style_title">高度定制</string>
+    <string name="oobe_feat_style_desc">自定义颜色、图标和行为，打造属于你的歌词体验。</string>
+    
+    <!-- OOBE Autostart -->
+    <string name="oobe_perm_autostart_title">后台自启动（可选）</string>
+    <string name="oobe_perm_autostart_desc">可确保持续运行。</string>
     <string name="action_pause">暂停</string>
     <string name="action_next">下一首</string>
     <string name="media_control_title">媒体控制</string>
