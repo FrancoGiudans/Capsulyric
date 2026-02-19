@@ -245,8 +245,11 @@ fun NotificationPreview(
                 
                 Spacer(modifier = Modifier.width(8.dp))
                 
+                val pm = context.packageManager
+                val appName = remember { context.applicationInfo.loadLabel(pm).toString() }
+                
                 Text(
-                    text = "Capsulyric Debug • $sourceApp • now",
+                    text = "$appName • $sourceApp • now",
                     color = Color.Gray,
                     fontSize = 12.sp,
                     maxLines = 1
