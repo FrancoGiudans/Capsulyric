@@ -300,8 +300,6 @@ fun MainScreen(
                         onClick = onOpenDebug,
                         modifier = Modifier.weight(1f)
                     )
-                } else {
-                    Spacer(modifier = Modifier.weight(1f))
                 }
             }
         }
