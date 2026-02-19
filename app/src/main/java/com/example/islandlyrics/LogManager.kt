@@ -320,6 +320,13 @@ class LogManager private constructor() {
     private fun getDeviceInfo(context: Context): String {
         val sb = StringBuilder()
         sb.append("=== Device Information ===\n")
+        try {
+            val pInfo = context.packageManager.getPackageInfo(context.packageName, 0)
+            sb.append("App Version: ${pInfo.versionName} (${if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) pInfo.longVersionCode else pInfo.versionCode})\n")
+            sb.append("Commit Hash: ${BuildConfig.GIT_COMMIT_HASH}\n")
+        } catch (e: Exception) {
+            sb.append("App Version: Unknown\n")
+        }
         sb.append("Manufacturer: ${android.os.Build.MANUFACTURER}\n")
         sb.append("Model: ${android.os.Build.MODEL}\n")
         sb.append("Device: ${android.os.Build.DEVICE}\n")
