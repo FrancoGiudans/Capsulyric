@@ -10,6 +10,8 @@ import android.media.session.PlaybackState
 import android.os.Handler
 import android.os.Looper
 import android.widget.Toast
+import androidx.compose.animation.*
+import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -88,16 +90,36 @@ fun MediaControlDialog(onDismiss: () -> Unit) {
     val repoLyric by repo.liveLyric.observeAsState()
     val repoProgress by repo.liveProgress.observeAsState()
 
-    androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
-        Surface(
-            shape = RoundedCornerShape(24.dp), // Slightly smaller corner than card to nest nicely
-            color = MaterialTheme.colorScheme.surface,
-            tonalElevation = 6.dp,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 24.dp) // Reduce vertical size usage
-                .wrapContentHeight() // Hug content
+    // Transition State for Enter/Exit animations
+    val visibleState = remember { MutableTransitionState(true) }
+
+    // Handle dismissal with animation
+    val triggerDismiss = {
+        visibleState.targetState = false
+    }
+
+    // Actual dismiss when animation finishes (i.e. both states are false)
+    if (!visibleState.targetState && !visibleState.currentState) {
+        LaunchedEffect(Unit) {
+            onDismiss()
+        }
+    }
+
+    androidx.compose.ui.window.Dialog(onDismissRequest = triggerDismiss) {
+        AnimatedVisibility(
+            visibleState = visibleState,
+            enter = EnterTransition.None,
+            exit = scaleOut() + fadeOut()
         ) {
+            Surface(
+                shape = RoundedCornerShape(24.dp), 
+                color = MaterialTheme.colorScheme.surface,
+                tonalElevation = 6.dp,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 24.dp) 
+                    .wrapContentHeight() 
+            ) {
             Column(
                 modifier = Modifier.padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -121,31 +143,32 @@ fun MediaControlDialog(onDismiss: () -> Unit) {
                                 )
                                 intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
                                 context.startActivity(intent)
-                                onDismiss() 
-                            } catch (e: Exception) {
-                                Toast.makeText(context, context.getString(R.string.media_control_miplay_failed, e.message), Toast.LENGTH_SHORT).show()
+                                    context.startActivity(intent)
+                                    triggerDismiss() 
+                                } catch (e: Exception) {
+                                    Toast.makeText(context, context.getString(R.string.media_control_miplay_failed, e.message), Toast.LENGTH_SHORT).show()
+                                }
+                            }) {
+                                Icon(
+                                    painter = painterResource(R.drawable.ic_miplay),
+                                    contentDescription = "Mi Play",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
                             }
+                        }
+                    
+                        // Small info icon for status
+                        IconButton(onClick = { 
+                             Toast.makeText(context, "$statusMessage (Whitelisted: ${whitelistedControllers.size})", Toast.LENGTH_SHORT).show()
                         }) {
                             Icon(
-                                painter = painterResource(R.drawable.ic_miplay),
-                                contentDescription = "Mi Play",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                painter = painterResource(R.drawable.ic_info),
+                                contentDescription = "Status",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(20.dp)
                             )
                         }
                     }
-                
-                    // Small info icon for status
-                    IconButton(onClick = { 
-                         Toast.makeText(context, "$statusMessage (Whitelisted: ${whitelistedControllers.size})", Toast.LENGTH_SHORT).show()
-                    }) {
-                        Icon(
-                            painter = painterResource(R.drawable.ic_info),
-                            contentDescription = "Status",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-                }
 
                 if (whitelistedControllers.isNotEmpty()) {
                     val pagerState = androidx.compose.foundation.pager.rememberPagerState(pageCount = { whitelistedControllers.size })
@@ -194,7 +217,7 @@ fun MediaControlDialog(onDismiss: () -> Unit) {
                 
                 // Close Button - Full Width Outlined Button
                 OutlinedButton(
-                    onClick = onDismiss,
+                    onClick = triggerDismiss,
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(stringResource(R.string.media_control_close))
@@ -202,6 +225,7 @@ fun MediaControlDialog(onDismiss: () -> Unit) {
             }
         }
     }
+}
 }
 
 @Composable
