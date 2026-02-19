@@ -90,9 +90,20 @@ class LyricService : Service() {
         }
     }
     
+    // Delayed Stop Logic
+    private val delayedStopRunnable = Runnable {
+        if (capsuleHandler?.isRunning() == true) {
+            capsuleHandler?.stop()
+            AppLogger.getInstance().log(TAG, "🛑 Capsule stopped: Playback stopped (Delayed)")
+        }
+    }
+
     // NEW: Playback state observer - controls capsule lifecycle
     private val playbackObserver = Observer<Boolean> { playing ->
         if (playing) {
+            // Cancel any pending stop
+            handler.removeCallbacks(delayedStopRunnable)
+
             // Resume/Start capsule if we have valid lyrics
             val currentLyric = LyricRepository.getInstance().liveLyric.value
             if (currentLyric != null && currentLyric.lyric.isNotBlank() && capsuleHandler?.isRunning() != true) {
@@ -105,19 +116,36 @@ class LyricService : Service() {
             // Start progress tracking (merged from second observer)
             startProgressUpdater()
         } else {
-            // Stop capsule ONLY when playback actually stops
-            if (capsuleHandler?.isRunning() == true) {
-                capsuleHandler?.stop()
-                AppLogger.getInstance().log(TAG, "🛑 Capsule stopped: Playback stopped")
-            }
             // Stop progress tracking (merged from second observer)
             stopProgressUpdater()
+            
+            // Debounce: Cancel pending stop to restart timer if we get multiple 'false' events
+            handler.removeCallbacks(delayedStopRunnable)
+
+            // Get delay preference
+            val prefs = getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE)
+            val delay = prefs.getLong("notification_dismiss_delay", 0L)
+            
+            AppLogger.getInstance().log(TAG, "🛑 Playback stopped. Delay=$delay ms")
+
+            if (delay > 0) {
+                 AppLogger.getInstance().log(TAG, "⏳ Scheduling capsule stop in ${delay}ms")
+                 handler.postDelayed(delayedStopRunnable, delay)
+            } else {
+                 // Immediate stop
+                 if (capsuleHandler?.isRunning() == true) {
+                    capsuleHandler?.stop()
+                    AppLogger.getInstance().log(TAG, "🛑 Capsule stopped immediately (Delay=0)")
+                 }
+            }
         }
     }
 
     private val superLyricStub = object : ISuperLyric.Stub() {
         override fun onStop(data: SuperLyricData?) {
-            AppLogger.getInstance().d(TAG, "API onStop: ${data?.packageName}")
+            if (BuildConfig.DEBUG) {
+                AppLogger.getInstance().d(TAG, "API onStop: ${data?.packageName}")
+            }
             LyricRepository.getInstance().updatePlaybackStatus(false)
             
             // CRITICAL FIX: Don't stop capsule here - let playback state observer control lifecycle
@@ -126,6 +154,10 @@ class LyricService : Service() {
         }
 
         override fun onSuperLyric(data: SuperLyricData?) {
+            if (BuildConfig.DEBUG) {
+                AppLogger.getInstance().d(TAG, "API onSuperLyric received: ${data?.lyric?.take(50)}")
+            }
+
             if (data != null) {
                 val pkg = data.packageName
                 val lyric = data.lyric
@@ -135,20 +167,27 @@ class LyricService : Service() {
                            ?: ParserRuleHelper.createDefaultRule(pkg)
 
                 if (!rule.useSuperLyricApi) {
-                    AppLogger.getInstance().log(TAG, "[$pkg] SuperLyric API disabled for this app")
+                    if (BuildConfig.DEBUG) {
+                        AppLogger.getInstance().d(TAG, "[$pkg] SuperLyric API disabled for this app")
+                    }
                     // Don't fetch here - metadata observer already handles it for non-CarProtocol apps
                     return
                 }
 
                 // Instrumental Filter
                 if (lyric.matches(".*(纯音乐|Instrumental|No lyrics|请欣赏|没有歌词).*".toRegex())) {
-                    AppLogger.getInstance().d(TAG, "Instrumental detected: $lyric")
+                    if (BuildConfig.DEBUG) {
+                        AppLogger.getInstance().d(TAG, "Instrumental detected: $lyric")
+                    }
                     @Suppress("DEPRECATION")
                     stopForeground(true)
                     return
                 }
 
                 if (lyric == lastLyric) {
+                    if (BuildConfig.DEBUG) {
+                        AppLogger.getInstance().d(TAG, "Duplicate lyric ignored")
+                    }
                     return
                 }
                 lastLyric = lyric
@@ -160,8 +199,14 @@ class LyricService : Service() {
                 
                 // If online lyrics enabled for this app AND SuperLyric doesn't provide syllable info
                 if (rule.useOnlineLyrics && !lyric.contains("<")) {
-                    AppLogger.getInstance().log(TAG, "[$pkg] SuperLyric无逐字信息，尝试在线获取")
+                    if (BuildConfig.DEBUG) {
+                        AppLogger.getInstance().d(TAG, "[$pkg] SuperLyric无逐字信息，尝试在线获取")
+                    }
                     tryFetchOnlineLyrics()
+                }
+            } else {
+                if (BuildConfig.DEBUG) {
+                    AppLogger.getInstance().d(TAG, "API onSuperLyric received NULL data")
                 }
             }
         }
@@ -254,7 +299,9 @@ class LyricService : Service() {
         
         // Always register SuperLyric for detection (check per-app settings in callback)
         SuperLyricTool.registerSuperLyric(this, superLyricStub)
-        AppLogger.getInstance().log(TAG, "SuperLyric API: Registered for detection")
+        if (BuildConfig.DEBUG) {
+            AppLogger.getInstance().d(TAG, "SuperLyric API: Registered for detection")
+        }
 
         // Observe Repository
         val repo = LyricRepository.getInstance()
@@ -356,6 +403,9 @@ class LyricService : Service() {
         val useSuperLyricApi = prefs.getBoolean("use_superlyric_api", true)
         if (useSuperLyricApi) {
             SuperLyricTool.unregisterSuperLyric(this, superLyricStub)
+            if (BuildConfig.DEBUG) {
+                AppLogger.getInstance().d(TAG, "SuperLyric API: Unregistered")
+            }
         }
         
         LyricRepository.getInstance().liveLyric.removeObserver(lyricObserver)
@@ -798,11 +848,24 @@ class LyricService : Service() {
             val component = android.content.ComponentName(this, MediaMonitorService::class.java)
             val controllers = mm.getActiveSessions(component)
             
+            // [Fix Task 2] Strict Controller Matching
+            // Prioritize the controller that matches the currently displayed metadata
+            val currentMetadata = LyricRepository.getInstance().liveMetadata.value
+            val targetPackage = currentMetadata?.packageName
+
             var activeController: android.media.session.MediaController? = null
-            for (c in controllers) {
-                if (c.playbackState != null && c.playbackState?.state == PlaybackState.STATE_PLAYING) {
-                    activeController = c
-                    break
+
+            if (targetPackage != null) {
+                // strict match
+                activeController = controllers.firstOrNull { it.packageName == targetPackage }
+                
+                if (activeController == null && shouldLog) {
+                    AppLogger.getInstance().d(TAG, "⚠️ Target package '$targetPackage' has no active controller session")
+                }
+            } else {
+                // Fallback: No metadata? Use first playing (Legacy)
+                 activeController = controllers.firstOrNull {
+                    it.playbackState != null && it.playbackState?.state == PlaybackState.STATE_PLAYING
                 }
             }
 
@@ -818,7 +881,14 @@ class LyricService : Service() {
                      val lastUpdateTimeVal = state.lastPositionUpdateTime
                      val speed = state.playbackSpeed
                      
-                     var currentPos = lastPosition + ((android.os.SystemClock.elapsedRealtime() - lastUpdateTimeVal) * speed).toLong()
+                     // Verify state freshness - if last update was too long ago (> 1 sec) and we are playing, 
+                     // we might extrapolate only if state is genuinely playing.
+                     
+                     var currentPos = lastPosition
+                     if (state.state == PlaybackState.STATE_PLAYING) {
+                        val timeDelta = android.os.SystemClock.elapsedRealtime() - lastUpdateTimeVal
+                        currentPos += (timeDelta * speed).toLong()
+                     }
 
                      if (duration > 0 && currentPos > duration) currentPos = duration
                      if (currentPos < 0) currentPos = 0
@@ -827,7 +897,7 @@ class LyricService : Service() {
 
                      // Update Repository with progress
                      if (shouldLog) {
-                        AppLogger.getInstance().log(TAG, "📍 Progress: ${currentPos}ms / ${duration}ms")
+                        AppLogger.getInstance().log(TAG, "📍 Progress [${activeController.packageName}]: ${currentPos}ms / ${duration}ms")
                      }
                      LyricRepository.getInstance().updateProgress(currentPos, duration)
                      
@@ -837,7 +907,7 @@ class LyricService : Service() {
             } else {
                 // No active MediaController found
                 if (shouldLog) {
-                    AppLogger.getInstance().log(TAG, "⚠️ No active MediaController found")
+                    AppLogger.getInstance().log(TAG, "⚠️ No matching active MediaController found")
                 }
             }
         } catch (e: Exception) {
@@ -852,6 +922,15 @@ class LyricService : Service() {
         // Return cached name if available
         appNameCache[pkg]?.let { return it }
         
+        // 1. Check for Custom Name rule first
+        val rule = ParserRuleHelper.getRuleForPackage(this, pkg)
+        if (rule?.customName != null && rule.customName.isNotBlank()) {
+            val customName = rule.customName
+            appNameCache[pkg] = customName
+            return customName
+        }
+
+        // 2. Fallback to System Label
         return try {
             val pm = packageManager
             val info = pm.getApplicationInfo(pkg, 0)

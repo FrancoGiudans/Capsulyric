@@ -74,6 +74,13 @@ class LyricRepository private constructor() {
         liveMetadata.postValue(MediaInfo(title, artist, packageName, duration))
     }
 
+    // Raw metadata for "Add Rule" suggestion (bypasses whitelist check in UI)
+    val liveSuggestionMetadata = MutableLiveData<MediaInfo?>()
+
+    fun updateSuggestionMetadata(title: String, artist: String, packageName: String, duration: Long) {
+        liveSuggestionMetadata.postValue(MediaInfo(title, artist, packageName, duration))
+    }
+
     fun updateProgress(position: Long, duration: Long) {
         liveProgress.postValue(PlaybackProgress(position, duration))
     }
@@ -92,6 +99,13 @@ class LyricRepository private constructor() {
         liveCurrentLine.postValue(line)
     }
 
+    // Diagnostics
+    val liveDiagnostics = MutableLiveData<ServiceDiagnostics>()
+
+    fun updateDiagnostics(diag: ServiceDiagnostics) {
+        liveDiagnostics.postValue(diag)
+    }
+
     companion object {
         private var instance: LyricRepository? = null
 
@@ -104,3 +118,13 @@ class LyricRepository private constructor() {
         }
     }
 }
+
+data class ServiceDiagnostics(
+    val isConnected: Boolean = false,
+    val totalControllers: Int = 0,
+    val whitelistedControllers: Int = 0,
+    val primaryPackage: String = "None",
+    val whitelistSize: Int = 0,
+    val lastUpdateParams: String = "",
+    val timestamp: Long = System.currentTimeMillis()
+)

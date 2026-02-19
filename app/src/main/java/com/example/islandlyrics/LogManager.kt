@@ -15,6 +15,7 @@ import java.util.regex.Pattern
 
 class LogManager private constructor() {
 
+    private var logHandler: android.os.Handler? = null
     private var logFile: File? = null
     private val isDebug = BuildConfig.DEBUG
 
@@ -23,124 +24,144 @@ class LogManager private constructor() {
     private fun init(context: Context) {
         if (logFile == null) {
             logFile = File(context.filesDir, FILE_NAME)
-            cleanOldLogs(context)
+            
+            // Initialize background thread for file I/O
+            val thread = android.os.HandlerThread("LogWorker")
+            thread.start()
+            logHandler = android.os.Handler(thread.looper)
+            
+            // cleanup on background thread
+            logHandler?.post {
+                cleanOldLogs(context)
+            }
         }
     }
 
     private fun cleanOldLogs(context: Context) {
-        Thread {
-            try {
-                val prefs = context.getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE)
-                val lastCleanup = prefs.getLong("last_log_cleanup_time", 0)
-                val now = System.currentTimeMillis()
+        try {
+            val prefs = context.getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE)
+            val lastCleanup = prefs.getLong("last_log_cleanup_time", 0)
+            val now = System.currentTimeMillis()
 
-                // Run once every 24 hours
-                if (now - lastCleanup < 24 * 60 * 60 * 1000) {
-                    return@Thread
-                }
+            // Run once every 24 hours
+            if (now - lastCleanup < 24 * 60 * 60 * 1000) {
+                return
+            }
 
-                // Update cleanup time immediately to prevent multiple runs
-                prefs.edit().putLong("last_log_cleanup_time", now).apply()
+            // Update cleanup time immediately
+            prefs.edit().putLong("last_log_cleanup_time", now).apply()
 
-                if (logFile == null || !logFile!!.exists()) return@Thread
+            if (logFile == null || !logFile!!.exists()) return
 
-                val cutoffTime = now - 48 * 60 * 60 * 1000 // 48 hours ago
-                val tempFile = File(context.filesDir, "app_log.tmp")
-                val writer = java.io.BufferedWriter(java.io.FileWriter(tempFile))
-                val reader = java.io.BufferedReader(java.io.FileReader(logFile!!))
+            val cutoffTime = now - 48 * 60 * 60 * 1000 // 48 hours ago
+            val tempFile = File(context.filesDir, "app_log.tmp")
+            val writer = java.io.BufferedWriter(java.io.FileWriter(tempFile))
+            val reader = java.io.BufferedReader(java.io.FileReader(logFile!!))
 
-                var keepCurrentEntry = false
-                var line: String? = reader.readLine()
-                
-                while (line != null) {
-                    val matcher = LOG_PATTERN.matcher(line)
-                    if (matcher.find()) {
-                        // New Log Entry
-                        val dateStr = matcher.group(1)
-                        if (dateStr != null) {
-                            try {
-                                val date = DATE_FORMAT.parse(dateStr)
-                                if (date != null && date.time >= cutoffTime) {
-                                    keepCurrentEntry = true
-                                    writer.write(line)
-                                    writer.newLine()
-                                } else {
-                                    keepCurrentEntry = false
-                                }
-                            } catch (e: Exception) {
-                                // Date parse error, keep safely if we kept previous
-                                if (keepCurrentEntry) {
-                                    writer.write(line)
-                                    writer.newLine()
-                                }
+            var keepCurrentEntry = false
+            var line: String? = reader.readLine()
+            
+            while (line != null) {
+                val matcher = LOG_PATTERN.matcher(line)
+                if (matcher.find()) {
+                    // New Log Entry
+                    val dateStr = matcher.group(1)
+                    if (dateStr != null) {
+                        try {
+                            val date = DATE_FORMAT.parse(dateStr)
+                            if (date != null && date.time >= cutoffTime) {
+                                keepCurrentEntry = true
+                                writer.write(line)
+                                writer.newLine()
+                            } else {
+                                keepCurrentEntry = false
+                            }
+                        } catch (e: Exception) {
+                            // Date parse error, keep safely if we kept previous
+                            if (keepCurrentEntry) {
+                                writer.write(line)
+                                writer.newLine()
                             }
                         }
-                    } else {
-                        // Continuation line (stack trace etc)
-                        if (keepCurrentEntry) {
-                            writer.write(line)
-                            writer.newLine()
-                        }
                     }
-                    line = reader.readLine()
-                }
-
-                reader.close()
-                writer.close()
-
-                if (logFile!!.delete()) {
-                    tempFile.renameTo(logFile!!)
                 } else {
-                    tempFile.delete()
+                    // Continuation line (stack trace etc)
+                    if (keepCurrentEntry) {
+                        writer.write(line)
+                        writer.newLine()
+                    }
                 }
-                
-                Log.d("LogManager", "Log cleanup completed. Retained logs < 48h.")
-
-            } catch (e: Exception) {
-                Log.e("LogManager", "Failed to clean logs: ${e.message}")
+                line = reader.readLine()
             }
-        }.start()
+
+            reader.close()
+            writer.close()
+
+            if (logFile!!.delete()) {
+                tempFile.renameTo(logFile!!)
+            } else {
+                tempFile.delete()
+            }
+            
+            Log.d("LogManager", "Log cleanup completed. Retained logs < 48h.")
+
+        } catch (e: Exception) {
+            Log.e("LogManager", "Failed to clean logs: ${e.message}")
+        }
     }
 
     @Synchronized
     fun d(context: Context, tag: String, msg: String) {
         if (!isDebug) return
         init(context)
-        val logLine = String.format("%s D/%s: %s", DATE_FORMAT.format(Date()), tag, msg)
         Log.d(tag, msg)
-        appendToFile(logLine)
+        
+        val logLine = String.format("%s D/%s: %s", DATE_FORMAT.format(Date()), tag, msg)
+        logHandler?.post {
+            appendToFile(logLine)
+        }
     }
 
     @Synchronized
     fun e(context: Context, tag: String, msg: String) {
         // ERROR level always writes, even in release (for crash tracking)
         init(context)
-        val logLine = String.format("%s E/%s: %s", DATE_FORMAT.format(Date()), tag, msg)
         Log.e(tag, msg)
-        appendToFile(logLine)
+        
+        val logLine = String.format("%s E/%s: %s", DATE_FORMAT.format(Date()), tag, msg)
+        logHandler?.post {
+            appendToFile(logLine)
+        }
     }
 
     @Synchronized
     fun w(context: Context, tag: String, msg: String) {
         if (!isDebug) return
         init(context)
-        val logLine = String.format("%s W/%s: %s", DATE_FORMAT.format(Date()), tag, msg)
         Log.w(tag, msg)
-        appendToFile(logLine)
+        
+        val logLine = String.format("%s W/%s: %s", DATE_FORMAT.format(Date()), tag, msg)
+        logHandler?.post {
+            appendToFile(logLine)
+        }
     }
 
     @Synchronized
     fun i(context: Context, tag: String, msg: String) {
         if (!isDebug) return
         init(context)
-        val logLine = String.format("%s I/%s: %s", DATE_FORMAT.format(Date()), tag, msg)
         Log.i(tag, msg)
-        appendToFile(logLine)
+        
+        val logLine = String.format("%s I/%s: %s", DATE_FORMAT.format(Date()), tag, msg)
+        logHandler?.post {
+            appendToFile(logLine)
+        }
     }
 
     private fun appendToFile(line: String) {
         if (logFile == null) return
         try {
+            // This now runs on the background thread
             FileWriter(logFile, true).use { fw ->
                 fw.append(line).append("\n")
             }
@@ -213,6 +234,159 @@ class LogManager private constructor() {
                 instance = LogManager()
             }
             return instance!!
+        }
+    }
+
+    fun exportLog(context: Context, timeRangeMs: Long = -1) {
+        init(context)
+        if (logFile == null || logFile?.exists() == false) return
+
+        Thread {
+            try {
+                // 1. Filter Logs
+                val filteredLogs = if (timeRangeMs > 0) {
+                    val cutoff = System.currentTimeMillis() - timeRangeMs
+                    val sb = StringBuilder()
+                    try {
+                        BufferedReader(FileReader(logFile)).use { br ->
+                            var line: String?
+                            var includeEntry = false
+                            while (br.readLine().also { line = it } != null) {
+                                val matcher = LOG_PATTERN.matcher(line ?: "")
+                                if (matcher.find()) {
+                                    val dateStr = matcher.group(1)
+                                    val date = DATE_FORMAT.parse(dateStr ?: "")
+                                    if (date != null && date.time >= cutoff) {
+                                        includeEntry = true
+                                        sb.append(line).append("\n")
+                                    } else {
+                                        includeEntry = false
+                                    }
+                                } else if (includeEntry) {
+                                    sb.append(line).append("\n")
+                                }
+                            }
+                        }
+                    } catch (e: Exception) {
+                        sb.append("Error filtering logs: ${e.message}\n")
+                    }
+                    sb.toString()
+                } else {
+                    logFile?.readText() ?: ""
+                }
+
+                // 2. Generate Device Info
+                val deviceInfo = getDeviceInfo(context)
+
+                // 3. Create ZIP
+                val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
+                val zipFileName = "Log_Export_$timestamp.zip"
+                val zipFile = File(context.cacheDir, zipFileName)
+
+                java.util.zip.ZipOutputStream(java.io.FileOutputStream(zipFile)).use { zos ->
+                    // Add Log File
+                    val logEntry = java.util.zip.ZipEntry("app_log.txt")
+                    zos.putNextEntry(logEntry)
+                    zos.write(filteredLogs.toByteArray())
+                    zos.closeEntry()
+
+                    // Add Device Info
+                    val deviceEntry = java.util.zip.ZipEntry("device_info.txt")
+                    zos.putNextEntry(deviceEntry)
+                    zos.write(deviceInfo.toByteArray())
+                    zos.closeEntry()
+                }
+
+                // 4. Share
+                val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", zipFile)
+                val intent = Intent(Intent.ACTION_SEND)
+                intent.type = "application/zip"
+                intent.putExtra(Intent.EXTRA_STREAM, uri)
+                intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+
+                val chooser = Intent.createChooser(intent, "Export Logs")
+                chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                context.startActivity(chooser)
+
+            } catch (e: Exception) {
+                e.printStackTrace()
+                logHandler?.post {
+                    android.widget.Toast.makeText(context, "Export failed: ${e.message}", android.widget.Toast.LENGTH_SHORT).show()
+                }
+            }
+        }.start()
+    }
+
+    private fun getDeviceInfo(context: Context): String {
+        val sb = StringBuilder()
+        sb.append("=== Device Information ===\n")
+        try {
+            val pInfo = context.packageManager.getPackageInfo(context.packageName, 0)
+            sb.append("App Version: ${pInfo.versionName} (${if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) pInfo.longVersionCode else pInfo.versionCode})\n")
+            sb.append("Commit Hash: ${BuildConfig.GIT_COMMIT_HASH}\n")
+        } catch (e: Exception) {
+            sb.append("App Version: Unknown\n")
+        }
+        sb.append("Manufacturer: ${android.os.Build.MANUFACTURER}\n")
+        sb.append("Model: ${android.os.Build.MODEL}\n")
+        sb.append("Device: ${android.os.Build.DEVICE}\n")
+        sb.append("Product: ${android.os.Build.PRODUCT}\n")
+        sb.append("Brand: ${android.os.Build.BRAND}\n")
+        sb.append("Android Version: ${android.os.Build.VERSION.RELEASE} (SDK ${android.os.Build.VERSION.SDK_INT})\n")
+        sb.append("Build ID: ${android.os.Build.DISPLAY}\n")
+        sb.append("Hardware: ${android.os.Build.HARDWARE}\n")
+        sb.append("Fingerprint: ${android.os.Build.FINGERPRINT}\n")
+        sb.append("\n")
+        
+        // ROM Utils
+        sb.append("=== ROM Information ===\n")
+        sb.append("ROM Name: ${RomUtils.getRomInfo()}\n")
+        sb.append("ROM Type: ${RomUtils.getRomType()}\n")
+        sb.append("Is Heavy Skin: ${RomUtils.isHeavySkin()}\n")
+        sb.append("\n")
+
+        // Settings (Simple check of some shared prefs if possible, or just skip for now as per user request to include setting status)
+        // Since we are in LogManager, properly accessing all settings might be invasive, but we can dump SharedPreferences
+        sb.append("=== App Settings ===\n")
+        try {
+            val prefs = context.getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE)
+            val allEntries = prefs.all
+            for ((key, value) in allEntries) {
+                 sb.append("$key: $value\n")
+            }
+        } catch (e: Exception) {
+             sb.append("Could not read settings: ${e.message}\n")
+        }
+        
+        return sb.toString()
+    }
+
+    fun saveLogToDownloads(context: Context, content: String, filename: String): android.net.Uri? {
+        val contentValues = android.content.ContentValues().apply {
+            put(android.provider.MediaStore.MediaColumns.DISPLAY_NAME, filename)
+            put(android.provider.MediaStore.MediaColumns.MIME_TYPE, "text/plain")
+            put(android.provider.MediaStore.MediaColumns.RELATIVE_PATH, android.os.Environment.DIRECTORY_DOWNLOADS)
+        }
+
+        val resolver = context.contentResolver
+        val uri = resolver.insert(android.provider.MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues)
+
+        return if (uri != null) {
+            try {
+                resolver.openOutputStream(uri)?.use { outputStream ->
+                    outputStream.write(content.toByteArray())
+                }
+                uri
+            } catch (e: Exception) {
+                e.printStackTrace()
+                // If writing fails, try to delete the empty file
+                try {
+                    resolver.delete(uri, null, null)
+                } catch (ignored: Exception) {}
+                null
+            }
+        } else {
+            null
         }
     }
 }

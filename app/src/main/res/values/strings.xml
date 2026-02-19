@@ -57,10 +57,19 @@
     <string name="settings_general_battery">Ignore Battery Optimization</string>
     <string name="settings_about_header">About</string>
     <string name="settings_about_github">GitHub Repository</string>
+    <string name="title_app_settings">App Settings</string>
+    <string name="title_parser_whitelist_manager">Parser Whitelist Management</string>
     <string name="settings_console_log">Log Console</string>
     <string name="settings_general_header">General</string>
-    <string name="settings_service_header">Service</string>
-    <string name="settings_service_enable">Enable Service</string>
+    <string name="settings_core_services_header">Core Services</string>
+    <string name="settings_personalization_header">Personalization</string>
+    <string name="page_title_personalization">Personalization Settings</string>
+    <string name="tab_capsule">Capsule</string>
+    <string name="tab_notification">Notification</string>
+    <string name="tab_app_ui">App UI</string>
+    <string name="settings_recommend_media_app">Recommend current media app</string>
+    <string name="settings_recommend_media_app_desc">Automatically recommend the current media app when entering rule settings</string>
+    <string name="settings_help_about_header">Help &amp; About</string>
     <string name="settings_dynamic_icon">Dynamic Metadata Icon (Experimental)</string>
     <string name="settings_dynamic_icon_desc">Show "Song - Artist" as notification icon (HyperOS/MIUI)</string>
     
@@ -139,7 +148,7 @@
     <string name="faq_title">FAQ</string>
     <string name="faq_cat_guide">Setup Guide</string>
     <string name="faq_q_guide">Q: How do I set up the no-Root (0-Hook) mode?</string>
-    <string name="faq_a_guide">A: This mode uses \'Bluetooth Car Lyric\' protocol.\n\n1. Supports <b>QQ Music</b>, <b>Xiaomi Music</b> and <b>NetEase Music</b>.\n2. NetEase: Enable \'Car Bluetooth Lyric\' in Settings -> Tools.\n3. QQ Music: Enable \'Car Bluetooth Lyric\' in QPlay Settings.\n4. Grant \'Notification Access\' to this app.</string>
+    <string name="faq_a_guide">A: This mode uses \'Bluetooth Car Lyric\' protocol.\n\n1. Supports <b>QQ Music</b>, <b>Xiaomi Music</b> and <b>NetEase Music</b>.\n\n<b>NetEase Music:</b>\n1. Connect a Bluetooth audio device first.\n2. Go to <b>Menu (Top Left)</b> -> <b>Settings</b> -> <b>General</b>.\n3. Find and enable <b>External Device Bluetooth Lyrics</b>.\n\n<b>QQ Music:</b>\n1. Connect a Bluetooth audio device first.\n2. Go to <b>Me</b> -> <b>Menu (Top Right 3-lines)</b> -> <b>Settings</b>.\n3. Find and enable <b>Car Bluetooth Lyrics</b>.\n\nGrant \'Notification Access\' to this app.</string>
     <string name="faq_cat_func">Functionality Issues</string>
     <string name="faq_q_no_lyrics">Q: Why can\'t I see lyrics?</string>
     <string name="faq_a_no_lyrics">A: Please check the following steps:\n\n
@@ -187,5 +196,89 @@
     <string name="settings_action_style_miplay_desc">Launch Xiaomi MiPlay panel</string>
     <string name="settings_progress_color">Colorize Progress Bar</string>
     <string name="settings_progress_color_desc">Extract album art color for notification progress bar</string>
+    <string name="settings_dismiss_delay_title">Dismiss Delay</string>
+    <string name="settings_dismiss_delay_desc">Delay before hiding notification after playback stops</string>
+    <string name="dismiss_delay_immediate">Immediately</string>
+    <string name="dismiss_delay_1s">1 Second</string>
+    <string name="dismiss_delay_3s">3 Seconds</string>
+    <string name="dismiss_delay_5s">5 Seconds</string>
+    <string name="dialog_dismiss_delay_title">Select Dismiss Delay</string>
+
+    <!-- OOBE -->
+    <string name="oobe_welcome_title">Welcome to Capsulyric</string>
+    <string name="oobe_welcome_subtitle">Based on Live Update. Experience dynamic lyrics in your status bar.</string>
+    <string name="oobe_warning_hyperos_unsupported">⚠️ System Not Supported Your HyperOS version is less than 3.0.300. The dynamic notifications feature requires HyperOS 3.0.300+ to function properly.</string>
+    <string name="oobe_warning_rom_untested">⚠️ Compatibility Warning This system have not been fully tested and may experience instability or missing features.</string>
+    <string name="oobe_privacy_notice">🔒 Privacy First\nThis app runs entirely locally. Internet access is ONLY used if you explicitly enable "Online Lyrics". We never collect or transmit your personal data.</string>
+    
+    <string name="oobe_step_permissions">Permissions</string>
+    <string name="oobe_perm_listener_title">Notification Listener</string>
+    <string name="oobe_perm_listener_desc">Required to read lyrics from music apps.</string>
+    <string name="oobe_perm_post_title">Post Notifications</string>
+    <string name="oobe_perm_post_desc">Required to display the lyrics capsule.</string>
+    <string name="oobe_perm_battery_title">Battery Optimization (optional)</string>
+    <string name="oobe_perm_battery_desc">Allow background running to keep lyrics alive.</string>
+    <string name="oobe_btn_grant">Grant</string>
+    <string name="oobe_btn_granted">Granted</string>
+    
+    <string name="oobe_step_apps">App Setup</string>
+    <string name="oobe_apps_intro">To broadcast lyrics, you must enable "Bluetooth/Car Lyrics" in your music app.</string>
+    <string name="oobe_tab_qq">QQ Music</string>
+    <string name="oobe_tab_netease">Netease Music</string>
+    <string name="oobe_tab_xiaomi">Xiaomi Music by TME</string>
+    <string name="oobe_tab_apple">Apple Music</string>
+    
+    <string name="oobe_guide_qq">1. Connect a Bluetooth audio device first.\n2. Go to <b>Me</b> -> <b>Menu (Top Right 3-lines)</b> -> <b>Settings</b>.\n3. Find and enable <b>Car Bluetooth Lyrics</b>.</string>
+    <string name="oobe_guide_netease">1. Connect a Bluetooth audio device first.\n2. Go to <b>Menu (Top Left)</b> -> <b>Settings</b> -> <b>General</b>.\n3. Find and enable <b>External Device Bluetooth Lyrics</b>.</string>
+    <string name="oobe_guide_xiaomi">1. Go to <b>Me</b> -> <b>Menu (Top Right 3-lines)</b> -> <b>General Settings</b>.\n2. Enable <b>Notification Bar Lyrics</b>.</string>
+    <string name="oobe_guide_apple">1. Requires <b>Root</b> (Magisk/KernelSU).\n2. Install <b>LSPosed</b> framework.\n3. Install the <b>SuperLyric</b> module.\n4. Enable the module for Apple Music.</string>
+    
+    <string name="oobe_app_not_in_list">My app is not in this list?</string>
+    
+    <string name="oobe_step_finish">All Set!</string>
+    <string name="oobe_finish_title">Ready to Go</string>
+    <string name="oobe_finish_subtitle">Starting "Island Lyrics" service...</string>
+    <string name="oobe_finish_start">Get Started</string>
+    <string name="oobe_btn_settings">Customize Settings</string>
+
+    <string name="oobe_next">Next</string>
+    <string name="oobe_back">Back</string>
+    <string name="oobe_skip">Skip setup</string>
+
+    <!-- OOBE Feature Intro -->
+    <string name="oobe_step_features">Features</string>
+    <string name="oobe_feat_island_title">Dynamic Island</string>
+    <string name="oobe_feat_island_desc">Lyrics displayed elegantly in the status bar area, inspired by Dynamic Island.</string>
+    <string name="oobe_feat_source_title">Multiple Sources</string>
+    <string name="oobe_feat_source_desc">Support for "Car Bluetooth" lyrics from major music apps, plus online fallback.</string>
+    <string name="oobe_feat_style_title">Customizable</string>
+    <string name="oobe_feat_style_desc">Adjust colors, icons, and behavior to match your style.</string>
+    
+    <!-- OOBE Autostart -->
+    <string name="oobe_perm_autostart_title">Background Autostart (Optional)</string>
+    <string name="oobe_perm_autostart_desc">Required on this device to keep service running.</string>
+
+    <!-- Media Control Dialog -->
+    <string name="media_control_title">Media Controls</string>
+    <string name="media_control_scanning">Scanning...</string>
+    <string name="media_control_found_sessions">Found %1$d raw sessions</string>
+    <string name="media_control_perm_required">Permission Required (Notification Listener)</string>
+    <string name="media_control_error_prefix">Error: %1$s</string>
+    <string name="media_control_no_sessions">No whitelisted media sessions found. Check Parser Rules or play music in a supported app.</string>
+    <string name="media_control_launch_miplay">Launch Xiaomi Mi Play</string>
+    <string name="media_control_close">Close</string>
+    <string name="media_control_unknown_title">Unknown Title</string>
+    <string name="media_control_unknown_artist">Unknown Artist</string>
+    <string name="media_control_open_app">Open %1$s</string>
+    <string name="media_control_miplay_failed">Mi Play Failed: %1$s</string>
+    <string name="media_control_cannot_open">Cannot open %1$s</string>
+
+    <!-- Notification Click Settings -->
+    <string name="settings_click_action_title">Notification Click Action</string>
+    <string name="settings_click_action_default">Open App (Default)</string>
+    <string name="settings_click_action_default_desc">Brings the app to foreground</string>
+    <string name="settings_click_action_media">Open Media Controls</string>
+    <string name="settings_click_action_media_desc">Shows a popup without opening the app</string>
+    <string name="oobe_btn_start">Start</string>
 
 </resources>

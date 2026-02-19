@@ -46,4 +46,13 @@
         <item name="colorPrimaryInverse">#E0E0E0</item>
 
     </style>
+
+    <style name="Theme.IslandLyrics.Transparent" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowContentOverlay">@null</item>
+        <item name="android:backgroundDimEnabled">true</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:colorBackground">@android:color/transparent</item>
+    </style>
 </resources>

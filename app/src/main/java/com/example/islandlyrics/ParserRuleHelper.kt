@@ -146,4 +146,28 @@ object ParserRuleHelper {
             useSuperLyricApi = true
         )
     }
+    /**
+     * Parse notification text using configurable separator and field order.
+     * @param input Raw text like "Artist-Title" or "Title | Artist"
+     * @param rule Parser rule with separator and field order
+     * @return Triple(title, artist, isSuccess)
+     */
+    fun parseWithRule(input: String, rule: ParserRule): Triple<String, String, Boolean> {
+        val separator = rule.separatorPattern
+        val splitIndex = input.indexOf(separator)
+        
+        if (splitIndex == -1) {
+            return Triple(input, "", false)
+        }
+
+        // Split the input
+        val part1 = input.substring(0, splitIndex).trim()
+        val part2 = input.substring(splitIndex + separator.length).trim()
+
+        // Apply field order
+        return when (rule.fieldOrder) {
+            FieldOrder.ARTIST_TITLE -> Triple(part2, part1, true)  // part1=artist, part2=title
+            FieldOrder.TITLE_ARTIST -> Triple(part1, part2, true)  // part1=title, part2=artist
+        }
+    }
 }

@@ -24,12 +24,21 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
+import androidx.compose.material.icons.Icons
+
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.MusicNote
+import androidx.compose.material.icons.automirrored.filled.Help
+import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.Link
+import androidx.compose.material.icons.filled.Sync
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.ui.graphics.vector.ImageVector
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     onCheckUpdate: () -> Unit,
-    onForceUpdate: () -> Unit,
     onShowLogs: () -> Unit,
     updateVersionText: String,
     updateBuildText: String
@@ -39,7 +48,6 @@ fun SettingsScreen(
     val scrollState = rememberScrollState()
 
     // Preferences State
-    var serviceEnabled by remember { mutableStateOf(prefs.getBoolean("service_enabled", true)) }
     var autoUpdateEnabled by remember { mutableStateOf(UpdateChecker.isAutoUpdateEnabled(context)) }
     
     // Theme State
@@ -59,6 +67,17 @@ fun SettingsScreen(
     var actionStyle by remember { mutableStateOf(prefs.getString("notification_actions_style", "disabled") ?: "disabled") }
     var showActionStyleDialog by remember { mutableStateOf(false) }
 
+    // Notification Click Action State
+    var notificationClickStyle by remember { mutableStateOf(prefs.getString("notification_click_style", "default") ?: "default") }
+    var showNotificationClickDialog by remember { mutableStateOf(false) }
+
+    // Dismiss Delay State
+    var dismissDelay by remember { mutableLongStateOf(prefs.getLong("notification_dismiss_delay", 0L)) }
+    var showDismissDelayDialog by remember { mutableStateOf(false) }
+
+    // Check for HyperOS 3.0.300+
+    val isHyperOsSupported = remember { RomUtils.isHyperOsVersionAtLeast(3, 0, 300) }
+
     // Logic for permissions status
     fun checkNotificationPermission(): Boolean {
         return NotificationManagerCompat.getEnabledListenerPackages(context).contains(context.packageName)
@@ -73,6 +92,22 @@ fun SettingsScreen(
     var notificationGranted by remember { mutableStateOf(checkNotificationPermission()) }
     var postNotificationGranted by remember { mutableStateOf(checkPostNotificationPermission()) }
 
+    // ... (lifecycle observer) ...
+
+    // Force disable unsupported features if they were previously enabled
+    LaunchedEffect(isHyperOsSupported) {
+        if (!isHyperOsSupported) {
+            if (dynamicIconEnabled) {
+                dynamicIconEnabled = false
+                prefs.edit().putBoolean("dynamic_icon_enabled", false).apply()
+            }
+            if (actionStyle == "miplay") {
+                actionStyle = "disabled"
+                prefs.edit().putString("notification_actions_style", "disabled").apply()
+            }
+        }
+    }
+    
     val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
@@ -86,6 +121,7 @@ fun SettingsScreen(
             lifecycleOwner.lifecycle.removeObserver(observer)
         }
     }
+
 
     // Determine actual dark mode for AppTheme
     val isSystemDark = androidx.compose.foundation.isSystemInDarkTheme()
@@ -101,7 +137,12 @@ fun SettingsScreen(
             modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
             topBar = {
                 LargeTopAppBar(
-                    title = { Text("Settings") },
+                    title = { Text(stringResource(R.string.title_app_settings)) },
+                    navigationIcon = {
+                        IconButton(onClick = { (context as? Activity)?.finish() }) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        }
+                    },
                     scrollBehavior = scrollBehavior,
                     colors = TopAppBarDefaults.topAppBarColors(
                         containerColor = MaterialTheme.colorScheme.background,
@@ -119,20 +160,56 @@ fun SettingsScreen(
                     .verticalScroll(scrollState)
             ) {
 
-                // --- Service ---
-                SettingsSectionHeader(text = "Service")
+                // ═══════════════════════════════════════
+                // ── 1. General ──
+                // ═══════════════════════════════════════
+                SettingsSectionHeader(text = stringResource(R.string.settings_general_header))
+
+                // Language
+                val currentLangCode = prefs.getString("language_code", "")
+                val currentLangText = when(currentLangCode) {
+                    "en" -> "English"
+                    "zh-CN" -> "简体中文"
+                    else -> stringResource(R.string.settings_theme_follow_system)
+                }
+                SettingsTextItem(
+                    title = stringResource(R.string.settings_language),
+                    value = currentLangText,
+                    onClick = { showLanguageDialog = true }
+                )
+
+                // Suggest Current App
+                var recommendMediaAppEnabled by remember { mutableStateOf(prefs.getBoolean("recommend_media_app", true)) }
                 SettingsSwitchItem(
-                    title = "Enable Service",
-                    checked = serviceEnabled,
-                    onCheckedChange = { 
-                        serviceEnabled = it
-                        prefs.edit().putBoolean("service_enabled", it).apply()
+                    title = stringResource(R.string.settings_recommend_media_app),
+                    subtitle = stringResource(R.string.settings_recommend_media_app_desc),
+                    checked = recommendMediaAppEnabled,
+                    onCheckedChange = {
+                        recommendMediaAppEnabled = it
+                        prefs.edit().putBoolean("recommend_media_app", it).apply()
                     }
                 )
 
-                // --- Permissions ---
-                SettingsSectionHeader(text = stringResource(R.string.perm_cat_title))
-                
+                // Hide Recents
+                var hideRecentsEnabled by remember { mutableStateOf(prefs.getBoolean("hide_recents_enabled", false)) }
+                SettingsSwitchItem(
+                    title = stringResource(R.string.settings_hide_recents),
+                    subtitle = stringResource(R.string.settings_hide_recents_desc),
+                    checked = hideRecentsEnabled,
+                    onCheckedChange = {
+                        hideRecentsEnabled = it
+                        prefs.edit().putBoolean("hide_recents_enabled", it).apply()
+                    }
+                )
+
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+
+                // ═══════════════════════════════════════
+                // ── 2. System & Permissions ──
+                // ═══════════════════════════════════════
+                SettingsSectionHeader(text = stringResource(R.string.settings_core_services_header))
+
+                // Permissions
                 SettingsSwitchItem(
                     title = stringResource(R.string.perm_read_notif),
                     subtitle = stringResource(R.string.perm_read_notif_desc),
@@ -154,161 +231,30 @@ fun SettingsScreen(
                     checked = postNotificationGranted,
                     enabled = true,
                     onClick = {
-                         if (true) {
-                            val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
-                            intent.data = Uri.fromParts("package", context.packageName, null)
-                            context.startActivity(intent)
-                        }
+                        val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                        intent.data = Uri.fromParts("package", context.packageName, null)
+                        context.startActivity(intent)
                     },
                     onCheckedChange = {}
                 )
-                
-                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
-                // --- Appearance ---
-                SettingsSectionHeader(text = stringResource(R.string.settings_header_appearance))
-                
-                // Language
-                val currentLangCode = prefs.getString("language_code", "")
-                val currentLangText = when(currentLangCode) {
-                    "en" -> "English"
-                    "zh-CN" -> "简体中文"
-                    else -> stringResource(R.string.settings_theme_follow_system)
-                }
-                SettingsTextItem(
-                    title = stringResource(R.string.settings_language),
-                    value = currentLangText,
-                    onClick = { showLanguageDialog = true }
-                )
-
-                SettingsSwitchItem(
-                    title = stringResource(R.string.settings_theme_follow_system),
-                    checked = followSystem,
-                    onCheckedChange = {
-                        followSystem = it
-                        ThemeHelper.setFollowSystem(context, it)
-                    }
-                )
-
-                SettingsSwitchItem(
-                    title = stringResource(R.string.settings_theme_dark_mode),
-                    checked = darkMode,
-                    enabled = !followSystem,
-                    onCheckedChange = {
-                        darkMode = it
-                        ThemeHelper.setDarkMode(context, it)
-                    }
-                )
-
-                SettingsSwitchItem(
-                    title = stringResource(R.string.settings_theme_pure_black),
-                    subtitle = stringResource(R.string.settings_theme_pure_black_desc),
-                    checked = pureBlack,
-                    enabled = useDarkTheme, // Only valid in dark mode
-                    onCheckedChange = {
-                        pureBlack = it
-                        ThemeHelper.setPureBlack(context, it)
-                        // No need to recreate; LaunchedEffect handles window background
-                    }
-                )
-
-                // Dynamically update Window Background for Pure Black to prevent jitter from recreate()
-                LaunchedEffect(pureBlack, useDarkTheme) {
-                    val activity = context as? Activity
-                    if (activity != null) {
-                         if (pureBlack && useDarkTheme) {
-                             activity.window.decorView.setBackgroundColor(android.graphics.Color.BLACK)
-                             activity.window.setBackgroundDrawableResource(android.R.color.black)
-                         } else {
-                             // Reset to default (usually handled by theme, but safe to set to null or theme color)
-                             // Simple approach: Set to background color of current theme or null to let Theme handle it
-                             // activity.window.setBackgroundDrawable(null) // potentially checks theme
-                             // Better: Set to Surface color or standard background
-                             val typedValue = android.util.TypedValue()
-                             activity.theme.resolveAttribute(android.R.attr.windowBackground, typedValue, true)
-                             if (typedValue.resourceId != 0) {
-                                 activity.window.setBackgroundDrawableResource(typedValue.resourceId)
-                             } else {
-                                 activity.window.decorView.setBackgroundColor(typedValue.data)
-                             }
-                        }
-                    }
-                }
-
-
-                SettingsSwitchItem(
-                    title = stringResource(R.string.settings_theme_dynamic_color),
-                    subtitle = stringResource(R.string.settings_theme_dynamic_color_desc),
-                    checked = dynamicColor,
-                    onCheckedChange = {
-                        dynamicColor = it
-                        ThemeHelper.setDynamicColor(context, it)
-                    }
-                )
-
-                SettingsSwitchItem(
-                    title = stringResource(R.string.settings_dynamic_icon),
-                    subtitle = stringResource(R.string.settings_dynamic_icon_desc),
-                    checked = dynamicIconEnabled,
-                    onCheckedChange = {
-                        dynamicIconEnabled = it
-                        prefs.edit().putBoolean("dynamic_icon_enabled", it).apply()
-                    }
-                )
-                
-                // Icon Style Selection (only visible when dynamic icon is enabled)
-                if (dynamicIconEnabled) {
-                    val styleDisplayName = when (iconStyle) {
-                        "advanced" -> stringResource(R.string.icon_style_advanced)
-                        else -> stringResource(R.string.icon_style_classic)
-                    }
-                    SettingsTextItem(
-                        title = stringResource(R.string.settings_icon_style),
-                        value = styleDisplayName,
-                        onClick = { showIconStyleDialog = true }
-                    )
-                }
-
-                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-
-                // --- Notification ---
-                SettingsSectionHeader(text = stringResource(R.string.settings_notification_header))
-
-                // Notification Action Style
-
-                val actionStyleDisplay = when (actionStyle) {
-                    "media_controls" -> stringResource(R.string.settings_action_style_media)
-                    "miplay" -> stringResource(R.string.settings_action_style_miplay)
-                    else -> stringResource(R.string.settings_action_style_off)
-                }
-                SettingsTextItem(
-                    title = stringResource(R.string.settings_notification_actions),
-                    value = actionStyleDisplay,
-                    onClick = { showActionStyleDialog = true }
-                )
-
-                // Progress Bar Colorize
-                var progressColorEnabled by remember { mutableStateOf(prefs.getBoolean("progress_bar_color_enabled", false)) }
-                SettingsSwitchItem(
-                    title = stringResource(R.string.settings_progress_color),
-                    subtitle = stringResource(R.string.settings_progress_color_desc),
-                    checked = progressColorEnabled,
-                    onCheckedChange = {
-                        progressColorEnabled = it
-                        prefs.edit().putBoolean("progress_bar_color_enabled", it).apply()
-                    }
-                )
-
-                // --- General ---
-                SettingsSectionHeader(text = stringResource(R.string.settings_general_header), marginTop = 16.dp)
-                
+                // Battery
                 SettingsActionItem(
-                    title = stringResource(R.string.parser_rule_title),
-                    icon = android.R.drawable.ic_menu_edit,
+                    title = stringResource(R.string.settings_general_battery),
+                    icon = Icons.Filled.MusicNote,
                     onClick = {
-                        context.startActivity(Intent(context, ParserRuleActivity::class.java))
+                        val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
+                        intent.data = Uri.parse("package:${context.packageName}")
+                        context.startActivity(intent)
                     }
                 )
+
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+
+                // ═══════════════════════════════════════
+                // ── 3. Updates ──
+                // ═══════════════════════════════════════
+                SettingsSectionHeader(text = stringResource(R.string.update_check_title))
 
                 SettingsSwitchItem(
                     title = stringResource(R.string.settings_auto_update),
@@ -361,61 +307,45 @@ fun SettingsScreen(
                 }
 
                 SettingsActionItem(
-                    title = "Ignore Battery Optimization",
-                    icon = R.drawable.ic_music_note,
-                    onClick = {
-                        val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
-                        intent.data = Uri.parse("package:${context.packageName}")
-                        context.startActivity(intent)
-                    }
+                     title = stringResource(R.string.update_check_title),
+                     icon = Icons.Filled.Sync,
+                     onClick = onCheckUpdate
                 )
 
-                var hideRecentsEnabled by remember { mutableStateOf(prefs.getBoolean("hide_recents_enabled", false)) }
-                SettingsSwitchItem(
-                    title = stringResource(R.string.settings_hide_recents),
-                    subtitle = stringResource(R.string.settings_hide_recents_desc),
-                    checked = hideRecentsEnabled,
-                    onCheckedChange = {
-                        hideRecentsEnabled = it
-                        prefs.edit().putBoolean("hide_recents_enabled", it).apply()
-                    }
-                )
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
-                 HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-
-                // --- Help ---
-                SettingsSectionHeader(text = "Help")
+                // ═══════════════════════════════════════
+                // ── 4. Help & About ──
+                // ═══════════════════════════════════════
+                SettingsSectionHeader(text = stringResource(R.string.settings_help_about_header))
 
                 SettingsActionItem(
                     title = stringResource(R.string.faq_title),
-                    icon = android.R.drawable.ic_menu_help,
-                    onClick = { 
+                    icon = Icons.AutoMirrored.Filled.Help,
+                    onClick = {
                         context.startActivity(Intent(context, FAQActivity::class.java))
                     }
                 )
 
                 SettingsActionItem(
                     title = stringResource(R.string.settings_feedback),
-                    icon = android.R.drawable.ic_menu_send,
+                    icon = Icons.AutoMirrored.Filled.Send,
                     onClick = {
                         val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://francogiudans.github.io/CapsulyricFeed/"))
                         context.startActivity(browserIntent)
                     }
                 )
 
-                // --- About ---
-                SettingsSectionHeader(text = "About", marginTop = 16.dp)
-
                 SettingsActionItem(
                     title = stringResource(R.string.settings_about_github),
-                    icon = R.drawable.ic_link,
+                    icon = Icons.Filled.Link,
                     onClick = {
                          val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/FrancoGiudans/Capsulyric"))
                          context.startActivity(browserIntent)
                     }
                 )
-                
-                 // Version
+
+                // Version
                 SettingsValueItem(
                     title = stringResource(R.string.about_version),
                     value = updateVersionText
@@ -441,26 +371,14 @@ fun SettingsScreen(
                     }
                 )
 
-                SettingsActionItem(
-                     title = stringResource(R.string.update_check_title),
-                     icon = R.drawable.ic_sync,
-                     onClick = onCheckUpdate
-                )
-
                 if (showLogs) {
                      SettingsActionItem(
                          title = stringResource(R.string.settings_console_log),
-                         icon = android.R.drawable.ic_menu_info_details,
+                         icon = Icons.Filled.Info,
                          onClick = onShowLogs
                      )
-                     
-                     SettingsActionItem(
-                         title = "Force Update Dialog",
-                         icon = R.drawable.ic_sync,
-                         onClick = onForceUpdate
-                     )
                 }
-                
+
                 Spacer(modifier = Modifier.height(24.dp))
             }
 
@@ -471,8 +389,6 @@ fun SettingsScreen(
                     onDismiss = { showLanguageDialog = false }
                 )
             }
-
-
 
             if (showPrivacyDialog) {
                 AlertDialog(
@@ -494,7 +410,7 @@ fun SettingsScreen(
                     }
                 )
             }
-            
+
             if (showIconStyleDialog) {
                 IconStyleSelectionDialog(
                     currentStyle = iconStyle,
@@ -510,6 +426,7 @@ fun SettingsScreen(
             if (showActionStyleDialog) {
                 NotificationActionsDialog(
                     currentStyle = actionStyle,
+                    isHyperOsSupported = isHyperOsSupported,
                     onStyleSelected = { style ->
                         actionStyle = style
                         prefs.edit().putString("notification_actions_style", style).apply()
@@ -518,8 +435,139 @@ fun SettingsScreen(
                     onDismiss = { showActionStyleDialog = false }
                 )
             }
+
+            if (showNotificationClickDialog) {
+                NotificationClickDialog(
+                    currentStyle = notificationClickStyle,
+                    onStyleSelected = { style ->
+                        notificationClickStyle = style
+                        prefs.edit().putString("notification_click_style", style).apply()
+                        showNotificationClickDialog = false
+                    },
+                    onDismiss = { showNotificationClickDialog = false }
+                )
+            }
+
+            if (showDismissDelayDialog) {
+                DismissDelaySelectionDialog(
+                    currentDelay = dismissDelay,
+                    onDelaySelected = { delay ->
+                        dismissDelay = delay
+                        prefs.edit().putLong("notification_dismiss_delay", delay).apply()
+                        showDismissDelayDialog = false
+                    },
+                    onDismiss = { showDismissDelayDialog = false }
+                )
+            }
         }
     }
+}
+
+@Composable
+fun NotificationClickDialog(
+    currentStyle: String,
+    onStyleSelected: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val styles = listOf(
+        "default" to stringResource(R.string.settings_click_action_default) to stringResource(R.string.settings_click_action_default_desc),
+        "media_controls" to stringResource(R.string.settings_click_action_media) to stringResource(R.string.settings_click_action_media_desc)
+    )
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.settings_click_action_title)) },
+        text = {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                styles.forEach { (styleInfo, desc) ->
+                    val (styleId, name) = styleInfo
+                    val isSelected = currentStyle == styleId
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onStyleSelected(styleId) }
+                            .padding(vertical = 12.dp, horizontal = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(
+                            selected = isSelected,
+                            onClick = { onStyleSelected(styleId) }
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = name,
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = desc,
+                                fontSize = 14.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(android.R.string.ok))
+            }
+        }
+    )
+}
+
+@Composable
+fun DismissDelaySelectionDialog(
+    currentDelay: Long,
+    onDelaySelected: (Long) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val options = listOf(
+        0L to R.string.dismiss_delay_immediate,
+        1000L to R.string.dismiss_delay_1s,
+        3000L to R.string.dismiss_delay_3s,
+        5000L to R.string.dismiss_delay_5s
+    )
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.dialog_dismiss_delay_title)) },
+        text = {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                options.forEach { (delay, labelRes) ->
+                    val isSelected = currentDelay == delay
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onDelaySelected(delay) }
+                            .padding(vertical = 12.dp, horizontal = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(
+                            selected = isSelected,
+                            onClick = { onDelaySelected(delay) }
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = stringResource(labelRes),
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(android.R.string.cancel))
+            }
+        }
+    )
 }
 
 @Composable
@@ -620,14 +668,21 @@ fun IconStyleSelectionDialog(
 @Composable
 fun NotificationActionsDialog(
     currentStyle: String,
+    isHyperOsSupported: Boolean,
     onStyleSelected: (String) -> Unit,
     onDismiss: () -> Unit
 ) {
-    val styles = listOf(
+    val allStyles = listOf(
         "disabled" to R.string.settings_action_style_off to R.string.settings_action_style_off_desc,
         "media_controls" to R.string.settings_action_style_media to R.string.settings_action_style_media_desc,
         "miplay" to R.string.settings_action_style_miplay to R.string.settings_action_style_miplay_desc
     )
+    
+    val styles = allStyles.filter { 
+        val (styleInfo, _) = it
+        val (styleId, _) = styleInfo
+        if (styleId == "miplay") isHyperOsSupported else true
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -742,7 +797,7 @@ fun SettingsSwitchItem(
 @Composable
 fun SettingsActionItem(
     title: String,
-    icon: Int,
+    icon: ImageVector,
     onClick: () -> Unit
 ) {
     Row(
@@ -759,13 +814,14 @@ fun SettingsActionItem(
             modifier = Modifier.weight(1f)
         )
         Icon(
-            painter = painterResource(id = icon),
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(24.dp)
+             imageVector = icon,
+             contentDescription = null,
+             tint = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
 }
+
+
 
 @Composable
 fun SettingsTextItem(

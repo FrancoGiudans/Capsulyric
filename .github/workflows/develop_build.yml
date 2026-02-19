@@ -1,4 +1,4 @@
-name: Android CI (Debug & Release)
+name: Android CI (Debug & Prerelease)
 
 on:
   push:
@@ -27,13 +27,13 @@ jobs:
         run: chmod +x gradlew
 
       - name: Build All Variants
-        run: ./gradlew assembleDebug assembleRelease
+        run: ./gradlew assembleDebug assemblePrerelease
 
       - name: Sign Release APK
         id: sign_release
         uses: ilharp/sign-android-release@v1
         with:
-          releaseDir: app/build/outputs/apk/release
+          releaseDir: app/build/outputs/apk/prerelease
           buildToolsVersion: 34.0.0
           signingKey: ${{ secrets.SIGNING_KEY }}
           keyAlias: ${{ secrets.KEY_ALIAS }}
@@ -49,5 +49,5 @@ jobs:
       - name: Upload Signed Release Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Capsulyric-Release-Signed
-          path: app/build/outputs/apk/release/*.apk
+          name: Capsulyric-Prerelease-Signed
+          path: app/build/outputs/apk/prerelease/*.apk

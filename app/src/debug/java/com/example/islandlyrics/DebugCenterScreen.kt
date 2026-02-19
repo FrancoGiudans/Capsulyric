@@ -12,6 +12,13 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import android.media.MediaMetadata
+import android.media.session.MediaController
+import android.media.session.MediaSessionManager
+import android.media.session.PlaybackState
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.runtime.livedata.observeAsState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -20,6 +27,7 @@ fun DebugCenterScreen(
 ) {
     val context = LocalContext.current
     var showUpdateDialog by remember { mutableStateOf(false) }
+    var showDiagnosticsDialog by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -51,6 +59,16 @@ fun DebugCenterScreen(
                 }
             )
 
+            // ── Custom Settings Page ──
+            DebugMenuButton(
+                text = "Custom Settings Page",
+                description = "Grouped settings: App Body, Capsule, Notification",
+                onClick = {
+                    val intent = Intent(context, CustomSettingsActivity::class.java)
+                    context.startActivity(intent)
+                }
+            )
+
             // ── Test Update Dialog ──
             DebugMenuButton(
                 text = "Test Update Dialog",
@@ -58,23 +76,80 @@ fun DebugCenterScreen(
                 onClick = { showUpdateDialog = true }
             )
 
-            // ── Xiaomi Mi Play ──
+            // ── Media Controls ──
+            var showMediaControlDialog by remember { mutableStateOf(false) }
             DebugMenuButton(
-                text = "Launch Xiaomi Mi Play",
-                description = "Try to launch miui.systemui.miplay.MiPlayDetailActivity",
-                onClick = {
-                    try {
-                        val intent = Intent()
-                        intent.component = android.content.ComponentName(
-                            "miui.systemui.plugin",
-                            "miui.systemui.miplay.MiPlayDetailActivity"
-                        )
-                        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                        context.startActivity(intent)
-                    } catch (e: Exception) {
-                        android.widget.Toast.makeText(context, "Failed: ${e.message}", android.widget.Toast.LENGTH_SHORT).show()
+                text = "Media Controls",
+                description = "Control playback, open app, or launch Mi Play",
+                onClick = { showMediaControlDialog = true }
+            )
+
+            if (showMediaControlDialog) {
+                MediaControlDialog(onDismiss = { showMediaControlDialog = false })
+            }
+
+            // ── System Info ──
+            var showSystemInfoDialog by remember { mutableStateOf(false) }
+            DebugMenuButton(
+                text = "Show System Info",
+                description = "Display Android version, ROM, and device info",
+                onClick = { showSystemInfoDialog = true }
+            )
+
+            if (showSystemInfoDialog) {
+                AlertDialog(
+                    onDismissRequest = { showSystemInfoDialog = false },
+                    title = { Text("System Info") },
+                    text = {
+                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text("Android Version: ${android.os.Build.VERSION.RELEASE} (SDK ${android.os.Build.VERSION.SDK_INT})")
+                            // Extended ROM Info
+                            val romInfo = remember { RomUtils.getRomInfo() }
+                            if (romInfo.isNotEmpty()) {
+                                Text("ROM Version: $romInfo", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
+                            }
+                            // Device Type
+                            val deviceType = remember { "${android.os.Build.MANUFACTURER}/${RomUtils.getRomType()}" }
+                            Text("Device Type: $deviceType", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.secondary)
+                            
+                            Text("Build ID: ${android.os.Build.DISPLAY}")
+                            Text("Manufacturer: ${android.os.Build.MANUFACTURER}")
+                            Text("Model: ${android.os.Build.MODEL} (${android.os.Build.DEVICE})")
+                            Text("Brand: ${android.os.Build.BRAND}")
+                            Text("Product: ${android.os.Build.PRODUCT}")
+                            Text("Hardware: ${android.os.Build.HARDWARE}")
+                            Text("Fingerprint:\n${android.os.Build.FINGERPRINT}", style = MaterialTheme.typography.bodySmall)
+                        }
+                    },
+                    confirmButton = {
+                        TextButton(onClick = { showSystemInfoDialog = false }) {
+                            Text("Generic OK") // Matches user's typical style if any, but "OK" is fine
+                        }
                     }
+                )
+            }
+            // ── Log Console ──
+            DebugMenuButton(
+                text = "Log Console",
+                description = "View and export application logs",
+                onClick = {
+                    LogViewerActivity.start(context)
                 }
+            )
+            // ── OOBE ──
+            DebugMenuButton(
+                text = "Launch OOBE",
+                description = "Open Onboarding Screen directly",
+                onClick = {
+                    context.startActivity(Intent(context, com.example.islandlyrics.oobe.OobeActivity::class.java))
+                }
+            )
+
+            // ── Service Diagnostics ──
+            DebugMenuButton(
+                text = "Service Diagnostics",
+                description = "View internal state of Notification Listener Service",
+                onClick = { showDiagnosticsDialog = true }
             )
         }
     }
@@ -95,7 +170,40 @@ fun DebugCenterScreen(
             onIgnore = { /* No-op in debug */ }
         )
     }
+
+
+
+    // ── Diagnostics Monitor Dialog ──
+    val diagnostics by LyricRepository.getInstance().liveDiagnostics.observeAsState()
+    
+    if (showDiagnosticsDialog) {
+        AlertDialog(
+            onDismissRequest = { showDiagnosticsDialog = false },
+            title = { Text("Service Diagnostics") },
+            text = {
+                Column {
+                    if (diagnostics == null) {
+                        Text("Waiting for data...", style = MaterialTheme.typography.bodyMedium)
+                    } else {
+                        Text("Is Connected: ${diagnostics?.isConnected}")
+                        Text("Total Controllers: ${diagnostics?.totalControllers}")
+                        Text("Whitelisted Controllers: ${diagnostics?.whitelistedControllers}")
+                        Text("Primary Package: ${diagnostics?.primaryPackage}")
+                        Text("Whitelist Size: ${diagnostics?.whitelistSize}")
+                        Text("Last Setup: ${diagnostics?.lastUpdateParams}")
+                        Text("Time: ${java.text.SimpleDateFormat("HH:mm:ss").format(java.util.Date(diagnostics?.timestamp ?: 0))}")
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showDiagnosticsDialog = false }) {
+                        Text("Close")
+                }
+            }
+        )
+    }
 }
+
 
 @Composable
 private fun DebugMenuButton(
@@ -125,3 +233,5 @@ private fun DebugMenuButton(
         }
     }
 }
+
+

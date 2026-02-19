@@ -57,10 +57,19 @@
     <string name="settings_general_battery">忽略电池优化</string>
     <string name="settings_about_header">关于</string>
     <string name="settings_about_github">GitHub 仓库</string>
+    <string name="title_app_settings">应用设置</string>
+    <string name="title_parser_whitelist_manager">解析规则</string>
     <string name="settings_console_log">日志控制台</string>
     <string name="settings_general_header">通用</string>
-    <string name="settings_service_header">服务</string>
-    <string name="settings_service_enable">开启服务</string>
+    <string name="settings_core_services_header">核心服务</string>
+    <string name="settings_personalization_header">个性化</string>
+    <string name="page_title_personalization">个性化设置</string>
+    <string name="tab_capsule">胶囊</string>
+    <string name="tab_notification">通知</string>
+    <string name="tab_app_ui">App界面</string>
+    <string name="settings_recommend_media_app">推荐当前播放应用</string>
+    <string name="settings_recommend_media_app_desc">进入解析规则界面时自动推荐当前播放应用</string>
+    <string name="settings_help_about_header">帮助与关于</string>
 
     <string name="settings_dynamic_icon_desc">展示歌名-歌手，仅HyperOS 3.0.300+可用</string>
     <string name="channel_live_lyrics">实时歌词更新</string>
@@ -69,7 +78,7 @@
     <string name="cancel">取消</string>
 
     <!-- 通知解析规则 -->
-    <string name="parser_rule_title">通知白名单和解析规则</string>
+    <string name="parser_rule_title">解析规则</string>
     <string name="parser_rule_subtitle">配置音乐应用通知的解析方式</string>
     <string name="parser_add_rule">添加音乐应用</string>
     <string name="parser_edit">编辑</string>
@@ -139,7 +148,7 @@
     <string name="faq_title">常见问题解答</string>
     <string name="faq_cat_guide">使用指引</string>
     <string name="faq_q_guide">Q：如何使用免 Root（0-Hook）模式？</string>
-    <string name="faq_a_guide">A：本模式利用"通知栏歌词"或各应用的"蓝牙歌词"获取歌词。\n\n1. 支持 <b>QQ音乐</b>、<b>小米音乐</b> 和 <b>网易云音乐</b>。\n2. 网易云用户：设置 -> 工具 -> 开启"外接设备蓝牙歌词"。\n3. QQ音乐用户：设置 -> QPlay与车载音乐 -> 开启"车载蓝牙歌词"。\n4. 必须授予本应用"通知使用权"，并确保音乐 App 通知栏显示正常。</string>
+    <string name="faq_a_guide">A：本模式利用"通知栏歌词"或各应用的"蓝牙歌词"获取歌词。\n\n1. 支持 <b>QQ音乐</b>、<b>小米音乐</b> 和 <b>网易云音乐</b>。\n\n<b>网易云用户：</b>\n1. 连接蓝牙音频设备。\n2. 进入 <b>菜单 (左上角)</b> -> <b>设置</b> -> <b>通用</b>。\n3. 开启 <b>外接设备蓝牙歌词</b>。\n\n<b>QQ音乐用户：</b>\n1. 连接蓝牙音频设备。\n2. 进入 <b>我的</b> -> <b>更多 (右上角三横)</b> -> <b>设置</b>。\n3. 开启 <b>车载蓝牙歌词</b>。\n\n必须授予本应用"通知使用权"，并确保音乐 App 通知栏显示正常。</string>
     <string name="faq_cat_func">功能异常类</string>
     <string name="faq_q_no_lyrics">Q：为什么我看不到歌词？</string>
     <string name="faq_a_no_lyrics">A： 请按照以下步骤逐一排查：\n\n
@@ -171,6 +180,7 @@
 - <b>Release / Pre-release 版本</b>： 在应用内找到版本号或 Commit 号，连续点击即可唤出 Log Console。</string>
 
     <!-- 通知设置 -->
+    <string name="action_miplay">小米妙播</string>
     <string name="settings_notification_header">通知</string>
     <string name="settings_notification_actions">通知按键</string>
     <string name="settings_action_style_off">关闭</string>
@@ -181,5 +191,87 @@
     <string name="settings_action_style_miplay_desc">打开小米妙播面板</string>
     <string name="settings_progress_color">为进度条着色</string>
     <string name="settings_progress_color_desc">从专辑封面提取颜色应用到通知进度条</string>
+    <string name="settings_dismiss_delay_title">消失延迟</string>
+    <string name="settings_dismiss_delay_desc">播放停止后延迟隐藏通知的时间</string>
+    <string name="dismiss_delay_immediate">立即消失</string>
+    <string name="dismiss_delay_1s">1 秒</string>
+    <string name="dismiss_delay_3s">3 秒</string>
+    <string name="dismiss_delay_5s">5 秒</string>
+    <string name="dialog_dismiss_delay_title">选择消失延迟</string>
+    
+    <!-- OOBE -->
+    <string name="oobe_welcome_title">欢迎使用 Capsulyric</string>
+    <string name="oobe_welcome_subtitle">基于Live Update。 在你的状态栏体验灵动歌词。</string>
+    <string name="oobe_warning_hyperos_unsupported">⚠️ 系统暂不支持\n检测到您的 HyperOS 版本低于 3.0.300。灵动歌词功能依赖 HyperOS 3.0.300+ 原生支持，当前版本可能无法使用。</string>
+    <string name="oobe_warning_rom_untested">⚠️ 兼容性警告 在此操作系统上未经过完整测试，可能存在功能缺失或不稳定的情况。</string>
+    <string name="oobe_privacy_notice">🔒 隐私优先\n本应用完全在本地运行。只有在您明确开启“在线歌词”时才会使用网络权限。我们绝不收集或传输您的个人数据。</string>
+    
+    <string name="oobe_step_permissions">权限设置</string>
+    <string name="oobe_perm_listener_title">通知监听权限</string>
+    <string name="oobe_perm_listener_desc">用于读取音乐App的歌词通知。</string>
+    <string name="oobe_perm_post_title">发送通知权限</string>
+    <string name="oobe_perm_post_desc">用于显示歌词胶囊。</string>
+    <string name="oobe_perm_battery_title">电池优化 （可选）</string>
+    <string name="oobe_perm_battery_desc">允许后台运行以保持歌词更新。</string>
+    <string name="oobe_btn_grant">授权</string>
+    <string name="oobe_btn_granted">已授权</string>
+    
+    <string name="oobe_step_apps">应用设置</string>
+    <string name="oobe_apps_intro">为了广播歌词，您必须在音乐App中开启“车载/蓝牙歌词”功能。</string>
+    <string name="oobe_tab_qq">QQ音乐</string>
+    <string name="oobe_tab_netease">网易云音乐</string>
+    <string name="oobe_tab_xiaomi">小米音乐</string>
+    <string name="oobe_tab_apple">Apple Music</string>
+    
+    <string name="oobe_guide_qq">1. 必须先连接蓝牙音频设备。\n2. 进入 <b>我的</b> -> <b>更多 (右上角三横)</b> -> <b>设置</b>。\n3. 找到并开启 <b>车载蓝牙歌词</b>。</string>
+    <string name="oobe_guide_netease">1. 必须先连接蓝牙音频设备。\n2. 进入 <b>菜单 (左上角)</b> -> <b>设置</b> -> <b>通用</b>。\n3. 找到并开启 <b>外接设备蓝牙歌词</b>。</string>
+    <string name="oobe_guide_xiaomi">1. 进入 <b>我的</b> -> <b>更多 (右上角三横)</b> -> <b>通用设置</b>。\n2. 开启 <b>通知栏歌词</b>。</string>
+    <string name="oobe_guide_apple">1. 需要 <b>Root</b> 权限 (Magisk/KernelSU)。\n2. 安装 <b>LSPosed</b> 框架。\n3. 安装 <b>SuperLyric</b> 模块。\n4. 在模块中启用 Apple Music。</string>
+    
+    <string name="oobe_app_not_in_list">我的应用不在列表中？</string>
+    
+    <string name="oobe_step_finish">进入应用</string>
+    <string name="oobe_finish_title">一切准备就绪</string>
+    <string name="oobe_finish_subtitle">欢迎使用 Capsulyric</string>
+    <string name="oobe_finish_start">开启旅程</string>
+    <string name="oobe_btn_settings">自定义设置</string>
+    <string name="oobe_btn_start">下一步</string>
+
+    <string name="oobe_next">下一步</string>
+    <string name="oobe_back">上一步</string>
+    <string name="oobe_skip">跳过设置</string>
+
+    <!-- OOBE Feature Intro -->
+    <string name="oobe_step_features">功能介绍</string>
+    <string name="oobe_feat_island_title">灵动岛体验</string>
+    <string name="oobe_feat_island_desc">灵感源自 Dynamic Island，在状态栏优雅地展示歌词。</string>
+    <string name="oobe_feat_source_title">多源支持</string>
+    <string name="oobe_feat_source_desc">支持主流音乐App的“车载/蓝牙歌词”，并提供在线歌词作为候补。</string>
+    <string name="oobe_feat_style_title">高度定制</string>
+    <string name="oobe_feat_style_desc">自定义颜色、图标和行为，打造属于你的歌词体验。</string>
+    
+    <!-- OOBE Autostart -->
+    <string name="oobe_perm_autostart_title">后台自启动（可选）</string>
+    <string name="oobe_perm_autostart_desc">可确保持续运行。</string>
+    <string name="action_pause">暂停</string>
+    <string name="action_next">下一首</string>
+    <string name="media_control_title">媒体控制</string>
+    <string name="media_control_scanning">检索中...</string>
+    <string name="media_control_found_sessions">发现 %1$d 个·媒体通知</string>
+    <string name="media_control_perm_required">需要通知使用权</string>
+    <string name="media_control_error_prefix">错误：%1$s</string>
+    <string name="media_control_no_sessions">没有发现白名单内的媒体通知。</string>
+    <string name="media_control_launch_miplay">启动小米妙播</string>
+    <string name="media_control_close">关闭</string>
+    <string name="media_control_unknown_title">未知标题</string>
+    <string name="media_control_unknown_artist">未知歌手</string>
+    <string name="media_control_open_app">打开 %1$s</string>
+    <string name="media_control_miplay_failed">启动小米妙播失败：%1$s</string>
+    <string name="media_control_cannot_open">无法启动应用：</string>
+    <string name="settings_click_action_title">通知点击动作</string>
+    <string name="settings_click_action_default">打开本应用（默认）</string>
+    <string name="settings_click_action_default_desc">在前台打开本应用</string>
+    <string name="settings_click_action_media">打开媒体控制弹窗</string>
+    <string name="settings_click_action_media_desc">在不打开本应用的情况下展示媒体控制弹窗</string>
 
 </resources>

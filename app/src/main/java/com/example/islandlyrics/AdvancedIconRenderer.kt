@@ -235,7 +235,7 @@ object AdvancedIconRenderer {
         // If text exceeds max width, apply fade gradient
         val measuredWidth = paint.measureText(text)
         if (measuredWidth > maxWidth) {
-            val density = canvas.density ?: 1f // Fallback if needed, though canvas doesn't hold density directly usually, use passed context or assume mdpi factor if unavailable in scope (but we are in a class without context property here).
+
             // Actually we have density in render() but not passed here. 
             // Let's assume standard 50dp approximate or pass density. 
             // To be safe and clean, let's use a percentage that approximates 50dp on typical width or just a hardcoded ratio that is much smaller (e.g. 0.9).

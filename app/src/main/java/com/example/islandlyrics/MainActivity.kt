@@ -51,6 +51,14 @@ class MainActivity : BaseActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        // OOBE Check
+        val prefs = getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE)
+        if (!prefs.getBoolean("is_setup_complete", false)) {
+            startActivity(Intent(this, com.example.islandlyrics.oobe.OobeActivity::class.java))
+            finish()
+            return
+        }
+
         updateVersionInfo()
 
         setContent {
@@ -59,6 +67,8 @@ class MainActivity : BaseActivity() {
                     versionText = versionText,
                     isDebugBuild = BuildConfig.DEBUG,
                     onOpenSettings = { startActivity(Intent(this, SettingsActivity::class.java)) },
+                    onOpenPersonalization = { startActivity(Intent(this, CustomSettingsActivity::class.java)) },
+                    onOpenWhitelist = { startActivity(Intent(this, ParserRuleActivity::class.java)) },
                     onOpenDebug = {
                         try {
                             val clazz = Class.forName("com.example.islandlyrics.DebugCenterActivity")
@@ -172,20 +182,20 @@ class MainActivity : BaseActivity() {
 
             handler.postDelayed({
                 if (!MediaMonitorService.isConnected) {
-                    AppLogger.getInstance().log("MainActivity", "⚠️ Second rebind attempt (still disconnected)")
-                    MediaMonitorService.requestRebind(this)
+                    AppLogger.getInstance().log("MainActivity", "⚠️ Standard rebind failed. Attempting FORCE REBIND (Component Toggle)")
+                    MediaMonitorService.forceRebind(this)
 
                     handler.postDelayed({
                         if (!MediaMonitorService.isConnected) {
-                            AppLogger.getInstance().log("MainActivity", "❌ REBIND FAILED - Manual intervention may be needed")
+                            AppLogger.getInstance().log("MainActivity", "❌ ALL REBIND ATTEMPTS FAILED - Please toggle permission manually")
                         } else {
-                            AppLogger.getInstance().log("MainActivity", "✅ Service connected after retry")
+                            AppLogger.getInstance().log("MainActivity", "✅ Service connected after FORCE REBIND")
                         }
-                    }, 1000)
+                    }, 2000) // Give force rebind more time (2s)
                 } else {
                     AppLogger.getInstance().log("MainActivity", "✅ Service connected after first retry")
                 }
-            }, 500)
+            }, 1000) // Increase first wait to 1s to be safe
         } else if (!isPermissionGranted) {
             AppLogger.getInstance().log("MainActivity", "❌ Notification Listener Permission NOT granted!")
         } else {

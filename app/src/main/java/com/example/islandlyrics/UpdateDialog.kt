@@ -26,8 +26,45 @@ fun UpdateDialog(
 ) {
     val context = LocalContext.current
     
-    // Markdown Parsing Logic
-    val changelog = releaseInfo.body
+    // Language-aware Logic
+    val currentLocale = context.resources.configuration.locales[0]
+    val isChinese = currentLocale.language == "zh"
+
+    // Parse logic
+    val rawBody = releaseInfo.body
+    val cnHeader = "## 🇨🇳"
+    val enHeader = "## 🇬🇧"
+    
+    // Attempt to extract sections
+    val cnStart = rawBody.indexOf(cnHeader)
+    val enStart = rawBody.indexOf(enHeader)
+    
+    val displayText = if (cnStart != -1 && enStart != -1) {
+        if (isChinese) {
+            // Extract Chinese section
+            if (cnStart < enStart) {
+                rawBody.substring(cnStart + cnHeader.length, enStart).trim()
+            } else {
+                rawBody.substring(cnStart + cnHeader.length).trim()
+            }
+        } else {
+            // Extract English section
+            if (enStart < cnStart) {
+                rawBody.substring(enStart + enHeader.length, cnStart).trim()
+            } else {
+                rawBody.substring(enStart + enHeader.length).trim()
+            }
+        }
+    } else {
+        // Fallback to full text if headers are missing
+        rawBody
+    }
+
+    // Markdown Cleaning (applied to the selected section)
+    val changelog = displayText
+        .replace(Regex("^\\s*更新日志\\s*", RegexOption.MULTILINE), "") // Remove "更新日志" title if present
+        .replace(Regex("^\\s*Change Log\\s*", RegexOption.MULTILINE), "") // Remove "Change Log" title if present
+        .replace("---", "") // Remove separator lines if caught
         .replace("### ", "\n")
         .replace("## ", "\n")
         .replace("# ", "\n")

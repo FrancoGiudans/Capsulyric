@@ -32,7 +32,6 @@ class SettingsActivity : BaseActivity() {
             AppTheme {
                 SettingsScreen(
                     onCheckUpdate = { performUpdateCheck() },
-                    onForceUpdate = { performForceUpdate() },
                     onShowLogs = { showLogConsole() },
                     updateVersionText = version,
                     updateBuildText = build
@@ -48,19 +47,6 @@ class SettingsActivity : BaseActivity() {
                         }
                     )
                 }
-            }
-        }
-    }
-
-    private fun performForceUpdate() {
-        Toast.makeText(this, "Fetching latest release info...", Toast.LENGTH_SHORT).show()
-        
-        lifecycleScope.launch {
-            val release = UpdateChecker.fetchLatestRelease(this@SettingsActivity)
-            if (release != null) {
-                updateReleaseInfo = release
-            } else {
-                 Toast.makeText(this@SettingsActivity, "Failed to fetch release info.", Toast.LENGTH_SHORT).show()
             }
         }
     }

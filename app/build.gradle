@@ -26,7 +26,7 @@ if (localPropertiesFile.exists()) {
 }
 
 android {
-    namespace 'com.example.islandlyrics'
+    namespace = 'com.example.islandlyrics'
     compileSdk 36
 
     // Check if custom keystore is available
@@ -63,9 +63,9 @@ android {
         }
         release {
             // Use custom keystore if available, otherwise use debug signing
-            signingConfig hasCustomKeystore ? signingConfigs.release : signingConfigs.debug
+            signingConfig = hasCustomKeystore ? signingConfigs.release : signingConfigs.debug
             minifyEnabled true
-            shrinkResources true
+            shrinkResources = true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
         prerelease {
@@ -79,9 +79,14 @@ android {
     }
 
     buildFeatures {
-        buildConfig true
-        compose true
-        resValues true
+        buildConfig = true
+        compose = true
+        resValues = true
+    }
+    packaging {
+        jniLibs {
+            keepDebugSymbols += ['**/libandroidx.graphics.path.so']
+        }
     }
 }
 
@@ -107,6 +112,7 @@ dependencies {
     implementation libs.ui.graphics
     implementation libs.ui.tooling.preview
     implementation libs.material3
+    implementation libs.material.icons.extended
     implementation 'androidx.compose.runtime:runtime-livedata'
     
     // Palette for album art color extraction (Monet-style)
