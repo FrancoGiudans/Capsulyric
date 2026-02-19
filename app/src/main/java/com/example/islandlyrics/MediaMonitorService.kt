@@ -168,6 +168,8 @@ class MediaMonitorService : NotificationListenerService() {
     private fun recheckSessions() {
         if (mediaSessionManager != null && componentName != null) {
             try {
+                // FORCE UPDATE: Reset metadata hash so next update propagates immediately
+                lastMetadataHash = 0
                 updateControllers(mediaSessionManager?.getActiveSessions(componentName))
             } catch (e: SecurityException) {
                 AppLogger.getInstance().log(TAG, "Error refreshing sessions: ${e.message}")
@@ -362,8 +364,11 @@ class MediaMonitorService : NotificationListenerService() {
         val duration = metadata.getLong(MediaMetadata.METADATA_KEY_DURATION)
 
         // 1. ALWAYS propogate via SUGGESTION channel (for ParserRuleScreen)
-        // Logic Fix: Allow ANY playing app to update suggestion, even if not primary
-        if (playbackState?.state == PlaybackState.STATE_PLAYING) {
+        // Logic Fix: Allow ANY playing OR PAUSED app to update suggestion
+        // This ensures users can see the app in "Add Rule" even if they paused it to switch apps
+        if (playbackState?.state == PlaybackState.STATE_PLAYING || 
+            playbackState?.state == PlaybackState.STATE_PAUSED ||
+            playbackState?.state == PlaybackState.STATE_BUFFERING) {
             LyricRepository.getInstance().updateSuggestionMetadata(
                 title = rawTitle ?: "Unknown",
                 artist = rawArtist ?: "Unknown",
@@ -390,6 +395,16 @@ class MediaMonitorService : NotificationListenerService() {
         val artHash = artBitmap?.hashCode() ?: 0
         
         val metadataHash = java.util.Objects.hash(rawTitle, rawArtist, pkg, duration, artHash)
+        
+        // SKIP DUPLICATE CHECK if this is a forced update (from whitelist change)
+        // We detect this via a transient flag or simply by checking if the LAST hash was from a DIFFERENT package?
+        // Simpler: We just rely on the fact that if we switched primary, the hash is likely different.
+        // BUT, if we re-enabled the SAME app, the hash might be identical to what we had before we disabled it?
+        // Actually, `activeControllers` mechanism in `updateControllers` handles the "switch", 
+        // but `updateMetadataIfPrimary` is called explicitly. 
+        // To be safe, we can relax this check OR ensure `lastMetadataHash` is reset in `recheckSessions`.
+        // For now, let's keep the check but ensure `recheckSessions` clears the last hash.
+        
         if (metadataHash == lastMetadataHash) {
             return
         }
