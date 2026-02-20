@@ -140,6 +140,8 @@
     <string name="icon_style_advanced">Advanced</string>
     <string name="icon_style_advanced_desc">Dual-line layout with album art</string>
     <string name="dialog_icon_style_title">Select Icon Style</string>
+    <string name="settings_disable_scrolling">Disable Lyric Scrolling</string>
+    <string name="settings_disable_scrolling_desc">Displays static text only. Prevents ALL scrolling, regardless of lyric type.</string>
 
     <string name="settings_feedback">Feedback</string>
     <string name="settings_hide_recents">Hide from Recents</string>

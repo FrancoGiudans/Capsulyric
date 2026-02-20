@@ -125,6 +125,15 @@ dependencies {
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1'
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.1'
     
+    // Markdown
+    implementation libs.markwon.core
+    implementation libs.markwon.ext.tables
+    implementation libs.markwon.ext.strikethrough
+    implementation libs.markwon.ext.tasklist
+    implementation libs.markwon.html
+    implementation libs.markwon.image.coil
+    implementation libs.coil
+
     debugImplementation libs.ui.tooling
     debugImplementation libs.ui.test.manifest
 }

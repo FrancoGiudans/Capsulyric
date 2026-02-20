@@ -17,6 +17,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.runtime.remember
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.foundation.layout.fillMaxWidth
+import android.widget.TextView
+import io.noties.markwon.Markwon
+import io.noties.markwon.SoftBreakAddsNewLinePlugin
+import io.noties.markwon.ext.strikethrough.StrikethroughPlugin
+import io.noties.markwon.ext.tables.TablePlugin
+import io.noties.markwon.ext.tasklist.TaskListPlugin
+import io.noties.markwon.html.HtmlPlugin
+import io.noties.markwon.image.coil.CoilImagesPlugin
 
 @Composable
 fun UpdateDialog(
@@ -64,15 +76,20 @@ fun UpdateDialog(
     val changelog = displayText
         .replace(Regex("^\\s*更新日志\\s*", RegexOption.MULTILINE), "") // Remove "更新日志" title if present
         .replace(Regex("^\\s*Change Log\\s*", RegexOption.MULTILINE), "") // Remove "Change Log" title if present
-        .replace("---", "") // Remove separator lines if caught
-        .replace("### ", "\n")
-        .replace("## ", "\n")
-        .replace("# ", "\n")
-        .replace("**", "")
-        .replace("__", "")
-        .replace("- ", "• ")
-        .replace("* ", "• ")
         .trim()
+        
+    val markwon = remember(context) {
+        Markwon.builder(context)
+            .usePlugin(SoftBreakAddsNewLinePlugin.create())
+            .usePlugin(StrikethroughPlugin.create())
+            .usePlugin(TablePlugin.create(context))
+            .usePlugin(TaskListPlugin.create(context))
+            .usePlugin(HtmlPlugin.create())
+            .usePlugin(CoilImagesPlugin.create(context))
+            .build()
+    }
+    
+    val textColor = MaterialTheme.colorScheme.onSurface.toArgb()
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -92,9 +109,19 @@ fun UpdateDialog(
                     color = MaterialTheme.colorScheme.primary
                 )
                 Spacer(modifier = Modifier.height(16.dp))
-                Text(
-                    text = changelog,
-                    style = MaterialTheme.typography.bodyMedium
+                AndroidView(
+                    modifier = Modifier.fillMaxWidth(),
+                    factory = { ctx ->
+                        TextView(ctx).apply {
+                            setTextColor(textColor)
+                            setTextIsSelectable(true)
+                            movementMethod = android.text.method.LinkMovementMethod.getInstance()
+                        }
+                    },
+                    update = { textView ->
+                        textView.setTextColor(textColor)
+                        markwon.setMarkdown(textView, changelog)
+                    }
                 )
             }
         },

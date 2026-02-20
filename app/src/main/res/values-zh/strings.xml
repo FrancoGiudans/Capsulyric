@@ -141,6 +141,7 @@
     <string name="icon_style_advanced_desc">专辑封面+双行布局</string>
     <string name="dialog_icon_style_title">设置左侧图标样式</string>
 
+    <string name="settings_disable_scrolling_desc">显示稳定的静态歌词文本，对于长歌词则只会展示前半段，阻止任何歌词滚动</string>
     <string name="settings_feedback">反馈</string>
     <string name="settings_hide_recents">隐藏后台窗口</string>
     <string name="settings_hide_recents_desc">划到后台时自动从最近任务中移除</string>
@@ -273,5 +274,6 @@
     <string name="settings_click_action_default_desc">在前台打开本应用</string>
     <string name="settings_click_action_media">打开媒体控制弹窗</string>
     <string name="settings_click_action_media_desc">在不打开本应用的情况下展示媒体控制弹窗</string>
+    <string name="settings_disable_scrolling">禁用歌词滚动</string>
 
 </resources>

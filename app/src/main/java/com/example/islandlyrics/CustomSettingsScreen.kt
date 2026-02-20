@@ -99,6 +99,7 @@ fun CustomSettingsScreen(
     var progressColorEnabled by remember { mutableStateOf(prefs.getBoolean("progress_bar_color_enabled", false)) }
     var hideRecentsEnabled by remember { mutableStateOf(prefs.getBoolean("hide_recents_enabled", false)) }
     var recommendMediaAppEnabled by remember { mutableStateOf(prefs.getBoolean("recommend_media_app", true)) }
+    var disableScrolling by remember { mutableStateOf(prefs.getBoolean("disable_lyric_scrolling", false)) }
 
     // Check for HyperOS 3.0.300+
     val isHyperOsSupported = remember { RomUtils.isHyperOsVersionAtLeast(3, 0, 300) }
@@ -213,6 +214,16 @@ fun CustomSettingsScreen(
                                 iconStyle = iconStyle
                             )
                             Spacer(modifier = Modifier.height(16.dp))
+
+                            SettingsSwitchItem(
+                                title = stringResource(R.string.settings_disable_scrolling),
+                                subtitle = stringResource(R.string.settings_disable_scrolling_desc),
+                                checked = disableScrolling,
+                                onCheckedChange = {
+                                    disableScrolling = it
+                                    prefs.edit().putBoolean("disable_lyric_scrolling", it).apply()
+                                }
+                            )
 
                             if (isHyperOsSupported) {
                                 SettingsSwitchItem(

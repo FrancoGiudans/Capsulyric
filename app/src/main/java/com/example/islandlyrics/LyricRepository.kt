@@ -68,8 +68,14 @@ class LyricRepository private constructor() {
     }
 
     fun updateMediaMetadata(title: String, artist: String, packageName: String, duration: Long) {
-        // Simple atomic update - no song change detection, no lyric clearing
-        // Capsule lifecycle is now controlled by playback state, not metadata changes
+        // Detect song change to clear old lyrics
+        val currentTrackId = "$title-$artist-$packageName"
+        if (lastTrackId != currentTrackId) {
+            lastTrackId = currentTrackId
+            AppLogger.getInstance().log("Repo", "📝 Song changed, clearing old lyric")
+            liveLyric.postValue(LyricInfo("", packageName))
+        }
+
         AppLogger.getInstance().log("Repo", "📝 Metadata: $title - $artist [$packageName]")
         liveMetadata.postValue(MediaInfo(title, artist, packageName, duration))
     }
