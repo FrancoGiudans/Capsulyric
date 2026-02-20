@@ -236,6 +236,12 @@ class MediaMonitorService : NotificationListenerService() {
                             }
 
                             override fun onPlaybackStateChanged(state: PlaybackState?) {
+                                val isPlaying = state?.state == PlaybackState.STATE_PLAYING
+                                if (isPlaying) {
+                                    // CRITICAL FIX: Ensure playback status is synced immediately on resume
+                                    // so SuperLyric API or ProgressUpdater can wake up without waiting for metadata change
+                                    LyricRepository.getInstance().updatePlaybackStatus(true)
+                                }
                                 checkServiceState() // Priority might have changed
                                 updateMetadataIfPrimary(controller)
                             }
@@ -419,9 +425,47 @@ class MediaMonitorService : NotificationListenerService() {
         // Load parser rule for this package
         val rule = ParserRuleHelper.getRuleForPackage(this, pkg)
 
-
         // Apply parsing rules if enabled
         if (rule != null && rule.enabled) {
+            
+            // --- Anti-False-Positive Heuristics for Lyric Avoidance ---
+            // Pure music or artists with "-" can easily trigger a false positive.
+            val album = metadata.getString(MediaMetadata.METADATA_KEY_ALBUM)
+            val displayTitle = metadata.getString(MediaMetadata.METADATA_KEY_DISPLAY_TITLE)
+            
+            // Heuristic 1: Instrumental keywords
+            val isInstrumental = rawTitle?.contains("Instrument", ignoreCase = true) == true || 
+                                 rawTitle?.contains("纯音乐") == true || 
+                                 rawTitle?.contains("伴奏") == true
+                                 
+            // Heuristic 2: Real title matches album or displayTitle
+            val isLikelyRealTitle = (!album.isNullOrEmpty() && rawTitle == album) ||
+                                    (!displayTitle.isNullOrEmpty() && rawTitle == displayTitle)
+
+            val isFalsePositiveLyric = isInstrumental || isLikelyRealTitle
+
+            // --- Dynamic Lyric State Tracking ---
+            // If the title changes while the artist and duration remain the same, it's a live lyric feed!
+            val prevArtist = packageLastArtist[pkg]
+            val prevDuration = packageLastDuration[pkg] ?: 0L
+            val prevTitle = packageLastTitle[pkg]
+            var isDynamicLyricMode = packageLyricMode[pkg] ?: false
+            
+            val isNewSong = rawArtist != prevArtist || duration != prevDuration
+            if (isNewSong) {
+                // Reset dynamic mode for new song, unless we already have strong standard proof
+                isDynamicLyricMode = false 
+            } else {
+                if (rawTitle != prevTitle && !rawTitle.isNullOrEmpty() && !prevTitle.isNullOrEmpty()) {
+                    isDynamicLyricMode = true // Title changed mid-song! It's a lyric feed.
+                }
+            }
+            
+            packageLastArtist[pkg] = rawArtist
+            packageLastDuration[pkg] = duration
+            packageLastTitle[pkg] = rawTitle
+            packageLyricMode[pkg] = isDynamicLyricMode
+
             // Case 1: Title contains "Artist - Title" (or similar)
             val titleParse = ParserRuleHelper.parseWithRule(rawTitle ?: "", rule)
             if (titleParse.third) {
@@ -430,19 +474,40 @@ class MediaMonitorService : NotificationListenerService() {
                 // finalLyric remains null
             } else {
                 // Case 2: Artist contains "Artist - Title" AND Title contains Lyrics
-                // This matches the user's reported issue: "歌名部分显示为歌词，歌手部分显示为歌名-歌手"
                 val artistParse = ParserRuleHelper.parseWithRule(rawArtist ?: "", rule)
+                
+                // Only consider it a lyric if it passes the anti-false-positive check
                 if (artistParse.third) {
-                    finalTitle = artistParse.first
-                    finalArtist = artistParse.second
-                    // If we successfully parsed the artist field, the "Title" field was likely lyrics
-                    if (!rawTitle.isNullOrEmpty()) {
-                        finalLyric = rawTitle
-                        AppLogger.getInstance().log("Parser", "💡 Detected Lyrics in Title field! Swapped.")
+                    val suspectedTitle = artistParse.first
+                    val suspectedArtist = artistParse.second
+                    
+                    val isRiskySeparator = rule.separatorPattern == "-" && !(rawArtist?.contains(" - ") == true)
+                    
+                    // Anomalous Parse Check
+                    val isAnomalousParse = isRiskySeparator && 
+                                           suspectedTitle.contains("/") && 
+                                           !suspectedArtist.contains("/")
+                    
+                    // We only trust Risky separators if we have proof (dynamic updates or metadata match).
+                    val isConfirmedLyric = !isRiskySeparator ||
+                                           isDynamicLyricMode || 
+                                           (!album.isNullOrEmpty() && suspectedTitle == album)
+                    
+                    if (!isFalsePositiveLyric && !isAnomalousParse && isConfirmedLyric) {
+                        finalTitle = suspectedTitle
+                        finalArtist = suspectedArtist
+                        if (!rawTitle.isNullOrEmpty()) {
+                            finalLyric = rawTitle
+                            AppLogger.getInstance().log("Parser", "💡 Detected/Confirmed Lyrics in Title! Swapped.")
+                        }
+                    } else {
+                        if (isRiskySeparator && !isConfirmedLyric) {
+                            AppLogger.getInstance().log("Parser", "🚫 Blocked unconfirmed lyric parse (Risky Separator): $rawTitle")
+                        }
                     }
                 }
             }
-        } 
+        }
 
 
         // Update PUBLIC Metadata (Main UI)
@@ -482,6 +547,12 @@ class MediaMonitorService : NotificationListenerService() {
         private const val PREFS_NAME = "IslandLyricsPrefs"
         private const val PREF_PARSER_RULES = "parser_rules_json"
         
+        // --- Dynamic Lyric State Tracking Maps ---
+        private val packageLyricMode = HashMap<String, Boolean>()
+        private val packageLastArtist = HashMap<String, String?>()
+        private val packageLastDuration = HashMap<String, Long>()
+        private val packageLastTitle = HashMap<String, String?>()
+
         var isConnected = false
         
         fun requestRebind(context: Context) {

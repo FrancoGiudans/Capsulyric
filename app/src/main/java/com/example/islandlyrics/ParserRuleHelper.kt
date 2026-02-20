@@ -153,7 +153,15 @@ object ParserRuleHelper {
      * @return Triple(title, artist, isSuccess)
      */
     fun parseWithRule(input: String, rule: ParserRule): Triple<String, String, Boolean> {
-        val separator = rule.separatorPattern
+        var separator = rule.separatorPattern
+        
+        // Smart separator fallback:
+        // If the configured separator is strictly "-" but the string contains " - " (with spaces),
+        // we prioritize the spaced version as it has a much lower false-positive rate.
+        if (separator == "-" && input.contains(" - ")) {
+            separator = " - "
+        }
+        
         val splitIndex = input.indexOf(separator)
         
         if (splitIndex == -1) {

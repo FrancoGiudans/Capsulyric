@@ -104,7 +104,7 @@ class LyricCapsuleHandler(
     private val maxHistory = 5
     private var adaptiveDelay: Long = SCROLL_STEP_DELAY
     private val minCharDuration = 50L
-    private val minScrollDelay = 500L
+    private val minScrollDelay = 200L
     private val maxScrollDelay = 5000L
 
     // Scrolling Mode Flags
@@ -323,7 +323,8 @@ class LyricCapsuleHandler(
         // Calculate total visual weight of recent lyric
         val avgLyricWeight = calculateWeight(lastLyricText)
         
-        if (avgLyricWeight == 0 || avgDuration < staticTimeReserve) {
+        val currentStaticReserve = if (isMostlyWestern(lastLyricText)) 750L else staticTimeReserve
+        if (avgLyricWeight == 0 || avgDuration < currentStaticReserve) {
             adaptiveDelay = SCROLL_STEP_DELAY
             return
         }
@@ -332,7 +333,7 @@ class LyricCapsuleHandler(
         val estimatedSteps = maxOf(1, (avgLyricWeight / 5))  // ~5 weight per shift
         
         // T_per_unit = (T_total - T_static - N*T_base) / L_total
-        val availableTime = avgDuration - staticTimeReserve - (estimatedSteps * baseFocusDelay)
+        val availableTime = avgDuration - currentStaticReserve - (estimatedSteps * baseFocusDelay)
         val timePerUnit = if (availableTime > 0 && avgLyricWeight > 0) {
             availableTime / avgLyricWeight
         } else {
@@ -369,9 +370,14 @@ class LyricCapsuleHandler(
         return text.sumOf { charWeight(it) }
     }
     
-    // Extract substring by visual weight with SMART WORD TRUNCATION
-    // - Respects word boundaries (backtracks to space if cut point is mid-word)
-    // - Forces cut only if word is longer than maxWeight (unbreakable)
+    // Determine if text is mostly Western
+    private fun isMostlyWestern(text: String): Boolean {
+        if (text.isEmpty()) return false
+        val cjkCount = text.count { charWeight(it) == 2 }
+        return cjkCount <= text.length / 2
+    }
+    
+    // Extract substring by visual weight (Strict Cut, no smart word truncation)
     private fun extractByWeight(text: String, startWeight: Int, maxWeight: Int): String {
         var currentWeight = 0
         var startIndex = 0
@@ -397,31 +403,6 @@ class LyricCapsuleHandler(
         }
         
         if (endIndex <= startIndex) return ""
-        
-        // SMART TRUNCATION: Avoid splitting words
-        // If cut point is mid-word (alphanumeric chars on both sides), backtrack to space
-        if (endIndex < text.length) {
-            val charAtCut = text[endIndex]
-            val charBeforeCut = text[endIndex - 1]
-            
-            // Only apply to Western characters (weight 1). CJK (weight 2) can be split anywhere.
-            if (charWeight(charAtCut) == 1 && charWeight(charBeforeCut) == 1 &&
-                Character.isLetterOrDigit(charAtCut) && Character.isLetterOrDigit(charBeforeCut)) {
-                // We are inside a word. Try to backtrack to a space.
-                var spaceIndex = -1
-                for (i in endIndex - 1 downTo startIndex) {
-                    if (Character.isWhitespace(text[i])) {
-                        spaceIndex = i
-                        break
-                    }
-                }
-                
-                // Only backtrack if we found a space and it's not too far back.
-                if (spaceIndex != -1) {
-                    endIndex = spaceIndex
-                }
-            }
-        }
         
         return text.substring(startIndex, endIndex).trimEnd()
     }
@@ -562,15 +543,15 @@ class LyricCapsuleHandler(
                     // This ensures the scroll target moves 1:1 with the reading position, preventing lag.
                     val currentProgressWeight = (lineProgress * currentLineWeight).toInt()
                     
-                    val scrollStartThreshold = 8
+                    val scrollStartThreshold = if (isMostlyWestern(foundLine.text)) 4 else 8
                     val targetWeightOffset = if (currentProgressWeight < scrollStartThreshold) {
                         0
                     } else {
                         currentProgressWeight - scrollStartThreshold
                     }
                     
-                    // LENGTH CONSTRAINT: Maintain minimum visual length (14 weight units)
-                    val minVisibleWeight = 14
+                    // LENGTH CONSTRAINT: Maintain minimum visual length (16 weight units)
+                    val minVisibleWeight = 16
                     val maxAllowedScroll = maxOf(0, currentLineWeight - minVisibleWeight)
                     
                     // FIX: Direct scrolling for LRC (User preference: No word segmentation for LRC)
@@ -968,7 +949,8 @@ class LyricCapsuleHandler(
             when (scrollState) {
                 ScrollState.INITIAL_PAUSE -> {
                     val pauseElapsed = System.currentTimeMillis() - initialPauseStartTime
-                    if (pauseElapsed >= initialPauseDuration) {
+                    val requiredPause = if (isMostlyWestern(currentLyric)) 500L else initialPauseDuration
+                    if (pauseElapsed >= requiredPause) {
                         scrollState = ScrollState.SCROLLING
                     }
                     displayLyric = extractByWeight(currentLyric, 0, maxDisplayWeight)
@@ -994,7 +976,8 @@ class LyricCapsuleHandler(
                     val remainingWeight = totalWeight - scrollOffset
                     displayLyric = extractByWeight(currentLyric, scrollOffset, maxOf(remainingWeight, maxDisplayWeight))
                     val pauseElapsed = System.currentTimeMillis() - initialPauseStartTime
-                    if (pauseElapsed >= finalPauseDuration) {
+                    val requiredPause = if (isMostlyWestern(currentLyric)) 250L else finalPauseDuration
+                    if (pauseElapsed >= requiredPause) {
                         scrollState = ScrollState.DONE
                     }
                 }
