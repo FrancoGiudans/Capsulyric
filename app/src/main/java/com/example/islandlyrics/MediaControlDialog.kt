@@ -132,6 +132,21 @@ fun MediaControlDialog(onDismiss: () -> Unit) {
                     )
                     Spacer(modifier = Modifier.weight(1f))
 
+                    // Open App Button (Pill Icon)
+                    IconButton(onClick = {
+                        val intent = Intent(context, MainActivity::class.java).apply {
+                            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                        }
+                        context.startActivity(intent)
+                        triggerDismiss()
+                    }) {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_pill),
+                            contentDescription = "Open Capsulyric",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
                     // Mi Play Action (Top Right)
                     if (isHyperOsSupported) {
                         IconButton(onClick = {

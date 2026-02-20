@@ -42,6 +42,7 @@ class LyricCapsuleHandler(
     private var cachedUseDynamicIcon = false
     private var cachedIconStyle = "classic"
     private var cachedClickStyle = "default" // New preference
+    private var cachedDisableScrolling = false
     
     private val prefChangeListener = SharedPreferences.OnSharedPreferenceChangeListener { prefs, key ->
         when (key) {
@@ -50,6 +51,7 @@ class LyricCapsuleHandler(
             "dynamic_icon_enabled" -> cachedUseDynamicIcon = prefs.getBoolean(key, false)
             "dynamic_icon_style" -> cachedIconStyle = prefs.getString(key, "classic") ?: "classic"
             "notification_click_style" -> cachedClickStyle = prefs.getString(key, "default") ?: "default"
+            "disable_lyric_scrolling" -> cachedDisableScrolling = prefs.getBoolean(key, false)
         }
     }
     
@@ -60,6 +62,7 @@ class LyricCapsuleHandler(
         cachedUseDynamicIcon = prefs.getBoolean("dynamic_icon_enabled", false)
         cachedIconStyle = prefs.getString("dynamic_icon_style", "classic") ?: "classic"
         cachedClickStyle = prefs.getString("notification_click_style", "default") ?: "default"
+        cachedDisableScrolling = prefs.getBoolean("disable_lyric_scrolling", false)
         prefs.registerOnSharedPreferenceChangeListener(prefChangeListener)
     }
     
@@ -498,8 +501,22 @@ class LyricCapsuleHandler(
 
         var displayLyric: String
 
-        // MODE SELECTION: Syllable > LRC > Weight-Based Fallback
-        if (useSyllableScrolling && currentParsedLines != null) {
+        // MODE SELECTION: Fixed Static > Syllable > LRC > Weight-Based Fallback
+        
+        if (cachedDisableScrolling) {
+            // --- FIXED STATIC MODE (Scrolling disabled) ---
+            val currentLine = if (currentParsedLines != null) findCurrentLine(currentParsedLines!!, currentPosition) else null
+            if (currentLine != null) {
+                // If we have line data, take the line text and truncate
+                displayLyric = extractByWeight(currentLine.text, 0, maxDisplayWeight)
+            } else {
+                // Otherwise fallback to raw string
+                displayLyric = extractByWeight(currentLyric, 0, maxDisplayWeight)
+            }
+            // Mark state done to prevent high-frequency visualizer looping
+            scrollState = ScrollState.DONE
+            
+        } else if (useSyllableScrolling && currentParsedLines != null) {
             // --- SYLLABLE SCROLLING MODE ---
             val currentLine = findCurrentLine(currentParsedLines!!, currentPosition)
             
