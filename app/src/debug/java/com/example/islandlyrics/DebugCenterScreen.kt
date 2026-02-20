@@ -19,6 +19,7 @@ import android.media.session.PlaybackState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.livedata.observeAsState
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -27,6 +28,9 @@ fun DebugCenterScreen(
 ) {
     val context = LocalContext.current
     var showUpdateDialog by remember { mutableStateOf(false) }
+    var updateReleaseInfo by remember { mutableStateOf<UpdateChecker.ReleaseInfo?>(null) }
+    var isFetchingUpdate by remember { mutableStateOf(false) }
+    val coroutineScope = rememberCoroutineScope()
     var showDiagnosticsDialog by remember { mutableStateOf(false) }
 
     Scaffold(
@@ -71,9 +75,22 @@ fun DebugCenterScreen(
 
             // ── Test Update Dialog ──
             DebugMenuButton(
-                text = "Test Update Dialog",
-                description = "Show a dummy update available dialog",
-                onClick = { showUpdateDialog = true }
+                text = if (isFetchingUpdate) "Fetching latest release..." else "Test Update Dialog",
+                description = "Show update dialog with absolute latest release (incl. prerelease)",
+                onClick = {
+                    if (isFetchingUpdate) return@DebugMenuButton
+                    isFetchingUpdate = true
+                    coroutineScope.launch {
+                        val release = UpdateChecker.fetchAbsoluteLatestRelease()
+                        isFetchingUpdate = false
+                        if (release != null) {
+                            updateReleaseInfo = release
+                            showUpdateDialog = true
+                        } else {
+                            android.widget.Toast.makeText(context, "Failed to fetch release", android.widget.Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                }
             )
 
             // ── Media Controls ──
@@ -154,18 +171,9 @@ fun DebugCenterScreen(
         }
     }
 
-    if (showUpdateDialog) {
-        val dummyRelease = UpdateChecker.ReleaseInfo(
-            tagName = "v9.9.9_DEBUG",
-            name = "Debug Test Update",
-            body = "### New Features\n- This is a test update dialog.\n- It verifies that the dialog renders correctly.",
-            htmlUrl = "https://github.com/FrancoGiudans/Capsulyric/releases",
-            publishedAt = "2026-01-01T00:00:00Z",
-            prerelease = true
-        )
-
+    if (showUpdateDialog && updateReleaseInfo != null) {
         UpdateDialog(
-            releaseInfo = dummyRelease,
+            releaseInfo = updateReleaseInfo!!,
             onDismiss = { showUpdateDialog = false },
             onIgnore = { /* No-op in debug */ }
         )

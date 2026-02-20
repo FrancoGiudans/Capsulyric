@@ -121,16 +121,11 @@ object UpdateChecker {
      * @return ReleaseInfo if newer version available, null otherwise
      */
     /**
-     * Fetch the latest release information from GitHub without comparing versions.
+     * Fetch the absolute latest release information from GitHub without comparing versions, including prereleases.
      */
-    suspend fun fetchLatestRelease(context: Context): ReleaseInfo? = withContext(Dispatchers.IO) {
+    suspend fun fetchAbsoluteLatestRelease(): ReleaseInfo? = withContext(Dispatchers.IO) {
         try {
-            val includePrerelease = isPrereleaseEnabled(context)
-            val apiUrl = if (includePrerelease) {
-                "https://api.github.com/repos/FrancoGiudans/Capsulyric/releases"
-            } else {
-                GITHUB_API_URL
-            }
+            val apiUrl = "https://api.github.com/repos/FrancoGiudans/Capsulyric/releases"
             
             val url = URL(apiUrl)
             val connection = url.openConnection() as HttpURLConnection
@@ -141,15 +136,9 @@ object UpdateChecker {
 
             if (connection.responseCode == 200) {
                 val response = connection.inputStream.bufferedReader().use { it.readText() }
-                
-                 if (includePrerelease) {
-                    val jsonArray = org.json.JSONArray(response)
-                    if (jsonArray.length() > 0) {
-                        return@withContext parseRelease(jsonArray.getJSONObject(0))
-                    }
-                } else {
-                    val json = JSONObject(response)
-                    return@withContext parseRelease(json)
+                val jsonArray = org.json.JSONArray(response)
+                if (jsonArray.length() > 0) {
+                    return@withContext parseRelease(jsonArray.getJSONObject(0))
                 }
             } else {
                 AppLogger.getInstance().e(TAG, "GitHub API error: ${connection.responseCode}")
@@ -157,7 +146,7 @@ object UpdateChecker {
             connection.disconnect()
             null
         } catch (e: Exception) {
-             AppLogger.getInstance().e(TAG, "Failed to fetch latest release", e)
+             AppLogger.getInstance().e(TAG, "Failed to fetch absolute latest release", e)
              null
         }
     }

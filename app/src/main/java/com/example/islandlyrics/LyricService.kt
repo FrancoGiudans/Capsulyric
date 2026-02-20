@@ -87,6 +87,12 @@ class LyricService : Service() {
                 // Capsule running: Force immediate update
                 capsuleHandler?.updateLyricImmediate(info.lyric)
             }
+        } else {
+            // Stop capsule if we received an empty lyric signal (e.g., song change or pure music)
+            if (capsuleHandler?.isRunning() == true) {
+                capsuleHandler?.stop()
+                AppLogger.getInstance().log(TAG, "🛑 Capsule stopped: Lyric is empty")
+            }
         }
     }
     
@@ -179,6 +185,8 @@ class LyricService : Service() {
                     if (BuildConfig.DEBUG) {
                         AppLogger.getInstance().d(TAG, "Instrumental detected: $lyric")
                     }
+                    val appName = getAppName(pkg)
+                    LyricRepository.getInstance().updateLyric("", appName)
                     @Suppress("DEPRECATION")
                     stopForeground(true)
                     return
