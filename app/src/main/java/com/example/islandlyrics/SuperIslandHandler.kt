@@ -67,7 +67,8 @@ class SuperIslandHandler(
         if (!isRunning) return
         if (!pendingUpdate) {
             pendingUpdate = true
-            mainHandler.postDelayed(debouncedUpdate, 300)
+            // ⚡ Snappy debounce: 80ms to coalesce rapid meta/progress pings without feeling laggy
+            mainHandler.postDelayed(debouncedUpdate, 80)
         }
     }
 
