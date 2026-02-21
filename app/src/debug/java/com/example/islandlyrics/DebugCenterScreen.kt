@@ -1,5 +1,6 @@
 package com.example.islandlyrics
 
+import android.content.Context
 import android.content.Intent
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -168,6 +169,52 @@ fun DebugCenterScreen(
                 description = "View internal state of Notification Listener Service",
                 onClick = { showDiagnosticsDialog = true }
             )
+
+            // ── Super Island Toggle ──
+            val prefs = context.getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE)
+            var superIslandEnabled by remember {
+                mutableStateOf(prefs.getBoolean("debug_super_island_enabled", false))
+            }
+
+            OutlinedCard(
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier
+                        .padding(16.dp)
+                        .fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "发送小米超级岛通知",
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "替代 Live Update，使用小米超级岛模版发送歌词通知",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Switch(
+                        checked = superIslandEnabled,
+                        onCheckedChange = { enabled ->
+                            superIslandEnabled = enabled
+                            prefs.edit().putBoolean("debug_super_island_enabled", enabled).apply()
+
+                            val action = if (enabled) {
+                                "ACTION_ENABLE_SUPER_ISLAND"
+                            } else {
+                                "ACTION_DISABLE_SUPER_ISLAND"
+                            }
+                            val intent = Intent(context, LyricService::class.java).setAction(action)
+                            context.startService(intent)
+                        }
+                    )
+                }
+            }
         }
     }
 

@@ -76,31 +76,50 @@ class LyricService : Service() {
                 }
             }
 
-            // Auto-start Capsule upon valid lyric (even if static, if we didn't return above)
-            if (capsuleHandler?.isRunning() != true) {
-                capsuleHandler?.start()
-                
-                // START PROGRESS TRACKING
-                isPlaying = true
-                handler.post(updateTask)
+            // Auto-start active handler upon valid lyric
+            if (isSuperIslandMode) {
+                if (superIslandHandler?.isRunning != true) {
+                    superIslandHandler?.start()
+                    isPlaying = true
+                    handler.post(updateTask)
+                }
             } else {
-                // Capsule running: Force immediate update
-                capsuleHandler?.updateLyricImmediate(info.lyric)
+                if (capsuleHandler?.isRunning() != true) {
+                    capsuleHandler?.start()
+                    isPlaying = true
+                    handler.post(updateTask)
+                } else {
+                    capsuleHandler?.updateLyricImmediate(info.lyric)
+                }
             }
         } else {
-            // Stop capsule if we received an empty lyric signal (e.g., song change or pure music)
-            if (capsuleHandler?.isRunning() == true) {
-                capsuleHandler?.stop()
-                AppLogger.getInstance().log(TAG, "🛑 Capsule stopped: Lyric is empty")
+            // Stop active handler if we received an empty lyric signal
+            if (isSuperIslandMode) {
+                if (superIslandHandler?.isRunning == true) {
+                    superIslandHandler?.stop()
+                    AppLogger.getInstance().log(TAG, "🛑 SuperIsland stopped: Lyric is empty")
+                }
+            } else {
+                if (capsuleHandler?.isRunning() == true) {
+                    capsuleHandler?.stop()
+                    AppLogger.getInstance().log(TAG, "🛑 Capsule stopped: Lyric is empty")
+                }
             }
         }
     }
     
     // Delayed Stop Logic
     private val delayedStopRunnable = Runnable {
-        if (capsuleHandler?.isRunning() == true) {
-            capsuleHandler?.stop()
-            AppLogger.getInstance().log(TAG, "🛑 Capsule stopped: Playback stopped (Delayed)")
+        if (isSuperIslandMode) {
+            if (superIslandHandler?.isRunning == true) {
+                superIslandHandler?.stop()
+                AppLogger.getInstance().log(TAG, "🛑 SuperIsland stopped: Playback stopped (Delayed)")
+            }
+        } else {
+            if (capsuleHandler?.isRunning() == true) {
+                capsuleHandler?.stop()
+                AppLogger.getInstance().log(TAG, "🛑 Capsule stopped: Playback stopped (Delayed)")
+            }
         }
     }
 
@@ -110,14 +129,21 @@ class LyricService : Service() {
             // Cancel any pending stop
             handler.removeCallbacks(delayedStopRunnable)
 
-            // Resume/Start capsule if we have valid lyrics
+            // Resume/Start active handler if we have valid lyrics
             val currentLyric = LyricRepository.getInstance().liveLyric.value
-            if (currentLyric != null && currentLyric.lyric.isNotBlank() && capsuleHandler?.isRunning() != true) {
-                capsuleHandler?.start()
-                
-                // Force immediate update with current lyric
-                capsuleHandler?.updateLyricImmediate(currentLyric.lyric)
-                AppLogger.getInstance().log(TAG, "▶️ Capsule started: Playback resumed")
+            if (currentLyric != null && currentLyric.lyric.isNotBlank()) {
+                if (isSuperIslandMode) {
+                    if (superIslandHandler?.isRunning != true) {
+                        superIslandHandler?.start()
+                        AppLogger.getInstance().log(TAG, "▶️ SuperIsland started: Playback resumed")
+                    }
+                } else {
+                    if (capsuleHandler?.isRunning() != true) {
+                        capsuleHandler?.start()
+                        capsuleHandler?.updateLyricImmediate(currentLyric.lyric)
+                        AppLogger.getInstance().log(TAG, "▶️ Capsule started: Playback resumed")
+                    }
+                }
             }
             // Start progress tracking (merged from second observer)
             startProgressUpdater()
@@ -135,13 +161,20 @@ class LyricService : Service() {
             AppLogger.getInstance().log(TAG, "🛑 Playback stopped. Delay=$delay ms")
 
             if (delay > 0) {
-                 AppLogger.getInstance().log(TAG, "⏳ Scheduling capsule stop in ${delay}ms")
+                 AppLogger.getInstance().log(TAG, "⏳ Scheduling handler stop in ${delay}ms")
                  handler.postDelayed(delayedStopRunnable, delay)
             } else {
                  // Immediate stop
-                 if (capsuleHandler?.isRunning() == true) {
-                    capsuleHandler?.stop()
-                    AppLogger.getInstance().log(TAG, "🛑 Capsule stopped immediately (Delay=0)")
+                 if (isSuperIslandMode) {
+                     if (superIslandHandler?.isRunning == true) {
+                         superIslandHandler?.stop()
+                         AppLogger.getInstance().log(TAG, "🛑 SuperIsland stopped immediately (Delay=0)")
+                     }
+                 } else {
+                     if (capsuleHandler?.isRunning() == true) {
+                         capsuleHandler?.stop()
+                         AppLogger.getInstance().log(TAG, "🛑 Capsule stopped immediately (Delay=0)")
+                     }
                  }
             }
         }
@@ -299,11 +332,14 @@ class LyricService : Service() {
     // Toggle for Chip Keep-Alive Hack
     private var invisibleToggle = false
     private var capsuleHandler: LyricCapsuleHandler? = null
+    private var superIslandHandler: SuperIslandHandler? = null
+    private var isSuperIslandMode = false
 
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
         capsuleHandler = LyricCapsuleHandler(this, this)
+        superIslandHandler = SuperIslandHandler(this, this)
         
         // Always register SuperLyric for detection (check per-app settings in callback)
         SuperLyricTool.registerSuperLyric(this, superLyricStub)
@@ -353,13 +389,16 @@ class LyricService : Service() {
         // [Fix Task 1] Immediate Foreground Promotion
         createNotificationChannel()
         
-        // CRITICAL FIX: Prioritize the Rich Capsule Notification if it's already active
-        if (capsuleHandler != null && capsuleHandler!!.isRunning()) {
-            // Ask the handler to repost its rich notification
-            // This satisfies startForeground requirements without downgrading the UI
+        // CRITICAL FIX: Prioritize the active Handler's notification
+        val currentIsSuperIsland = isSuperIslandMode
+        if (currentIsSuperIsland && superIslandHandler != null && superIslandHandler!!.isRunning) {
+             // Let SuperIslandHandler handle it (it calls startForeground(1001, ...))
+             superIslandHandler!!.forceUpdateNotification()
+        } else if (!currentIsSuperIsland && capsuleHandler != null && capsuleHandler!!.isRunning()) {
+            // Let CapsuleHandler handle it
             capsuleHandler!!.forceUpdateNotification()
         } else {
-            // Fallback: Use basic notification logic (improved to show real lyrics if available)
+            // Fallback for initial start only
             val currentInfo = LyricRepository.getInstance().liveLyric.value
             val title = currentInfo?.sourceApp ?: "Island Lyrics"
             val text = currentInfo?.lyric ?: "Initializing..."
@@ -391,6 +430,26 @@ class LyricService : Service() {
                  // huntForPromotedApi() // Not implemented in Java, skipped for now or inline?
             }
             startSimulation()
+            return START_STICKY
+        } else if (intent != null && "ACTION_ENABLE_SUPER_ISLAND" == intent.action) {
+            AppLogger.getInstance().log(TAG, "🏝️ Switching to SuperIsland mode")
+            isSuperIslandMode = true
+            // Stop capsule, start island
+            capsuleHandler?.stop()
+            val currentLyric = LyricRepository.getInstance().liveLyric.value
+            if (currentLyric != null && currentLyric.lyric.isNotBlank()) {
+                superIslandHandler?.start()
+            }
+            return START_STICKY
+        } else if (intent != null && "ACTION_DISABLE_SUPER_ISLAND" == intent.action) {
+            AppLogger.getInstance().log(TAG, "🏝️ Switching back to Capsule mode")
+            isSuperIslandMode = false
+            superIslandHandler?.stop()
+            val currentLyric = LyricRepository.getInstance().liveLyric.value
+            if (currentLyric != null && currentLyric.lyric.isNotBlank()) {
+                capsuleHandler?.start()
+                capsuleHandler?.updateLyricImmediate(currentLyric.lyric)
+            }
             return START_STICKY
         }
 
@@ -504,10 +563,10 @@ class LyricService : Service() {
         if (true) {
             val manager = getSystemService(NotificationManager::class.java)
             if (manager != null) {
-                // Standard Channel
+                // Unified Channel for all types (Capsule, Super Island, Fallback)
                 val serviceChannel = NotificationChannel(
                     CHANNEL_ID,
-                    "Live Updates (High Priority)",
+                    "Lyrics (Capsule / Super Island)",
                     NotificationManager.IMPORTANCE_HIGH
                 ).apply {
                     setSound(null, null)
@@ -996,7 +1055,7 @@ class LyricService : Service() {
 
     companion object {
         private const val TAG = "LyricService"
-        private const val CHANNEL_ID = "capsulyric_live_high_v1"
+        private const val CHANNEL_ID = "lyric_capsule_channel"
         private const val NOTIFICATION_ID = 1001
     }
 }
