@@ -322,6 +322,7 @@ class LogManager private constructor() {
         sb.append("=== Device Information ===\n")
         try {
             val pInfo = context.packageManager.getPackageInfo(context.packageName, 0)
+            @Suppress("DEPRECATION")
             sb.append("App Version: ${pInfo.versionName} (${if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) pInfo.longVersionCode else pInfo.versionCode})\n")
             sb.append("Commit Hash: ${BuildConfig.GIT_COMMIT_HASH}\n")
         } catch (e: Exception) {
