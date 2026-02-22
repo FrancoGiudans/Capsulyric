@@ -43,6 +43,16 @@ class SuperIslandHandler(
     // Cached notification — built once, extras updated in-place
     private var cachedNotification: Notification? = null
     private var cachedBuilder: Notification.Builder? = null
+    private var cachedClickStyle = "default"
+
+    private val prefs by lazy { context.getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE) }
+    private val prefListener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { p, key ->
+        if (key == "notification_click_style") {
+            cachedClickStyle = p.getString(key, "default") ?: "default"
+            // We need to rebuild/update the intent on the next notification ping
+            forceUpdateNotification()
+        }
+    }
 
     // Change detection
     private var lastLyric = ""
@@ -87,6 +97,9 @@ class SuperIslandHandler(
         repo.liveAlbumArt.observeForever(albumArtObserver)
         repo.liveMetadata.observeForever(metadataObserver)
 
+        cachedClickStyle = prefs.getString("notification_click_style", "default") ?: "default"
+        prefs.registerOnSharedPreferenceChangeListener(prefListener)
+
         lastLyric = ""
         lastProgress = -1
         lastAlbumArtHash = 0
@@ -106,6 +119,8 @@ class SuperIslandHandler(
         repo.liveProgress.removeObserver(progressObserver)
         repo.liveAlbumArt.removeObserver(albumArtObserver)
         repo.liveMetadata.removeObserver(metadataObserver)
+
+        prefs.unregisterOnSharedPreferenceChangeListener(prefListener)
 
         mainHandler.removeCallbacks(debouncedUpdate)
         manager?.cancel(NOTIFICATION_ID)
@@ -162,14 +177,9 @@ class SuperIslandHandler(
             .setOngoing(true)
             .setOnlyAlertOnce(true)
             .setVisibility(Notification.VISIBILITY_PUBLIC)
-            .setContentIntent(
-                PendingIntent.getActivity(
-                    context, 0,
-                    Intent(context, MainActivity::class.java)
-                        .setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP),
-                    PendingIntent.FLAG_IMMUTABLE
-                )
-            )
+
+        // Set the appropriate ContentIntent based on preference
+        builder.setContentIntent(createContentIntent())
 
         // Add pics + island params to builder extras BEFORE build
         val bundle = Bundle()
@@ -244,6 +254,9 @@ class SuperIslandHandler(
             // Update base notification text fields
             notification.extras.putString(Notification.EXTRA_TITLE, currentLyric.ifEmpty { "Capsulyric" })
             notification.extras.putString(Notification.EXTRA_TEXT, subText)
+
+            // Update ContentIntent if it changed (or just refresh it)
+            notification.contentIntent = createContentIntent()
 
             // Only update pics if album art or package actually changed
             if ((artChanged || metadata?.packageName != lastPackageName) && (albumArt != null)) {
@@ -379,6 +392,28 @@ class SuperIslandHandler(
             bitmap
         } catch (e: Exception) {
             null
+        }
+    }
+
+    private fun createContentIntent(): PendingIntent {
+        return if (cachedClickStyle == "media_controls") {
+            // Option B: Open Media Controls (Transparent Activity)
+            val intent = Intent(context, MediaControlActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            }
+            PendingIntent.getActivity(
+                context, 0, intent,
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+            )
+        } else {
+            // Option A: Default (Open App)
+            val intent = Intent(context, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_SINGLE_TOP
+            }
+            PendingIntent.getActivity(
+                context, 0, intent,
+                PendingIntent.FLAG_IMMUTABLE
+            )
         }
     }
 
