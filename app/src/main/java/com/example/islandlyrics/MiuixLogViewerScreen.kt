@@ -116,8 +116,8 @@ fun MiuixLogViewerScreen(
                 item {
                     SmallTitle(text = "${logs.size} Log Entries")
                 }
-                logs.forEach { entry ->
-                    item(key = "${entry.timestamp}_${entry.tag}") {
+                logs.forEachIndexed { index, entry ->
+                    item(key = "log_$index") {
                         MiuixLogItem(entry = entry)
                     }
                 }
@@ -149,7 +149,7 @@ private fun MiuixLogItem(entry: LogManager.LogEntry) {
             }
             Spacer(modifier = Modifier.width(8.dp))
             Text(
-                text = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.getDefault()).format(entry.timestamp),
+                text = entry.timestamp,
                 fontSize = 11.sp,
                 color = MiuixTheme.colorScheme.onSurfaceVariantSummary
             )

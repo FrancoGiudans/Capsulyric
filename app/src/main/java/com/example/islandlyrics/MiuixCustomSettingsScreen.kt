@@ -7,6 +7,9 @@ import android.net.Uri
 import android.os.Build
 import android.provider.Settings
 import android.widget.Toast
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.pager.HorizontalPager
@@ -14,10 +17,16 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import kotlinx.coroutines.launch
@@ -104,23 +113,40 @@ fun MiuixCustomSettingsScreen(
     ) { padding ->
         // Tab Row + Pager
         Column(modifier = Modifier.padding(padding).fillMaxSize()) {
-            // Tabs using miuix Card/Row
-            Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly
-                ) {
-                    tabs.forEachIndexed { index, title ->
-                        val selected = pagerState.currentPage == index
-                        TextButton(
+            // HyperOS-style pill tab row
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                tabs.forEachIndexed { index, title ->
+                    val selected = pagerState.currentPage == index
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(
+                                if (selected) MiuixTheme.colorScheme.onBackground.copy(alpha = 0.12f)
+                                else Color.Transparent
+                            )
+                            .then(
+                                if (!selected) Modifier.border(
+                                    width = 1.dp,
+                                    color = MiuixTheme.colorScheme.onBackground.copy(alpha = 0.2f),
+                                    shape = RoundedCornerShape(12.dp)
+                                ) else Modifier
+                            )
+                            .clickable { scope.launch { pagerState.animateScrollToPage(index) } }
+                            .padding(vertical = 10.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
                             text = title,
-                            onClick = { scope.launch { pagerState.animateScrollToPage(index) } },
-                            modifier = Modifier.weight(1f),
-                            colors = if (selected) {
-                                ButtonDefaults.textButtonColorsPrimary()
-                            } else {
-                                ButtonDefaults.textButtonColors()
-                            }
+                            fontSize = 14.sp,
+                            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                            color = if (selected) MiuixTheme.colorScheme.onBackground
+                                    else MiuixTheme.colorScheme.onSurfaceVariantActions
                         )
                     }
                 }
