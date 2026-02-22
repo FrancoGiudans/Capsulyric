@@ -49,6 +49,7 @@ class SuperIslandHandler(
     private var lastProgress = -1
     private var lastAlbumArtHash = 0
     private var lastSubText = ""
+    private var lastPackageName = ""
 
     // Observers — debounce to coalesce rapid-fire updates
     private val lyricObserver = Observer<LyricRepository.LyricInfo?> { scheduleUpdate() }
@@ -176,6 +177,11 @@ class SuperIslandHandler(
         if (albumArt != null) {
             pics.putParcelable("miui.focus.pic_avatar", Icon.createWithBitmap(scaleBitmap(albumArt, 224)))
             pics.putParcelable("miui.focus.pic_island", Icon.createWithBitmap(scaleBitmap(albumArt, 88)))
+            pics.putParcelable("miui.land.pic_island", Icon.createWithBitmap(scaleBitmap(albumArt, 88)))
+        }
+        val appIcon = getAppIcon(metadata?.packageName)
+        if (appIcon != null) {
+            pics.putParcelable("miui.focus.pic_app", Icon.createWithBitmap(scaleBitmap(appIcon, 96)))
         }
         bundle.putBundle("miui.focus.pics", pics)
         bundle.putString("miui.focus.param", islandParams)
@@ -217,7 +223,8 @@ class SuperIslandHandler(
         // Skip if nothing changed (unless forced)
         val artHash = albumArt?.hashCode() ?: 0
         if (!force && currentLyric == lastLyric && progressPercent == lastProgress
-            && artHash == lastAlbumArtHash && subText == lastSubText) {
+            && artHash == lastAlbumArtHash && subText == lastSubText
+            && metadata?.packageName == lastPackageName) {
             return
         }
 
@@ -227,6 +234,7 @@ class SuperIslandHandler(
         lastProgress = progressPercent
         lastAlbumArtHash = artHash
         lastSubText = subText
+        lastPackageName = metadata?.packageName ?: ""
 
         try {
             // Update the island params JSON in-place on the SAME notification object
@@ -237,11 +245,17 @@ class SuperIslandHandler(
             notification.extras.putString(Notification.EXTRA_TITLE, currentLyric.ifEmpty { "Capsulyric" })
             notification.extras.putString(Notification.EXTRA_TEXT, subText)
 
-            // Only update pics if album art actually changed
-            if (artChanged && albumArt != null) {
+            // Only update pics if album art or package actually changed
+            if ((artChanged || metadata?.packageName != lastPackageName) && (albumArt != null)) {
                 val pics = Bundle()
                 pics.putParcelable("miui.focus.pic_avatar", Icon.createWithBitmap(scaleBitmap(albumArt, 224)))
                 pics.putParcelable("miui.focus.pic_island", Icon.createWithBitmap(scaleBitmap(albumArt, 88)))
+                pics.putParcelable("miui.land.pic_island", Icon.createWithBitmap(scaleBitmap(albumArt, 88)))
+                
+                val appIcon = getAppIcon(metadata?.packageName)
+                if (appIcon != null) {
+                    pics.putParcelable("miui.focus.pic_app", Icon.createWithBitmap(scaleBitmap(appIcon, 96)))
+                }
                 notification.extras.putBundle("miui.focus.pics", pics)
             }
 
@@ -274,14 +288,18 @@ class SuperIslandHandler(
         // ── 息屏 AOD ──
         paramV2.put("aodTitle", lyric.take(20).ifEmpty { "♪" })
 
-        // ── 展开态: baseInfo (IM图文组件 content) ──
-        val baseInfo = JSONObject()
-        baseInfo.put("type", 7)  // Template 7 for 展开态
-        baseInfo.put("title", lyric.ifEmpty { "♪" })  // 主要文本: 歌词
-        baseInfo.put("content", subText)               // 次要文本: 歌名 - 歌手
-        baseInfo.put("avatarUrl", "miui.focus.pic_avatar")  // 头像图
-        paramV2.put("baseInfo", baseInfo)
+        // ── 展开态: chatInfo (IM图文组件) ──
+        val chatInfo = JSONObject()
+        chatInfo.put("picProfile", "miui.focus.pic_avatar")  // 头像图: 使用专辑图
+        chatInfo.put("title", lyric.ifEmpty { "♪" })         // 主要文本: 歌词
+        chatInfo.put("content", subText)                      // 次要文本: 歌名 - 歌手
+        paramV2.put("chatInfo", chatInfo)
 
+        // ── 展开态: picInfo (识别图形组件1) ──
+        val picInfo = JSONObject()
+        picInfo.put("type", 1)  // 1: Static image
+        picInfo.put("pic", "miui.focus.pic_app") // Source app icon
+        paramV2.put("picInfo", picInfo)
         // ── 进度组件2 (Expanded State) ──
         val progressInfo = JSONObject()
         progressInfo.put("progress", progressPercent)
@@ -296,23 +314,15 @@ class SuperIslandHandler(
 
         val bigIslandArea = JSONObject()
 
-        // A区: 图文组件1 — album art icon with progress ring + song title
+        // A区: 图文组件1 — album art icon + song title
+        // NOTE: Standard Template 1 only supports picInfo, so we use it for maximum visibility
         val imageTextInfoLeft = JSONObject()
         imageTextInfoLeft.put("type", 1)
         
-        val combinePicInfoA = JSONObject()
         val picInfoA = JSONObject()
         picInfoA.put("type", 1)
         picInfoA.put("pic", "miui.focus.pic_island")
-        combinePicInfoA.put("picInfo", picInfoA)
-        
-        val ringInfoA = JSONObject()
-        ringInfoA.put("progress", progressPercent)
-        ringInfoA.put("colorReach", "#757575")
-        ringInfoA.put("colorUnReach", "#333333")
-        combinePicInfoA.put("progressInfo", ringInfoA)
-        
-        imageTextInfoLeft.put("combinePicInfo", combinePicInfoA)
+        imageTextInfoLeft.put("picInfo", picInfoA)
         
         // A区 text: song title
         val textInfoA = JSONObject()
@@ -330,12 +340,12 @@ class SuperIslandHandler(
 
         paramIsland.put("bigIslandArea", bigIslandArea)
 
-        // 小岛: album art thumbnail with progress ring
+        // 小岛: album art thumbnail with progress ring (using miui.land key)
         val smallIslandArea = JSONObject()
         val combinePicInfoSmall = JSONObject()
         val picInfoSmall = JSONObject()
         picInfoSmall.put("type", 1)
-        picInfoSmall.put("pic", "miui.focus.pic_island")
+        picInfoSmall.put("pic", "miui.land.pic_island")
         combinePicInfoSmall.put("picInfo", picInfoSmall)
         
         val ringInfoSmall = JSONObject()
@@ -356,6 +366,20 @@ class SuperIslandHandler(
     private fun scaleBitmap(src: Bitmap, targetSize: Int): Bitmap {
         if (src.width == targetSize && src.height == targetSize) return src
         return Bitmap.createScaledBitmap(src, targetSize, targetSize, true)
+    }
+
+    private fun getAppIcon(packageName: String?): Bitmap? {
+        if (packageName == null) return null
+        return try {
+            val drawable = context.packageManager.getApplicationIcon(packageName)
+            val bitmap = Bitmap.createBitmap(drawable.intrinsicWidth, drawable.intrinsicHeight, Bitmap.Config.ARGB_8888)
+            val canvas = android.graphics.Canvas(bitmap)
+            drawable.setBounds(0, 0, canvas.width, canvas.height)
+            drawable.draw(canvas)
+            bitmap
+        } catch (e: Exception) {
+            null
+        }
     }
 
     companion object {
