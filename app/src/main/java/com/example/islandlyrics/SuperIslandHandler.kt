@@ -282,11 +282,11 @@ class SuperIslandHandler(
         baseInfo.put("avatarUrl", "miui.focus.pic_avatar")  // 头像图
         paramV2.put("baseInfo", baseInfo)
 
-        // ── 进度组件2 ──
+        // ── 进度组件2 (Expanded State) ──
         val progressInfo = JSONObject()
         progressInfo.put("progress", progressPercent)
-        progressInfo.put("progressStartColor", "#757575")
-        progressInfo.put("progressEndColor", "#757575")
+        progressInfo.put("colorProgress", "#757575")
+        progressInfo.put("colorProgressEnd", "#757575")
         paramV2.put("progressInfo", progressInfo)
 
         // ── 岛数据 (param_island) ──
@@ -296,13 +296,24 @@ class SuperIslandHandler(
 
         val bigIslandArea = JSONObject()
 
-        // A区: 图文组件1 — album art icon + song title
+        // A区: 图文组件1 — album art icon with progress ring + song title
         val imageTextInfoLeft = JSONObject()
         imageTextInfoLeft.put("type", 1)
+        
+        val combinePicInfoA = JSONObject()
         val picInfoA = JSONObject()
         picInfoA.put("type", 1)
         picInfoA.put("pic", "miui.focus.pic_island")
-        imageTextInfoLeft.put("picInfo", picInfoA)
+        combinePicInfoA.put("picInfo", picInfoA)
+        
+        val ringInfoA = JSONObject()
+        ringInfoA.put("progress", progressPercent)
+        ringInfoA.put("colorReach", "#757575")
+        ringInfoA.put("colorUnReach", "#333333")
+        combinePicInfoA.put("progressInfo", ringInfoA)
+        
+        imageTextInfoLeft.put("combinePicInfo", combinePicInfoA)
+        
         // A区 text: song title
         val textInfoA = JSONObject()
         textInfoA.put("title", title.ifEmpty { "♪" })
@@ -311,21 +322,29 @@ class SuperIslandHandler(
         bigIslandArea.put("imageTextInfoLeft", imageTextInfoLeft)
 
         // B区: 文本组件 — 歌词作为正文大字
-        // PDF spec: 文本组件 uses key "textInfo" as direct child of bigIslandArea
         val textInfo = JSONObject()
-        textInfo.put("title", lyric.ifEmpty { "♪" })  // 正文大字: 歌词 (无字数限制，系统自动缩小/裁切)
+        textInfo.put("title", lyric.ifEmpty { "♪" })  // 正文大字: 歌词
         textInfo.put("showHighlightColor", false)
         textInfo.put("narrowFont", false)
         bigIslandArea.put("textInfo", textInfo)
 
         paramIsland.put("bigIslandArea", bigIslandArea)
 
-        // 小岛: album art thumbnail
+        // 小岛: album art thumbnail with progress ring
         val smallIslandArea = JSONObject()
+        val combinePicInfoSmall = JSONObject()
         val picInfoSmall = JSONObject()
         picInfoSmall.put("type", 1)
         picInfoSmall.put("pic", "miui.focus.pic_island")
-        smallIslandArea.put("picInfo", picInfoSmall)
+        combinePicInfoSmall.put("picInfo", picInfoSmall)
+        
+        val ringInfoSmall = JSONObject()
+        ringInfoSmall.put("progress", progressPercent)
+        ringInfoSmall.put("colorReach", "#757575")
+        ringInfoSmall.put("colorUnReach", "#333333")
+        combinePicInfoSmall.put("progressInfo", ringInfoSmall)
+        
+        smallIslandArea.put("combinePicInfo", combinePicInfoSmall)
         paramIsland.put("smallIslandArea", smallIslandArea)
 
         paramV2.put("param_island", paramIsland)
