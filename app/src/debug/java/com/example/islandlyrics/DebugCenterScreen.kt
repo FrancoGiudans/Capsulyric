@@ -215,6 +215,50 @@ fun DebugCenterScreen(
                     )
                 }
             }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // ── Miuix UI Toggle ──
+            var miuixEnabled by remember {
+                mutableStateOf(prefs.getBoolean("ui_use_miuix", false))
+            }
+
+            OutlinedCard(
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier
+                        .padding(16.dp)
+                        .fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Switch to Miuix UI",
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "Switch all pages to miuix-styled components. App will restart.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Switch(
+                        checked = miuixEnabled,
+                        onCheckedChange = { enabled ->
+                            miuixEnabled = enabled
+                            prefs.edit().putBoolean("ui_use_miuix", enabled).apply()
+                            // Restart app to apply theme change
+                            val restartIntent = Intent(context, MainActivity::class.java)
+                            restartIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                            context.startActivity(restartIntent)
+                            (context as? android.app.Activity)?.finish()
+                        }
+                    )
+                }
+            }
         }
     }
 

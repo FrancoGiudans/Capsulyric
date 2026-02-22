@@ -61,35 +61,69 @@ class MainActivity : BaseActivity() {
 
         updateVersionInfo()
 
+        val useMiuix = isMiuixEnabled(this)
+
         setContent {
-            AppTheme {
-                MainScreen(
-                    versionText = versionText,
-                    isDebugBuild = BuildConfig.DEBUG,
-                    onOpenSettings = { startActivity(Intent(this, SettingsActivity::class.java)) },
-                    onOpenPersonalization = { startActivity(Intent(this, CustomSettingsActivity::class.java)) },
-                    onOpenWhitelist = { startActivity(Intent(this, ParserRuleActivity::class.java)) },
-                    onOpenDebug = {
-                        try {
-                            val clazz = Class.forName("com.example.islandlyrics.DebugCenterActivity")
-                            startActivity(Intent(this, clazz))
-                        } catch (e: Exception) {
-                            Toast.makeText(this, "Debug Activity not found", Toast.LENGTH_SHORT).show()
-                        }
-                    },
-                    onOpenPromotedSettings = { openPromotedSettings() },
-                    onStatusCardTap = {
-                        MediaMonitorService.requestRebind(this)
-                        Toast.makeText(this, "Requesting Rebind...", Toast.LENGTH_SHORT).show()
-                    },
-                    apiPermissionText = apiPermissionText,
-                    apiCapabilityText = apiCapabilityText,
-                    apiFlagText = apiFlagText,
-                    apiPermissionActive = apiPermissionActive,
-                    apiCapabilityActive = apiCapabilityActive,
-                    apiFlagActive = apiFlagActive,
-                    showApiCard = showApiCard,
-                )
+            if (useMiuix) {
+                MiuixAppTheme {
+                    MiuixMainScreen(
+                        versionText = versionText,
+                        isDebugBuild = BuildConfig.DEBUG,
+                        onOpenSettings = { startActivity(Intent(this@MainActivity, SettingsActivity::class.java)) },
+                        onOpenPersonalization = { startActivity(Intent(this@MainActivity, CustomSettingsActivity::class.java)) },
+                        onOpenWhitelist = { startActivity(Intent(this@MainActivity, ParserRuleActivity::class.java)) },
+                        onOpenDebug = {
+                            try {
+                                val clazz = Class.forName("com.example.islandlyrics.DebugCenterActivity")
+                                startActivity(Intent(this@MainActivity, clazz))
+                            } catch (e: Exception) {
+                                Toast.makeText(this@MainActivity, "Debug Activity not found", Toast.LENGTH_SHORT).show()
+                            }
+                        },
+                        onOpenPromotedSettings = { openPromotedSettings() },
+                        onStatusCardTap = {
+                            MediaMonitorService.requestRebind(this@MainActivity)
+                            Toast.makeText(this@MainActivity, "Requesting Rebind...", Toast.LENGTH_SHORT).show()
+                        },
+                        apiPermissionText = apiPermissionText,
+                        apiCapabilityText = apiCapabilityText,
+                        apiFlagText = apiFlagText,
+                        apiPermissionActive = apiPermissionActive,
+                        apiCapabilityActive = apiCapabilityActive,
+                        apiFlagActive = apiFlagActive,
+                        showApiCard = showApiCard,
+                    )
+                }
+            } else {
+                AppTheme {
+                    MainScreen(
+                        versionText = versionText,
+                        isDebugBuild = BuildConfig.DEBUG,
+                        onOpenSettings = { startActivity(Intent(this@MainActivity, SettingsActivity::class.java)) },
+                        onOpenPersonalization = { startActivity(Intent(this@MainActivity, CustomSettingsActivity::class.java)) },
+                        onOpenWhitelist = { startActivity(Intent(this@MainActivity, ParserRuleActivity::class.java)) },
+                        onOpenDebug = {
+                            try {
+                                val clazz = Class.forName("com.example.islandlyrics.DebugCenterActivity")
+                                startActivity(Intent(this@MainActivity, clazz))
+                            } catch (e: Exception) {
+                                Toast.makeText(this@MainActivity, "Debug Activity not found", Toast.LENGTH_SHORT).show()
+                            }
+                        },
+                        onOpenPromotedSettings = { openPromotedSettings() },
+                        onStatusCardTap = {
+                            MediaMonitorService.requestRebind(this@MainActivity)
+                            Toast.makeText(this@MainActivity, "Requesting Rebind...", Toast.LENGTH_SHORT).show()
+                        },
+                        apiPermissionText = apiPermissionText,
+                        apiCapabilityText = apiCapabilityText,
+                        apiFlagText = apiFlagText,
+                        apiPermissionActive = apiPermissionActive,
+                        apiCapabilityActive = apiCapabilityActive,
+                        apiFlagActive = apiFlagActive,
+                        showApiCard = showApiCard,
+                    )
+                }
             }
         }
 

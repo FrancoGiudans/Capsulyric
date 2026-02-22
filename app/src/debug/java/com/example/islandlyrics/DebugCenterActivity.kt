@@ -7,10 +7,18 @@ class DebugCenterActivity : BaseActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            AppTheme {
-                DebugCenterScreen(
-                    onBack = { finish() }
-                )
+            if (isMiuixEnabled(this@DebugCenterActivity)) {
+                MiuixAppTheme {
+                    MiuixDebugCenterScreen(
+                        onBack = { finish() }
+                    )
+                }
+            } else {
+                AppTheme {
+                    DebugCenterScreen(
+                        onBack = { finish() }
+                    )
+                }
             }
         }
     }

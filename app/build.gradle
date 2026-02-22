@@ -134,6 +134,9 @@ dependencies {
     implementation libs.markwon.image.coil
     implementation libs.coil
 
+    // Miuix UI
+    implementation libs.miuix
+
     debugImplementation libs.ui.tooling
     debugImplementation libs.ui.test.manifest
 }

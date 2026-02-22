@@ -28,24 +28,45 @@ class SettingsActivity : BaseActivity() {
         }
 
         setContent {
-            // Apply theme (if you have AppTheme composable, otherwise basic MaterialTheme)
-            AppTheme {
-                SettingsScreen(
-                    onCheckUpdate = { performUpdateCheck() },
-                    onShowLogs = { showLogConsole() },
-                    updateVersionText = version,
-                    updateBuildText = build
-                )
-
-                if (updateReleaseInfo != null) {
-                    UpdateDialog(
-                        releaseInfo = updateReleaseInfo!!,
-                        onDismiss = { updateReleaseInfo = null },
-                        onIgnore = { tag ->
-                            UpdateChecker.setIgnoredVersion(this, tag)
-                            AppLogger.getInstance().log("Update", "Ignored version: $tag")
-                        }
+            if (isMiuixEnabled(this@SettingsActivity)) {
+                MiuixAppTheme {
+                    MiuixSettingsScreen(
+                        onCheckUpdate = { performUpdateCheck() },
+                        onShowLogs = { showLogConsole() },
+                        updateVersionText = version,
+                        updateBuildText = build
                     )
+
+                    if (updateReleaseInfo != null) {
+                        UpdateDialog(
+                            releaseInfo = updateReleaseInfo!!,
+                            onDismiss = { updateReleaseInfo = null },
+                            onIgnore = { tag ->
+                                UpdateChecker.setIgnoredVersion(this@SettingsActivity, tag)
+                                AppLogger.getInstance().log("Update", "Ignored version: $tag")
+                            }
+                        )
+                    }
+                }
+            } else {
+                AppTheme {
+                    SettingsScreen(
+                        onCheckUpdate = { performUpdateCheck() },
+                        onShowLogs = { showLogConsole() },
+                        updateVersionText = version,
+                        updateBuildText = build
+                    )
+
+                    if (updateReleaseInfo != null) {
+                        UpdateDialog(
+                            releaseInfo = updateReleaseInfo!!,
+                            onDismiss = { updateReleaseInfo = null },
+                            onIgnore = { tag ->
+                                UpdateChecker.setIgnoredVersion(this@SettingsActivity, tag)
+                                AppLogger.getInstance().log("Update", "Ignored version: $tag")
+                            }
+                        )
+                    }
                 }
             }
         }
