@@ -32,10 +32,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import androidx.palette.graphics.Palette
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.CardDefaults
 import top.yukonga.miuix.kmp.basic.Slider
+import top.yukonga.miuix.kmp.basic.SliderDefaults
 import top.yukonga.miuix.kmp.extra.SuperDialog
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
@@ -148,9 +151,7 @@ fun MiuixMediaControlDialog(
 
             // Bottom Actions Row (Mi Play, Open App, Info)
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 24.dp, vertical = 8.dp),
+                modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -295,89 +296,176 @@ fun MiuixMediaSessionLayout(
     val position = if (isPrimary) primaryProgress?.position ?: 0L else playbackState?.position ?: 0L
 
     Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 24.dp, vertical = 8.dp)
+        modifier = Modifier.fillMaxWidth()
     ) {
-        // Top Row: Album Art + Info
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            val imageModifier = Modifier
-                .size(80.dp)
-                .clip(RoundedCornerShape(20.dp))
-                .background(MiuixTheme.colorScheme.surfaceVariant)
-            
-            if (albumArtBitmap != null) {
-                Image(
-                    bitmap = albumArtBitmap.asImageBitmap(),
-                    contentDescription = "Album Art",
-                    contentScale = ContentScale.Crop,
-                    modifier = imageModifier
-                )
-            } else {
-                Box(
-                    modifier = imageModifier,
-                    contentAlignment = Alignment.Center
-                ) {
+        // Top Row: Album Art + Info and Controls
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Left: Album Art
+            Box(
+                modifier = Modifier
+                    .size(80.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(MiuixTheme.colorScheme.surfaceVariant)
+            ) {
+                if (albumArtBitmap != null) {
+                    Image(
+                        bitmap = albumArtBitmap.asImageBitmap(),
+                        contentDescription = "Album Art",
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                } else {
                     Icon(
                         painter = painterResource(R.drawable.ic_music_note),
                         contentDescription = null,
                         tint = MiuixTheme.colorScheme.onSurfaceVariantActions,
-                        modifier = Modifier.size(36.dp)
+                        modifier = Modifier.size(36.dp).align(Alignment.Center)
+                    )
+                }
+
+                // App Icon Overlay
+                if (appIcon != null) {
+                    Image(
+                        bitmap = appIcon.asImageBitmap(),
+                        contentDescription = null,
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(4.dp)
+                            .size(16.dp)
+                            .clip(CircleShape)
+                            .background(Color.White),
+                        contentScale = ContentScale.Crop
                     )
                 }
             }
-            
+
             Spacer(modifier = Modifier.width(16.dp))
-            
-            Column(modifier = Modifier.weight(1f)) {
+
+            // Right: Info and Playback Controls
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
                 Text(
                     text = title, 
                     fontSize = 20.sp, 
-                    fontWeight = FontWeight.SemiBold, 
+                    fontWeight = FontWeight.Bold, 
                     color = MiuixTheme.colorScheme.onSurface, 
                     maxLines = 1, 
                     overflow = TextOverflow.Ellipsis
                 )
                 Spacer(modifier = Modifier.height(2.dp))
+                val artistText = if (artist.isBlank() && title.isBlank()) appName else if (artist.isBlank()) appName else "$artist - $appName"
                 Text(
-                    text = artist, 
-                    fontSize = 15.sp, 
+                    text = artistText, 
+                    fontSize = 14.sp, 
                     color = MiuixTheme.colorScheme.onSurfaceVariantSummary, 
                     maxLines = 1, 
                     overflow = TextOverflow.Ellipsis
                 )
-                Spacer(modifier = Modifier.height(8.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    if (appIcon != null) {
-                        Image(
-                            bitmap = appIcon.asImageBitmap(),
-                            contentDescription = null,
-                            modifier = Modifier.size(16.dp),
-                            contentScale = ContentScale.Fit
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(
+                        onClick = { controller.transportControls.skipToPrevious() },
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(
+                            painterResource(R.drawable.ic_skip_previous), 
+                            "Prev", 
+                            tint = MiuixTheme.colorScheme.onSurface, 
+                            modifier = Modifier.size(24.dp)
                         )
-                        Spacer(modifier = Modifier.width(6.dp))
                     }
-                    Text(
-                        text = appName, 
-                        fontSize = 13.sp, 
-                        color = MiuixTheme.colorScheme.primary,
-                        fontWeight = FontWeight.Medium,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
+                    
+                    Spacer(modifier = Modifier.width(28.dp))
+                    
+                    IconButton(
+                        onClick = {
+                            if (isPlaying) controller.transportControls.pause() else controller.transportControls.play()
+                        },
+                        modifier = Modifier.size(40.dp)
+                    ) {
+                         Icon(
+                             painterResource(if (isPlaying) R.drawable.ic_pause else R.drawable.ic_play_arrow), 
+                             "Toggle",
+                             tint = MiuixTheme.colorScheme.onSurface,
+                             modifier = Modifier.size(36.dp)
+                        )
+                    }
+                    
+                    Spacer(modifier = Modifier.width(28.dp))
+                    
+                    IconButton(
+                        onClick = { controller.transportControls.skipToNext() },
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(
+                            painterResource(R.drawable.ic_skip_next), 
+                            "Next", 
+                            tint = MiuixTheme.colorScheme.onSurface, 
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
                 }
             }
         }
 
         Spacer(modifier = Modifier.height(24.dp))
         
-        // Lyrics
+        // Progress Bar Section
+        var isDragging by remember { mutableStateOf(false) }
+        var dragProgress by remember { mutableFloatStateOf(0f) }
+        val currentProgress = if (duration > 0) (position.toFloat() / duration.toFloat()).coerceIn(0f, 1f) else 0f
+        val displayProgress = if (isDragging) dragProgress else currentProgress
+
+        Slider(
+            value = displayProgress,
+            onValueChange = { 
+                isDragging = true
+                dragProgress = it 
+            },
+            onValueChangeFinished = {
+                isDragging = false
+                if (duration > 0) {
+                    controller.transportControls.seekTo((dragProgress * duration).toLong())
+                }
+            },
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            val currentMs = (displayProgress * duration).toLong()
+            Text(
+                text = String.format("%02d:%02d", currentMs / 60000, (currentMs / 1000) % 60), 
+                fontSize = 12.sp, 
+                color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+            )
+            Text(
+                text = String.format("%02d:%02d", duration / 60000, (duration / 1000) % 60), 
+                fontSize = 12.sp, 
+                color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+            )
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+        
+        // Lyrics Section (Moved to Bottom)
         val effectiveLyric = if (isPrimary && !primaryLyric.isNullOrBlank()) primaryLyric else parsedLyricFromTitle
 
         if (!effectiveLyric.isNullOrBlank()) {
             Text(
                 text = effectiveLyric,
-                fontSize = 16.sp,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Medium,
                 color = MiuixTheme.colorScheme.onSurface,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
@@ -394,67 +482,6 @@ fun MiuixMediaSessionLayout(
                 modifier = Modifier.fillMaxWidth(),
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center
             )
-        }
-        
-        Spacer(modifier = Modifier.height(24.dp))
-        
-        // Slider
-        var dragProgress by remember { mutableFloatStateOf(0f) }
-        val currentProgress = if (duration > 0) (position.toFloat() / duration.toFloat()).coerceIn(0f, 1f) else 0f
-
-        Slider(
-            value = dragProgress,
-            onValueChange = {},
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp)
-        )
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // Playback Controls
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            IconButton(
-                onClick = { controller.transportControls.skipToPrevious() },
-                modifier = Modifier.size(48.dp)
-            ) {
-                Icon(
-                    painterResource(R.drawable.ic_skip_previous), 
-                    "Prev", 
-                    tint = MiuixTheme.colorScheme.onSurface, 
-                    modifier = Modifier.size(32.dp)
-                )
-            }
-            
-            IconButton(
-                onClick = {
-                    if (isPlaying) controller.transportControls.pause() else controller.transportControls.play()
-                },
-                modifier = Modifier
-                    .size(64.dp)
-                    .background(MiuixTheme.colorScheme.surfaceVariant, CircleShape)
-            ) {
-                 Icon(
-                     painterResource(if (isPlaying) R.drawable.ic_pause else R.drawable.ic_play_arrow), 
-                     "Toggle",
-                     tint = MiuixTheme.colorScheme.onSurface,
-                     modifier = Modifier.size(36.dp)
-                )
-            }
-            
-            IconButton(
-                onClick = { controller.transportControls.skipToNext() },
-                modifier = Modifier.size(48.dp)
-            ) {
-                Icon(
-                    painterResource(R.drawable.ic_skip_next), 
-                    "Next", 
-                    tint = MiuixTheme.colorScheme.onSurface, 
-                    modifier = Modifier.size(32.dp)
-                )
-            }
         }
     }
 }
