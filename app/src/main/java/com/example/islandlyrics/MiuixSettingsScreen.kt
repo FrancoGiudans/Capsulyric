@@ -20,6 +20,7 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import top.yukonga.miuix.kmp.basic.*
 import top.yukonga.miuix.kmp.extra.SuperArrow
+import top.yukonga.miuix.kmp.extra.SuperDropdown
 import top.yukonga.miuix.kmp.extra.SuperSwitch
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.MiuixPopupUtils.Companion.MiuixPopupHost
@@ -42,20 +43,8 @@ fun MiuixSettingsScreen(
     var pureBlack by remember { mutableStateOf(prefs.getBoolean("theme_pure_black", false)) }
     var dynamicColor by remember { mutableStateOf(prefs.getBoolean("theme_dynamic_color", true)) }
     var dynamicIconEnabled by remember { mutableStateOf(prefs.getBoolean("dynamic_icon_enabled", false)) }
-    var iconStyle by remember { mutableStateOf(prefs.getString("dynamic_icon_style", "classic") ?: "classic") }
 
-    var showLanguageDialog by remember { mutableStateOf(false) }
-    var showIconStyleDialog by remember { mutableStateOf(false) }
     var showPrivacyDialog by remember { mutableStateOf(false) }
-
-    var actionStyle by remember { mutableStateOf(prefs.getString("notification_actions_style", "disabled") ?: "disabled") }
-    var showActionStyleDialog by remember { mutableStateOf(false) }
-
-    var notificationClickStyle by remember { mutableStateOf(prefs.getString("notification_click_style", "default") ?: "default") }
-    var showNotificationClickDialog by remember { mutableStateOf(false) }
-
-    var dismissDelay by remember { mutableLongStateOf(prefs.getLong("notification_dismiss_delay", 0L)) }
-    var showDismissDelayDialog by remember { mutableStateOf(false) }
 
     val isHyperOsSupported = remember { RomUtils.isHyperOsVersionAtLeast(3, 0, 300) }
 
@@ -77,10 +66,6 @@ fun MiuixSettingsScreen(
             if (dynamicIconEnabled) {
                 dynamicIconEnabled = false
                 prefs.edit().putBoolean("dynamic_icon_enabled", false).apply()
-            }
-            if (actionStyle == "miplay") {
-                actionStyle = "disabled"
-                prefs.edit().putString("notification_actions_style", "disabled").apply()
             }
         }
     }
@@ -124,16 +109,25 @@ fun MiuixSettingsScreen(
             item {
                 Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
                     // Language
-                    val currentLangCode = prefs.getString("language_code", "")
-                    val currentLangText = when (currentLangCode) {
-                        "en" -> "English"
-                        "zh-CN" -> "简体中文"
-                        else -> stringResource(R.string.settings_theme_follow_system)
-                    }
-                    SuperArrow(
+                    val langOptions = listOf("", "en", "zh-CN")
+                    val langNames = listOf(
+                        stringResource(R.string.settings_theme_follow_system),
+                        "English",
+                        "简体中文"
+                    )
+                    val currentLangCode = prefs.getString("language_code", "") ?: ""
+                    val currentLangIndex = langOptions.indexOf(currentLangCode).takeIf { it >= 0 } ?: 0
+                    
+                    SuperDropdown(
                         title = stringResource(R.string.settings_language),
-                        summary = currentLangText,
-                        onClick = { showLanguageDialog = true }
+                        items = langNames,
+                        selectedIndex = currentLangIndex,
+                        onSelectedIndexChange = { index ->
+                            val code = langOptions[index]
+                            prefs.edit().putString("language_code", code).apply()
+                            ThemeHelper.setLanguage(context, code)
+                            (context as? Activity)?.recreate()
+                        }
                     )
 
                     // Recommend Media App
@@ -324,10 +318,6 @@ fun MiuixSettingsScreen(
     }
 
     // --- Dialogs (reuse Material3 dialogs) ---
-    if (showLanguageDialog) {
-        LanguageSelectionDialog(onDismiss = { showLanguageDialog = false })
-    }
-
     if (showPrivacyDialog) {
         androidx.compose.material3.AlertDialog(
             onDismissRequest = { showPrivacyDialog = false },
@@ -344,55 +334,6 @@ fun MiuixSettingsScreen(
                     androidx.compose.material3.Text(stringResource(R.string.dialog_btn_cancel))
                 }
             }
-        )
-    }
-
-    if (showIconStyleDialog) {
-        IconStyleSelectionDialog(
-            currentStyle = iconStyle,
-            onStyleSelected = { style ->
-                iconStyle = style
-                prefs.edit().putString("dynamic_icon_style", style).apply()
-                showIconStyleDialog = false
-            },
-            onDismiss = { showIconStyleDialog = false }
-        )
-    }
-
-    if (showActionStyleDialog) {
-        NotificationActionsDialog(
-            currentStyle = actionStyle,
-            isHyperOsSupported = isHyperOsSupported,
-            onStyleSelected = { style ->
-                actionStyle = style
-                prefs.edit().putString("notification_actions_style", style).apply()
-                showActionStyleDialog = false
-            },
-            onDismiss = { showActionStyleDialog = false }
-        )
-    }
-
-    if (showNotificationClickDialog) {
-        NotificationClickDialog(
-            currentStyle = notificationClickStyle,
-            onStyleSelected = { style ->
-                notificationClickStyle = style
-                prefs.edit().putString("notification_click_style", style).apply()
-                showNotificationClickDialog = false
-            },
-            onDismiss = { showNotificationClickDialog = false }
-        )
-    }
-
-    if (showDismissDelayDialog) {
-        DismissDelaySelectionDialog(
-            currentDelay = dismissDelay,
-            onDelaySelected = { delay ->
-                dismissDelay = delay
-                prefs.edit().putLong("notification_dismiss_delay", delay).apply()
-                showDismissDelayDialog = false
-            },
-            onDismiss = { showDismissDelayDialog = false }
         )
     }
 }

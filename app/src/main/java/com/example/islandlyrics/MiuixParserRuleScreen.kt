@@ -331,6 +331,7 @@ fun MiuixEditRuleDialog(
                     label = "App Name (Optional)",
                     modifier = Modifier.fillMaxWidth()
                 )
+                Spacer(modifier = Modifier.height(12.dp))
                 TextField(
                     value = packageName,
                     onValueChange = { packageName = it },

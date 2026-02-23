@@ -32,6 +32,7 @@ import androidx.core.content.ContextCompat
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.basic.*
 import top.yukonga.miuix.kmp.extra.SuperArrow
+import top.yukonga.miuix.kmp.extra.SuperDropdown
 import top.yukonga.miuix.kmp.extra.SuperSwitch
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.MiuixPopupUtils.Companion.MiuixPopupHost
@@ -64,14 +65,10 @@ fun MiuixCustomSettingsScreen(
     var dynamicColor by remember { mutableStateOf(prefs.getBoolean("theme_dynamic_color", true)) }
     var dynamicIconEnabled by remember { mutableStateOf(prefs.getBoolean("dynamic_icon_enabled", false)) }
     var iconStyle by remember { mutableStateOf(prefs.getString("dynamic_icon_style", "classic") ?: "classic") }
-    var showIconStyleDialog by remember { mutableStateOf(false) }
 
     var actionStyle by remember { mutableStateOf(prefs.getString("notification_actions_style", "disabled") ?: "disabled") }
-    var showActionStyleDialog by remember { mutableStateOf(false) }
     var notificationClickStyle by remember { mutableStateOf(prefs.getString("notification_click_style", "default") ?: "default") }
-    var showNotificationClickDialog by remember { mutableStateOf(false) }
     var dismissDelay by remember { mutableLongStateOf(prefs.getLong("notification_dismiss_delay", 0L)) }
-    var showDismissDelayDialog by remember { mutableStateOf(false) }
 
     var progressColorEnabled by remember { mutableStateOf(prefs.getBoolean("progress_bar_color_enabled", false)) }
     var disableScrolling by remember { mutableStateOf(prefs.getBoolean("disable_lyric_scrolling", false)) }
@@ -194,14 +191,22 @@ fun MiuixCustomSettingsScreen(
                                             }
                                         )
                                         if (dynamicIconEnabled) {
-                                            val styleDisplayName = when (iconStyle) {
-                                                "advanced" -> stringResource(R.string.icon_style_advanced)
-                                                else -> stringResource(R.string.icon_style_classic)
-                                            }
-                                            SuperArrow(
+                                            val iconStyles = listOf("classic", "advanced")
+                                            val iconStyleNames = listOf(
+                                                stringResource(R.string.icon_style_classic),
+                                                stringResource(R.string.icon_style_advanced)
+                                            )
+                                            val currentIconIndex = iconStyles.indexOf(iconStyle).takeIf { it >= 0 } ?: 0
+                                            
+                                            SuperDropdown(
                                                 title = stringResource(R.string.settings_icon_style),
-                                                summary = styleDisplayName,
-                                                onClick = { showIconStyleDialog = true }
+                                                items = iconStyleNames,
+                                                selectedIndex = currentIconIndex,
+                                                onSelectedIndexChange = { index ->
+                                                    val newStyle = iconStyles[index]
+                                                    iconStyle = newStyle
+                                                    prefs.edit().putString("dynamic_icon_style", newStyle).apply()
+                                                }
                                             )
                                         }
                                     }
@@ -228,38 +233,64 @@ fun MiuixCustomSettingsScreen(
                                         }
                                     )
 
-                                    val actionStyleDisplay = when (actionStyle) {
-                                        "media_controls" -> stringResource(R.string.settings_action_style_media)
-                                        "miplay" -> stringResource(R.string.settings_action_style_miplay)
-                                        else -> stringResource(R.string.settings_action_style_off)
+                                    val actionStyles = mutableListOf("disabled", "media_controls")
+                                    val actionStyleNames = mutableListOf(
+                                        stringResource(R.string.settings_action_style_off),
+                                        stringResource(R.string.settings_action_style_media)
+                                    )
+                                    if (isHyperOsSupported) {
+                                        actionStyles.add("miplay")
+                                        actionStyleNames.add(stringResource(R.string.settings_action_style_miplay))
                                     }
-                                    SuperArrow(
+                                    val currentActionIndex = actionStyles.indexOf(actionStyle).takeIf { it >= 0 } ?: 0
+
+                                    SuperDropdown(
                                         title = stringResource(R.string.settings_notification_actions),
-                                        summary = actionStyleDisplay,
-                                        onClick = { showActionStyleDialog = true }
+                                        items = actionStyleNames,
+                                        selectedIndex = currentActionIndex,
+                                        onSelectedIndexChange = { index ->
+                                            val newStyle = actionStyles[index]
+                                            actionStyle = newStyle
+                                            prefs.edit().putString("notification_actions_style", newStyle).apply()
+                                        }
                                     )
 
-                                    val clickStyleDisplay = when (notificationClickStyle) {
-                                        "media_controls" -> stringResource(R.string.settings_click_action_media)
-                                        else -> stringResource(R.string.settings_click_action_default)
-                                    }
-                                    SuperArrow(
+                                    val clickStyles = listOf("default", "media_controls")
+                                    val clickStyleNames = listOf(
+                                        stringResource(R.string.settings_click_action_default),
+                                        stringResource(R.string.settings_click_action_media)
+                                    )
+                                    val currentClickIndex = clickStyles.indexOf(notificationClickStyle).takeIf { it >= 0 } ?: 0
+
+                                    SuperDropdown(
                                         title = stringResource(R.string.settings_click_action_title),
-                                        summary = clickStyleDisplay,
-                                        onClick = { showNotificationClickDialog = true }
+                                        items = clickStyleNames,
+                                        selectedIndex = currentClickIndex,
+                                        onSelectedIndexChange = { index ->
+                                            val newStyle = clickStyles[index]
+                                            notificationClickStyle = newStyle
+                                            prefs.edit().putString("notification_click_style", newStyle).apply()
+                                        }
                                     )
 
-                                    val dismissDelayText = when (dismissDelay) {
-                                        0L -> stringResource(R.string.dismiss_delay_immediate)
-                                        1000L -> stringResource(R.string.dismiss_delay_1s)
-                                        3000L -> stringResource(R.string.dismiss_delay_3s)
-                                        5000L -> stringResource(R.string.dismiss_delay_5s)
-                                        else -> stringResource(R.string.dismiss_delay_immediate)
-                                    }
-                                    SuperArrow(
+                                    val delayOptions = listOf(0L, 1000L, 3000L, 5000L)
+                                    val delayNames = listOf(
+                                        stringResource(R.string.dismiss_delay_immediate),
+                                        stringResource(R.string.dismiss_delay_1s),
+                                        stringResource(R.string.dismiss_delay_3s),
+                                        stringResource(R.string.dismiss_delay_5s)
+                                    )
+                                    val currentDelayIndex = delayOptions.indexOf(dismissDelay).takeIf { it >= 0 } ?: 0
+
+                                    SuperDropdown(
                                         title = stringResource(R.string.settings_dismiss_delay_title),
-                                        summary = dismissDelayText,
-                                        onClick = { showDismissDelayDialog = true }
+                                        items = delayNames,
+                                        selectedIndex = currentDelayIndex,
+                                        onSelectedIndexChange = { index ->
+                                            val newDelay = delayOptions[index]
+                                            dismissDelay = newDelay
+                                            prefs.edit().putLong("notification_dismiss_delay", newDelay).apply()
+                                        }
                                     )
                                 }
                             }
@@ -312,50 +343,4 @@ fun MiuixCustomSettingsScreen(
         }
     }
 
-    // --- Dialogs (reuse Material3 dialogs) ---
-    if (showIconStyleDialog) {
-        IconStyleSelectionDialog(
-            currentStyle = iconStyle,
-            onStyleSelected = { style ->
-                iconStyle = style
-                prefs.edit().putString("dynamic_icon_style", style).apply()
-                showIconStyleDialog = false
-            },
-            onDismiss = { showIconStyleDialog = false }
-        )
-    }
-    if (showActionStyleDialog) {
-        NotificationActionsDialog(
-            currentStyle = actionStyle,
-            isHyperOsSupported = isHyperOsSupported,
-            onStyleSelected = { style ->
-                actionStyle = style
-                prefs.edit().putString("notification_actions_style", style).apply()
-                showActionStyleDialog = false
-            },
-            onDismiss = { showActionStyleDialog = false }
-        )
-    }
-    if (showNotificationClickDialog) {
-        NotificationClickDialog(
-            currentStyle = notificationClickStyle,
-            onStyleSelected = { style ->
-                notificationClickStyle = style
-                prefs.edit().putString("notification_click_style", style).apply()
-                showNotificationClickDialog = false
-            },
-            onDismiss = { showNotificationClickDialog = false }
-        )
-    }
-    if (showDismissDelayDialog) {
-        DismissDelaySelectionDialog(
-            currentDelay = dismissDelay,
-            onDelaySelected = { delay ->
-                dismissDelay = delay
-                prefs.edit().putLong("notification_dismiss_delay", delay).apply()
-                showDismissDelayDialog = false
-            },
-            onDismiss = { showDismissDelayDialog = false }
-        )
-    }
 }

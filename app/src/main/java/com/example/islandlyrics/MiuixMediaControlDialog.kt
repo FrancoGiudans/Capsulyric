@@ -101,75 +101,19 @@ fun MiuixMediaControlDialog(
             modifier = Modifier.padding(top = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Actions Row (Mi Play, Open App, Info)
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
-                horizontalArrangement = Arrangement.End
-            ) {
-                IconButton(onClick = {
-                    val intent = Intent(context, MainActivity::class.java).apply {
-                        flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-                    }
-                    context.startActivity(intent)
-                    show.value = false
-                    onDismiss()
-                }) {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_pill),
-                        contentDescription = "Open Capsulyric",
-                        tint = MiuixTheme.colorScheme.onSurfaceVariantActions
-                    )
-                }
-
-                if (isHyperOsSupported) {
-                    IconButton(onClick = {
-                        try {
-                            val intent = Intent()
-                            intent.component = android.content.ComponentName(
-                                "miui.systemui.plugin",
-                                "miui.systemui.miplay.MiPlayDetailActivity"
-                            )
-                            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                            context.startActivity(intent)
-                            show.value = false
-                            onDismiss()
-                        } catch (e: Exception) {
-                            Toast.makeText(context, context.getString(R.string.media_control_miplay_failed, e.message), Toast.LENGTH_SHORT).show()
-                        }
-                    }) {
-                        Icon(
-                            painter = painterResource(R.drawable.ic_miplay),
-                            contentDescription = "Mi Play",
-                            tint = MiuixTheme.colorScheme.onSurfaceVariantActions
-                        )
-                    }
-                }
-
-                IconButton(onClick = { 
-                    Toast.makeText(context, "$statusMessage (Whitelisted: ${whitelistedControllers.size})", Toast.LENGTH_SHORT).show()
-                }) {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_info),
-                        contentDescription = "Status",
-                        tint = MiuixTheme.colorScheme.onSurfaceVariantActions,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-            }
-
             if (whitelistedControllers.isNotEmpty()) {
                 val pagerState = androidx.compose.foundation.pager.rememberPagerState(pageCount = { whitelistedControllers.size })
                 
                 androidx.compose.foundation.pager.HorizontalPager(
                     state = pagerState,
-                    contentPadding = PaddingValues(horizontal = 24.dp),
+                    contentPadding = PaddingValues(horizontal = 0.dp),
                     pageSpacing = 16.dp
                 ) { page ->
                     key(whitelistedControllers[page].packageName) {
                         val controller = whitelistedControllers[page]
                         val isPrimary = controller.packageName == repoMetadata?.packageName
                         
-                        MiuixMediaSessionCard(
+                        MiuixMediaSessionLayout(
                             controller = controller, 
                             context = context,
                             isPrimary = isPrimary,
@@ -181,23 +125,94 @@ fun MiuixMediaControlDialog(
                 
                 if (whitelistedControllers.size > 1) {
                     Row(
-                        modifier = Modifier.fillMaxWidth().height(8.dp),
+                        modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
                         horizontalArrangement = Arrangement.Center
                     ) {
                         repeat(whitelistedControllers.size) { iteration ->
-                            val color = if (pagerState.currentPage == iteration) MiuixTheme.colorScheme.primary else MiuixTheme.colorScheme.secondary
+                            val color = if (pagerState.currentPage == iteration) MiuixTheme.colorScheme.primary else MiuixTheme.colorScheme.surfaceVariant
                             Box(
                                 modifier = Modifier
-                                    .padding(2.dp)
+                                    .padding(horizontal = 4.dp)
                                     .size(6.dp)
-                                    .background(color, CircleShape)
+                                    .clip(CircleShape)
+                                    .background(color)
                             )
                         }
                     }
                 }
             } else {
-                Box(modifier = Modifier.fillMaxWidth().height(80.dp), contentAlignment = Alignment.Center) {
+                Box(modifier = Modifier.fillMaxWidth().height(120.dp), contentAlignment = Alignment.Center) {
                     Text(stringResource(R.string.media_control_no_sessions), color = MiuixTheme.colorScheme.onSurfaceVariantSummary)
+                }
+            }
+
+            // Bottom Actions Row (Mi Play, Open App, Info)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(
+                    onClick = {
+                        val intent = Intent(context, MainActivity::class.java).apply {
+                            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                        }
+                        context.startActivity(intent)
+                        show.value = false
+                        onDismiss()
+                    },
+                    modifier = Modifier.background(MiuixTheme.colorScheme.surfaceVariant, CircleShape)
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_pill),
+                        contentDescription = "Open Capsulyric",
+                        tint = MiuixTheme.colorScheme.onSurfaceVariantActions,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+
+                if (isHyperOsSupported) {
+                    IconButton(
+                        onClick = {
+                            try {
+                                val intent = Intent()
+                                intent.component = android.content.ComponentName(
+                                    "miui.systemui.plugin",
+                                    "miui.systemui.miplay.MiPlayDetailActivity"
+                                )
+                                intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                                context.startActivity(intent)
+                                show.value = false
+                                onDismiss()
+                            } catch (e: Exception) {
+                                Toast.makeText(context, context.getString(R.string.media_control_miplay_failed, e.message), Toast.LENGTH_SHORT).show()
+                            }
+                        },
+                        modifier = Modifier.background(MiuixTheme.colorScheme.surfaceVariant, CircleShape)
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_miplay),
+                            contentDescription = "Mi Play",
+                            tint = MiuixTheme.colorScheme.onSurfaceVariantActions,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                }
+
+                IconButton(
+                    onClick = { 
+                        Toast.makeText(context, "$statusMessage (Whitelisted: ${whitelistedControllers.size})", Toast.LENGTH_SHORT).show()
+                    },
+                    modifier = Modifier.background(MiuixTheme.colorScheme.surfaceVariant, CircleShape)
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_info),
+                        contentDescription = "Status",
+                        tint = MiuixTheme.colorScheme.onSurfaceVariantActions,
+                        modifier = Modifier.size(24.dp)
+                    )
                 }
             }
         }
@@ -205,7 +220,7 @@ fun MiuixMediaControlDialog(
 }
 
 @Composable
-fun MiuixMediaSessionCard(
+fun MiuixMediaSessionLayout(
     controller: MediaController, 
     context: Context,
     isPrimary: Boolean,
@@ -279,169 +294,166 @@ fun MiuixMediaSessionCard(
     val duration = metadata?.getLong(MediaMetadata.METADATA_KEY_DURATION) ?: 0L
     val position = if (isPrimary) primaryProgress?.position ?: 0L else playbackState?.position ?: 0L
 
-    var cardBackgroundColor by remember { mutableStateOf(Color.Unspecified) }
-
-    LaunchedEffect(albumArtBitmap) {
-        if (albumArtBitmap != null) {
-            Palette.from(albumArtBitmap).generate { palette ->
-                val vibrant = palette?.vibrantSwatch?.rgb
-                val dominant = palette?.dominantSwatch?.rgb
-                val colorInt = vibrant ?: dominant
-                if (colorInt != null) {
-                    cardBackgroundColor = Color(colorInt).copy(alpha = 0.3f)
-                }
-            }
-        } else {
-            cardBackgroundColor = Color.Unspecified
-        }
-    }
-    
-    val fallbackBackgroundColor = MiuixTheme.colorScheme.secondary
-
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.defaultColors(
-            color = if (cardBackgroundColor != Color.Unspecified) cardBackgroundColor else fallbackBackgroundColor
-        )
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp, vertical = 8.dp)
     ) {
-        Column(modifier = Modifier.padding(20.dp)) {
+        // Top Row: Album Art + Info
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            val imageModifier = Modifier
+                .size(80.dp)
+                .clip(RoundedCornerShape(20.dp))
+                .background(MiuixTheme.colorScheme.surfaceVariant)
             
-            // Top Row: Album Art + Info
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                if (albumArtBitmap != null) {
-                    Image(
-                        bitmap = albumArtBitmap.asImageBitmap(),
-                        contentDescription = "Album Art",
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier
-                            .size(70.dp)
-                            .clip(RoundedCornerShape(14.dp))
-                    )
-                } else {
-                    Box(
-                        modifier = Modifier
-                            .size(70.dp)
-                            .clip(RoundedCornerShape(14.dp))
-                            .background(MiuixTheme.colorScheme.secondary),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.ic_music_note),
-                            contentDescription = null,
-                            tint = MiuixTheme.colorScheme.onSecondary,
-                            modifier = Modifier.size(32.dp)
-                        )
-                    }
-                }
-                
-                Spacer(modifier = Modifier.width(16.dp))
-                
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(text = title, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = MiuixTheme.colorScheme.onSurface, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text(text = artist, fontSize = 14.sp, color = MiuixTheme.colorScheme.onSurfaceSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Spacer(modifier = Modifier.height(6.dp))
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        if (appIcon != null) {
-                            Image(
-                                bitmap = appIcon.asImageBitmap(),
-                                contentDescription = null,
-                                modifier = Modifier.size(14.dp),
-                                contentScale = ContentScale.Fit
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                        }
-                        Text(
-                            text = appName, 
-                            fontSize = 12.sp, 
-                            color = MiuixTheme.colorScheme.primary,
-                            fontWeight = FontWeight.Bold,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(20.dp))
-            
-            // Lyrics
-            val effectiveLyric = if (isPrimary && !primaryLyric.isNullOrBlank()) primaryLyric else parsedLyricFromTitle
-
-            Column(modifier = Modifier.height(70.dp)) {
-                if (!effectiveLyric.isNullOrBlank()) {
-                    Text(
-                        text = "Lyric:",
-                        fontSize = 12.sp,
-                        color = MiuixTheme.colorScheme.onSurfaceVariantSummary
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = effectiveLyric,
-                        fontSize = 16.sp,
-                        minLines = 2,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                        color = MiuixTheme.colorScheme.onSurface, 
-                        lineHeight = 22.sp
-                    )
-                } else {
-                    Text(
-                        text = "Lyric:",
-                        fontSize = 12.sp,
-                        color = MiuixTheme.colorScheme.onSurfaceVariantSummary
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = stringResource(R.string.media_control_no_sessions),
-                        fontSize = 16.sp,
-                        fontStyle = FontStyle.Italic,
-                        color = MiuixTheme.colorScheme.onSurfaceVariantSummary
-                    )
-                }
-            }
-            
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            var dragProgress by remember { mutableFloatStateOf(0f) }
-            val currentProgress = if (duration > 0) (position.toFloat() / duration.toFloat()).coerceIn(0f, 1f) else 0f
-
-            Slider(
-                value = dragProgress,
-                onValueChange = {},
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // Playback Controls
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(onClick = { controller.transportControls.skipToPrevious() }) {
-                    Icon(painterResource(R.drawable.ic_skip_previous), "Prev", tint = MiuixTheme.colorScheme.onSurface, modifier = Modifier.size(36.dp))
-                }
-                
-                IconButton(
-                    onClick = {
-                        if (isPlaying) controller.transportControls.pause() else controller.transportControls.play()
-                    },
-                    modifier = Modifier
-                        .size(64.dp)
-                        .background(MiuixTheme.colorScheme.primary, CircleShape)
+            if (albumArtBitmap != null) {
+                Image(
+                    bitmap = albumArtBitmap.asImageBitmap(),
+                    contentDescription = "Album Art",
+                    contentScale = ContentScale.Crop,
+                    modifier = imageModifier
+                )
+            } else {
+                Box(
+                    modifier = imageModifier,
+                    contentAlignment = Alignment.Center
                 ) {
-                     Icon(
-                         painterResource(if (isPlaying) R.drawable.ic_pause else R.drawable.ic_play_arrow), 
-                         "Toggle",
-                         tint = MiuixTheme.colorScheme.onPrimary,
-                         modifier = Modifier.size(36.dp)
+                    Icon(
+                        painter = painterResource(R.drawable.ic_music_note),
+                        contentDescription = null,
+                        tint = MiuixTheme.colorScheme.onSurfaceVariantActions,
+                        modifier = Modifier.size(36.dp)
                     )
                 }
-                
-                IconButton(onClick = { controller.transportControls.skipToNext() }) {
-                    Icon(painterResource(R.drawable.ic_skip_next), "Next", tint = MiuixTheme.colorScheme.onSurface, modifier = Modifier.size(36.dp))
+            }
+            
+            Spacer(modifier = Modifier.width(16.dp))
+            
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title, 
+                    fontSize = 20.sp, 
+                    fontWeight = FontWeight.SemiBold, 
+                    color = MiuixTheme.colorScheme.onSurface, 
+                    maxLines = 1, 
+                    overflow = TextOverflow.Ellipsis
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = artist, 
+                    fontSize = 15.sp, 
+                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary, 
+                    maxLines = 1, 
+                    overflow = TextOverflow.Ellipsis
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (appIcon != null) {
+                        Image(
+                            bitmap = appIcon.asImageBitmap(),
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp),
+                            contentScale = ContentScale.Fit
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                    }
+                    Text(
+                        text = appName, 
+                        fontSize = 13.sp, 
+                        color = MiuixTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Medium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
                 }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+        
+        // Lyrics
+        val effectiveLyric = if (isPrimary && !primaryLyric.isNullOrBlank()) primaryLyric else parsedLyricFromTitle
+
+        if (!effectiveLyric.isNullOrBlank()) {
+            Text(
+                text = effectiveLyric,
+                fontSize = 16.sp,
+                color = MiuixTheme.colorScheme.onSurface,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                lineHeight = 24.sp,
+                modifier = Modifier.fillMaxWidth(),
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+            )
+        } else {
+            Text(
+                text = stringResource(R.string.media_control_no_sessions),
+                fontSize = 15.sp,
+                color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                fontStyle = FontStyle.Italic,
+                modifier = Modifier.fillMaxWidth(),
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+            )
+        }
+        
+        Spacer(modifier = Modifier.height(24.dp))
+        
+        // Slider
+        var dragProgress by remember { mutableFloatStateOf(0f) }
+        val currentProgress = if (duration > 0) (position.toFloat() / duration.toFloat()).coerceIn(0f, 1f) else 0f
+
+        Slider(
+            value = dragProgress,
+            onValueChange = {},
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp)
+        )
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // Playback Controls
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(
+                onClick = { controller.transportControls.skipToPrevious() },
+                modifier = Modifier.size(48.dp)
+            ) {
+                Icon(
+                    painterResource(R.drawable.ic_skip_previous), 
+                    "Prev", 
+                    tint = MiuixTheme.colorScheme.onSurface, 
+                    modifier = Modifier.size(32.dp)
+                )
+            }
+            
+            IconButton(
+                onClick = {
+                    if (isPlaying) controller.transportControls.pause() else controller.transportControls.play()
+                },
+                modifier = Modifier
+                    .size(64.dp)
+                    .background(MiuixTheme.colorScheme.surfaceVariant, CircleShape)
+            ) {
+                 Icon(
+                     painterResource(if (isPlaying) R.drawable.ic_pause else R.drawable.ic_play_arrow), 
+                     "Toggle",
+                     tint = MiuixTheme.colorScheme.onSurface,
+                     modifier = Modifier.size(36.dp)
+                )
+            }
+            
+            IconButton(
+                onClick = { controller.transportControls.skipToNext() },
+                modifier = Modifier.size(48.dp)
+            ) {
+                Icon(
+                    painterResource(R.drawable.ic_skip_next), 
+                    "Next", 
+                    tint = MiuixTheme.colorScheme.onSurface, 
+                    modifier = Modifier.size(32.dp)
+                )
             }
         }
     }
