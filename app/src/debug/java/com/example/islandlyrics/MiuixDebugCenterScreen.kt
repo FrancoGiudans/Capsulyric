@@ -15,9 +15,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.lifecycleScope
+import androidx.compose.runtime.livedata.observeAsState
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.basic.*
 import top.yukonga.miuix.kmp.extra.SuperArrow
+import top.yukonga.miuix.kmp.extra.SuperDialog
 import top.yukonga.miuix.kmp.extra.SuperSwitch
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.MiuixPopupUtils.Companion.MiuixPopupHost
@@ -44,6 +46,13 @@ fun MiuixDebugCenterScreen(
     var showUpdateDialog by remember { mutableStateOf(false) }
     var updateReleaseInfo by remember { mutableStateOf<UpdateChecker.ReleaseInfo?>(null) }
     var isFetchingUpdate by remember { mutableStateOf(false) }
+
+    // Media Control Dialog state
+    val showMediaControlDialog = remember { mutableStateOf(false) }
+    
+    // System Info and Service Diagnostics states
+    val showSystemInfoDialog = remember { mutableStateOf(false) }
+    val showDiagnosticsDialog = remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -121,14 +130,7 @@ fun MiuixDebugCenterScreen(
                     SuperArrow(
                         title = "Media Controls",
                         summary = "Open the media control dialog",
-                        onClick = {
-                            try {
-                                val clazz = Class.forName("com.example.islandlyrics.MediaControlDialog")
-                                context.startActivity(Intent(context, clazz))
-                            } catch (_: Exception) {
-                                Toast.makeText(context, "MediaControlDialog not found", Toast.LENGTH_SHORT).show()
-                            }
-                        }
+                        onClick = { showMediaControlDialog.value = true }
                     )
                 }
             }
@@ -142,14 +144,7 @@ fun MiuixDebugCenterScreen(
                     SuperArrow(
                         title = "System Info",
                         summary = "View device and ROM info",
-                        onClick = {
-                            val info = buildString {
-                                appendLine("Device: ${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}")
-                                appendLine("Android: ${android.os.Build.VERSION.RELEASE} (SDK ${android.os.Build.VERSION.SDK_INT})")
-                                appendLine("ROM: ${android.os.Build.DISPLAY}")
-                            }
-                            Toast.makeText(context, info, Toast.LENGTH_LONG).show()
-                        }
+                        onClick = { showSystemInfoDialog.value = true }
                     )
                     SuperArrow(
                         title = "Log Console",
@@ -171,10 +166,7 @@ fun MiuixDebugCenterScreen(
                     SuperArrow(
                         title = "Service Diagnostics",
                         summary = "Check MediaMonitor service status",
-                        onClick = {
-                            val connected = MediaMonitorService.isConnected
-                            Toast.makeText(context, "Service Connected: $connected", Toast.LENGTH_SHORT).show()
-                        }
+                        onClick = { showDiagnosticsDialog.value = true }
                     )
                 }
             }
@@ -222,17 +214,109 @@ fun MiuixDebugCenterScreen(
 
     // Show update dialog if needed
     if (showUpdateDialog && updateReleaseInfo != null) {
-        UpdateDialog(
-            releaseInfo = updateReleaseInfo!!,
-            onDismiss = {
-                showUpdateDialog = false
-                updateReleaseInfo = null
-            },
-            onIgnore = { tag ->
-                UpdateChecker.setIgnoredVersion(context, tag)
-                showUpdateDialog = false
-                updateReleaseInfo = null
-            }
+        val dialogState = remember(updateReleaseInfo) { mutableStateOf(true) }
+        if (dialogState.value) {
+            MiuixUpdateDialog(
+                show = dialogState,
+                releaseInfo = updateReleaseInfo!!,
+                onDismiss = {
+                    showUpdateDialog = false
+                    updateReleaseInfo = null
+                },
+                onIgnore = { tag ->
+                    UpdateChecker.setIgnoredVersion(context, tag)
+                    showUpdateDialog = false
+                    updateReleaseInfo = null
+                }
+            )
+        } else {
+            showUpdateDialog = false
+            updateReleaseInfo = null
+        }
+    }
+
+    if (showMediaControlDialog.value) {
+        MiuixMediaControlDialog(
+            show = showMediaControlDialog,
+            onDismiss = { showMediaControlDialog.value = false }
         )
+    }
+
+    if (showSystemInfoDialog.value) {
+        SuperDialog(
+            title = "System Info",
+            show = showSystemInfoDialog,
+            onDismissRequest = { showSystemInfoDialog.value = false }
+        ) {
+            Column(
+                modifier = Modifier.padding(24.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Text(
+                    "Android Version: ${android.os.Build.VERSION.RELEASE} (SDK ${android.os.Build.VERSION.SDK_INT})",
+                    fontSize = MiuixTheme.textStyles.body1.fontSize,
+                    color = MiuixTheme.colorScheme.onSurface
+                )
+                
+                val romInfo = remember { RomUtils.getRomInfo() }
+                if (romInfo.isNotEmpty()) {
+                    Text(
+                        "ROM Version: $romInfo", 
+                        fontSize = MiuixTheme.textStyles.title4.fontSize, 
+                        color = MiuixTheme.colorScheme.primary
+                    )
+                }
+                
+                val deviceType = remember { "${android.os.Build.MANUFACTURER}/${RomUtils.getRomType()}" }
+                Text(
+                    "Device Type: $deviceType", 
+                    fontSize = MiuixTheme.textStyles.body2.fontSize, 
+                    color = MiuixTheme.colorScheme.onSurfaceSecondary
+                )
+                
+                Text("Build ID: ${android.os.Build.DISPLAY}", fontSize = MiuixTheme.textStyles.body2.fontSize)
+                Text("Manufacturer: ${android.os.Build.MANUFACTURER}", fontSize = MiuixTheme.textStyles.body2.fontSize)
+                Text("Model: ${android.os.Build.MODEL} (${android.os.Build.DEVICE})", fontSize = MiuixTheme.textStyles.body2.fontSize)
+                Text("Brand: ${android.os.Build.BRAND}", fontSize = MiuixTheme.textStyles.body2.fontSize)
+                Text("Product: ${android.os.Build.PRODUCT}", fontSize = MiuixTheme.textStyles.body2.fontSize)
+                Text("Hardware: ${android.os.Build.HARDWARE}", fontSize = MiuixTheme.textStyles.body2.fontSize)
+                Text(
+                    "Fingerprint:\n${android.os.Build.FINGERPRINT}", 
+                    fontSize = MiuixTheme.textStyles.body2.fontSize,
+                    color = MiuixTheme.colorScheme.onSurfaceSecondary
+                )
+            }
+        }
+    }
+
+    val diagnostics by LyricRepository.getInstance().liveDiagnostics.observeAsState()
+    
+    if (showDiagnosticsDialog.value) {
+        SuperDialog(
+            title = "Service Diagnostics",
+            show = showDiagnosticsDialog,
+            onDismissRequest = { showDiagnosticsDialog.value = false }
+        ) {
+            Column(
+                modifier = Modifier.padding(24.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                if (diagnostics == null) {
+                    Text(
+                        "Waiting for data...", 
+                        fontSize = MiuixTheme.textStyles.body2.fontSize,
+                        color = MiuixTheme.colorScheme.onSurfaceSecondary
+                    )
+                } else {
+                    Text("Is Connected: ${diagnostics?.isConnected}", fontSize = MiuixTheme.textStyles.body2.fontSize)
+                    Text("Total Controllers: ${diagnostics?.totalControllers}", fontSize = MiuixTheme.textStyles.body2.fontSize)
+                    Text("Whitelisted Controllers: ${diagnostics?.whitelistedControllers}", fontSize = MiuixTheme.textStyles.body2.fontSize)
+                    Text("Primary Package: ${diagnostics?.primaryPackage}", fontSize = MiuixTheme.textStyles.body2.fontSize)
+                    Text("Whitelist Size: ${diagnostics?.whitelistSize}", fontSize = MiuixTheme.textStyles.body2.fontSize)
+                    Text("Last Setup: ${diagnostics?.lastUpdateParams}", fontSize = MiuixTheme.textStyles.body2.fontSize)
+                    Text("Time: ${java.text.SimpleDateFormat("HH:mm:ss").format(java.util.Date(diagnostics?.timestamp ?: 0))}", fontSize = MiuixTheme.textStyles.body2.fontSize)
+                }
+            }
+        }
     }
 }

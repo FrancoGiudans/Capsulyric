@@ -17,17 +17,29 @@ class MediaControlActivity : ComponentActivity() {
         enableEdgeToEdge()
         
         setContent {
-            AppTheme(
-                darkTheme = true, // Force dark mode for controls usually looks better, or follow system
-                dynamicColor = true
-            ) {
-                // Host the dialog directly. 
-                // When dismissed, finish the activity.
-                MediaControlDialog(
-                    onDismiss = {
+            val useMiuix = isMiuixEnabled(this)
+            val showDialog = androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(true) }
+
+            if (useMiuix) {
+                MiuixAppTheme {
+                    if (showDialog.value) {
+                        MiuixMediaControlDialog(
+                            show = showDialog,
+                            onDismiss = { finish() }
+                        )
+                    } else {
                         finish()
                     }
-                )
+                }
+            } else {
+                AppTheme(
+                    darkTheme = true,
+                    dynamicColor = true
+                ) {
+                    MediaControlDialog(
+                        onDismiss = { finish() }
+                    )
+                }
             }
         }
     }
