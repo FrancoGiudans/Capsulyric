@@ -45,7 +45,7 @@ android {
     }
 
     defaultConfig {
-        def majorVersion = "1.2"
+        def majorVersion = "1.3"
         versionCode getGitCommitCount()
         versionName "${majorVersion}_C${getGitCommitCount()}"
         applicationId "com.franco.capsulyric"
