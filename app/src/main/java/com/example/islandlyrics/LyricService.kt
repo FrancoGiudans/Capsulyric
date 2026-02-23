@@ -31,7 +31,6 @@ import java.util.ArrayList
 class LyricService : Service() {
 
     private var lastUpdateTime = 0L
-    private var simulationMode = "MODERN"
 
     // To debounce updates
     private var lastLyric = ""
@@ -105,7 +104,6 @@ class LyricService : Service() {
         }
     }
 
-    // NEW: Playback state observer - controls capsule lifecycle
     private val playbackObserver = Observer<Boolean> { playing ->
         if (playing) {
             // Cancel any pending stop
@@ -154,10 +152,6 @@ class LyricService : Service() {
                 AppLogger.getInstance().d(TAG, "API onStop: ${data?.packageName}")
             }
             LyricRepository.getInstance().updatePlaybackStatus(false)
-            
-            // CRITICAL FIX: Don't stop capsule here - let playback state observer control lifecycle
-            // capsuleHandler?.stop()  ← REMOVED
-            // This prevents capsule from disappearing mid-playback when API sends stop events
         }
 
         override fun onSuperLyric(data: SuperLyricData?) {
@@ -221,8 +215,6 @@ class LyricService : Service() {
         }
     }
 
-    // Progress Logic
-    // Progress Logic
     private var currentPosition = 0L
     private var duration = 0L
     private var isPlaying = false
@@ -285,15 +277,6 @@ class LyricService : Service() {
             LyricRepository.getInstance().updateCurrentLine(line)
         }
     }
-
-    // --- Mock Implementation ---
-    private var isSimulating = false
-    private var playbackStartTime = 0L
-    private val mockLyrics = ArrayList<String>()
-
-    // Rotation Logic State
-    private var lastLyricSwitchTime = 0L
-    private var currentMockLineIndex = 0
 
     private var currentChannelId = CHANNEL_ID
 
@@ -388,7 +371,6 @@ class LyricService : Service() {
             }
         }
 
-        // 4. Handle other functional actions
         if ("ACTION_STOP" == action) {
             @Suppress("DEPRECATION")
             stopForeground(true)
@@ -398,9 +380,6 @@ class LyricService : Service() {
             handleMediaPause()
         } else if ("ACTION_MEDIA_NEXT" == action) {
             handleMediaNext()
-        } else if ("com.example.islandlyrics.ACTION_SIMULATE" == action) {
-            simulationMode = intent?.getStringExtra("SIMULATION_MODE") ?: "MODERN"
-            startSimulation()
         }
 
         return START_STICKY
@@ -798,94 +777,11 @@ class LyricService : Service() {
         }
     }
 
-    private fun startSimulation() {
-        isSimulating = true
-        currentPosition = 0
-        duration = 252000 // 4:12
-        playbackStartTime = android.os.SystemClock.elapsedRealtime()
-        
-        // Reset Rotation State
-        lastLyricSwitchTime = 0
-        currentMockLineIndex = 0
-
-        loadMockLyrics()
-
-        // Force Channel Reset for Simulation
-        val nm = getSystemService(NotificationManager::class.java)
-        if (nm != null) {
-             val ch = nm.getNotificationChannel(currentChannelId)
-             if (ch != null && ch.importance < NotificationManager.IMPORTANCE_HIGH) {
-                 nm.deleteNotificationChannel(currentChannelId)
-                 currentChannelId = "lyric_sim_" + System.currentTimeMillis()
-                 createNotificationChannel()
-             }
-        }
-
-        // [Fix Task 3] Update IMMEDIATELY with Real Data
-        updateProgressFromController()
-        startProgressUpdater()
-    }
-
-    private fun loadMockLyrics() {
-        mockLyrics.clear()
-        try {
-            val reader = BufferedReader(InputStreamReader(assets.open("mock_lyrics.txt")))
-            var line: String? 
-            while (reader.readLine().also { line = it } != null) {
-                val l = line!!
-                if (l.trim().isNotEmpty()) {
-                    var text = l
-                    if (l.startsWith("[") && l.contains("]")) {
-                        text = l.substring(l.indexOf("]") + 1).trim()
-                    }
-                    if (text.isNotEmpty()) {
-                        mockLyrics.add(text)
-                    }
-                }
-            }
-            reader.close()
-            Log.d(TAG, "Loaded ${mockLyrics.size} lines for simulation.")
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to load mock lyrics: ${e.message}")
-        }
-
-        if (mockLyrics.isEmpty()) {
-            mockLyrics.add("Simulating Live Updates...")
-            mockLyrics.add("Line 1: 1500ms Rotation")
-            mockLyrics.add("Line 2: Checking Float State")
-            mockLyrics.add("Line 3: Still Active")
-            mockLyrics.add("Waiting for Trigger...")
-        }
-    }
-
     private fun updateProgressFromController(shouldLog: Boolean = true) {
         if (shouldLog) {
             AppLogger.getInstance().log(TAG, "⚙️ updateProgressFromController() called")
         }
         
-        if (isSimulating) {
-            val now = android.os.SystemClock.elapsedRealtime()
-            currentPosition = now - playbackStartTime
-
-            if (currentPosition > duration) {
-                currentPosition = duration
-                isSimulating = false
-                updateNotification("Simulation Ended", "Island Lyrics", "")
-                return
-            }
-
-            // Rotation Logic (Every 1500ms)
-            if (now - lastLyricSwitchTime > 1500) {
-                lastLyricSwitchTime = now
-                currentMockLineIndex++
-                if (currentMockLineIndex >= mockLyrics.size) {
-                    currentMockLineIndex = 0 // Loop
-                }
-            }
-            // Notification updates handled by LyricCapsuleHandler.visualizerLoop
-            return
-        }
-
         try {
             val mm = getSystemService(Context.MEDIA_SESSION_SERVICE) as MediaSessionManager
             val component = android.content.ComponentName(this, MediaMonitorService::class.java)
