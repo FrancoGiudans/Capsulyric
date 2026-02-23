@@ -12,6 +12,8 @@ import androidx.core.view.WindowCompat
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.theme.darkColorScheme
 import top.yukonga.miuix.kmp.theme.lightColorScheme
+import androidx.navigationevent.NavigationEventDispatcher
+import androidx.navigationevent.compose.LocalNavigationEventDispatcherOwner
 
 /**
  * Miuix-styled app theme wrapper, mirroring AppTheme logic but using MiuixTheme.
@@ -31,10 +33,21 @@ fun MiuixAppTheme(
         }
     }
 
-    MiuixTheme(
-        colors = colors,
-        content = content
-    )
+    val navigationEventDispatcher = remember { NavigationEventDispatcher() }
+    val navigationEventDispatcherOwner = remember(navigationEventDispatcher) {
+        object : androidx.navigationevent.NavigationEventDispatcherOwner {
+            override val navigationEventDispatcher = navigationEventDispatcher
+        }
+    }
+
+    androidx.compose.runtime.CompositionLocalProvider(
+        androidx.navigationevent.compose.LocalNavigationEventDispatcherOwner provides navigationEventDispatcherOwner
+    ) {
+        MiuixTheme(
+            colors = colors,
+            content = content
+        )
+    }
 }
 
 /**

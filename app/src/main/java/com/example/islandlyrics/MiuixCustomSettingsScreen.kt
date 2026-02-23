@@ -113,6 +113,7 @@ fun MiuixCustomSettingsScreen(
     ) { padding ->
         // Tab Row + Pager
         Column(modifier = Modifier.padding(padding).fillMaxSize()) {
+            Spacer(modifier = Modifier.height(12.dp))
             // HyperOS-style pill tab row
             Row(
                 modifier = Modifier
