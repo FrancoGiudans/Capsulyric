@@ -146,6 +146,11 @@
 
     <string name="settings_disable_scrolling_desc">显示稳定的静态歌词文本，对于长歌词则只会展示前半段，阻止任何歌词滚动</string>
     <string name="settings_feedback">反馈</string>
+    <string name="dialog_feedback_title">选择反馈方式</string>
+    <string name="dialog_feedback_github">GitHub Issue</string>
+    <string name="dialog_feedback_github_desc">推荐渠道。处理效率最高。</string>
+    <string name="dialog_feedback_wps">WPS 表单</string>
+    <string name="dialog_feedback_wps_desc">备用渠道。可能需要登录。</string>
     <string name="settings_hide_recents">隐藏后台窗口</string>
     <string name="settings_hide_recents_desc">划到后台时自动从最近任务中移除</string>
     <!-- FAQ Strings -->
