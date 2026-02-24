@@ -43,6 +43,7 @@ class LyricCapsuleHandler(
     private var cachedIconStyle = "classic"
     private var cachedClickStyle = "default" // New preference
     private var cachedDisableScrolling = false
+    private var cachedOneuiCapsuleColorEnabled = false
     
     private val prefChangeListener = SharedPreferences.OnSharedPreferenceChangeListener { prefs, key ->
         when (key) {
@@ -52,6 +53,7 @@ class LyricCapsuleHandler(
             "dynamic_icon_style" -> cachedIconStyle = prefs.getString(key, "classic") ?: "classic"
             "notification_click_style" -> cachedClickStyle = prefs.getString(key, "default") ?: "default"
             "disable_lyric_scrolling" -> cachedDisableScrolling = prefs.getBoolean(key, false)
+            "oneui_capsule_color_enabled" -> cachedOneuiCapsuleColorEnabled = prefs.getBoolean(key, false)
         }
     }
     
@@ -63,6 +65,7 @@ class LyricCapsuleHandler(
         cachedIconStyle = prefs.getString("dynamic_icon_style", "classic") ?: "classic"
         cachedClickStyle = prefs.getString("notification_click_style", "default") ?: "default"
         cachedDisableScrolling = prefs.getBoolean("disable_lyric_scrolling", false)
+        cachedOneuiCapsuleColorEnabled = prefs.getBoolean("oneui_capsule_color_enabled", false)
         prefs.registerOnSharedPreferenceChangeListener(prefChangeListener)
     }
     
@@ -754,6 +757,12 @@ class LyricCapsuleHandler(
             // Determine progress bar color (using cached preference - Fix 3)
                 val barColor = if (cachedUseAlbumColor) extractAlbumColor() else COLOR_PRIMARY
                 val barColorIndeterminate = if (cachedUseAlbumColor) extractAlbumColor() else COLOR_TERTIARY
+
+                if (RomUtils.getRomType() == "OneUI") {
+                    builder.setColor(if (cachedOneuiCapsuleColorEnabled) extractAlbumColor() else android.graphics.Color.BLACK)
+                } else {
+                    builder.setColor(barColor)
+                }
 
                 if (progressPercent >= 0) {
                     val segment = NotificationCompat.ProgressStyle.Segment(100)

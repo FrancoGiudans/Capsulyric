@@ -74,8 +74,11 @@
     <string name="settings_dynamic_icon_desc">展示歌名-歌手，仅HyperOS 3.0.300+可用</string>
     <string name="channel_live_lyrics">实时歌词更新</string>
     <string name="channel_short_live">直播</string>
-    
     <string name="cancel">取消</string>
+
+    <!-- OneUI Capsule Settings -->
+    <string name="settings_oneui_capsule_color">为胶囊背景着色</string>
+    <string name="settings_oneui_capsule_color_desc">胶囊背景随专辑封面变色，关闭时为黑色背景</string>
 
     <!-- 通知解析规则 -->
     <string name="parser_rule_title">解析规则</string>

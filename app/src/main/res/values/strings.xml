@@ -78,6 +78,9 @@
     
     <string name="cancel">Cancel</string>
 
+    <string name="settings_oneui_capsule_color">Colorize Capsule Background</string>
+    <string name="settings_oneui_capsule_color_desc">Dynamic capsule background color. Uses black when off.</string>
+
     <!-- Parser Rule Settings -->
     <string name="parser_rule_title">Notification Rules</string>
     <string name="parser_rule_subtitle">Configure how to parse notifications from music apps</string>

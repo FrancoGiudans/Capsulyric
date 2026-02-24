@@ -100,6 +100,7 @@ fun CustomSettingsScreen(
     var hideRecentsEnabled by remember { mutableStateOf(prefs.getBoolean("hide_recents_enabled", false)) }
     var recommendMediaAppEnabled by remember { mutableStateOf(prefs.getBoolean("recommend_media_app", true)) }
     var disableScrolling by remember { mutableStateOf(prefs.getBoolean("disable_lyric_scrolling", false)) }
+    var oneuiCapsuleColorEnabled by remember { mutableStateOf(prefs.getBoolean("oneui_capsule_color_enabled", false)) }
 
     // Check for HyperOS 3.0.300+
     val isHyperOsSupported = remember { RomUtils.isHyperOsVersionAtLeast(3, 0, 300) }
@@ -208,10 +209,10 @@ fun CustomSettingsScreen(
                 ) {
                     when (page) {
                         0 -> { // Capsule (Moved from 1)
-                            // Preview
                             CapsulePreview(
                                 dynamicIconEnabled = dynamicIconEnabled,
-                                iconStyle = iconStyle
+                                iconStyle = iconStyle,
+                                oneuiCapsuleColorEnabled = oneuiCapsuleColorEnabled
                             )
                             Spacer(modifier = Modifier.height(16.dp))
 
@@ -224,6 +225,18 @@ fun CustomSettingsScreen(
                                     prefs.edit().putBoolean("disable_lyric_scrolling", it).apply()
                                 }
                             )
+
+                            if (RomUtils.getRomType() == "OneUI") {
+                                SettingsSwitchItem(
+                                    title = stringResource(R.string.settings_oneui_capsule_color),
+                                    subtitle = stringResource(R.string.settings_oneui_capsule_color_desc),
+                                    checked = oneuiCapsuleColorEnabled,
+                                    onCheckedChange = {
+                                        oneuiCapsuleColorEnabled = it
+                                        prefs.edit().putBoolean("oneui_capsule_color_enabled", it).apply()
+                                    }
+                                )
+                            }
 
                             if (isHyperOsSupported) {
                                 SettingsSwitchItem(

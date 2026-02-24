@@ -72,6 +72,7 @@ fun MiuixCustomSettingsScreen(
 
     var progressColorEnabled by remember { mutableStateOf(prefs.getBoolean("progress_bar_color_enabled", false)) }
     var disableScrolling by remember { mutableStateOf(prefs.getBoolean("disable_lyric_scrolling", false)) }
+    var oneuiCapsuleColorEnabled by remember { mutableStateOf(prefs.getBoolean("oneui_capsule_color_enabled", false)) }
 
     val isHyperOsSupported = remember { RomUtils.isHyperOsVersionAtLeast(3, 0, 300) }
     val isSystemDark = androidx.compose.foundation.isSystemInDarkTheme()
@@ -165,7 +166,8 @@ fun MiuixCustomSettingsScreen(
                             item {
                                 CapsulePreview(
                                     dynamicIconEnabled = dynamicIconEnabled,
-                                    iconStyle = iconStyle
+                                    iconStyle = iconStyle,
+                                    oneuiCapsuleColorEnabled = oneuiCapsuleColorEnabled
                                 )
                             }
                             item { Spacer(modifier = Modifier.height(16.dp)) }
@@ -180,6 +182,17 @@ fun MiuixCustomSettingsScreen(
                                             prefs.edit().putBoolean("disable_lyric_scrolling", it).apply()
                                         }
                                     )
+                                    if (RomUtils.getRomType() == "OneUI") {
+                                        SuperSwitch(
+                                            title = stringResource(R.string.settings_oneui_capsule_color),
+                                            summary = stringResource(R.string.settings_oneui_capsule_color_desc),
+                                            checked = oneuiCapsuleColorEnabled,
+                                            onCheckedChange = {
+                                                oneuiCapsuleColorEnabled = it
+                                                prefs.edit().putBoolean("oneui_capsule_color_enabled", it).apply()
+                                            }
+                                        )
+                                    }
                                     if (isHyperOsSupported) {
                                         SuperSwitch(
                                             title = stringResource(R.string.settings_dynamic_icon),
