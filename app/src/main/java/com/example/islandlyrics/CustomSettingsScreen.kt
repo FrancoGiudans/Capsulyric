@@ -15,6 +15,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -101,6 +102,12 @@ fun CustomSettingsScreen(
     var recommendMediaAppEnabled by remember { mutableStateOf(prefs.getBoolean("recommend_media_app", true)) }
     var disableScrolling by remember { mutableStateOf(prefs.getBoolean("disable_lyric_scrolling", false)) }
     var oneuiCapsuleColorEnabled by remember { mutableStateOf(prefs.getBoolean("oneui_capsule_color_enabled", false)) }
+
+    var superIslandEnabled by remember { mutableStateOf(prefs.getBoolean("super_island_enabled", false)) }
+    var miuixEnabled by remember { mutableStateOf(prefs.getBoolean("ui_use_miuix", false)) }
+
+    // Dialog State for UI Style
+    var showUiStyleDropdown by remember { mutableStateOf(false) }
 
     // Check for HyperOS 3.0.300+
     val isHyperOsSupported = remember { RomUtils.isHyperOsVersionAtLeast(3, 0, 300) }
@@ -260,6 +267,23 @@ fun CustomSettingsScreen(
                                         onClick = { showIconStyleDialog = true }
                                     )
                                 }
+                                
+                                SettingsSwitchItem(
+                                    title = stringResource(R.string.settings_super_island),
+                                    subtitle = stringResource(R.string.settings_super_island_desc),
+                                    checked = superIslandEnabled,
+                                    onCheckedChange = { enabled ->
+                                        superIslandEnabled = enabled
+                                        prefs.edit().putBoolean("super_island_enabled", enabled).apply()
+                                        val action = if (enabled) {
+                                            "ACTION_ENABLE_SUPER_ISLAND"
+                                        } else {
+                                            "ACTION_DISABLE_SUPER_ISLAND"
+                                        }
+                                        val intent = Intent(context, LyricService::class.java).setAction(action)
+                                        context.startService(intent)
+                                    }
+                                )
                             }
                         }
                         1 -> { // Notification (Moved from 2)
@@ -319,6 +343,51 @@ fun CustomSettingsScreen(
                             )
                         }
                         2 -> { // App UI (Moved from 0)
+                             val uiStyleDisplay = when (miuixEnabled) {
+                                 true -> stringResource(R.string.ui_style_miuix)
+                                 else -> stringResource(R.string.ui_style_material)
+                             }
+                             Box(modifier = Modifier.fillMaxWidth()) {
+                                 SettingsTextItem(
+                                     title = stringResource(R.string.settings_app_ui_style),
+                                     value = uiStyleDisplay,
+                                     onClick = { showUiStyleDropdown = true }
+                                 )
+                                 DropdownMenu(
+                                     expanded = showUiStyleDropdown,
+                                     onDismissRequest = { showUiStyleDropdown = false },
+                                     modifier = Modifier.align(Alignment.CenterEnd)
+                                 ) {
+                                     DropdownMenuItem(
+                                         text = { Text(stringResource(R.string.ui_style_material)) },
+                                         onClick = {
+                                             showUiStyleDropdown = false
+                                             if (miuixEnabled) {
+                                                 miuixEnabled = false
+                                                 prefs.edit().putBoolean("ui_use_miuix", false).apply()
+                                                 val restartIntent = Intent(context, MainActivity::class.java)
+                                                 restartIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                                                 context.startActivity(restartIntent)
+                                                 (context as? Activity)?.finish()
+                                             }
+                                         }
+                                     )
+                                     DropdownMenuItem(
+                                         text = { Text(stringResource(R.string.ui_style_miuix)) },
+                                         onClick = {
+                                             showUiStyleDropdown = false
+                                             if (!miuixEnabled) {
+                                                 miuixEnabled = true
+                                                 prefs.edit().putBoolean("ui_use_miuix", true).apply()
+                                                 val restartIntent = Intent(context, MainActivity::class.java)
+                                                 restartIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                                                 context.startActivity(restartIntent)
+                                                 (context as? Activity)?.finish()
+                                             }
+                                         }
+                                     )
+                                 }
+                             }
                              SettingsSwitchItem(
                                 title = stringResource(R.string.settings_theme_follow_system),
                                 checked = followSystem,
@@ -437,6 +506,7 @@ fun CustomSettingsScreen(
                     onDismiss = { showDismissDelayDialog = false }
                 )
             }
+
         }
     }
 }

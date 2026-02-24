@@ -73,6 +73,9 @@ fun MiuixCustomSettingsScreen(
     var disableScrolling by remember { mutableStateOf(prefs.getBoolean("disable_lyric_scrolling", false)) }
     var oneuiCapsuleColorEnabled by remember { mutableStateOf(prefs.getBoolean("oneui_capsule_color_enabled", false)) }
 
+    var superIslandEnabled by remember { mutableStateOf(prefs.getBoolean("super_island_enabled", false)) }
+    var miuixEnabled by remember { mutableStateOf(prefs.getBoolean("ui_use_miuix", false)) }
+
     val isHyperOsSupported = remember { RomUtils.isHyperOsVersionAtLeast(3, 0, 300) }
     val isSystemDark = androidx.compose.foundation.isSystemInDarkTheme()
     val useDarkTheme = if (followSystem) isSystemDark else darkMode
@@ -192,6 +195,22 @@ fun MiuixCustomSettingsScreen(
                                             }
                                         )
                                     }
+                                    SuperSwitch(
+                                        title = stringResource(R.string.settings_super_island),
+                                        summary = stringResource(R.string.settings_super_island_desc),
+                                        checked = superIslandEnabled,
+                                        onCheckedChange = { enabled ->
+                                            superIslandEnabled = enabled
+                                            prefs.edit().putBoolean("super_island_enabled", enabled).apply()
+                                            val action = if (enabled) {
+                                                "ACTION_ENABLE_SUPER_ISLAND"
+                                            } else {
+                                                "ACTION_DISABLE_SUPER_ISLAND"
+                                            }
+                                            val intent = Intent(context, LyricService::class.java).setAction(action)
+                                            context.startService(intent)
+                                        }
+                                    )
                                     if (isHyperOsSupported) {
                                         SuperSwitch(
                                             title = stringResource(R.string.settings_dynamic_icon),
@@ -310,6 +329,27 @@ fun MiuixCustomSettingsScreen(
                         2 -> { // App UI
                             item {
                                 Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
+                                    val uiStyles = listOf(false, true)
+                                    val uiStyleNames = listOf(
+                                        stringResource(R.string.ui_style_material),
+                                        stringResource(R.string.ui_style_miuix)
+                                    )
+                                    val currentUiIndex = uiStyles.indexOf(miuixEnabled).takeIf { it >= 0 } ?: 0
+                                    
+                                    SuperDropdown(
+                                        title = stringResource(R.string.settings_app_ui_style),
+                                        items = uiStyleNames,
+                                        selectedIndex = currentUiIndex,
+                                        onSelectedIndexChange = { index ->
+                                            val newStyle = uiStyles[index]
+                                            miuixEnabled = newStyle
+                                            prefs.edit().putBoolean("ui_use_miuix", newStyle).apply()
+                                            val restartIntent = Intent(context, MainActivity::class.java)
+                                            restartIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                                            context.startActivity(restartIntent)
+                                            (context as? Activity)?.finish()
+                                        }
+                                    )
                                     SuperSwitch(
                                         title = stringResource(R.string.settings_theme_follow_system),
                                         checked = followSystem,
