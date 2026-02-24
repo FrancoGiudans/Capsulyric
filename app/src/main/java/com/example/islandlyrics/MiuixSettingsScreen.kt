@@ -25,6 +25,7 @@ import androidx.core.content.ContextCompat
 import top.yukonga.miuix.kmp.basic.*
 import top.yukonga.miuix.kmp.extra.SuperArrow
 import top.yukonga.miuix.kmp.extra.SuperDropdown
+import top.yukonga.miuix.kmp.extra.SuperListPopup
 import top.yukonga.miuix.kmp.extra.SuperSwitch
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.MiuixPopupUtils.Companion.MiuixPopupHost
@@ -48,7 +49,7 @@ fun MiuixSettingsScreen(
     var dynamicIconEnabled by remember { mutableStateOf(prefs.getBoolean("dynamic_icon_enabled", false)) }
 
     var showPrivacyDialog by remember { mutableStateOf(false) }
-    var showFeedbackDialog by remember { mutableStateOf(false) }
+    val showFeedbackPopup = remember { mutableStateOf(false) }
 
     val isHyperOsSupported = remember { RomUtils.isHyperOsVersionAtLeast(3, 0, 300) }
 
@@ -266,13 +267,45 @@ fun MiuixSettingsScreen(
                         summary = "Frequently asked questions",
                         onClick = { context.startActivity(Intent(context, FAQActivity::class.java)) }
                     )
-                    SuperArrow(
-                        title = stringResource(R.string.settings_feedback),
-                        summary = "Send feedback or report issues",
-                        onClick = {
-                            showFeedbackDialog = true
+                    Box {
+                        SuperArrow(
+                            title = stringResource(R.string.settings_feedback),
+                            summary = "Send feedback or report issues",
+                            onClick = {
+                                showFeedbackPopup.value = true
+                            }
+                        )
+                        SuperListPopup(
+                            show = showFeedbackPopup,
+                            alignment = PopupPositionProvider.Align.TopEnd,
+                            onDismissRequest = { showFeedbackPopup.value = false }
+                        ) {
+                            ListPopupColumn {
+                                DropdownImpl(
+                                    text = stringResource(R.string.dialog_feedback_github),
+                                    optionSize = 2,
+                                    isSelected = false,
+                                    index = 0,
+                                    onSelectedIndexChange = {
+                                        showFeedbackPopup.value = false
+                                        val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/FrancoGiudans/Capsulyric/issues/new"))
+                                        context.startActivity(browserIntent)
+                                    }
+                                )
+                                DropdownImpl(
+                                    text = stringResource(R.string.dialog_feedback_wps),
+                                    optionSize = 2,
+                                    isSelected = false,
+                                    index = 1,
+                                    onSelectedIndexChange = {
+                                        showFeedbackPopup.value = false
+                                        val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://f.wps.cn/g/qACKW9I3/"))
+                                        context.startActivity(browserIntent)
+                                    }
+                                )
+                            }
                         }
-                    )
+                    }
                     SuperArrow(
                         title = stringResource(R.string.settings_about_github),
                         summary = "View source on GitHub",
@@ -334,72 +367,6 @@ fun MiuixSettingsScreen(
             },
             dismissButton = {
                 androidx.compose.material3.TextButton(onClick = { showPrivacyDialog = false }) {
-                    androidx.compose.material3.Text(stringResource(R.string.dialog_btn_cancel))
-                }
-            }
-        )
-    }
-
-    if (showFeedbackDialog) {
-        androidx.compose.material3.AlertDialog(
-            onDismissRequest = { showFeedbackDialog = false },
-            title = { androidx.compose.material3.Text(stringResource(R.string.dialog_feedback_title)) },
-            text = {
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable {
-                                val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/FrancoGiudans/Capsulyric/issues/new"))
-                                context.startActivity(browserIntent)
-                                showFeedbackDialog = false
-                            }
-                            .padding(vertical = 12.dp, horizontal = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            androidx.compose.material3.Text(
-                                text = stringResource(R.string.dialog_feedback_github),
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.Medium,
-                                color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface
-                            )
-                            androidx.compose.material3.Text(
-                                text = stringResource(R.string.dialog_feedback_github_desc),
-                                fontSize = 14.sp,
-                                color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable {
-                                val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://f.wps.cn/g/qACKW9I3/"))
-                                context.startActivity(browserIntent)
-                                showFeedbackDialog = false
-                            }
-                            .padding(vertical = 12.dp, horizontal = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            androidx.compose.material3.Text(
-                                text = stringResource(R.string.dialog_feedback_wps),
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.Medium,
-                                color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface
-                            )
-                            androidx.compose.material3.Text(
-                                text = stringResource(R.string.dialog_feedback_wps_desc),
-                                fontSize = 14.sp,
-                                color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                }
-            },
-            confirmButton = {
-                androidx.compose.material3.TextButton(onClick = { showFeedbackDialog = false }) {
                     androidx.compose.material3.Text(stringResource(R.string.dialog_btn_cancel))
                 }
             }
