@@ -62,7 +62,6 @@ fun MiuixCustomSettingsScreen(
     var followSystem by remember { mutableStateOf(prefs.getBoolean("theme_follow_system", true)) }
     var darkMode by remember { mutableStateOf(prefs.getBoolean("theme_dark_mode", false)) }
     var pureBlack by remember { mutableStateOf(prefs.getBoolean("theme_pure_black", false)) }
-    var dynamicColor by remember { mutableStateOf(prefs.getBoolean("theme_dynamic_color", true)) }
     var dynamicIconEnabled by remember { mutableStateOf(prefs.getBoolean("dynamic_icon_enabled", false)) }
     var iconStyle by remember { mutableStateOf(prefs.getString("dynamic_icon_style", "classic") ?: "classic") }
 
@@ -336,15 +335,6 @@ fun MiuixCustomSettingsScreen(
                                         onCheckedChange = {
                                             pureBlack = it
                                             ThemeHelper.setPureBlack(context, it)
-                                        }
-                                    )
-                                    SuperSwitch(
-                                        title = stringResource(R.string.settings_theme_dynamic_color),
-                                        summary = stringResource(R.string.settings_theme_dynamic_color_desc),
-                                        checked = dynamicColor,
-                                        onCheckedChange = {
-                                            dynamicColor = it
-                                            ThemeHelper.setDynamicColor(context, it)
                                         }
                                     )
                                 }

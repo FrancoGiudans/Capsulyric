@@ -37,8 +37,9 @@ object ThemeHelper {
     }
 
     fun isDynamicColorEnabled(context: Context): Boolean {
-        return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            .getBoolean(KEY_DYNAMIC_COLOR, true)
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        if (prefs.getBoolean("ui_use_miuix", false)) return false
+        return prefs.getBoolean(KEY_DYNAMIC_COLOR, true)
     }
 
     fun isPureBlackEnabled(context: Context): Boolean {

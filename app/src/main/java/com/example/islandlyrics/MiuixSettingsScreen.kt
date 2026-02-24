@@ -41,7 +41,6 @@ fun MiuixSettingsScreen(
     var followSystem by remember { mutableStateOf(prefs.getBoolean("theme_follow_system", true)) }
     var darkMode by remember { mutableStateOf(prefs.getBoolean("theme_dark_mode", false)) }
     var pureBlack by remember { mutableStateOf(prefs.getBoolean("theme_pure_black", false)) }
-    var dynamicColor by remember { mutableStateOf(prefs.getBoolean("theme_dynamic_color", true)) }
     var dynamicIconEnabled by remember { mutableStateOf(prefs.getBoolean("dynamic_icon_enabled", false)) }
 
     var showPrivacyDialog by remember { mutableStateOf(false) }
