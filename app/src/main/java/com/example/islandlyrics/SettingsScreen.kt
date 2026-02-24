@@ -59,7 +59,7 @@ fun SettingsScreen(
     var iconStyle by remember { mutableStateOf(prefs.getString("dynamic_icon_style", "classic") ?: "classic") }
     
     // Dialog State
-    var showLanguageDialog by remember { mutableStateOf(false) }
+    var showLanguageDropdown by remember { mutableStateOf(false) }
     var showIconStyleDialog by remember { mutableStateOf(false) }
     var showPrivacyDialog by remember { mutableStateOf(false) }
     var showFeedbackDialog by remember { mutableStateOf(false) }
@@ -173,11 +173,31 @@ fun SettingsScreen(
                     "zh-CN" -> "简体中文"
                     else -> stringResource(R.string.settings_theme_follow_system)
                 }
-                SettingsTextItem(
-                    title = stringResource(R.string.settings_language),
-                    value = currentLangText,
-                    onClick = { showLanguageDialog = true }
-                )
+                Box(modifier = Modifier.fillMaxWidth()) {
+                    SettingsTextItem(
+                        title = stringResource(R.string.settings_language),
+                        value = currentLangText,
+                        onClick = { showLanguageDropdown = true }
+                    )
+                    Box(modifier = Modifier.matchParentSize().wrapContentSize(Alignment.Center)) {
+                        DropdownMenu(
+                            expanded = showLanguageDropdown,
+                            onDismissRequest = { showLanguageDropdown = false }
+                        ) {
+                            val languages = listOf("System Default" to "", "English" to "en", "简体中文" to "zh-CN")
+                            languages.forEach { (label, code) ->
+                                DropdownMenuItem(
+                                    text = { Text(label) },
+                                    onClick = {
+                                        ThemeHelper.setLanguage(context, code)
+                                        (context as? Activity)?.recreate()
+                                        showLanguageDropdown = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
 
                 // Suggest Current App
                 var recommendMediaAppEnabled by remember { mutableStateOf(prefs.getBoolean("recommend_media_app", true)) }
@@ -380,14 +400,6 @@ fun SettingsScreen(
                 }
 
                 Spacer(modifier = Modifier.height(24.dp))
-            }
-
-            // --- Dialogs ---
-
-            if (showLanguageDialog) {
-                LanguageSelectionDialog(
-                    onDismiss = { showLanguageDialog = false }
-                )
             }
 
             if (showPrivacyDialog) {
