@@ -73,31 +73,32 @@ class LyricService : Service() {
                 }
             }
 
-            // Auto-start Capsule upon valid lyric (even if static, if we didn't return above)
-            if (capsuleHandler?.isRunning() != true) {
-                capsuleHandler?.start()
-                
-                // START PROGRESS TRACKING
-                isPlaying = true
-                handler.post(updateTask)
-            } else {
-                // Capsule running: Force immediate update
+            updateActiveHandler()
+            if (!isSuperIslandMode) {
                 capsuleHandler?.updateLyricImmediate(info.lyric)
+            } else {
+                // ⚡ ZERO LATENCY: Force update island immediately on lyric change
+                superIslandHandler?.forceUpdateNotification()
             }
         } else {
-            // Stop capsule if we received an empty lyric signal (e.g., song change or pure music)
-            if (capsuleHandler?.isRunning() == true) {
-                capsuleHandler?.stop()
-                AppLogger.getInstance().log(TAG, "🛑 Capsule stopped: Lyric is empty")
-            }
+            // Stop both if lyric is empty
+            if (superIslandHandler?.isRunning == true) superIslandHandler?.stop()
+            if (capsuleHandler?.isRunning() == true) capsuleHandler?.stop()
         }
     }
     
     // Delayed Stop Logic
     private val delayedStopRunnable = Runnable {
-        if (capsuleHandler?.isRunning() == true) {
-            capsuleHandler?.stop()
-            AppLogger.getInstance().log(TAG, "🛑 Capsule stopped: Playback stopped (Delayed)")
+        if (isSuperIslandMode) {
+            if (superIslandHandler?.isRunning == true) {
+                superIslandHandler?.stop()
+                AppLogger.getInstance().log(TAG, "🛑 SuperIsland stopped: Playback stopped (Delayed)")
+            }
+        } else {
+            if (capsuleHandler?.isRunning() == true) {
+                capsuleHandler?.stop()
+                AppLogger.getInstance().log(TAG, "🛑 Capsule stopped: Playback stopped (Delayed)")
+            }
         }
     }
 
@@ -106,15 +107,8 @@ class LyricService : Service() {
             // Cancel any pending stop
             handler.removeCallbacks(delayedStopRunnable)
 
-            // Resume/Start capsule if we have valid lyrics
-            val currentLyric = LyricRepository.getInstance().liveLyric.value
-            if (currentLyric != null && currentLyric.lyric.isNotBlank() && capsuleHandler?.isRunning() != true) {
-                capsuleHandler?.start()
-                
-                // Force immediate update with current lyric
-                capsuleHandler?.updateLyricImmediate(currentLyric.lyric)
-                AppLogger.getInstance().log(TAG, "▶️ Capsule started: Playback resumed")
-            }
+            // Resume/Start active handler if we have valid lyrics
+            updateActiveHandler()
             // Start progress tracking (merged from second observer)
             startProgressUpdater()
         } else {
@@ -131,14 +125,21 @@ class LyricService : Service() {
             AppLogger.getInstance().log(TAG, "🛑 Playback stopped. Delay=$delay ms")
 
             if (delay > 0) {
-                 AppLogger.getInstance().log(TAG, "⏳ Scheduling capsule stop in ${delay}ms")
+                 AppLogger.getInstance().log(TAG, "⏳ Scheduling handler stop in ${delay}ms")
                  handler.postDelayed(delayedStopRunnable, delay)
             } else {
                  // Immediate stop
-                 if (capsuleHandler?.isRunning() == true) {
-                    capsuleHandler?.stop()
-                    AppLogger.getInstance().log(TAG, "🛑 Capsule stopped immediately (Delay=0)")
-                 }
+                 if (isSuperIslandMode) {
+                     if (superIslandHandler?.isRunning == true) {
+                         superIslandHandler?.stop()
+                         AppLogger.getInstance().log(TAG, "🛑 SuperIsland stopped immediately (Delay=0)")
+                     }
+                 } else {
+                     if (capsuleHandler?.isRunning() == true) {
+                         capsuleHandler?.stop()
+                         AppLogger.getInstance().log(TAG, "🛑 Capsule stopped immediately (Delay=0)")
+                     }
+                }
             }
         }
     }
@@ -232,13 +233,14 @@ class LyricService : Service() {
                 updateProgressFromController(shouldLog)
                 
                 // Drive Lyric Updates if we have parsed lyrics
-                val parsedInfo = LyricRepository.getInstance().liveParsedLyrics.value
-                if (parsedInfo != null && parsedInfo.lines.isNotEmpty()) {
-                     updateCurrentLyricLine(parsedInfo.lines)
+                val repo = LyricRepository.getInstance()
+                val parsedLines = repo.liveParsedLyrics.value?.lines
+                if (!parsedLines.isNullOrEmpty()) {
+                     updateCurrentLyricLine(parsedLines)
                 }
                 
-                // Balanced frequency: 250ms (reduced from 100ms to avoid island lag with visualizerLoop)
-                handler.postDelayed(this, 250)
+                // ⚡ Optimized frequency: 120ms for high responsiveness
+                handler.postDelayed(this, 120)
             } else {
                 AppLogger.getInstance().log(TAG, "⏸️ updateTask stopped (isPlaying=false)")
             }
@@ -280,11 +282,19 @@ class LyricService : Service() {
     // Toggle for Chip Keep-Alive Hack
     private var invisibleToggle = false
     private var capsuleHandler: LyricCapsuleHandler? = null
+    private var superIslandHandler: SuperIslandHandler? = null
+    private var isSuperIslandMode = false
 
     override fun onCreate() {
         super.onCreate()
+        
+        // Load mode from preferences
+        isSuperIslandMode = getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE)
+            .getBoolean("debug_super_island_enabled", false)
+
         createNotificationChannel()
         capsuleHandler = LyricCapsuleHandler(this, this)
+        superIslandHandler = SuperIslandHandler(this, this)
         
         // Always register SuperLyric for detection (check per-app settings in callback)
         SuperLyricTool.registerSuperLyric(this, superLyricStub)
@@ -332,6 +342,7 @@ class LyricService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val action = intent?.action ?: "null"
+<<<<<<< main
         AppLogger.getInstance().log(TAG, "Received Action: $action")
 
         // [Fix Task 1] Immediate Foreground Promotion
@@ -351,6 +362,35 @@ class LyricService : Service() {
         }
 
         // Handle functional actions
+=======
+        AppLogger.getInstance().log(TAG, "onStartCommand Received Action: $action")
+
+        // 1. Process mode changes IMMEDIATELY
+        if ("ACTION_ENABLE_SUPER_ISLAND" == action) {
+            isSuperIslandMode = true
+        } else if ("ACTION_DISABLE_SUPER_ISLAND" == action) {
+            isSuperIslandMode = false
+        }
+
+        // 2. Ensure only the correct handler is running
+        updateActiveHandler()
+
+        // 3. Promote to foreground (avoid redundant channel creation)
+        if (isSuperIslandMode && superIslandHandler?.isRunning == true) {
+            superIslandHandler?.forceUpdateNotification()
+        } else if (!isSuperIslandMode && capsuleHandler?.isRunning() == true) {
+            capsuleHandler?.forceUpdateNotification()
+        } else {
+            // Only use fallback if service is starting up and no handler is ready yet
+            if (action == "null" || action == "ACTION_START") {
+                val currentInfo = LyricRepository.getInstance().liveLyric.value
+                val title = currentInfo?.sourceApp ?: "Island Lyrics"
+                val text = currentInfo?.lyric ?: "Initializing..."
+                startForeground(NOTIFICATION_ID, buildNotification(text, title, ""))
+            }
+        }
+
+>>>>>>> develop
         if ("ACTION_STOP" == action) {
             @Suppress("DEPRECATION")
             stopForeground(true)
@@ -358,10 +398,15 @@ class LyricService : Service() {
             return START_NOT_STICKY
         } else if ("ACTION_MEDIA_PAUSE" == action) {
             handleMediaPause()
+<<<<<<< main
             return START_STICKY
         } else if ("ACTION_MEDIA_NEXT" == action) {
             handleMediaNext()
             return START_STICKY
+=======
+        } else if ("ACTION_MEDIA_NEXT" == action) {
+            handleMediaNext()
+>>>>>>> develop
         }
 
         return START_STICKY
@@ -474,10 +519,10 @@ class LyricService : Service() {
         if (true) {
             val manager = getSystemService(NotificationManager::class.java)
             if (manager != null) {
-                // Standard Channel
+                // Unified Channel for all types (Capsule, Super Island, Fallback)
                 val serviceChannel = NotificationChannel(
                     CHANNEL_ID,
-                    "Live Updates (High Priority)",
+                    "Lyrics (Capsule / Super Island)",
                     NotificationManager.IMPORTANCE_HIGH
                 ).apply {
                     setSound(null, null)
@@ -512,30 +557,22 @@ class LyricService : Service() {
                 )
             )
 
-        // Use ProgressStyle via Reflection
-        try {
-            // 1. Create ProgressStyle
-            val styleClass = Class.forName("android.app.Notification\$ProgressStyle")
-            val style = styleClass.getConstructor().newInstance()
+        // Use ProgressStyle via Public API 36
+        // 1. Create ProgressStyle
+        val style = Notification.ProgressStyle()
 
-            // 2. Set "StyledByProgress" (Critical for appearance)
-            styleClass.getMethod("setStyledByProgress", Boolean::class.javaPrimitiveType).invoke(style, true)
+        // 2. Set "StyledByProgress" (Critical for appearance)
+        style.setStyledByProgress(true)
 
-            // 3. Create a dummy Segment (Required by internal logic)
-            val segmentClass = Class.forName("android.app.Notification\$ProgressStyle\$Segment")
-            val segment = segmentClass.getConstructor(Int::class.javaPrimitiveType).newInstance(1)
+        // 3. Create a Segment (Required by internal logic)
+        val segment = Notification.ProgressStyle.Segment(1)
 
-            // 4. Set Segments List
-            val segments = ArrayList<Any>()
-            segments.add(segment)
-            styleClass.getMethod("setProgressSegments", List::class.java).invoke(style, segments)
+        // 4. Set Segments List
+        style.setProgressSegments(listOf(segment))
 
-            // 5. Apply Style to Builder
-            builder.style = style as Notification.Style
-            LogManager.getInstance().d(this, "Capsulyric", "✅ ProgressStyle applied")
-        } catch (e: Exception) {
-            LogManager.getInstance().e(this, "Capsulyric", "❌ ProgressStyle failed: $e")
-        }
+        // 5. Apply Style to Builder
+        builder.style = style
+
 
         // Unified Attributes (Chip, Promotion)
         // [Task 3] Keep-Alive Hack & Real Lyrics
@@ -546,7 +583,7 @@ class LyricService : Service() {
         invisibleToggle = !invisibleToggle
         val chipText = rawText + if (invisibleToggle) "\u200B" else ""
 
-        applyLiveAttributes(builder, chipText) // Tries Builder methods
+        applyLiveAttributes(builder, chipText) // Uses Native Build methods
 
         val notification = builder.build()
 
@@ -561,41 +598,16 @@ class LyricService : Service() {
     private fun applyLiveAttributes(builder: Notification.Builder, text: String) {
 
         // 1. Set Status Chip Text
-        try {
-            // PROBE A: Try String.class (Known working on QPR2 Emulator)
-            val method = Notification.Builder::class.java.getMethod("setShortCriticalText", String::class.java)
-            method.invoke(builder, text)
-            LogManager.getInstance().d(this, "Capsulyric", "✅ Chip set via String signature: $text")
-        } catch (e1: Exception) {
-            try {
-                // PROBE B: Try CharSequence.class (Standard API definition fallback)
-                val method = Notification.Builder::class.java.getMethod("setShortCriticalText", CharSequence::class.java)
-                method.invoke(builder, text as CharSequence)
-                LogManager.getInstance().d(this, "Capsulyric", "✅ Chip set via CharSequence signature")
-            } catch (e2: Exception) {
-                LogManager.getInstance().e(this, "Capsulyric", "❌ Chip Reflection Failed. API changed? ${e1.javaClass.simpleName}")
-            }
-        }
+        builder.setShortCriticalText(text)
 
         // 2. Set Promoted Ongoing (Crucial for Chip visibility)
-        try {
-            // EXACT SIGNATURE: setRequestPromotedOngoing(boolean)
-            val method = Notification.Builder::class.java.getMethod("setRequestPromotedOngoing", Boolean::class.javaPrimitiveType)
-            method.invoke(builder, true)
-            LogManager.getInstance().d(this, "Capsulyric", "✅ Promoted Flag Set")
-        } catch (e: Exception) {
-            LogManager.getInstance().e(this, "Capsulyric", "❌ Promoted Flag Failed: $e")
-        }
+        // The method setRequestPromotedOngoing isn't exposed in standard Notification.Builder stubs,
+        // so we set the exact extra manually.
+        builder.extras.putBoolean("android.app.extra.REQUEST_PROMOTED_ONGOING", true)
     }
 
     private fun applyPromotedFlagFallback(notification: Notification) {
-         try {
-             val f = Notification::class.java.getField("FLAG_PROMOTED_ONGOING")
-             val value = f.getInt(null)
-             notification.flags = notification.flags or value
-         } catch (e: Exception) {
-             // Fallback failed
-         }
+        notification.flags = notification.flags or Notification.FLAG_PROMOTED_ONGOING
     }
 
     private fun broadcastStatus(status: String) {
@@ -645,33 +657,19 @@ class LyricService : Service() {
         intent.putExtra("status", modeStatus)
 
         // 2. Promotable Characteristics (API 36)
-        var hasChar = false
-        try {
-            val m = notification.javaClass.getMethod("hasPromotableCharacteristics")
-            hasChar = m.invoke(notification) as Boolean
-            intent.putExtra("hasPromotable", hasChar)
-        } catch (e: Exception) {}
+        val hasChar = notification.hasPromotableCharacteristics()
+        intent.putExtra("hasPromotable", hasChar)
 
         // 3. Ongoing Flag (API 36)
-        var isPromoted = false
-        try {
-            val f = Notification::class.java.getField("FLAG_PROMOTED_ONGOING")
-            val flagVal = f.getInt(null)
-            isPromoted = (notification.flags and flagVal) != 0
-            intent.putExtra("isPromoted", isPromoted)
-        } catch (e: Exception) {
-            // Fallback/Log
-        }
+        val flagVal = Notification.FLAG_PROMOTED_ONGOING
+        val isPromoted = (notification.flags and flagVal) != 0
+        intent.putExtra("isPromoted", isPromoted)
 
         sendBroadcast(intent)
 
         // --- Detailed Logging (DIAG_UPDATE) ---
         // 4. System Permission
-        var canPost = false
-        try {
-            val m = nm.javaClass.getMethod("canPostPromotedNotifications")
-            canPost = m.invoke(nm) as Boolean
-        } catch (e: Exception) {}
+        val canPost = nm.canPostPromotedNotifications()
 
         // 5. Channel Status
         var channelStatus = "Unknown"
@@ -733,7 +731,35 @@ class LyricService : Service() {
         handler.removeCallbacks(updateTask)
     }
 
+<<<<<<< main
 
+=======
+    private fun updateActiveHandler() {
+        val currentLyric = LyricRepository.getInstance().liveLyric.value
+        val hasLyric = currentLyric != null && currentLyric.lyric.isNotBlank()
+        val playing = LyricRepository.getInstance().isPlaying.value ?: false
+
+        if (isSuperIslandMode) {
+            // Ensure Capsule is STOPPED
+            if (capsuleHandler?.isRunning() == true) {
+                capsuleHandler?.stop()
+            }
+            // Start Island if playing and has lyric
+            if (playing && hasLyric && superIslandHandler?.isRunning != true) {
+                superIslandHandler?.start()
+            }
+        } else {
+            // Ensure Island is STOPPED
+            if (superIslandHandler?.isRunning == true) {
+                superIslandHandler?.stop()
+            }
+            // Start Capsule if playing and has lyric
+            if (playing && hasLyric && capsuleHandler?.isRunning() != true) {
+                capsuleHandler?.start()
+            }
+        }
+    }
+>>>>>>> develop
 
     private fun updateProgressFromController(shouldLog: Boolean = true) {
         if (shouldLog) {
@@ -885,7 +911,7 @@ class LyricService : Service() {
 
     companion object {
         private const val TAG = "LyricService"
-        private const val CHANNEL_ID = "capsulyric_live_high_v1"
+        private const val CHANNEL_ID = "lyric_capsule_channel"
         private const val NOTIFICATION_ID = 1001
     }
 }

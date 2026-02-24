@@ -58,26 +58,34 @@ class LyricRepository private constructor() {
     }
 
     fun updateLyric(lyric: String?, app: String?) {
-        // Atomic Update: Only post if both lyric and app are non-null
-        if (lyric != null && app != null) {
-            liveLyric.postValue(LyricInfo(lyric, app))
-        }
+        if (lyric == null || app == null) return
+        
+        val newInfo = LyricInfo(lyric, app)
+        if (liveLyric.value == newInfo) return
+        
+        postOrSet(liveLyric, newInfo)
 
         // Implicitly playing if we get lyric data
         updatePlaybackStatus(true)
     }
 
     fun updateMediaMetadata(title: String, artist: String, packageName: String, duration: Long) {
+        val newInfo = MediaInfo(title, artist, packageName, duration)
+        if (liveMetadata.value == newInfo) return
+
         // Detect song change to clear old lyrics
+        // FIX: Only clear if Title/Artist/Pkg actually changed significantly (not just tiny metadata ping)
         val currentTrackId = "$title-$artist-$packageName"
         if (lastTrackId != currentTrackId) {
             lastTrackId = currentTrackId
-            AppLogger.getInstance().log("Repo", "📝 Song changed, clearing old lyric")
-            liveLyric.postValue(LyricInfo("", packageName))
+            AppLogger.getInstance().log("Repo", "📝 Song changed ($currentTrackId), clearing old lyric")
+            postOrSet(liveLyric, LyricInfo("", packageName))
+            postOrSet(liveParsedLyrics, null)
+            postOrSet(liveCurrentLine, null)
         }
 
-        AppLogger.getInstance().log("Repo", "📝 Metadata: $title - $artist [$packageName]")
-        liveMetadata.postValue(MediaInfo(title, artist, packageName, duration))
+        AppLogger.getInstance().log("Repo", "📝 Metadata Update: $title - $artist [$packageName]")
+        postOrSet(liveMetadata, newInfo)
     }
 
     // Raw metadata for "Add Rule" suggestion (bypasses whitelist check in UI)
@@ -88,7 +96,9 @@ class LyricRepository private constructor() {
     }
 
     fun updateProgress(position: Long, duration: Long) {
-        liveProgress.postValue(PlaybackProgress(position, duration))
+        val newProgress = PlaybackProgress(position, duration)
+        if (liveProgress.value == newProgress) return
+        postOrSet(liveProgress, newProgress)
     }
 
     fun updateAlbumArt(bitmap: Bitmap?) {
@@ -109,7 +119,15 @@ class LyricRepository private constructor() {
     val liveDiagnostics = MutableLiveData<ServiceDiagnostics>()
 
     fun updateDiagnostics(diag: ServiceDiagnostics) {
-        liveDiagnostics.postValue(diag)
+        postOrSet(liveDiagnostics, diag)
+    }
+
+    private fun <T> postOrSet(liveData: MutableLiveData<T>, value: T) {
+        if (android.os.Looper.myLooper() == android.os.Looper.getMainLooper()) {
+            liveData.value = value
+        } else {
+            liveData.postValue(value)
+        }
     }
 
     companion object {

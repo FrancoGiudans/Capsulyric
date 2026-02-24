@@ -5,8 +5,11 @@ import java.io.BufferedReader
 import java.io.InputStreamReader
 
 object RomUtils {
+    var forcedRomType: String? = null
+
 
     fun getRomInfo(): String {
+        if (!forcedRomType.isNullOrEmpty()) return "$forcedRomType (Forced)"
         // Known keys for various ROMs
         
         // HyperOS / MIUI
@@ -61,6 +64,7 @@ object RomUtils {
     }
 
     fun getRomType(): String {
+        if (!forcedRomType.isNullOrEmpty()) return forcedRomType!!
         // HyperOS / MIUI
         if (getSystemProperty("ro.mi.os.version.name").isNotEmpty()) return "HyperOS"
         
@@ -99,6 +103,8 @@ object RomUtils {
     }
 
     fun isHyperOsVersionAtLeast(major: Int, minor: Int, patch: Int): Boolean {
+        if (forcedRomType == "HyperOS") return true // Bypass check if explicitly forced
+
         // STRICT CHECK: Must be HyperOS first
         val hyperOsVersion = getSystemProperty("ro.mi.os.version.name")
         if (hyperOsVersion.isEmpty()) {

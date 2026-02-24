@@ -13,10 +13,18 @@ class LogViewerActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            AppTheme {
-               LogViewerScreen(
-                   onBack = { finish() }
-               )
+            if (isMiuixEnabled(this@LogViewerActivity)) {
+                MiuixAppTheme {
+                    MiuixLogViewerScreen(
+                        onBack = { finish() }
+                    )
+                }
+            } else {
+                AppTheme {
+                    LogViewerScreen(
+                        onBack = { finish() }
+                    )
+                }
             }
         }
     }

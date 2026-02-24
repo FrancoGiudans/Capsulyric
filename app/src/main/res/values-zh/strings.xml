@@ -74,8 +74,11 @@
     <string name="settings_dynamic_icon_desc">展示歌名-歌手，仅HyperOS 3.0.300+可用</string>
     <string name="channel_live_lyrics">实时歌词更新</string>
     <string name="channel_short_live">直播</string>
-    
     <string name="cancel">取消</string>
+
+    <!-- OneUI Capsule Settings -->
+    <string name="settings_oneui_capsule_color">为胶囊背景着色</string>
+    <string name="settings_oneui_capsule_color_desc">胶囊背景随专辑封面变色，关闭时为黑色背景</string>
 
     <!-- 通知解析规则 -->
     <string name="parser_rule_title">解析规则</string>
@@ -143,6 +146,11 @@
 
     <string name="settings_disable_scrolling_desc">显示稳定的静态歌词文本，对于长歌词则只会展示前半段，阻止任何歌词滚动</string>
     <string name="settings_feedback">反馈</string>
+    <string name="dialog_feedback_title">选择反馈方式</string>
+    <string name="dialog_feedback_github">GitHub Issue</string>
+    <string name="dialog_feedback_github_desc">推荐渠道。</string>
+    <string name="dialog_feedback_wps">WPS 表单</string>
+    <string name="dialog_feedback_wps_desc">可能需要登录。</string>
     <string name="settings_hide_recents">隐藏后台窗口</string>
     <string name="settings_hide_recents_desc">划到后台时自动从最近任务中移除</string>
     <!-- FAQ Strings -->
@@ -275,5 +283,12 @@
     <string name="settings_click_action_media">打开媒体控制弹窗</string>
     <string name="settings_click_action_media_desc">在不打开本应用的情况下展示媒体控制弹窗</string>
     <string name="settings_disable_scrolling">禁用歌词滚动</string>
+    <string name="settings_super_island">发送小米超级岛通知</string>
+    <string name="settings_super_island_desc">替代 Live Update，使用小米超级岛模版发送歌词通知</string>
+    <string name="settings_app_ui_style">App 界面风格</string>
+    <string name="settings_app_ui_style_desc">在 Material Design 和 Miuix UI 之间切换。应用将会重启。</string>
+    <string name="dialog_ui_style_title">选择 App 界面风格</string>
+    <string name="ui_style_material">Material Design</string>
+    <string name="ui_style_miuix">Miuix (小米风格)</string>
 
 </resources>

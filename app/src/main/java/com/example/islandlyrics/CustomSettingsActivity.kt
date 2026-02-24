@@ -9,14 +9,26 @@ class CustomSettingsActivity : BaseActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            AppTheme {
-                CustomSettingsScreen(
-                    onBack = { finish() },
-                    onCheckUpdate = { /* No-op or reuse UpdateChecker if needed */ },
-                    onShowLogs = { /* No-op */ },
-                    updateVersionText = "", // Not used in this screen
-                    updateBuildText = "" // Not used in this screen
-                )
+            if (isMiuixEnabled(this@CustomSettingsActivity)) {
+                MiuixAppTheme {
+                    MiuixCustomSettingsScreen(
+                        onBack = { finish() },
+                        onCheckUpdate = { /* No-op */ },
+                        onShowLogs = { /* No-op */ },
+                        updateVersionText = "",
+                        updateBuildText = ""
+                    )
+                }
+            } else {
+                AppTheme {
+                    CustomSettingsScreen(
+                        onBack = { finish() },
+                        onCheckUpdate = { /* No-op or reuse UpdateChecker if needed */ },
+                        onShowLogs = { /* No-op */ },
+                        updateVersionText = "", // Not used in this screen
+                        updateBuildText = "" // Not used in this screen
+                    )
+                }
             }
         }
     }

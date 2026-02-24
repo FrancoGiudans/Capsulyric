@@ -15,6 +15,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -80,26 +81,33 @@ fun CustomSettingsScreen(
     
     // Dialog State
     var showLanguageDialog by remember { mutableStateOf(false) }
-    var showIconStyleDialog by remember { mutableStateOf(false) }
+    var showIconStyleDropdown by remember { mutableStateOf(false) }
     var showPrivacyDialog by remember { mutableStateOf(false) }
 
     // Notification Action Style State
     var actionStyle by remember { mutableStateOf(prefs.getString("notification_actions_style", "disabled") ?: "disabled") }
-    var showActionStyleDialog by remember { mutableStateOf(false) }
+    var showActionStyleDropdown by remember { mutableStateOf(false) }
 
     // Notification Click Action State
     var notificationClickStyle by remember { mutableStateOf(prefs.getString("notification_click_style", "default") ?: "default") }
-    var showNotificationClickDialog by remember { mutableStateOf(false) }
+    var showNotificationClickDropdown by remember { mutableStateOf(false) }
 
     // Dismiss Delay State
     var dismissDelay by remember { mutableLongStateOf(prefs.getLong("notification_dismiss_delay", 0L)) }
-    var showDismissDelayDialog by remember { mutableStateOf(false) }
+    var showDismissDelayDropdown by remember { mutableStateOf(false) }
 
     // Other Setup
     var progressColorEnabled by remember { mutableStateOf(prefs.getBoolean("progress_bar_color_enabled", false)) }
     var hideRecentsEnabled by remember { mutableStateOf(prefs.getBoolean("hide_recents_enabled", false)) }
     var recommendMediaAppEnabled by remember { mutableStateOf(prefs.getBoolean("recommend_media_app", true)) }
     var disableScrolling by remember { mutableStateOf(prefs.getBoolean("disable_lyric_scrolling", false)) }
+    var oneuiCapsuleColorEnabled by remember { mutableStateOf(prefs.getBoolean("oneui_capsule_color_enabled", false)) }
+
+    var superIslandEnabled by remember { mutableStateOf(prefs.getBoolean("super_island_enabled", false)) }
+    var miuixEnabled by remember { mutableStateOf(prefs.getBoolean("ui_use_miuix", false)) }
+
+    // Dialog State for UI Style
+    var showUiStyleDropdown by remember { mutableStateOf(false) }
 
     // Check for HyperOS 3.0.300+
     val isHyperOsSupported = remember { RomUtils.isHyperOsVersionAtLeast(3, 0, 300) }
@@ -208,10 +216,10 @@ fun CustomSettingsScreen(
                 ) {
                     when (page) {
                         0 -> { // Capsule (Moved from 1)
-                            // Preview
                             CapsulePreview(
                                 dynamicIconEnabled = dynamicIconEnabled,
-                                iconStyle = iconStyle
+                                iconStyle = iconStyle,
+                                oneuiCapsuleColorEnabled = oneuiCapsuleColorEnabled
                             )
                             Spacer(modifier = Modifier.height(16.dp))
 
@@ -224,6 +232,18 @@ fun CustomSettingsScreen(
                                     prefs.edit().putBoolean("disable_lyric_scrolling", it).apply()
                                 }
                             )
+
+                            if (RomUtils.getRomType() == "OneUI") {
+                                SettingsSwitchItem(
+                                    title = stringResource(R.string.settings_oneui_capsule_color),
+                                    subtitle = stringResource(R.string.settings_oneui_capsule_color_desc),
+                                    checked = oneuiCapsuleColorEnabled,
+                                    onCheckedChange = {
+                                        oneuiCapsuleColorEnabled = it
+                                        prefs.edit().putBoolean("oneui_capsule_color_enabled", it).apply()
+                                    }
+                                )
+                            }
 
                             if (isHyperOsSupported) {
                                 SettingsSwitchItem(
@@ -241,12 +261,52 @@ fun CustomSettingsScreen(
                                         "advanced" -> stringResource(R.string.icon_style_advanced)
                                         else -> stringResource(R.string.icon_style_classic)
                                     }
-                                    SettingsTextItem(
-                                        title = stringResource(R.string.settings_icon_style),
-                                        value = styleDisplayName,
-                                        onClick = { showIconStyleDialog = true }
-                                    )
+                                    Box(modifier = Modifier.fillMaxWidth()) {
+                                        SettingsTextItem(
+                                            title = stringResource(R.string.settings_icon_style),
+                                            value = styleDisplayName,
+                                            onClick = { showIconStyleDropdown = true }
+                                        )
+                                        Box(modifier = Modifier.matchParentSize().wrapContentSize(Alignment.Center)) {
+                                            DropdownMenu(
+                                                expanded = showIconStyleDropdown,
+                                                onDismissRequest = { showIconStyleDropdown = false }
+                                            ) {
+                                                val styles = listOf(
+                                                    "classic" to R.string.icon_style_classic,
+                                                    "advanced" to R.string.icon_style_advanced
+                                                )
+                                                styles.forEach { (styleId, nameId) ->
+                                                    DropdownMenuItem(
+                                                        text = { Text(stringResource(nameId)) },
+                                                        onClick = {
+                                                            iconStyle = styleId
+                                                            prefs.edit().putString("dynamic_icon_style", styleId).apply()
+                                                            showIconStyleDropdown = false
+                                                        }
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
                                 }
+                                
+                                SettingsSwitchItem(
+                                    title = stringResource(R.string.settings_super_island),
+                                    subtitle = stringResource(R.string.settings_super_island_desc),
+                                    checked = superIslandEnabled,
+                                    onCheckedChange = { enabled ->
+                                        superIslandEnabled = enabled
+                                        prefs.edit().putBoolean("super_island_enabled", enabled).apply()
+                                        val action = if (enabled) {
+                                            "ACTION_ENABLE_SUPER_ISLAND"
+                                        } else {
+                                            "ACTION_DISABLE_SUPER_ISLAND"
+                                        }
+                                        val intent = Intent(context, LyricService::class.java).setAction(action)
+                                        context.startService(intent)
+                                    }
+                                )
                             }
                         }
                         1 -> { // Notification (Moved from 2)
@@ -274,22 +334,72 @@ fun CustomSettingsScreen(
                                 "miplay" -> stringResource(R.string.settings_action_style_miplay)
                                 else -> stringResource(R.string.settings_action_style_off)
                             }
-                            SettingsTextItem(
-                                title = stringResource(R.string.settings_notification_actions),
-                                value = actionStyleDisplay,
-                                onClick = { showActionStyleDialog = true }
-                            )
+                            Box(modifier = Modifier.fillMaxWidth()) {
+                                SettingsTextItem(
+                                    title = stringResource(R.string.settings_notification_actions),
+                                    value = actionStyleDisplay,
+                                    onClick = { showActionStyleDropdown = true }
+                                )
+                                Box(modifier = Modifier.matchParentSize().wrapContentSize(Alignment.Center)) {
+                                    DropdownMenu(
+                                        expanded = showActionStyleDropdown,
+                                        onDismissRequest = { showActionStyleDropdown = false }
+                                    ) {
+                                        val allStyles = listOf(
+                                            "disabled" to R.string.settings_action_style_off,
+                                            "media_controls" to R.string.settings_action_style_media,
+                                            "miplay" to R.string.settings_action_style_miplay
+                                        )
+                                        val styles = allStyles.filter { (styleId, _) ->
+                                            if (styleId == "miplay") isHyperOsSupported else true
+                                        }
+                                        styles.forEach { (styleId, nameId) ->
+                                            DropdownMenuItem(
+                                                text = { Text(stringResource(nameId)) },
+                                                onClick = {
+                                                    actionStyle = styleId
+                                                    prefs.edit().putString("notification_actions_style", styleId).apply()
+                                                    showActionStyleDropdown = false
+                                                }
+                                            )
+                                        }
+                                    }
+                                }
+                            }
             
                             // Notification Click Action
                             val clickStyleDisplay = when (notificationClickStyle) {
                                 "media_controls" -> stringResource(R.string.settings_click_action_media)
                                 else -> stringResource(R.string.settings_click_action_default)
                             }
-                            SettingsTextItem(
-                                title = stringResource(R.string.settings_click_action_title),
-                                value = clickStyleDisplay,
-                                onClick = { showNotificationClickDialog = true }
-                            )
+                            Box(modifier = Modifier.fillMaxWidth()) {
+                                SettingsTextItem(
+                                    title = stringResource(R.string.settings_click_action_title),
+                                    value = clickStyleDisplay,
+                                    onClick = { showNotificationClickDropdown = true }
+                                )
+                                Box(modifier = Modifier.matchParentSize().wrapContentSize(Alignment.Center)) {
+                                    DropdownMenu(
+                                        expanded = showNotificationClickDropdown,
+                                        onDismissRequest = { showNotificationClickDropdown = false }
+                                    ) {
+                                        val styles = listOf(
+                                            "default" to R.string.settings_click_action_default,
+                                            "media_controls" to R.string.settings_click_action_media
+                                        )
+                                        styles.forEach { (styleId, nameId) ->
+                                            DropdownMenuItem(
+                                                text = { Text(stringResource(nameId)) },
+                                                onClick = {
+                                                    notificationClickStyle = styleId
+                                                    prefs.edit().putString("notification_click_style", styleId).apply()
+                                                    showNotificationClickDropdown = false
+                                                }
+                                            )
+                                        }
+                                    }
+                                }
+                            }
                             
                              // Dismiss Delay
                             val dismissDelayText = when (dismissDelay) {
@@ -299,13 +409,84 @@ fun CustomSettingsScreen(
                                 5000L -> stringResource(R.string.dismiss_delay_5s)
                                 else -> stringResource(R.string.dismiss_delay_immediate)
                             }
-                            SettingsTextItem(
-                                title = stringResource(R.string.settings_dismiss_delay_title),
-                                value = dismissDelayText,
-                                onClick = { showDismissDelayDialog = true }
-                            )
+                            Box(modifier = Modifier.fillMaxWidth()) {
+                                SettingsTextItem(
+                                    title = stringResource(R.string.settings_dismiss_delay_title),
+                                    value = dismissDelayText,
+                                    onClick = { showDismissDelayDropdown = true }
+                                )
+                                Box(modifier = Modifier.matchParentSize().wrapContentSize(Alignment.Center)) {
+                                    DropdownMenu(
+                                        expanded = showDismissDelayDropdown,
+                                        onDismissRequest = { showDismissDelayDropdown = false }
+                                    ) {
+                                        val options = listOf(
+                                            0L to R.string.dismiss_delay_immediate,
+                                            1000L to R.string.dismiss_delay_1s,
+                                            3000L to R.string.dismiss_delay_3s,
+                                            5000L to R.string.dismiss_delay_5s
+                                        )
+                                        options.forEach { (delay, labelRes) ->
+                                            DropdownMenuItem(
+                                                text = { Text(stringResource(labelRes)) },
+                                                onClick = {
+                                                    dismissDelay = delay
+                                                    prefs.edit().putLong("notification_dismiss_delay", delay).apply()
+                                                    showDismissDelayDropdown = false
+                                                }
+                                            )
+                                        }
+                                    }
+                                }
+                            }
                         }
                         2 -> { // App UI (Moved from 0)
+                             val uiStyleDisplay = when (miuixEnabled) {
+                                 true -> stringResource(R.string.ui_style_miuix)
+                                 else -> stringResource(R.string.ui_style_material)
+                             }
+                             Box(modifier = Modifier.fillMaxWidth()) {
+                                 SettingsTextItem(
+                                     title = stringResource(R.string.settings_app_ui_style),
+                                     value = uiStyleDisplay,
+                                     onClick = { showUiStyleDropdown = true }
+                                 )
+                                 Box(modifier = Modifier.matchParentSize().wrapContentSize(Alignment.Center)) {
+                                     DropdownMenu(
+                                         expanded = showUiStyleDropdown,
+                                         onDismissRequest = { showUiStyleDropdown = false }
+                                     ) {
+                                         DropdownMenuItem(
+                                             text = { Text(stringResource(R.string.ui_style_material)) },
+                                             onClick = {
+                                                 showUiStyleDropdown = false
+                                                 if (miuixEnabled) {
+                                                     miuixEnabled = false
+                                                     prefs.edit().putBoolean("ui_use_miuix", false).apply()
+                                                     val restartIntent = Intent(context, MainActivity::class.java)
+                                                     restartIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                                                     context.startActivity(restartIntent)
+                                                     (context as? Activity)?.finish()
+                                                 }
+                                             }
+                                         )
+                                         DropdownMenuItem(
+                                             text = { Text(stringResource(R.string.ui_style_miuix)) },
+                                             onClick = {
+                                                 showUiStyleDropdown = false
+                                                 if (!miuixEnabled) {
+                                                     miuixEnabled = true
+                                                     prefs.edit().putBoolean("ui_use_miuix", true).apply()
+                                                     val restartIntent = Intent(context, MainActivity::class.java)
+                                                     restartIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                                                     context.startActivity(restartIntent)
+                                                     (context as? Activity)?.finish()
+                                                 }
+                                             }
+                                         )
+                                     }
+                                 }
+                             }
                              SettingsSwitchItem(
                                 title = stringResource(R.string.settings_theme_follow_system),
                                 checked = followSystem,
@@ -375,55 +556,8 @@ fun CustomSettingsScreen(
                     }
                 )
             }
-            
-             if (showIconStyleDialog) {
-                IconStyleSelectionDialog(
-                    currentStyle = iconStyle,
-                    onStyleSelected = { style ->
-                        iconStyle = style
-                        prefs.edit().putString("dynamic_icon_style", style).apply()
-                        showIconStyleDialog = false
-                    },
-                    onDismiss = { showIconStyleDialog = false }
-                )
-            }
 
-            if (showActionStyleDialog) {
-                NotificationActionsDialog(
-                    currentStyle = actionStyle,
-                    isHyperOsSupported = isHyperOsSupported,
-                    onStyleSelected = { style ->
-                        actionStyle = style
-                        prefs.edit().putString("notification_actions_style", style).apply()
-                        showActionStyleDialog = false
-                    },
-                    onDismiss = { showActionStyleDialog = false }
-                )
-            }
 
-            if (showNotificationClickDialog) {
-                NotificationClickDialog(
-                    currentStyle = notificationClickStyle,
-                    onStyleSelected = { style ->
-                        notificationClickStyle = style
-                        prefs.edit().putString("notification_click_style", style).apply()
-                        showNotificationClickDialog = false
-                    },
-                    onDismiss = { showNotificationClickDialog = false }
-                )
-            }
-
-            if (showDismissDelayDialog) {
-                DismissDelaySelectionDialog(
-                    currentDelay = dismissDelay,
-                    onDelaySelected = { delay ->
-                        dismissDelay = delay
-                        prefs.edit().putLong("notification_dismiss_delay", delay).apply()
-                        showDismissDelayDialog = false
-                    },
-                    onDismiss = { showDismissDelayDialog = false }
-                )
-            }
         }
     }
 }

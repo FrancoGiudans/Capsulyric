@@ -10,20 +10,26 @@ class FAQActivity : BaseActivity() {
         super.onCreate(savedInstanceState)
         
         setContent {
-            val prefs = getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE)
-            val followSystem = prefs.getBoolean("theme_follow_system", true)
-            val darkMode = prefs.getBoolean("theme_dark_mode", false)
-            val pureBlack = prefs.getBoolean("theme_pure_black", false)
-            val dynamicColor = prefs.getBoolean("theme_dynamic_color", true)
-            val isSystemDark = isSystemInDarkTheme()
-            val useDarkTheme = if (followSystem) isSystemDark else darkMode
+            if (isMiuixEnabled(this@FAQActivity)) {
+                MiuixAppTheme {
+                    MiuixFAQScreen(onBack = { finish() })
+                }
+            } else {
+                val prefs = getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE)
+                val followSystem = prefs.getBoolean("theme_follow_system", true)
+                val darkMode = prefs.getBoolean("theme_dark_mode", false)
+                val pureBlack = prefs.getBoolean("theme_pure_black", false)
+                val dynamicColor = prefs.getBoolean("theme_dynamic_color", true)
+                val isSystemDark = isSystemInDarkTheme()
+                val useDarkTheme = if (followSystem) isSystemDark else darkMode
 
-            AppTheme(
-                darkTheme = useDarkTheme,
-                dynamicColor = dynamicColor,
-                pureBlack = pureBlack && useDarkTheme
-            ) {
-                FAQScreen(onBack = { finish() })
+                AppTheme(
+                    darkTheme = useDarkTheme,
+                    dynamicColor = dynamicColor,
+                    pureBlack = pureBlack && useDarkTheme
+                ) {
+                    FAQScreen(onBack = { finish() })
+                }
             }
         }
     }

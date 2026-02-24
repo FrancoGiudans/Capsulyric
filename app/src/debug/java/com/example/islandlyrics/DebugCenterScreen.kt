@@ -1,8 +1,10 @@
 package com.example.islandlyrics
 
+import android.content.Context
 import android.content.Intent
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -27,6 +29,7 @@ fun DebugCenterScreen(
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
+    val prefs = context.getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE)
     var showUpdateDialog by remember { mutableStateOf(false) }
     var updateReleaseInfo by remember { mutableStateOf<UpdateChecker.ReleaseInfo?>(null) }
     var isFetchingUpdate by remember { mutableStateOf(false) }
@@ -145,6 +148,48 @@ fun DebugCenterScreen(
                     }
                 )
             }
+            
+            // ── Device Identifier Override ──
+            var showDeviceIdentifierDialog by remember { mutableStateOf(false) }
+            val currentForced = prefs.getString("debug_forced_rom_type", null) ?: "Auto"
+            DebugMenuButton(
+                text = "Override Device Identifier",
+                description = "Force ROM type (Current: $currentForced)",
+                onClick = { showDeviceIdentifierDialog = true }
+            )
+
+            if (showDeviceIdentifierDialog) {
+                AlertDialog(
+                    onDismissRequest = { showDeviceIdentifierDialog = false },
+                    title = { Text("Select Device Identifier") },
+                    text = {
+                        Column {
+                            val options = listOf("Auto", "HyperOS", "OneUI", "ColorOS", "OriginOS/FuntouchOS", "Flyme", "AOSP")
+                            options.forEach { option ->
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable {
+                                            val value = if (option == "Auto") null else option
+                                            prefs.edit().putString("debug_forced_rom_type", value).apply()
+                                            RomUtils.forcedRomType = value
+                                            showDeviceIdentifierDialog = false
+                                            android.widget.Toast.makeText(context, "Restart app to apply fully", android.widget.Toast.LENGTH_SHORT).show()
+                                        }
+                                        .padding(vertical = 12.dp)
+                                ) {
+                                    Text(text = option)
+                                }
+                            }
+                        }
+                    },
+                    confirmButton = {
+                        TextButton(onClick = { showDeviceIdentifierDialog = false }) {
+                            Text("Cancel")
+                        }
+                    }
+                )
+            }
             // ── Log Console ──
             DebugMenuButton(
                 text = "Log Console",
@@ -168,6 +213,95 @@ fun DebugCenterScreen(
                 description = "View internal state of Notification Listener Service",
                 onClick = { showDiagnosticsDialog = true }
             )
+
+            // ── Super Island Toggle ──
+            var superIslandEnabled by remember {
+                mutableStateOf(prefs.getBoolean("debug_super_island_enabled", false))
+            }
+
+            OutlinedCard(
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier
+                        .padding(16.dp)
+                        .fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "发送小米超级岛通知",
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "替代 Live Update，使用小米超级岛模版发送歌词通知",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Switch(
+                        checked = superIslandEnabled,
+                        onCheckedChange = { enabled ->
+                            superIslandEnabled = enabled
+                            prefs.edit().putBoolean("debug_super_island_enabled", enabled).apply()
+
+                            val action = if (enabled) {
+                                "ACTION_ENABLE_SUPER_ISLAND"
+                            } else {
+                                "ACTION_DISABLE_SUPER_ISLAND"
+                            }
+                            val intent = Intent(context, LyricService::class.java).setAction(action)
+                            context.startService(intent)
+                        }
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // ── Miuix UI Toggle ──
+            var miuixEnabled by remember {
+                mutableStateOf(prefs.getBoolean("ui_use_miuix", false))
+            }
+
+            OutlinedCard(
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier
+                        .padding(16.dp)
+                        .fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Switch to Miuix UI",
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "Switch all pages to miuix-styled components. App will restart.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Switch(
+                        checked = miuixEnabled,
+                        onCheckedChange = { enabled ->
+                            miuixEnabled = enabled
+                            prefs.edit().putBoolean("ui_use_miuix", enabled).apply()
+                            // Restart app to apply theme change
+                            val restartIntent = Intent(context, MainActivity::class.java)
+                            restartIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                            context.startActivity(restartIntent)
+                            (context as? android.app.Activity)?.finish()
+                        }
+                    )
+                }
+            }
         }
     }
 

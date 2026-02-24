@@ -78,6 +78,9 @@
     
     <string name="cancel">Cancel</string>
 
+    <string name="settings_oneui_capsule_color">Colorize Capsule Background</string>
+    <string name="settings_oneui_capsule_color_desc">Dynamic capsule background color. Uses black when off.</string>
+
     <!-- Parser Rule Settings -->
     <string name="parser_rule_title">Notification Rules</string>
     <string name="parser_rule_subtitle">Configure how to parse notifications from music apps</string>
@@ -141,9 +144,21 @@
     <string name="icon_style_advanced_desc">Dual-line layout with album art</string>
     <string name="dialog_icon_style_title">Select Icon Style</string>
     <string name="settings_disable_scrolling">Disable Lyric Scrolling</string>
+    <string name="settings_super_island">Send Xiaomi Super Island Notification</string>
+    <string name="settings_super_island_desc">Replaces Live Update with Xiaomi Super Island template for lyric notification.</string>
+    <string name="settings_app_ui_style">App UI Style</string>
+    <string name="settings_app_ui_style_desc">Switch between Material Design and Miuix UI. App will restart.</string>
+    <string name="dialog_ui_style_title">Select App UI Style</string>
+    <string name="ui_style_material">Material Design</string>
+    <string name="ui_style_miuix">Miuix</string>
     <string name="settings_disable_scrolling_desc">Displays static text only. Prevents ALL scrolling, regardless of lyric type.</string>
 
     <string name="settings_feedback">Feedback</string>
+    <string name="dialog_feedback_title">Select Feedback Method</string>
+    <string name="dialog_feedback_github">GitHub Issue</string>
+    <string name="dialog_feedback_github_desc">Recommended. High processing efficiency.</string>
+    <string name="dialog_feedback_wps">WPS Form</string>
+    <string name="dialog_feedback_wps_desc">Alternative. May require login.</string>
     <string name="settings_hide_recents">Hide from Recents</string>
     <string name="settings_hide_recents_desc">Automatically remove from recents when app goes to background</string>
     <!-- FAQ Strings -->
