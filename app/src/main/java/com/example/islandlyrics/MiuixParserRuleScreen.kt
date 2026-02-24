@@ -82,7 +82,7 @@ fun MiuixParserRuleScreen(
                 if (currentPkg != null) {
                     try {
                         val pm = context.packageManager
-                        val info = pm.getApplicationInfo(currentPkg!!, 0)
+                        val info = pm.getApplicationInfo(currentPkg, 0)
                         pm.getApplicationLabel(info).toString()
                     } catch (e: Exception) {
                         null
@@ -93,7 +93,7 @@ fun MiuixParserRuleScreen(
             FloatingActionButton(
                 onClick = {
                     if (showRecommendation) {
-                        val pkg = currentPkg!!
+                        val pkg = currentPkg
                         editingRule = ParserRuleHelper.createDefaultRule(pkg).copy(customName = appLabel)
                         showEditDialog.value = true
                     } else {
