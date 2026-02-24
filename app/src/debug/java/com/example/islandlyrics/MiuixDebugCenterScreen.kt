@@ -89,8 +89,7 @@ fun MiuixDebugCenterScreen(
                         summary = "Test lyric fetching with mock media data",
                         onClick = {
                             try {
-                                val clazz = Class.forName("com.example.islandlyrics.DebugLyricActivity")
-                                context.startActivity(Intent(context, clazz))
+                                context.startActivity(Intent(context, DebugLyricActivity::class.java))
                             } catch (_: Exception) {
                                 Toast.makeText(context, "Debug Activity not found", Toast.LENGTH_SHORT).show()
                             }
@@ -156,8 +155,7 @@ fun MiuixDebugCenterScreen(
                         summary = "Re-open initial setup wizard",
                         onClick = {
                             try {
-                                val clazz = Class.forName("com.example.islandlyrics.oobe.OobeActivity")
-                                context.startActivity(Intent(context, clazz))
+                                context.startActivity(Intent(context, com.example.islandlyrics.oobe.OobeActivity::class.java))
                             } catch (_: Exception) {
                                 Toast.makeText(context, "OOBE Activity not found", Toast.LENGTH_SHORT).show()
                             }
@@ -184,13 +182,13 @@ fun MiuixDebugCenterScreen(
                         onCheckedChange = { enabled ->
                             superIslandEnabled = enabled
                             prefs.edit().putBoolean("super_island_enabled", enabled).apply()
-                            if (enabled) {
-                                try {
-                                    val clazz = Class.forName("com.example.islandlyrics.SuperIslandHandler")
-                                    val method = clazz.getDeclaredMethod("enableSuperIsland", Context::class.java)
-                                    method.invoke(null, context)
-                                } catch (_: Exception) {}
+                            
+                            // Send intent to LyricService to handle the mode change gracefully
+                            val action = if (enabled) "ACTION_ENABLE_SUPER_ISLAND" else "ACTION_DISABLE_SUPER_ISLAND"
+                            val intent = Intent(context, LyricService::class.java).apply {
+                                this.action = action
                             }
+                            context.startService(intent)
                         }
                     )
                     SuperSwitch(

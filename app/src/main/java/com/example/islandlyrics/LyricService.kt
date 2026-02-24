@@ -530,30 +530,22 @@ class LyricService : Service() {
                 )
             )
 
-        // Use ProgressStyle via Reflection
-        try {
-            // 1. Create ProgressStyle
-            val styleClass = Class.forName("android.app.Notification\$ProgressStyle")
-            val style = styleClass.getConstructor().newInstance()
+        // Use ProgressStyle via Public API 36
+        // 1. Create ProgressStyle
+        val style = Notification.ProgressStyle()
 
-            // 2. Set "StyledByProgress" (Critical for appearance)
-            styleClass.getMethod("setStyledByProgress", Boolean::class.javaPrimitiveType).invoke(style, true)
+        // 2. Set "StyledByProgress" (Critical for appearance)
+        style.setStyledByProgress(true)
 
-            // 3. Create a dummy Segment (Required by internal logic)
-            val segmentClass = Class.forName("android.app.Notification\$ProgressStyle\$Segment")
-            val segment = segmentClass.getConstructor(Int::class.javaPrimitiveType).newInstance(1)
+        // 3. Create a Segment (Required by internal logic)
+        val segment = Notification.ProgressStyle.Segment(1)
 
-            // 4. Set Segments List
-            val segments = ArrayList<Any>()
-            segments.add(segment)
-            styleClass.getMethod("setProgressSegments", List::class.java).invoke(style, segments)
+        // 4. Set Segments List
+        style.setProgressSegments(listOf(segment))
 
-            // 5. Apply Style to Builder
-            builder.style = style as Notification.Style
-            LogManager.getInstance().d(this, "Capsulyric", "✅ ProgressStyle applied")
-        } catch (e: Exception) {
-            LogManager.getInstance().e(this, "Capsulyric", "❌ ProgressStyle failed: $e")
-        }
+        // 5. Apply Style to Builder
+        builder.style = style
+
 
         // Unified Attributes (Chip, Promotion)
         // [Task 3] Keep-Alive Hack & Real Lyrics
@@ -564,7 +556,7 @@ class LyricService : Service() {
         invisibleToggle = !invisibleToggle
         val chipText = rawText + if (invisibleToggle) "\u200B" else ""
 
-        applyLiveAttributes(builder, chipText) // Tries Builder methods
+        applyLiveAttributes(builder, chipText) // Uses Native Build methods
 
         val notification = builder.build()
 
@@ -579,41 +571,16 @@ class LyricService : Service() {
     private fun applyLiveAttributes(builder: Notification.Builder, text: String) {
 
         // 1. Set Status Chip Text
-        try {
-            // PROBE A: Try String.class (Known working on QPR2 Emulator)
-            val method = Notification.Builder::class.java.getMethod("setShortCriticalText", String::class.java)
-            method.invoke(builder, text)
-            LogManager.getInstance().d(this, "Capsulyric", "✅ Chip set via String signature: $text")
-        } catch (e1: Exception) {
-            try {
-                // PROBE B: Try CharSequence.class (Standard API definition fallback)
-                val method = Notification.Builder::class.java.getMethod("setShortCriticalText", CharSequence::class.java)
-                method.invoke(builder, text as CharSequence)
-                LogManager.getInstance().d(this, "Capsulyric", "✅ Chip set via CharSequence signature")
-            } catch (e2: Exception) {
-                LogManager.getInstance().e(this, "Capsulyric", "❌ Chip Reflection Failed. API changed? ${e1.javaClass.simpleName}")
-            }
-        }
+        builder.setShortCriticalText(text)
 
         // 2. Set Promoted Ongoing (Crucial for Chip visibility)
-        try {
-            // EXACT SIGNATURE: setRequestPromotedOngoing(boolean)
-            val method = Notification.Builder::class.java.getMethod("setRequestPromotedOngoing", Boolean::class.javaPrimitiveType)
-            method.invoke(builder, true)
-            LogManager.getInstance().d(this, "Capsulyric", "✅ Promoted Flag Set")
-        } catch (e: Exception) {
-            LogManager.getInstance().e(this, "Capsulyric", "❌ Promoted Flag Failed: $e")
-        }
+        // The method setRequestPromotedOngoing isn't exposed in standard Notification.Builder stubs,
+        // so we set the exact extra manually.
+        builder.extras.putBoolean("android.app.extra.REQUEST_PROMOTED_ONGOING", true)
     }
 
     private fun applyPromotedFlagFallback(notification: Notification) {
-         try {
-             val f = Notification::class.java.getField("FLAG_PROMOTED_ONGOING")
-             val value = f.getInt(null)
-             notification.flags = notification.flags or value
-         } catch (e: Exception) {
-             // Fallback failed
-         }
+        notification.flags = notification.flags or Notification.FLAG_PROMOTED_ONGOING
     }
 
     private fun broadcastStatus(status: String) {
@@ -663,33 +630,19 @@ class LyricService : Service() {
         intent.putExtra("status", modeStatus)
 
         // 2. Promotable Characteristics (API 36)
-        var hasChar = false
-        try {
-            val m = notification.javaClass.getMethod("hasPromotableCharacteristics")
-            hasChar = m.invoke(notification) as Boolean
-            intent.putExtra("hasPromotable", hasChar)
-        } catch (e: Exception) {}
+        val hasChar = notification.hasPromotableCharacteristics()
+        intent.putExtra("hasPromotable", hasChar)
 
         // 3. Ongoing Flag (API 36)
-        var isPromoted = false
-        try {
-            val f = Notification::class.java.getField("FLAG_PROMOTED_ONGOING")
-            val flagVal = f.getInt(null)
-            isPromoted = (notification.flags and flagVal) != 0
-            intent.putExtra("isPromoted", isPromoted)
-        } catch (e: Exception) {
-            // Fallback/Log
-        }
+        val flagVal = Notification.FLAG_PROMOTED_ONGOING
+        val isPromoted = (notification.flags and flagVal) != 0
+        intent.putExtra("isPromoted", isPromoted)
 
         sendBroadcast(intent)
 
         // --- Detailed Logging (DIAG_UPDATE) ---
         // 4. System Permission
-        var canPost = false
-        try {
-            val m = nm.javaClass.getMethod("canPostPromotedNotifications")
-            canPost = m.invoke(nm) as Boolean
-        } catch (e: Exception) {}
+        val canPost = nm.canPostPromotedNotifications()
 
         // 5. Channel Status
         var channelStatus = "Unknown"

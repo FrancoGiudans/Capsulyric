@@ -791,53 +791,51 @@ class LyricCapsuleHandler(
             LogManager.getInstance().e(context, TAG, "ProgressStyle failed: $e")
         }
 
-        return builder.build().apply {
-            // HyperOS Dynamic Icon Logic (using cached preferences - Fix 3)
-            if (cachedUseDynamicIcon) {
-                val bitmap = when (cachedIconStyle) {
-                    "advanced" -> {
-                        // Advanced style: Use album art + dual-line layout
-                        val metadata = LyricRepository.getInstance().liveMetadata.value
-                        val realTitle = metadata?.title ?: ""
-                        val realArtist = metadata?.artist ?: ""
-                        val albumArt = LyricRepository.getInstance().liveAlbumArt.value
-                        
-                        // Cache key includes all relevant data
-                        val cacheKey = "advanced|$realTitle|$realArtist|${albumArt?.hashCode()}"
-                        if (cachedIconKey != cacheKey) {
-                            val parsedTitle = TitleParser.parse(realTitle)
-                            cachedIconBitmap = AdvancedIconRenderer.render(albumArt, parsedTitle, realArtist, context)
-                            cachedIconKey = cacheKey
-                        }
-                        cachedIconBitmap
+        // HyperOS Dynamic Icon Logic (using cached preferences - Fix 3)
+        if (cachedUseDynamicIcon) {
+            val bitmap = when (cachedIconStyle) {
+                "advanced" -> {
+                    // Advanced style: Use album art + dual-line layout
+                    val metadata = LyricRepository.getInstance().liveMetadata.value
+                    val realTitle = metadata?.title ?: ""
+                    val realArtist = metadata?.artist ?: ""
+                    val albumArt = LyricRepository.getInstance().liveAlbumArt.value
+                    
+                    // Cache key includes all relevant data
+                    val cacheKey = "advanced|$realTitle|$realArtist|${albumArt?.hashCode()}"
+                    if (cachedIconKey != cacheKey) {
+                        val parsedTitle = TitleParser.parse(realTitle)
+                        cachedIconBitmap = AdvancedIconRenderer.render(albumArt, parsedTitle, realArtist, context)
+                        cachedIconKey = cacheKey
                     }
-                    else -> {
-                        // Classic style: Text only
-                        val iconText = iconFrame.text 
-                        val forceSize = iconFrame.fontSize
-                        
-                        // Cache check - Key includes fontSize to handle adaptive switches
-                        val cacheKey = "classic|$iconText|$forceSize"
-                        if (cachedIconKey != cacheKey) {
-                            cachedIconBitmap = textToBitmap(iconText, forceSize)
-                            cachedIconKey = cacheKey
-                        }
-                        cachedIconBitmap
-                    }
+                    cachedIconBitmap
                 }
-                
-                bitmap?.let { bmp ->
-                    try {
-                        val icon = android.graphics.drawable.Icon.createWithBitmap(bmp)
-                        val field = android.app.Notification::class.java.getDeclaredField("mSmallIcon")
-                        field.isAccessible = true
-                        field.set(this, icon)
-                    } catch (e: Exception) {
-                        LogManager.getInstance().e(context, TAG, "Failed to inject Dynamic Icon: $e")
+                else -> {
+                    // Classic style: Text only
+                    val iconText = iconFrame.text 
+                    val forceSize = iconFrame.fontSize
+                    
+                    // Cache check - Key includes fontSize to handle adaptive switches
+                    val cacheKey = "classic|$iconText|$forceSize"
+                    if (cachedIconKey != cacheKey) {
+                        cachedIconBitmap = textToBitmap(iconText, forceSize)
+                        cachedIconKey = cacheKey
                     }
+                    cachedIconBitmap
+                }
+            }
+            
+            bitmap?.let { bmp ->
+                try {
+                    val iconCompat = androidx.core.graphics.drawable.IconCompat.createWithBitmap(bmp)
+                    builder.setSmallIcon(iconCompat)
+                } catch (e: Exception) {
+                    LogManager.getInstance().e(context, TAG, "Failed to inject Dynamic Icon: $e")
                 }
             }
         }
+
+        return builder.build()
     }
     
     // Caching

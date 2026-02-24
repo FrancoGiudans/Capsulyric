@@ -132,10 +132,8 @@ class MainActivity : BaseActivity() {
 
     // API 36 Permission Check (Standard Runtime Permission)
     private fun checkPromotedNotificationPermission() {
-        if (Build.VERSION.SDK_INT >= 36) {
-            if (checkSelfPermission("android.permission.POST_PROMOTED_NOTIFICATIONS") != PackageManager.PERMISSION_GRANTED) {
-                requestPermissions(arrayOf("android.permission.POST_PROMOTED_NOTIFICATIONS"), 102)
-            }
+        if (checkSelfPermission("android.permission.POST_PROMOTED_NOTIFICATIONS") != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(arrayOf("android.permission.POST_PROMOTED_NOTIFICATIONS"), 102)
         }
     }
 
@@ -162,7 +160,7 @@ class MainActivity : BaseActivity() {
         }
     }
 
-    // Check API Status (Reflection)
+    // Check API Status
     private fun checkApiStatusForDashboard() {
         if (!BuildConfig.DEBUG) {
             showApiCard = false
@@ -170,27 +168,14 @@ class MainActivity : BaseActivity() {
         }
         showApiCard = true
 
-        if (Build.VERSION.SDK_INT < 36) {
-            apiPermissionText = "Permission: N/A (Pre-API 36)"
-            apiCapabilityText = "Notif.hasPromotable: N/A"
-            apiFlagText = "Flag PROMOTED: N/A"
-            return
-        }
+        val nm = getSystemService(android.app.NotificationManager::class.java)
+        val granted = nm.canPostPromotedNotifications()
 
-        try {
-            val nm = getSystemService(android.app.NotificationManager::class.java)
-            val m = nm.javaClass.getMethod("canPostPromotedNotifications")
-            val granted = m.invoke(nm) as Boolean
-
-            if (granted) {
-                apiPermissionText = "Permission (canPost): GRANTED ✅"
-                apiPermissionActive = true
-            } else {
-                apiPermissionText = "Permission (canPost): DENIED ❌"
-                apiPermissionActive = false
-            }
-        } catch (e: Exception) {
-            apiPermissionText = "Permission Check Failed: ${e.message}"
+        if (granted) {
+            apiPermissionText = "Permission (canPost): GRANTED ✅"
+            apiPermissionActive = true
+        } else {
+            apiPermissionText = "Permission (canPost): DENIED ❌"
             apiPermissionActive = false
         }
     }
