@@ -205,6 +205,22 @@ fun MiuixDebugCenterScreen(
                             (context as? android.app.Activity)?.finish()
                         }
                     )
+                    
+                    val romOptions = listOf("Auto", "HyperOS", "OneUI", "ColorOS", "OriginOS/FuntouchOS", "Flyme", "AOSP")
+                    val currentRom = prefs.getString("debug_forced_rom_type", null) ?: "Auto"
+                    val currentIndex = romOptions.indexOf(currentRom).coerceAtLeast(0)
+                    top.yukonga.miuix.kmp.extra.SuperDropdown(
+                        title = "Device Identifier Override",
+                        items = romOptions,
+                        selectedIndex = currentIndex,
+                        onSelectedIndexChange = { index ->
+                            val selected = romOptions[index]
+                            val newType = if (selected == "Auto") null else selected
+                            prefs.edit().putString("debug_forced_rom_type", newType).apply()
+                            RomUtils.forcedRomType = newType
+                            Toast.makeText(context, "Identifier set to $selected. Restart app to apply fully.", Toast.LENGTH_SHORT).show()
+                        }
+                    )
                 }
             }
         }

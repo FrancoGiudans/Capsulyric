@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -28,6 +29,7 @@ fun DebugCenterScreen(
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
+    val prefs = context.getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE)
     var showUpdateDialog by remember { mutableStateOf(false) }
     var updateReleaseInfo by remember { mutableStateOf<UpdateChecker.ReleaseInfo?>(null) }
     var isFetchingUpdate by remember { mutableStateOf(false) }
@@ -146,6 +148,48 @@ fun DebugCenterScreen(
                     }
                 )
             }
+            
+            // ── Device Identifier Override ──
+            var showDeviceIdentifierDialog by remember { mutableStateOf(false) }
+            val currentForced = prefs.getString("debug_forced_rom_type", null) ?: "Auto"
+            DebugMenuButton(
+                text = "Override Device Identifier",
+                description = "Force ROM type (Current: $currentForced)",
+                onClick = { showDeviceIdentifierDialog = true }
+            )
+
+            if (showDeviceIdentifierDialog) {
+                AlertDialog(
+                    onDismissRequest = { showDeviceIdentifierDialog = false },
+                    title = { Text("Select Device Identifier") },
+                    text = {
+                        Column {
+                            val options = listOf("Auto", "HyperOS", "OneUI", "ColorOS", "OriginOS/FuntouchOS", "Flyme", "AOSP")
+                            options.forEach { option ->
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable {
+                                            val value = if (option == "Auto") null else option
+                                            prefs.edit().putString("debug_forced_rom_type", value).apply()
+                                            RomUtils.forcedRomType = value
+                                            showDeviceIdentifierDialog = false
+                                            android.widget.Toast.makeText(context, "Restart app to apply fully", android.widget.Toast.LENGTH_SHORT).show()
+                                        }
+                                        .padding(vertical = 12.dp)
+                                ) {
+                                    Text(text = option)
+                                }
+                            }
+                        }
+                    },
+                    confirmButton = {
+                        TextButton(onClick = { showDeviceIdentifierDialog = false }) {
+                            Text("Cancel")
+                        }
+                    }
+                )
+            }
             // ── Log Console ──
             DebugMenuButton(
                 text = "Log Console",
@@ -171,7 +215,6 @@ fun DebugCenterScreen(
             )
 
             // ── Super Island Toggle ──
-            val prefs = context.getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE)
             var superIslandEnabled by remember {
                 mutableStateOf(prefs.getBoolean("debug_super_island_enabled", false))
             }
