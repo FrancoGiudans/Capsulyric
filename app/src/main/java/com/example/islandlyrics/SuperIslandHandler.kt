@@ -203,6 +203,7 @@ class SuperIslandHandler(
 
         try {
             service.startForeground(NOTIFICATION_ID, notification)
+            AppLogger.getInstance().log(TAG, "✅ Island initial notification pushed.")
         } catch (e: Exception) {
             LogManager.getInstance().e(context, TAG, "Island initial notification failed: $e")
         }
@@ -272,10 +273,9 @@ class SuperIslandHandler(
                 notification.extras.putBundle("miui.focus.pics", pics)
             }
 
-            // Re-notify with the SAME cached notification object
             manager?.notify(NOTIFICATION_ID, notification)
         } catch (e: Exception) {
-            LogManager.getInstance().e(context, TAG, "Island notification update failed: $e")
+            LogManager.getInstance().e(context, TAG, "Island build failed: $e")
         }
     }
 

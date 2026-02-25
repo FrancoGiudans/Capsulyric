@@ -342,27 +342,6 @@ class LyricService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val action = intent?.action ?: "null"
-<<<<<<< main
-        AppLogger.getInstance().log(TAG, "Received Action: $action")
-
-        // [Fix Task 1] Immediate Foreground Promotion
-        createNotificationChannel()
-        
-        // CRITICAL FIX: Prioritize the Rich Capsule Notification if it's already active
-        if (capsuleHandler != null && capsuleHandler!!.isRunning()) {
-            // Ask the handler to repost its rich notification
-            // This satisfies startForeground requirements without downgrading the UI
-            capsuleHandler!!.forceUpdateNotification()
-        } else {
-            // Fallback: Use basic notification logic (improved to show real lyrics if available)
-            val currentInfo = LyricRepository.getInstance().liveLyric.value
-            val title = currentInfo?.sourceApp ?: "Island Lyrics"
-            val text = currentInfo?.lyric ?: "Initializing..."
-            startForeground(NOTIFICATION_ID, buildNotification(text, title, ""))
-        }
-
-        // Handle functional actions
-=======
         AppLogger.getInstance().log(TAG, "onStartCommand Received Action: $action")
 
         // 1. Process mode changes IMMEDIATELY
@@ -372,13 +351,19 @@ class LyricService : Service() {
             isSuperIslandMode = false
         }
 
+        // [Fix Task 1] Immediate Foreground Promotion
+        createNotificationChannel()
+
         // 2. Ensure only the correct handler is running
         updateActiveHandler()
 
+        // CRITICAL FIX: Prioritize the Rich Capsule Notification if it's already active
         // 3. Promote to foreground (avoid redundant channel creation)
         if (isSuperIslandMode && superIslandHandler?.isRunning == true) {
             superIslandHandler?.forceUpdateNotification()
         } else if (!isSuperIslandMode && capsuleHandler?.isRunning() == true) {
+            // Ask the handler to repost its rich notification
+            // This satisfies startForeground requirements without downgrading the UI
             capsuleHandler?.forceUpdateNotification()
         } else {
             // Only use fallback if service is starting up and no handler is ready yet
@@ -390,7 +375,6 @@ class LyricService : Service() {
             }
         }
 
->>>>>>> develop
         if ("ACTION_STOP" == action) {
             @Suppress("DEPRECATION")
             stopForeground(true)
@@ -398,15 +382,10 @@ class LyricService : Service() {
             return START_NOT_STICKY
         } else if ("ACTION_MEDIA_PAUSE" == action) {
             handleMediaPause()
-<<<<<<< main
             return START_STICKY
         } else if ("ACTION_MEDIA_NEXT" == action) {
             handleMediaNext()
             return START_STICKY
-=======
-        } else if ("ACTION_MEDIA_NEXT" == action) {
-            handleMediaNext()
->>>>>>> develop
         }
 
         return START_STICKY
@@ -731,9 +710,8 @@ class LyricService : Service() {
         handler.removeCallbacks(updateTask)
     }
 
-<<<<<<< main
 
-=======
+
     private fun updateActiveHandler() {
         val currentLyric = LyricRepository.getInstance().liveLyric.value
         val hasLyric = currentLyric != null && currentLyric.lyric.isNotBlank()
@@ -759,7 +737,6 @@ class LyricService : Service() {
             }
         }
     }
->>>>>>> develop
 
     private fun updateProgressFromController(shouldLog: Boolean = true) {
         if (shouldLog) {
