@@ -201,12 +201,7 @@ class SuperIslandHandler(
         val notification = builder.build()
         cachedNotification = notification
 
-        try {
-            service.startForeground(NOTIFICATION_ID, notification)
-            AppLogger.getInstance().log(TAG, "✅ Island initial notification pushed.")
-        } catch (e: Exception) {
-            LogManager.getInstance().e(context, TAG, "Island initial notification failed: $e")
-        }
+        service.startForeground(NOTIFICATION_ID, notification)
     }
 
     // ── Update: modify cached notification extras in-place ──
@@ -247,10 +242,9 @@ class SuperIslandHandler(
         lastSubText = subText
         lastPackageName = metadata?.packageName ?: ""
 
-        try {
-            // Update the island params JSON in-place on the SAME notification object
-            val islandParams = buildIslandParamsJson(currentLyric, subText, progressPercent, title)
-            notification.extras.putString("miui.focus.param", islandParams)
+        // Update the island params JSON in-place on the SAME notification object
+        val islandParams = buildIslandParamsJson(currentLyric, subText, progressPercent, title)
+        notification.extras.putString("miui.focus.param", islandParams)
 
             // Update base notification text fields
             notification.extras.putString(Notification.EXTRA_TITLE, currentLyric.ifEmpty { "Capsulyric" })
@@ -272,11 +266,7 @@ class SuperIslandHandler(
                 }
                 notification.extras.putBundle("miui.focus.pics", pics)
             }
-
             manager?.notify(NOTIFICATION_ID, notification)
-        } catch (e: Exception) {
-            LogManager.getInstance().e(context, TAG, "Island build failed: $e")
-        }
     }
 
     /**
