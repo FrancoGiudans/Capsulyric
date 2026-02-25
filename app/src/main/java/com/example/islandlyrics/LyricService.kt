@@ -285,6 +285,14 @@ class LyricService : Service() {
     private var superIslandHandler: SuperIslandHandler? = null
     private var isSuperIslandMode = false
 
+    private val prefsListener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { p, key ->
+        if (key == "super_island_enabled") {
+            isSuperIslandMode = p.getBoolean(key, false)
+            AppLogger.getInstance().log(TAG, "Mode Switched via Settings -> isSuperIslandMode: $isSuperIslandMode")
+            updateActiveHandler()
+        }
+    }
+
     override fun onCreate() {
         super.onCreate()
         
@@ -301,6 +309,8 @@ class LyricService : Service() {
         if (BuildConfig.DEBUG) {
             AppLogger.getInstance().d(TAG, "SuperLyric API: Registered for detection")
         }
+
+        getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE).registerOnSharedPreferenceChangeListener(prefsListener)
 
         // Observe Repository
         val repo = LyricRepository.getInstance()
@@ -344,12 +354,9 @@ class LyricService : Service() {
         val action = intent?.action ?: "null"
         AppLogger.getInstance().log(TAG, "onStartCommand Received Action: $action")
 
-        // 1. Process mode changes IMMEDIATELY
-        if ("ACTION_ENABLE_SUPER_ISLAND" == action) {
-            isSuperIslandMode = true
-        } else if ("ACTION_DISABLE_SUPER_ISLAND" == action) {
-            isSuperIslandMode = false
-        }
+        // 1. Proactively sync the Super Island Mode preference
+        val prefs = getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE)
+        isSuperIslandMode = prefs.getBoolean("super_island_enabled", false)
 
         // [Fix Task 1] Immediate Foreground Promotion
         createNotificationChannel()
@@ -410,6 +417,7 @@ class LyricService : Service() {
             }
         }
         
+        getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE).unregisterOnSharedPreferenceChangeListener(prefsListener)
         LyricRepository.getInstance().liveLyric.removeObserver(lyricObserver)
         broadcastStatus("🔴 Stopped")
     }

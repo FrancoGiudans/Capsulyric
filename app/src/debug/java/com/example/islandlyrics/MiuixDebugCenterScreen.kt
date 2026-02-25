@@ -182,13 +182,7 @@ fun MiuixDebugCenterScreen(
                         onCheckedChange = { enabled ->
                             superIslandEnabled = enabled
                             prefs.edit().putBoolean("super_island_enabled", enabled).apply()
-                            
-                            // Send intent to LyricService to handle the mode change gracefully
-                            val action = if (enabled) "ACTION_ENABLE_SUPER_ISLAND" else "ACTION_DISABLE_SUPER_ISLAND"
-                            val intent = Intent(context, LyricService::class.java).apply {
-                                this.action = action
-                            }
-                            context.startService(intent)
+                            context.startService(Intent(context, LyricService::class.java))
                         }
                     )
                     SuperSwitch(

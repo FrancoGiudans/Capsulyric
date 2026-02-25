@@ -216,7 +216,7 @@ fun DebugCenterScreen(
 
             // ── Super Island Toggle ──
             var superIslandEnabled by remember {
-                mutableStateOf(prefs.getBoolean("debug_super_island_enabled", false))
+                mutableStateOf(prefs.getBoolean("super_island_enabled", false))
             }
 
             OutlinedCard(
@@ -245,15 +245,8 @@ fun DebugCenterScreen(
                         checked = superIslandEnabled,
                         onCheckedChange = { enabled ->
                             superIslandEnabled = enabled
-                            prefs.edit().putBoolean("debug_super_island_enabled", enabled).apply()
-
-                            val action = if (enabled) {
-                                "ACTION_ENABLE_SUPER_ISLAND"
-                            } else {
-                                "ACTION_DISABLE_SUPER_ISLAND"
-                            }
-                            val intent = Intent(context, LyricService::class.java).setAction(action)
-                            context.startService(intent)
+                            prefs.edit().putBoolean("super_island_enabled", enabled).apply()
+                            context.startService(Intent(context, LyricService::class.java))
                         }
                     )
                 }
