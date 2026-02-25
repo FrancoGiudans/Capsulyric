@@ -39,7 +39,7 @@ import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.CardDefaults
 import top.yukonga.miuix.kmp.basic.Slider
 import top.yukonga.miuix.kmp.basic.SliderDefaults
-import top.yukonga.miuix.kmp.extra.SuperDialog
+import top.yukonga.miuix.kmp.extra.WindowDialog
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
@@ -92,7 +92,7 @@ fun MiuixMediaControlDialog(
     val repoLyric by repo.liveLyric.observeAsState()
     val repoProgress by repo.liveProgress.observeAsState()
 
-    SuperDialog(
+    WindowDialog(
         title = stringResource(R.string.media_control_title),
         show = show,
         onDismissRequest = {
