@@ -30,7 +30,8 @@ class MediaMonitorService : NotificationListenerService() {
     
     // Deduplication: Track last metadata hash to avoid processing duplicates
     private var lastMetadataHash: Int = 0
-
+    private var lastComputedIsPlaying: Boolean? = null
+    
     // Debounce Token
     private val updateToken = Any()
     
@@ -170,6 +171,7 @@ class MediaMonitorService : NotificationListenerService() {
             try {
                 // FORCE UPDATE: Reset metadata hash so next update propagates immediately
                 lastMetadataHash = 0
+                lastComputedIsPlaying = null
                 updateControllers(mediaSessionManager?.getActiveSessions(componentName))
             } catch (e: SecurityException) {
                 AppLogger.getInstance().log(TAG, "Error refreshing sessions: ${e.message}")
@@ -295,6 +297,12 @@ class MediaMonitorService : NotificationListenerService() {
         // STRICT: Only start service if primary is WHITELISTED
         val isWhitelisted = allowedPackages.contains(primary?.packageName)
         val isPlaying = isWhitelisted && primary?.playbackState?.state == PlaybackState.STATE_PLAYING
+
+        // Only act if the state has genuinely changed to avoid log spam and infinite stop latency
+        if (lastComputedIsPlaying == isPlaying) {
+            return
+        }
+        lastComputedIsPlaying = isPlaying
 
         if (isPlaying) {
             // Cancel any pending stop
