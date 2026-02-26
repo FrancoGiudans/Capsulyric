@@ -291,6 +291,12 @@
     <string name="settings_super_island_text_color_desc">使超级岛中的歌词和歌名随专辑封面变色</string>
     <string name="settings_super_island_edge_color">为胶囊边缘着色</string>
     <string name="settings_super_island_edge_color_desc">从专辑封面提取颜色应用到超级岛收缩态边缘和进度条</string>
+    <string name="settings_super_island_share">开启拖拽分享</string>
+    <string name="settings_super_island_share_desc">允许长按拖拽超级岛以分享歌词卡片</string>
+    <string name="settings_super_island_share_format">拖拽分享文案格式</string>
+    <string name="share_format_1">歌词 \\n 歌名 by 歌手</string>
+    <string name="share_format_2">歌词 -歌手，歌名</string>
+    <string name="share_format_3">歌词 \\n 歌手，歌名</string>
     <string name="settings_app_ui_style">App 界面风格</string>
     <string name="settings_app_ui_style_desc">在 Material Design 和 Miuix UI 之间切换。应用将会重启。</string>
     <string name="dialog_ui_style_title">选择 App 界面风格</string>

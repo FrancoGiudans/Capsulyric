@@ -156,6 +156,12 @@
     <string name="settings_super_island_text_color_desc">Use album cover color for lyrics and song title in Super Island.</string>
     <string name="settings_super_island_edge_color">Colorize Capsule Edge (Collapsed State)</string>
     <string name="settings_super_island_edge_color_desc">Extract album art color for the Super Island progress ring.</string>
+    <string name="settings_super_island_share">Enable Drag-and-Drop Sharing</string>
+    <string name="settings_super_island_share_desc">Allow dragging Super Island to share lyrics.</string>
+    <string name="settings_super_island_share_format">Share Text Format</string>
+    <string name="share_format_1">Lyric \\n Song by Artist</string>
+    <string name="share_format_2">Lyric -Artist, Song</string>
+    <string name="share_format_3">Lyric \\n Artist, Song</string>
 
     <string name="settings_feedback">Feedback</string>
     <string name="dialog_feedback_title">Select Feedback Method</string>

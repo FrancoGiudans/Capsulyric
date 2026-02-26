@@ -88,6 +88,9 @@ fun CustomSettingsScreen(
     var actionStyle by remember { mutableStateOf(prefs.getString("notification_actions_style", "disabled") ?: "disabled") }
     var showActionStyleDropdown by remember { mutableStateOf(false) }
 
+    // Share Format Dropdown State
+    var showShareFormatDropdown by remember { mutableStateOf(false) }
+
     // Notification Click Action State
     var notificationClickStyle by remember { mutableStateOf(prefs.getString("notification_click_style", "default") ?: "default") }
     var showNotificationClickDropdown by remember { mutableStateOf(false) }
@@ -106,6 +109,8 @@ fun CustomSettingsScreen(
     var superIslandEnabled by remember { mutableStateOf(prefs.getBoolean("super_island_enabled", false)) }
     var superIslandTextColorEnabled by remember { mutableStateOf(prefs.getBoolean("super_island_text_color_enabled", false)) }
     var superIslandEdgeColorEnabled by remember { mutableStateOf(prefs.getBoolean("super_island_edge_color_enabled", false)) }
+    var superIslandShareEnabled by remember { mutableStateOf(prefs.getBoolean("super_island_share_enabled", true)) }
+    var superIslandShareFormat by remember { mutableStateOf(prefs.getString("super_island_share_format", "format_1") ?: "format_1") }
     var miuixEnabled by remember { mutableStateOf(prefs.getBoolean("ui_use_miuix", false)) }
 
     // Dialog State for UI Style
@@ -328,6 +333,51 @@ fun CustomSettingsScreen(
                                             prefs.edit().putBoolean("super_island_edge_color_enabled", it).apply()
                                         }
                                     )
+                                    SettingsSwitchItem(
+                                        title = stringResource(R.string.settings_super_island_share),
+                                        subtitle = stringResource(R.string.settings_super_island_share_desc),
+                                        checked = superIslandShareEnabled,
+                                        onCheckedChange = {
+                                            superIslandShareEnabled = it
+                                            prefs.edit().putBoolean("super_island_share_enabled", it).apply()
+                                        }
+                                    )
+                                    if (superIslandShareEnabled) {
+                                        val formatDisplayName = when (superIslandShareFormat) {
+                                            "format_2" -> stringResource(R.string.share_format_2)
+                                            "format_3" -> stringResource(R.string.share_format_3)
+                                            else -> stringResource(R.string.share_format_1)
+                                        }
+                                        Box(modifier = Modifier.fillMaxWidth()) {
+                                            SettingsTextItem(
+                                                title = stringResource(R.string.settings_super_island_share_format),
+                                                value = formatDisplayName,
+                                                onClick = { showShareFormatDropdown = true }
+                                            )
+                                            Box(modifier = Modifier.matchParentSize().wrapContentSize(Alignment.Center)) {
+                                                DropdownMenu(
+                                                    expanded = showShareFormatDropdown,
+                                                    onDismissRequest = { showShareFormatDropdown = false }
+                                                ) {
+                                                    val formats = listOf(
+                                                        "format_1" to R.string.share_format_1,
+                                                        "format_2" to R.string.share_format_2,
+                                                        "format_3" to R.string.share_format_3
+                                                    )
+                                                    formats.forEach { (formatId, nameId) ->
+                                                        DropdownMenuItem(
+                                                            text = { Text(stringResource(nameId)) },
+                                                            onClick = {
+                                                                superIslandShareFormat = formatId
+                                                                prefs.edit().putString("super_island_share_format", formatId).apply()
+                                                                showShareFormatDropdown = false
+                                                            }
+                                                        )
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }

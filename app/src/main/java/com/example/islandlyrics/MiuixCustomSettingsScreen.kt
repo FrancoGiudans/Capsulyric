@@ -75,6 +75,8 @@ fun MiuixCustomSettingsScreen(
     var superIslandEnabled by remember { mutableStateOf(prefs.getBoolean("super_island_enabled", false)) }
     var superIslandTextColorEnabled by remember { mutableStateOf(prefs.getBoolean("super_island_text_color_enabled", false)) }
     var superIslandEdgeColorEnabled by remember { mutableStateOf(prefs.getBoolean("super_island_edge_color_enabled", false)) }
+    var superIslandShareEnabled by remember { mutableStateOf(prefs.getBoolean("super_island_share_enabled", true)) }
+    var superIslandShareFormat by remember { mutableStateOf(prefs.getString("super_island_share_format", "format_1") ?: "format_1") }
     var miuixEnabled by remember { mutableStateOf(prefs.getBoolean("ui_use_miuix", false)) }
 
     val isHyperOsSupported = remember { RomUtils.isHyperOsVersionAtLeast(3, 0, 300) }
@@ -228,6 +230,35 @@ fun MiuixCustomSettingsScreen(
                                                 prefs.edit().putBoolean("super_island_edge_color_enabled", it).apply()
                                             }
                                         )
+                                        SuperSwitch(
+                                            title = stringResource(R.string.settings_super_island_share),
+                                            summary = stringResource(R.string.settings_super_island_share_desc),
+                                            checked = superIslandShareEnabled,
+                                            onCheckedChange = {
+                                                superIslandShareEnabled = it
+                                                prefs.edit().putBoolean("super_island_share_enabled", it).apply()
+                                            }
+                                        )
+                                        if (superIslandShareEnabled) {
+                                            val shareFormats = listOf("format_1", "format_2", "format_3")
+                                            val shareFormatNames = listOf(
+                                                stringResource(R.string.share_format_1),
+                                                stringResource(R.string.share_format_2),
+                                                stringResource(R.string.share_format_3)
+                                            )
+                                            val currentFormatIndex = shareFormats.indexOf(superIslandShareFormat).takeIf { it >= 0 } ?: 0
+                                            
+                                            SuperDropdown(
+                                                title = stringResource(R.string.settings_super_island_share_format),
+                                                items = shareFormatNames,
+                                                selectedIndex = currentFormatIndex,
+                                                onSelectedIndexChange = { index ->
+                                                    val newFormat = shareFormats[index]
+                                                    superIslandShareFormat = newFormat
+                                                    prefs.edit().putString("super_island_share_format", newFormat).apply()
+                                                }
+                                            )
+                                        }
                                     }
                                     if (isHyperOsSupported) {
                                         SuperSwitch(

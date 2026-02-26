@@ -52,6 +52,8 @@ class SuperIslandHandler(
     // New preferences
     private var cachedSuperIslandTextColorEnabled = false
     private var cachedSuperIslandEdgeColorEnabled = false
+    private var cachedSuperIslandShareEnabled = true
+    private var cachedSuperIslandShareFormat = "format_1"
     private var cachedAlbumColor = 0
     private var lastAlbumArtPaletteHash = 0
 
@@ -68,6 +70,14 @@ class SuperIslandHandler(
             }
             "super_island_edge_color_enabled" -> {
                 cachedSuperIslandEdgeColorEnabled = p.getBoolean(key, false)
+                forceUpdateNotification()
+            }
+            "super_island_share_enabled" -> {
+                cachedSuperIslandShareEnabled = p.getBoolean(key, true)
+                forceUpdateNotification()
+            }
+            "super_island_share_format" -> {
+                cachedSuperIslandShareFormat = p.getString(key, "format_1") ?: "format_1"
                 forceUpdateNotification()
             }
             "disable_lyric_scrolling" -> {
@@ -246,6 +256,8 @@ class SuperIslandHandler(
         cachedClickStyle = prefs.getString("notification_click_style", "default") ?: "default"
         cachedSuperIslandTextColorEnabled = prefs.getBoolean("super_island_text_color_enabled", false)
         cachedSuperIslandEdgeColorEnabled = prefs.getBoolean("super_island_edge_color_enabled", false)
+        cachedSuperIslandShareEnabled = prefs.getBoolean("super_island_share_enabled", true)
+        cachedSuperIslandShareFormat = prefs.getString("super_island_share_format", "format_1") ?: "format_1"
         cachedDisableScrolling = prefs.getBoolean("disable_lyric_scrolling", false)
         prefs.registerOnSharedPreferenceChangeListener(prefListener)
 
@@ -755,14 +767,22 @@ class SuperIslandHandler(
         paramIsland.put("bigIslandArea", bigIslandArea)
 
         // 分享数据 (shareData)
-        val shareData = JSONObject()
-        shareData.put("pic", "miui.focus.pic_share")
-        shareData.put("title", title.ifEmpty { "♪" })
-        shareData.put("content", fullLyric.ifEmpty { "♪" })
-        val shareArtist = if (artist.isNotBlank()) artist else "未知歌手"
-        val shareSong = title.ifEmpty { "未知歌曲" }
-        shareData.put("shareContent", "$fullLyric\n--$shareArtist-$shareSong")
-        paramIsland.put("shareData", shareData)
+        if (cachedSuperIslandShareEnabled) {
+            val shareData = JSONObject()
+            shareData.put("pic", "miui.focus.pic_share")
+            shareData.put("title", title.ifEmpty { "♪" })
+            shareData.put("content", fullLyric.ifEmpty { "♪" })
+            val shareArtist = if (artist.isNotBlank()) artist else "未知歌手"
+            val shareSong = title.ifEmpty { "未知歌曲" }
+            
+            val shareContent = when (cachedSuperIslandShareFormat) {
+                "format_2" -> "$fullLyric -$shareArtist，$shareSong"
+                "format_3" -> "$fullLyric\n$shareArtist，$shareSong"
+                else -> "$fullLyric\n$shareSong by $shareArtist"
+            }
+            shareData.put("shareContent", shareContent)
+            paramIsland.put("shareData", shareData)
+        }
 
         // 小岛: album art thumbnail with progress ring (using miui.land key)
         val smallIslandArea = JSONObject()
