@@ -196,7 +196,7 @@
     <string name="settings_notification_actions">通知按键</string>
     <string name="settings_action_style_off">关闭</string>
     <string name="settings_action_style_off_desc">不显示通知按键</string>
-    <string name="settings_action_style_media">暂停 / 下一首</string>
+    <string name="settings_action_style_media">播放控制</string>
     <string name="settings_action_style_media_desc">媒体控制按键（暂停、下一曲）</string>
     <string name="settings_action_style_miplay">妙播</string>
     <string name="settings_action_style_miplay_desc">打开小米妙播面板</string>
