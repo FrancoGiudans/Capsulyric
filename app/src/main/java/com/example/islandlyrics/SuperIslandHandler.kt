@@ -741,7 +741,7 @@ class SuperIslandHandler(
         // 摘要态模版2: 图文组件1 (A区) + 文本组件 (B区)
         val paramIsland = JSONObject()
         paramIsland.put("islandProperty", 1)
-        if (showHighlightColor) {
+        if (cachedSuperIslandTextColorEnabled || cachedSuperIslandEdgeColorEnabled) {
             paramIsland.put("highlightColor", hexColor)
         }
 
@@ -802,6 +802,7 @@ class SuperIslandHandler(
         val ringInfoSmall = JSONObject()
         ringInfoSmall.put("progress", progressPercent)
         ringInfoSmall.put("colorReach", ringColor)
+        ringInfoSmall.put("colorProgress", ringColor)
         ringInfoSmall.put("colorUnReach", "#333333")
         combinePicInfoSmall.put("progressInfo", ringInfoSmall)
         
