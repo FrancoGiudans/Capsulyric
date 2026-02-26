@@ -61,7 +61,6 @@ fun MiuixCustomSettingsScreen(
     // State
     var followSystem by remember { mutableStateOf(prefs.getBoolean("theme_follow_system", true)) }
     var darkMode by remember { mutableStateOf(prefs.getBoolean("theme_dark_mode", false)) }
-    var pureBlack by remember { mutableStateOf(prefs.getBoolean("theme_pure_black", false)) }
     var dynamicIconEnabled by remember { mutableStateOf(prefs.getBoolean("dynamic_icon_enabled", false)) }
     var iconStyle by remember { mutableStateOf(prefs.getString("dynamic_icon_style", "classic") ?: "classic") }
 
@@ -77,9 +76,6 @@ fun MiuixCustomSettingsScreen(
     var miuixEnabled by remember { mutableStateOf(prefs.getBoolean("ui_use_miuix", false)) }
 
     val isHyperOsSupported = remember { RomUtils.isHyperOsVersionAtLeast(3, 0, 300) }
-    val isSystemDark = androidx.compose.foundation.isSystemInDarkTheme()
-    val useDarkTheme = if (followSystem) isSystemDark else darkMode
-
     LaunchedEffect(isHyperOsSupported) {
         if (!isHyperOsSupported) {
             if (dynamicIconEnabled) {
@@ -365,16 +361,6 @@ fun MiuixCustomSettingsScreen(
                                         onCheckedChange = {
                                             darkMode = it
                                             ThemeHelper.setDarkMode(context, it)
-                                        }
-                                    )
-                                    SuperSwitch(
-                                        title = stringResource(R.string.settings_theme_pure_black),
-                                        summary = stringResource(R.string.settings_theme_pure_black_desc),
-                                        checked = pureBlack,
-                                        enabled = useDarkTheme,
-                                        onCheckedChange = {
-                                            pureBlack = it
-                                            ThemeHelper.setPureBlack(context, it)
                                         }
                                     )
                                 }
