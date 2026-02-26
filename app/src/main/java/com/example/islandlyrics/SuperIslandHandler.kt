@@ -54,6 +54,7 @@ class SuperIslandHandler(
     private var cachedSuperIslandEdgeColorEnabled = false
     private var cachedSuperIslandShareEnabled = true
     private var cachedSuperIslandShareFormat = "format_1"
+    private var cachedProgressBarColorEnabled = false
     private var cachedAlbumColor = 0
     private var lastAlbumArtPaletteHash = 0
 
@@ -82,6 +83,10 @@ class SuperIslandHandler(
             }
             "disable_lyric_scrolling" -> {
                 cachedDisableScrolling = p.getBoolean(key, false)
+                forceUpdateNotification()
+            }
+            "progress_bar_color_enabled" -> {
+                cachedProgressBarColorEnabled = p.getBoolean(key, false)
                 forceUpdateNotification()
             }
         }
@@ -258,6 +263,7 @@ class SuperIslandHandler(
         cachedSuperIslandEdgeColorEnabled = prefs.getBoolean("super_island_edge_color_enabled", false)
         cachedSuperIslandShareEnabled = prefs.getBoolean("super_island_share_enabled", true)
         cachedSuperIslandShareFormat = prefs.getString("super_island_share_format", "format_1") ?: "format_1"
+        cachedProgressBarColorEnabled = prefs.getBoolean("progress_bar_color_enabled", false)
         cachedDisableScrolling = prefs.getBoolean("disable_lyric_scrolling", false)
         prefs.registerOnSharedPreferenceChangeListener(prefListener)
 
@@ -726,8 +732,9 @@ class SuperIslandHandler(
         // ── 进度组件2 (Expanded State) ──
         val progressInfo = JSONObject()
         progressInfo.put("progress", progressPercent)
-        progressInfo.put("colorProgress", ringColor)
-        progressInfo.put("colorProgressEnd", ringColor)
+        val progressBarColor = if (cachedProgressBarColorEnabled) hexColor else "#757575"
+        progressInfo.put("colorProgress", progressBarColor)
+        progressInfo.put("colorProgressEnd", progressBarColor)
         paramV2.put("progressInfo", progressInfo)
 
         // ── 岛数据 (param_island) ──

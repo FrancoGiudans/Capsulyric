@@ -390,17 +390,15 @@ fun CustomSettingsScreen(
                              Spacer(modifier = Modifier.height(16.dp))
 
 
-                             if (!superIslandEnabled) {
-                                 SettingsSwitchItem(
-                                    title = stringResource(R.string.settings_progress_color),
-                                    subtitle = stringResource(R.string.settings_progress_color_desc),
-                                    checked = progressColorEnabled,
-                                    onCheckedChange = {
-                                        progressColorEnabled = it
-                                        prefs.edit().putBoolean("progress_bar_color_enabled", it).apply()
-                                    }
-                                )
-                             }
+                             SettingsSwitchItem(
+                                title = stringResource(R.string.settings_progress_color),
+                                subtitle = stringResource(R.string.settings_progress_color_desc),
+                                checked = progressColorEnabled,
+                                onCheckedChange = {
+                                    progressColorEnabled = it
+                                    prefs.edit().putBoolean("progress_bar_color_enabled", it).apply()
+                                }
+                            )
                             
                              // Notification Action Style
                             val actionStyleDisplay = when (actionStyle) {

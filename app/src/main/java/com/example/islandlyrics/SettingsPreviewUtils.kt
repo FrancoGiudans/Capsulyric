@@ -334,8 +334,8 @@ fun NotificationPreview(
                         .fillMaxWidth()
                         .height(4.dp)
                         .clip(RoundedCornerShape(2.dp)),
-                    color = Color.Gray.copy(alpha = 0.6f), // Softer color as in screenshot
-                    trackColor = Color(0xFF1A2633)
+                    color = if (progressColorEnabled) barColor else Color.Gray.copy(alpha = 0.6f),
+                    trackColor = if (progressColorEnabled) barColor.copy(alpha = 0.2f) else Color(0xFF1A2633)
                 )
             }
         }

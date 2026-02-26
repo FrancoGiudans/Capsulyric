@@ -304,7 +304,6 @@ fun MiuixCustomSettingsScreen(
                             item { Spacer(modifier = Modifier.height(16.dp)) }
                             item {
                                 Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
-                                    if (!superIslandEnabled) {
                                         SuperSwitch(
                                             title = stringResource(R.string.settings_progress_color),
                                             summary = stringResource(R.string.settings_progress_color_desc),
@@ -314,7 +313,6 @@ fun MiuixCustomSettingsScreen(
                                                 prefs.edit().putBoolean("progress_bar_color_enabled", it).apply()
                                             }
                                         )
-                                    }
 
                                     val actionStyles = mutableListOf("disabled", "media_controls")
                                     val actionStyleNames = mutableListOf(
