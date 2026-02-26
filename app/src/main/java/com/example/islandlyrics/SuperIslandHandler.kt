@@ -85,23 +85,21 @@ class SuperIslandHandler(
 
     private val albumArtObserver = Observer<Bitmap?> { bitmap -> 
         if (bitmap == null) {
-            cachedAlbumColor = 0
+            cachedAlbumColor = 0xFF757575.toInt() // Fallback to COLOR_PRIMARY
             lastAlbumArtPaletteHash = 0
             scheduleUpdate()
             return@Observer
         }
         val artHash = bitmap.hashCode()
         if (artHash != lastAlbumArtPaletteHash) {
-            lastAlbumArtPaletteHash = artHash
             Palette.from(bitmap).generate { palette ->
                 if (palette != null) {
                     cachedAlbumColor = palette.getVibrantColor(
                         palette.getMutedColor(
-                            palette.getDominantColor(0)
+                            palette.getDominantColor(0xFF757575.toInt())
                         )
                     )
-                } else {
-                    cachedAlbumColor = 0
+                    lastAlbumArtPaletteHash = artHash
                 }
                 scheduleUpdate()
             }
@@ -149,6 +147,7 @@ class SuperIslandHandler(
         lastProgress = -1
         lastAlbumArtHash = 0
         lastSubText = ""
+        cachedAlbumColor = 0xFF757575.toInt()
         lastAppliedAlbumColor = cachedAlbumColor
 
         // Build the notification ONCE and send as foreground
@@ -331,9 +330,9 @@ class SuperIslandHandler(
         val root = JSONObject()
         val paramV2 = JSONObject()
 
-        val hexColor = if (cachedAlbumColor != 0) String.format("#%06X", 0xFFFFFF and cachedAlbumColor) else "#757575"
-        val showHighlightColor = cachedSuperIslandTextColorEnabled && cachedAlbumColor != 0
-        val ringColor = if (cachedSuperIslandEdgeColorEnabled && cachedAlbumColor != 0) hexColor else "#757575"
+        val hexColor = String.format("#%06X", 0xFFFFFF and cachedAlbumColor)
+        val showHighlightColor = cachedSuperIslandTextColorEnabled 
+        val ringColor = if (cachedSuperIslandEdgeColorEnabled) hexColor else "#757575"
 
         // ── Notification attributes ──
         paramV2.put("protocol", 1)
