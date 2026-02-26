@@ -166,6 +166,8 @@
     <string name="faq_cat_guide">Setup Guide</string>
     <string name="faq_q_guide">Q: How do I set up the no-Root (0-Hook) mode?</string>
     <string name="faq_a_guide">A: This mode uses \'Bluetooth Car Lyric\' protocol.\n\n1. Supports <b>QQ Music</b>, <b>Xiaomi Music</b> and <b>NetEase Music</b>.\n\n<b>NetEase Music:</b>\n1. Connect a Bluetooth audio device first.\n2. Go to <b>Menu (Top Left)</b> -> <b>Settings</b> -> <b>General</b>.\n3. Find and enable <b>External Device Bluetooth Lyrics</b>.\n\n<b>QQ Music:</b>\n1. Connect a Bluetooth audio device first.\n2. Go to <b>Me</b> -> <b>Menu (Top Right 3-lines)</b> -> <b>Settings</b>.\n3. Find and enable <b>Car Bluetooth Lyrics</b>.\n\nGrant \'Notification Access\' to this app.</string>
+    <string name="faq_q_super_island">Q: How to use Xiaomi Super Island notification?</string>
+    <string name="faq_a_super_island">A: If your device is rooted: You can use HyperCeiler to bypass the whitelist.\n\nIf not rooted: It is recommended to use Live Updates. Alternatively, you can use community apps that bypass the Xiaomi Super Island whitelist, allowing this app\'s notifications to appear on the island. Note that this method may be unstable and could be patched by Xiaomi at any time, so it is not recommended.</string>
     <string name="faq_cat_func">Functionality Issues</string>
     <string name="faq_q_no_lyrics">Q: Why can\'t I see lyrics?</string>
     <string name="faq_a_no_lyrics">A: Please check the following steps:\n\n

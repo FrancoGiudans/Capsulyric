@@ -158,6 +158,8 @@
     <string name="faq_cat_guide">使用指引</string>
     <string name="faq_q_guide">Q：如何使用免 Root（0-Hook）模式？</string>
     <string name="faq_a_guide">A：本模式利用"通知栏歌词"或各应用的"蓝牙歌词"获取歌词。\n\n1. 支持 <b>QQ音乐</b>、<b>小米音乐</b> 和 <b>网易云音乐</b>。\n\n<b>网易云用户：</b>\n1. 连接蓝牙音频设备。\n2. 进入 <b>菜单 (左上角)</b> -> <b>设置</b> -> <b>通用</b>。\n3. 开启 <b>外接设备蓝牙歌词</b>。\n\n<b>QQ音乐用户：</b>\n1. 连接蓝牙音频设备。\n2. 进入 <b>我的</b> -> <b>更多 (右上角三横)</b> -> <b>设置</b>。\n3. 开启 <b>车载蓝牙歌词</b>。\n\n必须授予本应用"通知使用权"，并确保音乐 App 通知栏显示正常。</string>
+    <string name="faq_q_super_island">Q：如何使用小米超级岛通知？</string>
+    <string name="faq_a_super_island">A：如果你已经root：可以使用HyperCeiler解除白名单；\n\n如果没有root：建议选择实时通知。或者你可以选择社区中的一些绕过小米超级岛白名单的应用，在他们进行绕过后，本应用的小米超级岛通知也可以上岛。注意，这种方法可能并不稳定并随时可能被小米官方修复，不推荐使用。</string>
     <string name="faq_cat_func">功能异常类</string>
     <string name="faq_q_no_lyrics">Q：为什么我看不到歌词？</string>
     <string name="faq_a_no_lyrics">A： 请按照以下步骤逐一排查：\n\n

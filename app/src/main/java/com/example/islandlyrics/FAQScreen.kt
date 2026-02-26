@@ -39,7 +39,8 @@ fun FAQScreen(onBack: () -> Unit) {
             FAQCategory(
                 context.getString(R.string.faq_cat_guide),
                 listOf(
-                    QAItem(context.resources.getText(R.string.faq_q_guide), context.resources.getText(R.string.faq_a_guide))
+                    QAItem(context.resources.getText(R.string.faq_q_guide), context.resources.getText(R.string.faq_a_guide)),
+                    QAItem(context.resources.getText(R.string.faq_q_super_island), context.resources.getText(R.string.faq_a_super_island))
                 )
             ),
             FAQCategory(
