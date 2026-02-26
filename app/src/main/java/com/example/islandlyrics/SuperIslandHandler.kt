@@ -15,6 +15,9 @@ import androidx.lifecycle.Observer
 import androidx.palette.graphics.Palette
 import org.json.JSONObject
 
+import android.content.SharedPreferences
+import com.example.islandlyrics.OnlineLyricFetcher
+
 /**
  * SuperIslandHandler
  * Sends Xiaomi Super Island notifications using Template 7:
@@ -67,8 +70,15 @@ class SuperIslandHandler(
                 cachedSuperIslandEdgeColorEnabled = p.getBoolean(key, false)
                 forceUpdateNotification()
             }
+            "disable_lyric_scrolling" -> {
+                cachedDisableScrolling = p.getBoolean(key, false)
+                forceUpdateNotification()
+            }
         }
     }
+
+    // Shared scrolling preference
+    private var cachedDisableScrolling = false
 
     // Change detection
     private var lastLyric = ""
@@ -78,10 +88,71 @@ class SuperIslandHandler(
     private var lastPackageName = ""
     private var lastAppliedAlbumColor = 0
 
+    // Scroll state machine
+    private enum class ScrollState {
+        INITIAL_PAUSE, SCROLLING, FINAL_PAUSE, DONE
+    }
+    
+    private var scrollState = ScrollState.INITIAL_PAUSE
+    private var initialPauseStartTime: Long = 0
+    private var scrollOffset = 0
+    private var lastLyricText = ""
+
+    // Content tracking to prevent flicker
+    private var lastNotifiedLyric = ""
+    private var lastNotifiedProgress = -1
+    private var isFirstNotification = true
+    private var lastUpdateTime = 0L
+
+    // Scroll Configuration
+    private val heavySkinRoms = setOf("HyperOS", "ColorOS", "OriginOS/FuntouchOS", "Flyme", "OneUI", "MagicOS", "RealmeUI")
+    private val isHeavySkin = RomUtils.getRomType() in heavySkinRoms
+    private val maxDisplayWeight = if (isHeavySkin) 18 else 10
+    private val compensationThreshold = 8
+    
+    private val initialPauseDuration = 1000L
+    private val finalPauseDuration = 500L
+    private val baseFocusDelay = 500L
+    private val staticTimeReserve = 1500L
+
+    // Adaptive scroll metrics
+    private var lastLyricChangeTime: Long = 0
+    private var lastLyricLength: Int = 0
+    private val lyricDurations = mutableListOf<Long>()
+    private val maxHistory = 5
+    private var adaptiveDelay: Long = 1800L
+    private val minCharDuration = 50L
+    private val minScrollDelay = 200L
+    private val maxScrollDelay = 5000L
+
+    // Scrolling Mode Flags
+    private var useSyllableScrolling = false
+    private var useLrcScrolling = false
+    private var currentParsedLines: List<OnlineLyricFetcher.LyricLine>? = null
+
     // Observers — debounce to coalesce rapid-fire updates
     private val lyricObserver = Observer<LyricRepository.LyricInfo?> { scheduleUpdate() }
     private val progressObserver = Observer<LyricRepository.PlaybackProgress?> { scheduleUpdate() }
     private val metadataObserver = Observer<LyricRepository.MediaInfo?> { scheduleUpdate() }
+
+    private val parsedLyricsObserver = Observer<LyricRepository.ParsedLyricsInfo?> { parsedInfo ->
+        if (parsedInfo != null && parsedInfo.hasSyllable) {
+            useSyllableScrolling = true
+            useLrcScrolling = false
+            currentParsedLines = parsedInfo.lines
+            AppLogger.getInstance().log(TAG, "🏝️ SuperIsland: Switched to SYLLABLE scrolling")
+        } else if (parsedInfo != null && parsedInfo.lines.isNotEmpty()) {
+            useSyllableScrolling = false
+            useLrcScrolling = true
+            currentParsedLines = parsedInfo.lines
+            AppLogger.getInstance().log(TAG, "🏝️ SuperIsland: Switched to LRC scrolling")
+        } else {
+            useSyllableScrolling = false
+            useLrcScrolling = false
+            currentParsedLines = null
+            AppLogger.getInstance().log(TAG, "🏝️ SuperIsland: Switched to WEIGHT scrolling")
+        }
+    }
 
     private val albumArtObserver = Observer<Bitmap?> { bitmap -> 
         if (bitmap == null) {
@@ -110,9 +181,42 @@ class SuperIslandHandler(
 
     private var pendingUpdate = false
 
+    private val visualizerLoop = object : Runnable {
+        override fun run() {
+            if (!isRunning) return
+            try {
+                updateNotification()
+                
+                if (scrollState == ScrollState.DONE) {
+                    mainHandler.postDelayed(this, 1000)
+                } else {
+                    val currentLine = LyricRepository.getInstance().liveCurrentLine.value
+                    if (currentLine != null) {
+                         mainHandler.postDelayed(this, 200)
+                    } else {
+                         mainHandler.postDelayed(this, adaptiveDelay)
+                    }
+                }
+            } catch (t: Throwable) {
+                LogManager.getInstance().e(context, TAG, "CRASH in visualizer loop: $t")
+                stop()
+            }
+        }
+    }
+
     private val debouncedUpdate = Runnable {
         pendingUpdate = false
-        doUpdate()
+        // Update notification synchronously to reflect repository changes immediately
+        updateNotification()
+        
+        // Also inform adaptive scrolling
+        val currentLyric = LyricRepository.getInstance().liveLyric.value?.lyric ?: ""
+        recordLyricChange(currentLyric)
+        
+        if (isRunning) {
+            mainHandler.removeCallbacks(visualizerLoop)
+            mainHandler.post(visualizerLoop)
+        }
     }
 
     private fun scheduleUpdate() {
@@ -137,10 +241,12 @@ class SuperIslandHandler(
         repo.liveProgress.observeForever(progressObserver)
         repo.liveAlbumArt.observeForever(albumArtObserver)
         repo.liveMetadata.observeForever(metadataObserver)
+        repo.liveParsedLyrics.observeForever(parsedLyricsObserver)
 
         cachedClickStyle = prefs.getString("notification_click_style", "default") ?: "default"
         cachedSuperIslandTextColorEnabled = prefs.getBoolean("super_island_text_color_enabled", false)
         cachedSuperIslandEdgeColorEnabled = prefs.getBoolean("super_island_edge_color_enabled", false)
+        cachedDisableScrolling = prefs.getBoolean("disable_lyric_scrolling", false)
         prefs.registerOnSharedPreferenceChangeListener(prefListener)
 
         lastLyric = ""
@@ -152,6 +258,8 @@ class SuperIslandHandler(
 
         // Build the notification ONCE and send as foreground
         buildInitialNotification()
+        
+        mainHandler.post(visualizerLoop)
         AppLogger.getInstance().log(TAG, "🏝️ SuperIslandHandler started")
     }
 
@@ -164,10 +272,12 @@ class SuperIslandHandler(
         repo.liveProgress.removeObserver(progressObserver)
         repo.liveAlbumArt.removeObserver(albumArtObserver)
         repo.liveMetadata.removeObserver(metadataObserver)
+        repo.liveParsedLyrics.removeObserver(parsedLyricsObserver)
 
         prefs.unregisterOnSharedPreferenceChangeListener(prefListener)
 
         mainHandler.removeCallbacks(debouncedUpdate)
+        mainHandler.removeCallbacks(visualizerLoop)
         manager?.cancel(NOTIFICATION_ID)
         cachedNotification = null
         cachedBuilder = null
@@ -214,7 +324,13 @@ class SuperIslandHandler(
         lastSubText = subText
         lastAppliedAlbumColor = cachedAlbumColor
 
-        val islandParams = buildIslandParamsJson(lyric, subText, progressPercent, title, artist)
+        isFirstNotification = true
+        scrollState = ScrollState.INITIAL_PAUSE
+        initialPauseStartTime = System.currentTimeMillis()
+        scrollOffset = 0
+        lastLyricText = ""
+
+        val islandParams = buildIslandParamsJson(lyric, lyric, subText, progressPercent, title, artist)
 
         val builder = Notification.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_music_note)
@@ -255,12 +371,25 @@ class SuperIslandHandler(
 
     private fun doUpdate(force: Boolean = false) {
         if (!isRunning) return
+        if (force) {
+            isFirstNotification = true
+        }
+        updateNotification()
+    }
+
+    private fun updateNotification() {
+        if (!isRunning) return
         val notification = cachedNotification ?: return
+
+        val now = System.currentTimeMillis()
+        if (now - lastUpdateTime < 50) return
+        lastUpdateTime = now
 
         val repo = LyricRepository.getInstance()
         val lyricInfo = repo.liveLyric.value
         val currentLyric = lyricInfo?.lyric ?: ""
         val progressInfo = repo.liveProgress.value
+        val currentPosition = progressInfo?.position ?: 0L
         val metadata = repo.liveMetadata.value
         val albumArt = repo.liveAlbumArt.value
 
@@ -273,9 +402,61 @@ class SuperIslandHandler(
                 .coerceIn(0, 100)
         } else 0
 
-        // Skip if nothing changed (unless forced)
+        var displayLyric: String
+        
+        if (cachedDisableScrolling) {
+            val currentLine = if (currentParsedLines != null) findCurrentLine(currentParsedLines!!, currentPosition) else null
+            if (currentLine != null) {
+                displayLyric = extractByWeight(currentLine.text, 0, maxDisplayWeight)
+            } else {
+                displayLyric = extractByWeight(currentLyric, 0, maxDisplayWeight)
+            }
+            scrollState = ScrollState.DONE
+            
+        } else if (useSyllableScrolling && currentParsedLines != null) {
+            val currentLine = findCurrentLine(currentParsedLines!!, currentPosition)
+            if (currentLine != null && !currentLine.syllables.isNullOrEmpty()) {
+                val sungSyllables = currentLine.syllables.filter { it.startTime <= currentPosition }
+                val unsungSyllables = currentLine.syllables.filter { it.startTime > currentPosition }
+                val sungText = sungSyllables.joinToString("") { it.text }
+                val unsungText = unsungSyllables.joinToString("") { it.text }
+                displayLyric = calculateSyllableWindow(sungText, unsungText)
+                scrollState = ScrollState.SCROLLING
+            } else if (currentLine != null) {
+                displayLyric = extractByWeight(currentLine.text, 0, maxDisplayWeight)
+            } else {
+                displayLyric = " " 
+            }
+        } else if (useLrcScrolling && currentParsedLines != null) {
+            val foundLine = findCurrentLine(currentParsedLines!!, currentPosition)
+            if (foundLine != null) {
+                val lineDuration = foundLine.endTime - foundLine.startTime
+                val lineProgress = if (lineDuration > 0) {
+                    ((currentPosition - foundLine.startTime).toFloat() / lineDuration.toFloat()).coerceIn(0f, 1f)
+                } else 0f
+                val currentLineWeight = calculateWeight(foundLine.text)
+                if (currentLineWeight <= maxDisplayWeight) {
+                    displayLyric = foundLine.text
+                } else {
+                    val currentProgressWeight = (lineProgress * currentLineWeight).toInt()
+                    val scrollStartThreshold = if (isMostlyWestern(foundLine.text)) 4 else 8
+                    val targetWeightOffset = if (currentProgressWeight < scrollStartThreshold) 0 else currentProgressWeight - scrollStartThreshold
+                    val minVisibleWeight = 16
+                    val maxAllowedScroll = maxOf(0, currentLineWeight - minVisibleWeight)
+                    val finalOffset = minOf(targetWeightOffset, maxAllowedScroll)
+                    displayLyric = extractByWeight(foundLine.text, finalOffset, maxDisplayWeight)
+                }
+                scrollState = ScrollState.SCROLLING
+            } else {
+                 displayLyric = " "
+            }
+        } else {
+            val totalWeight = calculateWeight(currentLyric)
+            displayLyric = calculateAdaptiveScroll(currentLyric, totalWeight)
+        }
+
         val artHash = albumArt?.hashCode() ?: 0
-        if (!force && currentLyric == lastLyric && progressPercent == lastProgress
+        if (!isFirstNotification && displayLyric == lastNotifiedLyric && progressPercent == lastProgress
             && artHash == lastAlbumArtHash && subText == lastSubText
             && metadata?.packageName == lastPackageName
             && cachedAlbumColor == lastAppliedAlbumColor) {
@@ -284,6 +465,7 @@ class SuperIslandHandler(
 
         val artChanged = artHash != lastAlbumArtHash
 
+        lastNotifiedLyric = displayLyric
         lastLyric = currentLyric
         lastProgress = progressPercent
         lastAlbumArtHash = artHash
@@ -291,8 +473,7 @@ class SuperIslandHandler(
         lastPackageName = metadata?.packageName ?: ""
         lastAppliedAlbumColor = cachedAlbumColor
 
-        // Update the island params JSON in-place on the SAME notification object
-        val islandParams = buildIslandParamsJson(currentLyric, subText, progressPercent, title, artist)
+        val islandParams = buildIslandParamsJson(displayLyric, currentLyric, subText, progressPercent, title, artist)
         notification.extras.putString("miui.focus.param", islandParams)
 
             // Update base notification text fields
@@ -317,13 +498,185 @@ class SuperIslandHandler(
                 notification.extras.putBundle("miui.focus.pics", pics)
             }
             manager?.notify(NOTIFICATION_ID, notification)
+            isFirstNotification = false
+    }
+
+    // ── Scrolling Helper Math ──
+    private fun recordLyricChange(newLyric: String) {
+        val now = System.currentTimeMillis()
+        if (lastLyricChangeTime == 0L) {
+            lastLyricChangeTime = now
+            lastLyricLength = newLyric.length
+            return
+        }
+        val duration = now - lastLyricChangeTime
+        val avgCharDuration = if (lastLyricLength > 0) duration / lastLyricLength else 0
+        if (avgCharDuration < minCharDuration || duration > 30000) {
+            lastLyricChangeTime = now
+            lastLyricLength = newLyric.length
+            return
+        }
+        lyricDurations.add(duration)
+        if (lyricDurations.size > maxHistory) {
+            lyricDurations.removeAt(0)
+        }
+        lastLyricChangeTime = now
+        lastLyricLength = newLyric.length
+        calculateAdaptiveDelay()
+    }
+
+    private fun calculateAdaptiveDelay() {
+        if (lyricDurations.isEmpty()) { adaptiveDelay = 1800L; return }
+        val avgDuration = lyricDurations.average().toLong()
+        val avgLyricWeight = calculateWeight(lastLyricText)
+        val currentStaticReserve = if (isMostlyWestern(lastLyricText)) 750L else staticTimeReserve
+        if (avgLyricWeight == 0 || avgDuration < currentStaticReserve) { adaptiveDelay = 1800L; return }
+        val estimatedSteps = maxOf(1, (avgLyricWeight / 5))
+        val availableTime = avgDuration - currentStaticReserve - (estimatedSteps * baseFocusDelay)
+        val timePerUnit = if (availableTime > 0 && avgLyricWeight > 0) availableTime / avgLyricWeight else 100L
+        val calculatedDelay = baseFocusDelay + (timePerUnit * 5)
+        adaptiveDelay = calculatedDelay.coerceIn(minScrollDelay, maxScrollDelay)
+    }
+
+    private fun charWeight(c: Char): Int = when (Character.UnicodeBlock.of(c)) {
+        Character.UnicodeBlock.CJK_UNIFIED_IDEOGRAPHS,
+        Character.UnicodeBlock.CJK_UNIFIED_IDEOGRAPHS_EXTENSION_A,
+        Character.UnicodeBlock.CJK_UNIFIED_IDEOGRAPHS_EXTENSION_B,
+        Character.UnicodeBlock.CJK_COMPATIBILITY_IDEOGRAPHS,
+        Character.UnicodeBlock.HIRAGANA,
+        Character.UnicodeBlock.KATAKANA,
+        Character.UnicodeBlock.HANGUL_SYLLABLES -> 2
+        else -> 1
+    }
+
+    private fun calculateWeight(text: String): Int = text.sumOf { charWeight(it) }
+
+    private fun isMostlyWestern(text: String): Boolean {
+        if (text.isEmpty()) return false
+        val cjkCount = text.count { charWeight(it) == 2 }
+        return cjkCount <= text.length / 2
+    }
+
+    private fun extractByWeight(text: String, startWeight: Int, maxWeight: Int): String {
+        var currentWeight = 0
+        var startIndex = 0
+        var endIndex = 0
+        for (i in text.indices) {
+            if (currentWeight >= startWeight) { startIndex = i; break }
+            currentWeight += charWeight(text[i])
+        }
+        currentWeight = 0
+        for (i in startIndex until text.length) {
+            currentWeight += charWeight(text[i])
+            if (currentWeight > maxWeight) break
+            endIndex = i + 1
+        }
+        if (endIndex <= startIndex) return ""
+        return text.substring(startIndex, endIndex).trimEnd()
+    }
+
+    private fun calculateSmartShiftWeight(text: String, currentOffset: Int): Int {
+        val segment = extractByWeight(text, currentOffset, 10)
+        if (segment.isEmpty()) return 4
+        val isCJK = segment.count { charWeight(it) == 2 } > segment.length / 2
+        return if (isCJK) {
+            if (segment.length >= 2) charWeight(segment[0]) + charWeight(segment[1]) else 4
+        } else {
+            val spaceIndex = segment.indexOf(' ', 2)
+            if (spaceIndex in 2..4) calculateWeight(segment.take(spaceIndex + 1))
+            else if (segment.length >= 3) calculateWeight(segment.take(3)) else 3
+        }
+    }
+
+    private fun findSnapOffset(text: String, targetWeight: Int): Int {
+        var currentWeight = 0
+        var lastSnapPoint = 0
+        for (i in text.indices) {
+            val c = text[i]
+            val w = charWeight(c)
+            if (currentWeight + w > targetWeight) return lastSnapPoint
+            currentWeight += w
+            if (Character.isWhitespace(c)) lastSnapPoint = currentWeight
+        }
+        return lastSnapPoint
+    }
+
+    private fun findCurrentLine(lines: List<OnlineLyricFetcher.LyricLine>, position: Long): OnlineLyricFetcher.LyricLine? {
+        for (line in lines) {
+            if (position >= line.startTime && position < line.endTime) return line
+        }
+        return null
+    }
+
+    private fun calculateSnappedScroll(text: String, targetScroll: Int, maxScroll: Int): Int {
+        val snapScroll = findSnapOffset(text, targetScroll)
+        val effectiveScroll = if (targetScroll - snapScroll > 12) targetScroll else snapScroll
+        return minOf(effectiveScroll, maxScroll)
+    }
+
+    private fun calculateSyllableWindow(sung: String, unsung: String): String {
+        val totalWeight = calculateWeight(sung) + calculateWeight(unsung)
+        if (totalWeight <= maxDisplayWeight) return sung + unsung
+        val sungWeight = calculateWeight(sung)
+        val scrollStartThreshold = 8
+        val fullText = sung + unsung
+        val targetScrollAmount = if (sungWeight < scrollStartThreshold) 0 else sungWeight - scrollStartThreshold
+        val minVisibleWeight = 14
+        val maxAllowedScroll = maxOf(0, totalWeight - minVisibleWeight)
+        val finalScrollAmount = calculateSnappedScroll(fullText, targetScrollAmount, maxAllowedScroll)
+        return extractByWeight(fullText, finalScrollAmount, maxDisplayWeight)
+    }
+
+    private fun calculateAdaptiveScroll(currentLyric: String, totalWeight: Int): String {
+        if (currentLyric != lastLyricText) {
+            lastLyricText = currentLyric
+            scrollOffset = 0
+            scrollState = ScrollState.INITIAL_PAUSE
+            initialPauseStartTime = System.currentTimeMillis()
+        }
+        if (totalWeight <= maxDisplayWeight) {
+            scrollState = ScrollState.DONE
+            return currentLyric
+        }
+        return when (scrollState) {
+            ScrollState.INITIAL_PAUSE -> {
+                val requiredPause = if (isMostlyWestern(currentLyric)) 500L else initialPauseDuration
+                if (System.currentTimeMillis() - initialPauseStartTime >= requiredPause) {
+                    scrollState = ScrollState.SCROLLING
+                }
+                extractByWeight(currentLyric, 0, maxDisplayWeight)
+            }
+            ScrollState.SCROLLING -> {
+                val remainingWeight = totalWeight - scrollOffset
+                if (remainingWeight <= compensationThreshold || remainingWeight <= maxDisplayWeight) {
+                    scrollState = ScrollState.FINAL_PAUSE
+                    initialPauseStartTime = System.currentTimeMillis()
+                    extractByWeight(currentLyric, scrollOffset, if (remainingWeight <= compensationThreshold) remainingWeight else maxDisplayWeight)
+                } else {
+                    val ret = extractByWeight(currentLyric, scrollOffset, maxDisplayWeight)
+                    scrollOffset += calculateSmartShiftWeight(currentLyric, scrollOffset)
+                    ret
+                }
+            }
+            ScrollState.FINAL_PAUSE -> {
+                val requiredPause = if (isMostlyWestern(currentLyric)) 250L else finalPauseDuration
+                if (System.currentTimeMillis() - initialPauseStartTime >= requiredPause) {
+                    scrollState = ScrollState.DONE
+                }
+                extractByWeight(currentLyric, scrollOffset, maxOf(totalWeight - scrollOffset, maxDisplayWeight))
+            }
+            ScrollState.DONE -> {
+                extractByWeight(currentLyric, scrollOffset, maxOf(totalWeight - scrollOffset, maxDisplayWeight))
+            }
+        }
     }
 
     /**
      * Build the miui.focus.param JSON string for Template 7.
      */
     private fun buildIslandParamsJson(
-        lyric: String,
+        displayLyric: String,
+        fullLyric: String,
         subText: String,
         progressPercent: Int,
         title: String,
@@ -344,12 +697,12 @@ class SuperIslandHandler(
         paramV2.put("islandFirstFloat", false)
 
         // ── 息屏 AOD ──
-        paramV2.put("aodTitle", lyric.take(20).ifEmpty { "♪" })
+        paramV2.put("aodTitle", displayLyric.take(20).ifEmpty { "♪" })
 
         // ── 展开态: chatInfo (IM图文组件) ──
         val chatInfo = JSONObject()
         chatInfo.put("picProfile", "miui.focus.pic_avatar")  // 头像图: 使用专辑图
-        chatInfo.put("title", lyric.ifEmpty { "♪" })         // 主要文本: 歌词
+        chatInfo.put("title", fullLyric.ifEmpty { "♪" })         // 主要文本: 歌词
         chatInfo.put("content", subText)                      // 次要文本: 歌名 - 歌手
         paramV2.put("chatInfo", chatInfo)
 
@@ -394,7 +747,7 @@ class SuperIslandHandler(
 
         // B区: 文本组件 — 歌词作为正文大字
         val textInfo = JSONObject()
-        textInfo.put("title", lyric.ifEmpty { "♪" })  // 正文大字: 歌词
+        textInfo.put("title", displayLyric.ifEmpty { "♪" })  // 正文大字: 滚动歌词片段
         textInfo.put("showHighlightColor", showHighlightColor)
         textInfo.put("narrowFont", false)
         bigIslandArea.put("textInfo", textInfo)
@@ -405,10 +758,10 @@ class SuperIslandHandler(
         val shareData = JSONObject()
         shareData.put("pic", "miui.focus.pic_share")
         shareData.put("title", title.ifEmpty { "♪" })
-        shareData.put("content", lyric.ifEmpty { "♪" })
+        shareData.put("content", fullLyric.ifEmpty { "♪" })
         val shareArtist = if (artist.isNotBlank()) artist else "未知歌手"
         val shareSong = title.ifEmpty { "未知歌曲" }
-        shareData.put("shareContent", "$lyric\n--$shareArtist-$shareSong")
+        shareData.put("shareContent", "$fullLyric\n--$shareArtist-$shareSong")
         paramIsland.put("shareData", shareData)
 
         // 小岛: album art thumbnail with progress ring (using miui.land key)
