@@ -74,7 +74,7 @@ fun MiuixCustomSettingsScreen(
 
     var superIslandEnabled by remember { mutableStateOf(prefs.getBoolean("super_island_enabled", false)) }
     var superIslandTextColorEnabled by remember { mutableStateOf(prefs.getBoolean("super_island_text_color_enabled", false)) }
-    var superIslandEdgeColorEnabled by remember { mutableStateOf(prefs.getBoolean("super_island_edge_color_enabled", false)) }
+
     var superIslandShareEnabled by remember { mutableStateOf(prefs.getBoolean("super_island_share_enabled", true)) }
     var superIslandShareFormat by remember { mutableStateOf(prefs.getString("super_island_share_format", "format_1") ?: "format_1") }
     var miuixEnabled by remember { mutableStateOf(prefs.getBoolean("ui_use_miuix", false)) }
@@ -221,15 +221,7 @@ fun MiuixCustomSettingsScreen(
                                                 prefs.edit().putBoolean("super_island_text_color_enabled", it).apply()
                                             }
                                         )
-                                        SuperSwitch(
-                                            title = stringResource(R.string.settings_super_island_edge_color),
-                                            summary = stringResource(R.string.settings_super_island_edge_color_desc),
-                                            checked = superIslandEdgeColorEnabled,
-                                            onCheckedChange = {
-                                                superIslandEdgeColorEnabled = it
-                                                prefs.edit().putBoolean("super_island_edge_color_enabled", it).apply()
-                                            }
-                                        )
+
                                         SuperSwitch(
                                             title = stringResource(R.string.settings_super_island_share),
                                             summary = stringResource(R.string.settings_super_island_share_desc),
@@ -298,7 +290,8 @@ fun MiuixCustomSettingsScreen(
                                 NotificationPreview(
                                     progressColorEnabled = progressColorEnabled,
                                     actionStyle = actionStyle,
-                                    superIslandEnabled = superIslandEnabled
+                                    superIslandEnabled = superIslandEnabled,
+                                    superIslandTextColorEnabled = superIslandTextColorEnabled
                                 )
                             }
                             item { Spacer(modifier = Modifier.height(16.dp)) }

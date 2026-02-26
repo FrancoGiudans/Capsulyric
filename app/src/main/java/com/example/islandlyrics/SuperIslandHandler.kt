@@ -51,7 +51,6 @@ class SuperIslandHandler(
 
     // New preferences
     private var cachedSuperIslandTextColorEnabled = false
-    private var cachedSuperIslandEdgeColorEnabled = false
     private var cachedSuperIslandShareEnabled = true
     private var cachedSuperIslandShareFormat = "format_1"
     private var cachedProgressBarColorEnabled = false
@@ -67,10 +66,6 @@ class SuperIslandHandler(
             }
             "super_island_text_color_enabled" -> {
                 cachedSuperIslandTextColorEnabled = p.getBoolean(key, false)
-                forceUpdateNotification()
-            }
-            "super_island_edge_color_enabled" -> {
-                cachedSuperIslandEdgeColorEnabled = p.getBoolean(key, false)
                 forceUpdateNotification()
             }
             "super_island_share_enabled" -> {
@@ -260,7 +255,6 @@ class SuperIslandHandler(
 
         cachedClickStyle = prefs.getString("notification_click_style", "default") ?: "default"
         cachedSuperIslandTextColorEnabled = prefs.getBoolean("super_island_text_color_enabled", false)
-        cachedSuperIslandEdgeColorEnabled = prefs.getBoolean("super_island_edge_color_enabled", false)
         cachedSuperIslandShareEnabled = prefs.getBoolean("super_island_share_enabled", true)
         cachedSuperIslandShareFormat = prefs.getString("super_island_share_format", "format_1") ?: "format_1"
         cachedProgressBarColorEnabled = prefs.getBoolean("progress_bar_color_enabled", false)
@@ -705,7 +699,7 @@ class SuperIslandHandler(
 
         val hexColor = String.format("#%06X", 0xFFFFFF and cachedAlbumColor)
         val showHighlightColor = cachedSuperIslandTextColorEnabled 
-        val ringColor = if (cachedSuperIslandEdgeColorEnabled) hexColor else "#757575"
+        val ringColor = if (showHighlightColor) hexColor else "#757575"
 
         // ── Notification attributes ──
         paramV2.put("protocol", 1)
@@ -741,7 +735,7 @@ class SuperIslandHandler(
         // 摘要态模版2: 图文组件1 (A区) + 文本组件 (B区)
         val paramIsland = JSONObject()
         paramIsland.put("islandProperty", 1)
-        if (cachedSuperIslandTextColorEnabled || cachedSuperIslandEdgeColorEnabled) {
+        if (showHighlightColor) {
             paramIsland.put("highlightColor", hexColor)
         }
 

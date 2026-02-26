@@ -198,7 +198,8 @@ fun CapsulePreview(
 fun NotificationPreview(
     progressColorEnabled: Boolean,
     actionStyle: String,
-    superIslandEnabled: Boolean = false
+    superIslandEnabled: Boolean = false,
+    superIslandTextColorEnabled: Boolean = false
 ) {
     val context = LocalContext.current
     val repo = remember { LyricRepository.getInstance() }
@@ -236,6 +237,8 @@ fun NotificationPreview(
     }
     
     val barColor = if (progressColorEnabled && extractedColor != null) extractedColor!! else MaterialTheme.colorScheme.primary
+    val textColor = if (superIslandTextColorEnabled && extractedColor != null) extractedColor!! else Color.White
+    val secondaryTextColor = if (superIslandTextColorEnabled && extractedColor != null) extractedColor!!.copy(alpha = 0.8f) else Color(0xFFB0B0B0)
 
     if (superIslandEnabled) {
         // Premium Super Island Style Notification Preview (As requested in image)
@@ -296,7 +299,7 @@ fun NotificationPreview(
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = title,
-                            color = Color.White,
+                            color = textColor,
                             fontWeight = FontWeight.Bold,
                             fontSize = 18.sp,
                             maxLines = 1,
@@ -305,7 +308,7 @@ fun NotificationPreview(
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
                             text = if (artist.isNotBlank()) "$artist - $currentLyric" else currentLyric,
-                            color = Color(0xFFB0B0B0),
+                            color = secondaryTextColor,
                             fontSize = 14.sp,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
