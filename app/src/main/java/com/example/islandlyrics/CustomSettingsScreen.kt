@@ -252,52 +252,6 @@ fun CustomSettingsScreen(
                                 )
                             }
 
-                            if (isHyperOsSupported) {
-                                SettingsSwitchItem(
-                                    title = stringResource(R.string.settings_dynamic_icon),
-                                    subtitle = stringResource(R.string.settings_dynamic_icon_desc),
-                                    checked = dynamicIconEnabled,
-                                    onCheckedChange = {
-                                        dynamicIconEnabled = it
-                                        prefs.edit().putBoolean("dynamic_icon_enabled", it).apply()
-                                    }
-                                )
-                                
-                                if (dynamicIconEnabled) {
-                                    val styleDisplayName = when (iconStyle) {
-                                        "advanced" -> stringResource(R.string.icon_style_advanced)
-                                        else -> stringResource(R.string.icon_style_classic)
-                                    }
-                                    Box(modifier = Modifier.fillMaxWidth()) {
-                                        SettingsTextItem(
-                                            title = stringResource(R.string.settings_icon_style),
-                                            value = styleDisplayName,
-                                            onClick = { showIconStyleDropdown = true }
-                                        )
-                                        Box(modifier = Modifier.matchParentSize().wrapContentSize(Alignment.Center)) {
-                                            DropdownMenu(
-                                                expanded = showIconStyleDropdown,
-                                                onDismissRequest = { showIconStyleDropdown = false }
-                                            ) {
-                                                val styles = listOf(
-                                                    "classic" to R.string.icon_style_classic,
-                                                    "advanced" to R.string.icon_style_advanced
-                                                )
-                                                styles.forEach { (styleId, nameId) ->
-                                                    DropdownMenuItem(
-                                                        text = { Text(stringResource(nameId)) },
-                                                        onClick = {
-                                                            iconStyle = styleId
-                                                            prefs.edit().putString("dynamic_icon_style", styleId).apply()
-                                                            showIconStyleDropdown = false
-                                                        }
-                                                    )
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                                
                                 SettingsSwitchItem(
                                     title = stringResource(R.string.settings_super_island),
                                     subtitle = stringResource(R.string.settings_super_island_desc),
@@ -314,6 +268,52 @@ fun CustomSettingsScreen(
                                         context.startService(intent)
                                     }
                                 )
+                                if (isHyperOsSupported && !superIslandEnabled) {
+                                    SettingsSwitchItem(
+                                        title = stringResource(R.string.settings_dynamic_icon),
+                                        subtitle = stringResource(R.string.settings_dynamic_icon_desc),
+                                        checked = dynamicIconEnabled,
+                                        onCheckedChange = {
+                                            dynamicIconEnabled = it
+                                            prefs.edit().putBoolean("dynamic_icon_enabled", it).apply()
+                                        }
+                                    )
+                                    
+                                    if (dynamicIconEnabled) {
+                                        val styleDisplayName = when (iconStyle) {
+                                            "advanced" -> stringResource(R.string.icon_style_advanced)
+                                            else -> stringResource(R.string.icon_style_classic)
+                                        }
+                                        Box(modifier = Modifier.fillMaxWidth()) {
+                                            SettingsTextItem(
+                                                title = stringResource(R.string.settings_icon_style),
+                                                value = styleDisplayName,
+                                                onClick = { showIconStyleDropdown = true }
+                                            )
+                                            Box(modifier = Modifier.matchParentSize().wrapContentSize(Alignment.Center)) {
+                                                DropdownMenu(
+                                                    expanded = showIconStyleDropdown,
+                                                    onDismissRequest = { showIconStyleDropdown = false }
+                                                ) {
+                                                    val styles = listOf(
+                                                        "classic" to R.string.icon_style_classic,
+                                                        "advanced" to R.string.icon_style_advanced
+                                                    )
+                                                    styles.forEach { (styleId, nameId) ->
+                                                        DropdownMenuItem(
+                                                            text = { Text(stringResource(nameId)) },
+                                                            onClick = {
+                                                                iconStyle = styleId
+                                                                prefs.edit().putString("dynamic_icon_style", styleId).apply()
+                                                                showIconStyleDropdown = false
+                                                            }
+                                                        )
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
                                 if (superIslandEnabled) {
                                     SettingsSwitchItem(
                                         title = stringResource(R.string.settings_super_island_text_color),
@@ -380,25 +380,27 @@ fun CustomSettingsScreen(
                                     }
                                 }
                             }
-                        }
                         1 -> { // Notification (Moved from 2)
                              // Preview
                              NotificationPreview(
                                  progressColorEnabled = progressColorEnabled,
-                                 actionStyle = actionStyle
+                                 actionStyle = actionStyle,
+                                 superIslandEnabled = superIslandEnabled
                              )
                              Spacer(modifier = Modifier.height(16.dp))
 
 
-                             SettingsSwitchItem(
-                                title = stringResource(R.string.settings_progress_color),
-                                subtitle = stringResource(R.string.settings_progress_color_desc),
-                                checked = progressColorEnabled,
-                                onCheckedChange = {
-                                    progressColorEnabled = it
-                                    prefs.edit().putBoolean("progress_bar_color_enabled", it).apply()
-                                }
-                            )
+                             if (!superIslandEnabled) {
+                                 SettingsSwitchItem(
+                                    title = stringResource(R.string.settings_progress_color),
+                                    subtitle = stringResource(R.string.settings_progress_color_desc),
+                                    checked = progressColorEnabled,
+                                    onCheckedChange = {
+                                        progressColorEnabled = it
+                                        prefs.edit().putBoolean("progress_bar_color_enabled", it).apply()
+                                    }
+                                )
+                             }
                             
                              // Notification Action Style
                             val actionStyleDisplay = when (actionStyle) {

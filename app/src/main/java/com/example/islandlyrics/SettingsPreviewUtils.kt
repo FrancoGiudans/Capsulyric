@@ -197,7 +197,8 @@ fun CapsulePreview(
 @Composable
 fun NotificationPreview(
     progressColorEnabled: Boolean,
-    actionStyle: String
+    actionStyle: String,
+    superIslandEnabled: Boolean = false
 ) {
     val context = LocalContext.current
     val repo = remember { LyricRepository.getInstance() }
@@ -236,111 +237,213 @@ fun NotificationPreview(
     
     val barColor = if (progressColorEnabled && extractedColor != null) extractedColor!! else MaterialTheme.colorScheme.primary
 
-    // Standard Android Notification Style Card
-    // Dark background #1C1B1F (Material Surface) or similar dark grey
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(8.dp)
-            .clip(RoundedCornerShape(24.dp))
-            .background(Color(0xFF202124)) // Dark notification background
-            .padding(20.dp)
-    ) {
-        Column {
-            // HEADER: [Icon] App Name • Source • now
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                // App Icon Simulation
-                Box(modifier = Modifier.size(20.dp).clip(CircleShape)) {
-                     Image(
-                        painter = painterResource(R.mipmap.ic_launcher_background),
+    if (superIslandEnabled) {
+        // Premium Super Island Style Notification Preview (As requested in image)
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(8.dp)
+                .clip(RoundedCornerShape(28.dp))
+                .background(Color(0xFF081420)) // Deep navy/black
+                .padding(16.dp)
+        ) {
+            Column {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Left: Album Art + Badge
+                    Box(modifier = Modifier.size(64.dp)) {
+                        if (albumArt != null) {
+                            Image(
+                                bitmap = albumArt!!.asImageBitmap(),
+                                contentDescription = null,
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .clip(RoundedCornerShape(12.dp)),
+                                contentScale = ContentScale.Crop
+                            )
+                        } else {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(Color.DarkGray)
+                            )
+                        }
+
+                        // App Badge at bottom-right
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.BottomEnd)
+                                .offset(x = 4.dp, y = 4.dp)
+                                .size(20.dp)
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(Color(0xFF333333))
+                                .padding(2.dp)
+                        ) {
+                            Image(
+                                painter = painterResource(R.mipmap.ic_launcher_foreground),
+                                contentDescription = null,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.width(16.dp))
+
+                    // Middle: Metadata
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = title,
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 18.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = if (artist.isNotBlank()) "$artist - $currentLyric" else currentLyric,
+                            color = Color(0xFFB0B0B0),
+                            fontSize = 14.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+
+                    // Right: App Icon (Simulating the small icon on the right)
+                    Icon(
+                        painter = painterResource(R.drawable.ic_music_note),
                         contentDescription = null,
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
-                    )
-                    Image(
-                        painter = painterResource(R.mipmap.ic_launcher_foreground),
-                        contentDescription = null,
-                        modifier = Modifier.fillMaxSize()
+                        tint = Color.White,
+                        modifier = Modifier
+                            .size(24.dp)
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(Color(0xFFFF2D55)) // Pink/Red background for music
+                            .padding(4.dp)
                     )
                 }
-                
-                Spacer(modifier = Modifier.width(8.dp))
-                
-                val pm = context.packageManager
-                val appName = remember { context.applicationInfo.loadLabel(pm).toString() }
-                
-                Text(
-                    text = "$appName • $sourceApp • now",
-                    color = Color.Gray,
-                    fontSize = 12.sp,
-                    maxLines = 1
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Bottom: Progress Bar
+                LinearProgressIndicator(
+                    progress = { progress },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(4.dp)
+                        .clip(RoundedCornerShape(2.dp)),
+                    color = Color.Gray.copy(alpha = 0.6f), // Softer color as in screenshot
+                    trackColor = Color(0xFF1A2633)
                 )
             }
-            
-            Spacer(modifier = Modifier.height(12.dp))
-            
-            // CONTENT: Title - Artist
-            Text(
-                text = "$title - $artist",
-                color = Color.White,
-                fontWeight = FontWeight.Bold,
-                fontSize = 16.sp,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            
-            Spacer(modifier = Modifier.height(4.dp))
-            
-            // LYRIC
-            Text(
-                text = currentLyric,
-                color = Color.White, // High contrast
-                fontSize = 16.sp,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            // PROGRESS BAR
-            // Thick rounded bar
-            LinearProgressIndicator(
-                progress = { progress },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(6.dp)
-                    .clip(RoundedCornerShape(3.dp)),
-                color = barColor,
-                trackColor = Color(0xFF454545) // Darker gray track
-            )
-            
-            Spacer(modifier = Modifier.height(12.dp))
-            
-            // ACTIONS
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Start
-            ) {
-                if (actionStyle == "miplay") {
-                     TextButton(onClick = {}) {
-                        Text("Mi Play", color = Color(0xFF5E97F6), fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
+        }
+    } else {
+        // Standard Android Notification Style Card (Legacy)
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(8.dp)
+                .clip(RoundedCornerShape(24.dp))
+                .background(Color(0xFF202124)) // Dark notification background
+                .padding(20.dp)
+        ) {
+            Column {
+                // HEADER: [Icon] App Name • Source • now
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    // App Icon Simulation
+                    Box(modifier = Modifier.size(20.dp).clip(CircleShape)) {
+                        Image(
+                            painter = painterResource(R.mipmap.ic_launcher_background),
+                            contentDescription = null,
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                        Image(
+                            painter = painterResource(R.mipmap.ic_launcher_foreground),
+                            contentDescription = null,
+                            modifier = Modifier.fillMaxSize()
+                        )
                     }
-                } else {
-                    // Standard Controls
-                    TextButton(
-                        onClick = {},
-                        contentPadding = PaddingValues(horizontal = 0.dp)
-                    ) {
-                        Text("Pause", color = Color(0xFF8AB4F8), fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
-                    }
-                    
-                    Spacer(modifier = Modifier.width(24.dp))
-                    
-                    TextButton(
-                        onClick = {},
-                        contentPadding = PaddingValues(horizontal = 0.dp)
-                    ) {
-                        Text("Next", color = Color(0xFF8AB4F8), fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
+
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    val pm = context.packageManager
+                    val appName = remember { context.applicationInfo.loadLabel(pm).toString() }
+
+                    Text(
+                        text = "$appName • $sourceApp • now",
+                        color = Color.Gray,
+                        fontSize = 12.sp,
+                        maxLines = 1
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // CONTENT: Title - Artist
+                Text(
+                    text = "$title - $artist",
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                // LYRIC
+                Text(
+                    text = currentLyric,
+                    color = Color.White, // High contrast
+                    fontSize = 16.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // PROGRESS BAR
+                LinearProgressIndicator(
+                    progress = { progress },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(6.dp)
+                        .clip(RoundedCornerShape(3.dp)),
+                    color = barColor,
+                    trackColor = Color(0xFF454545) // Darker gray track
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // ACTIONS
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Start
+                ) {
+                    if (actionStyle == "miplay") {
+                        TextButton(onClick = {}) {
+                            Text("Mi Play", color = Color(0xFF5E97F6), fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
+                        }
+                    } else {
+                        // Standard Controls
+                        TextButton(
+                            onClick = {},
+                            contentPadding = PaddingValues(horizontal = 0.dp)
+                        ) {
+                            Text("Pause", color = Color(0xFF8AB4F8), fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
+                        }
+
+                        Spacer(modifier = Modifier.width(24.dp))
+
+                        TextButton(
+                            onClick = {},
+                            contentPadding = PaddingValues(horizontal = 0.dp)
+                        ) {
+                            Text("Next", color = Color(0xFF8AB4F8), fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
+                        }
                     }
                 }
             }

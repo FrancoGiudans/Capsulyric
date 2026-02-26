@@ -260,7 +260,7 @@ fun MiuixCustomSettingsScreen(
                                             )
                                         }
                                     }
-                                    if (isHyperOsSupported) {
+                                    if (isHyperOsSupported && !superIslandEnabled) {
                                         SuperSwitch(
                                             title = stringResource(R.string.settings_dynamic_icon),
                                             summary = stringResource(R.string.settings_dynamic_icon_desc),
@@ -297,21 +297,24 @@ fun MiuixCustomSettingsScreen(
                             item {
                                 NotificationPreview(
                                     progressColorEnabled = progressColorEnabled,
-                                    actionStyle = actionStyle
+                                    actionStyle = actionStyle,
+                                    superIslandEnabled = superIslandEnabled
                                 )
                             }
                             item { Spacer(modifier = Modifier.height(16.dp)) }
                             item {
                                 Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
-                                    SuperSwitch(
-                                        title = stringResource(R.string.settings_progress_color),
-                                        summary = stringResource(R.string.settings_progress_color_desc),
-                                        checked = progressColorEnabled,
-                                        onCheckedChange = {
-                                            progressColorEnabled = it
-                                            prefs.edit().putBoolean("progress_bar_color_enabled", it).apply()
-                                        }
-                                    )
+                                    if (!superIslandEnabled) {
+                                        SuperSwitch(
+                                            title = stringResource(R.string.settings_progress_color),
+                                            summary = stringResource(R.string.settings_progress_color_desc),
+                                            checked = progressColorEnabled,
+                                            onCheckedChange = {
+                                                progressColorEnabled = it
+                                                prefs.edit().putBoolean("progress_bar_color_enabled", it).apply()
+                                            }
+                                        )
+                                    }
 
                                     val actionStyles = mutableListOf("disabled", "media_controls")
                                     val actionStyleNames = mutableListOf(
