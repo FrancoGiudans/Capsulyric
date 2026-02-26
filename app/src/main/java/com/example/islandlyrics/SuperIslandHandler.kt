@@ -215,7 +215,7 @@ class SuperIslandHandler(
         lastSubText = subText
         lastAppliedAlbumColor = cachedAlbumColor
 
-        val islandParams = buildIslandParamsJson(lyric, subText, progressPercent, title)
+        val islandParams = buildIslandParamsJson(lyric, subText, progressPercent, title, artist)
 
         val builder = Notification.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_music_note)
@@ -292,7 +292,7 @@ class SuperIslandHandler(
         lastAppliedAlbumColor = cachedAlbumColor
 
         // Update the island params JSON in-place on the SAME notification object
-        val islandParams = buildIslandParamsJson(currentLyric, subText, progressPercent, title)
+        val islandParams = buildIslandParamsJson(currentLyric, subText, progressPercent, title, artist)
         notification.extras.putString("miui.focus.param", islandParams)
 
             // Update base notification text fields
@@ -325,7 +325,8 @@ class SuperIslandHandler(
         lyric: String,
         subText: String,
         progressPercent: Int,
-        title: String
+        title: String,
+        artist: String
     ): String {
         val root = JSONObject()
         val paramV2 = JSONObject()
@@ -398,6 +399,16 @@ class SuperIslandHandler(
         bigIslandArea.put("textInfo", textInfo)
 
         paramIsland.put("bigIslandArea", bigIslandArea)
+
+        // 分享数据 (shareData)
+        val shareData = JSONObject()
+        shareData.put("pic", "miui.focus.pic_avatar")
+        shareData.put("title", title.ifEmpty { "♪" })
+        shareData.put("content", lyric.ifEmpty { "♪" })
+        val shareArtist = if (artist.isNotBlank()) artist else "未知歌手"
+        val shareSong = title.ifEmpty { "未知歌曲" }
+        shareData.put("shareContent", "$lyric\n--$shareArtist-$shareSong")
+        paramIsland.put("shareData", shareData)
 
         // 小岛: album art thumbnail with progress ring (using miui.land key)
         val smallIslandArea = JSONObject()
