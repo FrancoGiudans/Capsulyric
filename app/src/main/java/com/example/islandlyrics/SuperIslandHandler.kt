@@ -234,6 +234,7 @@ class SuperIslandHandler(
             pics.putParcelable("miui.focus.pic_avatar", Icon.createWithBitmap(scaleBitmap(albumArt, 224)))
             pics.putParcelable("miui.focus.pic_island", Icon.createWithBitmap(scaleBitmap(albumArt, 88)))
             pics.putParcelable("miui.land.pic_island", Icon.createWithBitmap(scaleBitmap(albumArt, 88)))
+            pics.putParcelable("miui.focus.pic_share", Icon.createWithBitmap(scaleBitmap(albumArt, 224)))
         }
         val appIcon = getAppIcon(metadata?.packageName)
         if (appIcon != null) {
@@ -307,6 +308,7 @@ class SuperIslandHandler(
                 pics.putParcelable("miui.focus.pic_avatar", Icon.createWithBitmap(scaleBitmap(albumArt, 224)))
                 pics.putParcelable("miui.focus.pic_island", Icon.createWithBitmap(scaleBitmap(albumArt, 88)))
                 pics.putParcelable("miui.land.pic_island", Icon.createWithBitmap(scaleBitmap(albumArt, 88)))
+                pics.putParcelable("miui.focus.pic_share", Icon.createWithBitmap(scaleBitmap(albumArt, 224)))
                 
                 val appIcon = getAppIcon(metadata?.packageName)
                 if (appIcon != null) {
@@ -401,7 +403,7 @@ class SuperIslandHandler(
 
         // 分享数据 (shareData)
         val shareData = JSONObject()
-        shareData.put("pic", "miui.focus.pic_avatar")
+        shareData.put("pic", "miui.focus.pic_share")
         shareData.put("title", title.ifEmpty { "♪" })
         shareData.put("content", lyric.ifEmpty { "♪" })
         val shareArtist = if (artist.isNotBlank()) artist else "未知歌手"
