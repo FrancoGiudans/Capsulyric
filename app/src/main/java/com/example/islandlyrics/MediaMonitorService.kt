@@ -48,7 +48,6 @@ class MediaMonitorService : NotificationListenerService() {
     private val handler = Handler(Looper.getMainLooper())
     private val stopRunnable = Runnable {
         AppLogger.getInstance().log(TAG, "Stopping service after debounce.")
-        LyricRepository.getInstance().updatePlaybackStatus(false) // Logic Fix: Move status update here
         val intent = Intent(this@MediaMonitorService, LyricService::class.java)
         intent.action = "ACTION_STOP"
         startService(intent)
@@ -327,6 +326,10 @@ class MediaMonitorService : NotificationListenerService() {
         } else {
             // Debounce Stop
             handler.removeCallbacks(stopRunnable)
+            
+            // IMMEDIATELY sync the paused state so LyricService's progress updater stops running
+            // (LyricService has its own UI debounce logic, so the UI won't flicker)
+            LyricRepository.getInstance().updatePlaybackStatus(false)
             
             // Fix: Use user preference for delay
             // Default 500ms debounce for "Immediate" to handle track switches
