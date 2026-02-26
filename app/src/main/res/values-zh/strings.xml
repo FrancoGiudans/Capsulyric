@@ -289,7 +289,7 @@
     <string name="settings_super_island_desc">替代 Live Update，使用小米超级岛模版发送歌词通知</string>
     <string name="settings_super_island_text_color">为播放信息着色</string>
     <string name="settings_super_island_text_color_desc">使超级岛中的歌词和歌名随专辑封面变色</string>
-    <string name="settings_super_island_edge_color">为胶囊边缘着色（收缩态）</string>
+    <string name="settings_super_island_edge_color">为胶囊边缘着色</string>
     <string name="settings_super_island_edge_color_desc">从专辑封面提取颜色应用到超级岛收缩态边缘和进度条</string>
     <string name="settings_app_ui_style">App 界面风格</string>
     <string name="settings_app_ui_style_desc">在 Material Design 和 Miuix UI 之间切换。应用将会重启。</string>
