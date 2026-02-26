@@ -17,19 +17,19 @@ import android.graphics.*
  */
 object AdvancedIconRenderer {
     
-    private const val CANVAS_WIDTH_DP = 600f     // Increased for wider display
-    private const val CANVAS_HEIGHT_DP = 120f
-    private const val ALBUM_ART_SIZE_DP = 120f   // Height matches canvas height
-    private const val ALBUM_ART_WIDTH_DP = 108f  // Reduced width (10% less than 120)
-    private const val TEXT_START_DP = 113f       // 108 + 5dp gap
-    private const val TEXT_END_DP = 550f         // Width ends
+    private const val CANVAS_WIDTH_DP = 200f     // Reduced by 3x (from 600)
+    private const val CANVAS_HEIGHT_DP = 40f     // Reduced by 3x (from 120)
+    private const val ALBUM_ART_SIZE_DP = 40f    // Reduced by 3x (from 120)
+    private const val ALBUM_ART_WIDTH_DP = 36f   // Reduced by 3x (from 108)
+    private const val TEXT_START_DP = 38f        // Reduced by 3x (from 113)
+    private const val TEXT_END_DP = 183f         // Reduced by 3x (from 550)
     
-    private const val LINE1_BASE_SIZE_DP = 75f    // Slightly reduced for breathing room
-    private const val LINE2_BASE_SIZE_DP = 45.6f  
+    private const val LINE1_BASE_SIZE_DP = 25f   // Reduced by 3x (from 75)
+    private const val LINE2_BASE_SIZE_DP = 15f   // Reduced by ~3x (from 45.6)
     
     private const val MIN_TEXT_SCALE_X = 0.8f
     private const val MIN_TEXT_SIZE_FACTOR = 0.65f // Allow shrinking down to 65% of base size
-    private const val CORNER_RADIUS_DP = 24f    // Rounded corner radius
+    private const val CORNER_RADIUS_DP = 8f      // Reduced by 3x (from 24)
     
     /**
      * Render the advanced icon bitmap.

@@ -876,7 +876,7 @@ class LyricCapsuleHandler(
         try {
             // Adaptive Font Size Algorithm REMOVED
             // User requested fixed size, no shrinking.
-            val fontSize = forceFontSize ?: 40f
+            val fontSize = forceFontSize ?: 20f
             
             val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
                 textSize = fontSize
