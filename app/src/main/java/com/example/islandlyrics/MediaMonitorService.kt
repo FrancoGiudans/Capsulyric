@@ -302,7 +302,16 @@ class MediaMonitorService : NotificationListenerService() {
 
             // Start/Update Service
             val intent = Intent(this, LyricService::class.java)
-            startForegroundService(intent)
+            try {
+                startForegroundService(intent)
+            } catch (e: Exception) {
+                AppLogger.getInstance().e(TAG, "Exception starting foreground service: ${e.message}")
+                try {
+                    startService(intent) // Fallback for strict OS limits
+                } catch (e2: Exception) {
+                    AppLogger.getInstance().e(TAG, "Fallback startService also failed: ${e2.message}")
+                }
+            }
 
             // Sync State
             LyricRepository.getInstance().updatePlaybackStatus(true)

@@ -378,7 +378,11 @@ class LyricService : Service() {
                 val currentInfo = LyricRepository.getInstance().liveLyric.value
                 val title = currentInfo?.sourceApp ?: "Island Lyrics"
                 val text = currentInfo?.lyric ?: "Initializing..."
-                startForeground(NOTIFICATION_ID, buildNotification(text, title, ""))
+                try {
+                    startForeground(NOTIFICATION_ID, buildNotification(text, title, ""))
+                } catch (e: Exception) {
+                    AppLogger.getInstance().e(TAG, "Failed startForeground in fallback: ${e.message}")
+                }
             }
         }
 
@@ -411,9 +415,10 @@ class LyricService : Service() {
         val prefs = getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE)
         val useSuperLyricApi = prefs.getBoolean("use_superlyric_api", true)
         if (useSuperLyricApi) {
-            SuperLyricTool.unregisterSuperLyric(this, superLyricStub)
+            // Unregistering manually is known to break future callbacks until app reboot
+            // SuperLyric API handles automatic unregistration when binder dies
             if (BuildConfig.DEBUG) {
-                AppLogger.getInstance().d(TAG, "SuperLyric API: Unregistered")
+                AppLogger.getInstance().d(TAG, "SuperLyric API: Left to auto-unregister by module")
             }
         }
         

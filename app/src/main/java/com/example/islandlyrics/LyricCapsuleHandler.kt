@@ -35,6 +35,7 @@ class LyricCapsuleHandler(
     // Content tracking to prevent flicker
     private var lastNotifiedLyric = ""
     private var lastNotifiedProgress = -1
+    private var isFirstNotification = true
     
     // Cached preferences (Fix 3: avoid repeated SharedPreferences reads in hot loop)
     private var cachedActionStyle = "disabled"
@@ -219,6 +220,7 @@ class LyricCapsuleHandler(
         initialPauseStartTime = System.currentTimeMillis() // Start pause immediately
         scrollOffset = 0
         lastLyricText = "" // Force reset in next updateNotification
+        isFirstNotification = true // Reset flag
         
         mainHandler.post(visualizerLoop)
     }
@@ -268,13 +270,13 @@ class LyricCapsuleHandler(
         }
     }
 
-    // EXPOSED METHOD for LyricService to request a refresh/repost
     fun forceUpdateNotification() {
         // Reset last notified state to force a repost
         lastNotifiedLyric = "" 
         lastNotifiedProgress = -1
         // FIX: Reset throttler to ensure immediate update for service start
         lastUpdateTime = 0 
+        isFirstNotification = true
         updateNotification()
     }
     
@@ -631,7 +633,13 @@ class LyricCapsuleHandler(
                 currentProgress, 
                 currentIconFrame
             )
-            service.startForeground(1001, notification)
+            
+            if (isFirstNotification) {
+                service.startForeground(1001, notification)
+                isFirstNotification = false
+            } else {
+                manager?.notify(1001, notification)
+            }
         } catch (e: Exception) {
             LogManager.getInstance().e(context, TAG, "Update Failed: $e")
         }

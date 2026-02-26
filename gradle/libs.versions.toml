@@ -10,7 +10,7 @@ activityCompose = "1.12.4"
 composeBom = "2026.02.00"
 markwon = "4.6.2"
 coil = "2.7.0"
-miuix = "0.8.3"
+miuix = "0.8.4"
 
 [libraries]
 annotation = { module = "androidx.annotation:annotation", version.ref = "annotation" }
@@ -40,7 +40,7 @@ markwon-ext-tasklist = { group = "io.noties.markwon", name = "ext-tasklist", ver
 markwon-html = { group = "io.noties.markwon", name = "html", version.ref = "markwon" }
 markwon-image-coil = { group = "io.noties.markwon", name = "image-coil", version.ref = "markwon" }
 coil = { group = "io.coil-kt", name = "coil", version.ref = "coil" }
-miuix = { group = "top.yukonga.miuix.kmp", name = "miuix-android", version = "0.8.4" }
+miuix = { group = "top.yukonga.miuix.kmp", name = "miuix-android", version.ref = "miuix" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
