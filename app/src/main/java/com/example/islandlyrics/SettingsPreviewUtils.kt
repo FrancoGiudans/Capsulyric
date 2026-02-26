@@ -220,16 +220,41 @@ fun NotificationPreview(
     // Calculate Color
     var extractedColor by remember { mutableStateOf<Color?>(null) }
     
-    LaunchedEffect(albumArt) {
+    LaunchedEffect(albumArt, metadata) {
         if (albumArt != null) {
             Palette.from(albumArt!!).generate { palette ->
                 val vibrant = palette?.vibrantSwatch?.rgb
                 if (vibrant != null) {
-                     extractedColor = Color(vibrant)
+                    extractedColor = Color(vibrant)
                 } else {
                     val dominant = palette?.dominantSwatch?.rgb
-                     if (dominant != null) extractedColor = Color(dominant)
+                    if (dominant != null) extractedColor = Color(dominant)
                 }
+            }
+        } else if (metadata?.packageName != null) {
+            // Fallback to app icon color in preview
+            try {
+                val icon = context.packageManager.getApplicationIcon(metadata!!.packageName)
+                val bitmap = if (icon is android.graphics.drawable.BitmapDrawable) {
+                    icon.bitmap
+                } else {
+                    val b = android.graphics.Bitmap.createBitmap(icon.intrinsicWidth, icon.intrinsicHeight, android.graphics.Bitmap.Config.ARGB_8888)
+                    val canvas = android.graphics.Canvas(b)
+                    icon.setBounds(0, 0, canvas.width, canvas.height)
+                    icon.draw(canvas)
+                    b
+                }
+                Palette.from(bitmap).generate { palette ->
+                    val vibrant = palette?.vibrantSwatch?.rgb
+                    if (vibrant != null) {
+                        extractedColor = Color(vibrant)
+                    } else {
+                        val dominant = palette?.dominantSwatch?.rgb
+                        if (dominant != null) extractedColor = Color(dominant)
+                    }
+                }
+            } catch (e: Exception) {
+                extractedColor = null
             }
         } else {
             extractedColor = null
@@ -241,105 +266,203 @@ fun NotificationPreview(
     val secondaryTextColor = if (superIslandTextColorEnabled && extractedColor != null) extractedColor!!.copy(alpha = 0.8f) else Color(0xFFB0B0B0)
 
     if (superIslandEnabled) {
-        // Premium Super Island Style Notification Preview (As requested in image)
+        // Premium Super Island Style Notification Preview
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(8.dp)
                 .clip(RoundedCornerShape(28.dp))
-                .background(Color(0xFF081420)) // Deep navy/black
+                .background(Color(0xFF0C0C0C)) // Xiaomi Island Dark
                 .padding(16.dp)
         ) {
-            Column {
+            if (actionStyle == "media_controls") {
+                // Template 12 Layout: [Album Art] [Lyrics / Title-Artist] [Buttons Group]
+                // All on the same row, reflecting real clipping/blocking behavior
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Left: Album Art + Badge
-                    Box(modifier = Modifier.size(64.dp)) {
+                    // Left: Circular Album Art
+                    Box(modifier = Modifier.size(52.dp)) {
                         if (albumArt != null) {
                             Image(
                                 bitmap = albumArt!!.asImageBitmap(),
                                 contentDescription = null,
                                 modifier = Modifier
                                     .fillMaxSize()
-                                    .clip(RoundedCornerShape(12.dp)),
+                                    .clip(CircleShape),
                                 contentScale = ContentScale.Crop
                             )
                         } else {
                             Box(
                                 modifier = Modifier
                                     .fillMaxSize()
-                                    .clip(RoundedCornerShape(12.dp))
+                                    .clip(CircleShape)
                                     .background(Color.DarkGray)
-                            )
-                        }
-
-                        // App Badge at bottom-right
-                        Box(
-                            modifier = Modifier
-                                .align(Alignment.BottomEnd)
-                                .offset(x = 4.dp, y = 4.dp)
-                                .size(20.dp)
-                                .clip(RoundedCornerShape(4.dp))
-                                .background(Color(0xFF333333))
-                                .padding(2.dp)
-                        ) {
-                            Image(
-                                painter = painterResource(R.mipmap.ic_launcher_foreground),
-                                contentDescription = null,
-                                modifier = Modifier.fillMaxSize()
                             )
                         }
                     }
 
-                    Spacer(modifier = Modifier.width(16.dp))
+                    Spacer(modifier = Modifier.width(12.dp))
 
-                    // Middle: Metadata
+                    // Middle: Text Info (Constrained width to show blocking)
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = title,
-                            color = textColor,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 18.sp,
+                            text = currentLyric,
+                            color = Color.White, // Always white as per user request
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 16.sp,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
-                            text = if (artist.isNotBlank()) "$artist - $currentLyric" else currentLyric,
-                            color = secondaryTextColor,
-                            fontSize = 14.sp,
+                            text = if (artist.isNotBlank()) "$title - $artist" else title,
+                            color = Color(0xFFB0B0B0), // Standard gray
+                            fontSize = 13.sp,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
                     }
 
-                    // Right: App Icon (Simulating the small icon on the right)
-                    Icon(
-                        painter = painterResource(R.drawable.ic_music_note),
-                        contentDescription = null,
-                        tint = Color.White,
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    // Right Group: Playback Controls (Blocking area)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // Play/Pause with Progress Ring
+                        Box(
+                            contentAlignment = Alignment.Center,
+                            modifier = Modifier.size(44.dp)
+                        ) {
+                            // Subtle background fix for progress ring
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize(0.85f)
+                                    .clip(CircleShape)
+                                    .background(Color.White.copy(alpha = 0.15f))
+                            )
+                            CircularProgressIndicator(
+                                progress = { progress },
+                                strokeWidth = 3.dp,
+                                color = if (progressColorEnabled) barColor else Color.White,
+                                trackColor = Color.Transparent,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                            val isPlaying = repo.isPlaying.value ?: false
+                            Icon(
+                                painter = painterResource(if (isPlaying) R.drawable.ic_pause else R.drawable.ic_play_arrow),
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.width(8.dp))
+
+                        // Next Button
+                        Icon(
+                            painter = painterResource(R.drawable.ic_skip_next),
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(28.dp)
+                        )
+                    }
+                }
+            } else {
+                // Template 7 Style (Legacy/Standard)
+                Column {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // Left: Album Art + Badge
+                        Box(modifier = Modifier.size(64.dp)) {
+                            if (albumArt != null) {
+                                Image(
+                                    bitmap = albumArt!!.asImageBitmap(),
+                                    contentDescription = null,
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .clip(RoundedCornerShape(12.dp)),
+                                    contentScale = ContentScale.Crop
+                                )
+                            } else {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .background(Color.DarkGray)
+                                )
+                            }
+
+                            // App Badge
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.BottomEnd)
+                                    .offset(x = 4.dp, y = 4.dp)
+                                    .size(20.dp)
+                                    .clip(RoundedCornerShape(4.dp))
+                                    .background(Color(0xFF333333))
+                                    .padding(2.dp)
+                            ) {
+                                Image(
+                                    painter = painterResource(R.mipmap.ic_launcher_foreground),
+                                    contentDescription = null,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.width(16.dp))
+
+                        // Middle: Metadata
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = currentLyric,
+                                color = textColor,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 18.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = if (artist.isNotBlank()) "$title - $artist" else title,
+                                color = secondaryTextColor,
+                                fontSize = 14.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+
+                        // Right: App Icon
+                        Icon(
+                            painter = painterResource(R.drawable.ic_music_note),
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier
+                                .size(24.dp)
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(Color(0xFFFF2D55))
+                                .padding(4.dp)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Bottom: Progress Bar
+                    LinearProgressIndicator(
+                        progress = { progress },
                         modifier = Modifier
-                            .size(24.dp)
-                            .clip(RoundedCornerShape(6.dp))
-                            .background(Color(0xFFFF2D55)) // Pink/Red background for music
-                            .padding(4.dp)
+                            .fillMaxWidth()
+                            .height(4.dp)
+                            .clip(RoundedCornerShape(2.dp)),
+                        color = if (progressColorEnabled) barColor else Color.Gray.copy(alpha = 0.6f),
+                        trackColor = if (progressColorEnabled) barColor.copy(alpha = 0.2f) else Color(0xFF1A2633)
                     )
                 }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Bottom: Progress Bar
-                LinearProgressIndicator(
-                    progress = { progress },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(4.dp)
-                        .clip(RoundedCornerShape(2.dp)),
-                    color = if (progressColorEnabled) barColor else Color.Gray.copy(alpha = 0.6f),
-                    trackColor = if (progressColorEnabled) barColor.copy(alpha = 0.2f) else Color(0xFF1A2633)
-                )
             }
         }
     } else {

@@ -288,9 +288,7 @@
     <string name="settings_super_island">发送小米超级岛通知</string>
     <string name="settings_super_island_desc">替代 Live Update，使用小米超级岛模版发送歌词通知</string>
     <string name="settings_super_island_text_color">为播放信息着色</string>
-    <string name="settings_super_island_text_color_desc">使超级岛中的内容（歌词、歌名、胶囊边缘及进度条）随专辑封面变色</string>
-    <string name="settings_super_island_edge_color">为胶囊边缘着色</string>
-    <string name="settings_super_island_edge_color_desc">从专辑封面提取颜色应用到超级岛收缩态边缘和进度条</string>
+    <string name="settings_super_island_text_color_desc">使超级岛中的内容（歌词、歌单、胶囊边缘及进度条）随专辑封面变色</string>
     <string name="settings_super_island_share">开启拖拽分享</string>
     <string name="settings_super_island_share_desc">允许长按拖拽超级岛以分享歌词卡片</string>
     <string name="settings_super_island_share_format">拖拽分享文案格式</string>

@@ -213,12 +213,14 @@ fun MiuixCustomSettingsScreen(
                                     )
                                     if (superIslandEnabled) {
                                         SuperSwitch(
-                                            title = stringResource(R.string.settings_super_island_text_color),
-                                            summary = stringResource(R.string.settings_super_island_text_color_desc),
+                                            title = stringResource(R.string.settings_super_island_colorize),
+                                            summary = stringResource(R.string.settings_super_island_colorize_desc),
                                             checked = superIslandTextColorEnabled,
                                             onCheckedChange = {
                                                 superIslandTextColorEnabled = it
+                                                progressColorEnabled = it
                                                 prefs.edit().putBoolean("super_island_text_color_enabled", it).apply()
+                                                prefs.edit().putBoolean("progress_bar_color_enabled", it).apply()
                                             }
                                         )
 
@@ -231,6 +233,7 @@ fun MiuixCustomSettingsScreen(
                                                 prefs.edit().putBoolean("super_island_share_enabled", it).apply()
                                             }
                                         )
+
                                         if (superIslandShareEnabled) {
                                             val shareFormats = listOf("format_1", "format_2", "format_3")
                                             val shareFormatNames = listOf(

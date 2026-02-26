@@ -394,8 +394,14 @@ class LyricService : Service() {
         } else if ("ACTION_MEDIA_PAUSE" == action) {
             handleMediaPause()
             return START_STICKY
+        } else if ("ACTION_MEDIA_PLAY" == action) {
+            handleMediaPlay()
+            return START_STICKY
         } else if ("ACTION_MEDIA_NEXT" == action) {
             handleMediaNext()
+            return START_STICKY
+        } else if ("ACTION_MEDIA_PREV" == action) {
+            handleMediaPrev()
             return START_STICKY
         }
 
@@ -878,6 +884,26 @@ class LyricService : Service() {
         }
     }
 
+    private fun handleMediaPlay() {
+        try {
+            val mm = getSystemService(Context.MEDIA_SESSION_SERVICE) as MediaSessionManager
+            val component = android.content.ComponentName(this, MediaMonitorService::class.java)
+            val controllers = mm.getActiveSessions(component)
+            
+            for (c in controllers) {
+                val state = c.playbackState
+                if (state != null && state.state == PlaybackState.STATE_PAUSED) {
+                    c.transportControls.play()
+                    AppLogger.getInstance().log(TAG, "▶️ Media resumed via notification action")
+                    return
+                }
+            }
+            AppLogger.getInstance().log(TAG, "⚠️ No paused controller found for play")
+        } catch (e: Exception) {
+            AppLogger.getInstance().e(TAG, "Play action failed: ${e.message}")
+        }
+    }
+
     private fun handleMediaNext() {
         try {
             val mm = getSystemService(Context.MEDIA_SESSION_SERVICE) as MediaSessionManager
@@ -896,6 +922,27 @@ class LyricService : Service() {
             AppLogger.getInstance().log(TAG, "⚠️ No active controller found for skip next")
         } catch (e: Exception) {
             AppLogger.getInstance().e(TAG, "Next action failed: ${e.message}")
+        }
+    }
+
+    private fun handleMediaPrev() {
+        try {
+            val mm = getSystemService(Context.MEDIA_SESSION_SERVICE) as MediaSessionManager
+            val component = android.content.ComponentName(this, MediaMonitorService::class.java)
+            val controllers = mm.getActiveSessions(component)
+            
+            // Skip to previous on the first active controller (playing or paused)
+            for (c in controllers) {
+                val state = c.playbackState
+                if (state != null && (state.state == PlaybackState.STATE_PLAYING || state.state == PlaybackState.STATE_PAUSED)) {
+                    c.transportControls.skipToPrevious()
+                    AppLogger.getInstance().log(TAG, "⏮️ Skipped to prev via notification action")
+                    return
+                }
+            }
+            AppLogger.getInstance().log(TAG, "⚠️ No active controller found for skip prev")
+        } catch (e: Exception) {
+            AppLogger.getInstance().e(TAG, "Prev action failed: ${e.message}")
         }
     }
 

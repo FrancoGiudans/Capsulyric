@@ -152,10 +152,8 @@
     <string name="ui_style_material">Material Design</string>
     <string name="ui_style_miuix">Miuix</string>
     <string name="settings_disable_scrolling_desc">Displays static text only. Prevents ALL scrolling, regardless of lyric type.</string>
-    <string name="settings_super_island_text_color">Colorize Playback Info</string>
-    <string name="settings_super_island_text_color_desc">Use album cover color for lyrics and song title in Super Island.</string>
-    <string name="settings_super_island_edge_color">Colorize Capsule Edge (Collapsed State)</string>
-    <string name="settings_super_island_edge_color_desc">Extract album art color for the Super Island progress ring.</string>
+    <string name="settings_super_island_colorize">Colorize Playback Info</string>
+    <string name="settings_super_island_colorize_desc">Use album cover color for lyrics, song title, capsule edge, and progress bar in Super Island.</string>
     <string name="settings_super_island_share">Enable Drag-and-Drop Sharing</string>
     <string name="settings_super_island_share_desc">Allow dragging Super Island to share lyrics.</string>
     <string name="settings_super_island_share_format">Share Text Format</string>
