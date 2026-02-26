@@ -788,8 +788,22 @@ class SuperIslandHandler(
     }
 
     private fun scaleBitmap(src: Bitmap, targetSize: Int): Bitmap {
-        if (src.width == targetSize && src.height == targetSize) return src
-        return Bitmap.createScaledBitmap(src, targetSize, targetSize, true)
+        val scaled = if (src.width == targetSize && src.height == targetSize) src 
+                     else Bitmap.createScaledBitmap(src, targetSize, targetSize, true)
+                     
+        val output = Bitmap.createBitmap(targetSize, targetSize, Bitmap.Config.ARGB_8888)
+        val canvas = android.graphics.Canvas(output)
+        val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG)
+        val rect = android.graphics.RectF(0f, 0f, targetSize.toFloat(), targetSize.toFloat())
+        
+        // 20% corner radius
+        val cornerRadius = targetSize * 0.2f
+        
+        canvas.drawRoundRect(rect, cornerRadius, cornerRadius, paint)
+        paint.xfermode = android.graphics.PorterDuffXfermode(android.graphics.PorterDuff.Mode.SRC_IN)
+        canvas.drawBitmap(scaled, 0f, 0f, paint)
+        
+        return output
     }
 
     private fun getAppIcon(packageName: String?): Bitmap? {
