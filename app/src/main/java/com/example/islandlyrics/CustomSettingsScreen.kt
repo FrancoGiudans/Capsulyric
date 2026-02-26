@@ -104,6 +104,8 @@ fun CustomSettingsScreen(
     var oneuiCapsuleColorEnabled by remember { mutableStateOf(prefs.getBoolean("oneui_capsule_color_enabled", false)) }
 
     var superIslandEnabled by remember { mutableStateOf(prefs.getBoolean("super_island_enabled", false)) }
+    var superIslandTextColorEnabled by remember { mutableStateOf(prefs.getBoolean("super_island_text_color_enabled", false)) }
+    var superIslandEdgeColorEnabled by remember { mutableStateOf(prefs.getBoolean("super_island_edge_color_enabled", false)) }
     var miuixEnabled by remember { mutableStateOf(prefs.getBoolean("ui_use_miuix", false)) }
 
     // Dialog State for UI Style
@@ -307,6 +309,26 @@ fun CustomSettingsScreen(
                                         context.startService(intent)
                                     }
                                 )
+                                if (superIslandEnabled) {
+                                    SettingsSwitchItem(
+                                        title = stringResource(R.string.settings_super_island_text_color),
+                                        subtitle = stringResource(R.string.settings_super_island_text_color_desc),
+                                        checked = superIslandTextColorEnabled,
+                                        onCheckedChange = {
+                                            superIslandTextColorEnabled = it
+                                            prefs.edit().putBoolean("super_island_text_color_enabled", it).apply()
+                                        }
+                                    )
+                                    SettingsSwitchItem(
+                                        title = stringResource(R.string.settings_super_island_edge_color),
+                                        subtitle = stringResource(R.string.settings_super_island_edge_color_desc),
+                                        checked = superIslandEdgeColorEnabled,
+                                        onCheckedChange = {
+                                            superIslandEdgeColorEnabled = it
+                                            prefs.edit().putBoolean("super_island_edge_color_enabled", it).apply()
+                                        }
+                                    )
+                                }
                             }
                         }
                         1 -> { // Notification (Moved from 2)

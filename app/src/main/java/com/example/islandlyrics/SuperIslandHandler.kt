@@ -12,6 +12,7 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import androidx.lifecycle.Observer
+import androidx.palette.graphics.Palette
 import org.json.JSONObject
 
 /**
@@ -45,12 +46,27 @@ class SuperIslandHandler(
     private var cachedBuilder: Notification.Builder? = null
     private var cachedClickStyle = "default"
 
+    // New preferences
+    private var cachedSuperIslandTextColorEnabled = false
+    private var cachedSuperIslandEdgeColorEnabled = false
+    private var cachedAlbumColor = 0
+    private var lastAlbumArtPaletteHash = 0
+
     private val prefs by lazy { context.getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE) }
     private val prefListener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { p, key ->
-        if (key == "notification_click_style") {
-            cachedClickStyle = p.getString(key, "default") ?: "default"
-            // We need to rebuild/update the intent on the next notification ping
-            forceUpdateNotification()
+        when (key) {
+            "notification_click_style" -> {
+                cachedClickStyle = p.getString(key, "default") ?: "default"
+                forceUpdateNotification()
+            }
+            "super_island_text_color_enabled" -> {
+                cachedSuperIslandTextColorEnabled = p.getBoolean(key, false)
+                forceUpdateNotification()
+            }
+            "super_island_edge_color_enabled" -> {
+                cachedSuperIslandEdgeColorEnabled = p.getBoolean(key, false)
+                forceUpdateNotification()
+            }
         }
     }
 
@@ -60,12 +76,39 @@ class SuperIslandHandler(
     private var lastAlbumArtHash = 0
     private var lastSubText = ""
     private var lastPackageName = ""
+    private var lastAppliedAlbumColor = 0
 
     // Observers — debounce to coalesce rapid-fire updates
     private val lyricObserver = Observer<LyricRepository.LyricInfo?> { scheduleUpdate() }
     private val progressObserver = Observer<LyricRepository.PlaybackProgress?> { scheduleUpdate() }
-    private val albumArtObserver = Observer<Bitmap?> { scheduleUpdate() }
     private val metadataObserver = Observer<LyricRepository.MediaInfo?> { scheduleUpdate() }
+
+    private val albumArtObserver = Observer<Bitmap?> { bitmap -> 
+        if (bitmap == null) {
+            cachedAlbumColor = 0
+            lastAlbumArtPaletteHash = 0
+            scheduleUpdate()
+            return@Observer
+        }
+        val artHash = bitmap.hashCode()
+        if (artHash != lastAlbumArtPaletteHash) {
+            lastAlbumArtPaletteHash = artHash
+            Palette.from(bitmap).generate { palette ->
+                if (palette != null) {
+                    cachedAlbumColor = palette.getVibrantColor(
+                        palette.getMutedColor(
+                            palette.getDominantColor(0)
+                        )
+                    )
+                } else {
+                    cachedAlbumColor = 0
+                }
+                scheduleUpdate()
+            }
+        } else {
+            scheduleUpdate()
+        }
+    }
 
     private var pendingUpdate = false
 
@@ -98,12 +141,15 @@ class SuperIslandHandler(
         repo.liveMetadata.observeForever(metadataObserver)
 
         cachedClickStyle = prefs.getString("notification_click_style", "default") ?: "default"
+        cachedSuperIslandTextColorEnabled = prefs.getBoolean("super_island_text_color_enabled", false)
+        cachedSuperIslandEdgeColorEnabled = prefs.getBoolean("super_island_edge_color_enabled", false)
         prefs.registerOnSharedPreferenceChangeListener(prefListener)
 
         lastLyric = ""
         lastProgress = -1
         lastAlbumArtHash = 0
         lastSubText = ""
+        lastAppliedAlbumColor = cachedAlbumColor
 
         // Build the notification ONCE and send as foreground
         buildInitialNotification()
@@ -167,6 +213,7 @@ class SuperIslandHandler(
         lastProgress = progressPercent
         lastAlbumArtHash = albumArt?.hashCode() ?: 0
         lastSubText = subText
+        lastAppliedAlbumColor = cachedAlbumColor
 
         val islandParams = buildIslandParamsJson(lyric, subText, progressPercent, title)
 
@@ -230,7 +277,8 @@ class SuperIslandHandler(
         val artHash = albumArt?.hashCode() ?: 0
         if (!force && currentLyric == lastLyric && progressPercent == lastProgress
             && artHash == lastAlbumArtHash && subText == lastSubText
-            && metadata?.packageName == lastPackageName) {
+            && metadata?.packageName == lastPackageName
+            && cachedAlbumColor == lastAppliedAlbumColor) {
             return
         }
 
@@ -241,6 +289,7 @@ class SuperIslandHandler(
         lastAlbumArtHash = artHash
         lastSubText = subText
         lastPackageName = metadata?.packageName ?: ""
+        lastAppliedAlbumColor = cachedAlbumColor
 
         // Update the island params JSON in-place on the SAME notification object
         val islandParams = buildIslandParamsJson(currentLyric, subText, progressPercent, title)
@@ -281,6 +330,10 @@ class SuperIslandHandler(
         val root = JSONObject()
         val paramV2 = JSONObject()
 
+        val hexColor = if (cachedAlbumColor != 0) String.format("#%06X", 0xFFFFFF and cachedAlbumColor) else "#757575"
+        val showHighlightColor = cachedSuperIslandTextColorEnabled && cachedAlbumColor != 0
+        val ringColor = if (cachedSuperIslandEdgeColorEnabled && cachedAlbumColor != 0) hexColor else "#757575"
+
         // ── Notification attributes ──
         paramV2.put("protocol", 1)
         paramV2.put("business", "lyric_display")
@@ -306,14 +359,17 @@ class SuperIslandHandler(
         // ── 进度组件2 (Expanded State) ──
         val progressInfo = JSONObject()
         progressInfo.put("progress", progressPercent)
-        progressInfo.put("colorProgress", "#757575")
-        progressInfo.put("colorProgressEnd", "#757575")
+        progressInfo.put("colorProgress", ringColor)
+        progressInfo.put("colorProgressEnd", ringColor)
         paramV2.put("progressInfo", progressInfo)
 
         // ── 岛数据 (param_island) ──
         // 摘要态模版2: 图文组件1 (A区) + 文本组件 (B区)
         val paramIsland = JSONObject()
         paramIsland.put("islandProperty", 1)
+        if (showHighlightColor) {
+            paramIsland.put("highlightColor", hexColor)
+        }
 
         val bigIslandArea = JSONObject()
 
@@ -330,14 +386,14 @@ class SuperIslandHandler(
         // A区 text: song title
         val textInfoA = JSONObject()
         textInfoA.put("title", title.ifEmpty { "♪" })
-        textInfoA.put("showHighlightColor", false)
+        textInfoA.put("showHighlightColor", showHighlightColor)
         imageTextInfoLeft.put("textInfo", textInfoA)
         bigIslandArea.put("imageTextInfoLeft", imageTextInfoLeft)
 
         // B区: 文本组件 — 歌词作为正文大字
         val textInfo = JSONObject()
         textInfo.put("title", lyric.ifEmpty { "♪" })  // 正文大字: 歌词
-        textInfo.put("showHighlightColor", false)
+        textInfo.put("showHighlightColor", showHighlightColor)
         textInfo.put("narrowFont", false)
         bigIslandArea.put("textInfo", textInfo)
 
@@ -353,7 +409,7 @@ class SuperIslandHandler(
         
         val ringInfoSmall = JSONObject()
         ringInfoSmall.put("progress", progressPercent)
-        ringInfoSmall.put("colorReach", "#757575")
+        ringInfoSmall.put("colorReach", ringColor)
         ringInfoSmall.put("colorUnReach", "#333333")
         combinePicInfoSmall.put("progressInfo", ringInfoSmall)
         

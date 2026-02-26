@@ -73,6 +73,8 @@ fun MiuixCustomSettingsScreen(
     var oneuiCapsuleColorEnabled by remember { mutableStateOf(prefs.getBoolean("oneui_capsule_color_enabled", false)) }
 
     var superIslandEnabled by remember { mutableStateOf(prefs.getBoolean("super_island_enabled", false)) }
+    var superIslandTextColorEnabled by remember { mutableStateOf(prefs.getBoolean("super_island_text_color_enabled", false)) }
+    var superIslandEdgeColorEnabled by remember { mutableStateOf(prefs.getBoolean("super_island_edge_color_enabled", false)) }
     var miuixEnabled by remember { mutableStateOf(prefs.getBoolean("ui_use_miuix", false)) }
 
     val isHyperOsSupported = remember { RomUtils.isHyperOsVersionAtLeast(3, 0, 300) }
@@ -207,6 +209,26 @@ fun MiuixCustomSettingsScreen(
                                             context.startService(intent)
                                         }
                                     )
+                                    if (superIslandEnabled) {
+                                        SuperSwitch(
+                                            title = stringResource(R.string.settings_super_island_text_color),
+                                            summary = stringResource(R.string.settings_super_island_text_color_desc),
+                                            checked = superIslandTextColorEnabled,
+                                            onCheckedChange = {
+                                                superIslandTextColorEnabled = it
+                                                prefs.edit().putBoolean("super_island_text_color_enabled", it).apply()
+                                            }
+                                        )
+                                        SuperSwitch(
+                                            title = stringResource(R.string.settings_super_island_edge_color),
+                                            summary = stringResource(R.string.settings_super_island_edge_color_desc),
+                                            checked = superIslandEdgeColorEnabled,
+                                            onCheckedChange = {
+                                                superIslandEdgeColorEnabled = it
+                                                prefs.edit().putBoolean("super_island_edge_color_enabled", it).apply()
+                                            }
+                                        )
+                                    }
                                     if (isHyperOsSupported) {
                                         SuperSwitch(
                                             title = stringResource(R.string.settings_dynamic_icon),
