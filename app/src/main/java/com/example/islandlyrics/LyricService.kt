@@ -5,8 +5,10 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.media.MediaMetadata
 import android.media.session.MediaSessionManager
 import android.media.session.PlaybackState
@@ -81,9 +83,18 @@ class LyricService : Service() {
                 superIslandHandler?.forceUpdateNotification()
             }
         } else {
-            // Stop both if lyric is empty
-            if (superIslandHandler?.isRunning == true) superIslandHandler?.stop()
-            if (capsuleHandler?.isRunning() == true) capsuleHandler?.stop()
+            // Stop logic: 
+            // In Super Island mode, we might want to keep it alive if metadata is still valid 
+            // even if lyrics are empty for a moment (e.g. song starts).
+            if (isSuperIslandMode && LyricRepository.getInstance().liveMetadata.value != null && LyricRepository.getInstance().isPlaying.value == true) {
+                // Keep Super Island alive with metadata
+                updateActiveHandler()
+                superIslandHandler?.forceUpdateNotification()
+            } else {
+                // Stop both if lyric is empty and no valid fallback
+                if (superIslandHandler?.isRunning == true) superIslandHandler?.stop()
+                if (capsuleHandler?.isRunning() == true) capsuleHandler?.stop()
+            }
         }
     }
     
@@ -285,6 +296,21 @@ class LyricService : Service() {
     private var superIslandHandler: SuperIslandHandler? = null
     private var isSuperIslandMode = false
 
+    private val mediaActionReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            val action = intent.action ?: return
+            AppLogger.getInstance().log(TAG, "MediaActionReceiver received: $action")
+            when (action) {
+                "com.example.islandlyrics.ACTION_MEDIA_PLAY_PAUSE", "miui.focus.action_play_pause" -> {
+                    val playing = LyricRepository.getInstance().isPlaying.value ?: false
+                    if (playing) handleMediaPause() else handleMediaPlay()
+                }
+                "com.example.islandlyrics.ACTION_MEDIA_NEXT", "miui.focus.action_next" -> handleMediaNext()
+                "com.example.islandlyrics.ACTION_MEDIA_PREV", "miui.focus.action_prev" -> handleMediaPrev()
+            }
+        }
+    }
+
     private val prefsListener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { p, key ->
         if (key == "super_island_enabled") {
             isSuperIslandMode = p.getBoolean(key, false)
@@ -309,6 +335,16 @@ class LyricService : Service() {
         if (BuildConfig.DEBUG) {
             AppLogger.getInstance().d(TAG, "SuperLyric API: Registered for detection")
         }
+
+        val filter = IntentFilter().apply {
+            addAction("com.example.islandlyrics.ACTION_MEDIA_PLAY_PAUSE")
+            addAction("com.example.islandlyrics.ACTION_MEDIA_NEXT")
+            addAction("com.example.islandlyrics.ACTION_MEDIA_PREV")
+            addAction("miui.focus.action_play_pause")
+            addAction("miui.focus.action_next")
+            addAction("miui.focus.action_prev")
+        }
+        registerReceiver(mediaActionReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
 
         getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE).registerOnSharedPreferenceChangeListener(prefsListener)
 
@@ -430,6 +466,13 @@ class LyricService : Service() {
         
         getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE).unregisterOnSharedPreferenceChangeListener(prefsListener)
         LyricRepository.getInstance().liveLyric.removeObserver(lyricObserver)
+        
+        try {
+            unregisterReceiver(mediaActionReceiver)
+        } catch (e: Exception) {
+            AppLogger.getInstance().e(TAG, "Failed to unregister mediaActionReceiver: ${e.message}")
+        }
+        
         broadcastStatus("🔴 Stopped")
     }
     

@@ -202,6 +202,13 @@ fun MiuixCustomSettingsScreen(
                                         onCheckedChange = { enabled ->
                                             superIslandEnabled = enabled
                                             prefs.edit().putBoolean("super_island_enabled", enabled).apply()
+                                            
+                                            // ⚡ Logic: If MiPlay is selected when enabling Super Island, switch to Off
+                                            if (enabled && actionStyle == "miplay") {
+                                                actionStyle = "disabled"
+                                                prefs.edit().putString("notification_actions_style", "disabled").apply()
+                                            }
+
                                             val action = if (enabled) {
                                                 "ACTION_ENABLE_SUPER_ISLAND"
                                             } else {
@@ -300,6 +307,8 @@ fun MiuixCustomSettingsScreen(
                             item { Spacer(modifier = Modifier.height(16.dp)) }
                             item {
                                 Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
+                                    // ⚡ Logic: Hide Colorize Progress Bar if Playback Notification (media_controls) is selected
+                                    if (actionStyle == "disabled") {
                                         SuperSwitch(
                                             title = stringResource(R.string.settings_progress_color),
                                             summary = stringResource(R.string.settings_progress_color_desc),
@@ -309,13 +318,14 @@ fun MiuixCustomSettingsScreen(
                                                 prefs.edit().putBoolean("progress_bar_color_enabled", it).apply()
                                             }
                                         )
+                                    }
 
                                     val actionStyles = mutableListOf("disabled", "media_controls")
                                     val actionStyleNames = mutableListOf(
                                         stringResource(R.string.settings_action_style_off),
                                         stringResource(R.string.settings_action_style_media)
                                     )
-                                    if (isHyperOsSupported) {
+                                    if (isHyperOsSupported && !superIslandEnabled) {
                                         actionStyles.add("miplay")
                                         actionStyleNames.add(stringResource(R.string.settings_action_style_miplay))
                                     }

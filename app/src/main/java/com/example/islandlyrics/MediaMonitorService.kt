@@ -237,19 +237,12 @@ class MediaMonitorService : NotificationListenerService() {
                             }
 
                             override fun onPlaybackStateChanged(state: PlaybackState?) {
-                                val isPlaying = state?.state == PlaybackState.STATE_PLAYING
-                                if (isPlaying) {
-                                    // CRITICAL FIX: Ensure playback status is synced immediately on resume
-                                    // so SuperLyric API or ProgressUpdater can wake up without waiting for metadata change
-                                    LyricRepository.getInstance().updatePlaybackStatus(true)
-                                }
                                 checkServiceState() // Priority might have changed
                                 updateMetadataIfPrimary(controller)
                             }
 
                             override fun onMetadataChanged(metadata: MediaMetadata?) {
-                                debounceHandler.removeCallbacks(updateRunnable)
-                                debounceHandler.postDelayed(updateRunnable, 100)
+                                updateMetadataIfPrimary(controller)
                             }
                             
                             override fun onSessionDestroyed() {

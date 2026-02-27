@@ -358,6 +358,22 @@ class SuperIslandHandler(
             .setOnlyAlertOnce(true)
             .setVisibility(Notification.VISIBILITY_PUBLIC)
 
+        // ⚡ OPTIMIZATION: Populate island params immediately so the system UI 
+        // recognizes this as an island notification from the first frame.
+        val displayLyric = if (lyric.isNotBlank()) {
+             extractByWeight(lyric, 0, maxDisplayWeight)
+        } else "♪"
+        
+        val islandParams = buildIslandParamsJson(
+            displayLyric = displayLyric,
+            fullLyric = lyric,
+            subText = subText,
+            progressPercent = progressPercent,
+            title = title,
+            artist = artist
+        )
+        builder.extras.putString("miui.focus.param", islandParams)
+
         cachedBuilder = builder
         applyPicsAndActions(metadata, albumArt, null)
 
@@ -400,17 +416,16 @@ class SuperIslandHandler(
             val actionsBundle = Bundle()
             val isPlaying = LyricRepository.getInstance().isPlaying.value ?: false
             
-            // Index 0: Play/Pause
-            val playPauseActionStr = if (isPlaying) "ACTION_MEDIA_PAUSE" else "ACTION_MEDIA_PLAY"
-            val playPauseIntent = Intent(context, LyricService::class.java).apply { action = playPauseActionStr }
-            val playPausePI = PendingIntent.getService(context, 11, playPauseIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+            // Index 0: Play/Pause Button
+            val playPauseIntent = Intent("com.example.islandlyrics.ACTION_MEDIA_PLAY_PAUSE").setPackage(context.packageName)
+            val playPausePI = PendingIntent.getBroadcast(context, 11, playPauseIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
             val playPauseIcon = if (isPlaying) R.drawable.ic_pause else R.drawable.ic_play_arrow
             val playPauseAction = Notification.Action.Builder(Icon.createWithResource(context, playPauseIcon), if (isPlaying) "Pause" else "Play", playPausePI).build()
             actionsBundle.putParcelable("miui.focus.action_play_pause", playPauseAction)
 
-            // Index 1: Next
-            val nextIntent = Intent(context, LyricService::class.java).apply { action = "ACTION_MEDIA_NEXT" }
-            val nextPI = PendingIntent.getService(context, 12, nextIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+            // Index 1: Next Button
+            val nextIntent = Intent("com.example.islandlyrics.ACTION_MEDIA_NEXT").setPackage(context.packageName)
+            val nextPI = PendingIntent.getBroadcast(context, 12, nextIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
             val nextAction = Notification.Action.Builder(Icon.createWithResource(context, R.drawable.ic_skip_next), "Next", nextPI).build()
             actionsBundle.putParcelable("miui.focus.action_next", nextAction)
 
@@ -750,7 +765,7 @@ class SuperIslandHandler(
             playProgress.put("colorProgress", progressBarColor)
             playProgress.put("colorProgressEnd", progressBarColor)
             // Fix clashing background color by adding a subtle dark gray
-            playProgress.put("colorBackground", "#26FFFFFF") 
+            playProgress.put("colorBackground", "#333333") 
             btnPlay.put("progressInfo", playProgress)
             actionsArray.put(btnPlay)
 
