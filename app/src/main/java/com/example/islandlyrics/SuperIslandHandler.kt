@@ -103,6 +103,10 @@ class SuperIslandHandler(
     private var lastSubText = ""
     private var lastPackageName = ""
     private var lastAppliedAlbumColor = 0
+    private var lastPicAppHash = 0
+    private var lastPicActionsHash = 0
+    private var cachedPicsBundle: Bundle? = null
+    private var cachedActionsBundle: Bundle? = null
 
     // Scroll state machine
     private enum class ScrollState {
@@ -271,6 +275,10 @@ class SuperIslandHandler(
         lastLyric = ""
         lastProgress = -1
         lastAlbumArtHash = 0
+        lastPicAppHash = 0
+        lastPicActionsHash = 0
+        cachedPicsBundle = null
+        cachedActionsBundle = null
         lastSubText = ""
         cachedAlbumColor = 0xFF757575.toInt()
         lastAppliedAlbumColor = cachedAlbumColor
@@ -387,52 +395,73 @@ class SuperIslandHandler(
 
     private fun applyPicsAndActions(metadata: LyricRepository.MediaInfo?, albumArt: Bitmap?, notification: Notification?) {
         val targetExtras = notification?.extras ?: cachedBuilder?.extras ?: return
-        val extras = Bundle()
-        
-        // ── Building Icons ──
-        val pics = Bundle()
-        if (albumArt != null) {
-            pics.putParcelable("miui.focus.pic_avatar", Icon.createWithBitmap(scaleBitmap(albumArt, 480)))
-            pics.putParcelable("miui.focus.pic_island", Icon.createWithBitmap(scaleBitmap(albumArt, 120)))
-            pics.putParcelable("miui.land.pic_island", Icon.createWithBitmap(scaleBitmap(albumArt, 88)))
-            pics.putParcelable("miui.focus.pic_share", Icon.createWithBitmap(scaleBitmap(albumArt, 224)))
-        }
-        
-        // Media control action icons
-        if (cachedActionStyle == "media_controls") {
-            // Index 0: Play/Pause (Progress Button)
-            // Index 1: Next (Normal Button)
-            pics.putParcelable("miui.focus.pic_next", Icon.createWithResource(context, R.drawable.ic_skip_next))
-        }
 
-        val appIcon = getAppIcon(metadata?.packageName)
-        if (appIcon != null) {
-            pics.putParcelable("miui.focus.pic_app", Icon.createWithBitmap(scaleBitmap(appIcon, 96)))
-        }
-        extras.putBundle("miui.focus.pics", pics)
-
-        // ── Building Actions ──
-        if (cachedActionStyle == "media_controls") {
-            val actionsBundle = Bundle()
-            val isPlaying = LyricRepository.getInstance().isPlaying.value ?: false
+        // ── Detect Album Art Changes ──
+        val albumArtHash = albumArt?.hashCode() ?: 0
+        if (albumArtHash != lastAlbumArtHash || cachedPicsBundle == null) {
+            val pics = Bundle()
+            if (albumArt != null) {
+                // Scaling is expensive - do it once per change
+                pics.putParcelable("miui.focus.pic_avatar", Icon.createWithBitmap(scaleBitmap(albumArt, 480)))
+                pics.putParcelable("miui.focus.pic_island", Icon.createWithBitmap(scaleBitmap(albumArt, 120)))
+                pics.putParcelable("miui.land.pic_island", Icon.createWithBitmap(scaleBitmap(albumArt, 88)))
+                pics.putParcelable("miui.focus.pic_share", Icon.createWithBitmap(scaleBitmap(albumArt, 224)))
+            }
             
-            // Index 0: Play/Pause Button
-            val playPauseIntent = Intent("com.example.islandlyrics.ACTION_MEDIA_PLAY_PAUSE").setPackage(context.packageName)
-            val playPausePI = PendingIntent.getBroadcast(context, 11, playPauseIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
-            val playPauseIcon = if (isPlaying) R.drawable.ic_pause else R.drawable.ic_play_arrow
-            val playPauseAction = Notification.Action.Builder(Icon.createWithResource(context, playPauseIcon), if (isPlaying) "Pause" else "Play", playPausePI).build()
-            actionsBundle.putParcelable("miui.focus.action_play_pause", playPauseAction)
-
-            // Index 1: Next Button
-            val nextIntent = Intent("com.example.islandlyrics.ACTION_MEDIA_NEXT").setPackage(context.packageName)
-            val nextPI = PendingIntent.getBroadcast(context, 12, nextIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
-            val nextAction = Notification.Action.Builder(Icon.createWithResource(context, R.drawable.ic_skip_next), "Next", nextPI).build()
-            actionsBundle.putParcelable("miui.focus.action_next", nextAction)
-
-            extras.putBundle("miui.focus.actions", actionsBundle)
+            val appIcon = getAppIcon(metadata?.packageName)
+            if (appIcon != null) {
+                pics.putParcelable("miui.focus.pic_app", Icon.createWithBitmap(scaleBitmap(appIcon, 96)))
+            }
+            cachedPicsBundle = pics
+            lastAlbumArtHash = albumArtHash
+            lastPicAppHash = metadata?.packageName?.hashCode() ?: 0
+        } else if (metadata?.packageName?.hashCode() != lastPicAppHash) {
+            // App icon changed but album art didn't
+            val pics = Bundle(cachedPicsBundle)
+            val appIcon = getAppIcon(metadata?.packageName)
+            if (appIcon != null) {
+                pics.putParcelable("miui.focus.pic_app", Icon.createWithBitmap(scaleBitmap(appIcon, 96)))
+            }
+            cachedPicsBundle = pics
+            lastPicAppHash = metadata?.packageName?.hashCode() ?: 0
         }
+
+        // ── Detect Media Control Changes ──
+        val isPlaying = LyricRepository.getInstance().isPlaying.value ?: false
+        val actionsHash = if (cachedActionStyle == "media_controls") (if (isPlaying) 1 else 0) else -1
         
-        targetExtras.putAll(extras)
+        if (actionsHash != lastPicActionsHash || cachedActionsBundle == null) {
+            if (cachedActionStyle == "media_controls") {
+                val actionsBundle = Bundle()
+                
+                // Index 0: Play/Pause Button
+                val playPauseIntent = Intent("com.example.islandlyrics.ACTION_MEDIA_PLAY_PAUSE").setPackage(context.packageName)
+                val playPausePI = PendingIntent.getBroadcast(context, 11, playPauseIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+                val playPauseIcon = if (isPlaying) R.drawable.ic_pause else R.drawable.ic_play_arrow
+                val playPauseAction = Notification.Action.Builder(Icon.createWithResource(context, playPauseIcon), if (isPlaying) "Pause" else "Play", playPausePI).build()
+                actionsBundle.putParcelable("miui.focus.action_play_pause", playPauseAction)
+
+                // Index 1: Next Button
+                val nextIntent = Intent("com.example.islandlyrics.ACTION_MEDIA_NEXT").setPackage(context.packageName)
+                val nextPI = PendingIntent.getBroadcast(context, 12, nextIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+                val nextAction = Notification.Action.Builder(Icon.createWithResource(context, R.drawable.ic_skip_next), "Next", nextPI).build()
+                actionsBundle.putParcelable("miui.focus.action_next", nextAction)
+
+                // Cache Next icon in pics for style 12's button renderer
+                cachedPicsBundle?.let { 
+                    it.putParcelable("miui.focus.pic_next", Icon.createWithResource(context, R.drawable.ic_skip_next))
+                }
+
+                cachedActionsBundle = actionsBundle
+            } else {
+                cachedActionsBundle = null
+            }
+            lastPicActionsHash = actionsHash
+        }
+
+        // ── Apply to Extras ──
+        cachedPicsBundle?.let { targetExtras.putBundle("miui.focus.pics", it) }
+        cachedActionsBundle?.let { targetExtras.putBundle("miui.focus.actions", it) }
     }
 
     // ── Update: modify cached notification extras in-place ──
@@ -525,6 +554,12 @@ class SuperIslandHandler(
 
         val islandParams = buildIslandParamsJson(displayLyric, currentLyric, subText, progressPercent, title, artist)
         
+        // ⚡ CHANGE DETECTION: Skip notify if nothing visible changed
+        val oldParams = notification.extras.getString("miui.focus.param")
+        if (oldParams == islandParams && !isFirstNotification) {
+            return
+        }
+
         applyPicsAndActions(metadata, albumArt, notification)
         notification.extras.putString("miui.focus.param", islandParams)
 
