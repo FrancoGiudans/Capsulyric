@@ -391,7 +391,7 @@ fun CustomSettingsScreen(
                              Spacer(modifier = Modifier.height(16.dp))
 
 
-                            if (!superIslandEnabled && actionStyle == "disabled") {
+                            if (actionStyle == "disabled") {
                                  SettingsSwitchItem(
                                     title = stringResource(R.string.settings_progress_color),
                                     subtitle = stringResource(R.string.settings_progress_color_desc),
