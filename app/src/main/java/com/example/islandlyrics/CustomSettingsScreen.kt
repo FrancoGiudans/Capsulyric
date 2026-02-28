@@ -118,6 +118,7 @@ fun CustomSettingsScreen(
 
     // Check for HyperOS 3.0.300+
     val isHyperOsSupported = remember { RomUtils.isHyperOsVersionAtLeast(3, 0, 300) }
+    val isHyperOs = remember { RomUtils.getRomType() == "HyperOS" }
 
     // Logic for permissions status
     fun checkNotificationPermission(): Boolean {
@@ -252,29 +253,31 @@ fun CustomSettingsScreen(
                                 )
                             }
 
+                            if (isHyperOs) {
                                 SettingsSwitchItem(
                                     title = stringResource(R.string.settings_super_island),
                                     subtitle = stringResource(R.string.settings_super_island_desc),
                                     checked = superIslandEnabled,
-                                        onCheckedChange = { enabled ->
-                                            superIslandEnabled = enabled
-                                            prefs.edit().putBoolean("super_island_enabled", enabled).apply()
+                                    onCheckedChange = { enabled ->
+                                        superIslandEnabled = enabled
+                                        prefs.edit().putBoolean("super_island_enabled", enabled).apply()
 
-                                            //  Logic: If MiPlay is selected when enabling Super Island, switch to Off
-                                            if (enabled && actionStyle == "miplay") {
-                                                actionStyle = "disabled"
-                                                prefs.edit().putString("notification_actions_style", "disabled").apply()
-                                            }
-
-                                            val action = if (enabled) {
-                                                "ACTION_ENABLE_SUPER_ISLAND"
-                                            } else {
-                                                "ACTION_DISABLE_SUPER_ISLAND"
-                                            }
-                                            val intent = Intent(context, LyricService::class.java).setAction(action)
-                                            context.startService(intent)
+                                        //  Logic: If MiPlay is selected when enabling Super Island, switch to Off
+                                        if (enabled && actionStyle == "miplay") {
+                                            actionStyle = "disabled"
+                                            prefs.edit().putString("notification_actions_style", "disabled").apply()
                                         }
+
+                                        val action = if (enabled) {
+                                            "ACTION_ENABLE_SUPER_ISLAND"
+                                        } else {
+                                            "ACTION_DISABLE_SUPER_ISLAND"
+                                        }
+                                        val intent = Intent(context, LyricService::class.java).setAction(action)
+                                        context.startService(intent)
+                                    }
                                 )
+
                                 if (isHyperOsSupported && !superIslandEnabled) {
                                     SettingsSwitchItem(
                                         title = stringResource(R.string.settings_dynamic_icon),
@@ -285,7 +288,7 @@ fun CustomSettingsScreen(
                                             prefs.edit().putBoolean("dynamic_icon_enabled", it).apply()
                                         }
                                     )
-                                    
+
                                     if (dynamicIconEnabled) {
                                         val styleDisplayName = when (iconStyle) {
                                             "advanced" -> stringResource(R.string.icon_style_advanced)
@@ -321,6 +324,7 @@ fun CustomSettingsScreen(
                                         }
                                     }
                                 }
+
                                 if (superIslandEnabled) {
                                     SettingsSwitchItem(
                                         title = stringResource(R.string.settings_super_island_colorize),
@@ -381,6 +385,7 @@ fun CustomSettingsScreen(
                                     }
                                 }
                             }
+                        }
                         1 -> { // Notification (Moved from 2)
                              // Preview
                              NotificationPreview(

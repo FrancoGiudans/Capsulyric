@@ -80,6 +80,7 @@ fun MiuixCustomSettingsScreen(
     var miuixEnabled by remember { mutableStateOf(prefs.getBoolean("ui_use_miuix", false)) }
 
     val isHyperOsSupported = remember { RomUtils.isHyperOsVersionAtLeast(3, 0, 300) }
+    val isHyperOs = remember { RomUtils.getRomType() == "HyperOS" }
     LaunchedEffect(isHyperOsSupported) {
         if (!isHyperOsSupported) {
             if (dynamicIconEnabled) {
@@ -195,71 +196,73 @@ fun MiuixCustomSettingsScreen(
                                             }
                                         )
                                     }
-                                    SuperSwitch(
-                                        title = stringResource(R.string.settings_super_island),
-                                        summary = stringResource(R.string.settings_super_island_desc),
-                                        checked = superIslandEnabled,
-                                        onCheckedChange = { enabled ->
-                                            superIslandEnabled = enabled
-                                            prefs.edit().putBoolean("super_island_enabled", enabled).apply()
-                                            
-                                            // ⚡ Logic: If MiPlay is selected when enabling Super Island, switch to Off
-                                            if (enabled && actionStyle == "miplay") {
-                                                actionStyle = "disabled"
-                                                prefs.edit().putString("notification_actions_style", "disabled").apply()
-                                            }
-
-                                            val action = if (enabled) {
-                                                "ACTION_ENABLE_SUPER_ISLAND"
-                                            } else {
-                                                "ACTION_DISABLE_SUPER_ISLAND"
-                                            }
-                                            val intent = Intent(context, LyricService::class.java).setAction(action)
-                                            context.startService(intent)
-                                        }
-                                    )
-                                    if (superIslandEnabled) {
+                                    if (isHyperOs) {
                                         SuperSwitch(
-                                            title = stringResource(R.string.settings_super_island_colorize),
-                                            summary = stringResource(R.string.settings_super_island_colorize_desc),
-                                            checked = superIslandTextColorEnabled,
-                                            onCheckedChange = {
-                                                superIslandTextColorEnabled = it
-                                                progressColorEnabled = it
-                                                prefs.edit().putBoolean("super_island_text_color_enabled", it).apply()
-                                                prefs.edit().putBoolean("progress_bar_color_enabled", it).apply()
+                                            title = stringResource(R.string.settings_super_island),
+                                            summary = stringResource(R.string.settings_super_island_desc),
+                                            checked = superIslandEnabled,
+                                            onCheckedChange = { enabled ->
+                                                superIslandEnabled = enabled
+                                                prefs.edit().putBoolean("super_island_enabled", enabled).apply()
+
+                                                // ⚡ Logic: If MiPlay is selected when enabling Super Island, switch to Off
+                                                if (enabled && actionStyle == "miplay") {
+                                                    actionStyle = "disabled"
+                                                    prefs.edit().putString("notification_actions_style", "disabled").apply()
+                                                }
+
+                                                val action = if (enabled) {
+                                                    "ACTION_ENABLE_SUPER_ISLAND"
+                                                } else {
+                                                    "ACTION_DISABLE_SUPER_ISLAND"
+                                                }
+                                                val intent = Intent(context, LyricService::class.java).setAction(action)
+                                                context.startService(intent)
                                             }
                                         )
-
-                                        SuperSwitch(
-                                            title = stringResource(R.string.settings_super_island_share),
-                                            summary = stringResource(R.string.settings_super_island_share_desc),
-                                            checked = superIslandShareEnabled,
-                                            onCheckedChange = {
-                                                superIslandShareEnabled = it
-                                                prefs.edit().putBoolean("super_island_share_enabled", it).apply()
-                                            }
-                                        )
-
-                                        if (superIslandShareEnabled) {
-                                            val shareFormats = listOf("format_1", "format_2", "format_3")
-                                            val shareFormatNames = listOf(
-                                                stringResource(R.string.share_format_1),
-                                                stringResource(R.string.share_format_2),
-                                                stringResource(R.string.share_format_3)
-                                            )
-                                            val currentFormatIndex = shareFormats.indexOf(superIslandShareFormat).takeIf { it >= 0 } ?: 0
-                                            
-                                            SuperDropdown(
-                                                title = stringResource(R.string.settings_super_island_share_format),
-                                                items = shareFormatNames,
-                                                selectedIndex = currentFormatIndex,
-                                                onSelectedIndexChange = { index ->
-                                                    val newFormat = shareFormats[index]
-                                                    superIslandShareFormat = newFormat
-                                                    prefs.edit().putString("super_island_share_format", newFormat).apply()
+                                        if (superIslandEnabled) {
+                                            SuperSwitch(
+                                                title = stringResource(R.string.settings_super_island_colorize),
+                                                summary = stringResource(R.string.settings_super_island_colorize_desc),
+                                                checked = superIslandTextColorEnabled,
+                                                onCheckedChange = {
+                                                    superIslandTextColorEnabled = it
+                                                    progressColorEnabled = it
+                                                    prefs.edit().putBoolean("super_island_text_color_enabled", it).apply()
+                                                    prefs.edit().putBoolean("progress_bar_color_enabled", it).apply()
                                                 }
                                             )
+
+                                            SuperSwitch(
+                                                title = stringResource(R.string.settings_super_island_share),
+                                                summary = stringResource(R.string.settings_super_island_share_desc),
+                                                checked = superIslandShareEnabled,
+                                                onCheckedChange = {
+                                                    superIslandShareEnabled = it
+                                                    prefs.edit().putBoolean("super_island_share_enabled", it).apply()
+                                                }
+                                            )
+
+                                            if (superIslandShareEnabled) {
+                                                val shareFormats = listOf("format_1", "format_2", "format_3")
+                                                val shareFormatNames = listOf(
+                                                    stringResource(R.string.share_format_1),
+                                                    stringResource(R.string.share_format_2),
+                                                    stringResource(R.string.share_format_3)
+                                                )
+                                                val currentFormatIndex = shareFormats.indexOf(superIslandShareFormat).takeIf { it >= 0 } ?: 0
+
+                                                SuperDropdown(
+                                                    title = stringResource(R.string.settings_super_island_share_format),
+                                                    items = shareFormatNames,
+                                                    selectedIndex = currentFormatIndex,
+                                                    onSelectedIndexChange = { index ->
+                                                        val newFormat = shareFormats[index]
+                                                        superIslandShareFormat = newFormat
+                                                        prefs.edit().putString("super_island_share_format", newFormat).apply()
+                                                    }
+                                                )
+                                            }
                                         }
                                     }
                                     if (isHyperOsSupported && !superIslandEnabled) {

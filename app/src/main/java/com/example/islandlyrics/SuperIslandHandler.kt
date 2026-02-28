@@ -365,6 +365,7 @@ class SuperIslandHandler(
             .setOngoing(true)
             .setOnlyAlertOnce(true)
             .setVisibility(Notification.VISIBILITY_PUBLIC)
+            .setColor(if (cachedActionStyle == "media_controls") 0xFF757575.toInt() else cachedAlbumColor)  // Neutral gray for T12 ring; album color for T7 progress bar
 
         // ⚡ OPTIMIZATION: Populate island params immediately so the system UI 
         // recognizes this as an island notification from the first frame.
@@ -426,42 +427,38 @@ class SuperIslandHandler(
             lastPicAppHash = metadata?.packageName?.hashCode() ?: 0
         }
 
-        // ── Detect Media Control Changes ──
+        // ── Detect Media Control Icon Changes ──
+        // Note: Template 12's type=1 (progress ring) button colors are system-hardcoded for
+        // third-party apps — neither JSON color fields nor notification.color can override them.
+        // We use type=0 (simple circle) instead, drawing the background color into the icon
+        // bitmap itself, which is the only reliable way to control button appearance.
         val isPlaying = LyricRepository.getInstance().isPlaying.value ?: false
         val actionsHash = if (cachedActionStyle == "media_controls") (if (isPlaying) 1 else 0) else -1
-        
-        if (actionsHash != lastPicActionsHash || cachedActionsBundle == null) {
+
+        if (actionsHash != lastPicActionsHash || cachedPicsBundle?.containsKey("miui.focus.pic_btn_play_pause") == false) {
             if (cachedActionStyle == "media_controls") {
-                val actionsBundle = Bundle()
-                
-                // Index 0: Play/Pause Button
-                val playPauseIntent = Intent("com.example.islandlyrics.ACTION_MEDIA_PLAY_PAUSE").setPackage(context.packageName)
-                val playPausePI = PendingIntent.getBroadcast(context, 11, playPauseIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
-                val playPauseIcon = if (isPlaying) R.drawable.ic_pause else R.drawable.ic_play_arrow
-                val playPauseAction = Notification.Action.Builder(Icon.createWithResource(context, playPauseIcon), if (isPlaying) "Pause" else "Play", playPausePI).build()
-                actionsBundle.putParcelable("miui.focus.action_play_pause", playPauseAction)
+                // Draw both icon + dark background into the bitmap — the only reliable path
+                // for consistent button colors on HyperOS
+                val playPauseResId = if (isPlaying) R.drawable.ic_pause else R.drawable.ic_play_arrow
+                val playPauseIconBitmap = renderButtonIcon(playPauseResId, 96, 0.6f, "#1A1A1A")
+                val nextIconBitmap = renderButtonIcon(R.drawable.ic_skip_next, 96, 0.5f, "#333333")
 
-                // Index 1: Next Button
-                val nextIntent = Intent("com.example.islandlyrics.ACTION_MEDIA_NEXT").setPackage(context.packageName)
-                val nextPI = PendingIntent.getBroadcast(context, 12, nextIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
-                val nextAction = Notification.Action.Builder(Icon.createWithResource(context, R.drawable.ic_skip_next), "Next", nextPI).build()
-                actionsBundle.putParcelable("miui.focus.action_next", nextAction)
-
-                // Cache Next icon in pics for style 12's button renderer
-                cachedPicsBundle?.let { 
-                    it.putParcelable("miui.focus.pic_next", Icon.createWithResource(context, R.drawable.ic_skip_next))
+                cachedPicsBundle?.let {
+                    it.putParcelable("miui.focus.pic_btn_play_pause", Icon.createWithBitmap(playPauseIconBitmap))
+                    it.putParcelable("miui.focus.pic_btn_next", Icon.createWithBitmap(nextIconBitmap))
                 }
-
-                cachedActionsBundle = actionsBundle
             } else {
-                cachedActionsBundle = null
+                cachedPicsBundle?.remove("miui.focus.pic_btn_play_pause")
+                cachedPicsBundle?.remove("miui.focus.pic_btn_next")
             }
+            cachedActionsBundle = null
             lastPicActionsHash = actionsHash
         }
 
         // ── Apply to Extras ──
         cachedPicsBundle?.let { targetExtras.putBundle("miui.focus.pics", it) }
-        cachedActionsBundle?.let { targetExtras.putBundle("miui.focus.actions", it) }
+        // Explicitly remove any stale actions Bundle to prevent Method 1 from interfering
+        targetExtras.remove("miui.focus.actions")
     }
 
     // ── Update: modify cached notification extras in-place ──
@@ -562,6 +559,10 @@ class SuperIslandHandler(
 
         applyPicsAndActions(metadata, albumArt, notification)
         notification.extras.putString("miui.focus.param", islandParams)
+
+        // Restore album color for all templates — previously attempted to branch on Template 12
+        // to fix ring color, but notification.color has no effect on Template 12 ring either.
+        notification.color = cachedAlbumColor
 
         // Update base notification text fields
         notification.extras.putString(Notification.EXTRA_TITLE, currentLyric.ifEmpty { "Capsulyric" })
@@ -758,7 +759,7 @@ class SuperIslandHandler(
         val root = JSONObject()
         val paramV2 = JSONObject()
 
-        val hexColor = String.format("#%06X", 0xFFFFFF and cachedAlbumColor)
+        val hexColor = String.format("#FF%06X", 0xFFFFFF and cachedAlbumColor)
         val showHighlightColor = cachedSuperIslandTextColorEnabled 
         val ringColor = if (showHighlightColor) hexColor else "#757575"
 
@@ -785,29 +786,32 @@ class SuperIslandHandler(
             chatInfo.put("title", fullLyric.ifEmpty { title.ifEmpty { "♪" } }) 
             chatInfo.put("content", subText)
             val playbackPkg = lastMetadata?.packageName ?: context.packageName
-            chatInfo.put("appIconPkg", playbackPkg)
-            chatInfo.put("picApp", "miui.focus.pic_app")
+            chatInfo.put("appIconPkg", playbackPkg)  // Standard field per chatInfo spec
             paramV2.put("chatInfo", chatInfo)
 
             val actionsArray = org.json.JSONArray()
             
-            // Play/Pause Button (Progress Button) - Index 0
+            // Buttons — type=0 (simple circle) only: ring type=1 colors are system-hardcoded
+            // for third-party apps and cannot be overridden. Background is baked into the bitmap.
+            val playPauseUri = Intent("com.example.islandlyrics.ACTION_MEDIA_PLAY_PAUSE")
+                .setPackage(context.packageName)
+                .toUri(Intent.URI_INTENT_SCHEME)
+            val nextUri = Intent("com.example.islandlyrics.ACTION_MEDIA_NEXT")
+                .setPackage(context.packageName)
+                .toUri(Intent.URI_INTENT_SCHEME)
+
             val btnPlay = JSONObject()
-            btnPlay.put("action", "miui.focus.action_play_pause")
-            btnPlay.put("type", 1) // Progress button
-            val playProgress = JSONObject()
-            playProgress.put("progress", progressPercent)
-            playProgress.put("colorProgress", progressBarColor)
-            playProgress.put("colorProgressEnd", progressBarColor)
-            // Fix clashing background color by adding a subtle dark gray
-            playProgress.put("colorBackground", "#333333") 
-            btnPlay.put("progressInfo", playProgress)
+            btnPlay.put("actionIcon", "miui.focus.pic_btn_play_pause")
+            btnPlay.put("type", 0)  // Simple circle — background color baked into bitmap
+            btnPlay.put("actionIntentType", 2)
+            btnPlay.put("actionIntent", playPauseUri)
             actionsArray.put(btnPlay)
 
-            // Next Button - Index 1
             val btnNext = JSONObject()
-            btnNext.put("action", "miui.focus.action_next")
+            btnNext.put("actionIcon", "miui.focus.pic_btn_next")
             btnNext.put("type", 0)
+            btnNext.put("actionIntentType", 2)
+            btnNext.put("actionIntent", nextUri)
             actionsArray.put(btnNext)
 
             paramV2.put("actions", actionsArray)
@@ -914,6 +918,29 @@ class SuperIslandHandler(
 
         root.put("param_v2", paramV2)
         return root.toString()
+    }
+
+    private fun renderButtonIcon(resourceId: Int, size: Int, iconScale: Float, bgColorHex: String? = null): Bitmap {
+        val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+        val canvas = android.graphics.Canvas(bitmap)
+        val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG)
+
+        if (bgColorHex != null) {
+            paint.color = android.graphics.Color.parseColor(bgColorHex)
+            canvas.drawCircle(size / 2f, size / 2f, size / 2f, paint)
+        }
+
+        val drawable = context.getDrawable(resourceId) ?: return bitmap
+        // Force white tint directly on the mutated drawable so it's applied when drawn.
+        // (DrawableCompat.wrap returns a new wrapper — setting tint there then drawing the
+        // original has no effect. mutate() + setTint() works in-place.)
+        drawable.mutate().setTint(android.graphics.Color.WHITE)
+        val iconSize = (size * iconScale).toInt()
+        val margin = (size - iconSize) / 2
+        drawable.setBounds(margin, margin, margin + iconSize, margin + iconSize)
+        drawable.draw(canvas)
+
+        return bitmap
     }
 
     private fun scaleBitmap(src: Bitmap, targetSize: Int): Bitmap {
