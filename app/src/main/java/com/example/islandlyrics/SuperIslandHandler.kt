@@ -183,12 +183,14 @@ class SuperIslandHandler(
         }
         val artHash = bitmap.hashCode()
         if (artHash != lastAlbumArtPaletteHash) {
-            // Capture the hash we're starting extraction for, so we can discard stale callbacks
+            // Snapshot the current "expected" art hash before async extraction starts.
+            // If a newer song arrives while we are extracting, discard the stale result.
             val extractingFor = artHash
             Palette.from(bitmap).generate { palette ->
-                // If album art has already changed again by the time this callback fires,
-                // discard the result — it belongs to an old song and would cause flicker
-                if (extractingFor != bitmap.hashCode() && extractingFor != LyricRepository.getInstance().liveAlbumArt.value?.hashCode()) {
+                // Check staleness: compare to what the repository currently holds
+                val currentArtHash = LyricRepository.getInstance().liveAlbumArt.value?.hashCode()
+                if (extractingFor != currentArtHash) {
+                    // This callback is for an old song — discard silently
                     return@generate
                 }
                 if (palette != null) {
@@ -197,13 +199,18 @@ class SuperIslandHandler(
                             palette.getDominantColor(0xFF757575.toInt())
                         )
                     )
+                    // Only mark extraction done when we actually got a color.
+                    // If palette is null we leave lastAlbumArtPaletteHash unchanged so
+                    // the next observer delivery will retry extraction.
+                    lastAlbumArtPaletteHash = artHash
                 }
-                lastAlbumArtPaletteHash = artHash
-                // Only schedule update AFTER we have the correct color
+                // Schedule update with the (possibly refreshed) color
                 scheduleUpdate()
             }
+        } else {
+            // Same art, palette unchanged — but other metadata may have changed
+            scheduleUpdate()
         }
-        // If hash is same, no need to update — palette hasn't changed
     }
 
     private var pendingUpdate = false
