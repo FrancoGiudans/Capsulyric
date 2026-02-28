@@ -121,7 +121,11 @@ fun MiuixMediaControlDialog(
                             context = context,
                             isPrimary = isPrimary,
                             primaryLyric = if (isPrimary) repoLyric?.lyric else null,
-                            primaryProgress = if (isPrimary) repoProgress else null
+                            primaryProgress = if (isPrimary) repoProgress else null,
+                            onOpenApp = {
+                                show.value = false
+                                onDismiss()
+                            }
                         )
                     }
                 }
@@ -226,7 +230,8 @@ fun MiuixMediaSessionLayout(
     context: Context,
     isPrimary: Boolean,
     primaryLyric: String?,
-    primaryProgress: LyricRepository.PlaybackProgress?
+    primaryProgress: LyricRepository.PlaybackProgress?,
+    onOpenApp: (() -> Unit)? = null
 ) {
     var playbackState by remember(controller) { mutableStateOf(controller.playbackState) }
     var metadata by remember(controller) { mutableStateOf(controller.metadata) }
@@ -411,6 +416,42 @@ fun MiuixMediaSessionLayout(
                             tint = MiuixTheme.colorScheme.onSurface, 
                             modifier = Modifier.size(24.dp)
                         )
+                    }
+
+                    if (onOpenApp != null) {
+                        Spacer(modifier = Modifier.width(28.dp))
+                        IconButton(
+                            onClick = {
+                                try {
+                                    val launchIntent = context.packageManager.getLaunchIntentForPackage(pkg)
+                                    if (launchIntent != null) {
+                                        context.startActivity(launchIntent)
+                                    } else {
+                                        Toast.makeText(context, context.getString(R.string.media_control_cannot_open, pkg), Toast.LENGTH_SHORT).show()
+                                    }
+                                } catch (e: Exception) {
+                                    Toast.makeText(context, context.getString(R.string.media_control_error_prefix, e.message), Toast.LENGTH_SHORT).show()
+                                }
+                                onOpenApp()
+                            },
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            if (appIcon != null) {
+                                Image(
+                                    bitmap = appIcon.asImageBitmap(),
+                                    contentDescription = "Open $appName",
+                                    modifier = Modifier.size(24.dp).clip(CircleShape),
+                                    contentScale = ContentScale.Crop
+                                )
+                            } else {
+                                Icon(
+                                    painterResource(R.drawable.ic_music_note),
+                                    contentDescription = "Open $appName",
+                                    tint = MiuixTheme.colorScheme.onSurface,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
+                        }
                     }
                 }
             }
