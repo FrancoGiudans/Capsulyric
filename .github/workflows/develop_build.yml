@@ -51,5 +51,5 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: Capsulyric-Prerelease-Signed
-          path: app/build/outputs/apk/prerelease/*.apk
+          path: app/build/outputs/apk/prerelease/app-prerelease-signed.apk
           archive: false
