@@ -529,7 +529,7 @@ class DebugLyricActivity : AppCompatActivity() {
                         continuation.resume(null)
                     }
                     override fun onResponse(call: Call, response: Response) {
-                        continuation.resume(response.body?.string())
+                        continuation.resume(response.body.string())
                     }
                 })
             }
@@ -569,7 +569,7 @@ class DebugLyricActivity : AppCompatActivity() {
                         continuation.resume(null)
                     }
                     override fun onResponse(call: Call, response: Response) {
-                        continuation.resume(response.body?.string())
+                        continuation.resume(response.body.string())
                     }
                 })
             }
@@ -606,7 +606,7 @@ class DebugLyricActivity : AppCompatActivity() {
                                 continuation.resume(null)
                             }
                             override fun onResponse(call: Call, response: Response) {
-                                continuation.resume(response.body?.string())
+                                continuation.resume(response.body.string())
                             }
                         })
                     }
@@ -659,7 +659,7 @@ class DebugLyricActivity : AppCompatActivity() {
                         continuation.resume(null)
                     }
                     override fun onResponse(call: Call, response: Response) {
-                        continuation.resume(response.body?.string())
+                        continuation.resume(response.body.string())
                     }
                 })
             }
@@ -700,7 +700,7 @@ class DebugLyricActivity : AppCompatActivity() {
                         continuation.resume(null)
                     }
                     override fun onResponse(call: Call, response: Response) {
-                        continuation.resume(response.body?.string())
+                        continuation.resume(response.body.string())
                     }
                 })
             }
@@ -743,7 +743,7 @@ class DebugLyricActivity : AppCompatActivity() {
                         continuation.resume(null)
                     }
                     override fun onResponse(call: Call, response: Response) {
-                        continuation.resume(response.body?.string())
+                        continuation.resume(response.body.string())
                     }
                 })
             }
