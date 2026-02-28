@@ -183,20 +183,27 @@ class SuperIslandHandler(
         }
         val artHash = bitmap.hashCode()
         if (artHash != lastAlbumArtPaletteHash) {
+            // Capture the hash we're starting extraction for, so we can discard stale callbacks
+            val extractingFor = artHash
             Palette.from(bitmap).generate { palette ->
+                // If album art has already changed again by the time this callback fires,
+                // discard the result — it belongs to an old song and would cause flicker
+                if (extractingFor != bitmap.hashCode() && extractingFor != LyricRepository.getInstance().liveAlbumArt.value?.hashCode()) {
+                    return@generate
+                }
                 if (palette != null) {
                     cachedAlbumColor = palette.getVibrantColor(
                         palette.getMutedColor(
                             palette.getDominantColor(0xFF757575.toInt())
                         )
                     )
-                    lastAlbumArtPaletteHash = artHash
                 }
+                lastAlbumArtPaletteHash = artHash
+                // Only schedule update AFTER we have the correct color
                 scheduleUpdate()
             }
-        } else {
-            scheduleUpdate()
         }
+        // If hash is same, no need to update — palette hasn't changed
     }
 
     private var pendingUpdate = false
@@ -862,9 +869,10 @@ class SuperIslandHandler(
         picInfoA.put("pic", "miui.focus.pic_island")
         imageTextInfoLeft.put("picInfo", picInfoA)
         
-        // A区 text: song title
+        // A区 text: song title + artist
         val textInfoA = JSONObject()
-        textInfoA.put("title", title.ifEmpty { "♪" })
+        val titleWithArtist = if (artist.isNotBlank()) "$title - $artist" else title
+        textInfoA.put("title", titleWithArtist.ifEmpty { "♪" })
         textInfoA.put("showHighlightColor", showHighlightColor)
         imageTextInfoLeft.put("textInfo", textInfoA)
         bigIslandArea.put("imageTextInfoLeft", imageTextInfoLeft)
