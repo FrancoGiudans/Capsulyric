@@ -47,7 +47,13 @@ android {
     defaultConfig {
         def majorVersion = "1.3"
         versionCode getGitCommitCount()
-        versionName "${majorVersion}_C${getGitCommitCount()}"
+        
+        // Use property-injected versionName if available, otherwise fallback to default
+        if (project.hasProperty("versionName")) {
+            versionName project.versionName
+        } else {
+            versionName "${majorVersion}_C${getGitCommitCount()}"
+        }
         applicationId "com.franco.capsulyric"
         minSdk 36
         targetSdk 36
