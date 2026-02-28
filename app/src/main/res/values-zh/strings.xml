@@ -154,6 +154,7 @@
     <string name="settings_hide_recents">隐藏后台窗口</string>
     <string name="settings_hide_recents_desc">划到后台时自动从最近任务中移除</string>
     <!-- FAQ Strings -->
+    <string name="settings_predictive_back_desc">重启应用生效</string>
     <string name="faq_title">常见问题解答</string>
     <string name="faq_cat_guide">使用指引</string>
     <string name="faq_q_guide">Q：如何使用免 Root（0-Hook）模式？</string>
@@ -299,6 +300,7 @@
     <string name="settings_app_ui_style_desc">在 Material Design 和 Miuix UI 之间切换。应用将会重启。</string>
     <string name="dialog_ui_style_title">选择 App 界面风格</string>
     <string name="ui_style_material">Material Design</string>
-    <string name="ui_style_miuix">Miuix (小米风格)</string>
+    <string name="ui_style_miuix">Miuix</string>
+    <string name="settings_predictive_back">预测性返回</string>
 
 </resources>

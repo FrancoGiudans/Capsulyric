@@ -112,6 +112,7 @@ fun CustomSettingsScreen(
     var superIslandShareEnabled by remember { mutableStateOf(prefs.getBoolean("super_island_share_enabled", true)) }
     var superIslandShareFormat by remember { mutableStateOf(prefs.getString("super_island_share_format", "format_1") ?: "format_1") }
     var miuixEnabled by remember { mutableStateOf(prefs.getBoolean("ui_use_miuix", false)) }
+    var predictiveBackEnabled by remember { mutableStateOf(prefs.getBoolean("predictive_back_enabled", false)) }
 
     // Dialog State for UI Style
     var showUiStyleDropdown by remember { mutableStateOf(false) }
@@ -595,14 +596,23 @@ fun CustomSettingsScreen(
                                 }
                             )
                             SettingsSwitchItem(
-                                title = stringResource(R.string.settings_theme_dynamic_color),
-                                subtitle = stringResource(R.string.settings_theme_dynamic_color_desc),
-                                checked = dynamicColor,
-                                onCheckedChange = {
-                                    dynamicColor = it
-                                    ThemeHelper.setDynamicColor(context, it)
-                                }
-                            )
+                                 title = stringResource(R.string.settings_theme_dynamic_color),
+                                 subtitle = stringResource(R.string.settings_theme_dynamic_color_desc),
+                                 checked = dynamicColor,
+                                 onCheckedChange = {
+                                     dynamicColor = it
+                                     ThemeHelper.setDynamicColor(context, it)
+                                 }
+                             )
+                             SettingsSwitchItem(
+                                 title = stringResource(R.string.settings_predictive_back),
+                                 subtitle = stringResource(R.string.settings_predictive_back_desc),
+                                 checked = predictiveBackEnabled,
+                                 onCheckedChange = {
+                                     predictiveBackEnabled = it
+                                     prefs.edit().putBoolean("predictive_back_enabled", it).apply()
+                                 }
+                             )
                         }
                     }
                     Spacer(modifier = Modifier.height(24.dp))

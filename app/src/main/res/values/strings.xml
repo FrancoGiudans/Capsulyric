@@ -169,6 +169,8 @@
     <string name="dialog_feedback_wps_desc">Alternative. May require login.</string>
     <string name="settings_hide_recents">Hide from Recents</string>
     <string name="settings_hide_recents_desc">Automatically remove from recents when app goes to background</string>
+    <string name="settings_predictive_back">Predictive Back Gesture</string>
+    <string name="settings_predictive_back_desc">Show a preview of the previous screen when swiping back. Restart to apply.</string>
     <!-- FAQ Strings -->
     <string name="faq_title">FAQ</string>
     <string name="faq_cat_guide">Setup Guide</string>
