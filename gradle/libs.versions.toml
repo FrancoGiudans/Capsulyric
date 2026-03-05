@@ -7,10 +7,10 @@ media = "1.7.1"
 material = "1.13.0"
 superLyricApi = "2.6"
 activityCompose = "1.12.4"
-composeBom = "2026.02.00"
+composeBom = "2026.02.01"
 markwon = "4.6.2"
 coil = "2.7.0"
-miuix = "0.8.4"
+miuix = "0.8.6"
 
 [libraries]
 annotation = { module = "androidx.annotation:annotation", version.ref = "annotation" }
