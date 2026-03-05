@@ -14,6 +14,18 @@ object ParserRuleHelper {
     private const val PREFS_NAME = "IslandLyricsPrefs"
     private const val PREF_PARSER_RULES = "parser_rules_json"
 
+    // ── In-memory cache ──
+    // keyed by packageName; null value means "rule exists but is disabled".
+    // cacheValid is set to false whenever saveRules() is called so that
+    // the next access re-reads from SharedPreferences.
+    private val ruleCache = HashMap<String, ParserRule?>()
+    private var cacheValid = false
+
+    private fun invalidateCache() {
+        cacheValid = false
+        ruleCache.clear()
+    }
+
     /**
      * Default rules for common music apps.
      * Apps with native notification lyric support have usesCarProtocol=true.
@@ -73,6 +85,14 @@ object ParserRuleHelper {
         }
 
         Collections.sort(rules)
+
+        // Populate cache
+        ruleCache.clear()
+        for (rule in rules) {
+            ruleCache[rule.packageName] = if (rule.enabled) rule else null
+        }
+        cacheValid = true
+
         return rules
     }
 
@@ -101,6 +121,8 @@ object ParserRuleHelper {
         }
         
         prefs.edit().putString(PREF_PARSER_RULES, array.toString()).apply()
+        // Rules changed on disk — invalidate cache so next access re-parses
+        invalidateCache()
     }
 
     /**
@@ -108,8 +130,13 @@ object ParserRuleHelper {
      * Returns null if no rule exists or rule is disabled.
      */
     fun getRuleForPackage(context: Context, packageName: String): ParserRule? {
-        val rules = loadRules(context)
-        return rules.find { it.packageName == packageName && it.enabled }
+        // Fast path: use in-memory cache if valid
+        if (cacheValid) {
+            return if (ruleCache.containsKey(packageName)) ruleCache[packageName] else null
+        }
+        // Cache miss: load from SharedPreferences (populates cache as a side-effect)
+        loadRules(context)
+        return if (ruleCache.containsKey(packageName)) ruleCache[packageName] else null
     }
     
     /**
@@ -118,7 +145,7 @@ object ParserRuleHelper {
      * If rule doesn't exist, returns package name.
      */
     fun getAppNameForPackage(context: Context, packageName: String): String {
-        val rule = loadRules(context).find { it.packageName == packageName }
+        val rule = getRuleForPackage(context, packageName)
         return rule?.customName ?: packageName
     }
 
@@ -126,8 +153,11 @@ object ParserRuleHelper {
      * Get all enabled packages (for whitelist integration).
      */
     fun getEnabledPackages(context: Context): Set<String> {
-        val rules = loadRules(context)
-        return rules.filter { it.enabled }.map { it.packageName }.toSet()
+        if (!cacheValid) loadRules(context)
+        return ruleCache.entries
+            .filter { it.value != null }
+            .map { it.key }
+            .toSet()
     }
     
     /**

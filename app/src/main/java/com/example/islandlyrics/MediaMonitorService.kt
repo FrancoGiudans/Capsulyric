@@ -187,8 +187,6 @@ class MediaMonitorService : NotificationListenerService() {
     }
 
     private fun updateControllers(controllers: List<MediaController>?) {
-        // Force reload whitelist to ensure we are always up to date
-        loadWhitelist()
 
         // CHECK MASTER SWITCH
         val isServiceEnabled = prefs?.getBoolean("service_enabled", true) ?: true
@@ -231,11 +229,6 @@ class MediaMonitorService : NotificationListenerService() {
                 controllers.forEach { controller ->
                     try {
                         val callback = object : MediaController.Callback() {
-                            private val debounceHandler = android.os.Handler(android.os.Looper.getMainLooper())
-                            private val updateRunnable = Runnable {
-                                updateMetadataIfPrimary(controller)
-                            }
-
                             override fun onPlaybackStateChanged(state: PlaybackState?) {
                                 checkServiceState() // Priority might have changed
                                 updateMetadataIfPrimary(controller)

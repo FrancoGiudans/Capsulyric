@@ -229,6 +229,10 @@ class LyricService : Service() {
     private var isPlaying = false
     private var lastLineIndex = -1
     private val handler = Handler(Looper.getMainLooper())
+
+    // Cached system services — initialized once in onCreate() to avoid repeated IPC
+    private var cachedMediaSessionManager: android.media.session.MediaSessionManager? = null
+    private var cachedMediaComponent: android.content.ComponentName? = null
     private val updateTask = object : Runnable {
         private var logCounter = 0
         
@@ -329,6 +333,10 @@ class LyricService : Service() {
         createNotificationChannel()
         capsuleHandler = LyricCapsuleHandler(this, this)
         superIslandHandler = SuperIslandHandler(this, this)
+
+        // Cache system services once here rather than in every IPC call
+        cachedMediaSessionManager = getSystemService(Context.MEDIA_SESSION_SERVICE) as android.media.session.MediaSessionManager
+        cachedMediaComponent = android.content.ComponentName(this, MediaMonitorService::class.java)
         
         // Always register SuperLyric for detection (check per-app settings in callback)
         SuperLyricTool.registerSuperLyric(this, superLyricStub)
@@ -806,8 +814,8 @@ class LyricService : Service() {
         }
         
         try {
-            val mm = getSystemService(Context.MEDIA_SESSION_SERVICE) as MediaSessionManager
-            val component = android.content.ComponentName(this, MediaMonitorService::class.java)
+            val mm = cachedMediaSessionManager ?: return
+            val component = cachedMediaComponent ?: return
             val controllers = mm.getActiveSessions(component)
             
             // [Fix Task 2] Strict Controller Matching
@@ -909,8 +917,8 @@ class LyricService : Service() {
 
     private fun handleMediaPause() {
         try {
-            val mm = getSystemService(Context.MEDIA_SESSION_SERVICE) as MediaSessionManager
-            val component = android.content.ComponentName(this, MediaMonitorService::class.java)
+            val mm = cachedMediaSessionManager ?: return
+            val component = cachedMediaComponent ?: return
             val controllers = mm.getActiveSessions(component)
             
             for (c in controllers) {
@@ -929,8 +937,8 @@ class LyricService : Service() {
 
     private fun handleMediaPlay() {
         try {
-            val mm = getSystemService(Context.MEDIA_SESSION_SERVICE) as MediaSessionManager
-            val component = android.content.ComponentName(this, MediaMonitorService::class.java)
+            val mm = cachedMediaSessionManager ?: return
+            val component = cachedMediaComponent ?: return
             val controllers = mm.getActiveSessions(component)
             
             for (c in controllers) {
@@ -949,8 +957,8 @@ class LyricService : Service() {
 
     private fun handleMediaNext() {
         try {
-            val mm = getSystemService(Context.MEDIA_SESSION_SERVICE) as MediaSessionManager
-            val component = android.content.ComponentName(this, MediaMonitorService::class.java)
+            val mm = cachedMediaSessionManager ?: return
+            val component = cachedMediaComponent ?: return
             val controllers = mm.getActiveSessions(component)
             
             // Skip to next on the first active controller (playing or paused)
@@ -970,8 +978,8 @@ class LyricService : Service() {
 
     private fun handleMediaPrev() {
         try {
-            val mm = getSystemService(Context.MEDIA_SESSION_SERVICE) as MediaSessionManager
-            val component = android.content.ComponentName(this, MediaMonitorService::class.java)
+            val mm = cachedMediaSessionManager ?: return
+            val component = cachedMediaComponent ?: return
             val controllers = mm.getActiveSessions(component)
             
             // Skip to previous on the first active controller (playing or paused)

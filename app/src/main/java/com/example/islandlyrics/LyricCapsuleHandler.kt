@@ -48,11 +48,17 @@ class LyricCapsuleHandler(
     
     private val prefChangeListener = SharedPreferences.OnSharedPreferenceChangeListener { prefs, key ->
         when (key) {
-            "notification_actions_style" -> cachedActionStyle = prefs.getString(key, "disabled") ?: "disabled"
+            "notification_actions_style" -> {
+                cachedActionStyle = prefs.getString(key, "disabled") ?: "disabled"
+                rebuildCachedIntents()
+            }
             "progress_bar_color_enabled" -> cachedUseAlbumColor = prefs.getBoolean(key, false)
             "dynamic_icon_enabled" -> cachedUseDynamicIcon = prefs.getBoolean(key, false)
             "dynamic_icon_style" -> cachedIconStyle = prefs.getString(key, "classic") ?: "classic"
-            "notification_click_style" -> cachedClickStyle = prefs.getString(key, "default") ?: "default"
+            "notification_click_style" -> {
+                cachedClickStyle = prefs.getString(key, "default") ?: "default"
+                rebuildCachedIntents()
+            }
             "disable_lyric_scrolling" -> cachedDisableScrolling = prefs.getBoolean(key, false)
             "oneui_capsule_color_enabled" -> cachedOneuiCapsuleColorEnabled = prefs.getBoolean(key, false)
         }
@@ -68,6 +74,54 @@ class LyricCapsuleHandler(
         cachedDisableScrolling = prefs.getBoolean("disable_lyric_scrolling", false)
         cachedOneuiCapsuleColorEnabled = prefs.getBoolean("oneui_capsule_color_enabled", false)
         prefs.registerOnSharedPreferenceChangeListener(prefChangeListener)
+    }
+
+    // Cached PendingIntents — built once, rebuilt only when click/action style changes
+    private var cachedContentIntent: android.app.PendingIntent? = null
+    private var cachedPauseIntent: android.app.PendingIntent? = null
+    private var cachedNextIntent: android.app.PendingIntent? = null
+    private var cachedMiplayIntent: android.app.PendingIntent? = null
+
+    private fun rebuildCachedIntents() {
+        cachedContentIntent = if (cachedClickStyle == "media_controls") {
+            val intent = Intent(context, MediaControlActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            }
+            PendingIntent.getActivity(
+                context, 0, intent,
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+            )
+        } else {
+            val intent = Intent(context, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_SINGLE_TOP
+            }
+            PendingIntent.getActivity(
+                context, 0, intent,
+                PendingIntent.FLAG_IMMUTABLE
+            )
+        }
+
+        cachedPauseIntent = PendingIntent.getService(
+            context, 1,
+            Intent(context, LyricService::class.java).setAction("ACTION_MEDIA_PAUSE"),
+            PendingIntent.FLAG_IMMUTABLE
+        )
+        cachedNextIntent = PendingIntent.getService(
+            context, 2,
+            Intent(context, LyricService::class.java).setAction("ACTION_MEDIA_NEXT"),
+            PendingIntent.FLAG_IMMUTABLE
+        )
+        cachedMiplayIntent = PendingIntent.getActivity(
+            context, 3,
+            Intent().apply {
+                component = android.content.ComponentName(
+                    "miui.systemui.plugin",
+                    "miui.systemui.miplay.MiPlayDetailActivity"
+                )
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            },
+            PendingIntent.FLAG_IMMUTABLE
+        )
     }
     
     private fun unloadPreferences() {
@@ -208,6 +262,7 @@ class LyricCapsuleHandler(
         
         // Load and listen for preference changes (Fix 3)
         loadPreferences()
+        rebuildCachedIntents()
         
         // Reset adaptive scroll history for new song
         lastLyricChangeTime = 0
@@ -690,62 +745,20 @@ class LyricCapsuleHandler(
             .setOnlyAlertOnce(true)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
             
-        // Notification Click Action (Fix 4: Configurable)
-        val contentIntent: PendingIntent = if (cachedClickStyle == "media_controls") {
-            // Option B: Open Media Controls (Transparent Activity)
-            val intent = Intent(context, MediaControlActivity::class.java).apply {
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-            }
-            PendingIntent.getActivity(
-                context, 0, intent, 
-                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
-            )
-        } else {
-            // Option A: Default (Open App)
-            val intent = Intent(context, MainActivity::class.java).apply {
-                flags = Intent.FLAG_ACTIVITY_SINGLE_TOP
-            }
-            PendingIntent.getActivity(
-                context, 0, intent,
-                PendingIntent.FLAG_IMMUTABLE
-            )
-        }
-            
-        builder.setContentIntent(contentIntent)
+        builder.setContentIntent(cachedContentIntent)
         builder.setRequestPromotedOngoing(true)  // Native AndroidX method - no reflection needed!
 
         // Action Buttons (using cached preferences - Fix 3)
         when (cachedActionStyle) {
             "media_controls" -> {
                 // Style A: Pause + Next
-                val pauseIntent = PendingIntent.getService(
-                    context, 1,
-                    Intent(context, LyricService::class.java).setAction("ACTION_MEDIA_PAUSE"),
-                    PendingIntent.FLAG_IMMUTABLE
-                )
-                val nextIntent = PendingIntent.getService(
-                    context, 2,
-                    Intent(context, LyricService::class.java).setAction("ACTION_MEDIA_NEXT"),
-                    PendingIntent.FLAG_IMMUTABLE
-                )
-                builder.addAction(0, context.getString(R.string.action_pause), pauseIntent)
-                builder.addAction(0, context.getString(R.string.action_next), nextIntent)
+                builder.addAction(0, context.getString(R.string.action_pause), cachedPauseIntent)
+                builder.addAction(0, context.getString(R.string.action_next), cachedNextIntent)
             }
             "miplay" -> {
                 // Style B: Launch Xiaomi MiPlay
-                val miplayIntent = Intent().apply {
-                    component = android.content.ComponentName(
-                        "miui.systemui.plugin",
-                        "miui.systemui.miplay.MiPlayDetailActivity"
-                    )
-                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                }
-                val miplayPendingIntent = PendingIntent.getActivity(
-                    context, 3, miplayIntent, PendingIntent.FLAG_IMMUTABLE
-                )
-                builder.addAction(0, context.getString(R.string.action_miplay), miplayPendingIntent)
+                builder.addAction(0, context.getString(R.string.action_miplay), cachedMiplayIntent)
             }
         }
 

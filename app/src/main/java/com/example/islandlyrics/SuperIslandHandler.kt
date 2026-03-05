@@ -59,11 +59,15 @@ class SuperIslandHandler(
     private var lastAlbumArtPaletteHash = 0
     private var lastMetadata: LyricRepository.MediaInfo? = null
 
+    // Cached PendingIntent for notification click — rebuilt only when click style changes
+    private var cachedContentIntent: android.app.PendingIntent? = null
+
     private val prefs by lazy { context.getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE) }
     private val prefListener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { p, key ->
         when (key) {
             "notification_click_style" -> {
                 cachedClickStyle = p.getString(key, "default") ?: "default"
+                cachedContentIntent = createContentIntent()
                 forceUpdateNotification()
             }
             "super_island_text_color_enabled" -> {
@@ -124,6 +128,11 @@ class SuperIslandHandler(
     private var isFirstNotification = true
     private var lastUpdateTime = 0L
 
+    // Pre-JSON change tracking (avoid expensive JSON build when nothing changed)
+    private var lastSentDisplayLyric = ""
+    private var lastSentProgressPercent = -1
+    private var lastSentSubText = ""
+
     // Scroll Configuration
     private val heavySkinRoms = setOf("HyperOS", "ColorOS", "OriginOS/FuntouchOS", "Flyme", "OneUI", "MagicOS", "RealmeUI")
     private val isHeavySkin = RomUtils.getRomType() in heavySkinRoms
@@ -178,6 +187,7 @@ class SuperIslandHandler(
         if (bitmap == null) {
             cachedAlbumColor = 0xFF757575.toInt()
             lastAlbumArtPaletteHash = 0
+            lastAppliedAlbumColor = 0  // Force color re-write on next update
             scheduleUpdate()
             return@Observer
         }
@@ -286,6 +296,9 @@ class SuperIslandHandler(
         cachedDisableScrolling = prefs.getBoolean("disable_lyric_scrolling", false)
         prefs.registerOnSharedPreferenceChangeListener(prefListener)
 
+        // Build content intent once; pruner.prefListener will rebuild on click-style change
+        cachedContentIntent = createContentIntent()
+
         lastLyric = ""
         lastProgress = -1
         lastAlbumArtHash = 0
@@ -322,6 +335,10 @@ class SuperIslandHandler(
         manager?.cancel(NOTIFICATION_ID)
         cachedNotification = null
         cachedBuilder = null
+        cachedContentIntent = null
+        lastSentDisplayLyric = ""
+        lastSentProgressPercent = -1
+        lastSentSubText = ""
         AppLogger.getInstance().log(TAG, "🏝️ SuperIslandHandler stopped")
     }
 
@@ -563,11 +580,22 @@ class SuperIslandHandler(
             displayLyric = calculateAdaptiveScroll(currentLyric, totalWeight)
         }
 
+        // ⚡ PRE-JSON FAST PATH: skip expensive JSON serialization when inputs haven't changed
+        // (color is checked separately via colorChanged below).
+        val colorChanged = cachedAlbumColor != lastAppliedAlbumColor
+        if (!isFirstNotification && !colorChanged &&
+            displayLyric == lastSentDisplayLyric &&
+            progressPercent == lastSentProgressPercent &&
+            subText == lastSentSubText) {
+            return
+        }
+
         val islandParams = buildIslandParamsJson(displayLyric, currentLyric, subText, progressPercent, title, artist)
         
-        // ⚡ CHANGE DETECTION: Skip notify if nothing visible changed
+        // Secondary CHANGE DETECTION: compare serialized JSON string.
+        // Handles edge cases where inputs appear equal but JSON differs (rare).
         val oldParams = notification.extras.getString("miui.focus.param")
-        if (oldParams == islandParams && !isFirstNotification) {
+        if (oldParams == islandParams && !colorChanged && !isFirstNotification) {
             return
         }
 
@@ -577,13 +605,19 @@ class SuperIslandHandler(
         // Restore album color for all templates — previously attempted to branch on Template 12
         // to fix ring color, but notification.color has no effect on Template 12 ring either.
         notification.color = cachedAlbumColor
+        lastAppliedAlbumColor = cachedAlbumColor  // Track applied color for diff check
 
         // Update base notification text fields
         notification.extras.putString(Notification.EXTRA_TITLE, currentLyric.ifEmpty { "Capsulyric" })
         notification.extras.putString(Notification.EXTRA_TEXT, subText)
 
-        // Update ContentIntent if it changed (or just refresh it)
-        notification.contentIntent = createContentIntent()
+        // Use cached content intent (rebuilt by prefListener on click-style change)
+        notification.contentIntent = cachedContentIntent
+
+        // Track sent values for next pre-check
+        lastSentDisplayLyric = displayLyric
+        lastSentProgressPercent = progressPercent
+        lastSentSubText = subText
 
         manager?.notify(NOTIFICATION_ID, notification)
         isFirstNotification = false
