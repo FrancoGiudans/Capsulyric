@@ -85,6 +85,7 @@ class MediaMonitorService : NotificationListenerService() {
 
     override fun onCreate() {
         super.onCreate()
+        instance = this
         prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
         // Load initial whitelist
         loadWhitelist()
@@ -162,7 +163,22 @@ class MediaMonitorService : NotificationListenerService() {
 
     override fun onDestroy() {
         super.onDestroy()
+        if (instance === this) instance = null
         prefs?.unregisterOnSharedPreferenceChangeListener(prefListener)
+    }
+
+    /**
+     * Re-reads the MediaSession for [packageName] and updates album art in [LyricRepository].
+     */
+    private fun doRefreshAlbumArtForPackage(packageName: String) {
+        synchronized(activeControllers) {
+            val controller = activeControllers.firstOrNull { it.packageName == packageName } ?: return
+            val artBitmap = controller.metadata
+                ?.getBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART)
+                ?: controller.metadata?.getBitmap(MediaMetadata.METADATA_KEY_ART)
+            LyricRepository.getInstance().updateAlbumArt(artBitmap)
+            AppLogger.getInstance().d(TAG, "Album art refreshed for $packageName (active session)")
+        }
     }
 
     private fun recheckSessions() {
@@ -622,7 +638,23 @@ class MediaMonitorService : NotificationListenerService() {
         private val packageRealTitle    = HashMap<String, String?>()
         private val packageRealArtist   = HashMap<String, String?>()
 
+        // Singleton instance — set in onCreate, cleared in onDestroy
+        @Volatile private var instance: MediaMonitorService? = null
+
         var isConnected = false
+
+        /**
+         * Asks the running [MediaMonitorService] instance to immediately re-read the
+         * MediaSession album art for [packageName] and push it to [LyricRepository].
+         *
+         * Called by [SuperLyricSource] whenever a song change is detected via the
+         * SuperLyric API, so that album art (and Palette colour) is updated
+         * before the first lyric line arrives — eliminating the grey-capsule window.
+         */
+        fun refreshAlbumArtForPackage(@Suppress("UNUSED_PARAMETER") context: Context, packageName: String) {
+            instance?.doRefreshAlbumArtForPackage(packageName)
+                ?: AppLogger.getInstance().d(TAG, "refreshAlbumArt: no running instance")
+        }
         
         fun requestRebind(context: Context) {
             val componentName = ComponentName(context, MediaMonitorService::class.java)

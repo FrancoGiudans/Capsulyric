@@ -19,9 +19,6 @@ import android.os.Looper
 import android.util.Log
 import androidx.lifecycle.Observer
 import androidx.core.app.NotificationCompat
-import com.hchen.superlyricapi.ISuperLyric
-import com.hchen.superlyricapi.SuperLyricData
-import com.hchen.superlyricapi.SuperLyricTool
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -34,9 +31,12 @@ class LyricService : Service() {
 
     // To debounce updates
     private var lastLyric = ""
-    
-    // Online lyric fetcher
-    private val onlineLyricFetcher = OnlineLyricFetcher()
+
+    // ── Lyric sources (each handles one acquisition path) ────────────────────
+    private lateinit var onlineLyricSource: OnlineLyricSource
+    private lateinit var superLyricSource: SuperLyricSource
+
+    // (kept for the online-lyrics timer / updateTask driven from parsed lines)
     private val serviceScope = CoroutineScope(Dispatchers.Main + Job())
     private var fetchJob: Job? = null
 
@@ -59,16 +59,14 @@ class LyricService : Service() {
             if (isStatic) {
                 AppLogger.getInstance().log(TAG, "⚠️ Detected static metadata as lyric: '$lyric'")
                 
-                // If this happens, check if we should fetch online
-                // Note: We use a fallback rule if none exists (handled in Helper or here)
                 if (pkg != null) {
                     val rule = ParserRuleHelper.getRuleForPackage(this, pkg) 
-                               ?: ParserRuleHelper.createDefaultRule(pkg) // Fallback if no rule exists
+                               ?: ParserRuleHelper.createDefaultRule(pkg)
 
                     if (rule.useOnlineLyrics) {
                         AppLogger.getInstance().log(TAG, "Static metadata detected -> Triggering online fetch")
-                        tryFetchOnlineLyrics()
-                        return@Observer // Don't show static text if fetching online
+                        onlineLyricSource.fetchFor(title, artist, pkg)
+                        return@Observer
                     } else {
                         AppLogger.getInstance().log(TAG, "Static metadata detected but online fetch disabled")
                     }
@@ -79,19 +77,13 @@ class LyricService : Service() {
             if (!isSuperIslandMode) {
                 capsuleHandler?.updateLyricImmediate(info.lyric)
             } else {
-                // ⚡ ZERO LATENCY: Force update island immediately on lyric change
                 superIslandHandler?.forceUpdateNotification()
             }
         } else {
-            // Stop logic: 
-            // In Super Island mode, we might want to keep it alive if metadata is still valid 
-            // even if lyrics are empty for a moment (e.g. song starts).
             if (isSuperIslandMode && LyricRepository.getInstance().liveMetadata.value != null && LyricRepository.getInstance().isPlaying.value == true) {
-                // Keep Super Island alive with metadata
                 updateActiveHandler()
                 superIslandHandler?.forceUpdateNotification()
             } else {
-                // Stop both if lyric is empty and no valid fallback
                 if (superIslandHandler?.isRunning == true) superIslandHandler?.stop()
                 if (capsuleHandler?.isRunning() == true) capsuleHandler?.stop()
             }
@@ -155,74 +147,8 @@ class LyricService : Service() {
         }
     }
 
-    private val superLyricStub = object : ISuperLyric.Stub() {
-        override fun onStop(data: SuperLyricData?) {
-            if (BuildConfig.DEBUG) {
-                AppLogger.getInstance().d(TAG, "API onStop: ${data?.packageName}")
-            }
-            LyricRepository.getInstance().updatePlaybackStatus(false)
-        }
-
-        override fun onSuperLyric(data: SuperLyricData?) {
-            if (BuildConfig.DEBUG) {
-                AppLogger.getInstance().d(TAG, "API onSuperLyric received: ${data?.lyric?.take(50)}")
-            }
-
-            if (data != null) {
-                val pkg = data.packageName
-                val lyric = data.lyric
-                
-                // Check per-app settings (with Default Fallback)
-                val rule = ParserRuleHelper.getRuleForPackage(this@LyricService, pkg) 
-                           ?: ParserRuleHelper.createDefaultRule(pkg)
-
-                if (!rule.useSuperLyricApi) {
-                    if (BuildConfig.DEBUG) {
-                        AppLogger.getInstance().d(TAG, "[$pkg] SuperLyric API disabled for this app")
-                    }
-                    // Don't fetch here - metadata observer already handles it for non-CarProtocol apps
-                    return
-                }
-
-                // Instrumental Filter
-                if (lyric.matches(".*(纯音乐|Instrumental|No lyrics|请欣赏|没有歌词).*".toRegex())) {
-                    if (BuildConfig.DEBUG) {
-                        AppLogger.getInstance().d(TAG, "Instrumental detected: $lyric")
-                    }
-                    val appName = getAppName(pkg)
-                    LyricRepository.getInstance().updateLyric("", appName)
-                    @Suppress("DEPRECATION")
-                    stopForeground(true)
-                    return
-                }
-
-                if (lyric == lastLyric) {
-                    if (BuildConfig.DEBUG) {
-                        AppLogger.getInstance().d(TAG, "Duplicate lyric ignored")
-                    }
-                    return
-                }
-                lastLyric = lyric
-
-                val appName = getAppName(pkg)
-
-                // Update Repository -> This triggers the Observer -> Notification
-                LyricRepository.getInstance().updateLyric(lyric, appName)
-                
-                // If online lyrics enabled for this app AND SuperLyric doesn't provide syllable info
-                if (rule.useOnlineLyrics && !lyric.contains("<")) {
-                    if (BuildConfig.DEBUG) {
-                        AppLogger.getInstance().d(TAG, "[$pkg] SuperLyric无逐字信息，尝试在线获取")
-                    }
-                    tryFetchOnlineLyrics()
-                }
-            } else {
-                if (BuildConfig.DEBUG) {
-                    AppLogger.getInstance().d(TAG, "API onSuperLyric received NULL data")
-                }
-            }
-        }
-    }
+    // ── SuperLyric API stub is now in SuperLyricSource ────────────────────────
+    // (Removed: superLyricStub inline definition)
 
     private var currentPosition = 0L
     private var duration = 0L
@@ -338,11 +264,11 @@ class LyricService : Service() {
         cachedMediaSessionManager = getSystemService(Context.MEDIA_SESSION_SERVICE) as android.media.session.MediaSessionManager
         cachedMediaComponent = android.content.ComponentName(this, MediaMonitorService::class.java)
         
-        // Always register SuperLyric for detection (check per-app settings in callback)
-        SuperLyricTool.registerSuperLyric(this, superLyricStub)
-        if (BuildConfig.DEBUG) {
-            AppLogger.getInstance().d(TAG, "SuperLyric API: Registered for detection")
-        }
+        // Initialise lyric sources
+        onlineLyricSource = OnlineLyricSource(this)
+        superLyricSource  = SuperLyricSource(this, onlineLyricSource)
+        superLyricSource.start()
+        AppLogger.getInstance().d(TAG, "SuperLyricSource started")
 
         val filter = IntentFilter().apply {
             addAction("com.example.islandlyrics.ACTION_MEDIA_PLAY_PAUSE")
@@ -379,18 +305,14 @@ class LyricService : Service() {
                 AppLogger.getInstance().log(TAG, "Metadata Change: ${info.title} (${info.packageName}) | Rule: Active | Online: ${rule.useOnlineLyrics} | Car: ${rule.usesCarProtocol}")
                 
                 if (rule.useOnlineLyrics) {
-                    // Strategy:
-                    // 1. If app does NOT use Car Protocol (e.g. Kugou), it won't send lyrics via notification. Fetch immediately.
-                    // 2. If app USES Car Protocol, it might send lyrics. Wait and check content.
-                    
                     if (!rule.usesCarProtocol) {
                         AppLogger.getInstance().log(TAG, "[${info.packageName}] Non-CarProtocol app, triggering fetch...")
-                        tryFetchOnlineLyrics()
+                        onlineLyricSource.fetchFor(info.title, info.artist, info.packageName)
                     } else {
                         AppLogger.getInstance().log(TAG, "[${info.packageName}] CarProtocol app, waiting for lyric observer trigger...")
                     }
-                    }
                 }
+            }
         }
     }
 
@@ -461,16 +383,8 @@ class LyricService : Service() {
         AppLogger.getInstance().log(TAG, "Service Destroyed")
         capsuleHandler?.stop()
         
-        // Only unregister if it was registered
-        val prefs = getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE)
-        val useSuperLyricApi = prefs.getBoolean("use_superlyric_api", true)
-        if (useSuperLyricApi) {
-            // Unregistering manually is known to break future callbacks until app reboot
-            // SuperLyric API handles automatic unregistration when binder dies
-            if (BuildConfig.DEBUG) {
-                AppLogger.getInstance().d(TAG, "SuperLyric API: Left to auto-unregister by module")
-            }
-        }
+        superLyricSource.stop()
+        onlineLyricSource.cancel()
         
         getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE).unregisterOnSharedPreferenceChangeListener(prefsListener)
         LyricRepository.getInstance().liveLyric.removeObserver(lyricObserver)
@@ -484,85 +398,8 @@ class LyricService : Service() {
         broadcastStatus("🔴 Stopped")
     }
     
-    private fun tryFetchOnlineLyrics() {
-        // Get current track metadata
-        val metadata = LyricRepository.getInstance().liveMetadata.value
-        val title = metadata?.title
-        val artist = metadata?.artist
-        val pkg = metadata?.packageName
-        
-        if (title.isNullOrBlank() || artist.isNullOrBlank() || pkg.isNullOrBlank()) {
-            AppLogger.getInstance().log(TAG, "无法获取在线歌词：缺少元数据 (Title=$title, Artist=$artist, Pkg=$pkg)")
-            return
-        }
-        
-        // Check per-app online lyrics setting (with Default Fallback)
-        val rule = ParserRuleHelper.getRuleForPackage(this, pkg)
-                   ?: ParserRuleHelper.createDefaultRule(pkg)
-
-        if (!rule.useOnlineLyrics) {
-            AppLogger.getInstance().d(TAG, "Skip Fetch: Online lyrics disabled for $pkg")
-            return
-        }
-        
-        // This log is outside coroutine, keeping it or moving logic?
-        // Let's keep it here as INFO so we know we decided to fetch.
-        // The one inside coroutine (added in previous step) might be redundant but okay.
-        AppLogger.getInstance().i(TAG, "🚀 PREPARING FETCH: $title - $artist [$pkg]")
-        
-        // Cancel any pending fetch to avoid race conditions (e.g. rapid song skipping)
-        fetchJob?.cancel()
-
-        // Launch coroutine to fetch lyrics
-        fetchJob = serviceScope.launch {
-            try {
-                // Info: Start of fetch is important
-                AppLogger.getInstance().i(TAG, "🚀 STARTING ONLINE FETCH: $title - $artist [$pkg]")
-                
-                val result = onlineLyricFetcher.fetchBestLyrics(title, artist)
-
-                // CONSISTENCY CHECK: Ensure we are still playing the same song
-                val currentMetadata = LyricRepository.getInstance().liveMetadata.value
-                val currentTitle = currentMetadata?.title
-                val currentArtist = currentMetadata?.artist
-                
-                if (currentTitle != title || currentArtist != artist) {
-                    AppLogger.getInstance().i(TAG, "⚠️ Discarding stale lyric result (Song changed during fetch). Expected: $title, Found: $currentTitle")
-                    return@launch
-                }
-                
-                if (result != null && result.parsedLines != null && result.parsedLines.isNotEmpty()) {
-                    AppLogger.getInstance().i(TAG, "在线歌词获取成功 [${result.api}] 逐字:${result.hasSyllable}")
-                    
-                    // Store parsed lyrics in repository
-                    LyricRepository.getInstance().updateParsedLyrics(result.parsedLines, result.hasSyllable)
-                    
-                    // Reset line tracker
-                    lastLineIndex = -1
-                    AppLogger.getInstance().d(TAG, "在线歌词就绪，检查播放状态")
-                    
-                    // CRITICAL FIX: If music is already playing, start the progress updater
-                    val repoPlaying = LyricRepository.getInstance().isPlaying.value
-                    if (repoPlaying == true && !isPlaying) {
-                        AppLogger.getInstance().d(TAG, "⚡ 音乐正在播放，启动进度追踪器")
-                        startProgressUpdater()
-                    } else if (repoPlaying == true && isPlaying) {
-                        AppLogger.getInstance().d(TAG, "✅ 进度追踪器已运行")
-                    } else {
-                        AppLogger.getInstance().d(TAG, "⏸️ 音乐未播放，等待播放状态变化")
-                    }
-                } else {
-                    AppLogger.getInstance().i(TAG, "在线歌词获取失败：无有效结果")
-                }
-            } catch (e: Exception) {
-                if (e is kotlinx.coroutines.CancellationException) {
-                     AppLogger.getInstance().d(TAG, "Online fetch cancelled (Song changed)")
-                } else {
-                     AppLogger.getInstance().e(TAG, "在线歌词获取异常: ${e.message}")
-                }
-            }
-        }
-    }
+    // ── Online lyric fetching is now in OnlineLyricSource ────────────────────
+    // (Removed: tryFetchOnlineLyrics inline implementation)
 
     private fun createNotificationChannel() {
         if (true) {
