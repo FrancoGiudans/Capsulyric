@@ -12,8 +12,6 @@ import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
 import android.widget.Toast
-import android.window.OnBackInvokedCallback
-import android.window.OnBackInvokedDispatcher
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -22,7 +20,6 @@ import androidx.compose.runtime.setValue
 class MainActivity : BaseActivity() {
 
     private val handler = Handler(Looper.getMainLooper())
-    private var predictiveBackCallback: OnBackInvokedCallback? = null
 
     // Compose state for API dashboard (driven by BroadcastReceiver + reflection checks)
     private var apiPermissionText by mutableStateOf("Permission: Checking...")
@@ -60,19 +57,6 @@ class MainActivity : BaseActivity() {
             startActivity(Intent(this, com.example.islandlyrics.oobe.OobeActivity::class.java))
             finish()
             return
-        }
-
-        // Predictive Back: register callback when enabled
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            val predictiveBackEnabled = prefs.getBoolean("predictive_back_enabled", false)
-            if (predictiveBackEnabled) {
-                val callback = OnBackInvokedCallback { onBackPressedDispatcher.onBackPressed() }
-                onBackInvokedDispatcher.registerOnBackInvokedCallback(
-                    OnBackInvokedDispatcher.PRIORITY_DEFAULT,
-                    callback
-                )
-                predictiveBackCallback = callback
-            }
         }
 
         updateVersionInfo()
@@ -245,13 +229,6 @@ class MainActivity : BaseActivity() {
         filter.addAction("com.example.islandlyrics.STATUS_UPDATE")
 
         registerReceiver(diagReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
-    }
-
-    override fun onDestroy() {
-        super.onDestroy()
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            predictiveBackCallback?.let { onBackInvokedDispatcher.unregisterOnBackInvokedCallback(it) }
-        }
     }
 
     override fun onPause() {
