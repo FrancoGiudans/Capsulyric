@@ -318,7 +318,16 @@ class MediaMonitorService : NotificationListenerService() {
         val primary = getPrimaryController()
         // STRICT: Only start service if primary is WHITELISTED
         val isWhitelisted = allowedPackages.contains(primary?.packageName)
-        val isPlaying = isWhitelisted && primary?.playbackState?.state == PlaybackState.STATE_PLAYING
+        val state = primary?.playbackState?.state
+        val isPlaying = isWhitelisted && (
+            state == PlaybackState.STATE_PLAYING ||
+            state == PlaybackState.STATE_BUFFERING ||
+            state == PlaybackState.STATE_CONNECTING ||
+            state == PlaybackState.STATE_SKIPPING_TO_NEXT ||
+            state == PlaybackState.STATE_SKIPPING_TO_PREVIOUS ||
+            state == PlaybackState.STATE_FAST_FORWARDING ||
+            state == PlaybackState.STATE_REWINDING
+        )
 
         // Only act if the state has genuinely changed to avoid log spam and infinite stop latency
         if (lastComputedIsPlaying == isPlaying) {
@@ -366,12 +375,18 @@ class MediaMonitorService : NotificationListenerService() {
 
     private fun getPrimaryController(): MediaController? {
         synchronized(activeControllers) {
-            // Priority 1: Whitelisted + Playing/Buffering
+            // Priority 1: Whitelisted + Playing/Buffering/Skipping
             // We want to show lyrics for these immediately
             val whitelistedPlaying = activeControllers.firstOrNull { 
+                val st = it.playbackState?.state
                 allowedPackages.contains(it.packageName) && 
-                (it.playbackState?.state == PlaybackState.STATE_PLAYING || 
-                 it.playbackState?.state == PlaybackState.STATE_BUFFERING)
+                (st == PlaybackState.STATE_PLAYING || 
+                 st == PlaybackState.STATE_BUFFERING ||
+                 st == PlaybackState.STATE_CONNECTING ||
+                 st == PlaybackState.STATE_SKIPPING_TO_NEXT ||
+                 st == PlaybackState.STATE_SKIPPING_TO_PREVIOUS ||
+                 st == PlaybackState.STATE_FAST_FORWARDING ||
+                 st == PlaybackState.STATE_REWINDING)
             }
             if (whitelistedPlaying != null) {
                 // AppLogger.getInstance().log("Select", "Selected Priority 1 (Whitelisted+Playing): ${whitelistedPlaying.packageName}")

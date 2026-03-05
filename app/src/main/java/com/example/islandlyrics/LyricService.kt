@@ -80,16 +80,15 @@ class LyricService : Service() {
                 superIslandHandler?.forceUpdateNotification()
             }
         } else {
-            if (LyricRepository.getInstance().liveMetadata.value != null && LyricRepository.getInstance().isPlaying.value == true) {
+            // In the gap of track switching, lyrics might temporarily clear.
+            // As long as we have valid metadata, update UI but DO NOT stop the handler.
+            if (LyricRepository.getInstance().liveMetadata.value != null) {
                 updateActiveHandler()
                 if (isSuperIslandMode) {
                     superIslandHandler?.forceUpdateNotification()
                 } else {
                     capsuleHandler?.forceUpdateNotification()
                 }
-            } else {
-                if (superIslandHandler?.isRunning == true) superIslandHandler?.stop()
-                if (capsuleHandler?.isRunning() == true) capsuleHandler?.stop()
             }
         }
     }
@@ -127,27 +126,14 @@ class LyricService : Service() {
 
             // Get delay preference
             val prefs = getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE)
-            val delay = prefs.getLong("notification_dismiss_delay", 0L)
+            val userDelay = prefs.getLong("notification_dismiss_delay", 0L)
             
-            AppLogger.getInstance().log(TAG, "🛑 Playback stopped. Delay=$delay ms")
-
-            if (delay > 0) {
-                 AppLogger.getInstance().log(TAG, "⏳ Scheduling handler stop in ${delay}ms")
-                 handler.postDelayed(delayedStopRunnable, delay)
-            } else {
-                 // Immediate stop
-                 if (isSuperIslandMode) {
-                     if (superIslandHandler?.isRunning == true) {
-                         superIslandHandler?.stop()
-                         AppLogger.getInstance().log(TAG, "🛑 SuperIsland stopped immediately (Delay=0)")
-                     }
-                 } else {
-                     if (capsuleHandler?.isRunning() == true) {
-                         capsuleHandler?.stop()
-                         AppLogger.getInstance().log(TAG, "🛑 Capsule stopped immediately (Delay=0)")
-                     }
-                }
-            }
+            // Track switches generate momentary paused-states (often 50-150ms).
+            // By enforcing a minimum strict debounce (e.g. 250ms), we smoothly survive the gap.
+            val delay = if (userDelay < 250L) 250L else userDelay
+            
+            AppLogger.getInstance().log(TAG, "🛑 Playback stopped. Scheduling delayed stop in ${delay}ms")
+            handler.postDelayed(delayedStopRunnable, delay)
         }
     }
 
@@ -298,7 +284,7 @@ class LyricService : Service() {
                 }
                 
                 // CRITICAL CLEAR: Ensure old lyrics do not hang around across songs!
-                LyricRepository.getInstance().updateLyric("", info.packageName ?: "")
+                LyricRepository.getInstance().updateLyric("", info.packageName)
 
                 // Reset parsed lyrics on song change
                 LyricRepository.getInstance().updateParsedLyrics(emptyList(), false)
