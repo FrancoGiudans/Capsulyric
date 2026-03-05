@@ -247,7 +247,28 @@ class MediaMonitorService : NotificationListenerService() {
                         val callback = object : MediaController.Callback() {
                             override fun onPlaybackStateChanged(state: PlaybackState?) {
                                 checkServiceState() // Priority might have changed
-                                updateMetadataIfPrimary(controller)
+                                
+                                val primary = getPrimaryController()
+                                if (primary != null && primary.packageName == controller.packageName) {
+                                    // Buggy apps don't always fire onMetadataChanged (e.g., Xiaomi Music with SuperLyric module).
+                                    // We manually compute the un-parsed hash here. 
+                                    // If it differs from lastMetadataHash, they covertly changed the song!
+                                    val meta = primary.metadata
+                                    if (meta != null) {
+                                        val artHash = (meta.getBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART) ?: meta.getBitmap(MediaMetadata.METADATA_KEY_ART))?.hashCode() ?: 0
+                                        val currentHash = java.util.Objects.hash(
+                                            meta.getString(MediaMetadata.METADATA_KEY_TITLE),
+                                            meta.getString(MediaMetadata.METADATA_KEY_ARTIST),
+                                            primary.packageName,
+                                            meta.getLong(MediaMetadata.METADATA_KEY_DURATION),
+                                            artHash
+                                        )
+                                        if (currentHash != lastMetadataHash) {
+                                            AppLogger.getInstance().d(TAG, "Caught unannounced metadata change via playback state!")
+                                            updateMetadataIfPrimary(primary)
+                                        }
+                                    }
+                                }
                             }
 
                             override fun onMetadataChanged(metadata: MediaMetadata?) {

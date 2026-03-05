@@ -58,41 +58,49 @@ class SuperLyricSource(
                 return
             }
 
-            // ── Phase 1: detect song change and refresh metadata / album art ──
-            val meta   = data.mediaMetadata
-            val title  = meta?.getString(MediaMetadata.METADATA_KEY_TITLE)  ?: lastTitle
-            val artist = meta?.getString(MediaMetadata.METADATA_KEY_ARTIST) ?: lastArtist
-            val duration = meta?.getLong(MediaMetadata.METADATA_KEY_DURATION) ?: 0L
+            // ── Phase 1: Verify song identity (rely entirely on MediaMonitorService for actual metadata/album art) ──
+            val liveMeta = LyricRepository.getInstance().liveMetadata.value
+            val liveTitle = liveMeta?.title ?: ""
+            val liveArtist = liveMeta?.artist ?: ""
+            val livePkg = liveMeta?.packageName ?: ""
 
-            val songChanged = pkg != lastPackageName || title != lastTitle || artist != lastArtist
+            // What did SuperLyric give us?
+            val meta = data.mediaMetadata
+            val providedTitle = if (data.isExistMediaMetadata) meta?.getString(MediaMetadata.METADATA_KEY_TITLE) ?: "" else ""
+            val providedArtist = if (data.isExistMediaMetadata) meta?.getString(MediaMetadata.METADATA_KEY_ARTIST) ?: "" else ""
+            
+            // If SuperLyric provided metadata, we strictly verify it against what the system MediaSession says is playing.
+            // If it doesn't match, this is a stale or cross-app lyric packet, ignore it.
+            // If SuperLyric didn't provide metadata (e.g., just sending lyrics for the current song), we allow it
+            // as long as the packageName matches our currently active session.
+            val isMatch = if (data.isExistMediaMetadata) {
+                (providedTitle.equals(liveTitle, ignoreCase = true) || liveTitle.isEmpty()) && pkg == livePkg // Allow slight artist mismatch if title & pkg match, but strict title is usually best
+            } else {
+                pkg == livePkg
+            }
 
-            if (songChanged) {
-                AppLogger.getInstance().log(TAG, "Song change detected: [$pkg] $title - $artist")
+            if (!isMatch) {
+                AppLogger.getInstance().d(TAG, "[$pkg] Lyric ignored. Mismatch w/ current session (${liveMeta?.title} - ${liveMeta?.artist}) vs ($providedTitle - $providedArtist)")
+                return
+            }
 
-                lastPackageName = pkg
-                lastTitle  = title
-                lastArtist = artist
-                lastLyric  = ""   // Reset dedup
-
-                // Update metadata immediately — this triggers Palette extraction
-                // in SuperIslandHandler / LyricCapsuleHandler before the first
-                // lyric line even arrives.
-                LyricRepository.getInstance().updateMediaMetadata(title, artist, pkg, duration)
-
-                // Request a fresh album art scan by asking MediaMonitorService
-                // to re-read the current MediaSession for this package.
-                // This eliminates the delay where colour stays grey until the
-                // next lyric line arrives.
-                mainHandler.post {
-                    MediaMonitorService.refreshAlbumArtForPackage(context, pkg)
+            // We are confident this lyric belongs to the currently playing song handled by MediaSession
+            
+            // Update playback status if it was sent explicitely
+            val playbackState = data.playbackState
+            if (playbackState != null) {
+                val isPlaying = (playbackState.state == android.media.session.PlaybackState.STATE_PLAYING)
+                val wasPlaying = LyricRepository.getInstance().isPlaying.value ?: false
+                if (isPlaying != wasPlaying) {
+                    AppLogger.getInstance().d(TAG, "[$pkg] Playback state changed to: $isPlaying via SuperLyricData")
+                    LyricRepository.getInstance().updatePlaybackStatus(isPlaying)
                 }
-
-                // Cancel any in-flight online lyric fetch from the previous song
-                onlineLyricSource.cancel()
-
-                // Reset parsed-lyrics state in the repository
-                LyricRepository.getInstance().updateParsedLyrics(emptyList(), false)
-                LyricRepository.getInstance().updateCurrentLine(null)
+                
+                // ALSO SYNC PROGRESS IF AVAILABLE (Fallback for apps with broken MediaSession progress)
+                val liveDuration = LyricRepository.getInstance().liveMetadata.value?.duration ?: 0L
+                if (liveDuration > 0 && playbackState.position > 0) {
+                     LyricRepository.getInstance().updateProgress(playbackState.position, liveDuration)
+                }
             }
 
             // ── Phase 2: handle lyric text ────────────────────────────────────
@@ -100,12 +108,14 @@ class SuperLyricSource(
 
             // Instrumental / no-lyrics marker
             if (lyric.matches(".*(纯音乐|Instrumental|No lyrics|请欣赏|没有歌词).*".toRegex())) {
-                AppLogger.getInstance().d(TAG, "Instrumental marker detected — clearing lyric")
-                LyricRepository.getInstance().updateLyric("", getAppName(pkg))
+                AppLogger.getInstance().d(TAG, "Instrumental marker detected")
+                // Do NOT clear it to "", otherwise the UI shows "Waiting for lyrics..." indefinitely.
+                // Just pass it through so the user sees "纯音乐".
+                LyricRepository.getInstance().updateLyric(lyric, getAppName(pkg))
                 return
             }
 
-            if (lyric == lastLyric && !songChanged) {
+            if (lyric == lastLyric) {
                 AppLogger.getInstance().d(TAG, "Duplicate lyric — skipped")
                 return
             }
@@ -129,13 +139,14 @@ class SuperLyricSource(
             // ── Phase 4: decide whether to trigger online fetch ───────────────
             if (rule.useOnlineLyrics) {
                 // Only fetch if EnhancedLRC was not provided
-                onlineLyricSource.fetchFor(title, artist, pkg)
+                onlineLyricSource.fetchFor(liveTitle, liveArtist, pkg)
             }
         }
 
         override fun onStop(data: SuperLyricData?) {
             AppLogger.getInstance().d(TAG, "onStop: ${data?.packageName}")
             LyricRepository.getInstance().updatePlaybackStatus(false)
+            lastLyric = "" // Reset internal duplication detector on stop
         }
     }
 

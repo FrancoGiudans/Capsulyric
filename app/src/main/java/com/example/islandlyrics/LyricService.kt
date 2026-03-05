@@ -80,9 +80,13 @@ class LyricService : Service() {
                 superIslandHandler?.forceUpdateNotification()
             }
         } else {
-            if (isSuperIslandMode && LyricRepository.getInstance().liveMetadata.value != null && LyricRepository.getInstance().isPlaying.value == true) {
+            if (LyricRepository.getInstance().liveMetadata.value != null && LyricRepository.getInstance().isPlaying.value == true) {
                 updateActiveHandler()
-                superIslandHandler?.forceUpdateNotification()
+                if (isSuperIslandMode) {
+                    superIslandHandler?.forceUpdateNotification()
+                } else {
+                    capsuleHandler?.forceUpdateNotification()
+                }
             } else {
                 if (superIslandHandler?.isRunning == true) superIslandHandler?.stop()
                 if (capsuleHandler?.isRunning() == true) capsuleHandler?.stop()
@@ -293,6 +297,9 @@ class LyricService : Service() {
                     duration = info.duration
                 }
                 
+                // CRITICAL CLEAR: Ensure old lyrics do not hang around across songs!
+                LyricRepository.getInstance().updateLyric("", info.packageName ?: "")
+
                 // Reset parsed lyrics on song change
                 LyricRepository.getInstance().updateParsedLyrics(emptyList(), false)
                 LyricRepository.getInstance().updateCurrentLine(null)
