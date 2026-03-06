@@ -74,27 +74,20 @@ class LyricService : Service() {
             }
 
             updateActiveHandler()
-            if (!isSuperIslandMode) {
-                capsuleHandler?.updateLyricImmediate(info.lyric)
-            } else {
-                superIslandHandler?.forceUpdateNotification()
-            }
+            displayManager?.notifyLyricChanged(lyric)
         } else {
             // In the gap of track switching, lyrics might temporarily clear.
             // As long as we have valid metadata, update UI but DO NOT stop the handler.
             if (LyricRepository.getInstance().liveMetadata.value != null) {
                 updateActiveHandler()
-                if (isSuperIslandMode) {
-                    superIslandHandler?.forceUpdateNotification()
-                } else {
-                    capsuleHandler?.forceUpdateNotification()
-                }
+                displayManager?.forceUpdate()
             }
         }
     }
     
     // Delayed Stop Logic
     private val delayedStopRunnable = Runnable {
+        displayManager?.stop()
         if (isSuperIslandMode) {
             if (superIslandHandler?.isRunning == true) {
                 superIslandHandler?.stop()
@@ -214,6 +207,7 @@ class LyricService : Service() {
     private var invisibleToggle = false
     private var capsuleHandler: LyricCapsuleHandler? = null
     private var superIslandHandler: SuperIslandHandler? = null
+    private var displayManager: LyricDisplayManager? = null
     private var isSuperIslandMode = false
 
     private val mediaActionReceiver = object : BroadcastReceiver() {
@@ -249,6 +243,20 @@ class LyricService : Service() {
         createNotificationChannel()
         capsuleHandler = LyricCapsuleHandler(this, this)
         superIslandHandler = SuperIslandHandler(this, this)
+        displayManager = LyricDisplayManager(this).apply {
+            onStateUpdated = { state ->
+                // Route state to the active renderer
+                if (isSuperIslandMode) {
+                    if (superIslandHandler?.isRunning == true) {
+                        superIslandHandler?.render(state)
+                    }
+                } else {
+                    if (capsuleHandler?.isRunning() == true) {
+                        capsuleHandler?.render(state)
+                    }
+                }
+            }
+        }
 
         // Cache system services once here rather than in every IPC call
         cachedMediaSessionManager = getSystemService(Context.MEDIA_SESSION_SERVICE) as android.media.session.MediaSessionManager
@@ -326,11 +334,11 @@ class LyricService : Service() {
         // CRITICAL FIX: Prioritize the Rich Capsule Notification if it's already active
         // 3. Promote to foreground (avoid redundant channel creation)
         if (isSuperIslandMode && superIslandHandler?.isRunning == true) {
-            superIslandHandler?.forceUpdateNotification()
+            displayManager?.forceUpdate()
         } else if (!isSuperIslandMode && capsuleHandler?.isRunning() == true) {
             // Ask the handler to repost its rich notification
             // This satisfies startForeground requirements without downgrading the UI
-            capsuleHandler?.forceUpdateNotification()
+            displayManager?.forceUpdate()
         } else {
             // Only use fallback if service is starting up and no handler is ready yet
             if (action == "null" || action == "ACTION_START") {
@@ -374,7 +382,9 @@ class LyricService : Service() {
     override fun onDestroy() {
         super.onDestroy()
         AppLogger.getInstance().log(TAG, "Service Destroyed")
+        displayManager?.stop()
         capsuleHandler?.stop()
+        superIslandHandler?.stop()
         
         superLyricSource.stop()
         onlineLyricSource.cancel()
@@ -635,6 +645,13 @@ class LyricService : Service() {
             if (playing && hasLyric && capsuleHandler?.isRunning() != true) {
                 capsuleHandler?.start()
             }
+        }
+        
+        // Let display manager run if either is active
+        if ((capsuleHandler?.isRunning() == true || superIslandHandler?.isRunning == true)) {
+            displayManager?.start()
+        } else {
+            displayManager?.stop()
         }
     }
 
