@@ -10,6 +10,7 @@ import android.media.session.PlaybackState
 import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -314,6 +315,21 @@ fun MiuixMediaSessionLayout(
                     .size(80.dp)
                     .clip(RoundedCornerShape(16.dp))
                     .background(MiuixTheme.colorScheme.surfaceVariant)
+                    .clickable {
+                        if (onOpenApp != null) {
+                            try {
+                                val launchIntent = context.packageManager.getLaunchIntentForPackage(pkg)
+                                if (launchIntent != null) {
+                                    context.startActivity(launchIntent)
+                                } else {
+                                    Toast.makeText(context, context.getString(R.string.media_control_cannot_open, pkg), Toast.LENGTH_SHORT).show()
+                                }
+                            } catch (e: Exception) {
+                                Toast.makeText(context, context.getString(R.string.media_control_error_prefix, e.message), Toast.LENGTH_SHORT).show()
+                            }
+                            onOpenApp()
+                        }
+                    }
             ) {
                 if (albumArtBitmap != null) {
                     Image(
@@ -416,42 +432,6 @@ fun MiuixMediaSessionLayout(
                             tint = MiuixTheme.colorScheme.onSurface, 
                             modifier = Modifier.size(24.dp)
                         )
-                    }
-
-                    if (onOpenApp != null) {
-                        Spacer(modifier = Modifier.width(28.dp))
-                        IconButton(
-                            onClick = {
-                                try {
-                                    val launchIntent = context.packageManager.getLaunchIntentForPackage(pkg)
-                                    if (launchIntent != null) {
-                                        context.startActivity(launchIntent)
-                                    } else {
-                                        Toast.makeText(context, context.getString(R.string.media_control_cannot_open, pkg), Toast.LENGTH_SHORT).show()
-                                    }
-                                } catch (e: Exception) {
-                                    Toast.makeText(context, context.getString(R.string.media_control_error_prefix, e.message), Toast.LENGTH_SHORT).show()
-                                }
-                                onOpenApp()
-                            },
-                            modifier = Modifier.size(32.dp)
-                        ) {
-                            if (appIcon != null) {
-                                Image(
-                                    bitmap = appIcon.asImageBitmap(),
-                                    contentDescription = "Open $appName",
-                                    modifier = Modifier.size(24.dp).clip(CircleShape),
-                                    contentScale = ContentScale.Crop
-                                )
-                            } else {
-                                Icon(
-                                    painterResource(R.drawable.ic_music_note),
-                                    contentDescription = "Open $appName",
-                                    tint = MiuixTheme.colorScheme.onSurface,
-                                    modifier = Modifier.size(24.dp)
-                                )
-                            }
-                        }
                     }
                 }
             }
