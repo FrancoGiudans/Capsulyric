@@ -84,13 +84,18 @@ fun DebugCenterScreen(
                     if (isFetchingUpdate) return@DebugMenuButton
                     isFetchingUpdate = true
                     coroutineScope.launch {
-                        val release = UpdateChecker.fetchAbsoluteLatestRelease()
-                        isFetchingUpdate = false
-                        if (release != null) {
-                            updateReleaseInfo = release
-                            showUpdateDialog = true
-                        } else {
-                            android.widget.Toast.makeText(context, "Failed to fetch release", android.widget.Toast.LENGTH_SHORT).show()
+                        try {
+                            val release = UpdateChecker.fetchAbsoluteLatestRelease(context)
+                            isFetchingUpdate = false
+                            if (release != null) {
+                                updateReleaseInfo = release
+                                showUpdateDialog = true
+                            } else {
+                                android.widget.Toast.makeText(context, "Failed to fetch release", android.widget.Toast.LENGTH_SHORT).show()
+                            }
+                        } catch (e: Exception) {
+                            isFetchingUpdate = false
+                            android.widget.Toast.makeText(context, "Error fetching release: ${e.message}", android.widget.Toast.LENGTH_LONG).show()
                         }
                     }
                 }

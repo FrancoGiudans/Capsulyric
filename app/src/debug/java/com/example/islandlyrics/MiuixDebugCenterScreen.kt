@@ -111,7 +111,7 @@ fun MiuixDebugCenterScreen(
                             val scope = (context as? androidx.activity.ComponentActivity)
                             scope?.lifecycleScope?.launch {
                                 try {
-                                    val release = UpdateChecker.fetchAbsoluteLatestRelease()
+                                    val release = UpdateChecker.fetchAbsoluteLatestRelease(context)
                                     if (release != null) {
                                         updateReleaseInfo = release
                                         showUpdateDialog = true

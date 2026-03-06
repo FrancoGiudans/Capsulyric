@@ -140,8 +140,9 @@ object UpdateChecker {
      */
     /**
      * Fetch the absolute latest release information from GitHub without comparing versions, including prereleases.
+     * Modified for Debug Center to respect channels.
      */
-    suspend fun fetchAbsoluteLatestRelease(): ReleaseInfo? = withContext(Dispatchers.IO) {
+    suspend fun fetchAbsoluteLatestRelease(context: Context): ReleaseInfo? = withContext(Dispatchers.IO) {
         try {
             val apiUrl = "https://api.github.com/repos/FrancoGiudans/Capsulyric/releases"
             
@@ -155,8 +156,16 @@ object UpdateChecker {
             if (connection.responseCode == 200) {
                 val response = connection.inputStream.bufferedReader().use { it.readText() }
                 val jsonArray = org.json.JSONArray(response)
-                if (jsonArray.length() > 0) {
-                    return@withContext parseRelease(jsonArray.getJSONObject(0))
+                
+                val includePrerelease = isPrereleaseEnabled(context)
+                val userChannel = if (includePrerelease) getPrereleaseChannel(context) else "Release"
+
+                for (i in 0 until jsonArray.length()) {
+                    val json = jsonArray.getJSONObject(i)
+                    val release = parseRelease(json)
+                    if (isUpdateAllowedForChannel(release.tagName, userChannel)) {
+                        return@withContext release
+                    }
                 }
             } else {
                 AppLogger.getInstance().e(TAG, "GitHub API error: ${connection.responseCode}")
