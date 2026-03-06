@@ -125,6 +125,7 @@
     <string name="settings_prerelease_update_desc">Check for Alpha/Beta versions</string>
     <string name="dialog_prerelease_warning_title">Enable Prerelease Updates?</string>
     <string name="dialog_prerelease_warning_message">Prerelease versions (Alpha/Beta) may contain bugs and are not suitable for daily use.  Are you sure you want to receive these updates?</string>
+    <string name="settings_prerelease_channel">Prerelease Channel</string>
     
     <!-- Main Activity -->
     <string name="main_service_status">🔴 Service Status: Unknown</string>
@@ -171,6 +172,22 @@
     <string name="settings_hide_recents_desc">Automatically remove from recents when app goes to background</string>
     <string name="settings_predictive_back">Predictive Back Gesture</string>
     <string name="settings_predictive_back_desc">Show a preview of the previous screen when swiping back. Restart to apply.</string>
+    
+    <!-- Languages & Toasts -->
+    <string name="lang_sys_default">System Default</string>
+    <string name="lang_english">English</string>
+    <string name="lang_chinese">简体中文</string>
+    <string name="toast_dev_mode_steps">%1$d steps away from developer mode...</string>
+    <string name="toast_dev_mode_enabled">Developer Mode Enabled! 👩‍💻</string>
+    
+    <!-- Miuix Summaries -->
+    <string name="summary_optimize_battery">Optimize battery usage</string>
+    <string name="summary_check_updates_now">Check for updates now</string>
+    <string name="summary_faq">Frequently asked questions</string>
+    <string name="summary_feedback">Send feedback or report issues</string>
+    <string name="summary_github">View source on GitHub</string>
+    <string name="summary_view_logs">View logs</string>
+
     <!-- FAQ Strings -->
     <string name="faq_title">FAQ</string>
     <string name="faq_cat_guide">Setup Guide</string>

@@ -116,9 +116,9 @@ fun MiuixSettingsScreen(
                     // Language
                     val langOptions = listOf("", "en", "zh-CN")
                     val langNames = listOf(
-                        stringResource(R.string.settings_theme_follow_system),
-                        "English",
-                        "简体中文"
+                        stringResource(R.string.lang_sys_default),
+                        stringResource(R.string.lang_english),
+                        stringResource(R.string.lang_chinese)
                     )
                     val currentLangCode = prefs.getString("language_code", "") ?: ""
                     val currentLangIndex = langOptions.indexOf(currentLangCode).takeIf { it >= 0 } ?: 0
@@ -189,7 +189,7 @@ fun MiuixSettingsScreen(
                     )
                     SuperArrow(
                         title = stringResource(R.string.settings_general_battery),
-                        summary = "Optimize battery usage",
+                        summary = stringResource(R.string.summary_optimize_battery),
                         onClick = {
                             val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
                             intent.data = Uri.parse("package:${context.packageName}")
@@ -238,7 +238,7 @@ fun MiuixSettingsScreen(
                         val channelIndex = channelOptions.indexOf(currentChannel).takeIf { it >= 0 } ?: 0
                         
                         SuperDropdown(
-                            title = "Prerelease Channel",
+                            title = stringResource(R.string.settings_prerelease_channel),
                             items = channelNames,
                             selectedIndex = channelIndex,
                             onSelectedIndexChange = { index ->
@@ -270,7 +270,7 @@ fun MiuixSettingsScreen(
 
                     SuperArrow(
                         title = stringResource(R.string.update_check_title),
-                        summary = "Check for updates now",
+                        summary = stringResource(R.string.summary_check_updates_now),
                         onClick = onCheckUpdate
                     )
                 }
@@ -282,13 +282,13 @@ fun MiuixSettingsScreen(
                 Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
                     SuperArrow(
                         title = stringResource(R.string.faq_title),
-                        summary = "Frequently asked questions",
+                        summary = stringResource(R.string.summary_faq),
                         onClick = { context.startActivity(Intent(context, FAQActivity::class.java)) }
                     )
                     Box {
                         SuperArrow(
                             title = stringResource(R.string.settings_feedback),
-                            summary = "Send feedback or report issues",
+                            summary = stringResource(R.string.summary_feedback),
                             onClick = {
                                 showFeedbackPopup.value = true
                             }
@@ -326,7 +326,7 @@ fun MiuixSettingsScreen(
                     }
                     SuperArrow(
                         title = stringResource(R.string.settings_about_github),
-                        summary = "View source on GitHub",
+                        summary = stringResource(R.string.summary_github),
                         onClick = {
                             val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/FrancoGiudans/Capsulyric"))
                             context.startActivity(browserIntent)
@@ -350,11 +350,11 @@ fun MiuixSettingsScreen(
                         onClick = {
                             devStepCount++
                             if (devStepCount in 3..6) {
-                                Toast.makeText(context, "${7 - devStepCount} steps away from developer mode...", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, context.getString(R.string.toast_dev_mode_steps, 7 - devStepCount), Toast.LENGTH_SHORT).show()
                             } else if (devStepCount == 7) {
                                 prefs.edit().putBoolean("dev_mode_enabled", true).apply()
                                 showLogs = true
-                                Toast.makeText(context, "Developer Mode Enabled! 👩‍💻", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, context.getString(R.string.toast_dev_mode_enabled), Toast.LENGTH_SHORT).show()
                             }
                         }
                     )
@@ -362,7 +362,7 @@ fun MiuixSettingsScreen(
                     if (showLogs) {
                         SuperArrow(
                             title = stringResource(R.string.settings_console_log),
-                            summary = "View logs",
+                            summary = stringResource(R.string.summary_view_logs),
                             onClick = onShowLogs
                         )
                     }

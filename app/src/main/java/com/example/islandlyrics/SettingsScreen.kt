@@ -173,9 +173,9 @@ fun SettingsScreen(
                 // Language
                 val currentLangCode = prefs.getString("language_code", "")
                 val currentLangText = when(currentLangCode) {
-                    "en" -> "English"
-                    "zh-CN" -> "简体中文"
-                    else -> stringResource(R.string.settings_theme_follow_system)
+                    "en" -> stringResource(R.string.lang_english)
+                    "zh-CN" -> stringResource(R.string.lang_chinese)
+                    else -> stringResource(R.string.lang_sys_default)
                 }
                 Box(modifier = Modifier.fillMaxWidth()) {
                     SettingsTextItem(
@@ -188,7 +188,11 @@ fun SettingsScreen(
                             expanded = showLanguageDropdown,
                             onDismissRequest = { showLanguageDropdown = false }
                         ) {
-                            val languages = listOf("System Default" to "", "English" to "en", "简体中文" to "zh-CN")
+                            val languages = listOf(
+                                stringResource(R.string.lang_sys_default) to "", 
+                                stringResource(R.string.lang_english) to "en", 
+                                stringResource(R.string.lang_chinese) to "zh-CN"
+                            )
                             languages.forEach { (label, code) ->
                                 DropdownMenuItem(
                                     text = { Text(label) },
@@ -311,7 +315,7 @@ fun SettingsScreen(
                 
                 if (prereleaseEnabled) {
                     SettingsTextItem(
-                        title = "Prerelease Channel",
+                        title = stringResource(R.string.settings_prerelease_channel),
                         value = currentChannel,
                         onClick = { showChannelDialog = true }
                     )
@@ -394,11 +398,11 @@ fun SettingsScreen(
                     onClick = {
                         devStepCount++
                          if (devStepCount in 3..6) {
-                             Toast.makeText(context, "${7 - devStepCount} steps away from developer mode...", Toast.LENGTH_SHORT).show()
+                             Toast.makeText(context, context.getString(R.string.toast_dev_mode_steps, 7 - devStepCount), Toast.LENGTH_SHORT).show()
                          } else if (devStepCount == 7) {
                             prefs.edit().putBoolean("dev_mode_enabled", true).apply()
                             showLogs = true
-                            Toast.makeText(context, "Developer Mode Enabled! 👩‍💻", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, context.getString(R.string.toast_dev_mode_enabled), Toast.LENGTH_SHORT).show()
                          }
                     }
                 )
@@ -513,7 +517,7 @@ fun ChannelSelectionDialog(
     
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Prerelease Channel") },
+        title = { Text(stringResource(R.string.settings_prerelease_channel)) },
         text = {
             Column(modifier = Modifier.fillMaxWidth()) {
                 channels.forEach { ch ->
