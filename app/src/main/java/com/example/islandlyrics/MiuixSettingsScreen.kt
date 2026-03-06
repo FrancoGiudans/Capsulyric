@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
+import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.basic.*
 import top.yukonga.miuix.kmp.extra.SuperArrow
 import top.yukonga.miuix.kmp.extra.SuperDropdown
@@ -187,6 +188,28 @@ fun MiuixSettingsScreen(
                             context.startActivity(intent)
                         }
                     )
+                    
+                    // Block XMSF
+                    var blockXmsfEnabled by remember { mutableStateOf(prefs.getBoolean("block_xmsf_network", false)) }
+                    val scope = rememberCoroutineScope()
+                    SuperSwitch(
+                        title = stringResource(R.string.settings_block_xmsf),
+                        summary = stringResource(R.string.settings_block_xmsf_desc),
+                        checked = blockXmsfEnabled,
+                        onCheckedChange = { isChecked ->
+                            blockXmsfEnabled = isChecked
+                            scope.launch {
+                                val success = com.example.islandlyrics.shizuku.XmsfNetworkHelper.setXmsfNetworkingEnabled(context, !isChecked)
+                                if (success) {
+                                    prefs.edit().putBoolean("block_xmsf_network", isChecked).apply()
+                                } else {
+                                    blockXmsfEnabled = !isChecked
+                                    Toast.makeText(context, "Failed to toggle XMSF network (Check Shizuku)", Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                        }
+                    )
+
                     SuperArrow(
                         title = stringResource(R.string.settings_general_battery),
                         summary = stringResource(R.string.summary_optimize_battery),

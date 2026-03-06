@@ -88,6 +88,7 @@ android {
         buildConfig = true
         compose = true
         resValues = true
+        aidl = true
     }
     packaging {
         jniLibs {
@@ -144,6 +145,10 @@ dependencies {
     // Miuix UI
     implementation libs.miuix
     implementation 'org.jetbrains.androidx.navigationevent:navigationevent-compose:1.0.1'
+
+    // Shizuku
+    implementation libs.shizuku.api
+    implementation libs.shizuku.provider
 
     debugImplementation libs.ui.tooling
     debugImplementation libs.ui.test.manifest

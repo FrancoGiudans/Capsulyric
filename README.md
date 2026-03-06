@@ -45,7 +45,8 @@
 
 ---
 
-## Screenshots (效果展示，展示机型为小米15，系统版本为HyperOS 3.0.300.7 Beta，展示版本为1.3_C219)
+## Screenshots
+ (效果展示，展示机型为小米15，系统版本为HyperOS 3.0.300.7 Beta，展示版本为1.3_C219)
 
 ### App UI (界面风格)
 <p align="center">

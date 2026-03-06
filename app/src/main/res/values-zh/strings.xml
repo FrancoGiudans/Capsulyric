@@ -62,6 +62,8 @@
     <string name="settings_console_log">日志控制台</string>
     <string name="settings_general_header">通用</string>
     <string name="settings_core_services_header">核心服务</string>
+    <string name="settings_block_xmsf">阻止 XMSF 联网</string>
+    <string name="settings_block_xmsf_desc">禁止小米服务框架访问网络（需要 Shizuku 环境）</string>
     <string name="settings_personalization_header">个性化</string>
     <string name="page_title_personalization">个性化设置</string>
     <string name="tab_capsule">胶囊</string>
@@ -123,6 +125,7 @@
 
     <!-- Main Activity -->
     <string name="dialog_prerelease_warning_message">预发布版本可能存在严重问题，不适合日常使用。您确定要接收这些更新吗？</string>
+    <string name="settings_prerelease_channel">选择预览频道</string>
     <string name="main_service_status">🔴 服务状态: 未知</string>
     <string name="main_system_api_status">系统与 API 状态 (API 36)</string>
     <string name="main_permission_check">权限检查: 检测中...</string>
@@ -155,6 +158,7 @@
     <string name="settings_hide_recents_desc">划到后台时自动从最近任务中移除</string>
     <!-- FAQ Strings -->
     <string name="settings_predictive_back_desc">重启应用生效</string>
+    <string name="summary_view_logs">查看日志文件</string>
     <string name="faq_title">常见问题解答</string>
     <string name="faq_cat_guide">使用指引</string>
     <string name="faq_q_guide">Q：如何使用免 Root（0-Hook）模式？</string>
@@ -181,10 +185,7 @@
     
     <string name="faq_cat_feedback">反馈与日志类</string>
     <string name="faq_q_unresolved">Q：以上内容都无法解决我的问题，怎么办？</string>
-    <string name="faq_a_unresolved">A： 请前往反馈页面提交 Issue。\n\n
-- <b>推荐渠道</b>： GitHub Issues（处理效率最高）。\n
-- <b>备用渠道</b>： WPS 表单（可能需要登录）。\n\n
-<b>重要</b>： 提交反馈时，请务必附带 <b>日志（Log）</b> 以便我们要排查问题。</string>
+    <string name="faq_a_unresolved">A： 请前往反馈页面提交 Issue。   - <b>推荐渠道</b>： GitHub Issues（处理效率最高）。  - <b>备用渠道</b>： WPS 表单（可能需要登录）。   <b>重要</b>： 提交反馈时，请务必附带 <b>日志（Log）</b> 以便我们排查问题。</string>
 
     <string name="faq_q_get_log">Q：如何获取日志（Log）？</string>
     <string name="faq_a_get_log">A： 根据你安装的版本，获取方式略有不同：\n\n
@@ -302,5 +303,15 @@
     <string name="ui_style_material">Material Design</string>
     <string name="ui_style_miuix">Miuix</string>
     <string name="settings_predictive_back">预测性返回</string>
+    <string name="lang_sys_default">跟随系统</string>
+    <string name="lang_english">English</string>
+    <string name="lang_chinese">简体中文</string>
+    <string name="toast_dev_mode_steps">再点击 %1$d 后打开Log Console</string>
+    <string name="toast_dev_mode_enabled">Log Console 入口已打开</string>
+    <string name="summary_optimize_battery">优化后台表现</string>
+    <string name="summary_check_updates_now">立即检查更新</string>
+    <string name="summary_faq">查看常见问题</string>
+    <string name="summary_feedback">通过WPS或者GitHub发送反馈</string>
+    <string name="summary_github">在GitHub查看源码</string>
 
 </resources>

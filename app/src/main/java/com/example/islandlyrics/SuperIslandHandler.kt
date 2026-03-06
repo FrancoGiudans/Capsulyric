@@ -11,6 +11,7 @@ import android.graphics.drawable.Icon
 import android.os.Bundle
 import org.json.JSONObject
 import android.content.SharedPreferences
+import kotlinx.coroutines.launch
 
 /**
  * SuperIslandHandler
@@ -38,6 +39,7 @@ class SuperIslandHandler(
     private var cachedActionStyle = "disabled"
 
     private var cachedContentIntent: PendingIntent? = null
+    private var networkCutJob: kotlinx.coroutines.Job? = null
 
     private val prefs by lazy { context.getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE) }
     private val prefListener = SharedPreferences.OnSharedPreferenceChangeListener { p, key ->
@@ -114,6 +116,14 @@ class SuperIslandHandler(
         cachedNotification = null
         cachedBuilder = null
         cachedPicsBundle = null
+        
+        // Ensure network is restored if we were blocking it
+        networkCutJob?.cancel()
+        if (prefs.getBoolean("block_xmsf_network", false)) {
+            kotlinx.coroutines.GlobalScope.launch {
+                com.example.islandlyrics.shizuku.XmsfNetworkHelper.setXmsfNetworkingEnabled(context, true)
+            }
+        }
     }
 
     private fun createChannel() {
@@ -185,11 +195,42 @@ class SuperIslandHandler(
         lastSentProgressPercent = progressPercent
         lastSentSubText = subText
 
+        notifyWithNetworkCut(notification, isFirstNotification)
         if (isFirstNotification) {
-            service.startForeground(NOTIFICATION_ID, notification)
             isFirstNotification = false
+        }
+    }
+
+    @OptIn(kotlinx.coroutines.DelicateCoroutinesApi::class)
+    private fun notifyWithNetworkCut(notification: Notification, isFirst: Boolean) {
+        val bypassWhitelist = prefs.getBoolean("block_xmsf_network", false)
+        if (bypassWhitelist) {
+            if (networkCutJob?.isActive != true) {
+                networkCutJob = kotlinx.coroutines.GlobalScope.launch {
+                    com.example.islandlyrics.shizuku.XmsfNetworkHelper.setXmsfNetworkingEnabled(context, false)
+                    kotlinx.coroutines.delay(150) // Wait for firewall rule to apply
+                    if (isFirst) {
+                        service.startForeground(NOTIFICATION_ID, notification)
+                    } else {
+                        manager?.notify(NOTIFICATION_ID, notification)
+                    }
+                    kotlinx.coroutines.delay(1500) // Keep offline for 1.5s
+                    com.example.islandlyrics.shizuku.XmsfNetworkHelper.setXmsfNetworkingEnabled(context, true)
+                }
+            } else {
+                // If currently offline, just notify directly without waiting
+                if (isFirst) {
+                    service.startForeground(NOTIFICATION_ID, notification)
+                } else {
+                    manager?.notify(NOTIFICATION_ID, notification)
+                }
+            }
         } else {
-            manager?.notify(NOTIFICATION_ID, notification)
+            if (isFirst) {
+                service.startForeground(NOTIFICATION_ID, notification)
+            } else {
+                manager?.notify(NOTIFICATION_ID, notification)
+            }
         }
     }
 

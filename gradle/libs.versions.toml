@@ -12,6 +12,7 @@ composeBom = "2026.02.01"
 markwon = "4.6.2"
 coil = "2.7.0"
 miuix = "0.8.6"
+shizuku = "13.1.5"
 
 [libraries]
 annotation = { module = "androidx.annotation:annotation", version.ref = "annotation" }
@@ -43,6 +44,10 @@ markwon-html = { group = "io.noties.markwon", name = "html", version.ref = "mark
 markwon-image-coil = { group = "io.noties.markwon", name = "image-coil", version.ref = "markwon" }
 coil = { group = "io.coil-kt", name = "coil", version.ref = "coil" }
 miuix = { group = "top.yukonga.miuix.kmp", name = "miuix-android", version.ref = "miuix" }
+
+# Shizuku
+shizuku-api = { group = "dev.rikka.shizuku", name = "api", version.ref = "shizuku" }
+shizuku-provider = { group = "dev.rikka.shizuku", name = "provider", version.ref = "shizuku" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

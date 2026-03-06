@@ -384,6 +384,31 @@ fun CustomSettingsScreen(
                                             }
                                         }
                                     }
+
+                                    var blockXmsfEnabled by remember { mutableStateOf(prefs.getBoolean("block_xmsf_network", false)) }
+                                    SettingsSwitchItem(
+                                        title = stringResource(R.string.settings_block_xmsf),
+                                        subtitle = stringResource(R.string.settings_block_xmsf_desc),
+                                        checked = blockXmsfEnabled,
+                                        onCheckedChange = { isChecked ->
+                                            if (isChecked) {
+                                                scope.launch {
+                                                    try {
+                                                        com.example.islandlyrics.shizuku.requireShizukuPermissionGranted {
+                                                            blockXmsfEnabled = true
+                                                            prefs.edit().putBoolean("block_xmsf_network", true).apply()
+                                                        }
+                                                    } catch (e: Exception) {
+                                                        Toast.makeText(context, "Shizuku permission required", Toast.LENGTH_SHORT).show()
+                                                    }
+                                                }
+                                            } else {
+                                                blockXmsfEnabled = false
+                                                prefs.edit().putBoolean("block_xmsf_network", false).apply()
+                                            }
+                                        }
+                                    )
+
                                 }
                             }
                         }

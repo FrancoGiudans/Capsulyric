@@ -62,6 +62,8 @@
     <string name="settings_console_log">Log Console</string>
     <string name="settings_general_header">General</string>
     <string name="settings_core_services_header">Core Services</string>
+    <string name="settings_block_xmsf">Block XMSF Network</string>
+    <string name="settings_block_xmsf_desc">Block network access for Xiaomi Service Framework (Requires Shizuku)</string>
     <string name="settings_personalization_header">Personalization</string>
     <string name="page_title_personalization">Personalization Settings</string>
     <string name="tab_capsule">Capsule</string>
@@ -178,7 +180,7 @@
     <string name="lang_english">English</string>
     <string name="lang_chinese">简体中文</string>
     <string name="toast_dev_mode_steps">%1$d steps away from developer mode...</string>
-    <string name="toast_dev_mode_enabled">Developer Mode Enabled! 👩‍💻</string>
+    <string name="toast_dev_mode_enabled">Developer Mode Enabled!</string>
     
     <!-- Miuix Summaries -->
     <string name="summary_optimize_battery">Optimize battery usage</string>
@@ -215,15 +217,10 @@
     
     <string name="faq_cat_feedback">Feedback &amp; Logs</string>
     <string name="faq_q_unresolved">Q: None of the above solved my problem. What should I do?</string>
-    <string name="faq_a_unresolved">A: Please submit an Issue on the feedback page.\n\n
-- <b>Recommended</b>: GitHub Issues (Highest efficiency).\n
-- <b>Alternative</b>: WPS Form (May require login).\n\n
-<b>Important</b>: When submitting feedback, please attach <b>Logs</b> to help us troubleshoot.</string>
+    <string name="faq_a_unresolved">A: Please submit an Issue on the feedback page.   - <b>Recommended</b>: GitHub Issues (Highest efficiency).  - <b>Alternative</b>: WPS Form (May require login).   <b>Important</b>: When submitting feedback, please attach <b>Logs</b> to help us troubleshoot.</string>
 
     <string name="faq_q_get_log">Q: How do I get logs?</string>
-    <string name="faq_a_get_log">A: It depends on your version:\n\n
-- <b>Debug Version</b>: Has a built-in Log Console to view full logs directly.\n
-- <b>Release / Pre-release Version</b>: Tap the version number or Commit hash in the app multiple times to open the Log Console.</string>
+    <string name="faq_a_get_log">A: It depends on your version:   - <b>Debug Version</b>: Has a built-in Log Console to view full logs directly.  - <b>Release / Pre-release Version</b>: Tap the version number or Commit hash in the app multiple times to open the Log Console.</string>
 
 
     <!-- Notification Action Buttons -->

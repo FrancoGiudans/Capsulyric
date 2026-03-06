@@ -267,6 +267,7 @@ fun SettingsScreen(
                     onCheckedChange = {}
                 )
 
+
                 // Battery
                 SettingsActionItem(
                     title = stringResource(R.string.settings_general_battery),
