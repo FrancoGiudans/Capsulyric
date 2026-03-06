@@ -300,8 +300,8 @@ fun MiuixEditRuleDialog(
     var customName by remember { mutableStateOf(rule?.customName ?: "") }
     var usesCarProtocol by remember { mutableStateOf(rule?.usesCarProtocol ?: true) }
     var useOnlineLyrics by remember { mutableStateOf(rule?.useOnlineLyrics ?: false) }
-    var useSuperLyricApi by remember { mutableStateOf(rule?.useSuperLyricApi ?: true) }
-    var useLyricGetterApi by remember { mutableStateOf(rule?.useLyricGetterApi ?: true) }
+    var useSuperLyricApi by remember { mutableStateOf(rule?.useSuperLyricApi ?: false) }
+    var useLyricGetterApi by remember { mutableStateOf(rule?.useLyricGetterApi ?: false) }
     
     val separators = listOf("-", " - ", " | ")
     var separatorIndex by remember { 
@@ -311,7 +311,7 @@ fun MiuixEditRuleDialog(
     
     val orders = listOf(FieldOrder.ARTIST_TITLE, FieldOrder.TITLE_ARTIST)
     var orderIndex by remember {
-        val idx = orders.indexOf(rule?.fieldOrder ?: FieldOrder.ARTIST_TITLE)
+        val idx = orders.indexOf(rule?.fieldOrder ?: FieldOrder.TITLE_ARTIST)
         mutableStateOf(if (idx >= 0) idx else 0)
     }
 

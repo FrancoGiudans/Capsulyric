@@ -299,12 +299,12 @@ fun EditRuleDialog(
     // Logic Switches
     var usesCarProtocol by remember { mutableStateOf(rule?.usesCarProtocol ?: true) }
     var useOnlineLyrics by remember { mutableStateOf(rule?.useOnlineLyrics ?: false) }
-    var useSuperLyricApi by remember { mutableStateOf(rule?.useSuperLyricApi ?: true) }
-    var useLyricGetterApi by remember { mutableStateOf(rule?.useLyricGetterApi ?: true) }
+    var useSuperLyricApi by remember { mutableStateOf(rule?.useSuperLyricApi ?: false) }
+    var useLyricGetterApi by remember { mutableStateOf(rule?.useLyricGetterApi ?: false) }
     
     // Parser Config
     var separator by remember { mutableStateOf(rule?.separatorPattern ?: "-") }
-    var fieldOrder by remember { mutableStateOf(rule?.fieldOrder ?: FieldOrder.ARTIST_TITLE) }
+    var fieldOrder by remember { mutableStateOf(rule?.fieldOrder ?: FieldOrder.TITLE_ARTIST) }
 
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Surface(
