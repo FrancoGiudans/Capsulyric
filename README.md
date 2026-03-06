@@ -36,9 +36,12 @@
    * Detects lyrics from standard media notifications.
 2. **在线歌词 (Online Lyrics)**
    * Fetches lyrics from online servers based on playback info.
-3. **Superlyric API**
+3. **[Superlyric API](https://github.com/HChenX/SuperLyric)**
    * **Requirements**: Root access is required.
    * High performance and accurate lyric syncing.
+4. **[Lyric Getter](https://github.com/xiaowine/Lyric-Getter)**
+   * **Features**: Supports Meizu status bar lyrics and LSPatch hook (can be used without root).
+   * **特点**: 支持兼容魅族状态栏歌词以及 LSPatch hook（可免 root 使用）。
 
 ---
 
@@ -145,6 +148,7 @@ cd Capsulyric
 
 * [SuperLyric](https://github.com/HChenX/SuperLyric) (GPL-3.0)
 * [SuperLyricAPI](https://github.com/HChenX/SuperLyricApi) (LGPL-2.1)
+* [Lyric Getter API](https://github.com/xiaowine/Lyric-Getter-Api)
 * [InstallerX Revive](https://github.com/wxxsfxyzm/InstallerX-Revived) (GPL-3.0)
 * [Lyricify-Lyrics-Helper](https://github.com/WXRIW/Lyricify-Lyrics-Helper) (Apache-2.0)
 * [compose-miuix-ui/miuix](https://github.com/compose-miuix-ui/miuix) (Apache-2.0)
