@@ -16,6 +16,8 @@ import androidx.activity.compose.setContent
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
 
 class MainActivity : BaseActivity() {
 
@@ -30,6 +32,7 @@ class MainActivity : BaseActivity() {
     private var apiFlagActive by mutableStateOf(false)
     private var showApiCard by mutableStateOf(false)
     private var versionText by mutableStateOf("...")
+    private var updateReleaseInfo by mutableStateOf<UpdateChecker.ReleaseInfo?>(null)
 
     private val diagReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
@@ -60,6 +63,22 @@ class MainActivity : BaseActivity() {
         }
 
         updateVersionInfo()
+
+        // Auto-check for updates on startup
+        if (UpdateChecker.isAutoUpdateEnabled(this) && !hasCheckedForUpdates) {
+            hasCheckedForUpdates = true
+            lifecycleScope.launch {
+                try {
+                    val release = UpdateChecker.checkForUpdate(this@MainActivity)
+                    if (release != null) {
+                        updateReleaseInfo = release
+                        AppLogger.getInstance().log("MainActivity", "Auto-update found: ${release.tagName}")
+                    }
+                } catch (e: Exception) {
+                    AppLogger.getInstance().log("MainActivity", "Auto-update check failed: ${e.message}")
+                }
+            }
+        }
 
         val useMiuix = isMiuixEnabled(this)
 
@@ -93,6 +112,23 @@ class MainActivity : BaseActivity() {
                         apiFlagActive = apiFlagActive,
                         showApiCard = showApiCard,
                     )
+                    
+                    if (updateReleaseInfo != null) {
+                        val showDialog = androidx.compose.runtime.remember(updateReleaseInfo) { androidx.compose.runtime.mutableStateOf(true) }
+                        if (showDialog.value) {
+                            MiuixUpdateDialog(
+                                show = showDialog,
+                                releaseInfo = updateReleaseInfo!!,
+                                onDismiss = { updateReleaseInfo = null },
+                                onIgnore = { tag ->
+                                    UpdateChecker.setIgnoredVersion(this@MainActivity, tag)
+                                    AppLogger.getInstance().log("Update", "Ignored version: $tag")
+                                }
+                            )
+                        } else {
+                            updateReleaseInfo = null
+                        }
+                    }
                 }
             } else {
                 AppTheme {
@@ -123,6 +159,17 @@ class MainActivity : BaseActivity() {
                         apiFlagActive = apiFlagActive,
                         showApiCard = showApiCard,
                     )
+                    
+                    if (updateReleaseInfo != null) {
+                        UpdateDialog(
+                            releaseInfo = updateReleaseInfo!!,
+                            onDismiss = { updateReleaseInfo = null },
+                            onIgnore = { tag ->
+                                UpdateChecker.setIgnoredVersion(this@MainActivity, tag)
+                                AppLogger.getInstance().log("Update", "Ignored version: $tag")
+                            }
+                        )
+                    }
                 }
             }
         }
@@ -242,5 +289,6 @@ class MainActivity : BaseActivity() {
     companion object {
         private const val TAG = "IslandLyrics"
         private const val PREFS_NAME = "IslandLyricsPrefs"
+        private var hasCheckedForUpdates = false
     }
 }

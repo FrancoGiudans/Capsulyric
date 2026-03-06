@@ -21,6 +21,7 @@ object UpdateChecker {
     private const val KEY_AUTO_UPDATE = "auto_check_updates"
     private const val KEY_LAST_CHECK = "last_update_check_time"
     private const val KEY_PRERELEASE_UPDATES = "allow_prerelease_updates"
+    private const val KEY_PRERELEASE_CHANNEL = "prerelease_channel" // Alpha, Beta, Pre
 
     data class ReleaseInfo(
         val tagName: String,        // e.g., "v1.0_C25"
@@ -60,6 +61,23 @@ object UpdateChecker {
     fun setPrereleaseEnabled(context: Context, enabled: Boolean) {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         prefs.edit().putBoolean(KEY_PRERELEASE_UPDATES, enabled).apply()
+    }
+
+    /**
+     * Get the selected prerelease channel (Alpha, Beta, Pre).
+     * Defaults to Alpha (receives all prereleases).
+     */
+    fun getPrereleaseChannel(context: Context): String {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        return prefs.getString(KEY_PRERELEASE_CHANNEL, "Alpha") ?: "Alpha"
+    }
+
+    /**
+     * Set the selected prerelease channel.
+     */
+    fun setPrereleaseChannel(context: Context, channel: String) {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        prefs.edit().putString(KEY_PRERELEASE_CHANNEL, channel).apply()
     }
 
     /**
@@ -195,9 +213,14 @@ object UpdateChecker {
 
                 // Find the newest version that is > current
                 val currentVersion = BuildConfig.VERSION_NAME
+                val userChannel = if (includePrerelease) getPrereleaseChannel(context) else "Release"
                 
                 for (release in validReleases) {
                     val remoteVersion = release.tagName.removePrefix("v")
+                    
+                    if (!isUpdateAllowedForChannel(release.tagName, userChannel)) {
+                         continue
+                    }
                     
                     if (compareVersions(remoteVersion, currentVersion) > 0) {
                         // Check if ignored
@@ -252,5 +275,46 @@ object UpdateChecker {
             AppLogger.getInstance().e(TAG, "Version comparison error", e)
             return 0
         }
+    }
+
+    /**
+     * Helper to determine if a specific tag is allowed for the user's selected channel.
+     * tagName: "Version.1.3.Alpha2_C300" or "Version.1.2_C200" or "v1.2_C200"
+     * userChannel: "Alpha", "Beta", "Pre", or "Release"
+     */
+    private fun isUpdateAllowedForChannel(tagName: String, userChannel: String): Boolean {
+        // Extract suffix. If no Alpha, Beta, Pre, RC, Fix, then it's a normal Release.
+        // We mainly care about Prerelease suffixes: Alpha, Beta, Pre.
+        val isAlpha = tagName.contains(".Alpha")
+        val isBeta = tagName.contains(".Beta")
+        val isPre = tagName.contains(".Pre")
+        val isPrereleaseTag = isAlpha || isBeta || isPre
+        
+        // Proper releases (no suffix, or RC/Fix) are ALWAYS allowed for ALL channels.
+        if (!isPrereleaseTag) {
+            return true
+        }
+        
+        // If it's a prerelease tag, but user channel is "Release", block it.
+        if (userChannel == "Release") {
+            return false
+        }
+        
+        // Pre channel: allows ONLY Pre and stable.
+        if (userChannel == "Pre") {
+            return isPre
+        }
+        
+        // Beta channel: allows Beta and Pre (and stable).
+        if (userChannel == "Beta") {
+            return isBeta || isPre
+        }
+        
+        // Alpha channel: allows Alpha, Beta, Pre (and stable)
+        if (userChannel == "Alpha") {
+            return isAlpha || isBeta || isPre
+        }
+        
+        return false
     }
 }

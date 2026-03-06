@@ -230,6 +230,24 @@ fun MiuixSettingsScreen(
                         }
                     )
 
+                    if (prereleaseEnabled) {
+                        val channelOptions = listOf("Alpha", "Beta", "Pre")
+                        val channelNames = listOf("Alpha", "Beta", "Pre")
+                        
+                        val currentChannel = UpdateChecker.getPrereleaseChannel(context)
+                        val channelIndex = channelOptions.indexOf(currentChannel).takeIf { it >= 0 } ?: 0
+                        
+                        SuperDropdown(
+                            title = "Prerelease Channel",
+                            items = channelNames,
+                            selectedIndex = channelIndex,
+                            onSelectedIndexChange = { index ->
+                                val channel = channelOptions[index]
+                                UpdateChecker.setPrereleaseChannel(context, channel)
+                            }
+                        )
+                    }
+
                     if (showPrereleaseDialog) {
                         androidx.compose.material3.AlertDialog(
                             onDismissRequest = { showPrereleaseDialog = false },

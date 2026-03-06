@@ -68,6 +68,10 @@ fun SettingsScreen(
     var actionStyle by remember { mutableStateOf(prefs.getString("notification_actions_style", "disabled") ?: "disabled") }
     var showActionStyleDialog by remember { mutableStateOf(false) }
 
+    // Channel Dialog
+    var showChannelDialog by remember { mutableStateOf(false) }
+    var currentChannel by remember { mutableStateOf(UpdateChecker.getPrereleaseChannel(context)) }
+
     // Notification Click Action State
     var notificationClickStyle by remember { mutableStateOf(prefs.getString("notification_click_style", "default") ?: "default") }
     var showNotificationClickDialog by remember { mutableStateOf(false) }
@@ -304,6 +308,14 @@ fun SettingsScreen(
                         }
                     }
                 )
+                
+                if (prereleaseEnabled) {
+                    SettingsTextItem(
+                        title = "Prerelease Channel",
+                        value = currentChannel,
+                        onClick = { showChannelDialog = true }
+                    )
+                }
 
                 if (showPrereleaseDialog) {
                     AlertDialog(
@@ -475,8 +487,65 @@ fun SettingsScreen(
             if (showFeedbackDialog) {
                 FeedbackSelectionDialog(onDismiss = { showFeedbackDialog = false })
             }
+            
+            if (showChannelDialog) {
+                ChannelSelectionDialog(
+                    currentChannel = currentChannel,
+                    onChannelSelected = { ch ->
+                        currentChannel = ch
+                        UpdateChecker.setPrereleaseChannel(context, ch)
+                        showChannelDialog = false
+                    },
+                    onDismiss = { showChannelDialog = false }
+                )
+            }
         }
     }
+}
+
+@Composable
+fun ChannelSelectionDialog(
+    currentChannel: String,
+    onChannelSelected: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val channels = listOf("Alpha", "Beta", "Pre")
+    
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Prerelease Channel") },
+        text = {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                channels.forEach { ch ->
+                    val isSelected = currentChannel == ch
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onChannelSelected(ch) }
+                            .padding(vertical = 12.dp, horizontal = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(
+                            selected = isSelected,
+                            onClick = { onChannelSelected(ch) }
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = ch,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(android.R.string.cancel))
+            }
+        }
+    )
 }
 
 @Composable
