@@ -140,7 +140,8 @@ fun MiuixUpdateDialog(
                     modifier = Modifier.weight(1f)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
-                top.yukonga.miuix.kmp.basic.Button(
+                TextButton(
+                    text = stringResource(R.string.update_download),
                     onClick = {
                         try {
                             val intent = Intent(Intent.ACTION_VIEW, Uri.parse(releaseInfo.htmlUrl))
@@ -151,10 +152,9 @@ fun MiuixUpdateDialog(
                         show.value = false
                         onDismiss()
                     },
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text(stringResource(R.string.update_download), color = MiuixTheme.colorScheme.onPrimary)
-                }
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.textButtonColorsPrimary()
+                )
             }
         }
     }
