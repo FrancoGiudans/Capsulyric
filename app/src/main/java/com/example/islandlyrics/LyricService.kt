@@ -35,6 +35,7 @@ class LyricService : Service() {
     // ── Lyric sources (each handles one acquisition path) ────────────────────
     private lateinit var onlineLyricSource: OnlineLyricSource
     private lateinit var superLyricSource: SuperLyricSource
+    private lateinit var lyricGetterSource: LyricGetterSource
 
     // (kept for the online-lyrics timer / updateTask driven from parsed lines)
     private val serviceScope = CoroutineScope(Dispatchers.Main + Job())
@@ -195,7 +196,7 @@ class LyricService : Service() {
             // Use actual app name (safe cached call)
             val source = metadata?.packageName?.let { getAppName(it) } ?: "Online Lyrics"
             
-            LyricRepository.getInstance().updateLyric(line.text, source)
+            LyricRepository.getInstance().updateLyric(line.text, source, "Online API")
             LyricRepository.getInstance().updateCurrentLine(line)
         }
     }
@@ -267,6 +268,9 @@ class LyricService : Service() {
         superLyricSource  = SuperLyricSource(this, onlineLyricSource)
         superLyricSource.start()
         AppLogger.getInstance().d(TAG, "SuperLyricSource started")
+        lyricGetterSource = LyricGetterSource(this, onlineLyricSource)
+        lyricGetterSource.start()
+        AppLogger.getInstance().d(TAG, "LyricGetterSource started")
 
         val filter = IntentFilter().apply {
             addAction("com.example.islandlyrics.ACTION_MEDIA_PLAY_PAUSE")
@@ -292,7 +296,7 @@ class LyricService : Service() {
                 }
                 
                 // CRITICAL CLEAR: Ensure old lyrics do not hang around across songs!
-                LyricRepository.getInstance().updateLyric("", info.packageName)
+                LyricRepository.getInstance().updateLyric("", info.packageName, "System")
 
                 // Reset parsed lyrics on song change
                 LyricRepository.getInstance().updateParsedLyrics(emptyList(), false)
@@ -387,6 +391,7 @@ class LyricService : Service() {
         superIslandHandler?.stop()
         
         superLyricSource.stop()
+        lyricGetterSource.stop()
         onlineLyricSource.cancel()
         
         getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE).unregisterOnSharedPreferenceChangeListener(prefsListener)

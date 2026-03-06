@@ -1,5 +1,10 @@
 -keep class com.hchen.superlyricapi.** { *; }
 
+# Lyric Getter API (required to prevent obfuscation breaking the broadcast Parcelable)
+-keep class cn.lyric.getter.api.data.** { *; }
+-keep class cn.lyric.getter.api.API { *; }
+
+
 # Kotlin Coroutines
 -keepnames class kotlinx.coroutines.internal.MainDispatcherFactory {}
 -keepnames class kotlinx.coroutines.CoroutineExceptionHandler {}

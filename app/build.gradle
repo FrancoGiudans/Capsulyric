@@ -105,6 +105,7 @@ tasks.configureEach { task ->
 
 dependencies {
     implementation libs.super.lyric.api
+    implementation libs.lyric.getter.api
     implementation libs.core.ktx  // Upgraded for Android 16 NotificationCompat support
     implementation libs.media
     implementation libs.material

@@ -263,6 +263,8 @@ fun ParserRuleItem(
                 StatusBadge(active = rule.useOnlineLyrics, label = "Online")
                 Spacer(modifier = Modifier.width(8.dp))
                 StatusBadge(active = rule.useSuperLyricApi, label = "SuperLyric")
+                Spacer(modifier = Modifier.width(8.dp))
+                StatusBadge(active = rule.useLyricGetterApi, label = "LyricGetter")
             }
         }
         
@@ -298,6 +300,7 @@ fun EditRuleDialog(
     var usesCarProtocol by remember { mutableStateOf(rule?.usesCarProtocol ?: true) }
     var useOnlineLyrics by remember { mutableStateOf(rule?.useOnlineLyrics ?: false) }
     var useSuperLyricApi by remember { mutableStateOf(rule?.useSuperLyricApi ?: true) }
+    var useLyricGetterApi by remember { mutableStateOf(rule?.useLyricGetterApi ?: true) }
     
     // Parser Config
     var separator by remember { mutableStateOf(rule?.separatorPattern ?: "-") }
@@ -433,6 +436,14 @@ fun EditRuleDialog(
                         checked = useSuperLyricApi,
                         onCheckedChange = { useSuperLyricApi = it }
                     )
+
+                    // E. Lyric Getter API
+                    SwitchRow(
+                        title = "Lyric Getter API",
+                        subtitle = "Receive lyrics via Lyric Getter broadcast",
+                        checked = useLyricGetterApi,
+                        onCheckedChange = { useLyricGetterApi = it }
+                    )
                 }
 
                 // Footer Actions
@@ -450,7 +461,8 @@ fun EditRuleDialog(
                                     separatorPattern = separator,
                                     fieldOrder = fieldOrder,
                                     useOnlineLyrics = useOnlineLyrics,
-                                    useSuperLyricApi = useSuperLyricApi
+                                    useSuperLyricApi = useSuperLyricApi,
+                                    useLyricGetterApi = useLyricGetterApi
                                 )
                             )
                         }

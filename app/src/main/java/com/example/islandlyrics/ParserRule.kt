@@ -20,7 +20,8 @@ data class ParserRule(
     
     // Lyric source settings (per-app)
     val useOnlineLyrics: Boolean = false,      // Whether to fetch lyrics from online APIs
-    val useSuperLyricApi: Boolean = true       // Whether to use SuperLyric API callbacks
+    val useSuperLyricApi: Boolean = true,      // Whether to use SuperLyric API callbacks
+    val useLyricGetterApi: Boolean = true      // Whether to use Lyric Getter API broadcasts
 ) : Comparable<ParserRule> {
     override fun compareTo(other: ParserRule): Int {
         return packageName.compareTo(other.packageName)

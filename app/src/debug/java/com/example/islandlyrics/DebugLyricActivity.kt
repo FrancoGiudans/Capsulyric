@@ -40,6 +40,12 @@ class DebugLyricActivity : AppCompatActivity() {
     private lateinit var btnFetchLyrics: Button
     private lateinit var btnBack: Button
 
+    // Live status views (observe LyricRepository directly)
+    private lateinit var tvLiveSource: TextView
+    private lateinit var tvLiveLyric: TextView
+    private lateinit var tvLivePackage: TextView
+    private lateinit var tvLivePlaying: TextView
+
     private val client = OkHttpClient.Builder()
         .connectTimeout(10, TimeUnit.SECONDS)
         .readTimeout(10, TimeUnit.SECONDS)
@@ -114,19 +120,45 @@ class DebugLyricActivity : AppCompatActivity() {
         btnFetchLyrics = findViewById(R.id.btn_fetch_lyrics)
         btnBack = findViewById(R.id.btn_back)
 
-        // 显示当前播放的音乐信息
+        // Live status views
+        tvLiveSource = findViewById(R.id.tv_live_source)
+        tvLiveLyric = findViewById(R.id.tv_live_lyric)
+        tvLivePackage = findViewById(R.id.tv_live_package)
+        tvLivePlaying = findViewById(R.id.tv_live_playing)
+
+        // ── Observe LyricRepository for live status display ──────────────────────
         val repo = LyricRepository.getInstance()
-        repo.liveMetadata.observe(this, Observer { mediaInfo ->
-            if (mediaInfo != null) {
-                tvCurrentSong.text = "歌曲: ${mediaInfo.title}"
-                tvCurrentArtist.text = "歌手: ${mediaInfo.artist}"
+
+        // Live lyric + source
+        repo.liveLyric.observe(this, Observer { lyricInfo ->
+            if (lyricInfo != null) {
+                tvLiveSource.text = "歌词来源: ${lyricInfo.apiPath} / ${lyricInfo.sourceApp.ifBlank { "—" }}"
+                tvLiveLyric.text  = "当前歌词: ${lyricInfo.lyric.ifBlank { "(空)" }}"
             } else {
-                tvCurrentSong.text = "歌曲: 无"
-                tvCurrentArtist.text = "歌手: 无"
+                tvLiveSource.text = "歌词来源: —"
+                tvLiveLyric.text  = "当前歌词: —"
             }
         })
 
-        // 监听播放进度
+        // Playing app package
+        repo.liveMetadata.observe(this, Observer { mediaInfo ->
+            if (mediaInfo != null) {
+                tvCurrentSong.text   = "歌曲: ${mediaInfo.title}"
+                tvCurrentArtist.text = "歌手: ${mediaInfo.artist}"
+                tvLivePackage.text   = "播放应用: ${mediaInfo.packageName}"
+            } else {
+                tvCurrentSong.text   = "歌曲: 无"
+                tvCurrentArtist.text = "歌手: 无"
+                tvLivePackage.text   = "播放应用: —"
+            }
+        })
+
+        // Playback state
+        repo.isPlaying.observe(this, Observer { playing ->
+            tvLivePlaying.text = if (playing == true) "播放状态: ▶ 播放中" else "播放状态: ⏸ 暂停"
+        })
+
+        // ── Progress observer ──────────────────────────────────────────────
         repo.liveProgress.observe(this, Observer { progress ->
             if (progress != null) {
                 currentPosition = progress.position
@@ -134,11 +166,6 @@ class DebugLyricActivity : AppCompatActivity() {
                 updateTimeDisplay()
             }
         })
-
-        if (repo.liveMetadata.value == null) {
-            tvCurrentSong.text = "歌曲: 无"
-            tvCurrentArtist.text = "歌手: 无"
-        }
 
         btnFetchLyrics.setOnClickListener {
             fetchAllApis()

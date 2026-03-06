@@ -111,7 +111,7 @@ class SuperLyricSource(
                 AppLogger.getInstance().d(TAG, "Instrumental marker detected")
                 // Do NOT clear it to "", otherwise the UI shows "Waiting for lyrics..." indefinitely.
                 // Just pass it through so the user sees "纯音乐".
-                LyricRepository.getInstance().updateLyric(lyric, getAppName(pkg))
+                LyricRepository.getInstance().updateLyric(lyric, getAppName(pkg), "SuperLyric")
                 return
             }
 
@@ -122,7 +122,7 @@ class SuperLyricSource(
             lastLyric = lyric
 
             LyricRepository.getInstance().updatePlaybackStatus(true)
-            LyricRepository.getInstance().updateLyric(lyric, getAppName(pkg))
+            LyricRepository.getInstance().updateLyric(lyric, getAppName(pkg), "SuperLyric")
 
             // ── Phase 3: handle EnhancedLRCData (word-level syllable data) ───
             val enhancedData = data.enhancedLRCData

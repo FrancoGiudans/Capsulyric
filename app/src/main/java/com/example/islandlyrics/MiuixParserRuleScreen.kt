@@ -270,6 +270,8 @@ fun MiuixParserRuleItem(
                 MiuixStatusBadge(active = rule.useOnlineLyrics, label = "Online")
                 Spacer(modifier = Modifier.width(8.dp))
                 MiuixStatusBadge(active = rule.useSuperLyricApi, label = "Super")
+                Spacer(modifier = Modifier.width(8.dp))
+                MiuixStatusBadge(active = rule.useLyricGetterApi, label = "LGetter")
             }
         }
         Switch(
@@ -299,6 +301,7 @@ fun MiuixEditRuleDialog(
     var usesCarProtocol by remember { mutableStateOf(rule?.usesCarProtocol ?: true) }
     var useOnlineLyrics by remember { mutableStateOf(rule?.useOnlineLyrics ?: false) }
     var useSuperLyricApi by remember { mutableStateOf(rule?.useSuperLyricApi ?: true) }
+    var useLyricGetterApi by remember { mutableStateOf(rule?.useLyricGetterApi ?: true) }
     
     val separators = listOf("-", " - ", " | ")
     var separatorIndex by remember { 
@@ -376,6 +379,12 @@ fun MiuixEditRuleDialog(
                     checked = useSuperLyricApi,
                     onCheckedChange = { useSuperLyricApi = it }
                 )
+                SuperSwitch(
+                    title = "Lyric Getter API",
+                    summary = "Receive via Lyric Getter broadcast",
+                    checked = useLyricGetterApi,
+                    onCheckedChange = { useLyricGetterApi = it }
+                )
             }
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -397,7 +406,8 @@ fun MiuixEditRuleDialog(
                                 separatorPattern = separators[separatorIndex],
                                 fieldOrder = orders[orderIndex],
                                 useOnlineLyrics = useOnlineLyrics,
-                                useSuperLyricApi = useSuperLyricApi
+                                useSuperLyricApi = useSuperLyricApi,
+                                useLyricGetterApi = useLyricGetterApi
                             ))
                         }
                     },

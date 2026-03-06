@@ -22,7 +22,8 @@ class LyricRepository private constructor() {
     // Atomic Lyric Container
     data class LyricInfo(
         val lyric: String,
-        val sourceApp: String
+        val sourceApp: String,     // E.g. "QQ音乐" or package name
+        val apiPath: String = "Unknown" // E.g. "SuperLyric", "Lyric Getter", "Online", "Notification"
     )
 
     // Playback Progress Container
@@ -57,10 +58,10 @@ class LyricRepository private constructor() {
         }
     }
 
-    fun updateLyric(lyric: String?, app: String?) {
+    fun updateLyric(lyric: String?, app: String?, apiPath: String = "Unknown") {
         if (lyric == null || app == null) return
         
-        val newInfo = LyricInfo(lyric, app)
+        val newInfo = LyricInfo(lyric, app, apiPath)
         if (liveLyric.value == newInfo) return
         
         postOrSet(liveLyric, newInfo)
@@ -79,7 +80,7 @@ class LyricRepository private constructor() {
         if (lastTrackId != currentTrackId) {
             lastTrackId = currentTrackId
             AppLogger.getInstance().log("Repo", "📝 Song changed ($currentTrackId), clearing old lyric")
-            postOrSet(liveLyric, LyricInfo("", packageName))
+            postOrSet(liveLyric, LyricInfo("", packageName, "System"))
             postOrSet(liveParsedLyrics, null)
             postOrSet(liveCurrentLine, null)
         }

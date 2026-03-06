@@ -633,7 +633,7 @@ class MediaMonitorService : NotificationListenerService() {
 
         // Update Lyric if available
         if (finalLyric != null) {
-            LyricRepository.getInstance().updateLyric(finalLyric, getAppName(pkg))
+            LyricRepository.getInstance().updateLyric(finalLyric, getAppName(pkg), "Notification")
         }
 
         // Use already extracted artBitmap

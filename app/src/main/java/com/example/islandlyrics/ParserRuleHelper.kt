@@ -69,7 +69,8 @@ object ParserRuleHelper {
                             separatorPattern = obj.optString("separator", "-"),
                             fieldOrder = FieldOrder.valueOf(obj.optString("fieldOrder", "ARTIST_TITLE")),
                             useOnlineLyrics = obj.optBoolean("useOnlineLyrics", false),
-                            useSuperLyricApi = obj.optBoolean("useSuperLyricApi", true)
+                            useSuperLyricApi = obj.optBoolean("useSuperLyricApi", true),
+                            useLyricGetterApi = obj.optBoolean("useLyricGetterApi", true)
                         )
                     )
                 }
@@ -114,6 +115,7 @@ object ParserRuleHelper {
                 obj.put("fieldOrder", rule.fieldOrder.name)
                 obj.put("useOnlineLyrics", rule.useOnlineLyrics)
                 obj.put("useSuperLyricApi", rule.useSuperLyricApi)
+                obj.put("useLyricGetterApi", rule.useLyricGetterApi)
                 array.put(obj)
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -173,7 +175,8 @@ object ParserRuleHelper {
             separatorPattern = "-",
             fieldOrder = FieldOrder.ARTIST_TITLE,
             useOnlineLyrics = true, // ENABLE ONLINE LYRICS BY DEFAULT
-            useSuperLyricApi = true
+            useSuperLyricApi = true,
+            useLyricGetterApi = true
         )
     }
     /**
