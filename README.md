@@ -4,26 +4,23 @@
 [![Downloads](https://img.shields.io/github/downloads/FrancoGiudans/Capsulyric/total?style=flat-square&color=green)](https://github.com/FrancoGiudans/Capsulyric/releases)
 [![License](https://img.shields.io/github/license/FrancoGiudans/Capsulyric?style=flat-square&color=blue)](LICENSE)
 
-> **Provides status bar lyrics based on Live Update.**
-> **提供基于 Live Update 机制的状态栏歌词。**
+> **Provides status bar lyrics based on Xiaomi Super Island.**
+> **提供针对小米超级岛（Xiaomi Super Island）的状态栏歌词。**
+
+> **如果你正在运行Android16（Baklava），请使用标准分支（main或develop，对应版本号结尾为_CCount），本分支只为Android15提供有限支持（对应版本号结尾为_A15.Count）**
 
 ---
 
 ## Compatibility (兼容性)
 
-* **Android Version**: Android 16+ (Baklava)
-* **HyperOS**: Version 3.0.300+ (Required for Live Update model)
+* **Android Version**: Android 15
+* **HyperOS**: Version 3.0
 
 ---
 
-## Working Modes (工作模式)
+## Working Mode (工作模式)
 
-### 1. Live Update
-* **Requirements**: Android 16+
-* **Special Note**: For HyperOS devices, OS version 3.0.300+ is required.
-> 要求 Android 16+。针对小米设备，需 HyperOS 3.0.300+ 版本。
-
-### 2. 小米超级岛 (Xiaomi Super Island)
+### 小米超级岛 (Xiaomi Super Island)
 * **Requirements**: HyperOS 3.0+
 * **System**: Root access is required.
 > 要求 HyperOS 3.0+，且系统需要 Root 权限。
@@ -32,16 +29,16 @@
 
 ## Lyric Acquisition (歌词获取方式)
 
-1. **媒体通知歌词 (Media Notification Lyrics)**
-   * Detects lyrics from standard media notifications.
-2. **在线歌词 (Online Lyrics)**
-   * Fetches lyrics from online servers based on playback info.
-3. **[Superlyric API](https://github.com/HChenX/SuperLyric)**
-   * **Requirements**: Root access is required (LSPosed required).High accuracy.
-   * **要求**：设备已获取Root权限（要求LSPosed），准确度高。
-4. **[Lyric Getter](https://github.com/xiaowine/Lyric-Getter)**
-   * **Features**: Supports Meizu status bar lyrics and LSPatch hook (can be used without root).High accuracy.
-   * **特点**: 支持兼容魅族状态栏歌词以及 LSPatch hook（可免 root 使用）。准确度高。
+1.  **媒体通知歌词 (Media Notification Lyrics)**
+    *   Detects lyrics from standard media notifications.
+2.  **在线歌词 (Online Lyrics)**
+    *   Fetches lyrics from online servers based on playback info.
+3.  **[Superlyric API](https://github.com/HChenX/SuperLyric)**
+    *   **Requirements**: Root access is required (LSPosed required).High accuracy.
+    *   **要求**：设备已获取Root权限（要求LSPosed），准确度高。
+4.  **[Lyric Getter](https://github.com/xiaowine/Lyric-Getter)**
+    *   **Features**: Supports Meizu status bar lyrics and LSPatch hook (can be used without root).High accuracy.
+    *   **特点**: 支持兼容魅族状态栏歌词以及 LSPatch hook（可免 root 使用）。准确度高。
 
 ---
 
@@ -53,6 +50,8 @@
   <b>Material Design</b> &nbsp;&nbsp;vs&nbsp;&nbsp; <b>MIUIX</b><br><br>
   <img src="screenshots/1.png" width="48%" />
   <img src="screenshots/miuix-1.png" width="48%" />
+</p>
+<p align="center">
   <br><br>
   <b>Media Control (媒体控制弹窗)</b><br><br>
   <img src="screenshots/4.png" width="48%" />
@@ -61,13 +60,11 @@
 
 ### Notification & Capsule (通知与胶囊)
 <p align="center">
-  <b>Live Update</b> &nbsp;&nbsp;vs&nbsp;&nbsp; <b>小米超级岛 (Xiaomi Super Island)</b><br><br>
+  <b>小米超级岛 (Xiaomi Super Island)</b><br><br>
   <b>Notification (展开形态)</b><br><br>
-  <img src="screenshots/2.png" width="48%" />
   <img src="screenshots/miuix-2.png" width="48%" />
   <br><br>
   <b>Capsule (胶囊形态)</b><br><br>
-  <img src="screenshots/3.png" width="48%" />
   <img src="screenshots/miuix-3.png" width="48%" />
 </p>
 
@@ -95,7 +92,7 @@
 
 请按照以下步骤逐一排查：
 1. **检查权限**: 请确保应用已获得所有必要的系统权限（尤其是通知使用权）。
-2. **确认系统版本**: 推荐 Android 16+ 或 HyperOS 3.0.300+。低于 3.0.300 的 HyperOS 无法显示原生实时通知。
+2. **确认系统版本**: 推荐 HyperOS 3.0+。
 3. **检查第三方音乐App设置**: 部分版本可能需要连接耳机才能触发“车载蓝牙歌词”。如果使用 SuperLyric API（如 Apple Music），需安装相应模块并启用。
 4. **在线歌词限制**: 如果使用在线歌词，可能因网络或 API 限制暂时无法获取准确歌词。
 </details>
