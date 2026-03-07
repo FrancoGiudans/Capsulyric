@@ -2,7 +2,7 @@ name: Android CI (Debug & Prerelease)
 
 on:
   push:
-    branches: [ "main", "develop" ]
+    branches: [ "develop" ]
     tags: [ "v*" ]
   workflow_dispatch:
 
