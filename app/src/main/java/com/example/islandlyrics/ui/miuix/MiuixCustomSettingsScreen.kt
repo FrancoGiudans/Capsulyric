@@ -2,7 +2,6 @@ package com.example.islandlyrics.ui.miuix
 
 import android.app.Activity
 import com.example.islandlyrics.ui.NotificationPreview
-import com.example.islandlyrics.ui.CapsulePreview
 import com.example.islandlyrics.R
 import com.example.islandlyrics.utils.ThemeHelper
 import com.example.islandlyrics.utils.RomUtils
@@ -58,12 +57,13 @@ fun MiuixCustomSettingsScreen(
     val scrollBehavior = MiuixScrollBehavior(rememberTopAppBarState())
 
     // Pager State
-    val pagerState = rememberPagerState(pageCount = { 3 })
+    val pagerState = rememberPagerState(pageCount = { 2 })
     val tabs = listOf(
-        stringResource(R.string.tab_capsule),
         stringResource(R.string.tab_notification),
         stringResource(R.string.tab_app_ui)
     )
+    val isHyperOs = remember { RomUtils.getRomType() == "HyperOS" }
+    val isHyperOsSupported = remember { RomUtils.isHyperOsVersionAtLeast(3, 0, 300) }
 
     // State
     var followSystem by remember { mutableStateOf(prefs.getBoolean("theme_follow_system", true)) }
@@ -87,8 +87,6 @@ fun MiuixCustomSettingsScreen(
     var miuixEnabled by remember { mutableStateOf(prefs.getBoolean("ui_use_miuix", false)) }
     var predictiveBackEnabled by remember { mutableStateOf(prefs.getBoolean("predictive_back_enabled", false)) }
 
-    val isHyperOsSupported = remember { RomUtils.isHyperOsVersionAtLeast(3, 0, 300) }
-    val isHyperOs = remember { RomUtils.getRomType() == "HyperOS" }
     LaunchedEffect(isHyperOsSupported) {
         if (!isHyperOsSupported) {
             if (dynamicIconEnabled) {
@@ -173,37 +171,17 @@ fun MiuixCustomSettingsScreen(
                     contentPadding = PaddingValues(top = 12.dp, bottom = 24.dp)
                 ) {
                     when (page) {
-                        0 -> { // Capsule
+                        0 -> { // Notification
                             item {
-                                CapsulePreview(
-                                    dynamicIconEnabled = dynamicIconEnabled,
-                                    iconStyle = iconStyle,
-                                    oneuiCapsuleColorEnabled = oneuiCapsuleColorEnabled
-                                )
+                                    NotificationPreview(
+                                        progressColorEnabled = progressColorEnabled,
+                                        actionStyle = actionStyle,
+                                        superIslandEnabled = superIslandEnabled
+                                    )
                             }
                             item { Spacer(modifier = Modifier.height(16.dp)) }
                             item {
                                 Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
-                                    SuperSwitch(
-                                        title = stringResource(R.string.settings_disable_scrolling),
-                                        summary = stringResource(R.string.settings_disable_scrolling_desc),
-                                        checked = disableScrolling,
-                                        onCheckedChange = {
-                                            disableScrolling = it
-                                            prefs.edit().putBoolean("disable_lyric_scrolling", it).apply()
-                                        }
-                                    )
-                                    if (RomUtils.getRomType() == "OneUI") {
-                                        SuperSwitch(
-                                            title = stringResource(R.string.settings_oneui_capsule_color),
-                                            summary = stringResource(R.string.settings_oneui_capsule_color_desc),
-                                            checked = oneuiCapsuleColorEnabled,
-                                            onCheckedChange = {
-                                                oneuiCapsuleColorEnabled = it
-                                                prefs.edit().putBoolean("oneui_capsule_color_enabled", it).apply()
-                                            }
-                                        )
-                                    }
                                     if (isHyperOs) {
                                         SuperSwitch(
                                             title = stringResource(R.string.settings_super_island),
@@ -295,55 +273,19 @@ fun MiuixCustomSettingsScreen(
                                                     }
                                                 }
                                             )
+                                        }
+                                    }
 
+                                    SuperSwitch(
+                                        title = stringResource(R.string.settings_disable_scrolling),
+                                        summary = stringResource(R.string.settings_disable_scrolling_desc),
+                                        checked = disableScrolling,
+                                        onCheckedChange = {
+                                            disableScrolling = it
+                                            prefs.edit().putBoolean("disable_lyric_scrolling", it).apply()
                                         }
-                                    }
-                                    if (isHyperOsSupported && !superIslandEnabled) {
-                                        SuperSwitch(
-                                            title = stringResource(R.string.settings_dynamic_icon),
-                                            summary = stringResource(R.string.settings_dynamic_icon_desc),
-                                            checked = dynamicIconEnabled,
-                                            onCheckedChange = {
-                                                dynamicIconEnabled = it
-                                                prefs.edit().putBoolean("dynamic_icon_enabled", it).apply()
-                                            }
-                                        )
-                                        if (dynamicIconEnabled) {
-                                            val iconStyles = listOf("classic", "advanced")
-                                            val iconStyleNames = listOf(
-                                                stringResource(R.string.icon_style_classic),
-                                                stringResource(R.string.icon_style_advanced)
-                                            )
-                                            val currentIconIndex = iconStyles.indexOf(iconStyle).takeIf { it >= 0 } ?: 0
-                                            
-                                            SuperDropdown(
-                                                title = stringResource(R.string.settings_icon_style),
-                                                items = iconStyleNames,
-                                                selectedIndex = currentIconIndex,
-                                                onSelectedIndexChange = { index ->
-                                                    val newStyle = iconStyles[index]
-                                                    iconStyle = newStyle
-                                                    prefs.edit().putString("dynamic_icon_style", newStyle).apply()
-                                                }
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        1 -> { // Notification
-                            item {
-                                NotificationPreview(
-                                    progressColorEnabled = progressColorEnabled,
-                                    actionStyle = actionStyle,
-                                    superIslandEnabled = superIslandEnabled,
-                                    superIslandTextColorEnabled = superIslandTextColorEnabled
-                                )
-                            }
-                            item { Spacer(modifier = Modifier.height(16.dp)) }
-                            item {
-                                Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
-                                    // ⚡ Logic: Hide Colorize Progress Bar if Playback Notification (media_controls) is selected
+                                    )
+
                                     if (actionStyle == "disabled") {
                                         SuperSwitch(
                                             title = stringResource(R.string.settings_progress_color),
@@ -418,7 +360,7 @@ fun MiuixCustomSettingsScreen(
                                 }
                             }
                         }
-                        2 -> { // App UI
+                        1 -> { // App UI
                             item {
                                 Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
                                     val uiStyles = listOf(false, true)

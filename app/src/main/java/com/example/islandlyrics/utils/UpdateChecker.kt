@@ -187,14 +187,9 @@ object UpdateChecker {
         try {
             updateLastCheckTime(context)
             
-            val includePrerelease = isPrereleaseEnabled(context)
-            val apiUrl = if (includePrerelease) {
-                "https://api.github.com/repos/FrancoGiudans/Capsulyric/releases"
-            } else {
-                GITHUB_API_URL
-            }
-            
-            val url = URL(apiUrl)
+            // For Android 15 version, we only check the latest stable-track release
+            // We search for releases that contain "_A15." in the tag name
+            val url = URL(GITHUB_API_URL)
             val connection = url.openConnection() as HttpURLConnection
             connection.requestMethod = "GET"
             connection.setRequestProperty("Accept", "application/vnd.github.v3+json")
@@ -203,54 +198,31 @@ object UpdateChecker {
 
             if (connection.responseCode == 200) {
                 val response = connection.inputStream.bufferedReader().use { it.readText() }
+                val json = JSONObject(response)
+                val release = parseRelease(json)
                 
-                var validReleases = emptyList<ReleaseInfo>()
-                
-                if (includePrerelease) {
-                    // Parse ARRAY
-                    val jsonArray = org.json.JSONArray(response)
-                    val list = mutableListOf<ReleaseInfo>()
-                    for (i in 0 until jsonArray.length()) {
-                        val json = jsonArray.getJSONObject(i)
-                        list.add(parseRelease(json))
-                    }
-                    validReleases = list
-                } else {
-                    // Parse OBJECT
-                    val json = JSONObject(response)
-                    validReleases = listOf(parseRelease(json))
-                }
-
-                // Find the newest version that is > current
                 val currentVersion = BuildConfig.VERSION_NAME
-                val userChannel = if (includePrerelease) getPrereleaseChannel(context) else "Release"
+                val remoteVersion = release.tagName.removePrefix("v")
                 
-                for (release in validReleases) {
-                    val remoteVersion = release.tagName.removePrefix("v")
-                    
-                    if (!isUpdateAllowedForChannel(release.tagName, userChannel)) {
-                         continue
-                    }
-                    
-                    if (compareVersions(remoteVersion, currentVersion) > 0) {
-                        // Check if ignored
-                        val ignoredVersion = getIgnoredVersion(context)
-                        if (ignoredVersion != null && release.tagName == ignoredVersion) {
-                            AppLogger.getInstance().d(TAG, "Skipping ignored version: ${release.tagName}")
-                            continue
-                        }
-                        
-                        AppLogger.getInstance().d(TAG, "Update available: ${release.tagName} (Prerelease: ${release.prerelease})")
-                        return@withContext release
-                    }
+                // Only allow if it's an A15 version
+                if (!remoteVersion.contains("_A15.")) {
+                    AppLogger.getInstance().d(TAG, "Latest release is not an A15 version: ${release.tagName}")
+                    return@withContext null
                 }
                 
-                AppLogger.getInstance().d(TAG, "No suitable updates found.")
-                
+                if (compareVersions(remoteVersion, currentVersion) > 0) {
+                    val ignoredVersion = getIgnoredVersion(context)
+                    if (ignoredVersion != null && release.tagName == ignoredVersion) {
+                        AppLogger.getInstance().d(TAG, "Skipping ignored version: ${release.tagName}")
+                        return@withContext null
+                    }
+                    
+                    AppLogger.getInstance().d(TAG, "A15 Update available: ${release.tagName}")
+                    return@withContext release
+                }
             } else {
                 AppLogger.getInstance().e(TAG, "GitHub API error: ${connection.responseCode}")
             }
-
             connection.disconnect()
             null
         } catch (e: Exception) {
@@ -270,15 +242,11 @@ object UpdateChecker {
         )
     }
 
-    /**
-     * Compare version strings in "1.0_C20" format.
-     * @return Positive if v1 > v2, negative if v1 < v2, 0 if equal
-     */
     fun compareVersions(v1: String, v2: String): Int {
         try {
-            // Extract commit count from "1.0_C20" format
-            val commit1 = v1.substringAfter("_C", "0").toIntOrNull() ?: 0
-            val commit2 = v2.substringAfter("_C", "0").toIntOrNull() ?: 0
+            // Extract commit count from "1.0_A15.20" format
+            val commit1 = v1.substringAfter("_A15.", "0").toIntOrNull() ?: 0
+            val commit2 = v2.substringAfter("_A15.", "0").toIntOrNull() ?: 0
             
             return commit1.compareTo(commit2)
         } catch (e: Exception) {

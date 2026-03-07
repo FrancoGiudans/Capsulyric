@@ -52,11 +52,11 @@ android {
         if (project.hasProperty("versionName")) {
             versionName project.versionName
         } else {
-            versionName "${majorVersion}_C${getGitCommitCount()}"
+            versionName "${majorVersion}_A15.${getGitCommitCount()}"
         }
         applicationId "com.franco.capsulyric"
-        minSdk 36
-        targetSdk 36
+        minSdk 35
+        targetSdk 35
         
         buildConfigField "String", "GIT_COMMIT_HASH", "\"${getGitCommitHash()}\""
     }

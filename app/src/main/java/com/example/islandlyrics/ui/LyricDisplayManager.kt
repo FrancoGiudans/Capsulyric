@@ -21,12 +21,16 @@ class LyricDisplayManager(private val context: Context) {
 
     // Output callback
     var onStateUpdated: ((UIState) -> Unit)? = null
+    companion object {
+        const val COLOR_PRIMARY = 0xFF202124.toInt()
+        const val SCROLL_STEP_DELAY = 400L
+    }
 
     private val mainHandler = Handler(Looper.getMainLooper())
     private var isRunning = false
     
     // Core state
-    private var currentAlbumColor = LyricCapsuleHandler.COLOR_PRIMARY
+    private var currentAlbumColor = COLOR_PRIMARY
     private var lastAlbumArtHash = 0
     private var lastExtractedArtHash = 0
     
@@ -45,7 +49,7 @@ class LyricDisplayManager(private val context: Context) {
     private var lastLyricLength: Int = 0
     private val lyricDurations = mutableListOf<Long>()
     private val maxHistory = 5
-    private var adaptiveDelay: Long = LyricCapsuleHandler.SCROLL_STEP_DELAY
+    private var adaptiveDelay: Long = SCROLL_STEP_DELAY
     private val minCharDuration = 50L
     private val minScrollDelay = 200L
     private val maxScrollDelay = 5000L
@@ -84,7 +88,7 @@ class LyricDisplayManager(private val context: Context) {
     
     private val albumArtObserver = Observer<Bitmap?> { bitmap ->
         if (bitmap == null) {
-            currentAlbumColor = LyricCapsuleHandler.COLOR_PRIMARY
+            currentAlbumColor = COLOR_PRIMARY
             lastAlbumArtHash = 0
             lastExtractedArtHash = 0
             return@Observer
@@ -100,7 +104,7 @@ class LyricDisplayManager(private val context: Context) {
                 if (palette != null) {
                     currentAlbumColor = palette.getVibrantColor(
                         palette.getMutedColor(
-                            palette.getDominantColor(LyricCapsuleHandler.COLOR_PRIMARY)
+                            palette.getDominantColor(COLOR_PRIMARY)
                         )
                     )
                     lastExtractedArtHash = artHash
@@ -151,7 +155,7 @@ class LyricDisplayManager(private val context: Context) {
         lastLyricChangeTime = 0
         lastLyricLength = 0
         lyricDurations.clear()
-        adaptiveDelay = LyricCapsuleHandler.SCROLL_STEP_DELAY
+        adaptiveDelay = SCROLL_STEP_DELAY
         scrollState = ScrollState.INITIAL_PAUSE
         initialPauseStartTime = System.currentTimeMillis()
         
@@ -426,7 +430,7 @@ class LyricDisplayManager(private val context: Context) {
     
     private fun calculateAdaptiveDelay(newLyric: String) {
         if (lyricDurations.isEmpty()) {
-            adaptiveDelay = LyricCapsuleHandler.SCROLL_STEP_DELAY
+            adaptiveDelay = SCROLL_STEP_DELAY
             return
         }
         val avgDuration = lyricDurations.average().toLong()
@@ -434,7 +438,7 @@ class LyricDisplayManager(private val context: Context) {
         val currentStaticReserve = if (isMostlyWestern(newLyric)) 750L else staticTimeReserve
         
         if (avgLyricWeight == 0 || avgDuration < currentStaticReserve) {
-            adaptiveDelay = LyricCapsuleHandler.SCROLL_STEP_DELAY
+            adaptiveDelay = SCROLL_STEP_DELAY
             return
         }
         

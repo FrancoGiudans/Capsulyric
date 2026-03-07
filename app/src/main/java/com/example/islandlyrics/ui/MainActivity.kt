@@ -35,31 +35,12 @@ class MainActivity : BaseActivity() {
 
     private val handler = Handler(Looper.getMainLooper())
 
-    // Compose state for API dashboard (driven by BroadcastReceiver + reflection checks)
-    private var apiPermissionText by mutableStateOf("Permission: Checking...")
-    private var apiCapabilityText by mutableStateOf("Notif.hasPromotable: Waiting...")
-    private var apiFlagText by mutableStateOf("Flag PROMOTED_ONGOING: Waiting...")
-    private var apiPermissionActive by mutableStateOf(false)
-    private var apiCapabilityActive by mutableStateOf(false)
-    private var apiFlagActive by mutableStateOf(false)
-    private var showApiCard by mutableStateOf(false)
     private var versionText by mutableStateOf("...")
     private var updateReleaseInfo by mutableStateOf<UpdateChecker.ReleaseInfo?>(null)
 
     private val diagReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
-            if ("com.example.islandlyrics.STATUS_UPDATE" == intent.action) {
-                if (intent.hasExtra("hasPromotable")) {
-                    val hasPromotable = intent.getBooleanExtra("hasPromotable", false)
-                    apiCapabilityText = "Notif.hasPromotable: $hasPromotable"
-                    apiCapabilityActive = hasPromotable
-                }
-                if (intent.hasExtra("isPromoted")) {
-                    val isPromoted = intent.getBooleanExtra("isPromoted", false)
-                    apiFlagText = "Flag PROMOTED_ONGOING: $isPromoted"
-                    apiFlagActive = isPromoted
-                }
-            }
+            // Placeholder for future diagnostics
         }
     }
 
@@ -115,14 +96,7 @@ class MainActivity : BaseActivity() {
                         onStatusCardTap = {
                             MediaMonitorService.requestRebind(this@MainActivity)
                             Toast.makeText(this@MainActivity, "Requesting Rebind...", Toast.LENGTH_SHORT).show()
-                        },
-                        apiPermissionText = apiPermissionText,
-                        apiCapabilityText = apiCapabilityText,
-                        apiFlagText = apiFlagText,
-                        apiPermissionActive = apiPermissionActive,
-                        apiCapabilityActive = apiCapabilityActive,
-                        apiFlagActive = apiFlagActive,
-                        showApiCard = showApiCard,
+                        }
                     )
                     
                     if (updateReleaseInfo != null) {
@@ -162,14 +136,7 @@ class MainActivity : BaseActivity() {
                         onStatusCardTap = {
                             MediaMonitorService.requestRebind(this@MainActivity)
                             Toast.makeText(this@MainActivity, "Requesting Rebind...", Toast.LENGTH_SHORT).show()
-                        },
-                        apiPermissionText = apiPermissionText,
-                        apiCapabilityText = apiCapabilityText,
-                        apiFlagText = apiFlagText,
-                        apiPermissionActive = apiPermissionActive,
-                        apiCapabilityActive = apiCapabilityActive,
-                        apiFlagActive = apiFlagActive,
-                        showApiCard = showApiCard,
+                        }
                     )
                     
                     if (updateReleaseInfo != null) {
@@ -185,14 +152,14 @@ class MainActivity : BaseActivity() {
                 }
             }
         }
-
-        checkPromotedNotificationPermission()
     }
 
-    // API 36 Permission Check (Standard Runtime Permission)
+    // Standard Notification Permission Check
     private fun checkPromotedNotificationPermission() {
-        if (checkSelfPermission("android.permission.POST_PROMOTED_NOTIFICATIONS") != PackageManager.PERMISSION_GRANTED) {
-            requestPermissions(arrayOf("android.permission.POST_PROMOTED_NOTIFICATIONS"), 102)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 102)
+            }
         }
     }
 
@@ -221,22 +188,7 @@ class MainActivity : BaseActivity() {
 
     // Check API Status
     private fun checkApiStatusForDashboard() {
-        if (!BuildConfig.DEBUG) {
-            showApiCard = false
-            return
-        }
-        showApiCard = true
-
-        val nm = getSystemService(android.app.NotificationManager::class.java)
-        val granted = nm.canPostPromotedNotifications()
-
-        if (granted) {
-            apiPermissionText = "Permission (canPost): GRANTED ✅"
-            apiPermissionActive = true
-        } else {
-            apiPermissionText = "Permission (canPost): DENIED ❌"
-            apiPermissionActive = false
-        }
+        // Disabled for Android 15
     }
 
     override fun onResume() {

@@ -74,9 +74,6 @@ fun SettingsScreen(
     var actionStyle by remember { mutableStateOf(prefs.getString("notification_actions_style", "disabled") ?: "disabled") }
     var showActionStyleDialog by remember { mutableStateOf(false) }
 
-    // Channel Dropdown
-    var showChannelDropdown by remember { mutableStateOf(false) }
-    var currentChannel by remember { mutableStateOf(UpdateChecker.getPrereleaseChannel(context)) }
 
     // Notification Click Action State
     var notificationClickStyle by remember { mutableStateOf(prefs.getString("notification_click_style", "default") ?: "default") }
@@ -302,73 +299,6 @@ fun SettingsScreen(
                     }
                 )
 
-                // Prerelease Updates
-                var prereleaseEnabled by remember { mutableStateOf(UpdateChecker.isPrereleaseEnabled(context)) }
-                var showPrereleaseDialog by remember { mutableStateOf(false) }
-
-                SettingsSwitchItem(
-                    title = stringResource(R.string.settings_prerelease_update),
-                    subtitle = stringResource(R.string.settings_prerelease_update_desc),
-                    checked = prereleaseEnabled,
-                    onCheckedChange = { checked ->
-                        if (checked) {
-                            showPrereleaseDialog = true
-                        } else {
-                            prereleaseEnabled = false
-                            UpdateChecker.setPrereleaseEnabled(context, false)
-                        }
-                    }
-                )
-                
-                if (prereleaseEnabled) {
-                    Box(modifier = Modifier.fillMaxWidth()) {
-                        SettingsTextItem(
-                            title = stringResource(R.string.settings_prerelease_channel),
-                            value = currentChannel,
-                            onClick = { showChannelDropdown = true }
-                        )
-                        Box(modifier = Modifier.matchParentSize().wrapContentSize(Alignment.CenterEnd)) {
-                            DropdownMenu(
-                                expanded = showChannelDropdown,
-                                onDismissRequest = { showChannelDropdown = false }
-                            ) {
-                                val channels = listOf("Alpha", "Beta", "Pre")
-                                channels.forEach { ch ->
-                                    DropdownMenuItem(
-                                        text = { Text(ch) },
-                                        onClick = {
-                                            currentChannel = ch
-                                            UpdateChecker.setPrereleaseChannel(context, ch)
-                                            showChannelDropdown = false
-                                        }
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-
-                if (showPrereleaseDialog) {
-                    AlertDialog(
-                        onDismissRequest = { showPrereleaseDialog = false },
-                        title = { Text(stringResource(R.string.dialog_prerelease_warning_title)) },
-                        text = { Text(stringResource(R.string.dialog_prerelease_warning_message)) },
-                        confirmButton = {
-                            TextButton(onClick = {
-                                prereleaseEnabled = true
-                                UpdateChecker.setPrereleaseEnabled(context, true)
-                                showPrereleaseDialog = false
-                            }) {
-                                Text(stringResource(android.R.string.ok))
-                            }
-                        },
-                        dismissButton = {
-                            TextButton(onClick = { showPrereleaseDialog = false }) {
-                                Text(stringResource(android.R.string.cancel))
-                            }
-                        }
-                    )
-                }
 
                 SettingsActionItem(
                      title = stringResource(R.string.update_check_title),

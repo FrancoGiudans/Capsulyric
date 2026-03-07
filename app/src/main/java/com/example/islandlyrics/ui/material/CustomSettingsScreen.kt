@@ -2,7 +2,6 @@ package com.example.islandlyrics.ui.material
 
 import android.app.Activity
 import com.example.islandlyrics.ui.NotificationPreview
-import com.example.islandlyrics.ui.CapsulePreview
 import com.example.islandlyrics.R
 import com.example.islandlyrics.utils.UpdateChecker
 import com.example.islandlyrics.utils.ThemeHelper
@@ -48,9 +47,9 @@ fun CustomSettingsScreen(
     
     // Pager State
     // Pager State
-    val pagerState = rememberPagerState(pageCount = { 3 })
+    // Pager State
+    val pagerState = rememberPagerState(pageCount = { 2 })
     val tabs = listOf(
-        stringResource(R.string.tab_capsule),
         stringResource(R.string.tab_notification),
         stringResource(R.string.tab_app_ui)
     )
@@ -232,35 +231,14 @@ fun CustomSettingsScreen(
                         .verticalScroll(rememberScrollState())
                 ) {
                     when (page) {
-                        0 -> { // Capsule (Moved from 1)
-                            CapsulePreview(
-                                dynamicIconEnabled = dynamicIconEnabled,
-                                iconStyle = iconStyle,
-                                oneuiCapsuleColorEnabled = oneuiCapsuleColorEnabled
+                        0 -> { // Notification
+                            // Preview
+                            NotificationPreview(
+                                progressColorEnabled = progressColorEnabled,
+                                actionStyle = actionStyle,
+                                superIslandEnabled = superIslandEnabled
                             )
                             Spacer(modifier = Modifier.height(16.dp))
-
-                            SettingsSwitchItem(
-                                title = stringResource(R.string.settings_disable_scrolling),
-                                subtitle = stringResource(R.string.settings_disable_scrolling_desc),
-                                checked = disableScrolling,
-                                onCheckedChange = {
-                                    disableScrolling = it
-                                    prefs.edit().putBoolean("disable_lyric_scrolling", it).apply()
-                                }
-                            )
-
-                            if (RomUtils.getRomType() == "OneUI") {
-                                SettingsSwitchItem(
-                                    title = stringResource(R.string.settings_oneui_capsule_color),
-                                    subtitle = stringResource(R.string.settings_oneui_capsule_color_desc),
-                                    checked = oneuiCapsuleColorEnabled,
-                                    onCheckedChange = {
-                                        oneuiCapsuleColorEnabled = it
-                                        prefs.edit().putBoolean("oneui_capsule_color_enabled", it).apply()
-                                    }
-                                )
-                            }
 
                             if (isHyperOs) {
                                 SettingsSwitchItem(
@@ -286,53 +264,6 @@ fun CustomSettingsScreen(
                                         context.startService(intent)
                                     }
                                 )
-
-                                if (isHyperOsSupported && !superIslandEnabled) {
-                                    SettingsSwitchItem(
-                                        title = stringResource(R.string.settings_dynamic_icon),
-                                        subtitle = stringResource(R.string.settings_dynamic_icon_desc),
-                                        checked = dynamicIconEnabled,
-                                        onCheckedChange = {
-                                            dynamicIconEnabled = it
-                                            prefs.edit().putBoolean("dynamic_icon_enabled", it).apply()
-                                        }
-                                    )
-
-                                    if (dynamicIconEnabled) {
-                                        val styleDisplayName = when (iconStyle) {
-                                            "advanced" -> stringResource(R.string.icon_style_advanced)
-                                            else -> stringResource(R.string.icon_style_classic)
-                                        }
-                                        Box(modifier = Modifier.fillMaxWidth()) {
-                                            SettingsTextItem(
-                                                title = stringResource(R.string.settings_icon_style),
-                                                value = styleDisplayName,
-                                                onClick = { showIconStyleDropdown = true }
-                                            )
-                                            Box(modifier = Modifier.matchParentSize().wrapContentSize(Alignment.Center)) {
-                                                DropdownMenu(
-                                                    expanded = showIconStyleDropdown,
-                                                    onDismissRequest = { showIconStyleDropdown = false }
-                                                ) {
-                                                    val styles = listOf(
-                                                        "classic" to R.string.icon_style_classic,
-                                                        "advanced" to R.string.icon_style_advanced
-                                                    )
-                                                    styles.forEach { (styleId, nameId) ->
-                                                        DropdownMenuItem(
-                                                            text = { Text(stringResource(nameId)) },
-                                                            onClick = {
-                                                                iconStyle = styleId
-                                                                prefs.edit().putString("dynamic_icon_style", styleId).apply()
-                                                                showIconStyleDropdown = false
-                                                            }
-                                                        )
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
 
                                 if (superIslandEnabled) {
                                     SettingsSwitchItem(
@@ -416,19 +347,18 @@ fun CustomSettingsScreen(
                                             }
                                         }
                                     )
-
                                 }
                             }
-                        }
-                        1 -> { // Notification (Moved from 2)
-                             // Preview
-                             NotificationPreview(
-                                 progressColorEnabled = progressColorEnabled,
-                                 actionStyle = actionStyle,
-                                 superIslandEnabled = superIslandEnabled
-                             )
-                             Spacer(modifier = Modifier.height(16.dp))
 
+                            SettingsSwitchItem(
+                                title = stringResource(R.string.settings_disable_scrolling),
+                                subtitle = stringResource(R.string.settings_disable_scrolling_desc),
+                                checked = disableScrolling,
+                                onCheckedChange = {
+                                    disableScrolling = it
+                                    prefs.edit().putBoolean("disable_lyric_scrolling", it).apply()
+                                }
+                            )
 
                             if (actionStyle == "disabled") {
                                  SettingsSwitchItem(
@@ -442,119 +372,8 @@ fun CustomSettingsScreen(
                                 )
                             }
                             
-                             // Notification Action Style
-                            val actionStyleDisplay = when (actionStyle) {
-                                "media_controls" -> stringResource(R.string.settings_action_style_media)
-                                "miplay" -> stringResource(R.string.settings_action_style_miplay)
-                                else -> stringResource(R.string.settings_action_style_off)
-                            }
-                            Box(modifier = Modifier.fillMaxWidth()) {
-                                SettingsTextItem(
-                                    title = stringResource(R.string.settings_notification_actions),
-                                    value = actionStyleDisplay,
-                                    onClick = { showActionStyleDropdown = true }
-                                )
-                                Box(modifier = Modifier.matchParentSize().wrapContentSize(Alignment.Center)) {
-                                    DropdownMenu(
-                                        expanded = showActionStyleDropdown,
-                                        onDismissRequest = { showActionStyleDropdown = false }
-                                    ) {
-                                        val allStyles = listOf(
-                                            "disabled" to R.string.settings_action_style_off,
-                                            "media_controls" to R.string.settings_action_style_media,
-                                            "miplay" to R.string.settings_action_style_miplay
-                                        )
-                                        val styles = allStyles.filter { (styleId, _) ->
-                                            if (styleId == "miplay") isHyperOsSupported && !superIslandEnabled else true
-                                        }
-                                        styles.forEach { (styleId, nameId) ->
-                                            DropdownMenuItem(
-                                                text = { Text(stringResource(nameId)) },
-                                                onClick = {
-                                                    actionStyle = styleId
-                                                    prefs.edit().putString("notification_actions_style", styleId).apply()
-                                                    showActionStyleDropdown = false
-                                                }
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-            
-                            // Notification Click Action
-                            val clickStyleDisplay = when (notificationClickStyle) {
-                                "media_controls" -> stringResource(R.string.settings_click_action_media)
-                                else -> stringResource(R.string.settings_click_action_default)
-                            }
-                            Box(modifier = Modifier.fillMaxWidth()) {
-                                SettingsTextItem(
-                                    title = stringResource(R.string.settings_click_action_title),
-                                    value = clickStyleDisplay,
-                                    onClick = { showNotificationClickDropdown = true }
-                                )
-                                Box(modifier = Modifier.matchParentSize().wrapContentSize(Alignment.Center)) {
-                                    DropdownMenu(
-                                        expanded = showNotificationClickDropdown,
-                                        onDismissRequest = { showNotificationClickDropdown = false }
-                                    ) {
-                                        val styles = listOf(
-                                            "default" to R.string.settings_click_action_default,
-                                            "media_controls" to R.string.settings_click_action_media
-                                        )
-                                        styles.forEach { (styleId, nameId) ->
-                                            DropdownMenuItem(
-                                                text = { Text(stringResource(nameId)) },
-                                                onClick = {
-                                                    notificationClickStyle = styleId
-                                                    prefs.edit().putString("notification_click_style", styleId).apply()
-                                                    showNotificationClickDropdown = false
-                                                }
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-                            
-                             // Dismiss Delay
-                            val dismissDelayText = when (dismissDelay) {
-                                0L -> stringResource(R.string.dismiss_delay_immediate)
-                                1000L -> stringResource(R.string.dismiss_delay_1s)
-                                3000L -> stringResource(R.string.dismiss_delay_3s)
-                                5000L -> stringResource(R.string.dismiss_delay_5s)
-                                else -> stringResource(R.string.dismiss_delay_immediate)
-                            }
-                            Box(modifier = Modifier.fillMaxWidth()) {
-                                SettingsTextItem(
-                                    title = stringResource(R.string.settings_dismiss_delay_title),
-                                    value = dismissDelayText,
-                                    onClick = { showDismissDelayDropdown = true }
-                                )
-                                Box(modifier = Modifier.matchParentSize().wrapContentSize(Alignment.Center)) {
-                                    DropdownMenu(
-                                        expanded = showDismissDelayDropdown,
-                                        onDismissRequest = { showDismissDelayDropdown = false }
-                                    ) {
-                                        val options = listOf(
-                                            0L to R.string.dismiss_delay_immediate,
-                                            1000L to R.string.dismiss_delay_1s,
-                                            3000L to R.string.dismiss_delay_3s,
-                                            5000L to R.string.dismiss_delay_5s
-                                        )
-                                        options.forEach { (delay, labelRes) ->
-                                            DropdownMenuItem(
-                                                text = { Text(stringResource(labelRes)) },
-                                                onClick = {
-                                                    dismissDelay = delay
-                                                    prefs.edit().putLong("notification_dismiss_delay", delay).apply()
-                                                    showDismissDelayDropdown = false
-                                                }
-                                            )
-                                        }
-                                    }
-                                }
-                            }
                         }
-                        2 -> { // App UI (Moved from 0)
+                        1 -> { // App UI (Moved from 0)
                              val uiStyleDisplay = when (miuixEnabled) {
                                  true -> stringResource(R.string.ui_style_miuix)
                                  else -> stringResource(R.string.ui_style_material)

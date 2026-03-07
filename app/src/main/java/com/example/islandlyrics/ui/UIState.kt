@@ -14,7 +14,7 @@ data class UIState(
     val isStatic: Boolean = false,
     val progressMax: Int = 0,
     val progressCurrent: Int = 0,
-    val albumColor: Int = LyricCapsuleHandler.COLOR_PRIMARY,
+    val albumColor: Int = 0xFF202124.toInt(),
     val useSyllableScrolling: Boolean = false,
     val syllableLines: List<OnlineLyricFetcher.LyricLine>? = null,
     val currentLineIndex: Int = -1,
