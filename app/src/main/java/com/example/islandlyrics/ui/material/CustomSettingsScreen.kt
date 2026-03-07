@@ -407,7 +407,7 @@ fun CustomSettingsScreen(
                                                             prefs.edit().putBoolean("block_xmsf_network", true).apply()
                                                         }
                                                     } catch (e: Exception) {
-                                                        Toast.makeText(context, "Shizuku permission required", Toast.LENGTH_SHORT).show()
+                                                        Toast.makeText(context, "Shizuku permission required", Toast.LENGTH_LONG).show()
                                                     }
                                                 }
                                             } else {

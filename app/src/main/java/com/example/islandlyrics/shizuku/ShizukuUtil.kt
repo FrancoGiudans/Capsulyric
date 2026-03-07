@@ -7,35 +7,19 @@ import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 
 class ShizukuNotWorkException(cause: Throwable? = null) : Exception("Shizuku is not working or permission denied.", cause)
 
 suspend fun <T> requireShizukuPermissionGranted(action: suspend () -> T): T {
-    callbackFlow {
-        if (Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED) {
-            if (Shizuku.pingBinder()) {
-                send(Unit)
-            } else {
-                close(ShizukuNotWorkException(Exception("Shizuku ping failed.")))
-            }
-            awaitClose()
+    try {
+        if (Shizuku.pingBinder() && Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED) {
+            return action()
         } else {
-            val requestCode = (Int.MIN_VALUE..Int.MAX_VALUE).random()
-            val listener = Shizuku.OnRequestPermissionResultListener { _requestCode, grantResult ->
-                if (_requestCode != requestCode) return@OnRequestPermissionResultListener
-                if (Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED) {
-                    trySend(Unit)
-                } else {
-                    close(Exception("Shizuku permission denied"))
-                }
-            }
-            Shizuku.addRequestPermissionResultListener(listener)
-            Shizuku.requestPermission(requestCode)
-            awaitClose { Shizuku.removeRequestPermissionResultListener(listener) }
+            throw ShizukuNotWorkException(Exception("Shizuku permission denied or not running"))
         }
-    }.catch {
-        throw ShizukuNotWorkException(it)
-    }.first()
-
-    return action()
+    } catch (e: Exception) {
+        throw ShizukuNotWorkException(e)
+    }
 }

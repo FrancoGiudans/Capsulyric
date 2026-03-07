@@ -7,6 +7,11 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+    <uses-permission android:name="moe.shizuku.manager.permission.API_V23" />
+
+    <queries>
+        <provider android:authorities="moe.shizuku.manager.shizuku.provider" />
+    </queries>
 
     <application
         android:name=".IslandLyricsApp"
@@ -88,6 +93,10 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/provider_paths" />
         </provider>
+
+        <meta-data
+            android:name="moe.shizuku.client.V3_SUPPORT"
+            android:value="true" />
     </application>
 
 </manifest>
