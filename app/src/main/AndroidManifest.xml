@@ -18,7 +18,7 @@
         android:theme="@style/Theme.IslandLyrics"
         android:enableOnBackInvokedCallback="true">
         <activity
-            android:name=".MainActivity"
+            android:name=".ui.MainActivity"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -27,24 +27,24 @@
             </intent-filter>
         </activity>
         <activity
-            android:name=".SettingsActivity"
+            android:name=".ui.SettingsActivity"
             android:label="@string/title_app_settings"
             android:parentActivityName=".MainActivity" />
         <activity
-            android:name=".CustomSettingsActivity"
+            android:name=".ui.CustomSettingsActivity"
             android:label="@string/page_title_personalization"
             android:parentActivityName=".MainActivity" />
         <activity
-            android:name=".FAQActivity"
+            android:name=".ui.FAQActivity"
             android:label="@string/faq_title"
             android:exported="false" />
         <activity
-            android:name=".ParserRuleActivity"
+            android:name=".ui.ParserRuleActivity"
             android:label="@string/title_parser_whitelist_manager"
             android:parentActivityName=".MainActivity" />
 
         <service 
-            android:name=".LyricService"
+            android:name=".service.LyricService"
             android:enabled="true"
             android:exported="false"
             android:foregroundServiceType="specialUse">
@@ -52,7 +52,7 @@
                       android:value="Live rendering of lyrics for third-party media applications"/>
         </service>
         <service 
-            android:name=".MediaMonitorService"
+            android:name=".service.MediaMonitorService"
             android:label="@string/app_name"
             android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE"
             android:exported="true">
@@ -61,11 +61,11 @@
             </intent-filter>
         </service>
 
-        <activity android:name="com.example.islandlyrics.LogViewerActivity"
+        <activity android:name="com.example.islandlyrics.ui.LogViewerActivity"
                   android:label="Developer Logs"
                   android:parentActivityName=".MainActivity" />
 
-        <activity android:name=".MediaControlActivity"
+        <activity android:name=".ui.MediaControlActivity"
                   android:theme="@style/Theme.IslandLyrics.Transparent"
                   android:exported="false"
                   android:excludeFromRecents="true"
@@ -74,7 +74,7 @@
 
 
         <activity
-            android:name=".oobe.OobeActivity"
+            android:name=".ui.OobeActivity"
             android:label="@string/oobe_welcome_title"
             android:theme="@style/Theme.IslandLyrics"
             android:exported="false" />

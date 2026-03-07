@@ -2,7 +2,7 @@ package com.example.islandlyrics.shizuku
 
 import android.content.Context
 import android.content.pm.PackageManager
-import com.example.islandlyrics.AppLogger
+import com.example.islandlyrics.utils.AppLogger
 
 object XmsfNetworkHelper {
     

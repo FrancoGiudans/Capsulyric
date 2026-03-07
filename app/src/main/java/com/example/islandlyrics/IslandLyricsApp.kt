@@ -1,6 +1,8 @@
 package com.example.islandlyrics
 
 import android.app.Application
+import com.example.islandlyrics.utils.ThemeHelper
+import com.example.islandlyrics.utils.RomUtils
 import com.google.android.material.color.DynamicColors
 
 class IslandLyricsApp : Application() {

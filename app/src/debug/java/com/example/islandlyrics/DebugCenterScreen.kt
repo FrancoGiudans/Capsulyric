@@ -1,6 +1,16 @@
 package com.example.islandlyrics
 
 import android.content.Context
+import com.example.islandlyrics.utils.UpdateChecker
+import com.example.islandlyrics.utils.RomUtils
+import com.example.islandlyrics.service.LyricService
+import com.example.islandlyrics.data.LyricRepository
+import com.example.islandlyrics.ui.material.UpdateDialog
+import com.example.islandlyrics.ui.material.MediaControlDialog
+import com.example.islandlyrics.ui.OobeActivity
+import com.example.islandlyrics.ui.MainActivity
+import com.example.islandlyrics.ui.LogViewerActivity
+import com.example.islandlyrics.ui.CustomSettingsActivity
 import android.content.Intent
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -208,7 +218,7 @@ fun DebugCenterScreen(
                 text = "Launch OOBE",
                 description = "Open Onboarding Screen directly",
                 onClick = {
-                    context.startActivity(Intent(context, com.example.islandlyrics.oobe.OobeActivity::class.java))
+                    context.startActivity(Intent(context, com.example.islandlyrics.ui.OobeActivity::class.java))
                 }
             )
 

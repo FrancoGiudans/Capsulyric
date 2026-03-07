@@ -1,6 +1,7 @@
 package com.example.islandlyrics.shizuku
 
 import android.content.ComponentName
+import com.example.islandlyrics.BuildConfig
 import android.content.Context
 import android.content.ServiceConnection
 import android.os.IBinder

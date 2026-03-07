@@ -1,6 +1,16 @@
 package com.example.islandlyrics
 
 import android.content.ComponentName
+import com.example.islandlyrics.utils.UpdateChecker
+import com.example.islandlyrics.utils.RomUtils
+import com.example.islandlyrics.service.LyricService
+import com.example.islandlyrics.data.LyricRepository
+import com.example.islandlyrics.ui.miuix.MiuixUpdateDialog
+import com.example.islandlyrics.ui.miuix.MiuixMediaControlDialog
+import com.example.islandlyrics.ui.OobeActivity
+import com.example.islandlyrics.ui.MainActivity
+import com.example.islandlyrics.ui.LogViewerActivity
+import com.example.islandlyrics.ui.CustomSettingsActivity
 import android.content.Context
 import android.content.Intent
 import android.widget.Toast
@@ -155,7 +165,7 @@ fun MiuixDebugCenterScreen(
                         summary = "Re-open initial setup wizard",
                         onClick = {
                             try {
-                                context.startActivity(Intent(context, com.example.islandlyrics.oobe.OobeActivity::class.java))
+                                context.startActivity(Intent(context, com.example.islandlyrics.ui.OobeActivity::class.java))
                             } catch (_: Exception) {
                                 Toast.makeText(context, "OOBE Activity not found", Toast.LENGTH_SHORT).show()
                             }
