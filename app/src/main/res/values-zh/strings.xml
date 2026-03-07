@@ -62,8 +62,8 @@
     <string name="settings_console_log">日志控制台</string>
     <string name="settings_general_header">通用</string>
     <string name="settings_core_services_header">核心服务</string>
-    <string name="settings_block_xmsf">阻止 XMSF 联网</string>
-    <string name="settings_block_xmsf_desc">禁止小米服务框架访问网络（需要 Shizuku 环境）</string>
+    <string name="settings_block_xmsf">绕过小米超级岛白名单</string>
+    <string name="settings_block_xmsf_desc">发送通知时临时断开 XMSF 网络以绕过系统白名单限制（需要 Shizuku 环境）</string>
     <string name="settings_personalization_header">个性化</string>
     <string name="page_title_personalization">个性化设置</string>
     <string name="tab_capsule">胶囊</string>

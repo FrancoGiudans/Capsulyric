@@ -205,25 +205,17 @@ class SuperIslandHandler(
     private fun notifyWithNetworkCut(notification: Notification, isFirst: Boolean) {
         val bypassWhitelist = prefs.getBoolean("block_xmsf_network", false)
         if (bypassWhitelist) {
-            if (networkCutJob?.isActive != true) {
-                networkCutJob = kotlinx.coroutines.GlobalScope.launch {
-                    com.example.islandlyrics.shizuku.XmsfNetworkHelper.setXmsfNetworkingEnabled(context, false)
-                    kotlinx.coroutines.delay(150) // Wait for firewall rule to apply
-                    if (isFirst) {
-                        service.startForeground(NOTIFICATION_ID, notification)
-                    } else {
-                        manager?.notify(NOTIFICATION_ID, notification)
-                    }
-                    kotlinx.coroutines.delay(1500) // Keep offline for 1.5s
-                    com.example.islandlyrics.shizuku.XmsfNetworkHelper.setXmsfNetworkingEnabled(context, true)
-                }
-            } else {
-                // If currently offline, just notify directly without waiting
+            networkCutJob?.cancel()
+            networkCutJob = kotlinx.coroutines.GlobalScope.launch {
+                com.example.islandlyrics.shizuku.XmsfNetworkHelper.setXmsfNetworkingEnabled(context, false)
+                kotlinx.coroutines.delay(50) // Wait brief moment for firewall rule to apply
                 if (isFirst) {
                     service.startForeground(NOTIFICATION_ID, notification)
                 } else {
                     manager?.notify(NOTIFICATION_ID, notification)
                 }
+                kotlinx.coroutines.delay(50) // Keep offline for a brief moment
+                com.example.islandlyrics.shizuku.XmsfNetworkHelper.setXmsfNetworkingEnabled(context, true)
             }
         } else {
             if (isFirst) {

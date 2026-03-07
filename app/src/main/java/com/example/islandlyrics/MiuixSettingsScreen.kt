@@ -189,26 +189,7 @@ fun MiuixSettingsScreen(
                         }
                     )
                     
-                    // Block XMSF
-                    var blockXmsfEnabled by remember { mutableStateOf(prefs.getBoolean("block_xmsf_network", false)) }
-                    val scope = rememberCoroutineScope()
-                    SuperSwitch(
-                        title = stringResource(R.string.settings_block_xmsf),
-                        summary = stringResource(R.string.settings_block_xmsf_desc),
-                        checked = blockXmsfEnabled,
-                        onCheckedChange = { isChecked ->
-                            blockXmsfEnabled = isChecked
-                            scope.launch {
-                                val success = com.example.islandlyrics.shizuku.XmsfNetworkHelper.setXmsfNetworkingEnabled(context, !isChecked)
-                                if (success) {
-                                    prefs.edit().putBoolean("block_xmsf_network", isChecked).apply()
-                                } else {
-                                    blockXmsfEnabled = !isChecked
-                                    Toast.makeText(context, "Failed to toggle XMSF network (Check Shizuku)", Toast.LENGTH_SHORT).show()
-                                }
-                            }
-                        }
-                    )
+
 
                     SuperArrow(
                         title = stringResource(R.string.settings_general_battery),

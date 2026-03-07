@@ -62,8 +62,8 @@
     <string name="settings_console_log">Log Console</string>
     <string name="settings_general_header">General</string>
     <string name="settings_core_services_header">Core Services</string>
-    <string name="settings_block_xmsf">Block XMSF Network</string>
-    <string name="settings_block_xmsf_desc">Block network access for Xiaomi Service Framework (Requires Shizuku)</string>
+    <string name="settings_block_xmsf">Bypass Super Island Whitelist</string>
+    <string name="settings_block_xmsf_desc">Temporarily disconnects XMSF network when sending notifications to bypass the system whitelist (Requires Shizuku)</string>
     <string name="settings_personalization_header">Personalization</string>
     <string name="page_title_personalization">Personalization Settings</string>
     <string name="tab_capsule">Capsule</string>
