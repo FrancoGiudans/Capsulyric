@@ -4,8 +4,9 @@
 [![Downloads](https://img.shields.io/github/downloads/FrancoGiudans/Capsulyric/total?style=flat-square&color=green)](https://github.com/FrancoGiudans/Capsulyric/releases)
 [![License](https://img.shields.io/github/license/FrancoGiudans/Capsulyric?style=flat-square&color=blue)](LICENSE)
 
-> **Provides status bar lyrics based on Live Update.**
-> **提供基于 Live Update 机制的状态栏歌词。**
+> **Provides status bar lyrics based on Live Update and Xiaomi SuperIsland.**
+
+> **提供基于 Live Update 和小米超级岛机制的状态栏歌词。**
 
 ---
 
@@ -21,12 +22,14 @@
 ### 1. Live Update
 * **Requirements**: Android 16+
 * **Special Note**: For HyperOS devices, OS version 3.0.300+ is required.
-> 要求 Android 16+。针对小米设备，需 HyperOS 3.0.300+ 版本。
+> 要求 Android 16+
+
+> 针对小米设备，需要 **HyperOS 3.0.300+ 版本**。
 
 ### 2. 小米超级岛 (Xiaomi Super Island)
 * **Requirements**: HyperOS 3.0+
 * **System**: Root access is required.
-> 要求 HyperOS 3.0+，且系统需要 Root 权限。
+> 要求 **HyperOS 3.0+**，且系统需要 **Root 权限**。
 
 ---
 
@@ -153,3 +156,4 @@ cd Capsulyric
 * [InstallerX Revive](https://github.com/wxxsfxyzm/InstallerX-Revived) (GPL-3.0)
 * [Lyricify-Lyrics-Helper](https://github.com/WXRIW/Lyricify-Lyrics-Helper) (Apache-2.0)
 * [compose-miuix-ui/miuix](https://github.com/compose-miuix-ui/miuix) (Apache-2.0)
+* [HyperNotification](https://github.com/xzakota/HyperNotification) (Apache-2.0)
