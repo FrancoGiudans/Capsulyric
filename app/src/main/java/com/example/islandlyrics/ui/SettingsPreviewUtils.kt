@@ -136,20 +136,13 @@ fun CapsulePreview(
                         // Text Info
                         Column(
                             verticalArrangement = Arrangement.Center,
-                            modifier = Modifier.widthIn(max = 120.dp) // Limit width so lyrics fit
+                            modifier = Modifier.widthIn(max = 120.dp)
                         ) {
                             Text(
                                 text = title,
                                 color = Color.White,
                                 fontWeight = FontWeight.Bold,
-                                fontSize = 13.sp,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                            Text(
-                                text = artist,
-                                color = Color.Gray,
-                                fontSize = 10.sp,
+                                fontSize = 14.sp,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
@@ -387,33 +380,52 @@ fun NotificationPreview(
                                     contentDescription = null,
                                     modifier = Modifier
                                         .fillMaxSize()
-                                        .clip(RoundedCornerShape(12.dp)),
+                                        .clip(RoundedCornerShape(28.dp)),
                                     contentScale = ContentScale.Crop
                                 )
                             } else {
                                 Box(
                                     modifier = Modifier
                                         .fillMaxSize()
-                                        .clip(RoundedCornerShape(12.dp))
+                                        .clip(RoundedCornerShape(28.dp))
                                         .background(Color.DarkGray)
                                 )
                             }
 
-                            // App Badge
+                            // App Badge (Playing App Icon)
+                            val appIcon = remember(metadata?.packageName) {
+                                try {
+                                    metadata?.packageName?.let { context.packageManager.getApplicationIcon(it) }
+                                } catch (e: Exception) {
+                                    null
+                                }
+                            }
+
                             Box(
                                 modifier = Modifier
                                     .align(Alignment.BottomEnd)
-                                    .offset(x = 4.dp, y = 4.dp)
-                                    .size(20.dp)
-                                    .clip(RoundedCornerShape(4.dp))
-                                    .background(Color(0xFF333333))
+                                    .offset(x = 2.dp, y = 2.dp)
+                                    .size(22.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(0xFF0C0C0C))
                                     .padding(2.dp)
                             ) {
-                                Image(
-                                    painter = painterResource(R.mipmap.ic_launcher_foreground),
-                                    contentDescription = null,
-                                    modifier = Modifier.fillMaxSize()
-                                )
+                                if (appIcon != null) {
+                                    androidx.compose.ui.viewinterop.AndroidView(
+                                        factory = { context ->
+                                            android.widget.ImageView(context).apply {
+                                                setImageDrawable(appIcon)
+                                            }
+                                        },
+                                        modifier = Modifier.fillMaxSize()
+                                    )
+                                } else {
+                                    Image(
+                                        painter = painterResource(R.mipmap.ic_launcher_foreground),
+                                        contentDescription = null,
+                                        modifier = Modifier.fillMaxSize()
+                                    )
+                                }
                             }
                         }
 
@@ -439,17 +451,7 @@ fun NotificationPreview(
                             )
                         }
 
-                        // Right: App Icon
-                        Icon(
-                            painter = painterResource(R.drawable.ic_music_note),
-                            contentDescription = null,
-                            tint = Color.White,
-                            modifier = Modifier
-                                .size(24.dp)
-                                .clip(RoundedCornerShape(6.dp))
-                                .background(Color(0xFFFF2D55))
-                                .padding(4.dp)
-                        )
+                        // Right: Removed icon to match Template 21
                     }
 
                     Spacer(modifier = Modifier.height(16.dp))
