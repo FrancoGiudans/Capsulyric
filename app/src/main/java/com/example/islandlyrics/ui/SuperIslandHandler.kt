@@ -284,12 +284,7 @@ class SuperIslandHandler(
                     }
                 }
             } else {
-                if (appKey != null) {
-                    picInfo {
-                        type = 1
-                        pic = appKey
-                    }
-                }
+                // Removed picInfo to switch from Template 7 to Template 21 (IM + Progress 2)
                 
                 progressInfo {
                     progress = progressPercent
