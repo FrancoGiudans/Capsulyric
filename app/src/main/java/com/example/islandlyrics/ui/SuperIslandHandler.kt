@@ -1,24 +1,23 @@
 package com.example.islandlyrics.ui
 
 import android.app.Notification
-import com.example.islandlyrics.R
-import com.example.islandlyrics.service.LyricService
-import com.example.islandlyrics.data.LyricRepository
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.content.SharedPreferences
 import android.graphics.Bitmap
 import android.graphics.drawable.Icon
-import android.os.Bundle
-import org.json.JSONObject
-import android.content.SharedPreferences
+import com.example.islandlyrics.R
+import com.example.islandlyrics.data.LyricRepository
+import com.example.islandlyrics.service.LyricService
+import com.xzakota.hyper.notification.focus.FocusNotification
 import kotlinx.coroutines.launch
 
 /**
  * SuperIslandHandler
- * Pure JSON Renderer for Xiaomi Super Island notifications using Template 7/12.
+ * Pure DSL Renderer for Xiaomi Super Island notifications using FocusNotification API.
  */
 class SuperIslandHandler(
     private val context: Context,
@@ -79,7 +78,15 @@ class SuperIslandHandler(
     private var lastAlbumArtHash = 0
     private var lastPicAppHash = 0
     private var lastPicActionsHash = 0
-    private var cachedPicsBundle: Bundle? = null
+    
+    private var cachedAvatarIcon: Icon? = null
+    private var cachedIslandIcon: Icon? = null
+    private var cachedIslandSmallIcon: Icon? = null
+    private var cachedShareIcon: Icon? = null
+    private var cachedAppIcon: Icon? = null
+    private var cachedPlayPauseIcon: Icon? = null
+    private var cachedNextIcon: Icon? = null
+
     private var lastAppliedAlbumColor = 0
 
     init {
@@ -99,8 +106,15 @@ class SuperIslandHandler(
         lastAlbumArtHash = 0
         lastPicAppHash = 0
         lastPicActionsHash = 0
-        cachedPicsBundle = null
         lastAppliedAlbumColor = 0
+
+        cachedAvatarIcon = null
+        cachedIslandIcon = null
+        cachedIslandSmallIcon = null
+        cachedShareIcon = null
+        cachedAppIcon = null
+        cachedPlayPauseIcon = null
+        cachedNextIcon = null
 
         cachedBuilder = Notification.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_music_note)
@@ -118,7 +132,14 @@ class SuperIslandHandler(
         manager?.cancel(NOTIFICATION_ID)
         cachedNotification = null
         cachedBuilder = null
-        cachedPicsBundle = null
+        
+        cachedAvatarIcon = null
+        cachedIslandIcon = null
+        cachedIslandSmallIcon = null
+        cachedShareIcon = null
+        cachedAppIcon = null
+        cachedPlayPauseIcon = null
+        cachedNextIcon = null
         
         // Ensure network is restored if we were blocking it
         networkCutJob?.cancel()
@@ -142,6 +163,52 @@ class SuperIslandHandler(
         manager?.createNotificationChannel(channel)
     }
 
+    private fun updateIcons(metadata: LyricRepository.MediaInfo?, albumArt: Bitmap?, isPlaying: Boolean) {
+        val albumArtHash = albumArt?.hashCode() ?: 0
+        if (albumArtHash != lastAlbumArtHash) {
+            if (albumArt != null) {
+                cachedAvatarIcon = Icon.createWithBitmap(scaleBitmap(albumArt, 480))
+                cachedIslandIcon = Icon.createWithBitmap(scaleBitmap(albumArt, 120))
+                cachedIslandSmallIcon = Icon.createWithBitmap(scaleBitmap(albumArt, 88))
+                cachedShareIcon = Icon.createWithBitmap(scaleBitmap(albumArt, 224))
+            } else {
+                cachedAvatarIcon = null
+                cachedIslandIcon = null
+                cachedIslandSmallIcon = null
+                cachedShareIcon = null
+            }
+            lastAlbumArtHash = albumArtHash
+            
+            // Also update app icon if metadata changed concurrently
+            val appIconHash = metadata?.packageName?.hashCode() ?: 0
+            if (appIconHash != lastPicAppHash || cachedAppIcon == null) {
+                val appIconBmp = getAppIcon(metadata?.packageName)
+                cachedAppIcon = if (appIconBmp != null) Icon.createWithBitmap(scaleBitmap(appIconBmp, 96)) else null
+                lastPicAppHash = appIconHash
+            }
+        } else if (metadata?.packageName?.hashCode() != lastPicAppHash) {
+            val appIconBmp = getAppIcon(metadata?.packageName)
+            cachedAppIcon = if (appIconBmp != null) Icon.createWithBitmap(scaleBitmap(appIconBmp, 96)) else null
+            lastPicAppHash = metadata?.packageName?.hashCode() ?: 0
+        }
+
+        val actionsHash = if (cachedActionStyle == "media_controls") (if (isPlaying) 1 else 0) else -1
+        if (actionsHash != lastPicActionsHash) {
+            if (cachedActionStyle == "media_controls") {
+                val playPauseResId = if (isPlaying) R.drawable.ic_pause else R.drawable.ic_play_arrow
+                val playPauseIconBitmap = renderButtonIcon(playPauseResId, 96, 0.6f, "#1A1A1A")
+                val nextIconBitmap = renderButtonIcon(R.drawable.ic_skip_next, 96, 0.5f, "#333333")
+
+                cachedPlayPauseIcon = Icon.createWithBitmap(playPauseIconBitmap)
+                cachedNextIcon = Icon.createWithBitmap(nextIconBitmap)
+            } else {
+                cachedPlayPauseIcon = null
+                cachedNextIcon = null
+            }
+            lastPicActionsHash = actionsHash
+        }
+    }
+
     fun render(state: UIState) {
         if (!isRunning) return
         val notification = cachedNotification ?: return
@@ -154,7 +221,7 @@ class SuperIslandHandler(
         // Color changed?
         val colorChanged = albumColor != lastAppliedAlbumColor
 
-        // Pre-JSON FAST PATH: skip expensive JSON serialization when inputs haven't changed
+        // Pre-JSON FAST PATH: skip expensive serialization when inputs haven't changed
         if (!isFirstNotification && !colorChanged &&
             displayLyric == lastSentDisplayLyric &&
             progressPercent == lastSentProgressPercent &&
@@ -162,30 +229,146 @@ class SuperIslandHandler(
             return
         }
 
-        val islandParams = buildIslandParamsJson(
-            displayLyric = displayLyric,
-            fullLyric = state.fullLyric,
-            subText = subText,
-            progressPercent = progressPercent,
-            title = state.title,
-            artist = state.artist,
-            albumColor = albumColor,
-            isPlaying = state.isPlaying,
-            packageName = state.mediaPackage
-        )
-
-        // Secondary CHANGE DETECTION
-        val oldParams = notification.extras.getString("miui.focus.param")
-        if (oldParams == islandParams && !colorChanged && !isFirstNotification) {
-            return
-        }
-
         val metadata = LyricRepository.getInstance().liveMetadata.value
         val albumArt = LyricRepository.getInstance().liveAlbumArt.value
 
-        applyPicsAndActions(metadata, albumArt, notification, state.isPlaying)
-        
-        notification.extras.putString("miui.focus.param", islandParams)
+        updateIcons(metadata, albumArt, state.isPlaying)
+
+        val hexColor = String.format("#FF%06X", 0xFFFFFF and albumColor)
+        val showHighlightColor = cachedSuperIslandTextColorEnabled 
+        val ringColor = if (showHighlightColor) hexColor else "#757575"
+        val progressBarColor = if (cachedProgressBarColorEnabled) hexColor else "#757575"
+        val packageName = state.mediaPackage.ifEmpty { context.packageName }
+
+        val extras = FocusNotification.buildV3 {
+            business = "lyric_display"
+            enableFloat = false
+            updatable = true
+            islandFirstFloat = false
+            aodTitle = displayLyric.take(20).ifEmpty { "♪" }
+
+            val avatarKey = cachedAvatarIcon?.let { createPicture("miui.focus.pic_avatar", it) }
+            val appKey = cachedAppIcon?.let { createPicture("miui.focus.pic_app", it) }
+            val islandKey = cachedIslandIcon?.let { createPicture("miui.focus.pic_island", it) }
+            val islandSmallKey = cachedIslandSmallIcon?.let { createPicture("miui.land.pic_island", it) }
+            val shareKey = cachedShareIcon?.let { createPicture("miui.focus.pic_share", it) }
+            
+            chatInfo {
+                picProfile = avatarKey
+                title = state.fullLyric.ifEmpty { state.title.ifEmpty { "♪" } }
+                content = subText
+                appIconPkg = packageName
+                // picApp was removed or uses appIconPkg in V3 API
+            }
+
+            if (cachedActionStyle == "media_controls") {
+                actions {
+                    val playPauseUri = Intent("com.example.islandlyrics.ACTION_MEDIA_PLAY_PAUSE")
+                        .setPackage(context.packageName)
+                        .toUri(Intent.URI_INTENT_SCHEME)
+                    val nextUri = Intent("com.example.islandlyrics.ACTION_MEDIA_NEXT")
+                        .setPackage(context.packageName)
+                        .toUri(Intent.URI_INTENT_SCHEME)
+
+                    addActionInfo {
+                        actionIcon = cachedPlayPauseIcon?.let { createPicture("miui.focus.pic_btn_play_pause", it) }
+                        type = 0
+                        actionIntentType = 2
+                        this.actionIntent = playPauseUri
+                    }
+                    addActionInfo {
+                        actionIcon = cachedNextIcon?.let { createPicture("miui.focus.pic_btn_next", it) }
+                        type = 0
+                        actionIntentType = 2
+                        this.actionIntent = nextUri
+                    }
+                }
+            } else {
+                if (appKey != null) {
+                    picInfo {
+                        type = 1
+                        pic = appKey
+                    }
+                }
+                
+                progressInfo {
+                    progress = progressPercent
+                    colorProgress = progressBarColor
+                    colorProgressEnd = progressBarColor
+                }
+            }
+
+            island {
+                islandProperty = 1
+                if (showHighlightColor) {
+                    this.highlightColor = hexColor
+                }
+
+                bigIslandArea {
+                    imageTextInfoLeft {
+                        type = 1
+                        if (islandKey != null) {
+                            picInfo {
+                                type = 1
+                                pic = islandKey
+                            }
+                        }
+                        textInfo {
+                            val titleWithArtist = if (state.artist.isNotBlank()) "${state.title} - ${state.artist}" else state.title
+                            title = titleWithArtist.ifEmpty { "♪" }
+                            this.showHighlightColor = showHighlightColor
+                        }
+                    }
+                    this.textInfo = com.xzakota.hyper.notification.island.model.TextInfo().apply {
+                        title = displayLyric.ifEmpty { "♪" }
+                        this.showHighlightColor = showHighlightColor
+                        narrowFont = false
+                    }
+                }
+
+                if (cachedSuperIslandShareEnabled) {
+                    shareData {
+                        pic = shareKey
+                        title = state.title.ifEmpty { "♪" }
+                        content = state.fullLyric.ifEmpty { "♪" }
+                        val shareArtist = if (state.artist.isNotBlank()) state.artist else "未知歌手"
+                        val shareSong = state.title.ifEmpty { "未知歌曲" }
+                        this.shareContent = when (cachedSuperIslandShareFormat) {
+                            "format_2" -> "${state.fullLyric} -$shareArtist，$shareSong"
+                            "format_3" -> "${state.fullLyric}\n$shareArtist，$shareSong"
+                            else -> "${state.fullLyric}\n$shareSong by $shareArtist"
+                        }
+                    }
+                }
+
+                smallIslandArea {
+                    combinePicInfo {
+                        if (islandSmallKey != null) {
+                            picInfo {
+                                type = 1
+                                pic = islandSmallKey
+                            }
+                        }
+                        progressInfo {
+                            progress = progressPercent
+                            colorReach = ringColor
+                            colorUnReach = "#333333"
+                        }
+                    }
+                }
+            }
+        }
+
+        val newParams = extras.getString("miui.focus.param")
+
+        // Secondary CHANGE DETECTION
+        val oldParams = notification.extras.getString("miui.focus.param")
+        if (oldParams == newParams && !colorChanged && !isFirstNotification) {
+            return
+        }
+
+        // Apply new extras (clearing old explicitly replaced parts)
+        notification.extras.putAll(extras)
         
         notification.color = if (cachedActionStyle == "media_controls") 0xFF757575.toInt() else albumColor
         lastAppliedAlbumColor = albumColor
@@ -227,221 +410,6 @@ class SuperIslandHandler(
                 manager?.notify(NOTIFICATION_ID, notification)
             }
         }
-    }
-
-    private fun applyPicsAndActions(
-        metadata: LyricRepository.MediaInfo?, 
-        albumArt: Bitmap?, 
-        notification: Notification,
-        isPlaying: Boolean
-    ) {
-        val targetExtras = notification.extras
-
-        val albumArtHash = albumArt?.hashCode() ?: 0
-        if (albumArtHash != lastAlbumArtHash || cachedPicsBundle == null) {
-            val pics = Bundle()
-            if (albumArt != null) {
-                pics.putParcelable("miui.focus.pic_avatar", Icon.createWithBitmap(scaleBitmap(albumArt, 480)))
-                pics.putParcelable("miui.focus.pic_island", Icon.createWithBitmap(scaleBitmap(albumArt, 120)))
-                pics.putParcelable("miui.land.pic_island", Icon.createWithBitmap(scaleBitmap(albumArt, 88)))
-                pics.putParcelable("miui.focus.pic_share", Icon.createWithBitmap(scaleBitmap(albumArt, 224)))
-            }
-            
-            val appIcon = getAppIcon(metadata?.packageName)
-            if (appIcon != null) {
-                pics.putParcelable("miui.focus.pic_app", Icon.createWithBitmap(scaleBitmap(appIcon, 96)))
-            }
-            cachedPicsBundle = pics
-            lastAlbumArtHash = albumArtHash
-            lastPicAppHash = metadata?.packageName?.hashCode() ?: 0
-        } else if (metadata?.packageName?.hashCode() != lastPicAppHash) {
-            val pics = Bundle(cachedPicsBundle)
-            val appIcon = getAppIcon(metadata?.packageName)
-            if (appIcon != null) {
-                pics.putParcelable("miui.focus.pic_app", Icon.createWithBitmap(scaleBitmap(appIcon, 96)))
-            }
-            cachedPicsBundle = pics
-            lastPicAppHash = metadata?.packageName?.hashCode() ?: 0
-        }
-
-        val actionsHash = if (cachedActionStyle == "media_controls") (if (isPlaying) 1 else 0) else -1
-        if (actionsHash != lastPicActionsHash || cachedPicsBundle?.containsKey("miui.focus.pic_btn_play_pause") == false) {
-            if (cachedActionStyle == "media_controls") {
-                val playPauseResId = if (isPlaying) R.drawable.ic_pause else R.drawable.ic_play_arrow
-                val playPauseIconBitmap = renderButtonIcon(playPauseResId, 96, 0.6f, "#1A1A1A")
-                val nextIconBitmap = renderButtonIcon(R.drawable.ic_skip_next, 96, 0.5f, "#333333")
-
-                cachedPicsBundle?.let {
-                    it.putParcelable("miui.focus.pic_btn_play_pause", Icon.createWithBitmap(playPauseIconBitmap))
-                    it.putParcelable("miui.focus.pic_btn_next", Icon.createWithBitmap(nextIconBitmap))
-                }
-            } else {
-                cachedPicsBundle?.remove("miui.focus.pic_btn_play_pause")
-                cachedPicsBundle?.remove("miui.focus.pic_btn_next")
-            }
-            lastPicActionsHash = actionsHash
-        }
-
-        cachedPicsBundle?.let { targetExtras.putBundle("miui.focus.pics", it) }
-        targetExtras.remove("miui.focus.actions")
-    }
-
-    private fun buildIslandParamsJson(
-        displayLyric: String,
-        fullLyric: String,
-        subText: String,
-        progressPercent: Int,
-        title: String,
-        artist: String,
-        albumColor: Int,
-        isPlaying: Boolean,
-        packageName: String
-    ): String {
-        val root = JSONObject()
-        val paramV2 = JSONObject()
-
-        val hexColor = String.format("#FF%06X", 0xFFFFFF and albumColor)
-        val showHighlightColor = cachedSuperIslandTextColorEnabled 
-        val ringColor = if (showHighlightColor) hexColor else "#757575"
-
-        paramV2.put("protocol", 1)
-        paramV2.put("business", "lyric_display")
-        paramV2.put("enableFloat", false)
-        paramV2.put("updatable", true)
-        paramV2.put("islandFirstFloat", false)
-        paramV2.put("aodTitle", displayLyric.take(20).ifEmpty { "♪" })
-
-        val progressBarColor = if (cachedProgressBarColorEnabled) hexColor else "#757575"
-
-        if (cachedActionStyle == "media_controls") {
-            paramV2.put("template", 12)
-            
-            val chatInfo = JSONObject()
-            chatInfo.put("picProfile", "miui.focus.pic_avatar")
-            chatInfo.put("title", fullLyric.ifEmpty { title.ifEmpty { "♪" } }) 
-            chatInfo.put("content", subText)
-            val playbackPkg = packageName.ifEmpty { context.packageName }
-            chatInfo.put("appIconPkg", playbackPkg)
-            paramV2.put("chatInfo", chatInfo)
-
-            val actionsArray = org.json.JSONArray()
-            val playPauseUri = Intent("com.example.islandlyrics.ACTION_MEDIA_PLAY_PAUSE")
-                .setPackage(context.packageName)
-                .toUri(Intent.URI_INTENT_SCHEME)
-            val nextUri = Intent("com.example.islandlyrics.ACTION_MEDIA_NEXT")
-                .setPackage(context.packageName)
-                .toUri(Intent.URI_INTENT_SCHEME)
-
-            val btnPlay = JSONObject()
-            btnPlay.put("actionIcon", "miui.focus.pic_btn_play_pause")
-            btnPlay.put("type", 0)  
-            btnPlay.put("actionIntentType", 2)
-            btnPlay.put("actionIntent", playPauseUri)
-            actionsArray.put(btnPlay)
-
-            val btnNext = JSONObject()
-            btnNext.put("actionIcon", "miui.focus.pic_btn_next")
-            btnNext.put("type", 0)
-            btnNext.put("actionIntentType", 2)
-            btnNext.put("actionIntent", nextUri)
-            actionsArray.put(btnNext)
-
-            paramV2.put("actions", actionsArray)
-
-        } else {
-            paramV2.put("template", 7)
-
-            val chatInfo = JSONObject()
-            chatInfo.put("picProfile", "miui.focus.pic_avatar")
-            chatInfo.put("title", fullLyric.ifEmpty { title.ifEmpty { "♪" } })
-            chatInfo.put("content", subText)
-            val playbackPkg = packageName.ifEmpty { context.packageName }
-            chatInfo.put("appIconPkg", playbackPkg)
-            chatInfo.put("picApp", "miui.focus.pic_app")
-            paramV2.put("chatInfo", chatInfo)
-            
-            val picInfo = JSONObject()
-            picInfo.put("type", 1)
-            picInfo.put("pic", "miui.focus.pic_app")
-            paramV2.put("picInfo", picInfo)
-
-            val progressInfo = JSONObject()
-            progressInfo.put("progress", progressPercent)
-            progressInfo.put("colorProgress", progressBarColor)
-            progressInfo.put("colorProgressEnd", progressBarColor)
-            progressInfo.put("colorBackground", "#ffffffff")
-            paramV2.put("progressInfo", progressInfo)
-        }
-
-        val paramIsland = JSONObject()
-        paramIsland.put("islandProperty", 1)
-        if (showHighlightColor) {
-            paramIsland.put("highlightColor", hexColor)
-        }
-
-        val bigIslandArea = JSONObject()
-
-        val imageTextInfoLeft = JSONObject()
-        imageTextInfoLeft.put("type", 1)
-        
-        val picInfoA = JSONObject()
-        picInfoA.put("type", 1)
-        picInfoA.put("pic", "miui.focus.pic_island")
-        imageTextInfoLeft.put("picInfo", picInfoA)
-        
-        val textInfoA = JSONObject()
-        val titleWithArtist = if (artist.isNotBlank()) "$title - $artist" else title
-        textInfoA.put("title", titleWithArtist.ifEmpty { "♪" })
-        textInfoA.put("showHighlightColor", showHighlightColor)
-        imageTextInfoLeft.put("textInfo", textInfoA)
-        bigIslandArea.put("imageTextInfoLeft", imageTextInfoLeft)
-
-        val textInfo = JSONObject()
-        textInfo.put("title", displayLyric.ifEmpty { "♪" })
-        textInfo.put("showHighlightColor", showHighlightColor)
-        textInfo.put("narrowFont", false)
-        bigIslandArea.put("textInfo", textInfo)
-
-        paramIsland.put("bigIslandArea", bigIslandArea)
-
-        if (cachedSuperIslandShareEnabled) {
-            val shareData = JSONObject()
-            shareData.put("pic", "miui.focus.pic_share")
-            shareData.put("title", title.ifEmpty { "♪" })
-            shareData.put("content", fullLyric.ifEmpty { "♪" })
-            val shareArtist = if (artist.isNotBlank()) artist else "未知歌手"
-            val shareSong = title.ifEmpty { "未知歌曲" }
-            
-            val shareContent = when (cachedSuperIslandShareFormat) {
-                "format_2" -> "$fullLyric -$shareArtist，$shareSong"
-                "format_3" -> "$fullLyric\n$shareArtist，$shareSong"
-                else -> "$fullLyric\n$shareSong by $shareArtist"
-            }
-            shareData.put("shareContent", shareContent)
-            paramIsland.put("shareData", shareData)
-        }
-
-        val smallIslandArea = JSONObject()
-        val combinePicInfoSmall = JSONObject()
-        val picInfoSmall = JSONObject()
-        picInfoSmall.put("type", 1)
-        picInfoSmall.put("pic", "miui.land.pic_island")
-        combinePicInfoSmall.put("picInfo", picInfoSmall)
-        
-        val ringInfoSmall = JSONObject()
-        ringInfoSmall.put("progress", progressPercent)
-        ringInfoSmall.put("colorReach", ringColor)
-        ringInfoSmall.put("colorProgress", ringColor)
-        ringInfoSmall.put("colorUnReach", "#333333")
-        combinePicInfoSmall.put("progressInfo", ringInfoSmall)
-        
-        smallIslandArea.put("combinePicInfo", combinePicInfoSmall)
-        paramIsland.put("smallIslandArea", smallIslandArea)
-
-        paramV2.put("param_island", paramIsland)
-
-        root.put("param_v2", paramV2)
-        return root.toString()
     }
 
     private fun renderButtonIcon(resourceId: Int, size: Int, iconScale: Float, bgColorHex: String? = null): Bitmap {

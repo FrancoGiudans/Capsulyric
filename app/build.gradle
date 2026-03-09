@@ -107,6 +107,7 @@ tasks.configureEach { task ->
 dependencies {
     implementation libs.super.lyric.api
     implementation libs.lyric.getter.api
+    implementation "com.xzakota.hyper.notification:focus-api:1.4"
     implementation libs.core.ktx  // Upgraded for Android 16 NotificationCompat support
     implementation libs.media
     implementation libs.material
