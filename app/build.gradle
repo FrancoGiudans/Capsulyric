@@ -107,7 +107,7 @@ tasks.configureEach { task ->
 dependencies {
     implementation libs.super.lyric.api
     implementation libs.lyric.getter.api
-    implementation "com.xzakota.hyper.notification:focus-api:1.4"
+    implementation libs.focus.api
     implementation libs.core.ktx  // Upgraded for Android 16 NotificationCompat support
     implementation libs.media
     implementation libs.material
@@ -122,17 +122,17 @@ dependencies {
     implementation libs.ui.tooling.preview
     implementation libs.material3
     implementation libs.material.icons.extended
-    implementation 'androidx.compose.runtime:runtime-livedata'
+    implementation libs.compose.runtime.livedata
     
     // Palette for album art color extraction (Monet-style)
-    implementation 'androidx.palette:palette-ktx:1.0.0'
+    implementation libs.palette.ktx
     
     // Network for debug lyric API
-    implementation 'com.squareup.okhttp3:okhttp:5.3.2'
+    implementation libs.okhttp
     
     // Kotlin Coroutines for concurrent API calls
-    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2'
-    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2'
+    implementation libs.kotlinx.coroutines.android
+    implementation libs.kotlinx.coroutines.core
     
     // Markdown
     implementation libs.markwon.core
@@ -145,7 +145,7 @@ dependencies {
 
     // Miuix UI
     implementation libs.miuix
-    implementation 'org.jetbrains.androidx.navigationevent:navigationevent-compose:1.0.1'
+    implementation libs.navigationevent.compose
 
     // Shizuku
     implementation libs.shizuku.api
