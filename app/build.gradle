@@ -45,7 +45,7 @@ android {
     }
 
     defaultConfig {
-        def majorVersion = "1.3"
+        def majorVersion = "Canary.Vesion"
         versionCode getGitCommitCount()
         
         // Use property-injected versionName if available, otherwise fallback to default
