@@ -41,13 +41,24 @@ fun MiuixAppTheme(
         }
     }
 
+    val backDispatcherOwner = androidx.activity.compose.LocalOnBackPressedDispatcherOwner.current
+
     androidx.compose.runtime.CompositionLocalProvider(
         androidx.navigationevent.compose.LocalNavigationEventDispatcherOwner provides navigationEventDispatcherOwner
     ) {
         MiuixTheme(
-            colors = colors,
-            content = content
-        )
+            colors = colors
+        ) {
+            if (backDispatcherOwner != null) {
+                androidx.compose.runtime.CompositionLocalProvider(
+                    androidx.activity.compose.LocalOnBackPressedDispatcherOwner provides backDispatcherOwner
+                ) {
+                    content()
+                }
+            } else {
+                content()
+            }
+        }
     }
 }
 

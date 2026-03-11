@@ -18,10 +18,13 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import android.content.ClipData
+import android.content.ClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -59,6 +62,15 @@ fun MiuixSettingsScreen(
 
     val showPrivacyDialog = remember { mutableStateOf(false) }
     val showFeedbackPopup = remember { mutableStateOf(false) }
+    val showPrereleaseDialog = remember { mutableStateOf(false) }
+    val showPrereleaseDescDialog = remember { mutableStateOf(false) }
+
+    MiuixBackHandler(enabled = showPrivacyDialog.value) { showPrivacyDialog.value = false }
+    MiuixBackHandler(enabled = showFeedbackPopup.value) { showFeedbackPopup.value = false }
+    MiuixBackHandler(enabled = showPrereleaseDescDialog.value) { showPrereleaseDescDialog.value = false }
+    MiuixBackHandler(enabled = showPrereleaseDialog.value) {
+        showPrereleaseDialog.value = false
+    }
 
     val isHyperOsSupported = remember { RomUtils.isHyperOsVersionAtLeast(3, 0, 300) }
 
@@ -231,7 +243,6 @@ fun MiuixSettingsScreen(
                     )
 
                     var prereleaseEnabled by remember { mutableStateOf(UpdateChecker.isPrereleaseEnabled(context)) }
-                    val showPrereleaseDialog = remember { mutableStateOf(false) }
 
                     SuperSwitch(
                         title = stringResource(R.string.settings_prerelease_update),
@@ -264,7 +275,6 @@ fun MiuixSettingsScreen(
                             }
                         )
 
-                        val showPrereleaseDescDialog = remember { mutableStateOf(false) }
 
                         SuperArrow(
                             title = stringResource(R.string.settings_prerelease_desc),
@@ -401,12 +411,12 @@ fun MiuixSettingsScreen(
                     )
 
                     // Version
-                    val clipboardManager = androidx.compose.ui.platform.LocalClipboardManager.current
                     BasicComponent(
                         title = stringResource(R.string.about_version),
                         summary = updateVersionText,
                         onClick = {
-                            clipboardManager.setText(androidx.compose.ui.text.AnnotatedString(updateVersionText))
+                            val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                            cm.setPrimaryClip(ClipData.newPlainText("Version", updateVersionText))
                             Toast.makeText(context, context.getString(R.string.toast_copied), Toast.LENGTH_SHORT).show()
                         }
                     )
@@ -421,7 +431,8 @@ fun MiuixSettingsScreen(
                         summary = updateBuildText,
                         onClick = {
                             // Copy to clipboard
-                            clipboardManager.setText(androidx.compose.ui.text.AnnotatedString(updateBuildText))
+                            val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                            cm.setPrimaryClip(ClipData.newPlainText("Commit", updateBuildText))
                             Toast.makeText(context, context.getString(R.string.toast_copied), Toast.LENGTH_SHORT).show()
                             
                             // Dev mode trigger logic

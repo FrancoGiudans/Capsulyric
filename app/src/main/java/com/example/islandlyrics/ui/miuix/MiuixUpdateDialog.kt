@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
+import androidx.activity.ComponentActivity
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.remember
@@ -40,6 +41,11 @@ fun MiuixUpdateDialog(
     onIgnore: (String) -> Unit
 ) {
     val context = LocalContext.current
+    
+    MiuixBackHandler(enabled = show.value) {
+        show.value = false
+        onDismiss()
+    }
     
     // Language-aware Logic
     val currentLocale = context.resources.configuration.locales[0]
@@ -98,34 +104,40 @@ fun MiuixUpdateDialog(
         }
     ) {
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(max = 400.dp)
-                .verticalScroll(rememberScrollState())
+            modifier = Modifier.fillMaxWidth()
         ) {
-            Text(
-                text = stringResource(R.string.update_current_version, BuildConfig.VERSION_NAME),
-                fontSize = MiuixTheme.textStyles.body2.fontSize,
-                color = MiuixTheme.colorScheme.primary
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-            AndroidView(
-                modifier = Modifier.fillMaxWidth(),
-                factory = { ctx ->
-                    TextView(ctx).apply {
-                        setTextColor(textColor)
-                        setTextIsSelectable(true)
-                        movementMethod = android.text.method.LinkMovementMethod.getInstance()
+            // Scrollable Content area
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f, fill = false) // Ensures it doesn't exceed screen but takes only needed space
+                    .verticalScroll(rememberScrollState())
+            ) {
+                Text(
+                    text = stringResource(R.string.update_current_version, BuildConfig.VERSION_NAME),
+                    fontSize = MiuixTheme.textStyles.body2.fontSize,
+                    color = MiuixTheme.colorScheme.primary
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                AndroidView(
+                    modifier = Modifier.fillMaxWidth(),
+                    factory = { ctx ->
+                        TextView(ctx).apply {
+                            setTextColor(textColor)
+                            setTextIsSelectable(true)
+                            movementMethod = android.text.method.LinkMovementMethod.getInstance()
+                        }
+                    },
+                    update = { textView ->
+                        textView.setTextColor(textColor)
+                        markwon.setMarkdown(textView, changelog)
                     }
-                },
-                update = { textView ->
-                    textView.setTextColor(textColor)
-                    markwon.setMarkdown(textView, changelog)
-                }
-            )
+                )
+            }
 
             Spacer(modifier = Modifier.height(24.dp))
 
+            // Fixed Buttons Row (persistent at the bottom)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween

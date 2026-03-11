@@ -22,6 +22,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import android.content.ClipData
+import android.content.ClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -430,12 +432,12 @@ fun SettingsScreen(
                 )
 
                 // Version
-                val clipboardManager = androidx.compose.ui.platform.LocalClipboardManager.current
                 SettingsValueItem(
                     title = stringResource(R.string.about_version),
                     value = updateVersionText,
                     onClick = {
-                        clipboardManager.setText(androidx.compose.ui.text.AnnotatedString(updateVersionText))
+                        val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                        cm.setPrimaryClip(ClipData.newPlainText("Version", updateVersionText))
                         Toast.makeText(context, context.getString(R.string.toast_copied), Toast.LENGTH_SHORT).show()
                     }
                 )
@@ -450,7 +452,8 @@ fun SettingsScreen(
                     value = updateBuildText,
                     onClick = {
                         // Copy to clipboard
-                        clipboardManager.setText(androidx.compose.ui.text.AnnotatedString(updateBuildText))
+                        val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                        cm.setPrimaryClip(ClipData.newPlainText("Commit", updateBuildText))
                         Toast.makeText(context, context.getString(R.string.toast_copied), Toast.LENGTH_SHORT).show()
                         
                         // Dev mode trigger logic

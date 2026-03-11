@@ -5,6 +5,7 @@ import com.example.islandlyrics.R
 import com.example.islandlyrics.service.MediaMonitorService
 import com.example.islandlyrics.data.LyricRepository
 import android.provider.Settings
+import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -27,7 +28,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontStyle
@@ -526,13 +532,33 @@ private fun MediaSessionCard(
             // Text: 2 lines * 24sp line height = 48sp
             // Total approx 80-90dp
             
-            Column(modifier = Modifier.height(90.dp)) {
+            val context = LocalContext.current
+
+            Column(
+                modifier = Modifier
+                    .height(90.dp)
+                    .clickable(enabled = lyric != null) {
+                        lyric?.let {
+                            val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                            cm.setPrimaryClip(ClipData.newPlainText("Lyric", it))
+                            Toast.makeText(context, context.getString(R.string.toast_copied), Toast.LENGTH_SHORT).show()
+                        }
+                    }
+            ) {
                 if (lyric != null) {
-                    Text(
-                        text = "Lyric:",
-                        fontSize = 14.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = "Lyric:",
+                            fontSize = 14.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = stringResource(R.string.tap_to_copy_hint),
+                            fontSize = 10.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                        )
+                    }
                     Spacer(modifier = Modifier.height(8.dp))
                     // Lyric text
                     Text(

@@ -17,6 +17,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
@@ -46,6 +47,9 @@ fun MiuixParserRuleScreen(
     var showDeleteDialog = remember { mutableStateOf(false) }
     var editingRule by remember { mutableStateOf<ParserRule?>(null) }
     var deletingRule by remember { mutableStateOf<ParserRule?>(null) }
+
+    MiuixBackHandler(enabled = showEditDialog.value) { showEditDialog.value = false }
+    MiuixBackHandler(enabled = showDeleteDialog.value) { showDeleteDialog.value = false }
 
     fun refreshRules() {
         rules = ParserRuleHelper.loadRules(context)
@@ -332,73 +336,80 @@ fun MiuixEditRuleDialog(
         onDismissRequest = { show.value = false }
     ) {
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(max = 400.dp)
-                .verticalScroll(rememberScrollState())
+            modifier = Modifier.fillMaxWidth()
         ) {
-            SmallTitle(text = "Application Info")
-            Card(modifier = Modifier.fillMaxWidth()) {
-                TextField(
-                    value = customName,
-                    onValueChange = { customName = it },
-                    label = "App Name (Optional)",
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-                TextField(
-                    value = packageName,
-                    onValueChange = { packageName = it },
-                    label = "Package Name",
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = rule == null
-                )
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-            SmallTitle(text = "Sources & Logic")
-            Card(modifier = Modifier.fillMaxWidth()) {
-                SuperSwitch(
-                    title = "Media Notification Lyrics",
-                    summary = "Extract from notification title",
-                    checked = usesCarProtocol,
-                    onCheckedChange = { usesCarProtocol = it }
-                )
-                if (usesCarProtocol) {
-                    SuperDropdown(
-                        title = "Separator",
-                        items = separators,
-                        selectedIndex = separatorIndex,
-                        onSelectedIndexChange = { separatorIndex = it }
+            // Scrollable Content Area for form fields
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f, fill = false)
+                    .verticalScroll(rememberScrollState())
+            ) {
+                SmallTitle(text = "Application Info")
+                Card(modifier = Modifier.fillMaxWidth()) {
+                    TextField(
+                        value = customName,
+                        onValueChange = { customName = it },
+                        label = "App Name (Optional)",
+                        modifier = Modifier.fillMaxWidth()
                     )
-                    SuperDropdown(
-                        title = "Field Order",
-                        items = orders.map { if (it == FieldOrder.ARTIST_TITLE) "Artist - Title" else "Title - Artist" },
-                        selectedIndex = orderIndex,
-                        onSelectedIndexChange = { orderIndex = it }
+                    Spacer(modifier = Modifier.height(12.dp))
+                    TextField(
+                        value = packageName,
+                        onValueChange = { packageName = it },
+                        label = "Package Name",
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = rule == null
                     )
                 }
-                SuperSwitch(
-                    title = "Online Lyrics",
-                    summary = "Fetch from internet APIs",
-                    checked = useOnlineLyrics,
-                    onCheckedChange = { useOnlineLyrics = it }
-                )
-                SuperSwitch(
-                    title = "SuperLyric API",
-                    summary = "Receive via broadcast",
-                    checked = useSuperLyricApi,
-                    onCheckedChange = { useSuperLyricApi = it }
-                )
-                SuperSwitch(
-                    title = "Lyric Getter API",
-                    summary = "Receive via Lyric Getter broadcast",
-                    checked = useLyricGetterApi,
-                    onCheckedChange = { useLyricGetterApi = it }
-                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+                SmallTitle(text = "Sources & Logic")
+                Card(modifier = Modifier.fillMaxWidth()) {
+                    SuperSwitch(
+                        title = "Media Notification Lyrics",
+                        summary = "Extract from notification title",
+                        checked = usesCarProtocol,
+                        onCheckedChange = { usesCarProtocol = it }
+                    )
+                    if (usesCarProtocol) {
+                        SuperDropdown(
+                            title = "Separator",
+                            items = separators,
+                            selectedIndex = separatorIndex,
+                            onSelectedIndexChange = { separatorIndex = it }
+                        )
+                        SuperDropdown(
+                            title = "Field Order",
+                            items = orders.map { if (it == FieldOrder.ARTIST_TITLE) "Artist - Title" else "Title - Artist" },
+                            selectedIndex = orderIndex,
+                            onSelectedIndexChange = { orderIndex = it }
+                        )
+                    }
+                    SuperSwitch(
+                        title = "Online Lyrics",
+                        summary = "Fetch from internet APIs",
+                        checked = useOnlineLyrics,
+                        onCheckedChange = { useOnlineLyrics = it }
+                    )
+                    SuperSwitch(
+                        title = "SuperLyric API",
+                        summary = "Receive via broadcast",
+                        checked = useSuperLyricApi,
+                        onCheckedChange = { useSuperLyricApi = it }
+                    )
+                    SuperSwitch(
+                        title = "Lyric Getter API",
+                        summary = "Receive via Lyric Getter broadcast",
+                        checked = useLyricGetterApi,
+                        onCheckedChange = { useLyricGetterApi = it }
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(16.dp))
+
+            // Fixed Action Buttons Row (persistent at the bottom)
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 TextButton(
                     text = stringResource(R.string.dialog_btn_cancel),

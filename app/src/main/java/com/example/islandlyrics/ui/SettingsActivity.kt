@@ -14,9 +14,7 @@ import com.example.islandlyrics.ui.material.SettingsScreen
 import com.example.islandlyrics.ui.material.AppTheme
 import android.widget.Toast
 import androidx.activity.compose.setContent
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.*
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
 

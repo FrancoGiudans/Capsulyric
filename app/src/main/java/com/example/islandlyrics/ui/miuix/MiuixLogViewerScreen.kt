@@ -18,6 +18,7 @@ import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.FilterList
+import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -50,8 +51,11 @@ fun MiuixLogViewerScreen(
     var searchQuery by remember { mutableStateOf("") }
     var filterLevel by remember { mutableStateOf("ALL") } // ALL, E, W, D
     var originalLogs by remember { mutableStateOf<List<LogManager.LogEntry>>(emptyList()) }
-    var showExportDialog = remember { mutableStateOf(false) }
-    var showClearDialog = remember { mutableStateOf(false) }
+    val showExportDialog = remember { mutableStateOf(false) }
+    val showClearDialog = remember { mutableStateOf(false) }
+
+    MiuixBackHandler(enabled = showExportDialog.value) { showExportDialog.value = false }
+    MiuixBackHandler(enabled = showClearDialog.value) { showClearDialog.value = false }
 
     // Load logs
     LaunchedEffect(Unit) {

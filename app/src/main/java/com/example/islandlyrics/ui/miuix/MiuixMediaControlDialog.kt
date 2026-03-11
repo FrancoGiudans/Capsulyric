@@ -58,6 +58,10 @@ fun MiuixMediaControlDialog(
     val context = LocalContext.current
     var activeControllers by remember { mutableStateOf<List<MediaController>>(emptyList()) }
     var statusMessage by remember { mutableStateOf(context.getString(R.string.media_control_scanning)) }
+    MiuixBackHandler(enabled = show.value) {
+        show.value = false
+        onDismiss()
+    }
     
     // Check for HyperOS 3.0.300+
     val isHyperOsSupported = remember { RomUtils.isHyperOsVersionAtLeast(3, 0, 300) }
