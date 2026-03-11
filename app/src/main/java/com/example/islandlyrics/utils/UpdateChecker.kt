@@ -143,7 +143,7 @@ object UpdateChecker {
      * Fetch the absolute latest release information from GitHub without comparing versions, including prereleases.
      * Modified for Debug Center to respect channels.
      */
-    suspend fun fetchAbsoluteLatestRelease(context: Context): ReleaseInfo? = withContext(Dispatchers.IO) {
+    suspend fun fetchAbsoluteLatestRelease(context: Context, currentVersionOverride: String? = null): ReleaseInfo? = withContext(Dispatchers.IO) {
         try {
             val apiUrl = "https://api.github.com/repos/FrancoGiudans/Capsulyric/releases"
             
@@ -165,6 +165,10 @@ object UpdateChecker {
                     val json = jsonArray.getJSONObject(i)
                     val release = parseRelease(json)
                     if (isUpdateAllowedForChannel(release.tagName, userChannel)) {
+                        // If override provided, we might want to return merged body
+                        if (currentVersionOverride != null) {
+                            return@withContext checkForUpdate(context, currentVersionOverride)
+                        }
                         return@withContext release
                     }
                 }
@@ -186,7 +190,7 @@ object UpdateChecker {
      * Check for updates from GitHub Releases API.
      * @return ReleaseInfo if newer version available, null otherwise
      */
-    suspend fun checkForUpdate(context: Context): ReleaseInfo? = withContext(Dispatchers.IO) {
+    suspend fun checkForUpdate(context: Context, currentVersionOverride: String? = null): ReleaseInfo? = withContext(Dispatchers.IO) {
         try {
             updateLastCheckTime(context)
             
@@ -221,7 +225,7 @@ object UpdateChecker {
                 }
 
                 // Collect all versions that are > current
-                val currentVersion = BuildConfig.VERSION_NAME
+                val currentVersion = currentVersionOverride ?: BuildConfig.VERSION_NAME
                 val userChannel = if (includePrerelease) getPrereleaseChannel(context) else "Release"
                 val newerReleases = mutableListOf<ReleaseInfo>()
                 

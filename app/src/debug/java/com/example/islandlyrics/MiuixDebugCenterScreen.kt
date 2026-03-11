@@ -116,21 +116,40 @@ fun MiuixDebugCenterScreen(
                             context.startActivity(Intent(context, CustomSettingsActivity::class.java))
                         }
                     )
+                    var versionOverride by remember { mutableStateOf("") }
+                    
+                    Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+                        androidx.compose.material3.OutlinedTextField(
+                            value = versionOverride,
+                            onValueChange = { versionOverride = it },
+                            label = { Text("Spoof Local Version (e.g. 1.0_C20)", color = MiuixTheme.colorScheme.onSurfaceSecondary) },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true,
+                            textStyle = androidx.compose.ui.text.TextStyle(color = MiuixTheme.colorScheme.onSurface),
+                            colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = MiuixTheme.colorScheme.primary,
+                                unfocusedBorderColor = MiuixTheme.colorScheme.outline
+                            )
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+                    
                     SuperArrow(
                         title = "Test Update Dialog",
-                        summary = if (isFetchingUpdate) "Fetching..." else "Force fetch latest release info",
+                        summary = if (isFetchingUpdate) "Fetching..." else "Force fetch. Supports version spoofing.",
                         enabled = !isFetchingUpdate,
                         onClick = {
                             isFetchingUpdate = true
                             val scope = (context as? androidx.activity.ComponentActivity)
                             scope?.lifecycleScope?.launch {
                                 try {
-                                    val release = UpdateChecker.fetchAbsoluteLatestRelease(context)
+                                    val override = versionOverride.takeIf { it.isNotBlank() }
+                                    val release = UpdateChecker.fetchAbsoluteLatestRelease(context, override)
                                     if (release != null) {
                                         updateReleaseInfo = release
                                         showUpdateDialog = true
                                     } else {
-                                        Toast.makeText(context, "Failed to fetch release info", Toast.LENGTH_SHORT).show()
+                                        Toast.makeText(context, "No update found for this version/channel", Toast.LENGTH_SHORT).show()
                                     }
                                 } catch (e: Exception) {
                                     Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_SHORT).show()

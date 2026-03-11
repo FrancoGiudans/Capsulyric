@@ -87,29 +87,55 @@ fun DebugCenterScreen(
             )
 
             // ── Test Update Dialog ──
-            DebugMenuButton(
-                text = if (isFetchingUpdate) "Fetching latest release..." else "Test Update Dialog",
-                description = "Show update dialog with absolute latest release (incl. prerelease)",
-                onClick = {
-                    if (isFetchingUpdate) return@DebugMenuButton
-                    isFetchingUpdate = true
-                    coroutineScope.launch {
-                        try {
-                            val release = UpdateChecker.fetchAbsoluteLatestRelease(context)
-                            isFetchingUpdate = false
-                            if (release != null) {
-                                updateReleaseInfo = release
-                                showUpdateDialog = true
-                            } else {
-                                android.widget.Toast.makeText(context, "Failed to fetch release", android.widget.Toast.LENGTH_SHORT).show()
+            var versionOverride by remember { mutableStateOf("") }
+            
+            OutlinedCard(
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(text = "Test Update Dialog", style = MaterialTheme.typography.titleMedium)
+                    Text(text = "Show update dialog with absolute latest release (incl. prerelease). You can spoof local version to test merging.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    OutlinedTextField(
+                        value = versionOverride,
+                        onValueChange = { versionOverride = it },
+                        label = { Text("Spoof Local Version (e.g. 1.0_C20)") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
+                    
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    Button(
+                        onClick = {
+                            if (isFetchingUpdate) return@Button
+                            isFetchingUpdate = true
+                            coroutineScope.launch {
+                                try {
+                                    val override = versionOverride.takeIf { it.isNotBlank() }
+                                    val release = UpdateChecker.fetchAbsoluteLatestRelease(context, override)
+                                    isFetchingUpdate = false
+                                    if (release != null) {
+                                        updateReleaseInfo = release
+                                        showUpdateDialog = true
+                                    } else {
+                                        android.widget.Toast.makeText(context, "No update found for this version/channel", android.widget.Toast.LENGTH_SHORT).show()
+                                    }
+                                } catch (e: Exception) {
+                                    isFetchingUpdate = false
+                                    android.widget.Toast.makeText(context, "Error fetching release: ${e.message}", android.widget.Toast.LENGTH_LONG).show()
+                                }
                             }
-                        } catch (e: Exception) {
-                            isFetchingUpdate = false
-                            android.widget.Toast.makeText(context, "Error fetching release: ${e.message}", android.widget.Toast.LENGTH_LONG).show()
-                        }
+                        },
+                        modifier = Modifier.align(Alignment.End),
+                        enabled = !isFetchingUpdate
+                    ) {
+                        Text(if (isFetchingUpdate) "Fetching..." else "Check Update")
                     }
                 }
-            )
+            }
 
             // ── Media Controls ──
             var showMediaControlDialog by remember { mutableStateOf(false) }
