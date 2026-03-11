@@ -179,6 +179,9 @@ object UpdateChecker {
         }
     }
 
+    private const val CN_HEADER = "## \uD83C\uDDE8\uD83C\uDDF3"
+    private const val EN_HEADER = "## \uD83C\uDDEC\uD83C\uDDE7"
+
     /**
      * Check for updates from GitHub Releases API.
      * @return ReleaseInfo if newer version available, null otherwise
@@ -204,28 +207,25 @@ object UpdateChecker {
             if (connection.responseCode == 200) {
                 val response = connection.inputStream.bufferedReader().use { it.readText() }
                 
-                var validReleases = emptyList<ReleaseInfo>()
+                val allReleases = mutableListOf<ReleaseInfo>()
                 
                 if (includePrerelease) {
-                    // Parse ARRAY
                     val jsonArray = org.json.JSONArray(response)
-                    val list = mutableListOf<ReleaseInfo>()
                     for (i in 0 until jsonArray.length()) {
                         val json = jsonArray.getJSONObject(i)
-                        list.add(parseRelease(json))
+                        allReleases.add(parseRelease(json))
                     }
-                    validReleases = list
                 } else {
-                    // Parse OBJECT
                     val json = JSONObject(response)
-                    validReleases = listOf(parseRelease(json))
+                    allReleases.add(parseRelease(json))
                 }
 
-                // Find the newest version that is > current
+                // Collect all versions that are > current
                 val currentVersion = BuildConfig.VERSION_NAME
                 val userChannel = if (includePrerelease) getPrereleaseChannel(context) else "Release"
+                val newerReleases = mutableListOf<ReleaseInfo>()
                 
-                for (release in validReleases) {
+                for (release in allReleases) {
                     val remoteVersion = release.tagName.removePrefix("v")
                     
                     if (!isUpdateAllowedForChannel(release.tagName, userChannel)) {
@@ -233,19 +233,31 @@ object UpdateChecker {
                     }
                     
                     if (compareVersions(remoteVersion, currentVersion) > 0) {
-                        // Check if ignored
-                        val ignoredVersion = getIgnoredVersion(context)
-                        if (ignoredVersion != null && release.tagName == ignoredVersion) {
-                            AppLogger.getInstance().d(TAG, "Skipping ignored version: ${release.tagName}")
-                            continue
-                        }
-                        
-                        AppLogger.getInstance().d(TAG, "Update available: ${release.tagName} (Prerelease: ${release.prerelease})")
-                        return@withContext release
+                        newerReleases.add(release)
                     }
                 }
+
+                if (newerReleases.isEmpty()) return@withContext null
+
+                // GitHub API returns latest first. So newerReleases[0] is the absolute latest.
+                val latestRelease = newerReleases.first()
                 
-                AppLogger.getInstance().d(TAG, "No suitable updates found.")
+                // Check if the latest version is ignored
+                val ignoredVersion = getIgnoredVersion(context)
+                if (ignoredVersion != null && latestRelease.tagName == ignoredVersion) {
+                    AppLogger.getInstance().d(TAG, "Skipping ignored version: ${latestRelease.tagName}")
+                    return@withContext null
+                }
+
+                if (newerReleases.size == 1) {
+                    AppLogger.getInstance().d(TAG, "Update available: ${latestRelease.tagName}")
+                    return@withContext latestRelease
+                }
+
+                // Multiple versions found, merge changelogs
+                AppLogger.getInstance().d(TAG, "${newerReleases.size} updates found, merging changelogs...")
+                val mergedBody = mergeChangelogs(newerReleases)
+                return@withContext latestRelease.copy(body = mergedBody)
                 
             } else {
                 AppLogger.getInstance().e(TAG, "GitHub API error: ${connection.responseCode}")
@@ -257,6 +269,47 @@ object UpdateChecker {
             AppLogger.getInstance().e(TAG, "Failed to check for updates", e)
             null
         }
+    }
+
+    private fun extractSections(body: String): Pair<String, String> {
+        val cnStart = body.indexOf(CN_HEADER)
+        val enStart = body.indexOf(EN_HEADER)
+        
+        if (cnStart == -1 || enStart == -1) return Pair(body, "")
+
+        val cnSection = if (cnStart < enStart) {
+            body.substring(cnStart + CN_HEADER.length, enStart).trim()
+        } else {
+            body.substring(cnStart + CN_HEADER.length).trim()
+        }
+
+        val enSection = if (enStart < cnStart) {
+            body.substring(enStart + EN_HEADER.length, cnStart).trim()
+        } else {
+            body.substring(enStart + EN_HEADER.length).trim()
+        }
+
+        return Pair(cnSection, enSection)
+    }
+
+    private fun mergeChangelogs(releases: List<ReleaseInfo>): String {
+        val cnMerged = StringBuilder()
+        val enMerged = StringBuilder()
+
+        for (release in releases) {
+            val (cn, en) = extractSections(release.body)
+            
+            if (cn.isNotEmpty()) {
+                if (cnMerged.isNotEmpty()) cnMerged.append("\n\n")
+                cnMerged.append("### ${release.tagName}\n$cn")
+            }
+            if (en.isNotEmpty()) {
+                if (enMerged.isNotEmpty()) enMerged.append("\n\n")
+                enMerged.append("### ${release.tagName}\n$en")
+            }
+        }
+
+        return "$CN_HEADER\n${cnMerged}\n\n$EN_HEADER\n${enMerged}"
     }
 
     private fun parseRelease(json: JSONObject): ReleaseInfo {
@@ -271,12 +324,12 @@ object UpdateChecker {
     }
 
     /**
-     * Compare version strings in "1.0_C20" format.
+     * Compare version strings in "1.0_C200" format.
      * @return Positive if v1 > v2, negative if v1 < v2, 0 if equal
      */
     fun compareVersions(v1: String, v2: String): Int {
         try {
-            // Extract commit count from "1.0_C20" format
+            // Extract commit count from "1.0_C200" format
             val commit1 = v1.substringAfter("_C", "0").toIntOrNull() ?: 0
             val commit2 = v2.substringAfter("_C", "0").toIntOrNull() ?: 0
             
