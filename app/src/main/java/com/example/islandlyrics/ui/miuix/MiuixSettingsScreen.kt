@@ -263,6 +263,29 @@ fun MiuixSettingsScreen(
                                 UpdateChecker.setPrereleaseChannel(context, channel)
                             }
                         )
+
+                        val showPrereleaseDescDialog = remember { mutableStateOf(false) }
+
+                        SuperArrow(
+                            title = stringResource(R.string.settings_prerelease_desc),
+                            onClick = { showPrereleaseDescDialog.value = true }
+                        )
+
+                        if (showPrereleaseDescDialog.value) {
+                            SuperDialog(
+                                title = stringResource(R.string.dialog_prerelease_desc_title),
+                                summary = stringResource(R.string.dialog_prerelease_desc_message),
+                                show = showPrereleaseDescDialog,
+                                onDismissRequest = { showPrereleaseDescDialog.value = false }
+                            ) {
+                                TextButton(
+                                    text = stringResource(android.R.string.ok),
+                                    onClick = { showPrereleaseDescDialog.value = false },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    colors = ButtonDefaults.textButtonColorsPrimary()
+                                )
+                            }
+                        }
                     }
 
                     if (showPrereleaseDialog.value) {

@@ -321,6 +321,8 @@ fun SettingsScreen(
                 )
                 
                 if (prereleaseEnabled) {
+                    var showPrereleaseDescDialog by remember { mutableStateOf(false) }
+
                     Box(modifier = Modifier.fillMaxWidth()) {
                         SettingsTextItem(
                             title = stringResource(R.string.settings_prerelease_channel),
@@ -345,6 +347,25 @@ fun SettingsScreen(
                                 }
                             }
                         }
+                    }
+
+                    SettingsActionItem(
+                        title = stringResource(R.string.settings_prerelease_desc),
+                        icon = Icons.AutoMirrored.Filled.Help,
+                        onClick = { showPrereleaseDescDialog = true }
+                    )
+
+                    if (showPrereleaseDescDialog) {
+                        AlertDialog(
+                            onDismissRequest = { showPrereleaseDescDialog = false },
+                            title = { Text(stringResource(R.string.dialog_prerelease_desc_title)) },
+                            text = { Text(stringResource(R.string.dialog_prerelease_desc_message)) },
+                            confirmButton = {
+                                TextButton(onClick = { showPrereleaseDescDialog = false }) {
+                                    Text(stringResource(android.R.string.ok))
+                                }
+                            }
+                        )
                     }
                 }
 

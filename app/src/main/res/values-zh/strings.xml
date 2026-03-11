@@ -125,7 +125,7 @@
 
     <!-- Main Activity -->
     <string name="dialog_prerelease_warning_message">预发布版本可能存在严重问题，不适合日常使用。您确定要接收这些更新吗？</string>
-    <string name="settings_prerelease_channel">选择预览频道</string>
+    <string name="settings_prerelease_channel">选择预发布频道</string>
     <string name="main_service_status">🔴 服务状态: 未知</string>
     <string name="main_system_api_status">系统与 API 状态 (API 36)</string>
     <string name="main_permission_check">权限检查: 检测中...</string>
@@ -138,6 +138,9 @@
     <string name="settings_prerelease_update">接收预发布版本</string>
     <string name="settings_prerelease_update_desc">检查测试版本更新（不是CI自动编译版本）</string>
     <string name="dialog_prerelease_warning_title">确认接收预发布版本？</string>
+    <string name="settings_prerelease_desc">预发布频道说明</string>
+    <string name="dialog_prerelease_desc_title">预发布频道定位</string>
+    <string name="dialog_prerelease_desc_message">• <b>Alpha 频道</b>：处于开发最早期阶段。稳定性较低，可能存在严重故障。包含下一版本的核心功能及实验性变更，可能引入破坏性更新。\n\n• <b>Beta 频道</b>：功能趋于完整。不再加入大型新功能或破坏性变更。侧重于交互细节优化及小幅调整。\n\n• <b>Pre 频道</b>：最稳定的预发布阶段。不再包含功能性变更，专注于提升稳定性与性能表现，为正式版发布做最后准备。</string>
     
     <!-- 动态图标样式设置 -->
     <string name="settings_icon_style">左侧图标样式</string>
