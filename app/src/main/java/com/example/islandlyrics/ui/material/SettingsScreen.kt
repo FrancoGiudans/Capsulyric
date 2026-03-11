@@ -430,9 +430,14 @@ fun SettingsScreen(
                 )
 
                 // Version
+                val clipboardManager = androidx.compose.ui.platform.LocalClipboardManager.current
                 SettingsValueItem(
                     title = stringResource(R.string.about_version),
-                    value = updateVersionText
+                    value = updateVersionText,
+                    onClick = {
+                        clipboardManager.setText(androidx.compose.ui.text.AnnotatedString(updateVersionText))
+                        Toast.makeText(context, context.getString(R.string.toast_copied), Toast.LENGTH_SHORT).show()
+                    }
                 )
 
                 // Build Number (Dev Trigger)
@@ -444,6 +449,11 @@ fun SettingsScreen(
                     title = stringResource(R.string.about_commit),
                     value = updateBuildText,
                     onClick = {
+                        // Copy to clipboard
+                        clipboardManager.setText(androidx.compose.ui.text.AnnotatedString(updateBuildText))
+                        Toast.makeText(context, context.getString(R.string.toast_copied), Toast.LENGTH_SHORT).show()
+                        
+                        // Dev mode trigger logic
                         devStepCount++
                          if (devStepCount in 3..6) {
                              Toast.makeText(context, context.getString(R.string.toast_dev_mode_steps, 7 - devStepCount), Toast.LENGTH_SHORT).show()

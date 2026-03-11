@@ -401,9 +401,14 @@ fun MiuixSettingsScreen(
                     )
 
                     // Version
+                    val clipboardManager = androidx.compose.ui.platform.LocalClipboardManager.current
                     BasicComponent(
                         title = stringResource(R.string.about_version),
-                        summary = updateVersionText
+                        summary = updateVersionText,
+                        onClick = {
+                            clipboardManager.setText(androidx.compose.ui.text.AnnotatedString(updateVersionText))
+                            Toast.makeText(context, context.getString(R.string.toast_copied), Toast.LENGTH_SHORT).show()
+                        }
                     )
 
                     // Build Number (Dev Trigger)
@@ -415,6 +420,11 @@ fun MiuixSettingsScreen(
                         title = stringResource(R.string.about_commit),
                         summary = updateBuildText,
                         onClick = {
+                            // Copy to clipboard
+                            clipboardManager.setText(androidx.compose.ui.text.AnnotatedString(updateBuildText))
+                            Toast.makeText(context, context.getString(R.string.toast_copied), Toast.LENGTH_SHORT).show()
+                            
+                            // Dev mode trigger logic
                             devStepCount++
                             if (devStepCount in 3..6) {
                                 Toast.makeText(context, context.getString(R.string.toast_dev_mode_steps, 7 - devStepCount), Toast.LENGTH_SHORT).show()

@@ -184,6 +184,7 @@
     <string name="lang_chinese">简体中文</string>
     <string name="toast_dev_mode_steps">%1$d steps away from developer mode...</string>
     <string name="toast_dev_mode_enabled">Developer Mode Enabled!</string>
+    <string name="toast_copied">Copied to clipboard</string>
     
     <!-- Miuix Summaries -->
     <string name="summary_optimize_battery">Optimize battery usage</string>
