@@ -19,19 +19,19 @@ import android.graphics.*
  */
 object AdvancedIconRenderer {
     
-    private const val CANVAS_WIDTH_DP = 200f     // Reduced by 3x (from 600)
-    private const val CANVAS_HEIGHT_DP = 40f     // Reduced by 3x (from 120)
-    private const val ALBUM_ART_SIZE_DP = 40f    // Reduced by 3x (from 120)
-    private const val ALBUM_ART_WIDTH_DP = 36f   // Reduced by 3x (from 108)
-    private const val TEXT_START_DP = 38f        // Reduced by 3x (from 113)
-    private const val TEXT_END_DP = 183f         // Reduced by 3x (from 550)
+    private const val CANVAS_WIDTH_DP = 600f
+    private const val CANVAS_HEIGHT_DP = 120f
+    private const val ALBUM_ART_SIZE_DP = 120f
+    private const val ALBUM_ART_WIDTH_DP = 108f
+    private const val TEXT_START_DP = 113f
+    private const val TEXT_END_DP = 550f
     
-    private const val LINE1_BASE_SIZE_DP = 25f   // Reduced by 3x (from 75)
-    private const val LINE2_BASE_SIZE_DP = 15f   // Reduced by ~3x (from 45.6)
+    private const val LINE1_BASE_SIZE_DP = 75f
+    private const val LINE2_BASE_SIZE_DP = 45.6f
     
     private const val MIN_TEXT_SCALE_X = 0.8f
-    private const val MIN_TEXT_SIZE_FACTOR = 0.65f // Allow shrinking down to 65% of base size
-    private const val CORNER_RADIUS_DP = 8f      // Reduced by 3x (from 24)
+    private const val MIN_TEXT_SIZE_FACTOR = 0.65f
+    private const val CORNER_RADIUS_DP = 24f
     
     /**
      * Render the advanced icon bitmap.
@@ -63,13 +63,16 @@ object AdvancedIconRenderer {
             // Background (transparent)
             canvas.drawColor(Color.TRANSPARENT)
             
-            // --- ALBUM ART SECTION (0-108px) ---
+            // --- ALBUM ART SECTION ---
             val artRect = RectF(0f, 0f, albumArtWidth.toFloat(), albumArtHeight.toFloat())
-            val artPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+            val artPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                isFilterBitmap = true
+                isDither = true
+            }
             
             if (albumArt != null) {
-                // Resize bitmap to fit height (standard 120dp) to maintain aspect ratio
-                // We will center-crop this 120x120 image into the 108x120 rect
+                // Resize bitmap to fit height to maintain aspect ratio
+                // We will center-crop this image into the narrower rect
                 val scaledArt = Bitmap.createScaledBitmap(albumArt, albumArtHeight, albumArtHeight, true)
                 val shader = BitmapShader(scaledArt, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP)
                 
@@ -93,7 +96,7 @@ object AdvancedIconRenderer {
                 canvas.drawRoundRect(artRect, cornerRadius, cornerRadius, artPaint)
             }
             
-            // --- TEXT SECTION (130-350px) ---
+            // --- TEXT SECTION ---
             
             // Line 1: Primary title (bold, white)
             val line1Text = parsedTitle.primaryLine
@@ -102,10 +105,11 @@ object AdvancedIconRenderer {
                 typeface = Typeface.DEFAULT_BOLD
                 textAlign = Paint.Align.LEFT
                 textSize = LINE1_BASE_SIZE_DP * density
+                isSubpixelText = true
+                isLinearText = true
             }
 
             // Alignment: Top of Line 1 aligns with Top of Canvas (0)
-            // Use getTextBounds to align the VISIBLE top pixels to 0, ignoring font padding.
             val line1Bounds = Rect()
             line1Paint.getTextBounds(line1Text, 0, line1Text.length, line1Bounds)
             val line1Y = -line1Bounds.top.toFloat()
@@ -124,10 +128,11 @@ object AdvancedIconRenderer {
                 typeface = Typeface.DEFAULT
                 textAlign = Paint.Align.LEFT
                 textSize = LINE2_BASE_SIZE_DP * density
+                isSubpixelText = true
+                isLinearText = true
             }
             
             // Alignment: Bottom of Line 2 aligns with Bottom of Canvas
-            // Use getTextBounds to align the VISIBLE bottom pixels to canvasHeight.
             val line2Bounds = Rect()
             line2Paint.getTextBounds(line2Text, 0, line2Text.length, line2Bounds)
             val line2Y = canvasHeight.toFloat() - line2Bounds.bottom.toFloat()
