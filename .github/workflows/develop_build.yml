@@ -1,4 +1,4 @@
-name: Android CI (Debug & Prerelease)
+name: Canary Build (Debug & Prerelease)
 
 on:
   push:
@@ -9,15 +9,17 @@ on:
 jobs:
   build-all:
     runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
       - name: Set up JDK 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           java-version: '21'
           distribution: 'temurin'
@@ -31,7 +33,7 @@ jobs:
 
       - name: Sign Release APK
         id: sign_release
-        uses: ilharp/sign-android-release@v1
+        uses: ilharp/sign-android-release@v2
         with:
           releaseDir: app/build/outputs/apk/prerelease
           buildToolsVersion: 34.0.0
