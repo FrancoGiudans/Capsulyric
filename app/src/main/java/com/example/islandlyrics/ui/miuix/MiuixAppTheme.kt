@@ -1,7 +1,7 @@
 package com.example.islandlyrics.ui.miuix
 
 import android.app.Activity
-import com.example.islandlyrics.ui.material.AppTheme
+import com.example.islandlyrics.ui.theme.material.AppTheme
 import android.content.Context
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable

@@ -1,7 +1,7 @@
 package com.example.islandlyrics.data
 
 import android.graphics.Bitmap
-import com.example.islandlyrics.utils.AppLogger
+import com.example.islandlyrics.core.logging.AppLogger
 import com.example.islandlyrics.data.lyric.OnlineLyricFetcher
 import androidx.lifecycle.MutableLiveData
 

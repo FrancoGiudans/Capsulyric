@@ -13,7 +13,7 @@
     <uses-sdk tools:overrideLibrary="rikka.shizuku.api, rikka.shizuku.provider, rikka.shizuku.shared, rikka.shizuku.aidl"/>
 
     <application
-        android:name=".IslandLyricsApp"
+        android:name="com.example.islandlyrics.app.IslandLyricsApp"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
@@ -21,7 +21,7 @@
         android:theme="@style/Theme.IslandLyrics"
         android:enableOnBackInvokedCallback="true">
         <activity
-            android:name=".ui.MainActivity"
+            android:name="com.example.islandlyrics.feature.main.MainActivity"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -30,21 +30,21 @@
             </intent-filter>
         </activity>
         <activity
-            android:name=".ui.SettingsActivity"
+            android:name="com.example.islandlyrics.feature.settings.SettingsActivity"
             android:label="@string/title_app_settings"
-            android:parentActivityName=".MainActivity" />
+            android:parentActivityName="com.example.islandlyrics.feature.main.MainActivity" />
         <activity
-            android:name=".ui.CustomSettingsActivity"
+            android:name="com.example.islandlyrics.feature.customsettings.CustomSettingsActivity"
             android:label="@string/page_title_personalization"
-            android:parentActivityName=".MainActivity" />
+            android:parentActivityName="com.example.islandlyrics.feature.main.MainActivity" />
         <activity
-            android:name=".ui.FAQActivity"
+            android:name="com.example.islandlyrics.feature.faq.FAQActivity"
             android:label="@string/faq_title"
             android:exported="false" />
         <activity
-            android:name=".ui.ParserRuleActivity"
+            android:name="com.example.islandlyrics.feature.parserrule.ParserRuleActivity"
             android:label="@string/title_parser_whitelist_manager"
-            android:parentActivityName=".MainActivity" />
+            android:parentActivityName="com.example.islandlyrics.feature.main.MainActivity" />
 
         <service 
             android:name=".service.LyricService"
@@ -64,11 +64,11 @@
             </intent-filter>
         </service>
 
-        <activity android:name="com.example.islandlyrics.ui.LogViewerActivity"
+        <activity android:name="com.example.islandlyrics.feature.logviewer.LogViewerActivity"
                   android:label="Developer Logs"
-                  android:parentActivityName=".MainActivity" />
+                  android:parentActivityName="com.example.islandlyrics.feature.main.MainActivity" />
 
-        <activity android:name=".ui.MediaControlActivity"
+        <activity android:name="com.example.islandlyrics.feature.mediacontrol.MediaControlActivity"
                   android:theme="@style/Theme.IslandLyrics.Transparent"
                   android:exported="false"
                   android:excludeFromRecents="true"
@@ -77,7 +77,7 @@
 
 
         <activity
-            android:name=".ui.OobeActivity"
+            android:name="com.example.islandlyrics.feature.oobe.OobeActivity"
             android:label="@string/oobe_welcome_title"
             android:theme="@style/Theme.IslandLyrics"
             android:exported="false" />

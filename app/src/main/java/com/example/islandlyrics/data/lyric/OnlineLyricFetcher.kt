@@ -1,7 +1,7 @@
 package com.example.islandlyrics.data.lyric
 
 import android.util.Base64
-import com.example.islandlyrics.utils.AppLogger
+import com.example.islandlyrics.core.logging.AppLogger
 import kotlinx.coroutines.*
 import okhttp3.*
 import org.json.JSONArray

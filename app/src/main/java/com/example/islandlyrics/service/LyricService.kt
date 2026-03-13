@@ -2,18 +2,18 @@ package com.example.islandlyrics.service
 
 import android.app.Notification
 import com.example.islandlyrics.R
-import com.example.islandlyrics.utils.LogManager
-import com.example.islandlyrics.utils.AppLogger
+import com.example.islandlyrics.core.logging.LogManager
+import com.example.islandlyrics.core.logging.AppLogger
 import com.example.islandlyrics.data.lyric.SuperLyricSource
 import com.example.islandlyrics.data.lyric.OnlineLyricSource
 import com.example.islandlyrics.data.lyric.OnlineLyricFetcher
 import com.example.islandlyrics.data.lyric.LyricGetterSource
 import com.example.islandlyrics.data.ParserRuleHelper
 import com.example.islandlyrics.data.LyricRepository
-import com.example.islandlyrics.ui.LyricDisplayManager
-import com.example.islandlyrics.ui.SuperIslandHandler
-import com.example.islandlyrics.ui.LyricCapsuleHandler
-import com.example.islandlyrics.ui.MainActivity
+import com.example.islandlyrics.ui.common.LyricDisplayManager
+import com.example.islandlyrics.ui.common.SuperIslandHandler
+import com.example.islandlyrics.ui.common.LyricCapsuleHandler
+import com.example.islandlyrics.feature.main.MainActivity
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent

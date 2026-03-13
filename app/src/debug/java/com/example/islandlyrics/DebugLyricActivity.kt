@@ -1,7 +1,7 @@
 package com.example.islandlyrics
 
 import android.os.Bundle
-import com.example.islandlyrics.utils.AppLogger
+import com.example.islandlyrics.core.logging.AppLogger
 import com.example.islandlyrics.data.LyricRepository
 import android.os.Handler
 import android.os.Looper

@@ -1,7 +1,7 @@
 package com.example.islandlyrics.data.lyric
 
 import android.content.Context
-import com.example.islandlyrics.utils.AppLogger
+import com.example.islandlyrics.core.logging.AppLogger
 import com.example.islandlyrics.service.MediaMonitorService
 import com.example.islandlyrics.data.ParserRuleHelper
 import com.example.islandlyrics.data.LyricRepository

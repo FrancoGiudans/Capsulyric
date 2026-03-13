@@ -2,12 +2,12 @@ package com.example.islandlyrics.service
 
 import android.content.ComponentName
 import com.example.islandlyrics.data.ServiceDiagnostics
-import com.example.islandlyrics.utils.AppLogger
+import com.example.islandlyrics.core.logging.AppLogger
 import com.example.islandlyrics.data.lyric.SuperLyricSource
 import com.example.islandlyrics.data.WhitelistHelper
 import com.example.islandlyrics.data.ParserRuleHelper
 import com.example.islandlyrics.data.LyricRepository
-import com.example.islandlyrics.ui.material.ParserRuleScreen
+import com.example.islandlyrics.feature.parserrule.material.ParserRuleScreen
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences

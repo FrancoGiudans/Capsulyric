@@ -1,16 +1,16 @@
 package com.example.islandlyrics
 
 import android.content.ComponentName
-import com.example.islandlyrics.utils.UpdateChecker
-import com.example.islandlyrics.utils.RomUtils
+import com.example.islandlyrics.core.update.UpdateChecker
+import com.example.islandlyrics.core.platform.RomUtils
 import com.example.islandlyrics.service.LyricService
 import com.example.islandlyrics.data.LyricRepository
-import com.example.islandlyrics.ui.miuix.MiuixUpdateDialog
-import com.example.islandlyrics.ui.miuix.MiuixMediaControlDialog
-import com.example.islandlyrics.ui.OobeActivity
-import com.example.islandlyrics.ui.MainActivity
-import com.example.islandlyrics.ui.LogViewerActivity
-import com.example.islandlyrics.ui.CustomSettingsActivity
+import com.example.islandlyrics.feature.update.miuix.MiuixUpdateDialog
+import com.example.islandlyrics.feature.mediacontrol.miuix.MiuixMediaControlDialog
+import com.example.islandlyrics.feature.oobe.OobeActivity
+import com.example.islandlyrics.feature.main.MainActivity
+import com.example.islandlyrics.feature.logviewer.LogViewerActivity
+import com.example.islandlyrics.feature.customsettings.CustomSettingsActivity
 import android.content.Context
 import android.content.Intent
 import android.widget.Toast
@@ -188,7 +188,7 @@ fun MiuixDebugCenterScreen(
                         summary = "Re-open initial setup wizard",
                         onClick = {
                             try {
-                                context.startActivity(Intent(context, com.example.islandlyrics.ui.OobeActivity::class.java))
+                                context.startActivity(Intent(context, com.example.islandlyrics.feature.oobe.OobeActivity::class.java))
                             } catch (_: Exception) {
                                 Toast.makeText(context, "OOBE Activity not found", Toast.LENGTH_SHORT).show()
                             }

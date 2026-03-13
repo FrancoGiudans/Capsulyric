@@ -3,8 +3,8 @@ package com.example.islandlyrics
 import android.os.Bundle
 import com.example.islandlyrics.ui.miuix.isMiuixEnabled
 import com.example.islandlyrics.ui.miuix.MiuixAppTheme
-import com.example.islandlyrics.ui.material.AppTheme
-import com.example.islandlyrics.ui.BaseActivity
+import com.example.islandlyrics.ui.theme.material.AppTheme
+import com.example.islandlyrics.ui.common.BaseActivity
 import androidx.activity.compose.setContent
 
 class DebugCenterActivity : BaseActivity() {
