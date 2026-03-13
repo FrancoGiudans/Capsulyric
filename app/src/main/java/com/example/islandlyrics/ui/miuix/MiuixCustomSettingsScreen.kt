@@ -39,6 +39,7 @@ import androidx.core.content.ContextCompat
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.basic.*
 import top.yukonga.miuix.kmp.extra.SuperArrow
+import top.yukonga.miuix.kmp.extra.SuperDialog
 import top.yukonga.miuix.kmp.extra.SuperDropdown
 import top.yukonga.miuix.kmp.extra.SuperSwitch
 import top.yukonga.miuix.kmp.theme.MiuixTheme
@@ -273,28 +274,56 @@ fun MiuixCustomSettingsScreen(
                                             }
 
                                             var blockXmsfEnabled by remember { mutableStateOf(prefs.getBoolean("block_xmsf_network", false)) }
+                                            val showBlockXmsfDialog = remember { mutableStateOf(false) }
                                             SuperSwitch(
                                                 title = stringResource(R.string.settings_block_xmsf),
                                                 summary = stringResource(R.string.settings_block_xmsf_desc),
                                                 checked = blockXmsfEnabled,
                                                 onCheckedChange = { isChecked ->
                                                     if (isChecked) {
-                                                        scope.launch {
-                                                            try {
-                                                                com.example.islandlyrics.shizuku.requireShizukuPermissionGranted {
-                                                                    blockXmsfEnabled = true
-                                                                    prefs.edit().putBoolean("block_xmsf_network", true).apply()
-                                                                }
-                                                            } catch (e: Exception) {
-                                                                Toast.makeText(context, "Shizuku permission required", Toast.LENGTH_LONG).show()
-                                                            }
-                                                        }
+                                                        showBlockXmsfDialog.value = true
                                                     } else {
                                                         blockXmsfEnabled = false
                                                         prefs.edit().putBoolean("block_xmsf_network", false).apply()
                                                     }
                                                 }
                                             )
+
+                                            SuperDialog(
+                                                title = stringResource(R.string.dialog_block_xmsf_title),
+                                                summary = stringResource(R.string.dialog_block_xmsf_message),
+                                                show = showBlockXmsfDialog,
+                                                onDismissRequest = { showBlockXmsfDialog.value = false }
+                                            ) {
+                                                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                                    TextButton(
+                                                        text = stringResource(R.string.dialog_btn_cancel),
+                                                        onClick = {
+                                                            showBlockXmsfDialog.value = false
+                                                            blockXmsfEnabled = false
+                                                        },
+                                                        modifier = Modifier.weight(1f)
+                                                    )
+                                                    TextButton(
+                                                        text = stringResource(R.string.dialog_block_xmsf_confirm),
+                                                        onClick = {
+                                                            showBlockXmsfDialog.value = false
+                                                            scope.launch {
+                                                                try {
+                                                                    com.example.islandlyrics.shizuku.requireShizukuPermissionGranted {
+                                                                        blockXmsfEnabled = true
+                                                                        prefs.edit().putBoolean("block_xmsf_network", true).apply()
+                                                                    }
+                                                                } catch (e: Exception) {
+                                                                    Toast.makeText(context, "Shizuku permission required", Toast.LENGTH_LONG).show()
+                                                                }
+                                                            }
+                                                        },
+                                                        modifier = Modifier.weight(1f),
+                                                        colors = ButtonDefaults.textButtonColorsPrimary()
+                                                    )
+                                                }
+                                            }
 
                                         }
                                     }

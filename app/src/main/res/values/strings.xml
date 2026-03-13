@@ -39,6 +39,9 @@
     <string name="dialog_privacy_title">Security &amp; Privacy Warning</string>
     <string name="dialog_privacy_message">To function, Capsulyric needs to read your notifications.\n\nWe Promise:\n1. No Internet Access: This app does not connect to the net.\n2. No Data Collection: No personal data is stored or transmitted.\n3. Local Only: All processing happens on your device.\n\nNote: We are not responsible for the behavior of other apps.</string>
     <string name="dialog_btn_understand">I Understand &amp; Grant</string>
+    <string name="dialog_block_xmsf_title">Warning</string>
+    <string name="dialog_block_xmsf_message">Enabling this may increase battery usage and cause message delays. Continue?</string>
+    <string name="dialog_block_xmsf_confirm">Enable Anyway</string>
 
     <!-- Guide -->
     <string name="guide_title">0-Hook Guide</string>

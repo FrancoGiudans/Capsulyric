@@ -394,28 +394,62 @@ fun CustomSettingsScreen(
                                     }
 
                                     var blockXmsfEnabled by remember { mutableStateOf(prefs.getBoolean("block_xmsf_network", false)) }
+                                    var showBlockXmsfDialog by remember { mutableStateOf(false) }
                                     SettingsSwitchItem(
                                         title = stringResource(R.string.settings_block_xmsf),
                                         subtitle = stringResource(R.string.settings_block_xmsf_desc),
                                         checked = blockXmsfEnabled,
                                         onCheckedChange = { isChecked ->
                                             if (isChecked) {
-                                                scope.launch {
-                                                    try {
-                                                        com.example.islandlyrics.shizuku.requireShizukuPermissionGranted {
-                                                            blockXmsfEnabled = true
-                                                            prefs.edit().putBoolean("block_xmsf_network", true).apply()
-                                                        }
-                                                    } catch (e: Exception) {
-                                                        Toast.makeText(context, "Shizuku permission required", Toast.LENGTH_LONG).show()
-                                                    }
-                                                }
+                                                showBlockXmsfDialog = true
                                             } else {
                                                 blockXmsfEnabled = false
                                                 prefs.edit().putBoolean("block_xmsf_network", false).apply()
                                             }
                                         }
                                     )
+
+                                    if (showBlockXmsfDialog) {
+                                        AlertDialog(
+                                            onDismissRequest = { showBlockXmsfDialog = false },
+                                            title = { Text(stringResource(R.string.dialog_block_xmsf_title)) },
+                                            text = { Text(stringResource(R.string.dialog_block_xmsf_message)) },
+                                            shape = MaterialTheme.shapes.large,
+                                            containerColor = MaterialTheme.colorScheme.surface,
+                                            tonalElevation = 6.dp,
+                                            confirmButton = {
+                                                TextButton(onClick = {
+                                                    showBlockXmsfDialog = false
+                                                    scope.launch {
+                                                        try {
+                                                            com.example.islandlyrics.shizuku.requireShizukuPermissionGranted {
+                                                                blockXmsfEnabled = true
+                                                                prefs.edit().putBoolean("block_xmsf_network", true).apply()
+                                                            }
+                                                        } catch (e: Exception) {
+                                                            Toast.makeText(context, "Shizuku permission required", Toast.LENGTH_LONG).show()
+                                                        }
+                                                    }
+                                                }) {
+                                                    Text(
+                                                        stringResource(R.string.dialog_block_xmsf_confirm),
+                                                        color = MaterialTheme.colorScheme.primary
+                                                    )
+                                                }
+                                            },
+                                            dismissButton = {
+                                                TextButton(onClick = {
+                                                    showBlockXmsfDialog = false
+                                                    blockXmsfEnabled = false
+                                                }) {
+                                                    Text(
+                                                        stringResource(R.string.dialog_btn_cancel),
+                                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                    )
+                                                }
+                                            }
+                                        )
+                                    }
 
                                 }
                             }

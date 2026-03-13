@@ -42,6 +42,7 @@ class SuperIslandHandler(
 
     private var cachedContentIntent: PendingIntent? = null
     private var networkCutJob: kotlinx.coroutines.Job? = null
+    private val networkCutDurationMs = 50L
 
     private val prefs by lazy { context.getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE) }
     private val prefListener = SharedPreferences.OnSharedPreferenceChangeListener { p, key ->
@@ -389,13 +390,14 @@ class SuperIslandHandler(
             networkCutJob?.cancel()
             networkCutJob = kotlinx.coroutines.GlobalScope.launch {
                 com.example.islandlyrics.shizuku.XmsfNetworkHelper.setXmsfNetworkingEnabled(context, false)
-                kotlinx.coroutines.delay(50) // Wait brief moment for firewall rule to apply
                 if (isFirst) {
                     service.startForeground(NOTIFICATION_ID, notification)
                 } else {
                     manager?.notify(NOTIFICATION_ID, notification)
                 }
-                kotlinx.coroutines.delay(50) // Keep offline for a brief moment
+                // Keep offline for a brief moment; if a new send happens within this window,
+                // the previous restore will be cancelled.
+                kotlinx.coroutines.delay(networkCutDurationMs)
                 com.example.islandlyrics.shizuku.XmsfNetworkHelper.setXmsfNetworkingEnabled(context, true)
             }
         } else {

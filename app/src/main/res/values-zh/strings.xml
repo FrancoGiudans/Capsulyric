@@ -39,6 +39,9 @@
     <string name="dialog_privacy_title">安全隐私警告</string>
     <string name="dialog_privacy_message">本应用需要读取通知栏以获取歌词。\n\n我们承诺：\n1. 无网络权限：本 app 不会联网。\n2. 隐私数据：不收集任何个人数据。\n3. 本地处理：所有逻辑仅在本地运行。\n\n注意：我们对他人的 App 行为不负责。</string>
     <string name="dialog_btn_understand">理解并授权</string>
+    <string name="dialog_block_xmsf_title">提示</string>
+    <string name="dialog_block_xmsf_message">开启后可能会造成耗电量增加和消息延迟，是否继续开启？</string>
+    <string name="dialog_block_xmsf_confirm">继续开启</string>
 
     <!-- Guide -->
     <string name="guide_title">免 Root (0-Hook) 使用指引</string>
