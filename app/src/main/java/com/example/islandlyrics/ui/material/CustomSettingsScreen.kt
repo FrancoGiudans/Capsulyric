@@ -233,9 +233,11 @@ fun CustomSettingsScreen(
                 ) {
                     when (page) {
                         0 -> { // Capsule (Moved from 1)
+                            val previewDynamicIconEnabled = if (superIslandEnabled) true else dynamicIconEnabled
+                            val previewIconStyle = if (superIslandEnabled) "advanced" else iconStyle
                             CapsulePreview(
-                                dynamicIconEnabled = dynamicIconEnabled,
-                                iconStyle = iconStyle,
+                                dynamicIconEnabled = previewDynamicIconEnabled,
+                                iconStyle = previewIconStyle,
                                 oneuiCapsuleColorEnabled = oneuiCapsuleColorEnabled
                             )
                             Spacer(modifier = Modifier.height(16.dp))

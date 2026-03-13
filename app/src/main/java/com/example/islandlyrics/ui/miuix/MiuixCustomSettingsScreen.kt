@@ -176,9 +176,11 @@ fun MiuixCustomSettingsScreen(
                     when (page) {
                         0 -> { // Capsule
                             item {
+                                val previewDynamicIconEnabled = if (superIslandEnabled) true else dynamicIconEnabled
+                                val previewIconStyle = if (superIslandEnabled) "advanced" else iconStyle
                                 CapsulePreview(
-                                    dynamicIconEnabled = dynamicIconEnabled,
-                                    iconStyle = iconStyle,
+                                    dynamicIconEnabled = previewDynamicIconEnabled,
+                                    iconStyle = previewIconStyle,
                                     oneuiCapsuleColorEnabled = oneuiCapsuleColorEnabled
                                 )
                             }
