@@ -250,9 +250,9 @@ class LyricService : Service() {
     override fun onCreate() {
         super.onCreate()
         
-        // Load mode from preferences
+        // Load mode from preferences (use the user-facing toggle)
         isSuperIslandMode = getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE)
-            .getBoolean("debug_super_island_enabled", false)
+            .getBoolean("super_island_enabled", false)
 
         createNotificationChannel()
         capsuleHandler = LyricCapsuleHandler(this, this)
