@@ -49,6 +49,9 @@ android {
         applicationId "com.franco.capsulyric"
         // minSdk / targetSdk / versionName are set per flavor below
         buildConfigField "String", "GIT_COMMIT_HASH", "\"${getGitCommitHash()}\""
+
+        // Strip unused localized resources to reduce APK size
+        resConfigs "zh", "en"
     }
 
     flavorDimensions "api"
@@ -83,6 +86,12 @@ android {
         debug {
             applicationIdSuffix ".debug"
             resValue "string", "app_name", "Capsulyric Debug"
+            
+            // Enable shrinking for debug to reduce size (e.g. from material-icons-extended)
+            // Uses a specific config to disable obfuscation for easier debugging
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-debug.pro'
         }
         release {
             // Use custom keystore if available, otherwise use debug signing
@@ -109,7 +118,7 @@ android {
     }
     packaging {
         jniLibs {
-            keepDebugSymbols += ['**/libandroidx.graphics.path.so']
+            // keepDebugSymbols += ['**/libandroidx.graphics.path.so']
         }
     }
 }
