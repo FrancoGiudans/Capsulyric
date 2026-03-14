@@ -57,27 +57,23 @@ android {
         // Standard build — Android 16+ Live Update enabled
         standard {
             dimension "api"
-            def majorVersion = "Canary.Version"
             minSdk 36
             targetSdk 36
-            if (project.hasProperty("versionName")) {
-                versionName project.versionName
-            } else {
-                versionName "${majorVersion}_C${getGitCommitCount()}"
-            }
+            
+            def baseVersion = project.hasProperty("versionName") ? project.versionName : "Canary.Version"
+            versionName "${baseVersion}_C${getGitCommitCount()}"
+            
             buildConfigField "boolean", "LIVE_UPDATE_ENABLED", "true"
         }
         // Compatible build — Android 15 only, SuperIsland-only mode
         compatible {
             dimension "api"
-            def majorVersion = "Canary.Version"
             minSdk 35
             targetSdk 35
-            if (project.hasProperty("versionName")) {
-                versionName project.versionName
-            } else {
-                versionName "${majorVersion}_A15.${getGitCommitCount()}"
-            }
+            
+            def baseVersion = project.hasProperty("versionName") ? project.versionName : "1.3"
+            versionName "${baseVersion}_A15.${getGitCommitCount()}"
+            
             buildConfigField "boolean", "LIVE_UPDATE_ENABLED", "false"
         }
     }
