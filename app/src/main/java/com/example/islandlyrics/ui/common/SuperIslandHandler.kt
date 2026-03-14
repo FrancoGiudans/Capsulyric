@@ -76,6 +76,7 @@ class SuperIslandHandler(
     private var lastSentDisplayLyric = ""
     private var lastSentProgressPercent = -1
     private var lastSentSubText = ""
+    private var lastSentIsPlaying = false
     private var isFirstNotification = true
     
     private var lastAlbumArtHash = 0
@@ -104,6 +105,7 @@ class SuperIslandHandler(
         lastSentDisplayLyric = ""
         lastSentProgressPercent = -1
         lastSentSubText = ""
+        lastSentIsPlaying = false
         isFirstNotification = true
         
         lastAlbumArtHash = 0
@@ -228,7 +230,8 @@ class SuperIslandHandler(
         if (!isFirstNotification && !colorChanged &&
             displayLyric == lastSentDisplayLyric &&
             progressPercent == lastSentProgressPercent &&
-            subText == lastSentSubText) {
+            subText == lastSentSubText &&
+            state.isPlaying == lastSentIsPlaying) {
             return
         }
 
@@ -378,6 +381,7 @@ class SuperIslandHandler(
         lastSentDisplayLyric = displayLyric
         lastSentProgressPercent = progressPercent
         lastSentSubText = subText
+        lastSentIsPlaying = state.isPlaying
 
         notifyWithNetworkCut(notification, isFirstNotification)
         if (isFirstNotification) {
