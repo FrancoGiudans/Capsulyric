@@ -30,9 +30,9 @@ jobs:
         run: chmod +x gradlew
 
       - name: Build All Variants
-        run: ./gradlew assembleDebug assemblePrerelease
+        run: ./gradlew assembleStandardDebug assembleStandardPrerelease assembleCompatibleDebug assembleCompatiblePrerelease
 
-      - name: Sign Release APK
+      - name: Sign Prerelease APKs
         env:
           SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
@@ -40,27 +40,53 @@ jobs:
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
           echo "$SIGNING_KEY" | base64 --decode > release.keystore
-          APK_TO_SIGN=$(find app/build/outputs/apk/prerelease -name "*.apk" ! -name "*-signed.apk" | head -n 1)
+          
+          # Sign Standard Prerelease
+          STD_APK=$(find app/build/outputs/apk/standard/prerelease -name "*.apk" ! -name "*-signed.apk" | head -n 1)
           ${ANDROID_HOME}/build-tools/34.0.0/apksigner sign \
             --ks release.keystore \
             --ks-key-alias "$KEY_ALIAS" \
             --ks-pass env:KEY_STORE_PASSWORD \
             --key-pass env:KEY_PASSWORD \
-            --out app/build/outputs/apk/prerelease/app-prerelease-signed.apk \
-            "$APK_TO_SIGN"
+            --out app/build/outputs/apk/standard/prerelease/app-standard-prerelease-signed.apk \
+            "$STD_APK"
+            
+          # Sign Compatible Prerelease
+          COMPAT_APK=$(find app/build/outputs/apk/compatible/prerelease -name "*.apk" ! -name "*-signed.apk" | head -n 1)
+          ${ANDROID_HOME}/build-tools/34.0.0/apksigner sign \
+            --ks release.keystore \
+            --ks-key-alias "$KEY_ALIAS" \
+            --ks-pass env:KEY_STORE_PASSWORD \
+            --key-pass env:KEY_PASSWORD \
+            --out app/build/outputs/apk/compatible/prerelease/app-compatible-prerelease-signed.apk \
+            "$COMPAT_APK"
+            
           rm release.keystore
 
-
-      - name: Upload Debug Artifact
+      - name: Upload Standard Debug Artifact
         uses: actions/upload-artifact@v7
         with:
-          name: Capsulyric-Debug
-          path: app/build/outputs/apk/debug/app-debug.apk
+          name: Capsulyric-Standard-Debug
+          path: app/build/outputs/apk/standard/debug/app-standard-debug.apk
           archive: false
 
-      - name: Upload Signed Release Artifact
+      - name: Upload Standard Signed Artifact
         uses: actions/upload-artifact@v7
         with:
-          name: Capsulyric-Prerelease-Signed
-          path: app/build/outputs/apk/prerelease/app-prerelease-signed.apk
+          name: Capsulyric-Standard-Prerelease-Signed
+          path: app/build/outputs/apk/standard/prerelease/app-standard-prerelease-signed.apk
+          archive: false
+
+      - name: Upload Compatible Debug Artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: Capsulyric-Compatible-Debug
+          path: app/build/outputs/apk/compatible/debug/app-compatible-debug.apk
+          archive: false
+
+      - name: Upload Compatible Signed Artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: Capsulyric-Compatible-Prerelease-Signed
+          path: app/build/outputs/apk/compatible/prerelease/app-compatible-prerelease-signed.apk
           archive: false

@@ -14,6 +14,7 @@ import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
 import androidx.lifecycle.Observer
+import com.example.islandlyrics.BuildConfig
 import com.example.islandlyrics.R
 import com.example.islandlyrics.core.logging.AppLogger
 import com.example.islandlyrics.core.logging.LogManager
@@ -37,8 +38,8 @@ class LyricService : Service() {
     private lateinit var lyricGetterSource: LyricGetterSource
 
     private lateinit var progressSyncController: ProgressSyncController
-    private lateinit var renderModeCoordinator: RenderModeCoordinator
-    private lateinit var delayedStopController: DelayedStopController
+    private var renderModeCoordinator: RenderModeCoordinator? = null
+    private var delayedStopController: DelayedStopController? = null
 
     private val lyricObserver = Observer<LyricRepository.LyricInfo?> { info ->
         if (info != null && info.lyric.isNotBlank()) {
@@ -92,7 +93,7 @@ class LyricService : Service() {
         } else {
             progressSyncController.stop()
         }
-        delayedStopController.onPlaybackChanged(playing)
+        delayedStopController?.onPlaybackChanged(playing)
     }
 
     private val metadataObserver = Observer<LyricRepository.MediaInfo?> { info ->
@@ -140,10 +141,11 @@ class LyricService : Service() {
 
     // Toggle for Chip Keep-Alive Hack
     private var invisibleToggle = false
-    private lateinit var capsuleHandler: LyricCapsuleHandler
+    private var capsuleHandler: LyricCapsuleHandler? = null
     private lateinit var superIslandHandler: SuperIslandHandler
     private lateinit var displayManager: LyricDisplayManager
-    private var isSuperIslandMode = false
+    // compatible flavor: always SuperIsland; standard: read from prefs
+    private var isSuperIslandMode = !BuildConfig.LIVE_UPDATE_ENABLED
 
     private val mediaActionReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
@@ -161,10 +163,10 @@ class LyricService : Service() {
     }
 
     private val prefsListener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { p, key ->
-        if (key == "super_island_enabled") {
+        if (key == "super_island_enabled" && BuildConfig.LIVE_UPDATE_ENABLED) {
             isSuperIslandMode = p.getBoolean(key, false)
             AppLogger.getInstance().log(TAG, "Mode Switched via Settings -> isSuperIslandMode: $isSuperIslandMode")
-            renderModeCoordinator.setMode(isSuperIslandMode)
+            renderModeCoordinator?.setMode(isSuperIslandMode)
             updateActiveHandler()
         }
     }
@@ -172,28 +174,34 @@ class LyricService : Service() {
     override fun onCreate() {
         super.onCreate()
         
-        // Load mode from preferences (use the user-facing toggle)
-        isSuperIslandMode = getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE)
-            .getBoolean("super_island_enabled", false)
+        // Load mode from preferences (standard only; compatible is always SuperIsland)
+        if (BuildConfig.LIVE_UPDATE_ENABLED) {
+            isSuperIslandMode = getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE)
+                .getBoolean("super_island_enabled", false)
+        }
 
         createNotificationChannel()
-        capsuleHandler = LyricCapsuleHandler(this, this)
+        if (BuildConfig.LIVE_UPDATE_ENABLED) {
+            capsuleHandler = LyricCapsuleHandler(this, this)
+        }
         superIslandHandler = SuperIslandHandler(this, this)
         displayManager = LyricDisplayManager(this).apply {
             onStateUpdated = { state ->
-                renderModeCoordinator.render(state)
+                renderModeCoordinator?.render(state)
             }
         }
-        renderModeCoordinator = RenderModeCoordinator(displayManager, capsuleHandler, superIslandHandler)
-        renderModeCoordinator.setMode(isSuperIslandMode)
-        delayedStopController = DelayedStopController(
-            handler = handler,
-            prefsProvider = { getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE) },
-            onStop = {
-                renderModeCoordinator.stopForCurrentMode()
-                AppLogger.getInstance().log(TAG, "🛑 Renderer stopped: Playback stopped (Delayed)")
-            }
-        )
+        if (BuildConfig.LIVE_UPDATE_ENABLED) {
+            renderModeCoordinator = RenderModeCoordinator(displayManager, capsuleHandler!!, superIslandHandler)
+            renderModeCoordinator!!.setMode(isSuperIslandMode)
+            delayedStopController = DelayedStopController(
+                handler = handler,
+                prefsProvider = { getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE) },
+                onStop = {
+                    renderModeCoordinator!!.stopForCurrentMode()
+                    AppLogger.getInstance().log(TAG, "🛑 Renderer stopped: Playback stopped (Delayed)")
+                }
+            )
+        }
 
         // Cache system services once here rather than in every IPC call
         cachedMediaSessionManager = getSystemService(Context.MEDIA_SESSION_SERVICE) as android.media.session.MediaSessionManager
@@ -238,10 +246,12 @@ class LyricService : Service() {
         val action = intent?.action ?: "null"
         AppLogger.getInstance().log(TAG, "onStartCommand Received Action: $action")
 
-        // 1. Proactively sync the Super Island Mode preference
+        // 1. Proactively sync the Super Island Mode preference (standard only)
         val prefs = getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE)
-        isSuperIslandMode = prefs.getBoolean("super_island_enabled", false)
-        renderModeCoordinator.setMode(isSuperIslandMode)
+        if (BuildConfig.LIVE_UPDATE_ENABLED) {
+            isSuperIslandMode = prefs.getBoolean("super_island_enabled", false)
+            renderModeCoordinator?.setMode(isSuperIslandMode)
+        }
 
         // [Fix Task 1] Immediate Foreground Promotion
         createNotificationChannel()
@@ -253,9 +263,7 @@ class LyricService : Service() {
         // 3. Promote to foreground (avoid redundant channel creation)
         if (isSuperIslandMode && superIslandHandler.isRunning == true) {
             displayManager.forceUpdate()
-        } else if (!isSuperIslandMode && capsuleHandler.isRunning()) {
-            // Ask the handler to repost its rich notification
-            // This satisfies startForeground requirements without downgrading the UI
+        } else if (BuildConfig.LIVE_UPDATE_ENABLED && !isSuperIslandMode && capsuleHandler?.isRunning() == true) {
             displayManager.forceUpdate()
         } else {
             // Only use fallback if service is starting up and no handler is ready yet
@@ -301,8 +309,12 @@ class LyricService : Service() {
         super.onDestroy()
         AppLogger.getInstance().log(TAG, "Service Destroyed")
         progressSyncController.stop()
-        delayedStopController.cancel()
-        renderModeCoordinator.stopAll()
+        delayedStopController?.cancel()
+        renderModeCoordinator?.stopAll() ?: run {
+            // compatible flavor: manually stop SuperIsland
+            superIslandHandler.stop()
+            displayManager.stop()
+        }
         
         superLyricSource.stop()
         lyricGetterSource.stop()
@@ -531,7 +543,18 @@ class LyricService : Service() {
         val hasLyric = currentLyric != null && currentLyric.lyric.isNotBlank()
         val playing = LyricRepository.getInstance().isPlaying.value ?: false
 
-        renderModeCoordinator.updateActiveHandler(playing, hasLyric)
+        val coordinator = renderModeCoordinator
+        if (coordinator != null) {
+            // standard flavor: delegate to coordinator
+            coordinator.updateActiveHandler(playing, hasLyric)
+        } else {
+            // compatible flavor: SuperIsland is the only renderer
+            if (playing && hasLyric && !superIslandHandler.isRunning) {
+                superIslandHandler.start()
+            } else if (!playing || !hasLyric) {
+                superIslandHandler.stop()
+            }
+        }
     }
 
     // Cache for App Names to avoid IPC overhead

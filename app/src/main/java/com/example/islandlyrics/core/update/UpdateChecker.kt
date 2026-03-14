@@ -329,20 +329,39 @@ object UpdateChecker {
     }
 
     /**
-     * Compare version strings in "1.0_C200" format.
+     * Compare version strings.
+     * Supports formats: "1.0_C200" (standard) and "1.3_A15.200" (compatible).
+     * Extracts the trailing commit count number for comparison.
      * @return Positive if v1 > v2, negative if v1 < v2, 0 if equal
      */
     fun compareVersions(v1: String, v2: String): Int {
         try {
-            // Extract commit count from "1.0_C200" format
-            val commit1 = v1.substringAfter("_C", "0").toIntOrNull() ?: 0
-            val commit2 = v2.substringAfter("_C", "0").toIntOrNull() ?: 0
+            val commit1 = extractCommitCount(v1)
+            val commit2 = extractCommitCount(v2)
             
             return commit1.compareTo(commit2)
         } catch (e: Exception) {
             AppLogger.getInstance().e(TAG, "Version comparison error", e)
             return 0
         }
+    }
+
+    /**
+     * Extract commit count from version string.
+     * "1.0_C200" -> 200, "1.3_A15.200" -> 200, "Canary.Version_C300" -> 300
+     */
+    private fun extractCommitCount(version: String): Int {
+        // Try _A15. format first (compatible)
+        val a15Idx = version.indexOf("_A15.")
+        if (a15Idx >= 0) {
+            return version.substring(a15Idx + 5).toIntOrNull() ?: 0
+        }
+        // Try _C format (standard)
+        val cIdx = version.indexOf("_C")
+        if (cIdx >= 0) {
+            return version.substring(cIdx + 2).toIntOrNull() ?: 0
+        }
+        return 0
     }
 
     /**
