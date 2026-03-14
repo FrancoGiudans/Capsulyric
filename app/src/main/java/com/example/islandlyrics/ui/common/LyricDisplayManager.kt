@@ -258,7 +258,7 @@ class LyricDisplayManager(private val context: Context) {
                     val currentProgressWeight = (lineProgress * currentLineWeight).toInt()
                     val scrollStartThreshold = if (isMostlyWestern(foundLine.text)) 4 else 8
                     val targetWeightOffset = if (currentProgressWeight < scrollStartThreshold) 0 else currentProgressWeight - scrollStartThreshold
-                    val minVisibleWeight = 16
+                    val minVisibleWeight = 14
                     val maxAllowedScroll = maxOf(0, currentLineWeight - minVisibleWeight)
                     val finalOffset = minOf(targetWeightOffset, maxAllowedScroll)
                     displayLyric = extractByWeight(foundLine.text, finalOffset, maxDisplayWeight)
