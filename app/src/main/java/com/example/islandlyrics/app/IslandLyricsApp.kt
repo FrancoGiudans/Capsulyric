@@ -1,6 +1,7 @@
 package com.example.islandlyrics.app
 
 import android.app.Application
+import com.example.islandlyrics.core.logging.AppLogger
 import com.example.islandlyrics.core.theme.ThemeHelper
 import com.example.islandlyrics.core.platform.RomUtils
 import com.google.android.material.color.DynamicColors
@@ -8,6 +9,9 @@ import com.google.android.material.color.DynamicColors
 class IslandLyricsApp : Application() {
     override fun onCreate() {
         super.onCreate()
+
+        // Initialise unified logger so all AppLogger calls are persisted to file
+        AppLogger.getInstance().init(this)
 
         // Apply saved theme preferences (Mode, Language)
         ThemeHelper.applyTheme(this)

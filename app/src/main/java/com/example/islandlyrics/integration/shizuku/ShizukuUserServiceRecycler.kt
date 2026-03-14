@@ -6,7 +6,7 @@ import android.content.Context
 import android.content.ServiceConnection
 import android.os.IBinder
 import com.example.islandlyrics.IPrivilegedService
-import android.util.Log
+import com.example.islandlyrics.core.logging.AppLogger
 import rikka.shizuku.Shizuku
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.callbackFlow
@@ -29,6 +29,8 @@ object ShizukuUserServiceRecycler {
     private const val PING_INTERVAL_MS = 5000L  // Only ping every 5 seconds to avoid overhead
     private const val BIND_TIMEOUT_MS = 10000L  // 10 second timeout for service binding
 
+    private val log get() = AppLogger.getInstance()
+
     /**
      * Gets or creates a persistent connection to the privileged service.
      * Uses caching to avoid repeated bind/unbind cycles.
@@ -43,27 +45,27 @@ object ShizukuUserServiceRecycler {
                     try {
                         if (cached.asBinder().pingBinder()) {
                             lastPingAttempt = now
-                            Log.d(TAG, "Service cache still valid (ping successful)")
+                            log.d(TAG, "Service cache still valid (ping successful)")
                             return cached
                         }
                     } catch (e: Exception) {
                         // Binder is dead, will reinitialize below
-                        Log.w(TAG, "Service ping failed, rebinding: ${e.message}")
+                        log.w(TAG, "Service ping failed, rebinding: ${e.message}")
                     }
                     lastPingAttempt = now
                     cachedService = null
                 } else {
                     // Recent ping succeeded or not yet time to check, use cached
-                    Log.d(TAG, "Using cached service (${now - lastPingAttempt}ms since last ping)")
+                    log.d(TAG, "Using cached service (${now - lastPingAttempt}ms since last ping)")
                     return cached
                 }
             }
 
             // Need to establish new connection
-            Log.d(TAG, "Establishing new service connection...")
+            log.d(TAG, "Establishing new service connection...")
             return establishServiceConnection().also {
                 lastPingAttempt = System.currentTimeMillis()
-                Log.d(TAG, "Service connection established successfully")
+                log.d(TAG, "Service connection established successfully")
             }
         }
     }
@@ -73,20 +75,20 @@ object ShizukuUserServiceRecycler {
             suspendCancellableCoroutine { continuation ->
                 val connection = object : ServiceConnection {
                     override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
-                        Log.d(TAG, "onServiceConnected called with service=$service")
+                        log.d(TAG, "onServiceConnected called with service=$service")
                         if (service != null) {
                             val privileged = IPrivilegedService.Stub.asInterface(service)
                             cachedService = privileged
                             serviceConnection = this
                             continuation.resume(privileged)
                         } else {
-                            Log.e(TAG, "onServiceConnected but binder is null!")
+                            log.e(TAG, "onServiceConnected but binder is null!")
                             continuation.resumeWithException(Exception("Shizuku UserService bound but returned null binder"))
                         }
                     }
 
                     override fun onServiceDisconnected(name: ComponentName?) {
-                        Log.w(TAG, "Service disconnected unexpectedly")
+                        log.w(TAG, "Service disconnected unexpectedly")
                         cachedService = null
                     }
                 }
@@ -102,19 +104,19 @@ object ShizukuUserServiceRecycler {
                 serviceArgs = args
 
                 try {
-                    Log.d(TAG, "Calling Shizuku.bindUserService()...")
+                    log.d(TAG, "Calling Shizuku.bindUserService()...")
                     Shizuku.bindUserService(args, connection)
                 } catch (e: Exception) {
-                    Log.e(TAG, "bindUserService threw exception: ${e.message}", e)
+                    log.e(TAG, "bindUserService threw exception: ${e.message}", e)
                     continuation.resumeWithException(e)
                 }
 
                 continuation.invokeOnCancellation {
-                    Log.d(TAG, "Service binding cancelled, unbinding...")
+                    log.d(TAG, "Service binding cancelled, unbinding...")
                     try {
                         Shizuku.unbindUserService(args, connection, true)
                     } catch (ignored: Exception) {
-                        Log.w(TAG, "Error during unbind: ${ignored.message}")
+                        log.w(TAG, "Error during unbind: ${ignored.message}")
                     }
                 }
             }
@@ -125,15 +127,14 @@ object ShizukuUserServiceRecycler {
      * Executes an action with the privileged service, using cached connection.
      */
     suspend fun <T> executeWithService(action: suspend (IPrivilegedService) -> T): T {
-        Log.d(TAG, "executeWithService called")
+        log.d(TAG, "executeWithService called")
         return try {
             action(getPrivilegedService()).also {
-                Log.d(TAG, "executeWithService completed successfully")
+                log.d(TAG, "executeWithService completed successfully")
             }
         } catch (e: Exception) {
-            Log.e(TAG, "executeWithService failed: ${e.message}", e)
+            log.e(TAG, "executeWithService failed: ${e.message}", e)
             throw e
         }
     }
 }
-

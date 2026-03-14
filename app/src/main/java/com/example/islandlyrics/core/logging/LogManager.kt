@@ -172,6 +172,19 @@ class LogManager private constructor() {
         }
     }
 
+    /**
+     * Called by [com.example.islandlyrics.core.logging.AppLogger] to persist a
+     * log line that has already been printed to logcat.  Initialises lazily if
+     * needed and offloads I/O to the background thread.
+     */
+    fun writeRaw(context: Context, level: String, tag: String, message: String) {
+        init(context)
+        val logLine = String.format("%s %s/%s: %s", DATE_FORMAT.format(Date()), level, tag, message)
+        logHandler?.post {
+            appendToFile(logLine)
+        }
+    }
+
     @Synchronized
     fun getLogEntries(context: Context): List<LogEntry> {
         init(context)
