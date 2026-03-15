@@ -66,7 +66,8 @@ object RomUtils {
     fun getRomType(): String {
         if (!forcedRomType.isNullOrEmpty()) return forcedRomType!!
         // HyperOS / MIUI
-        if (getSystemProperty("ro.mi.os.version.name").isNotEmpty()) return "HyperOS"
+        if (getSystemProperty("ro.mi.os.version.name").isNotEmpty() || 
+            getSystemProperty("ro.miui.ui.version.name").isNotEmpty()) return "HyperOS"
         
         // ColorOS / OxygenOS
         if (getSystemProperty("ro.build.version.opporom").isNotEmpty()) return "ColorOS"
@@ -159,7 +160,8 @@ object RomUtils {
 
     fun isHeavySkin(): Boolean {
         val type = getRomType()
-        return type == "HyperOS" || type == "ColorOS" || type == "OriginOS/FuntouchOS" || type == "Flyme" || type == "OneUI"
+        return type == "HyperOS" || type == "ColorOS" || type == "OriginOS/FuntouchOS" || 
+               type == "Flyme" || type == "OneUI" || type == "MagicOS" || type == "RealmeUI"
     }
 
     fun getAutostartPermissionIntent(context: android.content.Context): android.content.Intent? {

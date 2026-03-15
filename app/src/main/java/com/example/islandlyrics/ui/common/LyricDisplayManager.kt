@@ -50,9 +50,8 @@ class LyricDisplayManager(private val context: Context) {
     private val minScrollDelay = 200L
     private val maxScrollDelay = 5000L
     
-    private val heavySkinRoms = setOf("HyperOS", "ColorOS", "OriginOS/FuntouchOS", "Flyme", "OneUI", "MagicOS", "RealmeUI")
-    private val isHeavySkin = RomUtils.getRomType() in heavySkinRoms
-    private val maxDisplayWeight = if (isHeavySkin) 18 else 10
+    private val isHeavySkin = RomUtils.isHeavySkin()
+    private val maxDisplayWeight = if (isHeavySkin) 16 else 10
     
     private val initialPauseDuration = 1000L
     private val finalPauseDuration = 500L
@@ -154,6 +153,9 @@ class LyricDisplayManager(private val context: Context) {
         adaptiveDelay = LyricCapsuleHandler.SCROLL_STEP_DELAY
         scrollState = ScrollState.INITIAL_PAUSE
         initialPauseStartTime = System.currentTimeMillis()
+        
+        LogManager.getInstance().i(context, "LyricDisplayManager", 
+            "Initialized. ROM: ${RomUtils.getRomType()}, HeavySkin: $isHeavySkin, MaxWeight: $maxDisplayWeight")
         
         mainHandler.post(visualizerLoop)
     }
