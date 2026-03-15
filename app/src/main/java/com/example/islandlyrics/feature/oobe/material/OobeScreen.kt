@@ -41,6 +41,7 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import com.example.islandlyrics.feature.parserrule.ParserRuleActivity
 import com.example.islandlyrics.R
+import com.example.islandlyrics.feature.faq.material.FormattedText
 import com.example.islandlyrics.core.platform.RomUtils
 import kotlinx.coroutines.launch
 
@@ -161,11 +162,13 @@ fun WelcomeStep() {
         Spacer(modifier = Modifier.height(48.dp))
         
         // System Compatibility Warning
-        if (systemStatus != SystemStatus.Compatible) {
+        if (systemStatus != SystemStatus.FullSupport) {
             val (color, textRes) = when (systemStatus) {
-                SystemStatus.HyperOsUnsupported -> MaterialTheme.colorScheme.errorContainer to R.string.oobe_warning_hyperos_unsupported
-                SystemStatus.RomUntested -> MaterialTheme.colorScheme.tertiaryContainer to R.string.oobe_warning_rom_untested
-
+                SystemStatus.CommunityVerified -> MaterialTheme.colorScheme.tertiaryContainer to R.string.oobe_warning_community_verified
+                SystemStatus.UntestedA16 -> MaterialTheme.colorScheme.tertiaryContainer to R.string.oobe_warning_untested_system
+                SystemStatus.SuperIslandOnly -> MaterialTheme.colorScheme.tertiaryContainer to R.string.oobe_warning_super_island_limited
+                SystemStatus.Unsupported -> MaterialTheme.colorScheme.errorContainer to R.string.oobe_error_unsupported_device
+                else -> MaterialTheme.colorScheme.surfaceVariant to R.string.oobe_welcome_subtitle
             }
             
             Card(
@@ -198,22 +201,37 @@ fun WelcomeStep() {
 }
 
 enum class SystemStatus {
-    Compatible,
-    HyperOsUnsupported,
-    RomUntested
+    FullSupport,
+    CommunityVerified,
+    UntestedA16,
+    SuperIslandOnly,
+    Unsupported
 }
 
 private fun checkSystemStatus(): SystemStatus {
+    val sdkInt = android.os.Build.VERSION.SDK_INT
     val romType = RomUtils.getRomType()
-    if (romType == "HyperOS") {
-        return if (RomUtils.isHyperOsVersionAtLeast(3, 0, 300)) {
-            SystemStatus.Compatible
-        } else {
-            SystemStatus.HyperOsUnsupported
-        }
-    } else {
-        return SystemStatus.RomUntested
+
+    // Tier 1: Full Support (HyperOS 3.0.300+ on A16+)
+    if (RomUtils.isLiveUpdateSupported() && RomUtils.isHyperOs()) {
+        return SystemStatus.FullSupport
     }
+
+    // Tier 2 & 3: Android 16+ non-verified or community-verified
+    if (sdkInt >= 36) {
+        return when (romType) {
+            "ColorOS", "OneUI", "AOSP" -> SystemStatus.CommunityVerified
+            else -> SystemStatus.UntestedA16
+        }
+    }
+
+    // Tier 4: Super Island Only (HyperOS 3.0.x below 3.0.300)
+    if (RomUtils.isHyperOs() && RomUtils.isHyperOsVersionAtLeast(3, 0, 0)) {
+        return SystemStatus.SuperIslandOnly
+    }
+
+    // Tier 5: Unsupported
+    return SystemStatus.Unsupported
 }
 
 @Composable
@@ -345,6 +363,7 @@ fun PermissionItem(
 @Composable
 fun AppSetupStep() {
     val context = LocalContext.current
+    var showGuideDialog by remember { mutableStateOf(false) }
     
     // Data Preparation
     data class AppGuide(val name: String, val guide: String)
@@ -391,12 +410,49 @@ fun AppSetupStep() {
         
         TextButton(
             onClick = {
-                context.startActivity(Intent(context, ParserRuleActivity::class.java))
+                showGuideDialog = true
             },
             modifier = Modifier.align(Alignment.CenterHorizontally)
         ) {
             Text(stringResource(R.string.oobe_app_not_in_list))
         }
+    }
+
+    if (showGuideDialog) {
+        AlertDialog(
+            onDismissRequest = { showGuideDialog = false },
+            title = {
+                Text(
+                    text = stringResource(R.string.oobe_add_rule_guide_title),
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 400.dp)
+                        .verticalScroll(rememberScrollState())
+                ) {
+                    FormattedText(
+                        text = context.resources.getText(R.string.faq_a_add_rule),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontSize = 14f
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showGuideDialog = false
+                        context.startActivity(Intent(context, ParserRuleActivity::class.java))
+                    }
+                ) {
+                    Text(stringResource(R.string.oobe_i_understand))
+                }
+            }
+        )
     }
 }
 

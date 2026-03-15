@@ -106,17 +106,12 @@ object RomUtils {
     fun isHyperOsVersionAtLeast(major: Int, minor: Int, patch: Int): Boolean {
         if (forcedRomType == "HyperOS") return true // Bypass check if explicitly forced
 
-        // STRICT CHECK: Must be HyperOS first
         val hyperOsVersion = getSystemProperty("ro.mi.os.version.name")
-        if (hyperOsVersion.isEmpty()) {
-            return false // Not HyperOS
-        }
-
-        // Check primary version name
-        if (checkVersionString(hyperOsVersion, major, minor, patch)) return true
+        if (hyperOsVersion.isNotEmpty() && checkVersionString(hyperOsVersion, major, minor, patch)) return true
         
-        // Check incremental version (only if we confirmed it is HyperOS above)
-        if (checkVersionString(getSystemProperty("ro.build.version.incremental"), major, minor, patch)) return true
+        // Fallback to incremental version
+        val incremental = getSystemProperty("ro.build.version.incremental")
+        if (incremental.isNotEmpty() && checkVersionString(incremental, major, minor, patch)) return true
         
         return false
     }
@@ -162,6 +157,16 @@ object RomUtils {
         val type = getRomType()
         return type == "HyperOS" || type == "ColorOS" || type == "OriginOS/FuntouchOS" || 
                type == "Flyme" || type == "OneUI" || type == "MagicOS" || type == "RealmeUI"
+    }
+
+    fun isHyperOs(): Boolean = getRomType() == "HyperOS"
+
+    fun isLiveUpdateSupported(): Boolean {
+        if (android.os.Build.VERSION.SDK_INT < 36) return false
+        if (isHyperOs()) {
+            return isHyperOsVersionAtLeast(3, 0, 300)
+        }
+        return true
     }
 
     fun getAutostartPermissionIntent(context: android.content.Context): android.content.Intent? {
