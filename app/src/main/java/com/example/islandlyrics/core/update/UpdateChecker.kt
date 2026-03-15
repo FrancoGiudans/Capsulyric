@@ -330,7 +330,7 @@ object UpdateChecker {
 
     /**
      * Compare version strings.
-     * Supports formats: "1.0_C200" (standard) and "1.3_A15.200" (compatible).
+     * Supports format: "1.0_C200" (standard).
      * Extracts the trailing commit count number for comparison.
      * @return Positive if v1 > v2, negative if v1 < v2, 0 if equal
      */
@@ -348,14 +348,9 @@ object UpdateChecker {
 
     /**
      * Extract commit count from version string.
-     * "1.0_C200" -> 200, "1.3_A15.200" -> 200, "Canary.Version_C300" -> 300
+     * "1.0_C200" -> 200, "Canary.Version_C300" -> 300
      */
     private fun extractCommitCount(version: String): Int {
-        // Try _A15. format first (compatible)
-        val a15Idx = version.indexOf("_A15.")
-        if (a15Idx >= 0) {
-            return version.substring(a15Idx + 5).toIntOrNull() ?: 0
-        }
         // Try _C format (standard)
         val cIdx = version.indexOf("_C")
         if (cIdx >= 0) {

@@ -47,38 +47,17 @@ android {
     defaultConfig {
         versionCode getGitCommitCount()
         applicationId "com.franco.capsulyric"
-        // minSdk / targetSdk / versionName are set per flavor below
+        minSdk 35
+        targetSdk 36
+
+        def baseVersion = project.hasProperty("versionName") ? project.versionName : "Canary.Version"
+        versionName "${baseVersion}_C${getGitCommitCount()}"
+
         buildConfigField "String", "GIT_COMMIT_HASH", "\"${getGitCommitHash()}\""
+        buildConfigField "boolean", "LIVE_UPDATE_ENABLED", "true"
 
         // Strip unused localized resources to reduce APK size
         resConfigs "zh", "en"
-    }
-
-    flavorDimensions "api"
-
-    productFlavors {
-        // Standard build — Android 16+ Live Update enabled
-        standard {
-            dimension "api"
-            minSdk 36
-            targetSdk 36
-            
-            def baseVersion = project.hasProperty("versionName") ? project.versionName : "Canary.Version"
-            versionName "${baseVersion}_C${getGitCommitCount()}"
-            
-            buildConfigField "boolean", "LIVE_UPDATE_ENABLED", "true"
-        }
-        // Compatible build — Android 15 only, SuperIsland-only mode
-        compatible {
-            dimension "api"
-            minSdk 35
-            targetSdk 35
-            
-            def baseVersion = project.hasProperty("versionName") ? project.versionName : "1.3"
-            versionName "${baseVersion}_A15.${getGitCommitCount()}"
-            
-            buildConfigField "boolean", "LIVE_UPDATE_ENABLED", "false"
-        }
     }
 
 

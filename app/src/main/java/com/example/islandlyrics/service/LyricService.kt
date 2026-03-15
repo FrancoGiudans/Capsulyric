@@ -144,7 +144,7 @@ class LyricService : Service() {
     private var capsuleHandler: LyricCapsuleHandler? = null
     private lateinit var superIslandHandler: SuperIslandHandler
     private lateinit var displayManager: LyricDisplayManager
-    // compatible flavor: always SuperIsland; standard: read from prefs
+    // Live Update builds read mode from prefs; otherwise default to SuperIsland
     private var isSuperIslandMode = !BuildConfig.LIVE_UPDATE_ENABLED
 
     private val mediaActionReceiver = object : BroadcastReceiver() {
@@ -174,7 +174,7 @@ class LyricService : Service() {
     override fun onCreate() {
         super.onCreate()
         
-        // Load mode from preferences (standard only; compatible is always SuperIsland)
+        // Load mode from preferences when Live Update is enabled
         if (BuildConfig.LIVE_UPDATE_ENABLED) {
             isSuperIslandMode = getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE)
                 .getBoolean("super_island_enabled", false)
@@ -246,7 +246,7 @@ class LyricService : Service() {
         val action = intent?.action ?: "null"
         AppLogger.getInstance().log(TAG, "onStartCommand Received Action: $action")
 
-        // 1. Proactively sync the Super Island Mode preference (standard only)
+        // 1. Proactively sync the Super Island Mode preference
         val prefs = getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE)
         if (BuildConfig.LIVE_UPDATE_ENABLED) {
             isSuperIslandMode = prefs.getBoolean("super_island_enabled", false)
@@ -311,7 +311,7 @@ class LyricService : Service() {
         progressSyncController.stop()
         delayedStopController?.cancel()
         renderModeCoordinator?.stopAll() ?: run {
-            // compatible flavor: manually stop SuperIsland
+            // Fallback: manually stop SuperIsland when coordinator isn't initialized
             superIslandHandler.stop()
             displayManager.stop()
         }
@@ -545,10 +545,10 @@ class LyricService : Service() {
 
         val coordinator = renderModeCoordinator
         if (coordinator != null) {
-            // standard flavor: delegate to coordinator
+            // Live Update enabled: delegate to coordinator
             coordinator.updateActiveHandler(playing, hasLyric)
         } else {
-            // compatible flavor: SuperIsland is the only renderer
+            // Live Update disabled: SuperIsland is the only renderer
             if (playing && hasLyric && !superIslandHandler.isRunning) {
                 superIslandHandler.start()
             } else if (!playing || !hasLyric) {
