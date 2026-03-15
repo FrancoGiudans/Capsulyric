@@ -50,17 +50,7 @@ jobs:
             --key-pass env:KEY_PASSWORD \
             --out app/build/outputs/apk/standard/prerelease/app-standard-prerelease-signed.apk \
             "$STD_APK"
-            
-          # Sign Compatible Prerelease
-          COMPAT_APK=$(find app/build/outputs/apk/compatible/prerelease -name "*.apk" ! -name "*-signed.apk" | head -n 1)
-          ${ANDROID_HOME}/build-tools/34.0.0/apksigner sign \
-            --ks release.keystore \
-            --ks-key-alias "$KEY_ALIAS" \
-            --ks-pass env:KEY_STORE_PASSWORD \
-            --key-pass env:KEY_PASSWORD \
-            --out app/build/outputs/apk/compatible/prerelease/app-compatible-prerelease-signed.apk \
-            "$COMPAT_APK"
-            
+
           rm release.keystore
 
       - name: Upload Standard Debug Artifact
@@ -75,18 +65,4 @@ jobs:
         with:
           name: Capsulyric-Standard-Prerelease-Signed
           path: app/build/outputs/apk/standard/prerelease/app-standard-prerelease-signed.apk
-          archive: false
-
-      - name: Upload Compatible Debug Artifact
-        uses: actions/upload-artifact@v7
-        with:
-          name: Capsulyric-Compatible-Debug
-          path: app/build/outputs/apk/compatible/debug/app-compatible-debug.apk
-          archive: false
-
-      - name: Upload Compatible Signed Artifact
-        uses: actions/upload-artifact@v7
-        with:
-          name: Capsulyric-Compatible-Prerelease-Signed
-          path: app/build/outputs/apk/compatible/prerelease/app-compatible-prerelease-signed.apk
           archive: false
