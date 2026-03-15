@@ -30,7 +30,7 @@ jobs:
         run: chmod +x gradlew
 
       - name: Build All Variants
-        run: ./gradlew assembleStandardDebug assembleStandardPrerelease assembleCompatibleDebug assembleCompatiblePrerelease
+        run: ./gradlew assembleDebug assemblePrerelease
 
       - name: Sign Prerelease APKs
         env:
@@ -42,13 +42,13 @@ jobs:
           echo "$SIGNING_KEY" | base64 --decode > release.keystore
           
           # Sign Standard Prerelease
-          STD_APK=$(find app/build/outputs/apk/standard/prerelease -name "*.apk" ! -name "*-signed.apk" | head -n 1)
+          STD_APK=$(find app/build/outputs/apk/prerelease -name "*.apk" ! -name "*-signed.apk" | head -n 1)
           ${ANDROID_HOME}/build-tools/34.0.0/apksigner sign \
             --ks release.keystore \
             --ks-key-alias "$KEY_ALIAS" \
             --ks-pass env:KEY_STORE_PASSWORD \
             --key-pass env:KEY_PASSWORD \
-            --out app/build/outputs/apk/standard/prerelease/app-standard-prerelease-signed.apk \
+            --out app/build/outputs/apk/standard/prerelease/app-prerelease-signed.apk \
             "$STD_APK"
 
           rm release.keystore
@@ -57,12 +57,12 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: Capsulyric-Standard-Debug
-          path: app/build/outputs/apk/standard/debug/app-standard-debug.apk
+          path: app/build/outputs/apk/debug/app-debug.apk
           archive: false
 
       - name: Upload Standard Signed Artifact
         uses: actions/upload-artifact@v7
         with:
           name: Capsulyric-Standard-Prerelease-Signed
-          path: app/build/outputs/apk/standard/prerelease/app-standard-prerelease-signed.apk
+          path: app/build/outputs/apk/prerelease/app-prerelease-signed.apk
           archive: false
