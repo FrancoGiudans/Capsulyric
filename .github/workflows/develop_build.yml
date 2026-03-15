@@ -48,7 +48,7 @@ jobs:
             --ks-key-alias "$KEY_ALIAS" \
             --ks-pass env:KEY_STORE_PASSWORD \
             --key-pass env:KEY_PASSWORD \
-            --out app/build/outputs/apk/standard/prerelease/app-prerelease-signed.apk \
+            --out app/build/outputs/apk/prerelease/app-prerelease-signed.apk \
             "$STD_APK"
 
           rm release.keystore
