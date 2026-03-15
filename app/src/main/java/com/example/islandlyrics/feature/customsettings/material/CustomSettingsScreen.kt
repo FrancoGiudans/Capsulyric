@@ -130,8 +130,8 @@ fun CustomSettingsScreen(
     var showUiStyleDropdown by remember { mutableStateOf(false) }
 
     // Check for HyperOS 3.0.300+
-    val isHyperOsSupported = remember { RomUtils.isHyperOsVersionAtLeast(3, 0, 300) }
-    val isHyperOs = remember { RomUtils.getRomType() == "HyperOS" }
+    val isLiveUpdateSupported = remember { RomUtils.isLiveUpdateSupported() }
+    val isHyperOs = remember { RomUtils.isHyperOs() }
 
     // Logic for permissions status
     fun checkNotificationPermission(): Boolean {
@@ -148,8 +148,8 @@ fun CustomSettingsScreen(
     var postNotificationGranted by remember { mutableStateOf(checkPostNotificationPermission()) }
 
     // Force disable unsupported features
-    LaunchedEffect(isHyperOsSupported) {
-        if (!isHyperOsSupported) {
+    LaunchedEffect(isLiveUpdateSupported) {
+        if (!isLiveUpdateSupported) {
             if (dynamicIconEnabled) {
                 dynamicIconEnabled = false
                 prefs.edit().putBoolean("dynamic_icon_enabled", false).apply()
@@ -269,31 +269,33 @@ fun CustomSettingsScreen(
                             }
 
                             if (isHyperOs) {
-                                SettingsSwitchItem(
-                                    title = stringResource(R.string.settings_super_island),
-                                    subtitle = stringResource(R.string.settings_super_island_desc),
-                                    checked = superIslandEnabled,
-                                    onCheckedChange = { enabled ->
-                                        superIslandEnabled = enabled
-                                        prefs.edit().putBoolean("super_island_enabled", enabled).apply()
+                                if (isLiveUpdateSupported) {
+                                    SettingsSwitchItem(
+                                        title = stringResource(R.string.settings_super_island),
+                                        subtitle = stringResource(R.string.settings_super_island_desc),
+                                        checked = superIslandEnabled,
+                                        onCheckedChange = { enabled ->
+                                            superIslandEnabled = enabled
+                                            prefs.edit().putBoolean("super_island_enabled", enabled).apply()
 
-                                        //  Logic: If MiPlay is selected when enabling Super Island, switch to Off
-                                        if (enabled && actionStyle == "miplay") {
-                                            actionStyle = "disabled"
-                                            prefs.edit().putString("notification_actions_style", "disabled").apply()
+                                            //  Logic: If MiPlay is selected when enabling Super Island, switch to Off
+                                            if (enabled && actionStyle == "miplay") {
+                                                actionStyle = "disabled"
+                                                prefs.edit().putString("notification_actions_style", "disabled").apply()
+                                            }
+
+                                            val action = if (enabled) {
+                                                "ACTION_ENABLE_SUPER_ISLAND"
+                                            } else {
+                                                "ACTION_DISABLE_SUPER_ISLAND"
+                                            }
+                                            val intent = Intent(context, LyricService::class.java).setAction(action)
+                                            context.startService(intent)
                                         }
+                                    )
+                                }
 
-                                        val action = if (enabled) {
-                                            "ACTION_ENABLE_SUPER_ISLAND"
-                                        } else {
-                                            "ACTION_DISABLE_SUPER_ISLAND"
-                                        }
-                                        val intent = Intent(context, LyricService::class.java).setAction(action)
-                                        context.startService(intent)
-                                    }
-                                )
-
-                                if (isHyperOsSupported && !superIslandEnabled) {
+                                if (isLiveUpdateSupported && !superIslandEnabled) {
                                     SettingsSwitchItem(
                                         title = stringResource(R.string.settings_dynamic_icon),
                                         subtitle = stringResource(R.string.settings_dynamic_icon_desc),
@@ -340,7 +342,7 @@ fun CustomSettingsScreen(
                                     }
                                 }
 
-                                if (superIslandEnabled) {
+                                if (superIslandEnabled || !isLiveUpdateSupported) {
                                     SettingsSwitchItem(
                                         title = stringResource(R.string.settings_super_island_colorize),
                                         subtitle = stringResource(R.string.settings_super_island_colorize_desc),
@@ -505,7 +507,7 @@ fun CustomSettingsScreen(
                                             "miplay" to R.string.settings_action_style_miplay
                                         )
                                         val styles = allStyles.filter { (styleId, _) ->
-                                            if (styleId == "miplay") isHyperOsSupported && !superIslandEnabled else true
+                                            if (styleId == "miplay") isLiveUpdateSupported && !superIslandEnabled else true
                                         }
                                         styles.forEach { (styleId, nameId) ->
                                             DropdownMenuItem(

@@ -43,6 +43,12 @@ fun ParserRuleScreen(
     var showDeleteDialog by remember { mutableStateOf<ParserRule?>(null) }
 
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+    
+    // Refresh recommendations on enter
+    LaunchedEffect(Unit) {
+        com.example.islandlyrics.service.MediaMonitorService.triggerRecheck()
+    }
+
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
@@ -120,7 +126,7 @@ fun ParserRuleScreen(
                                 null
                             }
                         }
-                        Text(text = "Add ${appLabel ?: "Current App"}")
+                        Text(text = stringResource(R.string.parser_add_app_fmt, appLabel ?: stringResource(R.string.parser_current_app)))
                     } else {
                         Text(text = stringResource(R.string.parser_add_rule))
                     } 
@@ -168,7 +174,7 @@ fun ParserRuleScreen(
                 if (editingRule == null) {
                     // Add
                     if (newRules.any { it.packageName == newRule.packageName }) {
-                        android.widget.Toast.makeText(context, "Package already exists", android.widget.Toast.LENGTH_SHORT).show()
+                        android.widget.Toast.makeText(context, context.getString(R.string.parser_pkg_exists), android.widget.Toast.LENGTH_SHORT).show()
                     } else {
                         newRules.add(newRule)
                         newRules.sort()
@@ -188,7 +194,7 @@ fun ParserRuleScreen(
                     } else {
                         // Recommendation case: editingRule not in list
                         if (newRules.any { it.packageName == newRule.packageName }) {
-                            android.widget.Toast.makeText(context, "Package already exists", android.widget.Toast.LENGTH_SHORT).show()
+                            android.widget.Toast.makeText(context, context.getString(R.string.parser_pkg_exists), android.widget.Toast.LENGTH_SHORT).show()
                         } else {
                             newRules.add(newRule)
                             newRules.sort()
@@ -345,12 +351,12 @@ fun EditRuleDialog(
                         .verticalScroll(rememberScrollState())
                 ) {
                     // 1. App Info
-                    SettingsSectionHeader("Application Info")
+                    SettingsSectionHeader(stringResource(R.string.parser_app_info))
                     
                     OutlinedTextField(
                         value = customName,
                         onValueChange = { customName = it },
-                        label = { Text("App Name (Optional)") },
+                        label = { Text(stringResource(R.string.parser_app_name)) },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true
                     )
@@ -358,7 +364,7 @@ fun EditRuleDialog(
                     OutlinedTextField(
                         value = packageName,
                         onValueChange = { packageName = it },
-                        label = { Text("Package Name") },
+                        label = { Text(stringResource(R.string.parser_package_name)) },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
                         enabled = rule == null // Cannot change pkg of existing rule
@@ -367,12 +373,12 @@ fun EditRuleDialog(
                     Spacer(modifier = Modifier.height(24.dp))
 
                     // 2. Sources & Features (Grouped)
-                    SettingsSectionHeader("Lyric Sources & Features")
+                    SettingsSectionHeader(stringResource(R.string.parser_logic_desc))
                     
                     // A. Media Notification (Car Protocol)
                     SwitchRow(
-                        title = "Media Notification Lyrics",
-                        subtitle = "Extract lyrics from notification title. Enables 'Smart Detection'.",
+                        title = stringResource(R.string.parser_car_protocol),
+                        subtitle = stringResource(R.string.parser_notify_lyric_desc),
                         checked = usesCarProtocol,
                         onCheckedChange = { usesCarProtocol = it }
                     )
@@ -384,43 +390,43 @@ fun EditRuleDialog(
                             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
                         ) {
                             Column(modifier = Modifier.padding(16.dp)) {
-                                Text("Parsing Logic", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+                                Text(stringResource(R.string.parser_logic_title), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
                                 Spacer(modifier = Modifier.height(8.dp))
                                 
                                 // Separator Selector
-                                Text("Separator", style = MaterialTheme.typography.bodyMedium)
+                                Text(stringResource(R.string.parser_separator_label), style = MaterialTheme.typography.bodyMedium)
                                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                     FilterChip(
                                         selected = separator == "-",
                                         onClick = { separator = "-" },
-                                        label = { Text("Tight (-)") }
+                                        label = { Text(stringResource(R.string.parser_separator_tight)) }
                                     )
                                     FilterChip(
                                         selected = separator == " - ",
                                         onClick = { separator = " - " },
-                                        label = { Text("Spaced ( - )") }
+                                        label = { Text(stringResource(R.string.parser_separator_spaced)) }
                                     )
                                     FilterChip(
                                         selected = separator == " | ",
                                         onClick = { separator = " | " },
-                                        label = { Text("Pipe ( | )") }
+                                        label = { Text(stringResource(R.string.parser_separator_pipe)) }
                                     )
                                 }
                                 
                                 Spacer(modifier = Modifier.height(8.dp))
                                 
                                 // Order Selector
-                                Text("Field Order", style = MaterialTheme.typography.bodyMedium)
+                                Text(stringResource(R.string.parser_field_order_label), style = MaterialTheme.typography.bodyMedium)
                                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                     FilterChip(
                                         selected = fieldOrder == FieldOrder.ARTIST_TITLE,
                                         onClick = { fieldOrder = FieldOrder.ARTIST_TITLE },
-                                        label = { Text("Artist - Title") }
+                                        label = { Text(stringResource(R.string.parser_order_artist_title)) }
                                     )
                                     FilterChip(
                                         selected = fieldOrder == FieldOrder.TITLE_ARTIST,
                                         onClick = { fieldOrder = FieldOrder.TITLE_ARTIST },
-                                        label = { Text("Title - Artist") }
+                                        label = { Text(stringResource(R.string.parser_order_title_artist)) }
                                     )
                                 }
                             }
@@ -429,24 +435,24 @@ fun EditRuleDialog(
 
                     // C. Online Lyrics
                     SwitchRow(
-                        title = "Online Lyrics",
-                        subtitle = "Fetch missing lyrics from internet APIs",
+                        title = stringResource(R.string.settings_use_online_lyrics),
+                        subtitle = stringResource(R.string.parser_online_lyric_desc_short),
                         checked = useOnlineLyrics,
                         onCheckedChange = { useOnlineLyrics = it }
                     )
 
                     // D. SuperLyric API
                     SwitchRow(
-                        title = "SuperLyric API",
-                        subtitle = "Receive lyrics from supported apps via broadcast",
+                        title = stringResource(R.string.parser_super_lyric),
+                        subtitle = stringResource(R.string.parser_super_lyric_desc_short),
                         checked = useSuperLyricApi,
                         onCheckedChange = { useSuperLyricApi = it }
                     )
 
                     // E. Lyric Getter API
                     SwitchRow(
-                        title = "Lyric Getter API",
-                        subtitle = "Receive lyrics via Lyric Getter broadcast",
+                        title = stringResource(R.string.parser_lgetter_lyric),
+                        subtitle = stringResource(R.string.parser_lgetter_lyric_desc_short),
                         checked = useLyricGetterApi,
                         onCheckedChange = { useLyricGetterApi = it }
                     )
@@ -475,7 +481,7 @@ fun EditRuleDialog(
                     },
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Save Rule")
+                    Text(stringResource(R.string.parser_save_rule))
                 }
             }
         }

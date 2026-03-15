@@ -103,6 +103,26 @@
     <string name="parser_order_artist_title">歌手-歌名</string>
     <string name="parser_order_title_artist">歌名-歌手</string>
     <string name="parser_lyric_settings">歌词设置</string>
+    <string name="parser_no_rules">暂无规则</string>
+    <string name="parser_no_rules_desc">点击加号来添加一个解析规则</string>
+    <string name="parser_rules_count">解析规则 (%d)</string>
+    <string name="parser_pkg_exists">包名已存在</string>
+    <string name="parser_app_info">应用信息</string>
+    <string name="parser_logic_title">解析逻辑</string>
+    <string name="parser_separator_label">分隔符</string>
+    <string name="parser_field_order_label">顺序</string>
+    <string name="parser_logic_header">来源与逻辑</string>
+    <string name="parser_logic_desc">歌词来源与功能</string>
+    <string name="parser_notify_lyric_desc">从通知标题中提取歌词</string>
+    <string name="parser_online_lyric_desc_short">从互联网 API 获取</string>
+    <string name="parser_super_lyric">SuperLyric API</string>
+    <string name="parser_super_lyric_desc_short">通过 SuperLyric 广播接收</string>
+    <string name="parser_lgetter_lyric">Lyric Getter API</string>
+    <string name="parser_lgetter_lyric_desc_short">通过 Lyric Getter 广播接收</string>
+    <string name="parser_save">保存</string>
+    <string name="parser_save_rule">保存规则</string>
+    <string name="parser_add_app_fmt">添加 %s</string>
+    <string name="parser_current_app">当前应用</string>
     
     <!-- 在线歌词设置 -->
     <string name="settings_use_online_lyrics">使用在线歌词 API</string>
@@ -167,10 +187,19 @@
     <string name="summary_view_logs">查看日志文件</string>
     <string name="faq_title">常见问题解答</string>
     <string name="faq_cat_guide">使用指引</string>
-    <string name="faq_q_guide">Q：如何使用免 Root（0-Hook）模式？</string>
-    <string name="faq_a_guide">A：本模式利用"通知栏歌词"或各应用的"蓝牙歌词"获取歌词。\n\n1. 支持 <b>QQ音乐</b>、<b>小米音乐</b> 和 <b>网易云音乐</b>。\n\n<b>网易云用户：</b>\n1. 连接蓝牙音频设备。\n2. 进入 <b>菜单 (左上角)</b> -> <b>设置</b> -> <b>通用</b>。\n3. 开启 <b>外接设备蓝牙歌词</b>。\n\n<b>QQ音乐用户：</b>\n1. 连接蓝牙音频设备。\n2. 进入 <b>我的</b> -> <b>更多 (右上角三横)</b> -> <b>设置</b>。\n3. 开启 <b>车载蓝牙歌词</b>。\n\n必须授予本应用"通知使用权"，并确保音乐 App 通知栏显示正常。</string>
+    <string name="faq_q_add_rule">Q：如何为我的音乐软件添加解析规则？</string>
+    <string name="faq_a_add_rule">请按照以下步骤添加：\n\n
+1. <b>开启应用设置</b>：先确认音乐应用内是否存在“通知栏歌词”“媒体通知歌词”或“车载蓝牙歌词”功能并开启。\n\n
+2. <b>添加解析规则</b>：在解析规则页面选择“添加音乐应用”。\n
+   • 填入应用名称和包名。\n
+   • 若开启了“推荐当前播放应用”，点击按键可自动填充。\n\n
+3. <b>配置解析逻辑</b>：\n
+   • 开启“媒体通知歌词”开关。\n
+   • 根据通知栏显示的格式选择正确的“分隔符”和“顺序”。\n\n
+4. <b>重启生效</b>：保存规则后，移除音乐应用后台并重新启动应用。\n\n
+<b>注意</b>：若无上述功能，可尝试开启 SuperLyric/Lyric Getter 选项或使用“在线歌词”作为备选。选择SuperLyric/Lyric Getter需要LSPosed环境支持，并确认你的音乐软件受到支持。</string>
     <string name="faq_q_super_island">Q：如何使用小米超级岛通知？</string>
-    <string name="faq_a_super_island">A：如果你已经root：可以使用HyperCeiler解除白名单；\n\n如果没有root：建议选择实时通知。或者你可以选择社区中的一些绕过小米超级岛白名单的应用，在他们进行绕过后，本应用的小米超级岛通知也可以上岛。注意，这种方法可能并不稳定并随时可能被小米官方修复，不推荐使用。</string>
+    <string name="faq_a_super_island">A：\n/n如果你已经root：可以使用HyperCeiler解除白名单；\n\n如果没有root：在shizuku为本应用授权，并开启“绕过小米超级岛白名单”即可，注意，这可能会造成耗电量增加和消息延迟</string>
     <string name="faq_cat_func">功能异常类</string>
     <string name="faq_q_no_lyrics">Q：为什么我看不到歌词？</string>
     <string name="faq_a_no_lyrics">A： 请按照以下步骤逐一排查：\n\n
@@ -220,9 +249,12 @@
     
     <!-- OOBE -->
     <string name="oobe_welcome_title">欢迎使用 Capsulyric</string>
-    <string name="oobe_welcome_subtitle">基于Live Update。 在你的状态栏体验灵动歌词。</string>
-    <string name="oobe_warning_hyperos_unsupported">⚠️ 系统暂不支持\n检测到您的 HyperOS 版本低于 3.0.300。灵动歌词功能依赖 HyperOS 3.0.300+ 原生支持，当前版本可能无法使用。</string>
-    <string name="oobe_warning_rom_untested">⚠️ 兼容性警告 在此操作系统上未经过完整测试，可能存在功能缺失或不稳定的情况。</string>
+    <string name="oobe_welcome_subtitle">基于Live Update和小米超级岛,在你的状态栏体验灵动歌词。</string>
+    <string name="oobe_status_perfectly_compatible">完美兼容</string>
+    <string name="oobe_warning_community_verified">⚠️ 社区已验证\n根据用户报告，在该 ROM 上 Live Update 运行良好，但开发者尚未进行官方测试。稳定性可能有所差异。</string>
+    <string name="oobe_warning_untested_system">⚠️ 未经测试的系统\n检测到 Android 16。理论上支持 Live Update，但目前尚无该 ROM 的使用报告。</string>
+    <string name="oobe_warning_super_island_limited">⚠️ 受限支持\n此版本暂不支持原生实时更新，将默认启用小米超级岛通知。</string>
+    <string name="oobe_error_unsupported_device">❌ 系统不受支持\n当前系统暂不支持。动态歌词功能需要 Android 16+ 或 HyperOS 3.0+。</string>
     <string name="oobe_privacy_notice">🔒 隐私优先\n本应用完全在本地运行。只有在您明确开启“在线歌词”时才会使用网络权限。我们绝不收集或传输您的个人数据。</string>
     
     <string name="oobe_step_permissions">权限设置</string>
@@ -248,6 +280,8 @@
     <string name="oobe_guide_apple">1. 需要 <b>Root</b> 权限 (Magisk/KernelSU)。\n2. 安装 <b>LSPosed</b> 框架。\n3. 安装 <b>SuperLyric</b> 模块。\n4. 在模块中启用 Apple Music。</string>
     
     <string name="oobe_app_not_in_list">我的应用不在列表中？</string>
+    <string name="oobe_i_understand">我已了解</string>
+    <string name="oobe_add_rule_guide_title">如何添加解析规则</string>
     
     <string name="oobe_step_finish">进入应用</string>
     <string name="oobe_finish_title">一切准备就绪</string>

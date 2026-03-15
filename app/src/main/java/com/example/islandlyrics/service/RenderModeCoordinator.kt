@@ -6,7 +6,7 @@ import com.example.islandlyrics.ui.common.SuperIslandHandler
 
 class RenderModeCoordinator(
     private val displayManager: LyricDisplayManager,
-    private val capsuleHandler: LyricCapsuleHandler,
+    private val capsuleHandler: LyricCapsuleHandler?,
     private val superIslandHandler: SuperIslandHandler
 ) {
     private var isSuperIslandMode = false
@@ -19,7 +19,7 @@ class RenderModeCoordinator(
 
     fun updateActiveHandler(playing: Boolean, hasLyric: Boolean) {
         if (isSuperIslandMode) {
-            if (capsuleHandler.isRunning()) {
+            if (capsuleHandler?.isRunning() == true) {
                 capsuleHandler.stop()
             }
             if (playing && hasLyric && superIslandHandler.isRunning != true) {
@@ -29,12 +29,12 @@ class RenderModeCoordinator(
             if (superIslandHandler.isRunning == true) {
                 superIslandHandler.stop()
             }
-            if (playing && hasLyric && !capsuleHandler.isRunning()) {
+            if (playing && hasLyric && capsuleHandler?.isRunning() == false) {
                 capsuleHandler.start()
             }
         }
 
-        if (capsuleHandler.isRunning() || superIslandHandler.isRunning == true) {
+        if (capsuleHandler?.isRunning() == true || superIslandHandler.isRunning == true) {
             displayManager.start()
         } else {
             displayManager.stop()
@@ -48,7 +48,7 @@ class RenderModeCoordinator(
                 superIslandHandler.stop()
             }
         } else {
-            if (capsuleHandler.isRunning()) {
+            if (capsuleHandler?.isRunning() == true) {
                 capsuleHandler.stop()
             }
         }
@@ -56,7 +56,7 @@ class RenderModeCoordinator(
 
     fun stopAll() {
         displayManager.stop()
-        if (capsuleHandler.isRunning()) {
+        if (capsuleHandler?.isRunning() == true) {
             capsuleHandler.stop()
         }
         if (superIslandHandler.isRunning == true) {
@@ -70,7 +70,7 @@ class RenderModeCoordinator(
                 superIslandHandler.render(state)
             }
         } else {
-            if (capsuleHandler.isRunning()) {
+            if (capsuleHandler?.isRunning() == true) {
                 capsuleHandler.render(state)
             }
         }

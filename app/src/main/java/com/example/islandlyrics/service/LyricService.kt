@@ -16,6 +16,7 @@ import android.os.Looper
 import androidx.lifecycle.Observer
 import com.example.islandlyrics.BuildConfig
 import com.example.islandlyrics.R
+import com.example.islandlyrics.core.platform.RomUtils
 import com.example.islandlyrics.core.logging.AppLogger
 import com.example.islandlyrics.core.logging.LogManager
 import com.example.islandlyrics.data.LyricRepository
@@ -145,7 +146,7 @@ class LyricService : Service() {
     private lateinit var superIslandHandler: SuperIslandHandler
     private lateinit var displayManager: LyricDisplayManager
     // Live Update builds read mode from prefs; otherwise default to SuperIsland
-    private var isSuperIslandMode = !BuildConfig.LIVE_UPDATE_ENABLED
+    private var isSuperIslandMode = !RomUtils.isLiveUpdateSupported()
 
     private val mediaActionReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
@@ -163,7 +164,7 @@ class LyricService : Service() {
     }
 
     private val prefsListener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { p, key ->
-        if (key == "super_island_enabled" && BuildConfig.LIVE_UPDATE_ENABLED) {
+        if (key == "super_island_enabled" && RomUtils.isLiveUpdateSupported()) {
             isSuperIslandMode = p.getBoolean(key, false)
             AppLogger.getInstance().log(TAG, "Mode Switched via Settings -> isSuperIslandMode: $isSuperIslandMode")
             renderModeCoordinator?.setMode(isSuperIslandMode)
@@ -175,13 +176,15 @@ class LyricService : Service() {
         super.onCreate()
         
         // Load mode from preferences when Live Update is enabled
-        if (BuildConfig.LIVE_UPDATE_ENABLED) {
+        if (RomUtils.isLiveUpdateSupported()) {
             isSuperIslandMode = getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE)
                 .getBoolean("super_island_enabled", false)
+        } else {
+            isSuperIslandMode = true
         }
 
         createNotificationChannel()
-        if (BuildConfig.LIVE_UPDATE_ENABLED) {
+        if (RomUtils.isLiveUpdateSupported()) {
             capsuleHandler = LyricCapsuleHandler(this, this)
         }
         superIslandHandler = SuperIslandHandler(this, this)
@@ -190,18 +193,16 @@ class LyricService : Service() {
                 renderModeCoordinator?.render(state)
             }
         }
-        if (BuildConfig.LIVE_UPDATE_ENABLED) {
-            renderModeCoordinator = RenderModeCoordinator(displayManager, capsuleHandler!!, superIslandHandler)
-            renderModeCoordinator!!.setMode(isSuperIslandMode)
-            delayedStopController = DelayedStopController(
-                handler = handler,
-                prefsProvider = { getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE) },
-                onStop = {
-                    renderModeCoordinator!!.stopForCurrentMode()
-                    AppLogger.getInstance().log(TAG, "🛑 Renderer stopped: Playback stopped (Delayed)")
-                }
-            )
-        }
+        renderModeCoordinator = RenderModeCoordinator(displayManager, capsuleHandler, superIslandHandler)
+        renderModeCoordinator!!.setMode(isSuperIslandMode)
+        delayedStopController = DelayedStopController(
+            handler = handler,
+            prefsProvider = { getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE) },
+            onStop = {
+                renderModeCoordinator!!.stopForCurrentMode()
+                AppLogger.getInstance().log(TAG, "🛑 Renderer stopped: Playback stopped (Delayed)")
+            }
+        )
 
         // Cache system services once here rather than in every IPC call
         cachedMediaSessionManager = getSystemService(Context.MEDIA_SESSION_SERVICE) as android.media.session.MediaSessionManager
@@ -248,9 +249,12 @@ class LyricService : Service() {
 
         // 1. Proactively sync the Super Island Mode preference
         val prefs = getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE)
-        if (BuildConfig.LIVE_UPDATE_ENABLED) {
+        if (RomUtils.isLiveUpdateSupported()) {
             isSuperIslandMode = prefs.getBoolean("super_island_enabled", false)
             renderModeCoordinator?.setMode(isSuperIslandMode)
+        } else {
+            isSuperIslandMode = true
+            renderModeCoordinator?.setMode(true)
         }
 
         // [Fix Task 1] Immediate Foreground Promotion
@@ -263,7 +267,7 @@ class LyricService : Service() {
         // 3. Promote to foreground (avoid redundant channel creation)
         if (isSuperIslandMode && superIslandHandler.isRunning == true) {
             displayManager.forceUpdate()
-        } else if (BuildConfig.LIVE_UPDATE_ENABLED && !isSuperIslandMode && capsuleHandler?.isRunning() == true) {
+        } else if (RomUtils.isLiveUpdateSupported() && !isSuperIslandMode && capsuleHandler?.isRunning() == true) {
             displayManager.forceUpdate()
         } else {
             // Only use fallback if service is starting up and no handler is ready yet

@@ -8,7 +8,6 @@ import com.example.islandlyrics.core.update.UpdateChecker
 import com.example.islandlyrics.core.theme.ThemeHelper
 import com.example.islandlyrics.core.platform.RomUtils
 import com.example.islandlyrics.feature.faq.FAQActivity
-import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
@@ -51,7 +50,7 @@ fun MiuixSettingsScreen(
     updateBuildText: String
 ) {
     val context = LocalContext.current
-    val prefs = remember { context.getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE) }
+    val prefs = remember { context.getSharedPreferences("IslandLyricsPrefs", android.content.Context.MODE_PRIVATE) }
     val scrollBehavior = MiuixScrollBehavior(rememberTopAppBarState())
 
     // State
@@ -416,7 +415,7 @@ fun MiuixSettingsScreen(
                         title = stringResource(R.string.about_version),
                         summary = updateVersionText,
                         onClick = {
-                            val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                            val cm = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as ClipboardManager
                             cm.setPrimaryClip(ClipData.newPlainText("Version", updateVersionText))
                             Toast.makeText(context, context.getString(R.string.toast_copied), Toast.LENGTH_SHORT).show()
                         }
@@ -432,7 +431,7 @@ fun MiuixSettingsScreen(
                         summary = updateBuildText,
                         onClick = {
                             // Copy to clipboard
-                            val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                            val cm = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as ClipboardManager
                             cm.setPrimaryClip(ClipData.newPlainText("Commit", updateBuildText))
                             Toast.makeText(context, context.getString(R.string.toast_copied), Toast.LENGTH_SHORT).show()
                             

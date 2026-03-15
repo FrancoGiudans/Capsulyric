@@ -188,12 +188,13 @@ class MediaMonitorService : NotificationListenerService() {
         }
     }
 
-    private fun recheckSessions() {
+    fun recheckSessions() {
         if (mediaSessionManager != null && componentName != null) {
             try {
                 // FORCE UPDATE: Reset metadata hash so next update propagates immediately
                 lastMetadataHash = 0
                 lastComputedIsPlaying = null
+                lastControllerSignatures = "" // Reset signature deduplication
                 updateControllers(mediaSessionManager?.getActiveSessions(componentName))
             } catch (e: SecurityException) {
                 AppLogger.getInstance().log(TAG, "Error refreshing sessions: ${e.message}")
@@ -276,6 +277,13 @@ class MediaMonitorService : NotificationListenerService() {
                                         }
                                     }
                                 }
+                                
+                                // Suggestion update: find the best candidate for recommendation
+                                // This ensures recommendations refresh when any app starts playing
+                                val suggestion = getSuggestionController()
+                                if (suggestion != null) {
+                                    updateMetadataForSuggestion(suggestion)
+                                }
                             }
 
                             override fun onMetadataChanged(metadata: MediaMetadata?) {
@@ -307,6 +315,12 @@ class MediaMonitorService : NotificationListenerService() {
         val primary = getPrimaryController()
         if (primary != null) {
             updateMetadataIfPrimary(primary)
+        }
+
+        // Suggestion update: find the best candidate for recommendation
+        val suggestionCandidate = getSuggestionController()
+        if (suggestionCandidate != null) {
+            updateMetadataForSuggestion(suggestionCandidate)
         }
         
         // Report Diagnostics
@@ -410,19 +424,49 @@ class MediaMonitorService : NotificationListenerService() {
                 return whitelistedPaused
             }
 
-            // Priority 3: Any Playing (Propagate for SUGGESTION only)
-            // This is critical for the "Add Rule" feature to discover new apps
+            // Priority 3: Oldest active (Fallback)
+            return activeControllers.firstOrNull()
+        }
+    }
+
+    private fun getSuggestionController(): MediaController? {
+        synchronized(activeControllers) {
+            // Priority 1: Playing + NOT whitelisted (The most likely one to add)
+            val playingNotWhitelisted = activeControllers.firstOrNull {
+                it.playbackState?.state == PlaybackState.STATE_PLAYING && !allowedPackages.contains(it.packageName)
+            }
+            if (playingNotWhitelisted != null) return playingNotWhitelisted
+
+            // Priority 2: Any Playing
             val anyPlaying = activeControllers.firstOrNull {
                 it.playbackState?.state == PlaybackState.STATE_PLAYING
             }
-            if (anyPlaying != null) {
-                // AppLogger.getInstance().log("Select", "Selected Priority 3 (Any+Playing): ${anyPlaying.packageName}")
-                return anyPlaying
-            }
+            if (anyPlaying != null) return anyPlaying
 
-            // Priority 4: Oldest active (Fallback)
+            // Priority 3: Any whitelisted but NOT playing (Still useful as backup)
+            val whitelisted = activeControllers.firstOrNull {
+                allowedPackages.contains(it.packageName)
+            }
+            if (whitelisted != null) return whitelisted
+
             return activeControllers.firstOrNull()
         }
+    }
+
+    private fun updateMetadataForSuggestion(controller: MediaController) {
+        val metadata = controller.metadata ?: return
+        val pkg = controller.packageName
+        
+        val rawTitle = metadata.getString(MediaMetadata.METADATA_KEY_TITLE)
+        val rawArtist = metadata.getString(MediaMetadata.METADATA_KEY_ARTIST)
+        val duration = metadata.getLong(MediaMetadata.METADATA_KEY_DURATION)
+
+        LyricRepository.getInstance().updateSuggestionMetadata(
+            title = rawTitle ?: "Unknown",
+            artist = rawArtist ?: "Unknown",
+            packageName = pkg,
+            duration = duration
+        )
     }
 
     private fun updateMetadataIfPrimary(controller: MediaController) {
@@ -434,19 +478,7 @@ class MediaMonitorService : NotificationListenerService() {
         val rawArtist = metadata.getString(MediaMetadata.METADATA_KEY_ARTIST)
         val duration = metadata.getLong(MediaMetadata.METADATA_KEY_DURATION)
 
-        // 1. ALWAYS propogate via SUGGESTION channel (for ParserRuleScreen)
-        // Logic Fix: Allow ANY playing OR PAUSED app to update suggestion
-        // This ensures users can see the app in "Add Rule" even if they paused it to switch apps
-        if (playbackState?.state == PlaybackState.STATE_PLAYING || 
-            playbackState?.state == PlaybackState.STATE_PAUSED ||
-            playbackState?.state == PlaybackState.STATE_BUFFERING) {
-            LyricRepository.getInstance().updateSuggestionMetadata(
-                title = rawTitle ?: "Unknown",
-                artist = rawArtist ?: "Unknown",
-                packageName = pkg,
-                duration = duration
-            )
-        }
+        // (Suggestion logic moved to updateMetadataForSuggestion)
 
         val primary = getPrimaryController() ?: return
 
@@ -697,6 +729,14 @@ class MediaMonitorService : NotificationListenerService() {
         fun refreshAlbumArtForPackage(@Suppress("UNUSED_PARAMETER") context: Context, packageName: String) {
             instance?.doRefreshAlbumArtForPackage(packageName)
                 ?: AppLogger.getInstance().d(TAG, "refreshAlbumArt: no running instance")
+        }
+
+        /**
+         * Triggers an immediate re-scan of active media sessions.
+         * Used by UI to ensure recommendations are current.
+         */
+        fun triggerRecheck() {
+            instance?.recheckSessions() ?: AppLogger.getInstance().d(TAG, "triggerRecheck: no running instance")
         }
         
         fun requestRebind(context: Context) {

@@ -56,6 +56,11 @@ fun MiuixParserRuleScreen(
         rules = ParserRuleHelper.loadRules(context)
     }
 
+    // Refresh recommendations on enter
+    LaunchedEffect(Unit) {
+        com.example.islandlyrics.service.MediaMonitorService.triggerRecheck()
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -122,7 +127,7 @@ fun MiuixParserRuleScreen(
                     if (showRecommendation) {
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "Add ${appLabel ?: "Current App"}",
+                            text = stringResource(R.string.parser_add_app_fmt, appLabel ?: stringResource(R.string.parser_current_app)),
                             color = MiuixTheme.colorScheme.onPrimary,
                             fontWeight = FontWeight.Medium
                         )
@@ -152,14 +157,14 @@ fun MiuixParserRuleScreen(
                 item {
                     Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
                         BasicComponent(
-                            title = "No Rules",
-                            summary = "Tap FAB to add a parser rule"
+                            title = stringResource(R.string.parser_no_rules),
+                            summary = stringResource(R.string.parser_no_rules_desc)
                         )
                     }
                 }
             } else {
                 item {
-                    SmallTitle(text = "Parser Rules (${rules.size})")
+                    SmallTitle(text = stringResource(R.string.parser_rules_count, rules.size))
                 }
                 item {
                     Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
@@ -203,7 +208,7 @@ fun MiuixParserRuleScreen(
                     if (index >= 0) updatedRules[index] = newRule
                 } else {
                     if (updatedRules.any { it.packageName == newRule.packageName }) {
-                        Toast.makeText(context, "Package already exists", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, context.getString(R.string.parser_pkg_exists), Toast.LENGTH_SHORT).show()
                     } else {
                         updatedRules.add(newRule)
                     }
@@ -346,62 +351,62 @@ fun MiuixEditRuleDialog(
                     .weight(1f, fill = false)
                     .verticalScroll(rememberScrollState())
             ) {
-                SmallTitle(text = "Application Info")
+                SmallTitle(text = stringResource(R.string.parser_app_info))
                 Card(modifier = Modifier.fillMaxWidth()) {
                     TextField(
                         value = customName,
                         onValueChange = { customName = it },
-                        label = "App Name (Optional)",
+                        label = stringResource(R.string.parser_app_name),
                         modifier = Modifier.fillMaxWidth()
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                     TextField(
                         value = packageName,
                         onValueChange = { packageName = it },
-                        label = "Package Name",
+                        label = stringResource(R.string.parser_package_name),
                         modifier = Modifier.fillMaxWidth(),
                         enabled = rule == null
                     )
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
-                SmallTitle(text = "Sources & Logic")
+                SmallTitle(text = stringResource(R.string.parser_logic_header))
                 Card(modifier = Modifier.fillMaxWidth()) {
                     SuperSwitch(
-                        title = "Media Notification Lyrics",
-                        summary = "Extract from notification title",
+                        title = stringResource(R.string.parser_car_protocol),
+                        summary = stringResource(R.string.parser_notify_lyric_desc),
                         checked = usesCarProtocol,
                         onCheckedChange = { usesCarProtocol = it }
                     )
                     if (usesCarProtocol) {
                         SuperDropdown(
-                            title = "Separator",
+                            title = stringResource(R.string.parser_separator_label),
                             items = separators,
                             selectedIndex = separatorIndex,
                             onSelectedIndexChange = { separatorIndex = it }
                         )
                         SuperDropdown(
-                            title = "Field Order",
-                            items = orders.map { if (it == FieldOrder.ARTIST_TITLE) "Artist - Title" else "Title - Artist" },
+                            title = stringResource(R.string.parser_field_order_label),
+                            items = orders.map { if (it == FieldOrder.ARTIST_TITLE) stringResource(R.string.parser_order_artist_title) else stringResource(R.string.parser_order_title_artist) },
                             selectedIndex = orderIndex,
                             onSelectedIndexChange = { orderIndex = it }
                         )
                     }
                     SuperSwitch(
-                        title = "Online Lyrics",
-                        summary = "Fetch from internet APIs",
+                        title = stringResource(R.string.settings_use_online_lyrics),
+                        summary = stringResource(R.string.parser_online_lyric_desc_short),
                         checked = useOnlineLyrics,
                         onCheckedChange = { useOnlineLyrics = it }
                     )
                     SuperSwitch(
-                        title = "SuperLyric API",
-                        summary = "Receive via broadcast",
+                        title = stringResource(R.string.parser_super_lyric),
+                        summary = stringResource(R.string.parser_super_lyric_desc_short),
                         checked = useSuperLyricApi,
                         onCheckedChange = { useSuperLyricApi = it }
                     )
                     SuperSwitch(
-                        title = "Lyric Getter API",
-                        summary = "Receive via Lyric Getter broadcast",
+                        title = stringResource(R.string.parser_lgetter_lyric),
+                        summary = stringResource(R.string.parser_lgetter_lyric_desc_short),
                         checked = useLyricGetterApi,
                         onCheckedChange = { useLyricGetterApi = it }
                     )
@@ -418,7 +423,7 @@ fun MiuixEditRuleDialog(
                     modifier = Modifier.weight(1f)
                 )
                 TextButton(
-                    text = "Save",
+                    text = stringResource(R.string.parser_save),
                     onClick = {
                         if (packageName.isNotBlank()) {
                             onSave(ParserRule(

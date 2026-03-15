@@ -40,9 +40,11 @@ fun MiuixFAQScreen(onBack: () -> Unit) {
         listOf(
             FAQCategory(
                 context.getString(R.string.faq_cat_guide),
-                listOf(
-                    QAItem(context.resources.getText(R.string.faq_q_guide), context.resources.getText(R.string.faq_a_guide)),
-                    QAItem(context.resources.getText(R.string.faq_q_super_island), context.resources.getText(R.string.faq_a_super_island))
+                listOfNotNull(
+                    QAItem(context.resources.getText(R.string.faq_q_add_rule), context.resources.getText(R.string.faq_a_add_rule)),
+                    if (com.example.islandlyrics.core.platform.RomUtils.isHyperOsVersionAtLeast(3, 0, 0)) {
+                        QAItem(context.resources.getText(R.string.faq_q_super_island), context.resources.getText(R.string.faq_a_super_island))
+                    } else null
                 )
             ),
             FAQCategory(

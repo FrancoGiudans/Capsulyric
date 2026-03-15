@@ -88,10 +88,10 @@ fun MiuixCustomSettingsScreen(
     var miuixEnabled by remember { mutableStateOf(prefs.getBoolean("ui_use_miuix", false)) }
     var predictiveBackEnabled by remember { mutableStateOf(prefs.getBoolean("predictive_back_enabled", false)) }
 
-    val isHyperOsSupported = remember { RomUtils.isHyperOsVersionAtLeast(3, 0, 300) }
-    val isHyperOs = remember { RomUtils.getRomType() == "HyperOS" }
-    LaunchedEffect(isHyperOsSupported) {
-        if (!isHyperOsSupported) {
+    val isLiveUpdateSupported = remember { RomUtils.isLiveUpdateSupported() }
+    val isHyperOs = remember { RomUtils.isHyperOs() }
+    LaunchedEffect(isLiveUpdateSupported) {
+        if (!isLiveUpdateSupported) {
             if (dynamicIconEnabled) {
                 dynamicIconEnabled = false
                 prefs.edit().putBoolean("dynamic_icon_enabled", false).apply()
@@ -208,30 +208,32 @@ fun MiuixCustomSettingsScreen(
                                         )
                                     }
                                     if (isHyperOs) {
-                                        SuperSwitch(
-                                            title = stringResource(R.string.settings_super_island),
-                                            summary = stringResource(R.string.settings_super_island_desc),
-                                            checked = superIslandEnabled,
-                                            onCheckedChange = { enabled ->
-                                                superIslandEnabled = enabled
-                                                prefs.edit().putBoolean("super_island_enabled", enabled).apply()
+                                        if (isLiveUpdateSupported) {
+                                            SuperSwitch(
+                                                title = stringResource(R.string.settings_super_island),
+                                                summary = stringResource(R.string.settings_super_island_desc),
+                                                checked = superIslandEnabled,
+                                                onCheckedChange = { enabled ->
+                                                    superIslandEnabled = enabled
+                                                    prefs.edit().putBoolean("super_island_enabled", enabled).apply()
 
-                                                // ⚡ Logic: If MiPlay is selected when enabling Super Island, switch to Off
-                                                if (enabled && actionStyle == "miplay") {
-                                                    actionStyle = "disabled"
-                                                    prefs.edit().putString("notification_actions_style", "disabled").apply()
-                                                }
+                                                    // ⚡ Logic: If MiPlay is selected when enabling Super Island, switch to Off
+                                                    if (enabled && actionStyle == "miplay") {
+                                                        actionStyle = "disabled"
+                                                        prefs.edit().putString("notification_actions_style", "disabled").apply()
+                                                    }
 
-                                                val action = if (enabled) {
-                                                    "ACTION_ENABLE_SUPER_ISLAND"
-                                                } else {
-                                                    "ACTION_DISABLE_SUPER_ISLAND"
+                                                    val action = if (enabled) {
+                                                        "ACTION_ENABLE_SUPER_ISLAND"
+                                                    } else {
+                                                        "ACTION_DISABLE_SUPER_ISLAND"
+                                                    }
+                                                    val intent = Intent(context, LyricService::class.java).setAction(action)
+                                                    context.startService(intent)
                                                 }
-                                                val intent = Intent(context, LyricService::class.java).setAction(action)
-                                                context.startService(intent)
-                                            }
-                                        )
-                                        if (superIslandEnabled) {
+                                            )
+                                        }
+                                        if (superIslandEnabled || !isLiveUpdateSupported) {
                                             SuperSwitch(
                                                 title = stringResource(R.string.settings_super_island_colorize),
                                                 summary = stringResource(R.string.settings_super_island_colorize_desc),
@@ -329,7 +331,7 @@ fun MiuixCustomSettingsScreen(
 
                                         }
                                     }
-                                    if (isHyperOsSupported && !superIslandEnabled) {
+                                    if (isLiveUpdateSupported && !superIslandEnabled) {
                                         SuperSwitch(
                                             title = stringResource(R.string.settings_dynamic_icon),
                                             summary = stringResource(R.string.settings_dynamic_icon_desc),
@@ -392,7 +394,7 @@ fun MiuixCustomSettingsScreen(
                                         stringResource(R.string.settings_action_style_off),
                                         stringResource(R.string.settings_action_style_media)
                                     )
-                                    if (isHyperOsSupported && !superIslandEnabled) {
+                                    if (isLiveUpdateSupported && !superIslandEnabled) {
                                         actionStyles.add("miplay")
                                         actionStyleNames.add(stringResource(R.string.settings_action_style_miplay))
                                     }

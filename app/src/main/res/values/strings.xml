@@ -104,6 +104,26 @@
     <string name="parser_order_artist_title">Artist-Title</string>
     <string name="parser_order_title_artist">Title-Artist</string>
     <string name="parser_lyric_settings">Lyric Settings</string>
+    <string name="parser_no_rules">No Rules</string>
+    <string name="parser_no_rules_desc">Tap FAB to add a parser rule</string>
+    <string name="parser_rules_count">Parser Rules (%d)</string>
+    <string name="parser_pkg_exists">Package already exists</string>
+    <string name="parser_app_info">Application Info</string>
+    <string name="parser_logic_title">Parsing Logic</string>
+    <string name="parser_separator_label">Separator</string>
+    <string name="parser_field_order_label">Field Order</string>
+    <string name="parser_logic_header">Sources &amp; Logic</string>
+    <string name="parser_logic_desc">Lyric Sources &amp; Features</string>
+    <string name="parser_notify_lyric_desc">Extract lyrics from notification title</string>
+    <string name="parser_online_lyric_desc_short">Fetch from internet APIs</string>
+    <string name="parser_super_lyric">SuperLyric API</string>
+    <string name="parser_super_lyric_desc_short">Receive via broadcast</string>
+    <string name="parser_lgetter_lyric">Lyric Getter API</string>
+    <string name="parser_lgetter_lyric_desc_short">Receive via Lyric Getter broadcast</string>
+    <string name="parser_save">Save</string>
+    <string name="parser_save_rule">Save Rule</string>
+    <string name="parser_add_app_fmt">Add %s</string>
+    <string name="parser_current_app">Current App</string>
     
     <!-- Online Lyrics Settings -->
     <string name="settings_use_online_lyrics">Use Online Lyrics API</string>
@@ -200,10 +220,19 @@
     <!-- FAQ Strings -->
     <string name="faq_title">FAQ</string>
     <string name="faq_cat_guide">Setup Guide</string>
-    <string name="faq_q_guide">Q: How do I set up the no-Root (0-Hook) mode?</string>
-    <string name="faq_a_guide">A: This mode uses \'Bluetooth Car Lyric\' protocol.\n\n1. Supports <b>QQ Music</b>, <b>Xiaomi Music</b> and <b>NetEase Music</b>.\n\n<b>NetEase Music:</b>\n1. Connect a Bluetooth audio device first.\n2. Go to <b>Menu (Top Left)</b> -> <b>Settings</b> -> <b>General</b>.\n3. Find and enable <b>External Device Bluetooth Lyrics</b>.\n\n<b>QQ Music:</b>\n1. Connect a Bluetooth audio device first.\n2. Go to <b>Me</b> -> <b>Menu (Top Right 3-lines)</b> -> <b>Settings</b>.\n3. Find and enable <b>Car Bluetooth Lyrics</b>.\n\nGrant \'Notification Access\' to this app.</string>
+    <string name="faq_q_add_rule">Q: How to add parser rules for my music app?</string>
+    <string name="faq_a_add_rule">Follow these steps to add a rule:\n\n
+1. <b>Enable App Settings</b>: Ensure features like "Notification Lyrics", "Media Notification Lyrics", or "Car Bluetooth Lyrics" are enabled in your music app.\n\n
+2. <b>Add Parser Rule</b>: Go to the Parser Rules page and select "Add Music App".\n
+   • Fill in the app name and package name.\n
+   • If "Recommend current playing app" is enabled, click the button to auto-fill.\n\n
+3. <b>Configure Parsing</b>:\n
+   • Enable "Media Notification Lyrics".\n
+   • Select the "Separator" and "Order" based on how the notification looks.\n\n
+4. <b>Restart to Apply</b>: Save the rule, remove the music app from recents, and restart it.\n\n
+<b>Note</b>: If the app lacks these features, try the SuperLyric/Lyric Getter options or "Online Lyrics" as a backup.</string>
     <string name="faq_q_super_island">Q: How to use Xiaomi Super Island notification?</string>
-    <string name="faq_a_super_island">A: If your device is rooted: You can use HyperCeiler to bypass the whitelist.\n\nIf not rooted: It is recommended to use Live Updates. Alternatively, you can use community apps that bypass the Xiaomi Super Island whitelist, allowing this app\'s notifications to appear on the island. Note that this method may be unstable and could be patched by Xiaomi at any time, so it is not recommended.</string>
+    <string name="faq_a_super_island">If rooted: Use HyperCeiler to bypass the whitelist.\n\nIf not rooted: Authorize this app in Shizuku and enable \'Bypass Xiaomi Super Island Whitelist\'. Note: This may increase power consumption and message delay.</string>
     <string name="faq_cat_func">Functionality Issues</string>
     <string name="faq_q_no_lyrics">Q: Why can\'t I see lyrics?</string>
     <string name="faq_a_no_lyrics">A: Please check the following steps:\n\n
@@ -256,9 +285,12 @@
 
     <!-- OOBE -->
     <string name="oobe_welcome_title">Welcome to Capsulyric</string>
-    <string name="oobe_welcome_subtitle">Based on Live Update. Experience dynamic lyrics in your status bar.</string>
-    <string name="oobe_warning_hyperos_unsupported">⚠️ System Not Supported Your HyperOS version is less than 3.0.300. The dynamic notifications feature requires HyperOS 3.0.300+ to function properly.</string>
-    <string name="oobe_warning_rom_untested">⚠️ Compatibility Warning This system have not been fully tested and may experience instability or missing features.</string>
+    <string name="oobe_welcome_subtitle">Based on Live Update and Xiaomi SuperIsland. Experience dynamic lyrics in your status bar.</string>
+    <string name="oobe_status_perfectly_compatible">Perfectly Compatible</string>
+    <string name="oobe_warning_community_verified">⚠️ Community Reported\nLive Update works on this ROM based on user reports, but the developer has not officially tested it. Stability may vary.</string>
+    <string name="oobe_warning_untested_system">⚠️ Untested System\nAndroid 16 detected. Live Update should work in theory, but there are no reports for this ROM yet.</string>
+    <string name="oobe_warning_super_island_limited">⚠️ Limited Support\nNative Live Update is unavailable on this version. Xiaomi Super Island notifications will be enabled by default.</string>
+    <string name="oobe_error_unsupported_device">❌ System Unsupported\nThis system is not yet supported. Dynamic lyrics require Android 16+ or HyperOS 3.0+.</string>
     <string name="oobe_privacy_notice">🔒 Privacy First\nThis app runs entirely locally. Internet access is ONLY used if you explicitly enable "Online Lyrics". We never collect or transmit your personal data.</string>
     
     <string name="oobe_step_permissions">Permissions</string>
@@ -284,6 +316,8 @@
     <string name="oobe_guide_apple">1. Requires <b>Root</b> (Magisk/KernelSU).\n2. Install <b>LSPosed</b> framework.\n3. Install the <b>SuperLyric</b> module.\n4. Enable the module for Apple Music.</string>
     
     <string name="oobe_app_not_in_list">My app is not in this list?</string>
+    <string name="oobe_i_understand">I understand</string>
+    <string name="oobe_add_rule_guide_title">How to add parser rules</string>
     
     <string name="oobe_step_finish">All Set!</string>
     <string name="oobe_finish_title">Ready to Go</string>

@@ -68,9 +68,10 @@ android {
             
             // Enable shrinking for debug to reduce size (e.g. from material-icons-extended)
             // Uses a specific config to disable obfuscation for easier debugging
-            minifyEnabled true
-            shrinkResources true
-            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-debug.pro'
+            minifyEnabled false
+            shrinkResources false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-debug.pro'
+
         }
         release {
             // Use custom keystore if available, otherwise use debug signing

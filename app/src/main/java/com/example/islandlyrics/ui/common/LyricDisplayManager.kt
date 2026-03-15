@@ -4,6 +4,7 @@ import android.content.Context
 import com.example.islandlyrics.core.platform.RomUtils
 import com.example.islandlyrics.data.lyric.OnlineLyricFetcher
 import com.example.islandlyrics.data.LyricRepository
+import com.example.islandlyrics.core.logging.LogManager
 import android.graphics.Bitmap
 import android.os.Handler
 import android.os.Looper
