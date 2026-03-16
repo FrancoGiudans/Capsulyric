@@ -71,13 +71,6 @@ fun MainScreen(
     onOpenDebug: () -> Unit,
     onOpenPromotedSettings: () -> Unit,
     onStatusCardTap: () -> Unit,
-    apiPermissionText: String,
-    apiCapabilityText: String,
-    apiFlagText: String,
-    apiPermissionActive: Boolean,
-    apiCapabilityActive: Boolean,
-    apiFlagActive: Boolean,
-    showApiCard: Boolean,
 ) {
     val repo = remember { LyricRepository.getInstance() }
     val context = LocalContext.current

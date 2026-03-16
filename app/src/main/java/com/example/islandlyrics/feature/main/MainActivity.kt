@@ -40,32 +40,9 @@ class MainActivity : BaseActivity() {
     private val handler = Handler(Looper.getMainLooper())
 
     // Compose state for API dashboard (driven by BroadcastReceiver + reflection checks)
-    private var apiPermissionText by mutableStateOf("Permission: Checking...")
-    private var apiCapabilityText by mutableStateOf("Notif.hasPromotable: Waiting...")
-    private var apiFlagText by mutableStateOf("Flag PROMOTED_ONGOING: Waiting...")
-    private var apiPermissionActive by mutableStateOf(false)
-    private var apiCapabilityActive by mutableStateOf(false)
-    private var apiFlagActive by mutableStateOf(false)
-    private var showApiCard by mutableStateOf(false)
     private var versionText by mutableStateOf("...")
     private var updateReleaseInfo by mutableStateOf<UpdateChecker.ReleaseInfo?>(null)
 
-    private val diagReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context, intent: Intent) {
-            if ("com.example.islandlyrics.STATUS_UPDATE" == intent.action) {
-                if (intent.hasExtra("hasPromotable")) {
-                    val hasPromotable = intent.getBooleanExtra("hasPromotable", false)
-                    apiCapabilityText = "Notif.hasPromotable: $hasPromotable"
-                    apiCapabilityActive = hasPromotable
-                }
-                if (intent.hasExtra("isPromoted")) {
-                    val isPromoted = intent.getBooleanExtra("isPromoted", false)
-                    apiFlagText = "Flag PROMOTED_ONGOING: $isPromoted"
-                    apiFlagActive = isPromoted
-                }
-            }
-        }
-    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -101,33 +78,26 @@ class MainActivity : BaseActivity() {
         setContent {
             if (useMiuix) {
                 MiuixAppTheme {
-                    MiuixMainScreen(
-                        versionText = versionText,
-                        isDebugBuild = BuildConfig.DEBUG,
-                        onOpenSettings = { startActivity(Intent(this@MainActivity, SettingsActivity::class.java)) },
-                        onOpenPersonalization = { startActivity(Intent(this@MainActivity, CustomSettingsActivity::class.java)) },
-                        onOpenWhitelist = { startActivity(Intent(this@MainActivity, ParserRuleActivity::class.java)) },
-                        onOpenDebug = {
-                            try {
-                                val clazz = Class.forName("com.example.islandlyrics.DebugCenterActivity")
-                                startActivity(Intent(this@MainActivity, clazz))
-                            } catch (e: Exception) {
-                                Toast.makeText(this@MainActivity, "Debug Activity not found", Toast.LENGTH_SHORT).show()
+                        MiuixMainScreen(
+                            versionText = versionText,
+                            isDebugBuild = BuildConfig.DEBUG,
+                            onOpenSettings = { startActivity(Intent(this@MainActivity, SettingsActivity::class.java)) },
+                            onOpenPersonalization = { startActivity(Intent(this@MainActivity, CustomSettingsActivity::class.java)) },
+                            onOpenWhitelist = { startActivity(Intent(this@MainActivity, ParserRuleActivity::class.java)) },
+                            onOpenDebug = {
+                                try {
+                                    val clazz = Class.forName("com.example.islandlyrics.DebugCenterActivity")
+                                    startActivity(Intent(this@MainActivity, clazz))
+                                } catch (e: Exception) {
+                                    Toast.makeText(this@MainActivity, "Debug Activity not found", Toast.LENGTH_SHORT).show()
+                                }
+                            },
+                            onOpenPromotedSettings = { openPromotedSettings() },
+                            onStatusCardTap = {
+                                MediaMonitorService.requestRebind(this@MainActivity)
+                                Toast.makeText(this@MainActivity, "Requesting Rebind...", Toast.LENGTH_SHORT).show()
                             }
-                        },
-                        onOpenPromotedSettings = { openPromotedSettings() },
-                        onStatusCardTap = {
-                            MediaMonitorService.requestRebind(this@MainActivity)
-                            Toast.makeText(this@MainActivity, "Requesting Rebind...", Toast.LENGTH_SHORT).show()
-                        },
-                        apiPermissionText = apiPermissionText,
-                        apiCapabilityText = apiCapabilityText,
-                        apiFlagText = apiFlagText,
-                        apiPermissionActive = apiPermissionActive,
-                        apiCapabilityActive = apiCapabilityActive,
-                        apiFlagActive = apiFlagActive,
-                        showApiCard = showApiCard,
-                    )
+                        )
                     
                     if (updateReleaseInfo != null) {
                         val showDialog = androidx.compose.runtime.remember(updateReleaseInfo) { androidx.compose.runtime.mutableStateOf(true) }
@@ -166,14 +136,7 @@ class MainActivity : BaseActivity() {
                         onStatusCardTap = {
                             MediaMonitorService.requestRebind(this@MainActivity)
                             Toast.makeText(this@MainActivity, "Requesting Rebind...", Toast.LENGTH_SHORT).show()
-                        },
-                        apiPermissionText = apiPermissionText,
-                        apiCapabilityText = apiCapabilityText,
-                        apiFlagText = apiFlagText,
-                        apiPermissionActive = apiPermissionActive,
-                        apiCapabilityActive = apiCapabilityActive,
-                        apiFlagActive = apiFlagActive,
-                        showApiCard = showApiCard,
+                        }
                     )
                     
                     if (updateReleaseInfo != null) {
@@ -195,20 +158,29 @@ class MainActivity : BaseActivity() {
 
     // API 36 Permission Check (Standard Runtime Permission)
     private fun checkPromotedNotificationPermission() {
-        if (checkSelfPermission("android.permission.POST_PROMOTED_NOTIFICATIONS") != PackageManager.PERMISSION_GRANTED) {
-            requestPermissions(arrayOf("android.permission.POST_PROMOTED_NOTIFICATIONS"), 102)
+        if (Build.VERSION.SDK_INT >= 36) {
+            if (checkSelfPermission("android.permission.POST_PROMOTED_NOTIFICATIONS") != PackageManager.PERMISSION_GRANTED) {
+                requestPermissions(arrayOf("android.permission.POST_PROMOTED_NOTIFICATIONS"), 102)
+            }
         }
     }
 
     private fun openPromotedSettings() {
-        try {
-            val intent = Intent("android.settings.MANAGE_APP_PROMOTED_NOTIFICATIONS")
-            intent.putExtra(Settings.EXTRA_APP_PACKAGE, packageName)
-            startActivity(intent)
-        } catch (e: Exception) {
-            val intent = Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
-            intent.putExtra(Settings.EXTRA_APP_PACKAGE, packageName)
-            startActivity(intent)
+        if (Build.VERSION.SDK_INT >= 36) {
+            try {
+                val intent = Intent("android.settings.MANAGE_APP_PROMOTED_NOTIFICATIONS")
+                intent.putExtra(Settings.EXTRA_APP_PACKAGE, packageName)
+                startActivity(intent)
+                return
+            } catch (e: Exception) {
+                // Fallback to standard settings
+            }
+        }
+        
+        val intent = Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+        intent.putExtra(Settings.EXTRA_APP_PACKAGE, packageName)
+        startActivity(intent)
+        if (Build.VERSION.SDK_INT >= 36) {
             Toast.makeText(this, "Promoted Settings not found, opening Notification Settings", Toast.LENGTH_SHORT).show()
         }
     }
@@ -223,29 +195,9 @@ class MainActivity : BaseActivity() {
         }
     }
 
-    // Check API Status
-    private fun checkApiStatusForDashboard() {
-        if (!BuildConfig.DEBUG) {
-            showApiCard = false
-            return
-        }
-        showApiCard = true
-
-        val nm = getSystemService(android.app.NotificationManager::class.java)
-        val granted = nm.canPostPromotedNotifications()
-
-        if (granted) {
-            apiPermissionText = "Permission (canPost): GRANTED ✅"
-            apiPermissionActive = true
-        } else {
-            apiPermissionText = "Permission (canPost): DENIED ❌"
-            apiPermissionActive = false
-        }
-    }
 
     override fun onResume() {
         super.onResume()
-        checkApiStatusForDashboard()
 
         // DIAGNOSTIC: Check actual permission state
         val listenerString = Settings.Secure.getString(contentResolver, "enabled_notification_listeners")
@@ -284,23 +236,8 @@ class MainActivity : BaseActivity() {
             AppLogger.getInstance().log("MainActivity", "✅ Service already connected")
         }
 
-        checkApiStatusForDashboard()
-
-        // Register Diag Receiver
-        val filter = IntentFilter()
-        filter.addAction("com.example.islandlyrics.DIAG_UPDATE")
-        filter.addAction("com.example.islandlyrics.STATUS_UPDATE")
-
-        registerReceiver(diagReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
     }
 
-    override fun onPause() {
-        super.onPause()
-        try {
-            unregisterReceiver(diagReceiver)
-        } catch (e: Exception) {
-        }
-    }
 
     companion object {
         private const val TAG = "IslandLyrics"

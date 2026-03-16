@@ -10,6 +10,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.media.session.PlaybackState
+import android.os.Build
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
@@ -385,20 +386,22 @@ class LyricService : Service() {
             )
 
         // Use ProgressStyle via Public API 36
-        // 1. Create ProgressStyle
-        val style = Notification.ProgressStyle()
+        if (Build.VERSION.SDK_INT >= 36) {
+            // 1. Create ProgressStyle
+            val style = Notification.ProgressStyle()
 
-        // 2. Set "StyledByProgress" (Critical for appearance)
-        style.setStyledByProgress(true)
+            // 2. Set "StyledByProgress" (Critical for appearance)
+            style.setStyledByProgress(true)
 
-        // 3. Create a Segment (Required by internal logic)
-        val segment = Notification.ProgressStyle.Segment(1)
+            // 3. Create a Segment (Required by internal logic)
+            val segment = Notification.ProgressStyle.Segment(1)
 
-        // 4. Set Segments List
-        style.setProgressSegments(listOf(segment))
+            // 4. Set Segments List
+            style.setProgressSegments(listOf(segment))
 
-        // 5. Apply Style to Builder
-        builder.style = style
+            // 5. Apply Style to Builder
+            builder.style = style
+        }
 
 
         // Unified Attributes (Chip, Promotion)
@@ -425,7 +428,9 @@ class LyricService : Service() {
     private fun applyLiveAttributes(builder: Notification.Builder, text: String) {
 
         // 1. Set Status Chip Text
-        builder.setShortCriticalText(text)
+        if (Build.VERSION.SDK_INT >= 36) {
+            builder.setShortCriticalText(text)
+        }
 
         // 2. Set Promoted Ongoing (Crucial for Chip visibility)
         // The method setRequestPromotedOngoing isn't exposed in standard Notification.Builder stubs,
@@ -434,7 +439,9 @@ class LyricService : Service() {
     }
 
     private fun applyPromotedFlagFallback(notification: Notification) {
-        notification.flags = notification.flags or Notification.FLAG_PROMOTED_ONGOING
+        if (Build.VERSION.SDK_INT >= 36) {
+            notification.flags = notification.flags or Notification.FLAG_PROMOTED_ONGOING
+        }
     }
 
     private fun broadcastStatus(status: String) {
@@ -484,19 +491,27 @@ class LyricService : Service() {
         intent.putExtra("status", modeStatus)
 
         // 2. Promotable Characteristics (API 36)
-        val hasChar = notification.hasPromotableCharacteristics()
-        intent.putExtra("hasPromotable", hasChar)
+        var hasChar = false
+        var isPromoted = false
+        if (Build.VERSION.SDK_INT >= 36) {
+            hasChar = notification.hasPromotableCharacteristics()
+            intent.putExtra("hasPromotable", hasChar)
 
-        // 3. Ongoing Flag (API 36)
-        val flagVal = Notification.FLAG_PROMOTED_ONGOING
-        val isPromoted = (notification.flags and flagVal) != 0
-        intent.putExtra("isPromoted", isPromoted)
+            // 3. Ongoing Flag (API 36)
+            val flagVal = Notification.FLAG_PROMOTED_ONGOING
+            isPromoted = (notification.flags and flagVal) != 0
+            intent.putExtra("isPromoted", isPromoted)
+        }
 
         sendBroadcast(intent)
 
         // --- Detailed Logging (DIAG_UPDATE) ---
         // 4. System Permission
-        val canPost = nm.canPostPromotedNotifications()
+        val canPost = if (Build.VERSION.SDK_INT >= 36) {
+            nm.canPostPromotedNotifications()
+        } else {
+            false
+        }
 
         // 5. Channel Status
         var channelStatus = "Unknown"

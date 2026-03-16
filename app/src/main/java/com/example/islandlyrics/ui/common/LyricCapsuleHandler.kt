@@ -16,6 +16,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
 import android.graphics.Bitmap
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import androidx.core.app.NotificationCompat
@@ -275,7 +276,9 @@ class LyricCapsuleHandler(
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             
         builder.setContentIntent(cachedContentIntent)
-        builder.setRequestPromotedOngoing(true)
+        if (Build.VERSION.SDK_INT >= 36) {
+            builder.setRequestPromotedOngoing(true)
+        }
 
         when (cachedActionStyle) {
             "media_controls" -> {
@@ -304,35 +307,37 @@ class LyricCapsuleHandler(
                 builder.setColor(barColor)
             }
 
-            if (progressPercent >= 0) {
-                val segment = NotificationCompat.ProgressStyle.Segment(100)
-                segment.setColor(barColor)
-                
-                val segments = ArrayList<NotificationCompat.ProgressStyle.Segment>()
-                segments.add(segment)
-                
-                val progressValue = progressPercent.coerceIn(0, 100)
-                
-                val progressStyle = NotificationCompat.ProgressStyle()
-                    .setProgressSegments(segments)
-                    .setStyledByProgress(true)
-                    .setProgress(progressValue)
-                
-                builder.setStyle(progressStyle)
-            } else {
-                val segment = NotificationCompat.ProgressStyle.Segment(100)
-                segment.setColor(barColorIndeterminate)
-                val segments = ArrayList<NotificationCompat.ProgressStyle.Segment>()
-                segments.add(segment)
-                
-                val progressStyle = NotificationCompat.ProgressStyle()
-                    .setProgressSegments(segments)
-                    .setProgressIndeterminate(true)
-                
-                builder.setStyle(progressStyle)
-            }
+            if (Build.VERSION.SDK_INT >= 36) {
+                if (progressPercent >= 0) {
+                    val segment = NotificationCompat.ProgressStyle.Segment(100)
+                    segment.setColor(barColor)
+                    
+                    val segments = ArrayList<NotificationCompat.ProgressStyle.Segment>()
+                    segments.add(segment)
+                    
+                    val progressValue = progressPercent.coerceIn(0, 100)
+                    
+                    val progressStyle = NotificationCompat.ProgressStyle()
+                        .setProgressSegments(segments)
+                        .setStyledByProgress(true)
+                        .setProgress(progressValue)
+                    
+                    builder.setStyle(progressStyle)
+                } else {
+                    val segment = NotificationCompat.ProgressStyle.Segment(100)
+                    segment.setColor(barColorIndeterminate)
+                    val segments = ArrayList<NotificationCompat.ProgressStyle.Segment>()
+                    segments.add(segment)
+                    
+                    val progressStyle = NotificationCompat.ProgressStyle()
+                        .setProgressSegments(segments)
+                        .setProgressIndeterminate(true)
+                    
+                    builder.setStyle(progressStyle)
+                }
 
-            builder.setShortCriticalText(shortText)
+                builder.setShortCriticalText(shortText)
+            }
 
         } catch (e: Exception) {
             LogManager.getInstance().e(context, TAG, "ProgressStyle failed: $e")
