@@ -199,7 +199,7 @@
 4. <b>重启生效</b>：保存规则后，移除音乐应用后台并重新启动应用。\n\n
 <b>注意</b>：若无上述功能，可尝试开启 SuperLyric/Lyric Getter 选项或使用“在线歌词”作为备选。选择SuperLyric/Lyric Getter需要LSPosed环境支持，并确认你的音乐软件受到支持。</string>
     <string name="faq_q_super_island">Q：如何使用小米超级岛通知？</string>
-    <string name="faq_a_super_island">A：\n/n如果你已经root：可以使用HyperCeiler解除白名单；\n\n如果没有root：在shizuku为本应用授权，并开启“绕过小米超级岛白名单”即可，注意，这可能会造成耗电量增加和消息延迟</string>
+    <string name="faq_a_super_island">A：\n\n如果你已经root：可以使用HyperCeiler解除白名单；\n\n如果没有root：在shizuku为本应用授权，并开启“绕过小米超级岛白名单”即可，注意，这可能会造成耗电量增加和消息延迟</string>
     <string name="faq_cat_func">功能异常类</string>
     <string name="faq_q_no_lyrics">Q：为什么我看不到歌词？</string>
     <string name="faq_a_no_lyrics">A： 请按照以下步骤逐一排查：\n\n

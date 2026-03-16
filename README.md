@@ -1,4 +1,4 @@
-# Capsulyric
+# <img src="app/src/main/res/mipmap-xxxhdpi/ic_launcher_foreground.png" width="60" height="60" valign="middle"> Capsulyric
 
 [![Latest Release](https://img.shields.io/github/v/release/FrancoGiudans/Capsulyric?include_prereleases&style=flat-square&label=Latest&color=orange)](https://github.com/FrancoGiudans/Capsulyric/releases/latest)
 [![Downloads](https://img.shields.io/github/downloads/FrancoGiudans/Capsulyric/total?style=flat-square&color=green)](https://github.com/FrancoGiudans/Capsulyric/releases)
@@ -6,72 +6,69 @@
 
 > **Provides status bar lyrics based on Live Update and Xiaomi SuperIsland.**
 
-> **提供基于 Live Update 和小米超级岛机制的状态栏歌词。**
+## Compatibility & Requirements (兼容性与要求)
 
----
+| Functions / 功能 | Requirements / 要求 | Supported Devices / 支持机型 |
+| :--- | :--- | :--- |
+| **Live Update (实况通知)** | Android 16+ <br> (HyperOS 3.0.300+) | Xiaomi 15 Series (Verified) <br> ColorOS, OneUI, AOSP (Community) |
+| **Xiaomi Super Island (小米超级岛)** | HyperOS 3.0 <br> & Android 15+ | HyperOS devices with <br> Root or Shizuku |
 
-## Compatibility (兼容性)
-
-* **Android Version**: Android 16+ (Baklava)
-* **HyperOS**: Version 3.0.300+ (Required for Live Update model)
+> [!NOTE]
+> Systems below Android 16 or HyperOS 3.0 do not support native dynamic lyrics.
+> 低于 Android 16 或 HyperOS 3.0 的系统不支持原生动态歌词。
 
 ---
 
 ## Working Modes (工作模式)
 
-### 1. Live Update
-* **Requirements**: Android 16+
-* **Special Note**: For HyperOS devices, OS version 3.0.300+ is required.
-> 要求 Android 16+
+### 1. Live Update (实况通知)
+*   **EN:** Generally supports **Android 16+**. For **HyperOS**, version **3.0.300+** is required.
+*   **CN:** 要求 **Android 16+**。针对小米设备，需要 **HyperOS 3.0.300+** 版本。
 
-> 针对小米设备，需要 **HyperOS 3.0.300+ 版本**。
-
-### 2. 小米超级岛 (Xiaomi Super Island)
-* **Requirements**: HyperOS 3.0+
-* **System**: Root access is required.
-> 要求 **HyperOS 3.0+**，且系统需要 **Root 权限**。
+### 2. Xiaomi Super Island (小米超级岛)
+*   **EN:** Requires **HyperOS 3.0** & **Android 15+**. System requires **Root access** or **Shizuku**.
+*   **CN:** 要求 **HyperOS 3.0** 且 **Android 15+**。系统需要 **Root 权限** 或 **Shizuku** 环境。
 
 ---
 
 ## Lyric Acquisition (歌词获取方式)
 
-1. **媒体通知歌词 (Media Notification Lyrics)**
-   * Detects lyrics from standard media notifications.
-2. **在线歌词 (Online Lyrics)**
-   * Fetches lyrics from online servers based on playback info.
-3. **[Superlyric API](https://github.com/HChenX/SuperLyric)**
-   * **Requirements**: Root access is required (LSPosed required).High accuracy.
-   * **要求**：设备已获取Root权限（要求LSPosed），准确度高。
-4. **[Lyric Getter](https://github.com/xiaowine/Lyric-Getter)**
-   * **Features**: Supports Meizu status bar lyrics and LSPatch hook (can be used without root).High accuracy.
-   * **特点**: 支持兼容魅族状态栏歌词以及 LSPatch hook（可免 root 使用）。准确度高。
+| Method / 方式 | Description / 说明 |
+| :--- | :--- |
+| **Media Notification** | Detects lyrics from standard notifications. / 从标准通知栏提取。 |
+| **Online Lyrics** | Fetches from online servers. / 从互联网服务器获取。 |
+| **Superlyric API** | High accuracy (Root/LSPosed required). / 准确度高（需 Root/LSPosed）。 |
+| **Lyric Getter** | Supports Meizu & LSPatch (non-root). / 支持魅族及免 Root 注入。 |
 
 ---
 
-## Screenshots
- (效果展示，展示机型为小米15，系统版本为HyperOS 3.0.300.7 Beta，展示版本为1.3_C219)
+## Screenshots (效果展示)
+*(展示机型：Xiaomi 15 | 系统版本：HyperOS 3.0.300.7 Beta)*
 
 ### App UI (界面风格)
 <p align="center">
   <b>Material Design</b> &nbsp;&nbsp;vs&nbsp;&nbsp; <b>MIUIX</b><br><br>
-  <img src="screenshots/1.png" width="48%" />
-  <img src="screenshots/miuix-1.png" width="48%" />
-  <br><br>
-  <b>Media Control (媒体控制弹窗)</b><br><br>
-  <img src="screenshots/4.png" width="48%" />
-  <img src="screenshots/miuix-4.png" width="48%" />
+  <img src="screenshots/1.png" width="45%" />
+  <img src="screenshots/miuix-1.png" width="45%" />
 </p>
 
-### Notification & Capsule (通知与胶囊)
+### Media Control (媒体控制弹窗)
 <p align="center">
-  <b>Live Update</b> &nbsp;&nbsp;vs&nbsp;&nbsp; <b>小米超级岛 (Xiaomi Super Island)</b><br><br>
-  <b>Notification (展开形态)</b><br><br>
-  <img src="screenshots/2.png" width="48%" />
-  <img src="screenshots/miuix-2.png" width="48%" />
-  <br><br>
-  <b>Capsule (胶囊形态)</b><br><br>
-  <img src="screenshots/3.png" width="48%" />
-  <img src="screenshots/miuix-3.png" width="48%" />
+  <img src="screenshots/4.png" width="45%" />
+  <img src="screenshots/miuix-4.png" width="45%" />
+</p>
+
+### Notification (通知形态)
+<p align="center">
+  <b>Live Update (实况通知)</b> &nbsp;&nbsp;vs&nbsp;&nbsp; <b>Xiaomi Super Island (小米超级岛)</b><br><br>
+  <img src="screenshots/2.png" width="45%" />
+  <img src="screenshots/miuix-2.png" width="45%" />
+</p>
+
+### Capsule (胶囊形态)
+<p align="center">
+  <img src="screenshots/3.png" width="45%" />
+  <img src="screenshots/miuix-3.png" width="45%" />
 </p>
 
 ---
@@ -79,54 +76,67 @@
 ## FAQ (常见问题解答)
 
 <details>
-<summary><b>Q1: 如何使用免 Root（0-Hook）模式？ (How to setup 0-Hook mode?)</b></summary>
-<br>
+<summary><b>Q1: 如何添加解析规则？ (How to add parser rules?)</b></summary>
 
-该模式利用“媒体通知歌词”获取歌词。
-支持 **QQ音乐**、**小米音乐** 和 **网易云音乐**。
-
-- **网易云用户 (NetEase)**: 连接蓝牙音频后，进入 左上角菜单 -> 设置 -> 通用 -> 开启“外接设备蓝牙歌词”。
-- **QQ音乐用户 (QQ Music)**: 连接蓝牙音频后，进入 右上角菜单 -> 设置 -> 开启“车载蓝牙歌词”。
-- **小米音乐用户 (Xiaomi Music)**: 进入设置开启“通知栏歌词”。
-
-*注意：必须授予本应用“通知使用权”，并确保音乐 App 通知栏显示正常。*
+> **CN:**
+> 1. **开启应用设置**：确认音乐应用内已开启“通知栏歌词”或“车载蓝牙歌词”。
+> 2. **添加解析规则**：在“解析规则”页面手动添加或使用“推荐”。
+> 3. **配置逻辑**：选择对应的“分隔符”和“顺序”并重启音乐应用。
+>
+> **EN:**
+> 1. **Enable App Settings**: Ensure "Notification/Car Lyrics" is enabled in your music app.
+> 2. **Add Rule**: Manually add or use "Recommend" in the Parser Rules page.
+> 3. **Configure**: Select the correct "Separator" and "Order", then restart the music app.
 </details>
 
 <details>
-<summary><b>Q2: 为什么我看不到歌词？ (Why can't I see lyrics?)</b></summary>
-<br>
+<summary><b>Q2: 如何使用小米超级岛？ (How to use Xiaomi Super Island?)</b></summary>
 
-请按照以下步骤逐一排查：
-1. **检查权限**: 请确保应用已获得所有必要的系统权限（尤其是通知使用权）。
-2. **确认系统版本**: 推荐 Android 16+ 或 HyperOS 3.0.300+。低于 3.0.300 的 HyperOS 无法显示原生实时通知。
-3. **检查第三方音乐App设置**: 部分版本可能需要连接耳机才能触发“车载蓝牙歌词”。如果使用 SuperLyric API（如 Apple Music），需安装相应模块并启用。
-4. **在线歌词限制**: 如果使用在线歌词，可能因网络或 API 限制暂时无法获取准确歌词。
+> **CN:**
+> - **已 Root**：推荐使用 HyperCeiler 插件解除白名单限制。
+> - **未 Root**：授权 Shizuku 并开启“绕过小米超级岛白名单”。注意可能导致耗电增加或消息延迟。
+>
+> **EN:**
+> - **Rooted**: Recommended to use HyperCeiler to bypass the whitelist.
+> - **Non-rooted**: Authorize Shizuku and enable "Bypass Xiaomi Super Island Whitelist". Note potential battery impact or message delay.
 </details>
 
 <details>
-<summary><b>Q3: 为什么首页一直提示“无法连接到服务”？ (Why does it say "Cannot connect to service"?)</b></summary>
-<br>
+<summary><b>Q3: 为什么看不到歌词？ (Why can't I see lyrics?)</b></summary>
 
-这通常是由于系统自动回收了权限导致的。部分系统会限制应用“通知使用权”的授权时长。
-**解决方法**: 请前往系统设置，重新授予本应用的通知使用权。
+> **CN:**
+> 1. **检查权限**: 确保“通知使用权”已开启。
+> 2. **版本要求**: 需 **Android 16+** 或 **HyperOS 3.0.300+**。低于 3.0.300 的 HyperOS 无法显示原生实况通知。
+> 3. **App设置**: 确认音乐 App 的蓝牙/通知歌词开关已打开。
+>
+> **EN:**
+> 1. **Permissions**: Check "Notification Access".
+> 2. **System**: Requires **Android 16+** or **HyperOS 3.0.300+**. HyperOS below 3.0.300 cannot show native live notifications.
+> 3. **App Settings**: Ensure lyrics settings are enabled in your music player.
 </details>
 
 <details>
-<summary><b>Q4: 如何获取日志 (Log) 提交反馈？ (How to get logs?)</b></summary>
-<br>
+<summary><b>Q4: 无法连接服务？ (Cannot connect to service?)</b></summary>
 
-如果遇到无法解决的问题，建议在 GitHub 提交 Issue 时附带日志：
-- **Debug 版本**: 自带 Log Console，可直接查看并复制日志。
-- **Release 版本**: 在 App 内找到版本号或 Commit 号，连续点击多次即可唤出 Log Console。
+> **CN:** 系统回收了权限。请重新手动授予“通知使用权”。
+>
+> **EN:** Permission revoked by system. Please re-grant "Notification Access".
+</details>
+
+<details>
+<summary><b>Q5: 如何反馈问题？ (How to submit feedback?)</b></summary>
+
+> **CN:** 请前往 [GitHub Issues](https://github.com/FrancoGiudans/Capsulyric/issues) 提交反馈，并附带通过点击版本号唤出的 **Log Console** 日志。
+>
+> **EN:** Please submit an issue at [GitHub Issues](https://github.com/FrancoGiudans/Capsulyric/issues) with logs from the **Log Console** (tap version/commit to open).
 </details>
 
 ---
 
 ## Privacy (隐私说明)
 
-* **No Data Transmission**: If **Online Lyrics** is disabled, the app does not transmit any data. Everything stays local.
-* **Online Mode**: When **Online Lyrics** is enabled, only playback information (title, artist, album) is sent to the API interface to fetch lyrics.
-> **隐私声明**：如果不开启“在线歌词”功能，本软件不会传输任何数据。开启后，只会向 API 接口发送当前播放信息以获取歌词。
+*   **Offline Mode**: No data transmission. / 不传输任何数据。
+*   **Online Mode**: Only playback info sent for lyrics. / 仅发送播放信息以获取歌词。
 
 ---
 
@@ -140,9 +150,9 @@ cd Capsulyric
 
 ---
 
-## 开源协议 / License
+## License (开源协议)
 
-本项目基于 [GPL-3.0](LICENSE) 协议开源。
+Projects is licensed under [GPL-3.0](LICENSE).
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 
@@ -150,10 +160,10 @@ cd Capsulyric
 
 ## Credits (致谢)
 
-* [SuperLyric](https://github.com/HChenX/SuperLyric) (GPL-3.0)
-* [SuperLyricAPI](https://github.com/HChenX/SuperLyricApi) (LGPL-2.1)
-* [Lyric Getter API](https://github.com/xiaowine/Lyric-Getter-Api)（LGPL-2.1）
-* [InstallerX Revive](https://github.com/wxxsfxyzm/InstallerX-Revived) (GPL-3.0)
-* [Lyricify-Lyrics-Helper](https://github.com/WXRIW/Lyricify-Lyrics-Helper) (Apache-2.0)
-* [compose-miuix-ui/miuix](https://github.com/compose-miuix-ui/miuix) (Apache-2.0)
-* [HyperNotification](https://github.com/xzakota/HyperNotification) (Apache-2.0)
+*   [SuperLyric](https://github.com/HChenX/SuperLyric) (GPL-3.0)
+*   [SuperLyricAPI](https://github.com/HChenX/SuperLyricApi) (LGPL-2.1)
+*   [Lyric Getter API](https://github.com/xiaowine/Lyric-Getter-Api) (LGPL-2.1)
+*   [InstallerX Revive](https://github.com/wxxsfxyzm/InstallerX-Revived) (GPL-3.0)
+*   [Lyricify-Lyrics-Helper](https://github.com/WXRIW/Lyricify-Lyrics-Helper) (Apache-2.0)
+*   [compose-miuix-ui/miuix](https://github.com/compose-miuix-ui/miuix) (Apache-2.0)
+*   [HyperNotification](https://github.com/xzakota/HyperNotification) (Apache-2.0)
