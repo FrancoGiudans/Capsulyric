@@ -4,7 +4,16 @@ on:
   push:
     branches: [ "develop" ]
     tags: [ "v*" ]
+    paths-ignore:
+      - '**.md'
+      - '.gitignore'
+      - 'screenshots/**'
+      - 'LICENSE'
   workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
