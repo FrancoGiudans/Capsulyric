@@ -168,7 +168,6 @@ fun WelcomeStep() {
                 SystemStatus.UntestedA16 -> MaterialTheme.colorScheme.tertiaryContainer to R.string.oobe_warning_untested_system
                 SystemStatus.SuperIslandOnly -> MaterialTheme.colorScheme.tertiaryContainer to R.string.oobe_warning_super_island_limited
                 SystemStatus.Unsupported -> MaterialTheme.colorScheme.errorContainer to R.string.oobe_error_unsupported_device
-                else -> MaterialTheme.colorScheme.surfaceVariant to R.string.oobe_welcome_subtitle
             }
             
             Card(

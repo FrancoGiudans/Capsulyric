@@ -732,11 +732,11 @@ class MediaMonitorService : NotificationListenerService() {
             val entry = history.getJSONObject(i)
             if (entry.getString("pkg") == pkg) {
                 val savedDuration = entry.getLong("duration")
-                val savedArtist = entry.optString("artist", null)
+                val savedArtist = entry.opt("artist") as? String
                 
                 // Validate: Duration must match (±1s) and artist must match
                 if (kotlin.math.abs(savedDuration - currentDuration) < 1000L && savedArtist == currentArtist) {
-                    packageRealTitle[pkg] = entry.optString("title", null as String?)
+                    packageRealTitle[pkg] = entry.opt("title") as? String
                     packageRealArtist[pkg] = savedArtist
                     packageLyricMode[pkg] = entry.getBoolean("mode")
                     packageLastDuration[pkg] = savedDuration

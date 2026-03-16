@@ -75,6 +75,7 @@
     <string name="settings_recommend_media_app">Recommend current media app</string>
     <string name="settings_recommend_media_app_desc">Automatically recommend the current media app when entering rule settings</string>
     <string name="settings_help_about_header">Help &amp; About</string>
+    <string name="settings_dynamic_icon_desc">Show song/artist, only for HyperOS 3.0.300+</string>
 
     
     <string name="channel_live_lyrics">Live Lyrics Updates</string>
