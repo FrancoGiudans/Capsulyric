@@ -147,13 +147,13 @@
     <string name="settings_auto_update">Auto-check for updates</string>
     <string name="settings_auto_update_desc">Check for new versions on app launch</string>
     <string name="settings_prerelease_update">Receive Prerelease Updates</string>
-    <string name="settings_prerelease_update_desc">Check for Alpha/Beta versions</string>
+    <string name="settings_prerelease_update_desc">Check for Alpha/Beta/Pre/Canary versions</string>
     <string name="dialog_prerelease_warning_title">Enable Prerelease Updates?</string>
     <string name="dialog_prerelease_warning_message">Prerelease versions (Alpha/Beta) may contain bugs and are not suitable for daily use.  Are you sure you want to receive these updates?</string>
     <string name="settings_prerelease_channel">Prerelease Channel</string>
     <string name="settings_prerelease_desc">Prerelease Channel Explanation</string>
     <string name="dialog_prerelease_desc_title">Prerelease Channels</string>
-    <string name="dialog_prerelease_desc_message">• <b>Alpha Channel</b>: Early development stage. Low stability, may contain severe bugs. Includes experimental features and potential breaking changes.\n\n• <b>Beta Channel</b>: Feature-complete stage. No major new features or breaking changes. Focuses on UI/UX refinements and minor adjustments.\n\n• <b>Pre Channel</b>: Highly stable. No further functional changes. Dedicated to stability improvements and performance tuning for the final release.</string>
+    <string name="dialog_prerelease_desc_message">• <b>Alpha Channel</b>: Early development stage. Low stability, may contain severe bugs. Includes experimental features and potential breaking changes.\n\n• <b>Beta Channel</b>: Feature-complete stage. No major new features or breaking changes. Focuses on UI/UX refinements and minor adjustments.\n\n• <b>Pre Channel</b>: Highly stable. No further functional changes. Dedicated to stability improvements and performance tuning for the final release.\n\n• <b>Canary Channel</b>: Rolling release automatically built by CI. Includes the absolute latest commits. May be unstable but offers the fastest access to new features.</string>
     
     <!-- Main Activity -->
     <string name="main_service_status">🔴 Service Status: Unknown</string>

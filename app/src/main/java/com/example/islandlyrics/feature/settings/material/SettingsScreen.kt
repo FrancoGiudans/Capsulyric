@@ -337,7 +337,7 @@ fun SettingsScreen(
                                 expanded = showChannelDropdown,
                                 onDismissRequest = { showChannelDropdown = false }
                             ) {
-                                val channels = listOf("Alpha", "Beta", "Pre")
+                                val channels = listOf("Alpha", "Beta", "Pre", "Canary")
                                 channels.forEach { ch ->
                                     DropdownMenuItem(
                                         text = { Text(ch) },

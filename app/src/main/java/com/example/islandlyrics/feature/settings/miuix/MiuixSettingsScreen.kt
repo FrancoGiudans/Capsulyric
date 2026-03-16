@@ -259,8 +259,8 @@ fun MiuixSettingsScreen(
                     )
 
                     if (prereleaseEnabled) {
-                        val channelOptions = listOf("Alpha", "Beta", "Pre")
-                        val channelNames = listOf("Alpha", "Beta", "Pre")
+                        val channelOptions = listOf("Alpha", "Beta", "Pre", "Canary")
+                        val channelNames = listOf("Alpha", "Beta", "Pre", "Canary")
                         
                         val currentChannel = UpdateChecker.getPrereleaseChannel(context)
                         val channelIndex = channelOptions.indexOf(currentChannel).takeIf { it >= 0 } ?: 0

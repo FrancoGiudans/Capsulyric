@@ -162,6 +162,17 @@ object UpdateChecker {
                 val includePrerelease = isPrereleaseEnabled(context)
                 val userChannel = if (includePrerelease) getPrereleaseChannel(context) else "Release"
 
+                // For Canary channel, we prioritize the Canary.Version release
+                if (userChannel == "Canary") {
+                    for (i in 0 until jsonArray.length()) {
+                        val json = jsonArray.getJSONObject(i)
+                        val release = parseRelease(json)
+                        if (release.tagName == "Canary.Version") {
+                            return@withContext release
+                        }
+                    }
+                }
+
                 for (i in 0 until jsonArray.length()) {
                     val json = jsonArray.getJSONObject(i)
                     val release = parseRelease(json)
@@ -229,6 +240,18 @@ object UpdateChecker {
                 val currentVersion = currentVersionOverride ?: BuildConfig.VERSION_NAME
                 val userChannel = if (includePrerelease) getPrereleaseChannel(context) else "Release"
                 val newerReleases = mutableListOf<ReleaseInfo>()
+
+                // Special handling for Canary channel
+                if (userChannel == "Canary") {
+                    val canaryRelease = allReleases.find { it.tagName == "Canary.Version" }
+                    if (canaryRelease != null) {
+                        val remoteVersion = extractVersionFromTitle(canaryRelease.name)
+                        if (compareVersions(remoteVersion, currentVersion) > 0) {
+                            return@withContext canaryRelease
+                        }
+                    }
+                    return@withContext null
+                }
                 
                 for (release in allReleases) {
                     val remoteVersion = release.tagName.removePrefix("v")
@@ -341,10 +364,24 @@ object UpdateChecker {
             
             return commit1.compareTo(commit2)
         } catch (e: Exception) {
-            AppLogger.getInstance().e(TAG, "Version comparison error", e)
+            AppLogger.getInstance().e(TAG, "Version comparison error: v1=$v1, v2=$v2", e)
             return 0
         }
     }
+
+    /**
+     * Helper to extract build number from release title if tag is static.
+     * "Canary Build (Rolling) _C123" -> "Canary.Version_C123"
+     */
+    private fun extractVersionFromTitle(title: String): String {
+        val cIdx = title.lastIndexOf("_C")
+        if (cIdx >= 0) {
+            val buildNum = title.substring(cIdx + 2).filter { it.isDigit() }
+            return "Canary.Version_C$buildNum"
+        }
+        return "Canary.Version"
+    }
+
 
     /**
      * Extract commit count from version string.
@@ -395,6 +432,11 @@ object UpdateChecker {
         // Alpha channel: allows Alpha, Beta, Pre (and stable)
         if (userChannel == "Alpha") {
             return isAlpha || isBeta || isPre
+        }
+        
+        // Canary channel: allows Canary.Version
+        if (userChannel == "Canary") {
+            return tagName == "Canary.Version"
         }
         
         return false
