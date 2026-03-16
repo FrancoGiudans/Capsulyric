@@ -438,7 +438,8 @@ fun SettingsScreen(
                     value = updateVersionText,
                     onClick = {
                         val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                        cm.setPrimaryClip(ClipData.newPlainText("Version", updateVersionText))
+                        val copyText = "$updateVersionText ($updateBuildText)"
+                        cm.setPrimaryClip(ClipData.newPlainText("Version", copyText))
                         Toast.makeText(context, context.getString(R.string.toast_copied), Toast.LENGTH_SHORT).show()
                     }
                 )
@@ -452,11 +453,6 @@ fun SettingsScreen(
                     title = stringResource(R.string.about_commit),
                     value = updateBuildText,
                     onClick = {
-                        // Copy to clipboard
-                        val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                        cm.setPrimaryClip(ClipData.newPlainText("Commit", updateBuildText))
-                        Toast.makeText(context, context.getString(R.string.toast_copied), Toast.LENGTH_SHORT).show()
-                        
                         // Dev mode trigger logic
                         devStepCount++
                          if (devStepCount in 3..6) {

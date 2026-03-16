@@ -109,57 +109,41 @@ fun CapsulePreview(
         ) {
             // --- LEFT AREA (ICON) ---
             if (dynamicIconEnabled) {
-                when (iconStyle) {
-                    "advanced" -> {
-                        // Advanced: [Art] [Title/Artist]
-                        // Album Art
-                        if (albumArt != null) {
-                            Image(
-                                bitmap = albumArt!!.asImageBitmap(),
-                                contentDescription = null,
-                                modifier = Modifier
-                                    .size(40.dp) // 40dp fits safely in 56dp height
-                                    .clip(RoundedCornerShape(8.dp)),
-                                contentScale = ContentScale.Crop
-                            )
-                        } else {
-                            Box(
-                                modifier = Modifier
-                                    .size(40.dp)
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .background(Color.DarkGray)
-                            )
-                        }
-                        
-                        Spacer(modifier = Modifier.width(8.dp))
-                        
-                        // Text Info
-                        Column(
-                            verticalArrangement = Arrangement.Center,
-                            modifier = Modifier.widthIn(max = 120.dp)
-                        ) {
-                            Text(
-                                text = title,
-                                color = Color.White,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 14.sp,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
-                    }
-                    else -> {
-                        // Classic: Text Only [Title - Artist]
-                         Text(
-                            text = "$title - $artist",
-                            color = Color.White,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 14.sp,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.widthIn(max = 140.dp)
-                        )
-                    }
+                // Advanced: [Art] [Title/Artist]
+                // Album Art
+                if (albumArt != null) {
+                    Image(
+                        bitmap = albumArt!!.asImageBitmap(),
+                        contentDescription = null,
+                        modifier = Modifier
+                            .size(40.dp) // 40dp fits safely in 56dp height
+                            .clip(RoundedCornerShape(8.dp)),
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(Color.DarkGray)
+                    )
+                }
+                
+                Spacer(modifier = Modifier.width(8.dp))
+                
+                // Text Info
+                Column(
+                    verticalArrangement = Arrangement.Center,
+                    modifier = Modifier.widthIn(max = 120.dp)
+                ) {
+                    Text(
+                        text = title,
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
                 }
             } else {
                  // Disabled: App Icon (Music Note) - NO BACKGROUND

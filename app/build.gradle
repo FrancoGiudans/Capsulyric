@@ -27,7 +27,7 @@ if (localPropertiesFile.exists()) {
 
 android {
     namespace = 'com.example.islandlyrics'
-    compileSdk 36
+    compileSdk = 36
 
     // Check if custom keystore is available
     def keystorePath = localProperties.getProperty('store.file')
@@ -45,13 +45,13 @@ android {
     }
 
     defaultConfig {
-        versionCode getGitCommitCount()
-        applicationId "com.franco.capsulyric"
-        minSdk 35
-        targetSdk 36
+        versionCode = getGitCommitCount()
+        applicationId = "com.franco.capsulyric"
+        minSdk = 35
+        targetSdk = 36
 
         def baseVersion = project.hasProperty("versionName") ? project.versionName : "Canary.Version"
-        versionName "${baseVersion}_C${getGitCommitCount()}"
+        versionName = "${baseVersion}_C${getGitCommitCount()}"
 
         buildConfigField "String", "GIT_COMMIT_HASH", "\"${getGitCommitHash()}\""
         buildConfigField "boolean", "LIVE_UPDATE_ENABLED", "true"
@@ -63,20 +63,20 @@ android {
 
     buildTypes {
         debug {
-            applicationIdSuffix ".debug"
+            applicationIdSuffix = ".debug"
             resValue "string", "app_name", "Capsulyric Debug"
             
             // Enable shrinking for debug to reduce size (e.g. from material-icons-extended)
             // Uses a specific config to disable obfuscation for easier debugging
-            minifyEnabled false
-            shrinkResources false
+            minifyEnabled = false
+            shrinkResources = false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-debug.pro'
 
         }
         release {
             // Use custom keystore if available, otherwise use debug signing
             signingConfig = hasCustomKeystore ? signingConfigs.release : signingConfigs.debug
-            minifyEnabled true
+            minifyEnabled = true
             shrinkResources = true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }

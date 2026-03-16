@@ -69,8 +69,7 @@ fun MiuixCustomSettingsScreen(
     // State
     var followSystem by remember { mutableStateOf(prefs.getBoolean("theme_follow_system", true)) }
     var darkMode by remember { mutableStateOf(prefs.getBoolean("theme_dark_mode", false)) }
-    var dynamicIconEnabled by remember { mutableStateOf(prefs.getBoolean("dynamic_icon_enabled", false)) }
-    var iconStyle by remember { mutableStateOf(prefs.getString("dynamic_icon_style", "classic") ?: "classic") }
+    var iconStyle by remember { mutableStateOf(prefs.getString("dynamic_icon_style", "disabled") ?: "disabled") }
 
     var actionStyle by remember { mutableStateOf(prefs.getString("notification_actions_style", "disabled") ?: "disabled") }
     var notificationClickStyle by remember { mutableStateOf(prefs.getString("notification_click_style", "default") ?: "default") }
@@ -92,9 +91,9 @@ fun MiuixCustomSettingsScreen(
     val isHyperOs = remember { RomUtils.isHyperOs() }
     LaunchedEffect(isLiveUpdateSupported) {
         if (!isLiveUpdateSupported) {
-            if (dynamicIconEnabled) {
-                dynamicIconEnabled = false
-                prefs.edit().putBoolean("dynamic_icon_enabled", false).apply()
+            if (iconStyle != "disabled") {
+                iconStyle = "disabled"
+                prefs.edit().putString("dynamic_icon_style", "disabled").apply()
             }
             if (actionStyle == "miplay") {
                 actionStyle = "disabled"
@@ -176,10 +175,9 @@ fun MiuixCustomSettingsScreen(
                     when (page) {
                         0 -> { // Capsule
                             item {
-                                val previewDynamicIconEnabled = if (superIslandEnabled) true else dynamicIconEnabled
                                 val previewIconStyle = if (superIslandEnabled) "advanced" else iconStyle
                                 CapsulePreview(
-                                    dynamicIconEnabled = previewDynamicIconEnabled,
+                                    dynamicIconEnabled = if (superIslandEnabled) true else iconStyle != "disabled",
                                     iconStyle = previewIconStyle,
                                     oneuiCapsuleColorEnabled = oneuiCapsuleColorEnabled
                                 )
@@ -332,34 +330,23 @@ fun MiuixCustomSettingsScreen(
                                         }
                                     }
                                     if (isLiveUpdateSupported && !superIslandEnabled) {
-                                        SuperSwitch(
-                                            title = stringResource(R.string.settings_dynamic_icon),
-                                            summary = stringResource(R.string.settings_dynamic_icon_desc),
-                                            checked = dynamicIconEnabled,
-                                            onCheckedChange = {
-                                                dynamicIconEnabled = it
-                                                prefs.edit().putBoolean("dynamic_icon_enabled", it).apply()
+                                        val iconStyles = listOf("disabled", "advanced")
+                                        val iconStyleNames = listOf(
+                                            stringResource(R.string.icon_style_disabled),
+                                            stringResource(R.string.icon_style_advanced)
+                                        )
+                                        val currentIconIndex = iconStyles.indexOf(iconStyle).takeIf { it >= 0 } ?: 0
+                                        
+                                        SuperDropdown(
+                                            title = stringResource(R.string.settings_icon_style),
+                                            items = iconStyleNames,
+                                            selectedIndex = currentIconIndex,
+                                            onSelectedIndexChange = { index ->
+                                                val newStyle = iconStyles[index]
+                                                iconStyle = newStyle
+                                                prefs.edit().putString("dynamic_icon_style", newStyle).apply()
                                             }
                                         )
-                                        if (dynamicIconEnabled) {
-                                            val iconStyles = listOf("classic", "advanced")
-                                            val iconStyleNames = listOf(
-                                                stringResource(R.string.icon_style_classic),
-                                                stringResource(R.string.icon_style_advanced)
-                                            )
-                                            val currentIconIndex = iconStyles.indexOf(iconStyle).takeIf { it >= 0 } ?: 0
-                                            
-                                            SuperDropdown(
-                                                title = stringResource(R.string.settings_icon_style),
-                                                items = iconStyleNames,
-                                                selectedIndex = currentIconIndex,
-                                                onSelectedIndexChange = { index ->
-                                                    val newStyle = iconStyles[index]
-                                                    iconStyle = newStyle
-                                                    prefs.edit().putString("dynamic_icon_style", newStyle).apply()
-                                                }
-                                            )
-                                        }
                                     }
                                 }
                             }

@@ -88,8 +88,7 @@ fun CustomSettingsScreen(
     var darkMode by remember { mutableStateOf(prefs.getBoolean("theme_dark_mode", false)) }
     var pureBlack by remember { mutableStateOf(prefs.getBoolean("theme_pure_black", false)) }
     var dynamicColor by remember { mutableStateOf(prefs.getBoolean("theme_dynamic_color", true)) }
-    var dynamicIconEnabled by remember { mutableStateOf(prefs.getBoolean("dynamic_icon_enabled", false)) }
-    var iconStyle by remember { mutableStateOf(prefs.getString("dynamic_icon_style", "classic") ?: "classic") }
+    var iconStyle by remember { mutableStateOf(prefs.getString("dynamic_icon_style", "disabled") ?: "disabled") }
     
     // Dialog State
     var showLanguageDialog by remember { mutableStateOf(false) }
@@ -150,9 +149,9 @@ fun CustomSettingsScreen(
     // Force disable unsupported features
     LaunchedEffect(isLiveUpdateSupported) {
         if (!isLiveUpdateSupported) {
-            if (dynamicIconEnabled) {
-                dynamicIconEnabled = false
-                prefs.edit().putBoolean("dynamic_icon_enabled", false).apply()
+            if (iconStyle != "disabled") {
+                iconStyle = "disabled"
+                prefs.edit().putString("dynamic_icon_style", "disabled").apply()
             }
             if (actionStyle == "miplay") {
                 actionStyle = "disabled"
@@ -237,10 +236,9 @@ fun CustomSettingsScreen(
                 ) {
                     when (page) {
                         0 -> { // Capsule (Moved from 1)
-                            val previewDynamicIconEnabled = if (superIslandEnabled) true else dynamicIconEnabled
                             val previewIconStyle = if (superIslandEnabled) "advanced" else iconStyle
                             CapsulePreview(
-                                dynamicIconEnabled = previewDynamicIconEnabled,
+                                dynamicIconEnabled = if (superIslandEnabled) true else iconStyle != "disabled",
                                 iconStyle = previewIconStyle,
                                 oneuiCapsuleColorEnabled = oneuiCapsuleColorEnabled
                             )
@@ -296,50 +294,40 @@ fun CustomSettingsScreen(
                                 }
 
                                 if (isLiveUpdateSupported && !superIslandEnabled) {
-                                    SettingsSwitchItem(
-                                        title = stringResource(R.string.settings_dynamic_icon),
-                                        subtitle = stringResource(R.string.settings_dynamic_icon_desc),
-                                        checked = dynamicIconEnabled,
-                                        onCheckedChange = {
-                                            dynamicIconEnabled = it
-                                            prefs.edit().putBoolean("dynamic_icon_enabled", it).apply()
-                                        }
-                                    )
-
-                                    if (dynamicIconEnabled) {
-                                        val styleDisplayName = when (iconStyle) {
-                                            "advanced" -> stringResource(R.string.icon_style_advanced)
-                                            else -> stringResource(R.string.icon_style_classic)
-                                        }
-                                        Box(modifier = Modifier.fillMaxWidth()) {
-                                            SettingsTextItem(
-                                                title = stringResource(R.string.settings_icon_style),
-                                                value = styleDisplayName,
-                                                onClick = { showIconStyleDropdown = true }
-                                            )
-                                            Box(modifier = Modifier.matchParentSize().wrapContentSize(Alignment.Center)) {
-                                                DropdownMenu(
-                                                    expanded = showIconStyleDropdown,
-                                                    onDismissRequest = { showIconStyleDropdown = false }
-                                                ) {
-                                                    val styles = listOf(
-                                                        "classic" to R.string.icon_style_classic,
-                                                        "advanced" to R.string.icon_style_advanced
+                                if (isLiveUpdateSupported && !superIslandEnabled) {
+                                    val styleDisplayName = when (iconStyle) {
+                                        "advanced" -> stringResource(R.string.icon_style_advanced)
+                                        else -> stringResource(R.string.icon_style_disabled)
+                                    }
+                                    Box(modifier = Modifier.fillMaxWidth()) {
+                                        SettingsTextItem(
+                                            title = stringResource(R.string.settings_icon_style),
+                                            value = styleDisplayName,
+                                            onClick = { showIconStyleDropdown = true }
+                                        )
+                                        Box(modifier = Modifier.matchParentSize().wrapContentSize(Alignment.Center)) {
+                                            DropdownMenu(
+                                                expanded = showIconStyleDropdown,
+                                                onDismissRequest = { showIconStyleDropdown = false }
+                                            ) {
+                                                val styles = listOf(
+                                                    "disabled" to R.string.icon_style_disabled,
+                                                    "advanced" to R.string.icon_style_advanced
+                                                )
+                                                styles.forEach { (styleId, nameId) ->
+                                                    DropdownMenuItem(
+                                                        text = { Text(stringResource(nameId)) },
+                                                        onClick = {
+                                                            iconStyle = styleId
+                                                            prefs.edit().putString("dynamic_icon_style", styleId).apply()
+                                                            showIconStyleDropdown = false
+                                                        }
                                                     )
-                                                    styles.forEach { (styleId, nameId) ->
-                                                        DropdownMenuItem(
-                                                            text = { Text(stringResource(nameId)) },
-                                                            onClick = {
-                                                                iconStyle = styleId
-                                                                prefs.edit().putString("dynamic_icon_style", styleId).apply()
-                                                                showIconStyleDropdown = false
-                                                            }
-                                                        )
-                                                    }
                                                 }
                                             }
                                         }
                                     }
+                                }
                                 }
 
                                 if (superIslandEnabled || !isLiveUpdateSupported) {

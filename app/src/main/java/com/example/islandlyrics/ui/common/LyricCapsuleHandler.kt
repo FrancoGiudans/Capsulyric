@@ -55,8 +55,10 @@ class LyricCapsuleHandler(
                 rebuildCachedIntents()
             }
             "progress_bar_color_enabled" -> cachedUseAlbumColor = prefs.getBoolean(key, false)
-            "dynamic_icon_enabled" -> cachedUseDynamicIcon = prefs.getBoolean(key, false)
-            "dynamic_icon_style" -> cachedIconStyle = prefs.getString(key, "classic") ?: "classic"
+            "dynamic_icon_style" -> {
+                cachedIconStyle = prefs.getString(key, "disabled") ?: "disabled"
+                cachedUseDynamicIcon = cachedIconStyle != "disabled"
+            }
             "notification_click_style" -> {
                 cachedClickStyle = prefs.getString(key, "default") ?: "default"
                 rebuildCachedIntents()
@@ -69,8 +71,8 @@ class LyricCapsuleHandler(
         val prefs = context.getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE)
         cachedActionStyle = prefs.getString("notification_actions_style", "disabled") ?: "disabled"
         cachedUseAlbumColor = prefs.getBoolean("progress_bar_color_enabled", false)
-        cachedUseDynamicIcon = prefs.getBoolean("dynamic_icon_enabled", false)
-        cachedIconStyle = prefs.getString("dynamic_icon_style", "classic") ?: "classic"
+        cachedIconStyle = prefs.getString("dynamic_icon_style", "disabled") ?: "disabled"
+        cachedUseDynamicIcon = cachedIconStyle != "disabled"
         cachedClickStyle = prefs.getString("notification_click_style", "default") ?: "default"
         cachedOneuiCapsuleColorEnabled = prefs.getBoolean("oneui_capsule_color_enabled", false)
         prefs.registerOnSharedPreferenceChangeListener(prefChangeListener)

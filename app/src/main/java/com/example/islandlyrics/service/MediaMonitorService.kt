@@ -522,6 +522,9 @@ class MediaMonitorService : NotificationListenerService() {
         // Load parser rule for this package
         val rule = ParserRuleHelper.getRuleForPackage(this, pkg)
 
+        // Try restoring state if this is the first update for this package after a service restart
+        tryRestoreParserState(pkg, rawArtist, duration)
+
         // Apply parsing rules if enabled
         if (rule != null && rule.enabled) {
 
@@ -675,8 +678,74 @@ class MediaMonitorService : NotificationListenerService() {
             LyricRepository.getInstance().updateLyric(finalLyric, getAppName(pkg), "Notification")
         }
 
+        // --- Save state for persistence ---
+        saveParserState(pkg, finalTitle, finalArtist, isDynamicLyricMode, duration)
+
         // Use already extracted artBitmap
         LyricRepository.getInstance().updateAlbumArt(artBitmap)
+    }
+
+    private fun saveParserState(pkg: String, title: String?, artist: String?, lyricMode: Boolean, duration: Long) {
+        val statePrefs = getSharedPreferences(PREFS_PARSER_STATE, MODE_PRIVATE)
+        val historyJson = statePrefs.getString(PREF_STATE_HISTORY, "[]") ?: "[]"
+        val history = JSONArray(historyJson)
+        
+        // Build new entry
+        val entry = JSONObject().apply {
+            put("pkg", pkg)
+            put("title", title)
+            put("artist", artist)
+            put("mode", lyricMode)
+            put("duration", duration)
+            put("ts", System.currentTimeMillis())
+        }
+
+        // Update history (remove existing for same pkg)
+        val newHistory = JSONArray()
+        newHistory.put(entry)
+        for (i in 0 until history.length()) {
+            val old = history.getJSONObject(i)
+            if (old.getString("pkg") != pkg) {
+                newHistory.put(old)
+            }
+        }
+
+        // Prune to last 5
+        val finalHistory = JSONArray()
+        for (i in 0 until minOf(newHistory.length(), 5)) {
+            finalHistory.put(newHistory.get(i))
+        }
+
+        statePrefs.edit().putString(PREF_STATE_HISTORY, finalHistory.toString()).apply()
+    }
+
+    private fun tryRestoreParserState(pkg: String, currentArtist: String?, currentDuration: Long): Boolean {
+        if (packageLastTitle.containsKey(pkg)) return false // Already have in-memory state
+
+        val statePrefs = getSharedPreferences(PREFS_PARSER_STATE, MODE_PRIVATE)
+        val historyJson = statePrefs.getString(PREF_STATE_HISTORY, "[]") ?: "[]"
+        val history = JSONArray(historyJson)
+
+        for (i in 0 until history.length()) {
+            val entry = history.getJSONObject(i)
+            if (entry.getString("pkg") == pkg) {
+                val savedDuration = entry.getLong("duration")
+                val savedArtist = entry.optString("artist", null)
+                
+                // Validate: Duration must match (±1s) and artist must match
+                if (Math.abs(savedDuration - currentDuration) < 1000L && savedArtist == currentArtist) {
+                    packageRealTitle[pkg] = entry.optString("title", null)
+                    packageRealArtist[pkg] = savedArtist
+                    packageLyricMode[pkg] = entry.getBoolean("mode")
+                    packageLastDuration[pkg] = savedDuration
+                    packageLastArtist[pkg] = savedArtist
+                    AppLogger.getInstance().log(TAG, "♻️ Restored parser state for $pkg: ${entry.optString("title")}")
+                    return true
+                }
+                break
+            }
+        }
+        return false
     }
 
     /**
@@ -703,6 +772,9 @@ class MediaMonitorService : NotificationListenerService() {
         private const val TAG = "MediaMonitorService"
         private const val PREFS_NAME = "IslandLyricsPrefs"
         private const val PREF_PARSER_RULES = "parser_rules_json"
+        
+        private const val PREFS_PARSER_STATE = "MediaParserState"
+        private const val PREF_STATE_HISTORY = "state_history"
         
         // --- Dynamic Lyric State Tracking Maps ---
         private val packageLyricMode    = HashMap<String, Boolean>()
