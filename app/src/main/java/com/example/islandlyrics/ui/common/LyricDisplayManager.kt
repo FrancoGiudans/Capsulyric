@@ -187,6 +187,9 @@ class LyricDisplayManager(private val context: Context) {
         if (lastLyricChangeTime == 0L) {
             lastLyricChangeTime = now
             lastLyricLength = newLyric.length
+            // First lyric — kick the display loop immediately so the notification
+            // fires right away instead of waiting for the next scheduled timer tick.
+            forceUpdate()
             return
         }
         val duration = now - lastLyricChangeTime

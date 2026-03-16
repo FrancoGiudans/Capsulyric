@@ -21,6 +21,8 @@ import android.os.Handler
 import android.os.Looper
 import android.service.notification.NotificationListenerService
 import android.util.Log
+import org.json.JSONArray
+import org.json.JSONObject
 
 class MediaMonitorService : NotificationListenerService() {
 
@@ -523,6 +525,7 @@ class MediaMonitorService : NotificationListenerService() {
         val rule = ParserRuleHelper.getRuleForPackage(this, pkg)
 
         // Try restoring state if this is the first update for this package after a service restart
+        var isDynamicLyricMode = packageLyricMode[pkg] ?: false
         tryRestoreParserState(pkg, rawArtist, duration)
 
         // Apply parsing rules if enabled
@@ -544,11 +547,10 @@ class MediaMonitorService : NotificationListenerService() {
             val prevTitle  = packageLastTitle[pkg]
             val prevArtist = packageLastArtist[pkg]
             val prevDuration = packageLastDuration[pkg] ?: 0L
-            var isDynamicLyricMode = packageLyricMode[pkg] ?: false
 
             // New-song detection: duration change of >1000ms is a reliable indicator
             val durationDiffers = duration > 0 && prevDuration > 0 &&
-                                  Math.abs(duration - prevDuration) > 1000L
+                                  kotlin.math.abs(duration - prevDuration) > 1000L
             if (durationDiffers) {
                 // Reset all cached state for this package
                 isDynamicLyricMode = false
@@ -733,8 +735,8 @@ class MediaMonitorService : NotificationListenerService() {
                 val savedArtist = entry.optString("artist", null)
                 
                 // Validate: Duration must match (±1s) and artist must match
-                if (Math.abs(savedDuration - currentDuration) < 1000L && savedArtist == currentArtist) {
-                    packageRealTitle[pkg] = entry.optString("title", null)
+                if (kotlin.math.abs(savedDuration - currentDuration) < 1000L && savedArtist == currentArtist) {
+                    packageRealTitle[pkg] = entry.optString("title", null as String?)
                     packageRealArtist[pkg] = savedArtist
                     packageLyricMode[pkg] = entry.getBoolean("mode")
                     packageLastDuration[pkg] = savedDuration

@@ -332,7 +332,7 @@ fun MiuixCustomSettingsScreen(
                                     if (isLiveUpdateSupported && !superIslandEnabled) {
                                         val iconStyles = listOf("disabled", "advanced")
                                         val iconStyleNames = listOf(
-                                            stringResource(R.string.icon_style_disabled),
+                                            stringResource(R.string.icon_style_classic),
                                             stringResource(R.string.icon_style_advanced)
                                         )
                                         val currentIconIndex = iconStyles.indexOf(iconStyle).takeIf { it >= 0 } ?: 0

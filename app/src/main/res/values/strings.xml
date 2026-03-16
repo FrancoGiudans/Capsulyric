@@ -166,8 +166,8 @@
     
     <!-- Dynamic Icon Style Settings -->
     <string name="settings_icon_style">Icon Style</string>
-    <string name="icon_style_disabled">Native Music Note</string>
-    <string name="icon_style_disabled_desc">Show the default music app icon</string>
+    <string name="icon_style_classic">Native Music Note</string>
+    <string name="icon_style_classic_desc">Show the default music app icon</string>
     <string name="icon_style_advanced">Advanced Style</string>
     <string name="icon_style_advanced_desc">Dual-line layout with album art</string>
     <string name="dialog_icon_style_title">Select Icon Style</string>

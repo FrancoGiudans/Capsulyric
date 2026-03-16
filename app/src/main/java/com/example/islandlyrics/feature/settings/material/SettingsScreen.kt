@@ -773,8 +773,8 @@ fun IconStyleSelectionDialog(
     onDismiss: () -> Unit
 ) {
     val styles = listOf(
-        "classic" to R.string.icon_style_classic to R.string.icon_style_classic_desc,
-        "advanced" to R.string.icon_style_advanced to R.string.icon_style_advanced_desc
+        Triple("classic", R.string.icon_style_classic, R.string.icon_style_classic_desc),
+        Triple("advanced", R.string.icon_style_advanced, R.string.icon_style_advanced_desc)
     )
     
     AlertDialog(
@@ -782,8 +782,7 @@ fun IconStyleSelectionDialog(
         title = { Text(stringResource(R.string.dialog_icon_style_title)) },
         text = {
             Column(modifier = Modifier.fillMaxWidth()) {
-                styles.forEach { (styleInfo, descId) ->
-                    val (styleId, nameId) = styleInfo
+                styles.forEach { (styleId, nameId, descId) ->
                     val isSelected = currentStyle == styleId
                     
                     Row(

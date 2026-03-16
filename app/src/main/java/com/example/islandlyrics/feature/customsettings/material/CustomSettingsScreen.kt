@@ -297,7 +297,7 @@ fun CustomSettingsScreen(
                                 if (isLiveUpdateSupported && !superIslandEnabled) {
                                     val styleDisplayName = when (iconStyle) {
                                         "advanced" -> stringResource(R.string.icon_style_advanced)
-                                        else -> stringResource(R.string.icon_style_disabled)
+                                        else -> stringResource(R.string.icon_style_classic)
                                     }
                                     Box(modifier = Modifier.fillMaxWidth()) {
                                         SettingsTextItem(
@@ -311,7 +311,7 @@ fun CustomSettingsScreen(
                                                 onDismissRequest = { showIconStyleDropdown = false }
                                             ) {
                                                 val styles = listOf(
-                                                    "disabled" to R.string.icon_style_disabled,
+                                                    "disabled" to R.string.icon_style_classic,
                                                     "advanced" to R.string.icon_style_advanced
                                                 )
                                                 styles.forEach { (styleId, nameId) ->
