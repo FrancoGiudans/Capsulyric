@@ -21,6 +21,9 @@ env:
 jobs:
   build-all:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: read
 
     steps:
       - name: Checkout Code
