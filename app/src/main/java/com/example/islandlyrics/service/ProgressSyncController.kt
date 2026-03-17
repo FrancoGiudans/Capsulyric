@@ -45,7 +45,7 @@ class ProgressSyncController(
                 updateCurrentLyricLine(parsedLines)
             }
 
-            handler.postDelayed(this, 120)
+            handler.postDelayed(this, 200)
         }
     }
 

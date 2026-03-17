@@ -77,7 +77,12 @@ class SuperIslandHandler(
     private var lastSentProgressPercent = -1
     private var lastSentSubText = ""
     private var lastSentIsPlaying = false
+    private var lastSentTitle = ""
+    private var lastSentArtist = ""
     private var isFirstNotification = true
+    
+    private var lastNotifyTime = 0L
+    private val throttleIntervalMs = 1000L
     
     private var lastAlbumArtHash = 0
     private var lastPicAppHash = 0
@@ -223,15 +228,35 @@ class SuperIslandHandler(
         val progressPercent = state.progressCurrent
         val albumColor = state.albumColor
 
+        // 1. TRACK SWITCH DETECTION: Clear builder cache to prevent "stuck" metadata on Android 15
+        val trackChanged = state.title != lastSentTitle || state.artist != lastSentArtist
+        if (trackChanged && !isFirstNotification) {
+            com.example.islandlyrics.core.logging.AppLogger.getInstance().d("SuperIsland", "Track changed: ${state.title}. Resetting builder.")
+            cachedBuilder = Notification.Builder(context, CHANNEL_ID)
+                .setSmallIcon(R.drawable.ic_music_note)
+                .setOngoing(true)
+                .setOnlyAlertOnce(true)
+                .setVisibility(Notification.VISIBILITY_PUBLIC)
+            cachedNotification = cachedBuilder?.build()
+            isFirstNotification = true
+        }
+
         // Color changed?
         val colorChanged = albumColor != lastAppliedAlbumColor
 
-        // Pre-JSON FAST PATH: skip expensive serialization when inputs haven't changed
-        if (!isFirstNotification && !colorChanged &&
-            displayLyric == lastSentDisplayLyric &&
-            progressPercent == lastSentProgressPercent &&
-            subText == lastSentSubText &&
-            state.isPlaying == lastSentIsPlaying) {
+        // 2. CONTENT-AWARE THROTTLING
+        val contentChanged = trackChanged || displayLyric != lastSentDisplayLyric || state.isPlaying != lastSentIsPlaying
+        val now = System.currentTimeMillis()
+        
+        if (!isFirstNotification && !colorChanged && !contentChanged) {
+            // Only progress changed. Apply 1000ms throttle for Android 15 stability.
+            if (now - lastNotifyTime < throttleIntervalMs) {
+                return
+            }
+        }
+
+        // Pre-JSON FAST PATH: skip expensive serialization if literally nothing changed (including exact progress)
+        if (!isFirstNotification && !colorChanged && !contentChanged && progressPercent == lastSentProgressPercent) {
             return
         }
 
@@ -382,6 +407,9 @@ class SuperIslandHandler(
         lastSentProgressPercent = progressPercent
         lastSentSubText = subText
         lastSentIsPlaying = state.isPlaying
+        lastSentTitle = state.title
+        lastSentArtist = state.artist
+        lastNotifyTime = System.currentTimeMillis()
 
         notifyWithNetworkCut(notification, isFirstNotification)
         if (isFirstNotification) {

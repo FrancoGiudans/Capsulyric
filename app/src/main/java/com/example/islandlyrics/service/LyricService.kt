@@ -127,6 +127,9 @@ class LyricService : Service() {
                     AppLogger.getInstance().log(TAG, "[${info.packageName}] CarProtocol app, waiting for lyric observer trigger...")
                 }
             }
+            
+            // CRITICAL: Force immediate UI update to propagate new track metadata to SuperIsland
+            displayManager.forceUpdate()
         }
     }
 
