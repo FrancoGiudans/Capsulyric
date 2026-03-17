@@ -10,7 +10,7 @@
 
 | Functions / 功能 | Requirements / 要求 | Supported Devices / 支持机型 |
 | :--- | :--- | :--- |
-| **Live Update (实况通知)** | Android 16+ <br> (HyperOS 3.0.300+) | Xiaomi 15 Series (Verified) <br> ColorOS, OneUI, AOSP (Community) |
+| **Live Update (实况通知)** | Android 16+ <br> | Xiaomi HyperOS (3.0.300 required, Verified) <br> ColorOS, OneUI, AOSP (Community) |
 | **Xiaomi Super Island (小米超级岛)** | HyperOS 3.0 <br> & Android 15+ | HyperOS devices with <br> Root or Shizuku |
 
 > [!NOTE]
