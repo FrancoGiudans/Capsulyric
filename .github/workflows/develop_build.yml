@@ -107,13 +107,20 @@ jobs:
           fi
           
           # Base name of the release
-          REL_NAME="Canary Build (Rolling) _C${COUNT}"
+          REL_NAME="Canary Build Version_C${COUNT}"
           TAG_NAME="Canary.Version_C${COUNT}"
           echo "rel_name=$REL_NAME" >> $GITHUB_OUTPUT
           echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
 
           # Prepare Changelog Body
-          echo "## Canary Build (Rolling)" > canary_body.md
+          echo "> [!WARNING]" > canary_body.md
+          echo "> **实验性版本 (Experimental Build)**" >> canary_body.md
+          echo ">" >> canary_body.md
+          echo "> 这是从 \`develop\` 分支自动生成的 Canary 滚动构建。可能包含不稳定的代码或破坏性变更。请谨慎使用。" >> canary_body.md
+          echo ">" >> canary_body.md
+          echo "> This is a rolling Canary release generated automatically from the \`develop\` branch. It may contain unstable code or breaking changes. Use with caution." >> canary_body.md
+          echo "" >> canary_body.md
+          echo "## Canary Build (Rolling)" >> canary_body.md
           echo "- **Build Number:** \`_C${COUNT}\`" >> canary_body.md
           echo "- **Latest Commit:** \`${SHORT_SHA}\`" >> canary_body.md
           echo "- **Branch:** \`develop\`" >> canary_body.md
@@ -134,9 +141,6 @@ jobs:
           
           echo "" >> canary_body.md
           echo "---" >> canary_body.md
-          echo "> [!WARNING]" >> canary_body.md
-          echo "> **Experimental Build**: This is a rolling Canary release generated automatically from the \`develop\` branch. It may contain unstable code or breaking changes. Use with caution." >> canary_body.md
-          echo "" >> canary_body.md
           echo "_Standard builds are available in the artifact section above._" >> canary_body.md
 
       - name: Delete old Canary releases and tags
