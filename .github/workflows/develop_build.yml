@@ -113,12 +113,12 @@ jobs:
           echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
 
           # Prepare Changelog Body
-          echo "## 🚀 Canary Build (Rolling)" > canary_body.md
+          echo "## Canary Build (Rolling)" > canary_body.md
           echo "- **Build Number:** \`_C${COUNT}\`" >> canary_body.md
           echo "- **Latest Commit:** \`${SHORT_SHA}\`" >> canary_body.md
           echo "- **Branch:** \`develop\`" >> canary_body.md
           echo "" >> canary_body.md
-          echo "### 📝 Changes since last Canary release" >> canary_body.md
+          echo "### Changes since last Canary release" >> canary_body.md
           
           if [ -z "$PREV_SHA" ]; then
             echo "First Canary build recorded." >> canary_body.md
