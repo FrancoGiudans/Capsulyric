@@ -138,7 +138,6 @@ class LogManager private constructor() {
 
     @Synchronized
     fun w(context: Context, tag: String, msg: String) {
-        if (!isDebug) return
         init(context)
         Log.w(tag, msg)
         
@@ -150,7 +149,6 @@ class LogManager private constructor() {
 
     @Synchronized
     fun i(context: Context, tag: String, msg: String) {
-        if (!isDebug) return
         init(context)
         Log.i(tag, msg)
         

@@ -64,6 +64,10 @@
             </intent-filter>
         </service>
 
+        <activity android:name="com.example.islandlyrics.feature.diagnostics.DiagnosticsActivity"
+                  android:label="@string/title_diagnostics"
+                  android:parentActivityName="com.example.islandlyrics.feature.settings.SettingsActivity" />
+
         <activity android:name="com.example.islandlyrics.feature.logviewer.LogViewerActivity"
                   android:label="Developer Logs"
                   android:parentActivityName="com.example.islandlyrics.feature.main.MainActivity" />

@@ -7,7 +7,7 @@ import com.example.islandlyrics.BuildConfig
 import com.example.islandlyrics.R
 import com.example.islandlyrics.core.update.UpdateChecker
 import com.example.islandlyrics.core.logging.AppLogger
-import com.example.islandlyrics.feature.logviewer.LogViewerActivity
+import com.example.islandlyrics.feature.diagnostics.DiagnosticsActivity
 import com.example.islandlyrics.feature.update.miuix.MiuixUpdateDialog
 import com.example.islandlyrics.feature.settings.miuix.MiuixSettingsScreen
 import com.example.islandlyrics.ui.miuix.MiuixAppTheme
@@ -43,7 +43,7 @@ class SettingsActivity : BaseActivity() {
                 MiuixAppTheme {
                     MiuixSettingsScreen(
                         onCheckUpdate = { performUpdateCheck() },
-                        onShowLogs = { showLogConsole() },
+                        onShowDiagnostics = { showDiagnostics() },
                         updateVersionText = version,
                         updateBuildText = build
                     )
@@ -70,7 +70,7 @@ class SettingsActivity : BaseActivity() {
                 AppTheme {
                     SettingsScreen(
                         onCheckUpdate = { performUpdateCheck() },
-                        onShowLogs = { showLogConsole() },
+                        onShowDiagnostics = { showDiagnostics() },
                         updateVersionText = version,
                         updateBuildText = build
                     )
@@ -124,8 +124,8 @@ class SettingsActivity : BaseActivity() {
         }
     }
 
-    private fun showLogConsole() {
-        LogViewerActivity.start(this)
+    private fun showDiagnostics() {
+        startActivity(android.content.Intent(this, DiagnosticsActivity::class.java))
     }
 
     // onResume for auto-update check is preserved from base logic or can be re-added if needed.

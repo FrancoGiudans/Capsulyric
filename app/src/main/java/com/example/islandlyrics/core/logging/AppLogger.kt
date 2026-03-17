@@ -13,10 +13,8 @@ import com.example.islandlyrics.BuildConfig
  */
 class AppLogger private constructor() {
 
-    private val isDebug = BuildConfig.DEBUG
-
-    // Runtime logging flag (defaults to debug flag, can be enabled in release)
-    var isLogEnabled = isDebug
+    // If true, Debug and Info levels are recorded. Error and Warn always are.
+    var isLogEnabled = BuildConfig.DEBUG
 
     /** Application context used for file I/O – set by [init]. */
     @Volatile
@@ -29,11 +27,10 @@ class AppLogger private constructor() {
      */
     fun init(context: Context) {
         appContext = context.applicationContext
-    }
-
-    fun enableLogging(enable: Boolean) {
-        isLogEnabled = enable
-        if (enable) i("AppLogger", "Logging Enabled by User")
+        
+        val prefs = context.getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE)
+        val isDevMode = prefs.getBoolean("dev_mode_enabled", false)
+        isLogEnabled = BuildConfig.DEBUG || isDevMode
     }
 
     // ── Public API ────────────────────────────────────────────────────────────
@@ -51,7 +48,6 @@ class AppLogger private constructor() {
     }
 
     fun w(tag: String, message: String) {
-        if (!isLogEnabled) return
         Log.w(tag, message)
         writeToFile("W", tag, message)
     }

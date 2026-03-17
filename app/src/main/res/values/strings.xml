@@ -10,7 +10,12 @@
     <string name="menu_github">GitHub</string>
     <string name="menu_log">Log</string>
     <string name="menu_settings">Settings</string>
-    <string name="tap_to_copy_hint">(Tap to copy logic)</string>
+    <string name="title_diagnostics">Diagnostics &amp; Feedback</string>
+    <string name="summary_diagnostics">View logs, service status, and system info</string>
+    <string name="btn_disable_diagnostics">Disable Diagnostics Tool</string>
+    <string name="dialog_disable_diagnostics_title">Disable Diagnostics Tool?</string>
+    <string name="dialog_disable_diagnostics_message">This will hide the entry point and stop recording debug logs. You can re-enable it by tapping the version number 7 times again.</string>
+    <string name="tap_to_copy_hint">(Tap to copy lyrics)</string>
     <string name="app_version_fmt">App Version: %1$s\nApp Channel: %2$s</string>
     
     <!-- UI Headers -->
@@ -204,9 +209,9 @@
     <!-- Languages & Toasts -->
     <string name="lang_sys_default">System Default</string>
     <string name="lang_english">English</string>
-    <string name="lang_chinese">简体中文</string>
-    <string name="toast_dev_mode_steps">%1$d steps away from developer mode...</string>
-    <string name="toast_dev_mode_enabled">Developer Mode Enabled!</string>
+    <string name="lang_chinese">Chinese</string>
+    <string name="toast_dev_mode_steps">Tap %1$d more times to enable diagnostics</string>
+    <string name="toast_dev_mode_enabled">Diagnostics &amp; Feedback enabled</string>
     <string name="toast_copied">Copied to clipboard</string>
     
     <!-- Miuix Summaries -->

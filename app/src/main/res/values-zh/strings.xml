@@ -10,6 +10,11 @@
     <string name="menu_github">GitHub</string>
     <string name="menu_log">日志</string>
     <string name="menu_settings">设置</string>
+    <string name="title_diagnostics">诊断与反馈</string>
+    <string name="summary_diagnostics">查看日志、服务状态和系统信息</string>
+    <string name="btn_disable_diagnostics">禁用诊断工具</string>
+    <string name="dialog_disable_diagnostics_title">确认禁用诊断工具？</string>
+    <string name="dialog_disable_diagnostics_message">禁用后将隐藏此入口，并停止记录调试级别日志。如需重新开启，请在此处再次连击版本号。</string>
     <string name="tap_to_copy_hint">(点击复制歌词)</string>
     <string name="app_version_fmt">版本: %1$s\n渠道: %2$s</string>
     
@@ -163,7 +168,7 @@
     <string name="dialog_prerelease_warning_title">确认接收预发布版本？</string>
     <string name="settings_prerelease_desc">预发布频道说明</string>
     <string name="dialog_prerelease_desc_title">预发布频道定位</string>
-    <string name="dialog_prerelease_desc_message">• <b>Alpha 频道</b>：处于开发最早期阶段。稳定性较低，可能存在严重故障。包含下一版本的核心功能及实验性变更，可能引入破坏性更新。\n\n• <b>Beta 频道</b>：功能趋于完整。不再加入大型新功能或破坏性变更。侧重于交互细节优化及小幅调整。\n\n• <b>Pre 频道</b>：最稳定的预发布阶段。不再包含功能性变更，专注于提升稳定性与性能表现，为正式版发布做最后准备。\n\n• <b>Canary 频道</b>：由 CI 自动生成的滚动更新版本。<b>[测试专用 & 极度不稳定]</b>。包含最新的提交，且该频道下将不再接收任何其他频道（包括正式版、Alpha、Beta、Pre 频道）的更新检查。</string>
+    <string name="dialog_prerelease_desc_message">• <b>Alpha 频道</b>：处于开发最早期阶段。稳定性较低，可能存在严重故障。包含下一版本的核心功能及实验性变更，可能引入破坏性更新。\n\n• <b>Beta 频道</b>：功能趋于完整。不再加入大型新功能或破坏性变更。侧重于交互细节优化及小幅调整。\n\n• <b>Pre 频道</b>：最稳定的预发布阶段。不再包含功能性变更，专注于提升稳定性与性能表现，为正式版发布做最后准备。\n\n• <b>Canary 频道</b>：由 CI 自动生成的滚动更新版本。<b>[测试专用 &amp; 极度不稳定]</b>标记。包含最新的提交，且该频道下将不再接收任何其他频道（包括正式版、Alpha、Beta、Pre 频道）的更新检查。</string>
     
     <!-- 动态图标样式设置 -->
     <string name="settings_icon_style">左侧图标样式</string>
@@ -346,8 +351,8 @@
     <string name="lang_sys_default">跟随系统</string>
     <string name="lang_english">English</string>
     <string name="lang_chinese">简体中文</string>
-    <string name="toast_dev_mode_steps">再点击 %1$d 后打开Log Console</string>
-    <string name="toast_dev_mode_enabled">Log Console 入口已打开</string>
+    <string name="toast_dev_mode_steps">再点击 %1$d 后打开诊断入口</string>
+    <string name="toast_dev_mode_enabled">诊断与反馈入口已打开</string>
     <string name="toast_copied">已复制到剪切板</string>
     <string name="summary_optimize_battery">优化后台表现</string>
     <string name="summary_check_updates_now">立即检查更新</string>

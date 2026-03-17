@@ -45,7 +45,7 @@ import top.yukonga.miuix.kmp.utils.MiuixPopupUtils.Companion.MiuixPopupHost
 @Composable
 fun MiuixSettingsScreen(
     onCheckUpdate: () -> Unit,
-    onShowLogs: () -> Unit,
+    onShowDiagnostics: () -> Unit,
     updateVersionText: String,
     updateBuildText: String
 ) {
@@ -438,6 +438,7 @@ fun MiuixSettingsScreen(
                                 Toast.makeText(context, context.getString(R.string.toast_dev_mode_steps, 7 - devStepCount), Toast.LENGTH_SHORT).show()
                             } else if (devStepCount == 7) {
                                 prefs.edit().putBoolean("dev_mode_enabled", true).apply()
+                                com.example.islandlyrics.core.logging.AppLogger.getInstance().enableLogging(true)
                                 showLogs = true
                                 Toast.makeText(context, context.getString(R.string.toast_dev_mode_enabled), Toast.LENGTH_SHORT).show()
                             }
@@ -446,9 +447,9 @@ fun MiuixSettingsScreen(
 
                     if (showLogs) {
                         SuperArrow(
-                            title = stringResource(R.string.settings_console_log),
-                            summary = stringResource(R.string.summary_view_logs),
-                            onClick = onShowLogs
+                            title = stringResource(R.string.title_diagnostics),
+                            summary = stringResource(R.string.summary_diagnostics),
+                            onClick = onShowDiagnostics
                         )
                     }
                 }
