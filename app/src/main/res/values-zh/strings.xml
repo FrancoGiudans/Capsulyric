@@ -163,7 +163,7 @@
     <string name="dialog_prerelease_warning_title">确认接收预发布版本？</string>
     <string name="settings_prerelease_desc">预发布频道说明</string>
     <string name="dialog_prerelease_desc_title">预发布频道定位</string>
-    <string name="dialog_prerelease_desc_message">• <b>Alpha 频道</b>：处于开发最早期阶段。稳定性较低，可能存在严重故障。包含下一版本的核心功能及实验性变更，可能引入破坏性更新。\n\n• <b>Beta 频道</b>：功能趋于完整。不再加入大型新功能或破坏性变更。侧重于交互细节优化及小幅调整。\n\n• <b>Pre 频道</b>：最稳定的预发布阶段。不再包含功能性变更，专注于提升稳定性与性能表现，为正式版发布做最后准备。\n\n• <b>Canary 频道</b>：由 CI 自动生成的滚动更新版本。包含最新的提交，可能极不稳定，但能最快体验到新特性。</string>
+    <string name="dialog_prerelease_desc_message">• <b>Alpha 频道</b>：处于开发最早期阶段。稳定性较低，可能存在严重故障。包含下一版本的核心功能及实验性变更，可能引入破坏性更新。\n\n• <b>Beta 频道</b>：功能趋于完整。不再加入大型新功能或破坏性变更。侧重于交互细节优化及小幅调整。\n\n• <b>Pre 频道</b>：最稳定的预发布阶段。不再包含功能性变更，专注于提升稳定性与性能表现，为正式版发布做最后准备。\n\n• <b>Canary 频道</b>：由 CI 自动生成的滚动更新版本。<b>[测试专用 & 极度不稳定]</b>。包含最新的提交，且该频道下将不再接收任何其他频道（包括正式版、Alpha、Beta、Pre 频道）的更新检查。</string>
     
     <!-- 动态图标样式设置 -->
     <string name="settings_icon_style">左侧图标样式</string>

@@ -19,7 +19,22 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
+  pre_job:
+    runs-on: ubuntu-latest
+    outputs:
+      should_skip: ${{ steps.skip_check.outputs.should_skip }}
+    steps:
+      - id: skip_check
+        uses: fkirc/skip-duplicate-actions@v5
+        with:
+          skip_after_successful_duplicate: 'true'
+          concurrent_skipping: 'same_content'
+
   build-all:
+    needs: pre_job
+    if: |
+      needs.pre_job.outputs.should_skip != 'true' &&
+      !contains(github.event.head_commit.message, '[skip canary]')
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -36,7 +51,11 @@ jobs:
         with:
           java-version: '21'
           distribution: 'temurin'
-          cache: gradle
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: false
 
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
@@ -66,30 +85,95 @@ jobs:
           rm release.keystore
 
       - name: Upload Standard Debug Artifact
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v4
         with:
           name: Capsulyric-Standard-Debug
           path: app/build/outputs/apk/debug/app-debug.apk
-          archive: false
 
       - name: Upload Standard Signed Artifact
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v4
         with:
           name: Capsulyric-Standard-Prerelease-Signed
           path: app/build/outputs/apk/prerelease/app-prerelease-signed.apk
-          archive: false
+
+      - name: Generate Canary Metadata
+        id: meta
+        run: |
+          COUNT=$(git rev-list --count HEAD)
+          SHORT_SHA=$(git rev-parse --short=7 HEAD)
+          echo "count=$COUNT" >> $GITHUB_OUTPUT
+          echo "short_sha=$SHORT_SHA" >> $GITHUB_OUTPUT
+          
+          # Find the most recent previous Canary tag for changelog comparison
+          PREV_TAG=$(git tag -l "Canary.Version_C*" --sort=-v:refname | head -n 1)
+          PREV_SHA=""
+          if [ -n "$PREV_TAG" ]; then
+            PREV_SHA=$(git rev-list -n 1 "$PREV_TAG" 2>/dev/null || echo "")
+          fi
+          
+          # Base name of the release
+          REL_NAME="Canary Build (Rolling) _C${COUNT}"
+          TAG_NAME="Canary.Version_C${COUNT}"
+          echo "rel_name=$REL_NAME" >> $GITHUB_OUTPUT
+          echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
+
+          # Prepare Changelog Body
+          echo "## 🚀 Canary Build (Rolling)" > canary_body.md
+          echo "- **Build Number:** \`_C${COUNT}\`" >> canary_body.md
+          echo "- **Latest Commit:** \`${SHORT_SHA}\`" >> canary_body.md
+          echo "- **Branch:** \`develop\`" >> canary_body.md
+          echo "" >> canary_body.md
+          echo "### 📝 Changes since last Canary release" >> canary_body.md
+          
+          if [ -z "$PREV_SHA" ]; then
+            echo "First Canary build recorded." >> canary_body.md
+          elif [ "$PREV_SHA" == "$(git rev-parse HEAD)" ]; then
+            echo "No new commits (Re-run or manual trigger)." >> canary_body.md
+          else
+            # Get logs skipping merge commits, with author info
+            git log ${PREV_SHA}..HEAD --oneline --no-merges --pretty=format:"- %h: %s (%an)" >> canary_body.md
+            
+            # Add a compare link
+            echo -e "\n\n**Full Comparison:** [${PREV_SHA:0:7}...${SHORT_SHA}](https://github.com/${{ github.repository }}/compare/${PREV_SHA}...${SHORT_SHA})" >> canary_body.md
+          fi
+          
+          echo "" >> canary_body.md
+          echo "---" >> canary_body.md
+          echo "> [!WARNING]" >> canary_body.md
+          echo "> **Experimental Build**: This is a rolling Canary release generated automatically from the \`develop\` branch. It may contain unstable code or breaking changes. Use with caution." >> canary_body.md
+          echo "" >> canary_body.md
+          echo "_Standard builds are available in the artifact section above._" >> canary_body.md
+
+      - name: Delete old Canary releases and tags
+        if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Find all tags matching the pattern
+          CANARY_TAGS=$(git tag -l "Canary.Version*")
+          if [ -n "$CANARY_TAGS" ]; then
+            echo "Found existing Canary tags: $CANARY_TAGS"
+            for tag in $CANARY_TAGS; do
+              echo "Deleting release and tag: $tag"
+              gh release delete "$tag" --yes || echo "Release $tag not found."
+              git push origin --delete "$tag" || echo "Remote tag $tag not found."
+            done
+          else
+            echo "No existing Canary tags to delete."
+          fi
 
       - name: Rolling Canary Release
         if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: Canary.Version
-          name: Canary Build (Rolling) _C${{ github.run_number }}
+          tag_name: ${{ steps.meta.outputs.tag_name }}
+          name: ${{ steps.meta.outputs.rel_name }}
+          body_path: canary_body.md
+          target_commitish: develop
           files: |
             app/build/outputs/apk/debug/app-debug.apk
             app/build/outputs/apk/prerelease/app-prerelease-signed.apk
           prerelease: true
-          generate_release_notes: true
           make_latest: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

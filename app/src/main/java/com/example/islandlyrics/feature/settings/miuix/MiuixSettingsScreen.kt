@@ -262,7 +262,7 @@ fun MiuixSettingsScreen(
                         val channelOptions = listOf("Alpha", "Beta", "Pre", "Canary")
                         val channelNames = listOf("Alpha", "Beta", "Pre", "Canary")
                         
-                        val currentChannel = UpdateChecker.getPrereleaseChannel(context)
+                        var currentChannel by remember { mutableStateOf(UpdateChecker.getPrereleaseChannel(context)) }
                         val channelIndex = channelOptions.indexOf(currentChannel).takeIf { it >= 0 } ?: 0
                         
                         SuperDropdown(
@@ -272,6 +272,7 @@ fun MiuixSettingsScreen(
                             onSelectedIndexChange = { index ->
                                 val channel = channelOptions[index]
                                 UpdateChecker.setPrereleaseChannel(context, channel)
+                                currentChannel = channel
                             }
                         )
 

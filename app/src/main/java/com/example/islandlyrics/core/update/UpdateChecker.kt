@@ -162,12 +162,12 @@ object UpdateChecker {
                 val includePrerelease = isPrereleaseEnabled(context)
                 val userChannel = if (includePrerelease) getPrereleaseChannel(context) else "Release"
 
-                // For Canary channel, we prioritize the Canary.Version release
+                // For Canary channel, we prioritize tags starting with Canary.Version_C
                 if (userChannel == "Canary") {
                     for (i in 0 until jsonArray.length()) {
                         val json = jsonArray.getJSONObject(i)
                         val release = parseRelease(json)
-                        if (release.tagName == "Canary.Version") {
+                        if (release.tagName.startsWith("Canary.Version_C")) {
                             return@withContext release
                         }
                     }
@@ -243,7 +243,7 @@ object UpdateChecker {
 
                 // Special handling for Canary channel
                 if (userChannel == "Canary") {
-                    val canaryRelease = allReleases.find { it.tagName == "Canary.Version" }
+                    val canaryRelease = allReleases.find { it.tagName.startsWith("Canary.Version_C") }
                     if (canaryRelease != null) {
                         val remoteVersion = extractVersionFromTitle(canaryRelease.name)
                         if (compareVersions(remoteVersion, currentVersion) > 0) {
@@ -434,9 +434,9 @@ object UpdateChecker {
             return isAlpha || isBeta || isPre
         }
         
-        // Canary channel: allows Canary.Version
+        // Canary channel: allows tags starting with Canary.Version_C
         if (userChannel == "Canary") {
-            return tagName == "Canary.Version"
+            return tagName.startsWith("Canary.Version_C")
         }
         
         return false
