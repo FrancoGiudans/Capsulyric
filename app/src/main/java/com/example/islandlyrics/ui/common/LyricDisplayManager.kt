@@ -54,10 +54,10 @@ class LyricDisplayManager(private val context: Context) {
     private val isHeavySkin = RomUtils.isHeavySkin()
     private val maxDisplayWeight = if (isHeavySkin) 16 else 10
     
-    private val initialPauseDuration = 1000L
-    private val finalPauseDuration = 500L
+    private val initialPauseDuration = 400L
+    private val finalPauseDuration = 300L
     private val baseFocusDelay = 500L
-    private val staticTimeReserve = 1500L
+    private val staticTimeReserve = 1000L
     private val compensationThreshold = 20
     
     // Current parsed lyrics info
@@ -413,13 +413,14 @@ class LyricDisplayManager(private val context: Context) {
     
     private fun calculateSmartShiftWeight(text: String, currentOffset: Int): Int {
         val segment = extractByWeight(text, currentOffset, 10)
-        if (segment.isEmpty()) return 4
+        if (segment.isEmpty()) return 2
         
         val cjkCount = segment.count { charWeight(it) == 2 }
         val isCJK = cjkCount > segment.length / 2
         
         return if (isCJK) {
-            if (segment.length >= 2) charWeight(segment[0]) + charWeight(segment[1]) else 4
+            // Smoother for Japanese - shift by 2 weights (1 ideograph)
+            if (segment.isNotEmpty()) charWeight(segment[0]) else 2
         } else {
             val spaceIndex = segment.indexOf(' ', 2)
             if (spaceIndex in 2..4) {

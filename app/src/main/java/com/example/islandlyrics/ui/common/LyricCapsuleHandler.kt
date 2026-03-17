@@ -393,7 +393,7 @@ class LyricCapsuleHandler(
     companion object {
         private const val TAG = "LyricCapsule"
         private const val CHANNEL_ID = "lyric_capsule_channel"
-        const val SCROLL_STEP_DELAY = 1800L
+        const val SCROLL_STEP_DELAY = 1200L
         const val COLOR_PRIMARY = 0xFF757575.toInt()
         private const val COLOR_TERTIARY = 0xFFBDBDBD.toInt()
     }
