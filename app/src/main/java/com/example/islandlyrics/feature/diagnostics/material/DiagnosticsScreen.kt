@@ -98,7 +98,7 @@ fun DiagnosticsScreen(onBack: () -> Unit) {
                 if (romInfo.isNotEmpty()) {
                     InfoRow("ROM 版本", romInfo)
                 }
-                InfoRow("ROM 类型", RomUtils.getRomType().toString())
+                InfoRow("ROM 类型", RomUtils.getRomType())
                 InfoRow("设备型号", "${Build.MANUFACTURER} ${Build.MODEL}")
                 InfoRow("架构", Build.SUPPORTED_ABIS.joinToString(", "))
                 InfoRow("Build ID", Build.DISPLAY)

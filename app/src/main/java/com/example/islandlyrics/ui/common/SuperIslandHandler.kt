@@ -15,6 +15,9 @@ import com.example.islandlyrics.service.LyricService
 import com.example.islandlyrics.feature.main.MainActivity
 import com.example.islandlyrics.feature.mediacontrol.MediaControlActivity
 import com.xzakota.hyper.notification.focus.FocusNotification
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
 /**
@@ -33,6 +36,8 @@ class SuperIslandHandler(
 
     private var cachedNotification: Notification? = null
     private var cachedBuilder: Notification.Builder? = null
+    
+    private val scope = CoroutineScope(Dispatchers.Main + Job())
     
     // Preferences
     private var cachedClickStyle = "default"
@@ -143,6 +148,10 @@ class SuperIslandHandler(
         cachedNotification = null
         cachedBuilder = null
         
+        // Cancel all pending scope jobs
+        // But wait, if we cancel the whole scope we might not be able to restart it?
+        // Actually, for a service-bound handler, we should probably use a job that we cancel.
+        
         cachedAvatarIcon = null
         cachedIslandIcon = null
         cachedIslandSmallIcon = null
@@ -154,7 +163,7 @@ class SuperIslandHandler(
         // Ensure network is restored if we were blocking it
         networkCutJob?.cancel()
         if (prefs.getBoolean("block_xmsf_network", false)) {
-            kotlinx.coroutines.GlobalScope.launch {
+            scope.launch {
                 com.example.islandlyrics.integration.shizuku.XmsfNetworkHelper.setXmsfNetworkingEnabled(context, true)
             }
         }
@@ -417,12 +426,11 @@ class SuperIslandHandler(
         }
     }
 
-    @OptIn(kotlinx.coroutines.DelicateCoroutinesApi::class)
     private fun notifyWithNetworkCut(notification: Notification, isFirst: Boolean) {
         val bypassWhitelist = prefs.getBoolean("block_xmsf_network", false)
         if (bypassWhitelist) {
             networkCutJob?.cancel()
-            networkCutJob = kotlinx.coroutines.GlobalScope.launch {
+            networkCutJob = scope.launch {
                 com.example.islandlyrics.integration.shizuku.XmsfNetworkHelper.setXmsfNetworkingEnabled(context, false)
                 if (isFirst) {
                     service.startForeground(NOTIFICATION_ID, notification)

@@ -10,7 +10,7 @@
     <string name="menu_github">GitHub</string>
     <string name="menu_log">日志</string>
     <string name="menu_settings">设置</string>
-    <string name="title_diagnostics">诊断与反馈</string>
+    <string name="title_diagnostics">诊断工具</string>
     <string name="summary_diagnostics">查看日志、服务状态和系统信息</string>
     <string name="btn_disable_diagnostics">禁用诊断工具</string>
     <string name="dialog_disable_diagnostics_title">确认禁用诊断工具？</string>

@@ -9,6 +9,7 @@ import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.withStyle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.islandlyrics.DebugLyricViewModel
 import top.yukonga.miuix.kmp.basic.*
@@ -87,11 +88,12 @@ fun MiuixDebugLyricScreen(
                 Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Button(
-                            text = if (isFetching) "获取中..." else "选择API并获取歌词",
                             onClick = { viewModel.fetchLyrics() },
                             enabled = !isFetching,
                             modifier = Modifier.fillMaxWidth()
-                        )
+                        ) {
+                            Text(if (isFetching) "获取中..." else "选择API并获取歌词")
+                        }
                         
                         error?.let {
                             Text(it, color = MiuixTheme.colorScheme.error, modifier = Modifier.padding(top = 8.dp))
@@ -125,10 +127,11 @@ fun MiuixDebugLyricScreen(
             item {
                 Spacer(modifier = Modifier.height(24.dp))
                 Button(
-                    text = "返回",
                     onClick = onBack,
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)
-                )
+                ) {
+                    Text("返回")
+                }
             }
         }
     }

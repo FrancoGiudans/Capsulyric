@@ -16,8 +16,10 @@ import com.example.islandlyrics.R
 import com.example.islandlyrics.data.LyricRepository
 import com.example.islandlyrics.core.platform.RomUtils
 import com.example.islandlyrics.feature.logviewer.LogViewerActivity
+import androidx.compose.ui.unit.sp
 import top.yukonga.miuix.kmp.basic.*
 import top.yukonga.miuix.kmp.extra.SuperArrow
+import top.yukonga.miuix.kmp.extra.SuperDialog
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import java.text.SimpleDateFormat
 import java.util.*

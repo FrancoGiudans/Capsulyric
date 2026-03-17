@@ -10,7 +10,7 @@
     <string name="menu_github">GitHub</string>
     <string name="menu_log">Log</string>
     <string name="menu_settings">Settings</string>
-    <string name="title_diagnostics">Diagnostics &amp; Feedback</string>
+    <string name="title_diagnostics">Diagnostics Tool</string>
     <string name="summary_diagnostics">View logs, service status, and system info</string>
     <string name="btn_disable_diagnostics">Disable Diagnostics Tool</string>
     <string name="dialog_disable_diagnostics_title">Disable Diagnostics Tool?</string>

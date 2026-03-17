@@ -33,6 +33,11 @@ class AppLogger private constructor() {
         isLogEnabled = BuildConfig.DEBUG || isDevMode
     }
 
+    fun enableLogging(enable: Boolean) {
+        isLogEnabled = enable
+        if (enable) i("AppLogger", "Logging Enabled by User")
+    }
+
     // ── Public API ────────────────────────────────────────────────────────────
 
     fun d(tag: String, message: String) {

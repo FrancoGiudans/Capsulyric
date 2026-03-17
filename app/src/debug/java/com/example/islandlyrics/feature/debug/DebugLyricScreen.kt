@@ -23,6 +23,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.graphics.SolidColor
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.islandlyrics.DebugLyricViewModel
 import com.example.islandlyrics.data.lyric.OnlineLyricFetcher
@@ -118,7 +120,10 @@ fun DebugLyricScreen(
                     colors = ButtonDefaults.filledTonalButtonColors()
                 ) {
                     if (isFetching) {
-                        CircularProgressIndicator(size = 20.dp, strokeWidth = 2.dp)
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(20.dp),
+                            strokeWidth = 2.dp
+                        )
                     } else {
                         Text("选择API并获取歌词")
                     }

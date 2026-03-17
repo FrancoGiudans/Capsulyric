@@ -469,7 +469,7 @@ fun SettingsScreen(
                 if (showLogs) {
                      SettingsActionItem(
                          title = stringResource(R.string.title_diagnostics),
-                         subtitle = stringResource(R.string.summary_diagnostics),
+                         summary = stringResource(R.string.summary_diagnostics),
                          icon = Icons.Filled.Info,
                          onClick = onShowDiagnostics
                      )
@@ -957,6 +957,7 @@ fun SettingsSwitchItem(
 fun SettingsActionItem(
     title: String,
     icon: ImageVector,
+    summary: String? = null,
     onClick: () -> Unit
 ) {
     Row(
@@ -966,12 +967,20 @@ fun SettingsActionItem(
             .padding(horizontal = 24.dp, vertical = 16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(
-            text = title,
-            fontSize = 18.sp,
-            color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.weight(1f)
-        )
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                fontSize = 18.sp,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            if (summary != null) {
+                Text(
+                    text = summary,
+                    fontSize = 14.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
         Icon(
              imageVector = icon,
              contentDescription = null,

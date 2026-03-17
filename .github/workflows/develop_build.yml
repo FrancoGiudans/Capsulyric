@@ -1,4 +1,4 @@
-name: Canary Build (Debug & Prerelease)
+name: Canary Build (Prerelease)
 
 on:
   push:
@@ -60,8 +60,8 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      - name: Build All Variants
-        run: ./gradlew assembleDebug assemblePrerelease
+      - name: Build Prerelease Variant
+        run: ./gradlew assemblePrerelease
 
       - name: Sign Prerelease APKs
         env:
@@ -84,11 +84,6 @@ jobs:
 
           rm release.keystore
 
-      - name: Upload Standard Debug Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: Capsulyric-Standard-Debug
-          path: app/build/outputs/apk/debug/app-debug.apk
 
       - name: Upload Standard Signed Artifact
         uses: actions/upload-artifact@v4
@@ -171,7 +166,6 @@ jobs:
           body_path: canary_body.md
           target_commitish: develop
           files: |
-            app/build/outputs/apk/debug/app-debug.apk
             app/build/outputs/apk/prerelease/app-prerelease-signed.apk
           prerelease: true
           make_latest: false
