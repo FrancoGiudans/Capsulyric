@@ -153,9 +153,8 @@ class LyricService : Service() {
     private var isSuperIslandMode = !RomUtils.isLiveUpdateSupported()
 
     private val mediaActionReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context, intent: Intent) {
-            val action = intent.action ?: return
-            AppLogger.getInstance().log(TAG, "MediaActionReceiver received: $action")
+        override fun onReceive(context: Context?, intent: Intent?) {
+            val action = intent?.action ?: return
             when (action) {
                 "com.example.islandlyrics.ACTION_MEDIA_PLAY_PAUSE", "miui.focus.action_play_pause" -> {
                     val playing = LyricRepository.getInstance().isPlaying.value ?: false
@@ -163,6 +162,15 @@ class LyricService : Service() {
                 }
                 "com.example.islandlyrics.ACTION_MEDIA_NEXT", "miui.focus.action_next" -> handleMediaNext()
                 "com.example.islandlyrics.ACTION_MEDIA_PREV", "miui.focus.action_prev" -> handleMediaPrev()
+            }
+        }
+    }
+
+    private val refreshReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (LyricRepository.ACTION_REFRESH_DIAGNOSTICS == intent?.action) {
+                AppLogger.getInstance().log(TAG, "Manual diagnostic refresh requested.")
+                updateAdvancedDiagnostics()
             }
         }
     }
@@ -237,6 +245,10 @@ class LyricService : Service() {
             addAction("miui.focus.action_prev")
         }
         registerReceiver(mediaActionReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
+
+        // Register refresh receiver
+        val refreshFilter = IntentFilter(LyricRepository.ACTION_REFRESH_DIAGNOSTICS)
+        registerReceiver(refreshReceiver, refreshFilter, Context.RECEIVER_NOT_EXPORTED)
 
         getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE).registerOnSharedPreferenceChangeListener(prefsListener)
 
@@ -336,8 +348,9 @@ class LyricService : Service() {
         
         try {
             unregisterReceiver(mediaActionReceiver)
+            unregisterReceiver(refreshReceiver)
         } catch (e: Exception) {
-            AppLogger.getInstance().e(TAG, "Failed to unregister mediaActionReceiver: ${e.message}")
+            AppLogger.getInstance().e(TAG, "Failed to unregister receivers: ${e.message}")
         }
         
         broadcastStatus("🔴 Stopped")
@@ -507,6 +520,14 @@ class LyricService : Service() {
         }
 
         sendBroadcast(intent)
+
+        // Update Repo Diagnostics
+        LyricRepository.getInstance().mergeDiagnostics { old ->
+            old.copy(
+                hasPromotableChar = hasChar,
+                isCurrentlyPromoted = isPromoted
+            )
+        }
 
         // --- Detailed Logging (DIAG_UPDATE) ---
         // 4. System Permission
@@ -740,6 +761,24 @@ class LyricService : Service() {
             AppLogger.getInstance().log(TAG, "⚠️ No active controller found for skip prev")
         } catch (e: Exception) {
             AppLogger.getInstance().e(TAG, "Prev action failed: ${e.message}")
+        }
+    }
+
+    private fun updateAdvancedDiagnostics() {
+        val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val canPost = if (Build.VERSION.SDK_INT >= 36) {
+            nm.canPostPromotedNotifications()
+        } else {
+            false
+        }
+        
+        LyricRepository.getInstance().mergeDiagnostics { old ->
+            old.copy(
+                canPostPromoted = canPost,
+                isIslandSupported = com.example.islandlyrics.core.platform.RomUtils.isIslandSupported(),
+                islandVersion = com.example.islandlyrics.core.platform.RomUtils.getFocusProtocolVersion(this),
+                hasFocusPermission = com.example.islandlyrics.core.platform.RomUtils.hasFocusPermission(this)
+            )
         }
     }
 

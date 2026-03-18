@@ -141,7 +141,6 @@ jobs:
           
           echo "" >> canary_body.md
           echo "---" >> canary_body.md
-          echo "_Standard builds are available in the artifact section above._" >> canary_body.md
 
       - name: Delete old Canary releases and tags
         if: github.event_name == 'push' && github.ref == 'refs/heads/develop'

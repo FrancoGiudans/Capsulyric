@@ -12,6 +12,9 @@ class IslandLyricsApp : Application() {
 
         // Initialise unified logger so all AppLogger calls are persisted to file
         AppLogger.getInstance().init(this)
+        
+        // Initialise repository state
+        com.example.islandlyrics.data.LyricRepository.getInstance().init(this)
 
         // Apply saved theme preferences (Mode, Language)
         ThemeHelper.applyTheme(this)

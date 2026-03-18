@@ -370,4 +370,46 @@
     <string name="settings_click_action_media_desc">Shows a popup without opening the app</string>
     <string name="oobe_btn_start">Start</string>
 
+    <!-- Diagnostics Strings -->
+    <string name="diag_header_tools">Common Tools</string>
+    <string name="diag_header_service">Service Diagnostics</string>
+    <string name="diag_header_system">System Information</string>
+    <string name="diag_header_advanced">Advanced Features (Android 16 / Xiaomi Island)</string>
+    
+    <string name="diag_label_connection">Connection Status</string>
+    <string name="diag_label_controllers">Total Controllers</string>
+    <string name="diag_label_whitelisted">Whitelisted Controllers</string>
+    <string name="diag_label_primary_pkg">Primary Package</string>
+    <string name="diag_label_whitelist_size">Whitelist Size</string>
+    <string name="diag_label_last_params">Last Update Params</string>
+    <string name="diag_label_last_update">Last Update</string>
+    
+    <string name="diag_label_android_ver">Android Version</string>
+    <string name="diag_label_rom_ver">ROM Version</string>
+    <string name="diag_label_rom_type">ROM Type</string>
+    <string name="diag_label_device">Device Model</string>
+    <string name="diag_label_arch">Architecture</string>
+    <string name="diag_label_build_id">Build ID</string>
+    
+    <string name="diag_section_android16">Android 16+ Promoted Notifications</string>
+    <string name="diag_label_can_post_promoted">Post Permission (canPost)</string>
+    <string name="diag_label_has_promoted_char">Promotable Char (hasChar)</string>
+    <string name="diag_label_is_promoted">Currently Promoted</string>
+    
+    <string name="diag_section_xiaomi">Xiaomi Super Island</string>
+    <string name="diag_label_island_support">System Support (Island)</string>
+    <string name="diag_label_focus_version">Focus Protocol Version</string>
+    <string name="diag_label_focus_perm">Focus Notification Permission</string>
+    
+    <string name="diag_status_connected">🟢 Connected</string>
+    <string name="diag_status_disconnected">🔴 Disconnected</string>
+    <string name="diag_waiting_data">Waiting for data...</string>
+    <string name="diag_none">None</string>
+    <string name="diag_yes">✅ Yes</string>
+    <string name="diag_no">❌ No</string>
+    <string name="diag_supported">✅ Supported</string>
+    <string name="diag_unsupported">❌ Unsupported</string>
+    <string name="diag_enabled">✅ Enabled</string>
+    <string name="diag_disabled">❌ Disabled</string>
+    <string name="diag_btn_refresh">Refresh APIs</string>
 </resources>

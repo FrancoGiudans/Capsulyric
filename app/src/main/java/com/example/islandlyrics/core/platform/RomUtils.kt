@@ -1,6 +1,7 @@
 package com.example.islandlyrics.core.platform
 
 import android.annotation.SuppressLint
+import android.os.Build
 import java.io.BufferedReader
 import java.io.InputStreamReader
 
@@ -18,29 +19,29 @@ object RomUtils {
         if (!hyperOsVersion.isNullOrEmpty()) {
              val inc = getSystemProperty("ro.build.version.incremental")
              if (inc.isNotEmpty() && !hyperOsVersion.contains(inc)) {
-                 return "HyperOS $hyperOsVersion ($inc)"
+                 return "$hyperOsVersion ($inc)"
              }
-             return "HyperOS $hyperOsVersion"
+             return hyperOsVersion
         }
         
         // ColorOS / OxygenOS
         val colorOsVersion = getSystemProperty("ro.build.version.opporom")
         if (!colorOsVersion.isNullOrEmpty()) {
              val detailed = getSystemProperty("ro.rom.version") // Example fallback
-             return if (!detailed.isNullOrEmpty()) "ColorOS/OxygenOS $colorOsVersion ($detailed)" else "ColorOS/OxygenOS $colorOsVersion"
+             return if (!detailed.isNullOrEmpty()) "$colorOsVersion ($detailed)" else colorOsVersion
         }
 
         // FuntouchOS / OriginOS
         val vivoOsVersion = getSystemProperty("ro.vivo.os.version")
         if (!vivoOsVersion.isNullOrEmpty()) {
              val display = getSystemProperty("ro.vivo.os.build.display.id")
-             return if (display.isNotEmpty()) "Funtouch/OriginOS $vivoOsVersion ($display)" else "Funtouch/OriginOS $vivoOsVersion"
+             return if (display.isNotEmpty()) "$vivoOsVersion ($display)" else vivoOsVersion
         }
         
         // Flyme
         val flymeUi = getSystemProperty("ro.flyme.ui.version.name")
         if (flymeUi.isNotEmpty()) {
-             return "Flyme $flymeUi"
+             return flymeUi
         }
 
         // Custom ROMs
@@ -161,6 +162,8 @@ object RomUtils {
 
     fun isHyperOs(): Boolean = getRomType() == "HyperOS"
 
+    fun isXiaomi(): Boolean = android.os.Build.MANUFACTURER.equals("xiaomi", ignoreCase = true) || isHyperOs()
+
     fun isLiveUpdateSupported(): Boolean {
         if (android.os.Build.VERSION.SDK_INT < 36) return false
         if (isHyperOs()) {
@@ -208,5 +211,41 @@ object RomUtils {
             e.printStackTrace()
         }
         return null
+    }
+
+    fun isIslandSupported(): Boolean {
+        return getSystemProperty("persist.sys.feature.island") == "true"
+    }
+
+    fun getFocusProtocolVersion(context: android.content.Context): Int {
+        return try {
+            android.provider.Settings.System.getInt(
+                context.contentResolver,
+                "notification_focus_protocol", 0
+            )
+        } catch (e: Exception) {
+            0
+        }
+    }
+
+    fun hasFocusPermission(context: android.content.Context): Boolean {
+        return try {
+            val uri = android.net.Uri.parse("content://miui.statusbar.notification.public")
+            val extras = android.os.Bundle().apply {
+                putString("package", context.packageName)
+            }
+            val bundle = context.contentResolver.call(uri, "canShowFocus", null, extras)
+            bundle?.getBoolean("canShowFocus", false) ?: false
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    fun canPostPromotedNotifications(context: android.content.Context): Boolean {
+        if (android.os.Build.VERSION.SDK_INT >= 36) {
+            val nm = context.getSystemService(android.app.NotificationManager::class.java)
+            return nm?.canPostPromotedNotifications() ?: false
+        }
+        return false
     }
 }

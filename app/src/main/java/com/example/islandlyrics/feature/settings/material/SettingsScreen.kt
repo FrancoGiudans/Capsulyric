@@ -14,6 +14,8 @@ import android.net.Uri
 import android.os.Build
 import android.provider.Settings
 import android.widget.Toast
+import androidx.compose.runtime.livedata.observeAsState
+import com.example.islandlyrics.data.LyricRepository
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -446,8 +448,8 @@ fun SettingsScreen(
 
                 // Build Number (Dev Trigger)
                 var devStepCount by remember { mutableIntStateOf(0) }
-                val isDevMode = remember { prefs.getBoolean("dev_mode_enabled", false) }
-                var showLogs by remember { mutableStateOf(BuildConfig.DEBUG || isDevMode) }
+                val devModeEnabled by LyricRepository.getInstance().devModeEnabled.observeAsState(false)
+                val showLogs = BuildConfig.DEBUG || devModeEnabled
 
                 SettingsValueItem(
                     title = stringResource(R.string.about_commit),
@@ -455,14 +457,12 @@ fun SettingsScreen(
                     onClick = {
                         // Dev mode trigger logic
                         devStepCount++
-                         if (devStepCount in 3..6) {
-                             Toast.makeText(context, context.getString(R.string.toast_dev_mode_steps, 7 - devStepCount), Toast.LENGTH_SHORT).show()
-                         } else if (devStepCount == 7) {
-                            prefs.edit().putBoolean("dev_mode_enabled", true).apply()
-                            com.example.islandlyrics.core.logging.AppLogger.getInstance().enableLogging(true)
-                            showLogs = true
+                        if (devStepCount in 3..6) {
+                            Toast.makeText(context, context.getString(R.string.toast_dev_mode_steps, 7 - devStepCount), Toast.LENGTH_SHORT).show()
+                        } else if (devStepCount == 7) {
+                            LyricRepository.getInstance().setDevMode(context, true)
                             Toast.makeText(context, context.getString(R.string.toast_dev_mode_enabled), Toast.LENGTH_SHORT).show()
-                         }
+                        }
                     }
                 )
 

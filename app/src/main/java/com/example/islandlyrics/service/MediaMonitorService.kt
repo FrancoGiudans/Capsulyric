@@ -92,6 +92,15 @@ class MediaMonitorService : NotificationListenerService() {
         }
     }
 
+    private val refreshReceiver = object : android.content.BroadcastReceiver() {
+        override fun onReceive(context: android.content.Context?, intent: android.content.Intent?) {
+            if (LyricRepository.ACTION_REFRESH_DIAGNOSTICS == intent?.action) {
+                AppLogger.getInstance().log(TAG, "Manual diagnostic refresh requested.")
+                updateDiagnostics()
+            }
+        }
+    }
+
     override fun onCreate() {
         super.onCreate()
         instance = this
@@ -100,6 +109,14 @@ class MediaMonitorService : NotificationListenerService() {
         loadWhitelist()
         // Register pref listener
         prefs?.registerOnSharedPreferenceChangeListener(prefListener)
+
+        // Register refresh receiver
+        val filter = android.content.IntentFilter(LyricRepository.ACTION_REFRESH_DIAGNOSTICS)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(refreshReceiver, filter, android.content.Context.RECEIVER_NOT_EXPORTED)
+        } else {
+            registerReceiver(refreshReceiver, filter)
+        }
     }
 
     override fun onListenerConnected() {
@@ -174,6 +191,11 @@ class MediaMonitorService : NotificationListenerService() {
         super.onDestroy()
         if (instance === this) instance = null
         prefs?.unregisterOnSharedPreferenceChangeListener(prefListener)
+        try {
+            unregisterReceiver(refreshReceiver)
+        } catch (e: Exception) {
+            // Ignored
+        }
     }
 
     /**
@@ -326,15 +348,27 @@ class MediaMonitorService : NotificationListenerService() {
         }
         
         // Report Diagnostics
-        val diag = ServiceDiagnostics(
-            isConnected = isConnected,
-            totalControllers = activeControllers.size,
-            whitelistedControllers = activeControllers.count { allowedPackages.contains(it.packageName) },
-            primaryPackage = primary?.packageName ?: "None",
-            whitelistSize = allowedPackages.size,
-            lastUpdateParams = "Playing: ${primary?.playbackState?.state == PlaybackState.STATE_PLAYING}"
-        )
-        LyricRepository.getInstance().updateDiagnostics(diag)
+        updateDiagnostics()
+    }
+
+    private fun updateDiagnostics() {
+        val primary = getPrimaryController()
+        LyricRepository.getInstance().mergeDiagnostics { old ->
+            old.copy(
+                isConnected = isConnected,
+                totalControllers = activeControllers.size,
+                whitelistedControllers = activeControllers.count { allowedPackages.contains(it.packageName) },
+                primaryPackage = primary?.packageName ?: "None",
+                whitelistSize = allowedPackages.size,
+                lastUpdateParams = "Playing: ${primary?.playbackState?.state == PlaybackState.STATE_PLAYING}",
+                timestamp = System.currentTimeMillis(),
+                // OS level static checks
+                isIslandSupported = com.example.islandlyrics.core.platform.RomUtils.isIslandSupported(),
+                islandVersion = com.example.islandlyrics.core.platform.RomUtils.getFocusProtocolVersion(this),
+                hasFocusPermission = com.example.islandlyrics.core.platform.RomUtils.hasFocusPermission(this),
+                canPostPromoted = com.example.islandlyrics.core.platform.RomUtils.canPostPromotedNotifications(this)
+            )
+        }
     }
 
     private fun checkServiceState() {

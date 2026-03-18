@@ -3,6 +3,7 @@ package com.example.islandlyrics.data
 import android.graphics.Bitmap
 import com.example.islandlyrics.core.logging.AppLogger
 import com.example.islandlyrics.data.lyric.OnlineLyricFetcher
+import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 
 /**
@@ -120,9 +121,41 @@ class LyricRepository private constructor() {
 
     // Diagnostics
     val liveDiagnostics = MutableLiveData<ServiceDiagnostics>()
+    val diagnostics: LiveData<ServiceDiagnostics> = liveDiagnostics
+
+    private val liveDevMode = MutableLiveData<Boolean>()
+    val devModeEnabled: LiveData<Boolean> = liveDevMode
+
+    fun setDevMode(context: android.content.Context, enabled: Boolean) {
+        val prefs = context.getSharedPreferences("IslandLyricsPrefs", android.content.Context.MODE_PRIVATE)
+        if (enabled) {
+            prefs.edit().putBoolean("dev_mode_enabled", true).apply()
+        } else {
+            prefs.edit().remove("dev_mode_enabled").apply()
+        }
+        com.example.islandlyrics.core.logging.AppLogger.getInstance().enableLogging(enabled)
+        postOrSet(liveDevMode, enabled)
+    }
+
+    fun init(context: android.content.Context) {
+        val prefs = context.getSharedPreferences("IslandLyricsPrefs", android.content.Context.MODE_PRIVATE)
+        postOrSet(liveDevMode, prefs.getBoolean("dev_mode_enabled", false))
+    }
+
+    fun refreshAdvancedDiagnostics(context: android.content.Context) {
+        val intent = android.content.Intent(ACTION_REFRESH_DIAGNOSTICS).apply {
+            `package` = context.packageName
+        }
+        context.sendBroadcast(intent)
+    }
 
     fun updateDiagnostics(diag: ServiceDiagnostics) {
         postOrSet(liveDiagnostics, diag)
+    }
+
+    fun mergeDiagnostics(update: (ServiceDiagnostics) -> ServiceDiagnostics) {
+        val current = liveDiagnostics.value ?: ServiceDiagnostics()
+        postOrSet(liveDiagnostics, update(current))
     }
 
     private fun <T> postOrSet(liveData: MutableLiveData<T>, value: T) {
@@ -134,6 +167,7 @@ class LyricRepository private constructor() {
     }
 
     companion object {
+        const val ACTION_REFRESH_DIAGNOSTICS = "com.example.islandlyrics.ACTION_REFRESH_DIAGNOSTICS"
         private var instance: LyricRepository? = null
 
         @Synchronized
@@ -153,5 +187,13 @@ data class ServiceDiagnostics(
     val primaryPackage: String = "None",
     val whitelistSize: Int = 0,
     val lastUpdateParams: String = "",
-    val timestamp: Long = System.currentTimeMillis()
+    val timestamp: Long = System.currentTimeMillis(),
+    // Android 16+ Promoted Notifications
+    val canPostPromoted: Boolean = false,
+    val hasPromotableChar: Boolean = false,
+    val isCurrentlyPromoted: Boolean = false,
+    // Xiaomi Super Island
+    val isIslandSupported: Boolean = false,
+    val islandVersion: Int = 0,
+    val hasFocusPermission: Boolean = false
 )

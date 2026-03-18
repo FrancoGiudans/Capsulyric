@@ -360,4 +360,45 @@
     <string name="summary_feedback">通过WPS或者GitHub发送反馈</string>
     <string name="summary_github">在GitHub查看源码</string>
 
+    <!-- 诊断相关字符串 -->
+    <string name="diag_header_tools">常用工具</string>
+    <string name="diag_header_service">服务诊断数据</string>
+    <string name="diag_header_system">系统环境信息</string>
+    <string name="diag_header_advanced">高级功能查验 (Android 16 / 小米岛)</string>
+    
+    <string name="diag_label_connection">连接状态</string>
+    <string name="diag_label_controllers">总控制器数</string>
+    <string name="diag_label_whitelisted">白名单内控制器</string>
+    <string name="diag_label_primary_pkg">当前主要包名</string>
+    <string name="diag_label_whitelist_size">白名单长度</string>
+    <string name="diag_label_last_params">最后参数</string>
+    <string name="diag_label_last_update">最后更新</string>
+    
+    <string name="diag_label_android_ver">Android 版本</string>
+    <string name="diag_label_rom_ver">ROM 版本</string>
+    <string name="diag_label_rom_type">ROM 类型</string>
+    <string name="diag_label_device">设备型号</string>
+    <string name="diag_label_arch">架构</string>
+    <string name="diag_label_build_id">Build ID</string>
+    
+    <string name="diag_section_android16">Android 16+ 实时通知</string>
+    <string name="diag_label_can_post_promoted">发送权限 (canPost)</string>
+    <string name="diag_label_has_promoted_char">提升特征 (hasChar)</string>
+    <string name="diag_label_is_promoted">正在提升 (isPromoted)</string>
+    
+    <string name="diag_section_xiaomi">小米超级岛</string>
+    <string name="diag_label_island_support">系统支持 (Island)</string>
+    <string name="diag_label_focus_version">焦点协议版本</string>
+    <string name="diag_label_focus_perm">焦点通知权限</string>
+    
+    <string name="diag_status_connected">🟢 已连接</string>
+    <string name="diag_status_disconnected">🔴 未连接</string>
+    <string name="diag_waiting_data">等待数据...</string>
+    <string name="diag_none">无</string>
+    <string name="diag_yes">✅ 是</string>
+    <string name="diag_no">❌ 否</string>
+    <string name="diag_supported">✅ 支持</string>
+    <string name="diag_unsupported">❌ 不支持</string>
+    <string name="diag_enabled">✅ 已开启</string>
+    <string name="diag_disabled">❌ 未开启</string>
 </resources>

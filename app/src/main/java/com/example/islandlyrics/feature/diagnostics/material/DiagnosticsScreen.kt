@@ -10,17 +10,20 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.MonitorHeart
 import androidx.compose.material.icons.filled.Terminal
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
+import com.example.islandlyrics.data.LyricRepository
+import com.example.islandlyrics.data.ServiceDiagnostics
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.islandlyrics.R
-import com.example.islandlyrics.data.LyricRepository
 import com.example.islandlyrics.core.platform.RomUtils
 import com.example.islandlyrics.feature.logviewer.LogViewerActivity
 import java.text.SimpleDateFormat
@@ -72,36 +75,75 @@ fun DiagnosticsScreen(onBack: () -> Unit) {
 
             // Service Diagnostics Section
             DiagnosticsCard(
-                title = "服务诊断数据",
+                title = stringResource(R.string.diag_header_service),
                 icon = Icons.Default.MonitorHeart
             ) {
                 if (diagnostics == null) {
-                    Text("等待服务数据...", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(stringResource(R.string.diag_waiting_data), color = MaterialTheme.colorScheme.onSurfaceVariant)
                 } else {
-                    InfoRow("连接状态", if (diagnostics?.isConnected == true) "🟢 已连接" else "🔴 未连接")
-                    InfoRow("总控制器数", diagnostics?.totalControllers?.toString() ?: "0")
-                    InfoRow("白名单内控制器", diagnostics?.whitelistedControllers?.toString() ?: "0")
-                    InfoRow("当前主要包名", diagnostics?.primaryPackage ?: "无")
-                    InfoRow("白名单长度", diagnostics?.whitelistSize?.toString() ?: "0")
-                    InfoRow("最后参数", diagnostics?.lastUpdateParams ?: "无")
-                    InfoRow("上次更新", SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date(diagnostics?.timestamp ?: 0)))
+                    InfoRow(
+                        stringResource(R.string.diag_label_connection),
+                        if (diagnostics?.isConnected == true) stringResource(R.string.diag_status_connected) else stringResource(R.string.diag_status_disconnected)
+                    )
+                    InfoRow(stringResource(R.string.diag_label_controllers), diagnostics?.totalControllers?.toString() ?: "0")
+                    InfoRow(stringResource(R.string.diag_label_whitelisted), diagnostics?.whitelistedControllers?.toString() ?: "0")
+                    InfoRow(stringResource(R.string.diag_label_primary_pkg), diagnostics?.primaryPackage ?: stringResource(R.string.diag_none))
+                    InfoRow(stringResource(R.string.diag_label_whitelist_size), diagnostics?.whitelistSize?.toString() ?: "0")
+                    InfoRow(stringResource(R.string.diag_label_last_params), diagnostics?.lastUpdateParams ?: stringResource(R.string.diag_none))
+                    InfoRow(stringResource(R.string.diag_label_last_update), SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date(diagnostics?.timestamp ?: 0)))
                 }
             }
 
             // System Info Section
             DiagnosticsCard(
-                title = "系统环境信息",
+                title = stringResource(R.string.diag_header_system),
                 icon = Icons.Default.Info
             ) {
-                InfoRow("Android 版本", "${Build.VERSION.RELEASE} (SDK ${Build.VERSION.SDK_INT})")
+                InfoRow(stringResource(R.string.diag_label_android_ver), "${Build.VERSION.RELEASE} (SDK ${Build.VERSION.SDK_INT})")
                 val romInfo = remember { RomUtils.getRomInfo() }
                 if (romInfo.isNotEmpty()) {
-                    InfoRow("ROM 版本", romInfo)
+                    InfoRow(stringResource(R.string.diag_label_rom_ver), romInfo)
                 }
-                InfoRow("ROM 类型", RomUtils.getRomType())
-                InfoRow("设备型号", "${Build.MANUFACTURER} ${Build.MODEL}")
-                InfoRow("架构", Build.SUPPORTED_ABIS.joinToString(", "))
-                InfoRow("Build ID", Build.DISPLAY)
+                InfoRow(stringResource(R.string.diag_label_rom_type), RomUtils.getRomType())
+                InfoRow(stringResource(R.string.diag_label_device), "${Build.MANUFACTURER} ${Build.MODEL}")
+                InfoRow(stringResource(R.string.diag_label_arch), Build.SUPPORTED_ABIS.joinToString(", "))
+                InfoRow(stringResource(R.string.diag_label_build_id), Build.DISPLAY)
+            }
+
+            // Advanced Feature Checks (Compatibility based)
+            val isAndroid16 = Build.VERSION.SDK_INT >= 36
+            val isXiaomi = RomUtils.isXiaomi()
+
+            if (isAndroid16 || isXiaomi) {
+                DiagnosticsCard(
+                    title = stringResource(R.string.diag_header_advanced),
+                    icon = Icons.Default.Info,
+                    trailingContent = {
+                        IconButton(onClick = { LyricRepository.getInstance().refreshAdvancedDiagnostics(context) }) {
+                            Icon(androidx.compose.material.icons.Icons.Default.Refresh, contentDescription = stringResource(R.string.diag_btn_refresh), tint = MaterialTheme.colorScheme.primary)
+                        }
+                    }
+                ) {
+                    if (diagnostics == null) {
+                        Text(stringResource(R.string.diag_waiting_data), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    } else {
+                        if (isAndroid16) {
+                            Text(stringResource(R.string.diag_section_android16), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                            InfoRow(stringResource(R.string.diag_label_can_post_promoted), if (diagnostics?.canPostPromoted == true) stringResource(R.string.diag_enabled) else stringResource(R.string.diag_disabled))
+                            InfoRow(stringResource(R.string.diag_label_has_promoted_char), if (diagnostics?.hasPromotableChar == true) stringResource(R.string.diag_yes) else stringResource(R.string.diag_no))
+                            InfoRow(stringResource(R.string.diag_label_is_promoted), if (diagnostics?.isCurrentlyPromoted == true) stringResource(R.string.diag_yes) else stringResource(R.string.diag_no))
+                            
+                            if (isXiaomi) Spacer(modifier = Modifier.height(8.dp))
+                        }
+                        
+                        if (isXiaomi) {
+                            Text(stringResource(R.string.diag_section_xiaomi), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                            InfoRow(stringResource(R.string.diag_label_island_support), if (diagnostics?.isIslandSupported == true) stringResource(R.string.diag_supported) else stringResource(R.string.diag_unsupported))
+                            InfoRow(stringResource(R.string.diag_label_focus_version), diagnostics?.islandVersion?.toString() ?: "0")
+                            InfoRow(stringResource(R.string.diag_label_focus_perm), if (diagnostics?.hasFocusPermission == true) stringResource(R.string.diag_enabled) else stringResource(R.string.diag_disabled))
+                        }
+                    }
+                }
             }
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -126,10 +168,8 @@ fun DiagnosticsScreen(onBack: () -> Unit) {
                     confirmButton = {
                         TextButton(
                             onClick = {
-                                prefs.edit().remove("dev_mode_enabled").apply()
-                                com.example.islandlyrics.core.logging.AppLogger.getInstance().enableLogging(false)
-                                showDisableDialog = false
-                                (context as? Activity)?.finish()
+                                LyricRepository.getInstance().setDevMode(context, false)
+                                onBack()
                             }
                         ) {
                             Text(stringResource(android.R.string.ok))
@@ -152,6 +192,7 @@ fun DiagnosticsScreen(onBack: () -> Unit) {
 fun DiagnosticsCard(
     title: String,
     icon: androidx.compose.ui.graphics.vector.ImageVector,
+    trailingContent: @Composable (() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit
 ) {
     Card(
@@ -170,6 +211,10 @@ fun DiagnosticsCard(
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary
                 )
+                if (trailingContent != null) {
+                    Spacer(modifier = Modifier.weight(1f))
+                    trailingContent()
+                }
             }
             Spacer(modifier = Modifier.height(12.dp))
             content()
