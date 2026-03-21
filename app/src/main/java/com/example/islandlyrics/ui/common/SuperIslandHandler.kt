@@ -303,24 +303,49 @@ class SuperIslandHandler(
 
             if (cachedActionStyle == "media_controls") {
                 actions {
-                    val playPauseUri = Intent("com.example.islandlyrics.ACTION_MEDIA_PLAY_PAUSE")
+                    val playPauseIntent = Intent("com.example.islandlyrics.ACTION_MEDIA_PLAY_PAUSE")
                         .setPackage(context.packageName)
-                        .toUri(Intent.URI_INTENT_SCHEME)
-                    val nextUri = Intent("com.example.islandlyrics.ACTION_MEDIA_NEXT")
+                        .addFlags(Intent.FLAG_RECEIVER_FOREGROUND)
+                    val nextIntent = Intent("com.example.islandlyrics.ACTION_MEDIA_NEXT")
                         .setPackage(context.packageName)
-                        .toUri(Intent.URI_INTENT_SCHEME)
+                        .addFlags(Intent.FLAG_RECEIVER_FOREGROUND)
+
+                    val playPausePending = PendingIntent.getBroadcast(
+                        context,
+                        2001,
+                        playPauseIntent,
+                        PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+                    )
+                    val nextPending = PendingIntent.getBroadcast(
+                        context,
+                        2002,
+                        nextIntent,
+                        PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+                    )
+
+                    val playPauseAction = Notification.Action.Builder(
+                        cachedPlayPauseIcon ?: Icon.createWithResource(context, R.drawable.ic_pause),
+                        "",
+                        playPausePending
+                    ).build()
+                    val nextAction = Notification.Action.Builder(
+                        cachedNextIcon ?: Icon.createWithResource(context, R.drawable.ic_skip_next),
+                        "",
+                        nextPending
+                    ).build()
+
+                    val playPauseActionKey = createAction("miui.focus.action_key_play_pause", playPauseAction)
+                    val nextActionKey = createAction("miui.focus.action_key_next", nextAction)
 
                     addActionInfo {
                         actionIcon = cachedPlayPauseIcon?.let { createPicture("miui.focus.pic_btn_play_pause", it) }
                         type = 0
-                        actionIntentType = 2
-                        this.actionIntent = playPauseUri
+                        action = playPauseActionKey
                     }
                     addActionInfo {
                         actionIcon = cachedNextIcon?.let { createPicture("miui.focus.pic_btn_next", it) }
                         type = 0
-                        actionIntentType = 2
-                        this.actionIntent = nextUri
+                        action = nextActionKey
                     }
                 }
             } else {
