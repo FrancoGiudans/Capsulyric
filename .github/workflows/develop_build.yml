@@ -9,6 +9,7 @@ on:
       - '.gitignore'
       - 'screenshots/**'
       - 'LICENSE'
+      - '.github/workflows/develop_build.yml'
   workflow_dispatch:
 
 concurrency:
