@@ -1,6 +1,5 @@
 package com.example.islandlyrics.feature.update.material
 
-import android.content.Context
 import com.example.islandlyrics.BuildConfig
 import com.example.islandlyrics.R
 import com.example.islandlyrics.core.update.UpdateChecker
@@ -25,13 +24,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.foundation.layout.fillMaxWidth
 import android.widget.TextView
-import io.noties.markwon.Markwon
-import io.noties.markwon.SoftBreakAddsNewLinePlugin
-import io.noties.markwon.ext.strikethrough.StrikethroughPlugin
-import io.noties.markwon.ext.tables.TablePlugin
-import io.noties.markwon.ext.tasklist.TaskListPlugin
-import io.noties.markwon.html.HtmlPlugin
-import io.noties.markwon.image.coil.CoilImagesPlugin
+import com.example.islandlyrics.feature.update.UpdateMarkdown
 
 @Composable
 fun UpdateDialog(
@@ -81,16 +74,7 @@ fun UpdateDialog(
         .replace(Regex("^\\s*Change Log\\s*", RegexOption.MULTILINE), "") // Remove "Change Log" title if present
         .trim()
         
-    val markwon = remember(context) {
-        Markwon.builder(context)
-            .usePlugin(SoftBreakAddsNewLinePlugin.create())
-            .usePlugin(StrikethroughPlugin.create())
-            .usePlugin(TablePlugin.create(context))
-            .usePlugin(TaskListPlugin.create(context))
-            .usePlugin(HtmlPlugin.create())
-            .usePlugin(CoilImagesPlugin.create(context))
-            .build()
-    }
+    val markwon = remember(context) { UpdateMarkdown.create(context) }
     
     val textColor = MaterialTheme.colorScheme.onSurface.toArgb()
 

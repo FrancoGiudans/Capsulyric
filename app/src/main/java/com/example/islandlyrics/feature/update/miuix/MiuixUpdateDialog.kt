@@ -1,7 +1,6 @@
 package com.example.islandlyrics.feature.update.miuix
 
 import com.example.islandlyrics.ui.miuix.MiuixBackHandler
-import android.content.Context
 import com.example.islandlyrics.BuildConfig
 import com.example.islandlyrics.R
 import com.example.islandlyrics.core.update.UpdateChecker
@@ -12,7 +11,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
-import androidx.activity.ComponentActivity
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.remember
@@ -22,13 +20,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
-import io.noties.markwon.Markwon
-import io.noties.markwon.SoftBreakAddsNewLinePlugin
-import io.noties.markwon.ext.strikethrough.StrikethroughPlugin
-import io.noties.markwon.ext.tables.TablePlugin
-import io.noties.markwon.ext.tasklist.TaskListPlugin
-import io.noties.markwon.html.HtmlPlugin
-import io.noties.markwon.image.coil.CoilImagesPlugin
+import com.example.islandlyrics.feature.update.UpdateMarkdown
 import top.yukonga.miuix.kmp.basic.ButtonDefaults
 import top.yukonga.miuix.kmp.basic.TextButton
 import top.yukonga.miuix.kmp.extra.SuperDialog
@@ -83,16 +75,7 @@ fun MiuixUpdateDialog(
         .replace(Regex("^\\s*Change Log\\s*", RegexOption.MULTILINE), "")
         .trim()
         
-    val markwon = remember(context) {
-        Markwon.builder(context)
-            .usePlugin(SoftBreakAddsNewLinePlugin.create())
-            .usePlugin(StrikethroughPlugin.create())
-            .usePlugin(TablePlugin.create(context))
-            .usePlugin(TaskListPlugin.create(context))
-            .usePlugin(HtmlPlugin.create())
-            .usePlugin(CoilImagesPlugin.create(context))
-            .build()
-    }
+    val markwon = remember(context) { UpdateMarkdown.create(context) }
     
     val textColor = MiuixTheme.colorScheme.onSurface.toArgb()
 
