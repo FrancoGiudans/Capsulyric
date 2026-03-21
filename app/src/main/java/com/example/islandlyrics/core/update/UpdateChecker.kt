@@ -187,8 +187,13 @@ object UpdateChecker {
     private fun mergeChangelogs(releases: List<ReleaseInfo>): String {
         val cnMerged = StringBuilder()
         val enMerged = StringBuilder()
+        val ghMerged = StringBuilder()
         for (release in releases) {
-            val (cn, en) = extractSections(release.body)
+            val sections = extractSections(release.body)
+            val cn = sections.first
+            val en = sections.second
+            val gh = sections.third
+
             if (cn.isNotEmpty()) {
                 if (cnMerged.isNotEmpty()) cnMerged.append("\n\n")
                 cnMerged.append("### ${release.tagName}\n$cn")
@@ -197,17 +202,69 @@ object UpdateChecker {
                 if (enMerged.isNotEmpty()) enMerged.append("\n\n")
                 enMerged.append("### ${release.tagName}\n$en")
             }
+            if (gh.isNotEmpty()) {
+                if (ghMerged.isNotEmpty()) ghMerged.append("\n\n")
+                ghMerged.append("### ${release.tagName}\n$gh")
+            }
         }
-        return "$CN_HEADER\n${cnMerged}\n\n$EN_HEADER\n${enMerged}"
+        
+        val result = StringBuilder()
+        if (cnMerged.isNotEmpty()) {
+            result.append("$CN_HEADER\n${cnMerged}")
+        }
+        if (enMerged.isNotEmpty()) {
+            if (result.isNotEmpty()) result.append("\n\n---\n\n")
+            result.append("$EN_HEADER\n${enMerged}")
+        }
+        if (ghMerged.isNotEmpty()) {
+            if (result.isNotEmpty()) result.append("\n\n---\n\n")
+            result.append(ghMerged)
+        }
+        return result.toString()
     }
 
-    private fun extractSections(body: String): Pair<String, String> {
+    private fun extractSections(body: String): Triple<String, String, String> {
         val cnStart = body.indexOf(CN_HEADER)
         val enStart = body.indexOf(EN_HEADER)
-        if (cnStart == -1 || enStart == -1) return Pair(body, "")
-        val cnSection = if (cnStart < enStart) body.substring(cnStart + CN_HEADER.length, enStart).trim() else body.substring(cnStart + CN_HEADER.length).trim()
-        val enSection = if (enStart < cnStart) body.substring(enStart + EN_HEADER.length, cnStart).trim() else body.substring(enStart + EN_HEADER.length).trim()
-        return Pair(cnSection, enSection)
+        
+        // GitHub-generated sections usually start with these headers
+        val ghMarkers = listOf("## What's Changed", "## New Contributors", "**Full Changelog**")
+        var ghStart = -1
+        for (marker in ghMarkers) {
+            val idx = body.indexOf(marker)
+            if (idx != -1 && (ghStart == -1 || idx < ghStart)) {
+                ghStart = idx
+            }
+        }
+        
+        // Collect all found section starts and their types
+        val markers = mutableListOf<Pair<Int, String>>()
+        if (cnStart != -1) markers.add(cnStart to "CN")
+        if (enStart != -1) markers.add(enStart to "EN")
+        if (ghStart != -1) markers.add(ghStart to "GH")
+        markers.sortBy { it.first }
+        
+        var cn = ""
+        var en = ""
+        var gh = ""
+        
+        for (i in markers.indices) {
+            val start = markers[i].first
+            val type = markers[i].second
+            val end = if (i + 1 < markers.size) markers[i+1].first else body.length
+            
+            val content = body.substring(start, end).trim()
+            when (type) {
+                "CN" -> cn = content.substring(CN_HEADER.length).trim()
+                "EN" -> en = content.substring(EN_HEADER.length).trim()
+                "GH" -> gh = content.trim()
+            }
+        }
+        
+        // If no markers found at all, treat whole body as CN for backward compatibility
+        if (markers.isEmpty()) return Triple(body, "", "")
+        
+        return Triple(cn, en, gh)
     }
 
     private fun parseRelease(json: JSONObject): ReleaseInfo {
