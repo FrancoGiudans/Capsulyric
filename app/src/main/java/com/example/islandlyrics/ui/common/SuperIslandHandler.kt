@@ -175,6 +175,7 @@ class SuperIslandHandler(
             context.getString(R.string.channel_live_lyrics),
             NotificationManager.IMPORTANCE_HIGH
         ).apply {
+            description = context.getString(R.string.channel_live_lyrics_desc)
             setSound(null, null)
             setShowBadge(false)
             lockscreenVisibility = Notification.VISIBILITY_PUBLIC
@@ -394,8 +395,8 @@ class SuperIslandHandler(
                         val shareArtist = if (state.artist.isNotBlank()) state.artist else "未知歌手"
                         val shareSong = state.title.ifEmpty { "未知歌曲" }
                         this.shareContent = when (cachedSuperIslandShareFormat) {
-                            "format_2" -> "${state.fullLyric} -$shareArtist，$shareSong"
-                            "format_3" -> "${state.fullLyric}\n$shareArtist，$shareSong"
+                            "format_2" -> "${state.fullLyric} -$shareArtist\uff0c$shareSong"
+                            "format_3" -> "${state.fullLyric}\n$shareArtist\uff0c$shareSong"
                             else -> "${state.fullLyric}\n$shareSong by $shareArtist"
                         }
                     }

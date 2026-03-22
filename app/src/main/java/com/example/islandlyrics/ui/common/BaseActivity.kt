@@ -3,6 +3,7 @@ package com.example.islandlyrics.ui.common
 import android.app.ActivityManager
 import com.example.islandlyrics.R
 import com.example.islandlyrics.core.theme.ThemeHelper
+import com.example.islandlyrics.service.MediaMonitorService
 import android.content.res.Configuration
 import android.graphics.Color
 import android.os.Bundle
@@ -50,6 +51,10 @@ open class BaseActivity : AppCompatActivity() {
         startedActivityCount++
         // When app comes to foreground, re-include in recents
         if (startedActivityCount == 1) {
+            // App is entering foreground: proactively request notification listener rebind
+            MediaMonitorService.markForeground()
+            MediaMonitorService.requestRebind(this)
+
             val prefs = getSharedPreferences("IslandLyricsPrefs", MODE_PRIVATE)
             if (prefs.getBoolean("hide_recents_enabled", false)) {
                 val am = getSystemService(ACTIVITY_SERVICE) as ActivityManager

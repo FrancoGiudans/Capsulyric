@@ -158,6 +158,7 @@ class LyricCapsuleHandler(
             context.getString(R.string.channel_live_lyrics),
             NotificationManager.IMPORTANCE_HIGH
         ).apply {
+            description = context.getString(R.string.channel_live_lyrics_desc)
             setSound(null, null)
             setShowBadge(false)
             lockscreenVisibility = Notification.VISIBILITY_PUBLIC

@@ -84,6 +84,7 @@
 
     
     <string name="channel_live_lyrics">Live Lyrics Updates</string>
+    <string name="channel_live_lyrics_desc">Live notifications for status bar lyrics, supporting Capsule and Super Island modes.</string>
     <string name="channel_short_live">Live</string>
     
     <string name="cancel">Cancel</string>

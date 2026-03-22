@@ -19,6 +19,7 @@ import android.media.session.PlaybackState
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
 import android.service.notification.NotificationListenerService
 import android.util.Log
 import org.json.JSONArray
@@ -123,6 +124,12 @@ class MediaMonitorService : NotificationListenerService() {
         super.onListenerConnected()
         isConnected = true
         AppLogger.getInstance().log(TAG, "onListenerConnected - Service binding initiated")
+
+        val fgAt = lastForegroundUptimeMs
+        if (fgAt > 0L) {
+            val delay = SystemClock.uptimeMillis() - fgAt
+            AppLogger.getInstance().log(TAG, "onListenerConnected delay since foreground: ${delay}ms")
+        }
         
         // CRITICAL FIX: Ensure SharedPreferences is initialized
         // This may be called before onCreate() in some rebind scenarios
@@ -825,6 +832,11 @@ class MediaMonitorService : NotificationListenerService() {
         @Volatile private var instance: MediaMonitorService? = null
 
         var isConnected = false
+        @Volatile private var lastForegroundUptimeMs: Long = 0L
+
+        fun markForeground() {
+            lastForegroundUptimeMs = SystemClock.uptimeMillis()
+        }
 
         /**
          * Asks the running [MediaMonitorService] instance to immediately re-read the

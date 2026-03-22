@@ -369,6 +369,7 @@ class LyricService : Service() {
                     "Lyrics (Capsule / Super Island)",
                     NotificationManager.IMPORTANCE_HIGH
                 ).apply {
+                    description = getString(R.string.channel_live_lyrics_desc)
                     setSound(null, null)
                     setShowBadge(false)
                     lockscreenVisibility = Notification.VISIBILITY_PUBLIC

@@ -216,7 +216,7 @@ class MainActivity : BaseActivity() {
 
             handler.postDelayed({
                 if (!MediaMonitorService.isConnected) {
-                    AppLogger.getInstance().log("MainActivity", "⚠️ Standard rebind failed. Attempting FORCE REBIND (Component Toggle)")
+                    AppLogger.getInstance().log("MainActivity", "⚠️ Rebind slow. Attempting FORCE REBIND (Component Toggle)")
                     MediaMonitorService.forceRebind(this)
 
                     handler.postDelayed({
@@ -225,11 +225,11 @@ class MainActivity : BaseActivity() {
                         } else {
                             AppLogger.getInstance().log("MainActivity", "✅ Service connected after FORCE REBIND")
                         }
-                    }, 2000) // Give force rebind more time (2s)
+                    }, 1000) // Give force rebind time (1s)
                 } else {
                     AppLogger.getInstance().log("MainActivity", "✅ Service connected after first retry")
                 }
-            }, 1000) // Increase first wait to 1s to be safe
+            }, 500) // Faster fallback to force rebind
         } else if (!isPermissionGranted) {
             AppLogger.getInstance().log("MainActivity", "❌ Notification Listener Permission NOT granted!")
         } else {
