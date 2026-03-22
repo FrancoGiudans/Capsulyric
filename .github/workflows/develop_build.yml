@@ -133,8 +133,8 @@ jobs:
           elif [ "$PREV_SHA" == "$(git rev-parse HEAD)" ]; then
             echo "No new commits (Re-run or manual trigger)." >> canary_body.md
           else
-            # Get logs skipping merge commits, with author info
-            git log ${PREV_SHA}..HEAD --oneline --no-merges --pretty=format:"- %h: %s (%an)" >> canary_body.md
+            # Get logs skipping merge commits, with author info and full body
+            git log ${PREV_SHA}..HEAD --no-merges --format="- **%h**: %s (%an)%n%w(0,2,2)%b%n" >> canary_body.md
             
             # Add a compare link
             echo -e "\n\n**Full Comparison:** [${PREV_SHA:0:7}...${SHORT_SHA}](https://github.com/${{ github.repository }}/compare/${PREV_SHA}...${SHORT_SHA})" >> canary_body.md

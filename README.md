@@ -38,7 +38,7 @@
 | **Media Notification** | Detects lyrics from standard notifications. / 从标准通知栏提取。 |
 | **Online Lyrics** | Fetches from online servers. / 从互联网服务器获取。 |
 | **Superlyric API** | High accuracy (Root/LSPosed required). / 准确度高（需 Root/LSPosed）。 |
-| **Lyric Getter** | Supports Meizu & LSPatch (non-root). / 支持魅族及免 Root 注入。 |
+| **Lyric Getter** | Supports Meizu & LSPatch (non-root). / 支持魅族状态栏歌词及免 Root 注入。 |
 
 ---
 
