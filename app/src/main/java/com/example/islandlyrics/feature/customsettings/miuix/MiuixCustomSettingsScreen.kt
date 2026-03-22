@@ -59,11 +59,12 @@ fun MiuixCustomSettingsScreen(
     val scrollBehavior = MiuixScrollBehavior(rememberTopAppBarState())
 
     // Pager State
-    val pagerState = rememberPagerState(pageCount = { 3 })
+    val pagerState = rememberPagerState(pageCount = { 4 })
     val tabs = listOf(
         stringResource(R.string.tab_capsule),
         stringResource(R.string.tab_notification),
-        stringResource(R.string.tab_app_ui)
+        stringResource(R.string.tab_app_ui),
+        stringResource(R.string.settings_floating_lyrics)
     )
 
     // State
@@ -489,6 +490,11 @@ fun MiuixCustomSettingsScreen(
                                         }
                                     )
                                 }
+                            }
+                        }
+                        3 -> { // Desktop Lyrics
+                            item {
+                                MiuixFloatingLyricsSettingsSubScreen(prefs, scope)
                             }
                         }
                     }

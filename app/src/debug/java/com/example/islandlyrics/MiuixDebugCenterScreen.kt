@@ -1,6 +1,8 @@
 package com.example.islandlyrics
 
 import android.content.ComponentName
+import android.net.Uri
+import android.provider.Settings
 import com.example.islandlyrics.core.update.UpdateChecker
 import com.example.islandlyrics.core.platform.RomUtils
 import com.example.islandlyrics.service.LyricService
@@ -11,6 +13,7 @@ import com.example.islandlyrics.feature.oobe.OobeActivity
 import com.example.islandlyrics.feature.main.MainActivity
 import com.example.islandlyrics.feature.logviewer.LogViewerActivity
 import com.example.islandlyrics.feature.customsettings.CustomSettingsActivity
+import com.example.islandlyrics.ui.common.FloatingLyricsRenderer
 import android.content.Context
 import android.content.Intent
 import android.widget.Toast
@@ -51,6 +54,12 @@ fun MiuixDebugCenterScreen(
     // Miuix UI toggle state
     var miuixEnabled by remember {
         mutableStateOf(prefs.getBoolean("ui_use_miuix", false))
+    }
+
+    // Floating Lyrics toggle state
+    val canDrawOverlays = remember { mutableStateOf(Settings.canDrawOverlays(context)) }
+    var floatingLyricsEnabled by remember {
+        mutableStateOf(prefs.getBoolean(FloatingLyricsRenderer.PREF_KEY, false))
     }
 
     // Update dialog states
@@ -232,7 +241,30 @@ fun MiuixDebugCenterScreen(
                             (context as? android.app.Activity)?.finish()
                         }
                     )
-                    
+                    if (!canDrawOverlays.value) {
+                        SuperArrow(
+                            title = "Desktop Lyrics (Floating)",
+                            summary = "Grant overlay permission to enable",
+                            onClick = {
+                                val intent = Intent(
+                                    Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                                    Uri.parse("package:${context.packageName}")
+                                )
+                                context.startActivity(intent)
+                            }
+                        )
+                    } else {
+                        SuperSwitch(
+                            title = "Desktop Lyrics (Floating)",
+                            summary = "Show a draggable lyrics overlay on screen",
+                            checked = floatingLyricsEnabled,
+                            onCheckedChange = { enabled ->
+                                floatingLyricsEnabled = enabled
+                                prefs.edit().putBoolean(FloatingLyricsRenderer.PREF_KEY, enabled).apply()
+                            }
+                        )
+                    }
+
                     val romOptions = listOf("Auto", "HyperOS", "OneUI", "ColorOS", "OriginOS/FuntouchOS", "Flyme", "AOSP")
                     val currentRom = prefs.getString("debug_forced_rom_type", null) ?: "Auto"
                     val currentIndex = romOptions.indexOf(currentRom).coerceAtLeast(0)

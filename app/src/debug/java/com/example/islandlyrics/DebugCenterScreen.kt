@@ -1,6 +1,8 @@
 package com.example.islandlyrics
 
 import android.content.Context
+import android.net.Uri
+import android.provider.Settings
 import com.example.islandlyrics.core.update.UpdateChecker
 import com.example.islandlyrics.core.platform.RomUtils
 import com.example.islandlyrics.service.LyricService
@@ -11,6 +13,7 @@ import com.example.islandlyrics.feature.oobe.OobeActivity
 import com.example.islandlyrics.feature.main.MainActivity
 import com.example.islandlyrics.feature.logviewer.LogViewerActivity
 import com.example.islandlyrics.feature.customsettings.CustomSettingsActivity
+import com.example.islandlyrics.ui.common.FloatingLyricsRenderer
 import android.content.Intent
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -336,6 +339,8 @@ fun DebugCenterScreen(
                     )
                 }
             }
+
+
         }
     }
 

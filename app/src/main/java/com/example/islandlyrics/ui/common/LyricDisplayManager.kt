@@ -293,7 +293,8 @@ class LyricDisplayManager(private val context: Context) {
             useSyllableScrolling = useSyllableScrolling,
             syllableLines = currentParsedLines,
             currentLineIndex = -1,
-            mediaPackage = metaInfo?.packageName ?: ""
+            mediaPackage = metaInfo?.packageName ?: "",
+            albumArt = repo.liveAlbumArt.value
         )
         onStateUpdated?.invoke(state)
     }
