@@ -1,0 +1,74 @@
+name: Bug Report / Issue 提交
+description: Report a bug or request a feature / 提交缺陷报告或功能需求
+title: "[BUG/REQ]: "
+labels: ["triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢您提交 Issue！请填写以下信息以帮助我们更好地了解问题。
+        Thanks for opening an issue! Please fill out the following information to help us understand the problem better.
+  - type: dropdown
+    id: type
+    attributes:
+      label: Issue Type / 问题类型
+      description: What kind of issue are you reporting? / 您要报告什么类型的问题？
+      options:
+        - bug (缺陷报告)
+        - enhancement (功能需求)
+        - question (咨询)
+        - document (文档改进)
+    validations:
+      required: true
+  - type: dropdown
+    id: app_version
+    attributes:
+      label: App Version / 软件版本
+      description: |
+        Please select the version you are using.
+        请选择您使用的版本。
+      options:
+        - Canary.Version_C341
+        - Other (Specify in details) / 其他（请在详情中注明）
+    validations:
+      required: true
+  - type: dropdown
+    id: os_version
+    attributes:
+      label: System Version / 系统版本
+      options:
+        - HyperOS 3.0.300+
+        - HyperOS 3.0 Android 16
+        - HyperOS 3.0 Android 15
+        - ColorOS 16
+        - OneUI 8
+        - 类原生 Android 16
+        - 其他 (Optional: Specify in details / 请在详情中注明)
+    validations:
+      required: true
+  - type: textarea
+    id: details
+    attributes:
+      label: Detailed Description / 详细描述
+      description: Describe the issue in detail. / 请详细描述问题。
+      placeholder: |
+        Steps to reproduce:
+        1. ...
+        2. ...
+        Expected behavior:
+        Actual behavior:
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs / 日志内容 (Optional)
+      description: You can paste logs here or share a link. You can also drag and drop log files here. / 您可以在此处粘贴日志或分享链接。您也可以将日志文件拖放到此处。
+      placeholder: Paste your logs here...
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Pre-submission Checklist / 提交前检查
+      options:
+        - label: I have searched for existing issues. / 我已搜索过现有的 Issue。
+          required: true

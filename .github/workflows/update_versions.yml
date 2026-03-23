@@ -1,0 +1,65 @@
+name: Update Issue Template Versions
+on:
+  push:
+    tags: ["*"]
+  workflow_dispatch:
+
+jobs:
+  update_versions:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Update versions in bug_report.yml
+        shell: python
+        run: |
+            import os
+            import subprocess
+
+            # Get latest 10 tags
+            tags = subprocess.check_output(["git", "tag", "--sort=-v:refname"]).decode().splitlines()[:10]
+            
+            template_path = ".github/ISSUE_TEMPLATE/bug_report.yml"
+            with open(template_path, "r", encoding="utf-8") as f:
+                lines = f.readlines()
+
+            new_lines = []
+            in_app_version = False
+            in_options = False
+            processed = False
+
+            for line in lines:
+                if 'id: app_version' in line:
+                    in_app_version = True
+                
+                if in_app_version and 'options:' in line:
+                    in_options = True
+                    new_lines.append(line)
+                    for tag in tags:
+                        new_lines.append(f"        - {tag}\n")
+                    new_lines.append("        - Other (Specify in details) / 其他（请在详情中注明）\n")
+                    processed = True
+                    continue
+
+                if in_options:
+                    if line.strip().startswith("- "): # Skip old options
+                        continue
+                    else:
+                        in_options = False
+                        in_app_version = False
+                
+                new_lines.append(line)
+
+            with open(template_path, "w", encoding="utf-8") as f:
+                f.writelines(new_lines)
+          
+      - name: Commit and push changes
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add .github/ISSUE_TEMPLATE/bug_report.yml
+          git commit -m "chore: update issue template versions" || echo "No changes to commit"
+          git push
