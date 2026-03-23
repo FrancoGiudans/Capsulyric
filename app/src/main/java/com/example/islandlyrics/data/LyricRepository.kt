@@ -134,12 +134,15 @@ class LyricRepository private constructor() {
             prefs.edit().remove("dev_mode_enabled").apply()
         }
         com.example.islandlyrics.core.logging.AppLogger.getInstance().enableLogging(enabled)
+        com.example.islandlyrics.integration.shizuku.ShizukuUserServiceRecycler.setLogCallbackEnabled(enabled)
         postOrSet(liveDevMode, enabled)
     }
 
     fun init(context: android.content.Context) {
         val prefs = context.getSharedPreferences("IslandLyricsPrefs", android.content.Context.MODE_PRIVATE)
-        postOrSet(liveDevMode, prefs.getBoolean("dev_mode_enabled", false))
+        val enabled = prefs.getBoolean("dev_mode_enabled", false)
+        postOrSet(liveDevMode, enabled)
+        com.example.islandlyrics.integration.shizuku.ShizukuUserServiceRecycler.setLogCallbackEnabled(enabled)
     }
 
     fun refreshAdvancedDiagnostics(context: android.content.Context) {

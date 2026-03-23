@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.ServiceConnection
 import android.os.IBinder
 import com.example.islandlyrics.IPrivilegedService
+import com.example.islandlyrics.IPrivilegedLogCallback
 import com.example.islandlyrics.core.logging.AppLogger
 import rikka.shizuku.Shizuku
 import kotlinx.coroutines.channels.awaitClose
@@ -30,6 +31,20 @@ object ShizukuUserServiceRecycler {
     private const val BIND_TIMEOUT_MS = 10000L  // 10 second timeout for service binding
 
     private val log get() = AppLogger.getInstance()
+    @Volatile private var logCallbackEnabled = false
+    private val logCallback = object : IPrivilegedLogCallback.Stub() {
+        override fun log(level: Int, tag: String?, message: String?) {
+            val safeTag = tag ?: "PrivilegedService"
+            val safeMsg = message ?: ""
+            when (level) {
+                0 -> log.d(safeTag, safeMsg)
+                1 -> log.i(safeTag, safeMsg)
+                2 -> log.w(safeTag, safeMsg)
+                3 -> log.e(safeTag, safeMsg)
+                else -> log.d(safeTag, safeMsg)
+            }
+        }
+    }
 
     /**
      * Gets or creates a persistent connection to the privileged service.
@@ -70,6 +85,22 @@ object ShizukuUserServiceRecycler {
         }
     }
 
+    fun setLogCallbackEnabled(enabled: Boolean) {
+        logCallbackEnabled = enabled
+        val service = cachedService ?: return
+        try {
+            if (enabled) {
+                service.setLogCallback(logCallback)
+                log.d(TAG, "Log callback registered with privileged service (toggle)")
+            } else {
+                service.setLogCallback(null)
+                log.d(TAG, "Log callback unregistered from privileged service (toggle)")
+            }
+        } catch (e: Exception) {
+            log.w(TAG, "Failed to toggle log callback: ${e.message}")
+        }
+    }
+
     private suspend fun establishServiceConnection(): IPrivilegedService {
         return withTimeoutOrNull(BIND_TIMEOUT_MS) {
             suspendCancellableCoroutine { continuation ->
@@ -78,6 +109,14 @@ object ShizukuUserServiceRecycler {
                         log.d(TAG, "onServiceConnected called with service=$service")
                         if (service != null) {
                             val privileged = IPrivilegedService.Stub.asInterface(service)
+                            if (logCallbackEnabled) {
+                                try {
+                                    privileged.setLogCallback(logCallback)
+                                    log.d(TAG, "Log callback registered with privileged service")
+                                } catch (e: Exception) {
+                                    log.w(TAG, "Failed to register log callback: ${e.message}")
+                                }
+                            }
                             cachedService = privileged
                             serviceConnection = this
                             continuation.resume(privileged)
