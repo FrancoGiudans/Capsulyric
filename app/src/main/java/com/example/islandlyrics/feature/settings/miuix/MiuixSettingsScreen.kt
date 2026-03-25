@@ -386,7 +386,7 @@ fun MiuixSettingsScreen(
                                     index = 0,
                                     onSelectedIndexChange = {
                                         showFeedbackPopup.value = false
-                                        val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/FrancoGiudans/Capsulyric/issues/new"))
+                                        val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/FrancoGiudans/Capsulyric/issues/new?template=bug_report.yml"))
                                         context.startActivity(browserIntent)
                                     }
                                 )

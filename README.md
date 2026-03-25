@@ -126,9 +126,9 @@
 <details>
 <summary><b>Q5: 如何反馈问题？ (How to submit feedback?)</b></summary>
 
-> **CN:** 请前往 [GitHub Issues](https://github.com/FrancoGiudans/Capsulyric/issues) 提交反馈，并附带通过点击版本号唤出的 **Log Console** 日志。
+> **CN:** 请前往 [GitHub Issues](https://github.com/FrancoGiudans/Capsulyric/issues/new?template=bug_report.yml) 提交反馈，并附带通过点击版本号唤出的 **Log Console** 日志。
 >
-> **EN:** Please submit an issue at [GitHub Issues](https://github.com/FrancoGiudans/Capsulyric/issues) with logs from the **Log Console** (tap version/commit to open).
+> **EN:** Please submit an issue at [GitHub Issues](https://github.com/FrancoGiudans/Capsulyric/issues/new?template=bug_report.yml) with logs from the **Log Console** (tap version/commit to open).
 </details>
 
 ---
