@@ -209,10 +209,10 @@ fun DiagnosticsCard(
                     text = title,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.weight(1f)
                 )
                 if (trailingContent != null) {
-                    Spacer(modifier = Modifier.weight(1f))
                     trailingContent()
                 }
             }

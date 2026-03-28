@@ -15,10 +15,13 @@ import com.example.islandlyrics.service.LyricService
 import com.example.islandlyrics.feature.main.MainActivity
 import com.example.islandlyrics.feature.mediacontrol.MediaControlActivity
 import com.xzakota.hyper.notification.focus.FocusNotification
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * SuperIslandHandler
@@ -50,6 +53,7 @@ class SuperIslandHandler(
     private var cachedContentIntent: PendingIntent? = null
     private var networkCutJob: kotlinx.coroutines.Job? = null
     private val networkCutDurationMs = 50L
+    private var networkCutSeq = 0L
 
     private val prefs by lazy { context.getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE) }
     private val prefListener = SharedPreferences.OnSharedPreferenceChangeListener { p, key ->
@@ -456,8 +460,12 @@ class SuperIslandHandler(
         val bypassWhitelist = prefs.getBoolean("block_xmsf_network", false)
         if (bypassWhitelist) {
             networkCutJob?.cancel()
+            val seq = ++networkCutSeq
             networkCutJob = scope.launch {
-                com.example.islandlyrics.integration.shizuku.XmsfNetworkHelper.setXmsfNetworkingEnabled(context, false)
+                // Avoid cancelling Shizuku bind on slower devices (e.g., MTK) by running in NonCancellable.
+                withContext(NonCancellable) {
+                    com.example.islandlyrics.integration.shizuku.XmsfNetworkHelper.setXmsfNetworkingEnabled(context, false)
+                }
                 if (isFirst) {
                     service.startForeground(NOTIFICATION_ID, notification)
                 } else {
@@ -465,8 +473,16 @@ class SuperIslandHandler(
                 }
                 // Keep offline for a brief moment; if a new send happens within this window,
                 // the previous restore will be cancelled.
-                kotlinx.coroutines.delay(networkCutDurationMs)
-                com.example.islandlyrics.integration.shizuku.XmsfNetworkHelper.setXmsfNetworkingEnabled(context, true)
+                try {
+                    kotlinx.coroutines.delay(networkCutDurationMs)
+                } catch (_: CancellationException) {
+                    // A newer job will handle restore.
+                }
+                if (seq == networkCutSeq) {
+                    withContext(NonCancellable) {
+                        com.example.islandlyrics.integration.shizuku.XmsfNetworkHelper.setXmsfNetworkingEnabled(context, true)
+                    }
+                }
             }
         } else {
             if (isFirst) {

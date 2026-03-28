@@ -120,7 +120,9 @@ fun MiuixDiagnosticsScreen(onBack: () -> Unit) {
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        SmallTitle(text = stringResource(R.string.diag_header_advanced))
+                        Box(modifier = Modifier.weight(1f)) {
+                            SmallTitle(text = stringResource(R.string.diag_header_advanced))
+                        }
                         IconButton(onClick = { LyricRepository.getInstance().refreshAdvancedDiagnostics(context) }) {
                             androidx.compose.material3.Icon(
                                 imageVector = androidx.compose.material.icons.Icons.Default.Refresh,
