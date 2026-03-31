@@ -52,6 +52,8 @@ fun MiuixLogViewerScreen(
     var searchQuery by remember { mutableStateOf("") }
     var filterLevel by remember { mutableStateOf("ALL") } // ALL, E, W, D
     var originalLogs by remember { mutableStateOf<List<LogManager.LogEntry>>(emptyList()) }
+    enum class LogAction { SHARE, SAVE }
+    var currentAction by remember { mutableStateOf(LogAction.SHARE) }
     val showExportDialog = remember { mutableStateOf(false) }
     val showClearDialog = remember { mutableStateOf(false) }
 
@@ -99,7 +101,10 @@ fun MiuixLogViewerScreen(
                 actions = {
                     // Export
                     IconButton(
-                        onClick = { showExportDialog.value = true },
+                        onClick = { 
+                            currentAction = LogAction.SHARE
+                            showExportDialog.value = true 
+                        },
                         modifier = Modifier.padding(end = 4.dp)
                     ) {
                         Icon(
@@ -111,18 +116,8 @@ fun MiuixLogViewerScreen(
                     // Save
                     IconButton(
                         onClick = {
-                            scope.launch(Dispatchers.IO) {
-                                val content = logs.joinToString("\n") { "${it.timestamp} ${it.level}/${it.tag}: ${it.message}" }
-                                val filename = "Log_${java.text.SimpleDateFormat("yyyyMMdd_HHmmss").format(java.util.Date())}.txt"
-                                val uri = LogManager.getInstance().saveLogToDownloads(context, content, filename)
-                                withContext(Dispatchers.Main) {
-                                    if (uri != null) {
-                                        Toast.makeText(context, "Saved to Downloads", Toast.LENGTH_SHORT).show()
-                                    } else {
-                                        Toast.makeText(context, "Failed to save", Toast.LENGTH_SHORT).show()
-                                    }
-                                }
-                            }
+                            currentAction = LogAction.SAVE
+                            showExportDialog.value = true
                         },
                         modifier = Modifier.padding(end = 4.dp)
                     ) {
@@ -248,14 +243,18 @@ fun MiuixLogViewerScreen(
                         modifier = Modifier.weight(1f)
                     )
                     TextButton(
-                        text = "Export",
+                        text = if (currentAction == LogAction.SHARE) "Export" else "Save",
                         onClick = {
                             val timeRange = when (selectedIndex) {
                                 0 -> 60 * 60 * 1000L
                                 1 -> 24 * 60 * 60 * 1000L
                                 else -> -1L
                             }
-                            LogManager.getInstance().exportLog(context, timeRange)
+                            if (currentAction == LogAction.SHARE) {
+                                LogManager.getInstance().exportLog(context, timeRange)
+                            } else {
+                                LogManager.getInstance().exportLogToDownloads(context, timeRange)
+                            }
                             showExportDialog.value = false
                         },
                         modifier = Modifier.weight(1f),

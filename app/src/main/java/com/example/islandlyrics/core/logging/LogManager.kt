@@ -250,67 +250,81 @@ class LogManager private constructor() {
         }
     }
 
+    /**
+     * Internal helper to generate a ZIP file containing filtered logs and device info.
+     * @return The generated ZIP file in the cache directory.
+     */
+    private fun generateLogZip(context: Context, timeRangeMs: Long): File? {
+        if (logFile == null || logFile?.exists() == false) return null
+
+        // 1. Filter Logs
+        val filteredLogs = if (timeRangeMs > 0) {
+            val cutoff = System.currentTimeMillis() - timeRangeMs
+            val sb = StringBuilder()
+            try {
+                BufferedReader(FileReader(logFile)).use { br ->
+                    var line: String?
+                    var includeEntry = false
+                    while (br.readLine().also { line = it } != null) {
+                        val matcher = LOG_PATTERN.matcher(line ?: "")
+                        if (matcher.find()) {
+                            val dateStr = matcher.group(1)
+                            val date = DATE_FORMAT.parse(dateStr ?: "")
+                            if (date != null && date.time >= cutoff) {
+                                includeEntry = true
+                                sb.append(line).append("\n")
+                            } else {
+                                includeEntry = false
+                            }
+                        } else if (includeEntry) {
+                            sb.append(line).append("\n")
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                sb.append("Error filtering logs: ${e.message}\n")
+            }
+            sb.toString()
+        } else {
+            logFile?.readText() ?: ""
+        }
+
+        // 2. Generate Device Info
+        val deviceInfo = getDeviceInfo(context)
+
+        // 3. Create ZIP
+        val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
+        val zipFileName = "Log_Export_$timestamp.zip"
+        val zipFile = File(context.cacheDir, zipFileName)
+
+        try {
+            java.util.zip.ZipOutputStream(java.io.FileOutputStream(zipFile)).use { zos ->
+                // Add Log File
+                val logEntry = java.util.zip.ZipEntry("app_log.txt")
+                zos.putNextEntry(logEntry)
+                zos.write(filteredLogs.toByteArray())
+                zos.closeEntry()
+
+                // Add Device Info
+                val deviceEntry = java.util.zip.ZipEntry("device_info.txt")
+                zos.putNextEntry(deviceEntry)
+                zos.write(deviceInfo.toByteArray())
+                zos.closeEntry()
+            }
+            return zipFile
+        } catch (e: Exception) {
+            e.printStackTrace()
+            return null
+        }
+    }
+
     fun exportLog(context: Context, timeRangeMs: Long = -1) {
         init(context)
-        if (logFile == null || logFile?.exists() == false) return
-
         Thread {
             try {
-                // 1. Filter Logs
-                val filteredLogs = if (timeRangeMs > 0) {
-                    val cutoff = System.currentTimeMillis() - timeRangeMs
-                    val sb = StringBuilder()
-                    try {
-                        BufferedReader(FileReader(logFile)).use { br ->
-                            var line: String?
-                            var includeEntry = false
-                            while (br.readLine().also { line = it } != null) {
-                                val matcher = LOG_PATTERN.matcher(line ?: "")
-                                if (matcher.find()) {
-                                    val dateStr = matcher.group(1)
-                                    val date = DATE_FORMAT.parse(dateStr ?: "")
-                                    if (date != null && date.time >= cutoff) {
-                                        includeEntry = true
-                                        sb.append(line).append("\n")
-                                    } else {
-                                        includeEntry = false
-                                    }
-                                } else if (includeEntry) {
-                                    sb.append(line).append("\n")
-                                }
-                            }
-                        }
-                    } catch (e: Exception) {
-                        sb.append("Error filtering logs: ${e.message}\n")
-                    }
-                    sb.toString()
-                } else {
-                    logFile?.readText() ?: ""
-                }
+                val zipFile = generateLogZip(context, timeRangeMs) ?: return@Thread
 
-                // 2. Generate Device Info
-                val deviceInfo = getDeviceInfo(context)
-
-                // 3. Create ZIP
-                val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
-                val zipFileName = "Log_Export_$timestamp.zip"
-                val zipFile = File(context.cacheDir, zipFileName)
-
-                java.util.zip.ZipOutputStream(java.io.FileOutputStream(zipFile)).use { zos ->
-                    // Add Log File
-                    val logEntry = java.util.zip.ZipEntry("app_log.txt")
-                    zos.putNextEntry(logEntry)
-                    zos.write(filteredLogs.toByteArray())
-                    zos.closeEntry()
-
-                    // Add Device Info
-                    val deviceEntry = java.util.zip.ZipEntry("device_info.txt")
-                    zos.putNextEntry(deviceEntry)
-                    zos.write(deviceInfo.toByteArray())
-                    zos.closeEntry()
-                }
-
-                // 4. Share
+                // Share
                 val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", zipFile)
                 val intent = Intent(Intent.ACTION_SEND)
                 intent.type = "application/zip"
@@ -328,6 +342,62 @@ class LogManager private constructor() {
                 }
             }
         }.start()
+    }
+
+    fun exportLogToDownloads(context: Context, timeRangeMs: Long = -1) {
+        init(context)
+        Thread {
+            try {
+                val zipFile = generateLogZip(context, timeRangeMs) ?: return@Thread
+                val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
+                val destFilename = "Log_Export_$timestamp.zip"
+
+                val uri = saveZipToDownloads(context, zipFile, destFilename)
+                
+                logHandler?.post {
+                    if (uri != null) {
+                        android.widget.Toast.makeText(context, "Saved to Downloads", android.widget.Toast.LENGTH_SHORT).show()
+                    } else {
+                        android.widget.Toast.makeText(context, "Failed to save", android.widget.Toast.LENGTH_SHORT).show()
+                    }
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                logHandler?.post {
+                    android.widget.Toast.makeText(context, "Export failed: ${e.message}", android.widget.Toast.LENGTH_SHORT).show()
+                }
+            }
+        }.start()
+    }
+
+    private fun saveZipToDownloads(context: Context, zipFile: File, filename: String): android.net.Uri? {
+        val contentValues = android.content.ContentValues().apply {
+            put(android.provider.MediaStore.MediaColumns.DISPLAY_NAME, filename)
+            put(android.provider.MediaStore.MediaColumns.MIME_TYPE, "application/zip")
+            put(android.provider.MediaStore.MediaColumns.RELATIVE_PATH, android.os.Environment.DIRECTORY_DOWNLOADS)
+        }
+
+        val resolver = context.contentResolver
+        val uri = resolver.insert(android.provider.MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues)
+
+        return if (uri != null) {
+            try {
+                resolver.openOutputStream(uri)?.use { outputStream ->
+                    zipFile.inputStream().use { inputStream ->
+                        inputStream.copyTo(outputStream)
+                    }
+                }
+                uri
+            } catch (e: Exception) {
+                e.printStackTrace()
+                try {
+                    resolver.delete(uri, null, null)
+                } catch (ignored: Exception) {}
+                null
+            }
+        } else {
+            null
+        }
     }
 
     private fun getDeviceInfo(context: Context): String {

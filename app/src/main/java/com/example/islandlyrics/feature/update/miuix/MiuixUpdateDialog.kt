@@ -40,40 +40,8 @@ fun MiuixUpdateDialog(
         onDismiss()
     }
     
-    // Language-aware Logic
-    val currentLocale = context.resources.configuration.locales[0]
-    val isChinese = currentLocale.language == "zh"
-
-    // Parse logic
-    val rawBody = releaseInfo.body
-    val cnHeader = "## \uD83C\uDDE8\uD83C\uDDF3" // 🇨🇳
-    val enHeader = "## \uD83C\uDDEC\uD83C\uDDE7" // 🇬🇧
-    
-    val cnStart = rawBody.indexOf(cnHeader)
-    val enStart = rawBody.indexOf(enHeader)
-    
-    val displayText = if (cnStart != -1 && enStart != -1) {
-        if (isChinese) {
-            if (cnStart < enStart) {
-                rawBody.substring(cnStart + cnHeader.length, enStart).trim()
-            } else {
-                rawBody.substring(cnStart + cnHeader.length).trim()
-            }
-        } else {
-            if (enStart < cnStart) {
-                rawBody.substring(enStart + enHeader.length, cnStart).trim()
-            } else {
-                rawBody.substring(enStart + enHeader.length).trim()
-            }
-        }
-    } else {
-        rawBody
-    }
-
-    val changelog = displayText
-        .replace(Regex("^\\s*更新日志\\s*", RegexOption.MULTILINE), "")
-        .replace(Regex("^\\s*Change Log\\s*", RegexOption.MULTILINE), "")
-        .trim()
+    val isChinese = context.resources.configuration.locales[0].language == "zh"
+    val changelog = UpdateParser.parseChangelog(releaseInfo.body, isChinese)
         
     val markwon = remember(context) { UpdateMarkdown.create(context) }
     
