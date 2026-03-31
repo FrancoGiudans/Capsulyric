@@ -25,6 +25,7 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.foundation.layout.fillMaxWidth
 import android.widget.TextView
 import com.example.islandlyrics.feature.update.UpdateMarkdown
+import com.example.islandlyrics.feature.update.UpdateParser
 
 @Composable
 fun UpdateDialog(

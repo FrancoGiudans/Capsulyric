@@ -40,6 +40,8 @@ import top.yukonga.miuix.kmp.extra.SuperDropdown
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.MiuixPopupUtils.Companion.MiuixPopupHost
 
+private enum class LogAction { SHARE, SAVE }
+
 @Composable
 fun MiuixLogViewerScreen(
     onBack: () -> Unit
@@ -52,7 +54,6 @@ fun MiuixLogViewerScreen(
     var searchQuery by remember { mutableStateOf("") }
     var filterLevel by remember { mutableStateOf("ALL") } // ALL, E, W, D
     var originalLogs by remember { mutableStateOf<List<LogManager.LogEntry>>(emptyList()) }
-    enum class LogAction { SHARE, SAVE }
     var currentAction by remember { mutableStateOf(LogAction.SHARE) }
     val showExportDialog = remember { mutableStateOf(false) }
     val showClearDialog = remember { mutableStateOf(false) }

@@ -40,9 +40,9 @@ android {
                 storePassword localProperties.getProperty('store.password')
                 keyAlias localProperties.getProperty('key.alias')
                 keyPassword localProperties.getProperty('key.password')
-                v1SigningEnabled true
-                v2SigningEnabled true
-                v3SigningEnabled true
+                enableV1Signing = true
+                enableV2Signing = true
+                enableV3Signing = true
             }
         }
     }
