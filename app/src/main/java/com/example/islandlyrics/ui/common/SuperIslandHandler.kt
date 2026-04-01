@@ -258,8 +258,18 @@ class SuperIslandHandler(
         // Color changed?
         val colorChanged = albumColor != lastAppliedAlbumColor
 
-        // 2. CONTENT-AWARE THROTTLING
-        val contentChanged = trackChanged || displayLyric != lastSentDisplayLyric || state.isPlaying != lastSentIsPlaying
+        // 2. LYRIC LINE CHANGE: Force startForeground to clear MIUI rendering frame cache (Issue #22)
+        // When the previous lyric fills the display area (≥8 CJK), the system caches the right-aligned
+        // render state and reuses it for the next lyric, causing it to appear truncated from non-zero offset.
+        // Re-using the startForeground path (same as track switching) forces a full re-layout.
+        val lyricLineChanged = !isFirstNotification && !trackChanged
+                && displayLyric.isNotEmpty() && displayLyric != lastSentDisplayLyric
+        if (lyricLineChanged) {
+            isFirstNotification = true
+        }
+
+        // 3. CONTENT-AWARE THROTTLING
+        val contentChanged = trackChanged || lyricLineChanged || displayLyric != lastSentDisplayLyric || state.isPlaying != lastSentIsPlaying
         val now = System.currentTimeMillis()
         
         if (!isFirstNotification && !colorChanged && !contentChanged) {
