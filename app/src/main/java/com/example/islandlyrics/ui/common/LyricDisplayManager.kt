@@ -184,33 +184,33 @@ class LyricDisplayManager(private val context: Context) {
 
     fun notifyLyricChanged(newLyric: String) {
         val now = System.currentTimeMillis()
-        if (lastLyricChangeTime == 0L) {
-            lastLyricChangeTime = now
-            lastLyricLength = newLyric.length
-            // First lyric — kick the display loop immediately so the notification
-            // fires right away instead of waiting for the next scheduled timer tick.
-            forceUpdate()
-            return
-        }
         val duration = now - lastLyricChangeTime
-        val avgCharDuration = if (lastLyricLength > 0) duration / lastLyricLength else 0
-        
-        if (avgCharDuration < minCharDuration) return
-        if (duration > 30000) {
-            lastLyricChangeTime = now
-            lastLyricLength = newLyric.length
-            return
+
+        // Guard: ignore if called within the same scheduler tick (< 20 ms).
+        // This prevents double-processing from observer + forceUpdate() re-entrancy,
+        // but does NOT filter slow SuperLyric pushes which previously got dropped by
+        // the old avgCharDuration < 50ms guard.
+        if (lastLyricChangeTime > 0L && duration < 20L) return
+
+        if (duration > 30000L) {
+            // Very long gap (e.g. first lyric after background pause) — reset history
+            // but still drive the display immediately.
+            lyricDurations.clear()
+        } else if (lastLyricChangeTime > 0L) {
+            lyricDurations.add(duration)
+            if (lyricDurations.size > maxHistory) lyricDurations.removeAt(0)
         }
-        
-        lyricDurations.add(duration)
-        if (lyricDurations.size > maxHistory) lyricDurations.removeAt(0)
-        
+
         lastLyricChangeTime = now
         lastLyricLength = newLyric.length
-        
+
         calculateAdaptiveDelay(newLyric)
         scrollState = ScrollState.INITIAL_PAUSE
         initialPauseStartTime = now
+
+        // Always kick the display loop so the notification fires immediately
+        // instead of waiting for the next scheduled timer tick.
+        forceUpdate()
     }
 
     private fun processTick() {

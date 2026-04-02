@@ -237,20 +237,29 @@
    • Select the "Separator" and "Order" based on how the notification looks.\n\n
 4. <b>Restart to Apply</b>: Save the rule, remove the music app from recents, and restart it.\n\n
 <b>Note</b>: If the app lacks these features, try the SuperLyric/Lyric Getter options or "Online Lyrics" as a backup.</string>
-    <string name="faq_q_super_island">Q: How to use Xiaomi Super Island notification?</string>
-    <string name="faq_a_super_island">If rooted: Use HyperCeiler to bypass the whitelist.\n\nIf not rooted: Authorize this app in Shizuku and enable \'Bypass Xiaomi Super Island Whitelist\'. Note: This may increase power consumption and message delay.</string>
-    <string name="faq_cat_func">Functionality Issues</string>
-    <string name="faq_q_no_lyrics">Q: Why can\'t I see lyrics?</string>
-    <string name="faq_a_no_lyrics">A: Please check the following steps:\n\n
-1. <b>Check Permissions</b>: Ensure the app has all necessary permissions (especially Notification Access).\n\n
-2. <b>Check System Version</b>:\n
-   - Recommended: Android 16+ or HyperOS 3.0.300+.\n
-   - Compatibility Warning: Other versions are not fully tested and may be unstable.\n
-   - HyperOS Note: Versions below 3.0.300 cannot display native live notifications.\n\n
-3. <b>Check Music App Settings</b>:\n
-   - QQ Music/Netease/Xiaomi Music etc.: Some versions may require connecting headphones to trigger \"Car Bluetooth Lyrics\" or \"Notification Lyrics\".\n
-   - Apple Music etc.: Apps relying on SuperLyric API must have the SuperLyric module installed (requires LSPosed).\n\n
-4. <b>Online Lyric Limits</b>: If using online lyrics, API limitations may temporarily prevent fetching accurate lyrics.</string>
+    <string name="faq_q_island_modes">Q: Supported Dynamic Island Solutions and Requirements?</string>
+    <string name="faq_a_island_modes">A: This application provides two distinct lyric display solutions:\n\n
+<b>1. Native Live Update</b>\n
+- <b>Prerequisites</b>: Android 16+ or HyperOS 3.0.300+.\n
+- <b>Implementation</b>: Utilizes native system APIs. The system automatically maintains a capsule state in the status bar while the app is in the background, ensuring high efficiency.\n\n
+<b>2. Xiaomi Super Island</b>\n
+- <b>Prerequisites</b>: All HyperOS versions.\n
+- <b>Implementation</b>: Employs proprietary protocols of Xiaomi Music. Must be manually enabled via "Send Xiaomi Super Island Notification" in settings.\n
+- <b>Whitelist Bypass Methods</b>:\n
+  • <b>Root Access</b>: Recommended to use modules such as HyperCeiler to eliminate system-level application restrictions.\n
+  • <b>Non-Root</b>: Requires Shizuku authorization and enabling the "Bypass Xiaomi Super Island Whitelist" feature. (Note: This may result in intermittent increases in power consumption or notification latency.)</string>
+    <string name="faq_cat_func">Troubleshooting</string>
+    <string name="faq_q_no_lyrics">Q: Troubleshooting: Lyrics/Island Not Displayed After Configuration?</string>
+    <string name="faq_a_no_lyrics">A: Please perform the following standardized diagnostic steps:\n\n
+1. <b>Credential Verification</b>: Ensure "Notification Access" is granted. It is recommended to lock the application in the recents menu and enable autostart to prevent process termination.\n\n
+2. <b>Playback Source Mechanism</b>:\n
+   - <b>Mainstream Music Apps (QQ/Netease/Xiaomi, etc.)</b>: Verify "Car/Bluetooth Lyrics" is enabled. Some versions only broadcast data when a Bluetooth or wired headset is connected.\n
+   - <b>Apple Music</b>: Due to its closed-source nature, the SuperLyric module within the LSPosed environment is required for data relay.\n\n
+3. <b>Compatibility Verification</b>:\n
+   - <b>Live Update Mode</b>: Systems below HyperOS 3.0.300 lack the necessary underlying APIs for native capsule display.\n
+   - <b>Super Island Mode</b>: Without proper Root patches or Shizuku authorization bypass, the system will intercept dynamic notifications from unauthorized applications.\n\n
+4. <b>Data Integrity</b>: Online lyric scraping may fail to display content due to API latency or copyright restrictions.\n\n
+<b>If the issue persists, please export a diagnostic ZIP via the tool and submit a ticket via the feedback page.</b></string>
 
     <string name="faq_q_service_error">Q: Why does the home page say "Cannot connect to service"?</string>
     <string name="faq_a_service_error">A: This is usually because the system automatically revoked permissions.\n\n
@@ -261,8 +270,13 @@
     <string name="faq_q_unresolved">Q: None of the above solved my problem. What should I do?</string>
     <string name="faq_a_unresolved">A: Please submit an Issue on the feedback page.   - <b>Recommended</b>: GitHub Issues (Highest efficiency).  - <b>Alternative</b>: WPS Form (May require login).   <b>Important</b>: When submitting feedback, please attach <b>Logs</b> to help us troubleshoot.</string>
 
-    <string name="faq_q_get_log">Q: How do I get logs?</string>
-    <string name="faq_a_get_log">A: It depends on your version:   - <b>Debug Version</b>: Has a built-in Log Console to view full logs directly.  - <b>Release / Pre-release Version</b>: Tap the version number or Commit hash in the app multiple times to open the Log Console.</string>
+    <string name="faq_q_get_log">Q: Log Retrieval and Export Procedure?</string>
+    <string name="faq_a_get_log">A: Please follow the standardized procedure:\n\n
+<b>1. Activate Diagnostics Tool</b>\n
+- <b>Debug Version</b>: Direct access available via the Log Console on the main screen.\n
+- <b>Release Version</b>: Navigate to the "About" section and tap the version number or "Commit Hash" 7 times to unlock the entry point.\n\n
+<b>2. Export ZIP Package</b>\n
+Within the log interface, select the share/export icon. You can specify a timeframe for data capture. The application will aggregate environment context and system logs into a ZIP file. Please ensure this file is attached when submitting a GitHub Issue or feedback form.</string>
 
 
     <!-- Notification Action Buttons -->

@@ -89,21 +89,18 @@ class SuperLyricSource(
             }
 
             // We are confident this lyric belongs to the currently playing song handled by MediaSession
-            
-            // Update playback status if it was sent explicitely
+
+            // Sync progress if SuperLyricData carries explicit playback state.
+            // NOTE: We intentionally do NOT write isPlaying here.
+            // MediaMonitorService (via MediaSession) is the sole authority for playback state.
+            // Writing isPlaying from SuperLyric would bypass whitelist checks and
+            // re-couple the lyric source back into the playback state machine.
             val playbackState = data.playbackState
             if (playbackState != null) {
-                val isPlaying = (playbackState.state == android.media.session.PlaybackState.STATE_PLAYING)
-                val wasPlaying = LyricRepository.getInstance().isPlaying.value ?: false
-                if (isPlaying != wasPlaying) {
-                    AppLogger.getInstance().d(TAG, "[$pkg] Playback state changed to: $isPlaying via SuperLyricData")
-                    LyricRepository.getInstance().updatePlaybackStatus(isPlaying)
-                }
-                
-                // ALSO SYNC PROGRESS IF AVAILABLE (Fallback for apps with broken MediaSession progress)
+                // ONLY SYNC PROGRESS (Fallback for apps with broken MediaSession progress)
                 val liveDuration = LyricRepository.getInstance().liveMetadata.value?.duration ?: 0L
                 if (liveDuration > 0 && playbackState.position > 0) {
-                     LyricRepository.getInstance().updateProgress(playbackState.position, liveDuration)
+                    LyricRepository.getInstance().updateProgress(playbackState.position, liveDuration)
                 }
             }
 
@@ -125,7 +122,9 @@ class SuperLyricSource(
             }
             lastLyric = lyric
 
-            LyricRepository.getInstance().updatePlaybackStatus(true)
+            // Do NOT call updatePlaybackStatus(true) here.
+            // Lyric arrival does not imply "is playing" — that judgment belongs to
+            // MediaMonitorService which checks the actual MediaSession state and whitelist.
             LyricRepository.getInstance().updateLyric(lyric, getAppName(pkg), "SuperLyric")
 
             // ── Phase 3: handle EnhancedLRCData (word-level syllable data) ───
@@ -149,8 +148,16 @@ class SuperLyricSource(
 
         override fun onStop(data: SuperLyricData?) {
             AppLogger.getInstance().d(TAG, "onStop: ${data?.packageName}")
-            LyricRepository.getInstance().updatePlaybackStatus(false)
-            lastLyric = "" // Reset internal duplication detector on stop
+            // Only propagate the stop signal when MediaMonitorService agrees that nothing is
+            // playing. If MediaSession still reports STATE_PLAYING (e.g. the module fired
+            // prematurely), we skip writing to avoid overriding the authoritative state.
+            val mediaSessionSaysPlaying = LyricRepository.getInstance().isPlaying.value ?: false
+            if (!mediaSessionSaysPlaying) {
+                // Already stopped from MediaMonitorService side — this is redundant but harmless.
+                AppLogger.getInstance().d(TAG, "onStop: MediaSession already stopped, no-op")
+            }
+            // Regardless, reset the dedup cache so the next lyric push is never suppressed.
+            lastLyric = ""
         }
     }
 

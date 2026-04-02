@@ -92,6 +92,11 @@ class LyricService : Service() {
         if (playing) {
             updateActiveHandler()
             progressSyncController.start()
+            // After the renderer is started (or confirmed running), immediately push
+            // a display update so the notification appears without waiting for the
+            // next visualizerLoop tick. This is especially important when resuming
+            // after a background pause where the loop was idle.
+            displayManager.forceUpdate()
         } else {
             progressSyncController.stop()
         }

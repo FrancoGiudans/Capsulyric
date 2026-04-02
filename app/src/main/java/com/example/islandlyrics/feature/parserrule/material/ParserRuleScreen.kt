@@ -62,6 +62,17 @@ fun ParserRuleScreen(
                         )
                     }
                 },
+                actions = {
+                    IconButton(onClick = {
+                        val actContext = context
+                        actContext.startActivity(android.content.Intent(actContext, com.example.islandlyrics.feature.faq.FAQActivity::class.java))
+                    }) {
+                        Icon(
+                            imageVector = androidx.compose.material.icons.Icons.Default.Info,
+                            contentDescription = stringResource(R.string.faq_title)
+                        )
+                    }
+                },
                 scrollBehavior = scrollBehavior,
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.background,
@@ -305,18 +316,18 @@ fun EditRuleDialog(
     onDismiss: () -> Unit,
     onSave: (ParserRule) -> Unit
 ) {
-    var packageName by remember { mutableStateOf(rule?.packageName ?: "") }
-    var customName by remember { mutableStateOf(rule?.customName ?: "") }
+    var packageName by remember(rule) { mutableStateOf(rule?.packageName ?: "") }
+    var customName by remember(rule) { mutableStateOf(rule?.customName ?: "") }
     
     // Logic Switches
-    var usesCarProtocol by remember { mutableStateOf(rule?.usesCarProtocol ?: true) }
-    var useOnlineLyrics by remember { mutableStateOf(rule?.useOnlineLyrics ?: false) }
-    var useSuperLyricApi by remember { mutableStateOf(rule?.useSuperLyricApi ?: false) }
-    var useLyricGetterApi by remember { mutableStateOf(rule?.useLyricGetterApi ?: false) }
+    var usesCarProtocol by remember(rule) { mutableStateOf(rule?.usesCarProtocol ?: true) }
+    var useOnlineLyrics by remember(rule) { mutableStateOf(rule?.useOnlineLyrics ?: false) }
+    var useSuperLyricApi by remember(rule) { mutableStateOf(rule?.useSuperLyricApi ?: false) }
+    var useLyricGetterApi by remember(rule) { mutableStateOf(rule?.useLyricGetterApi ?: false) }
     
     // Parser Config
-    var separator by remember { mutableStateOf(rule?.separatorPattern ?: "-") }
-    var fieldOrder by remember { mutableStateOf(rule?.fieldOrder ?: FieldOrder.TITLE_ARTIST) }
+    var separator by remember(rule) { mutableStateOf(rule?.separatorPattern ?: "-") }
+    var fieldOrder by remember(rule) { mutableStateOf(rule?.fieldOrder ?: FieldOrder.TITLE_ARTIST) }
 
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Surface(
@@ -456,6 +467,25 @@ fun EditRuleDialog(
                         checked = useLyricGetterApi,
                         onCheckedChange = { useLyricGetterApi = it }
                     )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+                    SettingsSectionHeader(stringResource(R.string.settings_help_about_header))
+                    
+                    val actContext = androidx.compose.ui.platform.LocalContext.current
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { 
+                                actContext.startActivity(android.content.Intent(actContext, com.example.islandlyrics.feature.faq.FAQActivity::class.java))
+                            }
+                            .padding(vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(stringResource(R.string.faq_title), style = MaterialTheme.typography.bodyLarge)
+                            Text(stringResource(R.string.summary_faq), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
                 }
 
                 // Footer Actions

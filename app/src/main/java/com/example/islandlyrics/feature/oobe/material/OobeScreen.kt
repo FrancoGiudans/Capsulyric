@@ -415,6 +415,17 @@ fun AppSetupStep() {
         ) {
             Text(stringResource(R.string.oobe_app_not_in_list))
         }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        OutlinedButton(
+            onClick = {
+                context.startActivity(Intent(context, com.example.islandlyrics.feature.faq.FAQActivity::class.java))
+            },
+            modifier = Modifier.align(Alignment.CenterHorizontally)
+        ) {
+            Text(stringResource(R.string.faq_title))
+        }
     }
 
     if (showGuideDialog) {

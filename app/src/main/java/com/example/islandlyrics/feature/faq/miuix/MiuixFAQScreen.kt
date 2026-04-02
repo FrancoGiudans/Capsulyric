@@ -42,8 +42,8 @@ fun MiuixFAQScreen(onBack: () -> Unit) {
                 context.getString(R.string.faq_cat_guide),
                 listOfNotNull(
                     QAItem(context.resources.getText(R.string.faq_q_add_rule), context.resources.getText(R.string.faq_a_add_rule)),
-                    if (com.example.islandlyrics.core.platform.RomUtils.isHyperOsVersionAtLeast(3, 0, 0)) {
-                        QAItem(context.resources.getText(R.string.faq_q_super_island), context.resources.getText(R.string.faq_a_super_island))
+                    if (com.example.islandlyrics.core.platform.RomUtils.isHyperOsVersionAtLeast(3, 0, 0) || android.os.Build.VERSION.SDK_INT >= 36) {
+                        QAItem(context.resources.getText(R.string.faq_q_island_modes), context.resources.getText(R.string.faq_a_island_modes))
                     } else null
                 )
             ),

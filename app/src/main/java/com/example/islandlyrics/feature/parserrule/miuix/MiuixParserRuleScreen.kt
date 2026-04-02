@@ -74,6 +74,18 @@ fun MiuixParserRuleScreen(
                             tint = MiuixTheme.colorScheme.onBackground
                         )
                     }
+                },
+                actions = {
+                    IconButton(onClick = {
+                        val actContext = context
+                        actContext.startActivity(android.content.Intent(actContext, com.example.islandlyrics.feature.faq.FAQActivity::class.java))
+                    }, modifier = Modifier.padding(end = 12.dp)) {
+                        Icon(
+                            imageVector = androidx.compose.material.icons.Icons.Default.Info,
+                            contentDescription = stringResource(R.string.faq_title),
+                            tint = MiuixTheme.colorScheme.onBackground
+                        )
+                    }
                 }
             )
         },
@@ -312,21 +324,21 @@ fun MiuixEditRuleDialog(
     show: MutableState<Boolean>,
     onSave: (ParserRule) -> Unit
 ) {
-    var packageName by remember { mutableStateOf(rule?.packageName ?: "") }
-    var customName by remember { mutableStateOf(rule?.customName ?: "") }
-    var usesCarProtocol by remember { mutableStateOf(rule?.usesCarProtocol ?: true) }
-    var useOnlineLyrics by remember { mutableStateOf(rule?.useOnlineLyrics ?: false) }
-    var useSuperLyricApi by remember { mutableStateOf(rule?.useSuperLyricApi ?: false) }
-    var useLyricGetterApi by remember { mutableStateOf(rule?.useLyricGetterApi ?: false) }
+    var packageName by remember(rule, show.value) { mutableStateOf(rule?.packageName ?: "") }
+    var customName by remember(rule, show.value) { mutableStateOf(rule?.customName ?: "") }
+    var usesCarProtocol by remember(rule, show.value) { mutableStateOf(rule?.usesCarProtocol ?: true) }
+    var useOnlineLyrics by remember(rule, show.value) { mutableStateOf(rule?.useOnlineLyrics ?: false) }
+    var useSuperLyricApi by remember(rule, show.value) { mutableStateOf(rule?.useSuperLyricApi ?: false) }
+    var useLyricGetterApi by remember(rule, show.value) { mutableStateOf(rule?.useLyricGetterApi ?: false) }
     
     val separators = listOf("-", " - ", " | ")
-    var separatorIndex by remember { 
+    var separatorIndex by remember(rule, show.value) { 
         val idx = separators.indexOf(rule?.separatorPattern ?: "-")
         mutableStateOf(if (idx >= 0) idx else 0)
     }
     
     val orders = listOf(FieldOrder.ARTIST_TITLE, FieldOrder.TITLE_ARTIST)
-    var orderIndex by remember {
+    var orderIndex by remember(rule, show.value) {
         val idx = orders.indexOf(rule?.fieldOrder ?: FieldOrder.TITLE_ARTIST)
         mutableStateOf(if (idx >= 0) idx else 0)
     }
@@ -404,6 +416,19 @@ fun MiuixEditRuleDialog(
                         summary = stringResource(R.string.parser_lgetter_lyric_desc_short),
                         checked = useLyricGetterApi,
                         onCheckedChange = { useLyricGetterApi = it }
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+                SmallTitle(text = stringResource(R.string.settings_help_about_header))
+                Card(modifier = Modifier.fillMaxWidth()) {
+                    val actContext = LocalContext.current
+                    top.yukonga.miuix.kmp.extra.SuperArrow(
+                        title = stringResource(R.string.faq_title),
+                        summary = stringResource(R.string.summary_faq),
+                        onClick = {
+                            actContext.startActivity(android.content.Intent(actContext, com.example.islandlyrics.feature.faq.FAQActivity::class.java))
+                        }
                     )
                 }
             }

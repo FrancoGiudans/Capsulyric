@@ -202,22 +202,31 @@
 3. <b>配置解析逻辑</b>：\n
    • 开启“媒体通知歌词”开关。\n
    • 根据通知栏显示的格式选择正确的“分隔符”和“顺序”。\n\n
-4. <b>重启生效</b>：保存规则后，移除音乐应用后台并重新启动应用。\n\n
+4. <b>重启生效</b>：保存规则后，移除应用后台并重新启动应用。\n\n
 <b>注意</b>：若无上述功能，可尝试开启 SuperLyric/Lyric Getter 选项或使用“在线歌词”作为备选。选择SuperLyric/Lyric Getter需要LSPosed环境支持，并确认你的音乐软件受到支持。</string>
-    <string name="faq_q_super_island">Q：如何使用小米超级岛通知？</string>
-    <string name="faq_a_super_island">A：\n\n如果你已经root：可以使用HyperCeiler解除白名单；\n\n如果没有root：在shizuku为本应用授权，并开启“绕过小米超级岛白名单”即可，注意，这可能会造成耗电量增加和消息延迟</string>
-    <string name="faq_cat_func">功能异常类</string>
-    <string name="faq_q_no_lyrics">Q：为什么我看不到歌词？</string>
-    <string name="faq_a_no_lyrics">A： 请按照以下步骤逐一排查：\n\n
-1. <b>检查权限</b>： 请确保应用已获得所有必要的系统权限（尤其是通知使用权）。\n\n
-2. <b>确认系统版本</b>：\n
-   - 推荐环境： Android 16 及以上，或 HyperOS 3.0.300 及以上。\n
-   - 兼容性警告： 其他系统版本尚未经过完整测试，可能存在不稳定性。\n
-   - HyperOS 特别说明： 低于 3.0.300 的版本无法显示原生实时通知。\n\n
-3. <b>检查第三方音乐App设置</b>：\n
-   - QQ音乐/网易云/小米音乐等： 若使用车载蓝牙歌词或通知栏歌词功能，部分版本可能需要连接耳机才能触发显示。\n
-   - Apple Music 等： 此类依赖 SuperLyric API 的应用，必须安装 SuperLyric 模块（需要 LSPosed 环境支持）。\n\n
-4. <b>在线歌词限制</b>： 如果使用的是在线获取歌词功能，可能因 API 限制暂时无法获取该歌曲的准确歌词。</string>
+    <string name="faq_q_island_modes">Q：目前支持的歌词岛方案及其环境要求？</string>
+    <string name="faq_a_island_modes">A：本应用提供以下两种歌词展示方案：\n\n
+<b>1. 原生实时通知 (Live Update)</b>\n
+- <b>环境要求</b>：Android 16+ 或 HyperOS 3.0.300+。\n
+- <b>技术原理</b>：利用系统原生底层 API 实现。当应用处于后台或设备锁屏时，系统将依状态自动折叠为胶囊形态，具有极低的能效损耗。\n\n
+<b>2. 小米超级岛 (Super Island)</b>\n
+- <b>环境要求</b>：所有 HyperOS 版本。\n
+- <b>技术原理</b>：基于小米专有协议实现。需在设置中手动启用“发送小米超级岛通知”。\n
+- <b>白名单突破方案</b>：\n
+  • <b>已获取 Root 权限</b>：建议配合 HyperCeiler 等模块解除系统的应用限制。\n
+  • <b>未获取 Root 权限</b>：需通过 Shizuku 进行授权，并启用“绕过小米超级岛白名单”功能。（注：该方案由于强制系统重定向通知，可能导致间歇性耗电增加或消息延迟。）</string>
+    <string name="faq_cat_func">功能异常排查</string>
+    <string name="faq_q_no_lyrics">Q：配置完成后歌词岛仍未正常显示？</string>
+    <string name="faq_a_no_lyrics">A： 请按以下步骤进行标准化排查：\n\n
+1. <b>基础权限验证</b>： 确认已授予“通知使用权”。建议在系统后台任务管理中锁定本应用并开启自启动权限，以防进程被系统回收。\n\n
+2. <b>播放源触发机制</b>：\n
+   - <b>主流音乐应用 (QQ/网易云/小米等)</b>：须确保应用内“车载/蓝牙歌词”开关已开启。部分版本需检测到蓝牙或耳机连接才会触发歌词广播。\n
+   - <b>Apple Music</b>：鉴于其闭源特性，须配合 LSPosed 环境下的 SuperLyric 模块进行数据中转。\n\n
+3. <b>兼容性限制验证</b>：\n
+   - <b>Live Update 模式</b>：若当前系统低于 HyperOS 3.0.300，受限于系统底层缺失，无法实现胶囊化展示。\n
+   - <b>Super Island 模式</b>：若未正确完成 Root 补丁或 Shizuku 授权绕过，系统将拦截非授权应用的动态通知。\n\n
+4. <b>数据源完整性</b>：在线解析方案可能受限于 API 响应延迟或版权限制而无法展示部分类目歌词。\n\n
+<b>若以上排查均无果，请进入诊断工具导出日志 ZIP 压缩包，并前往反馈页面提交工单。</b></string>
 
     <string name="faq_q_service_error">Q：为什么首页一直提示“无法连接到服务”？</string>
     <string name="faq_a_service_error">A： 这通常是由于系统自动回收了权限导致的。\n\n
@@ -228,10 +237,13 @@
     <string name="faq_q_unresolved">Q：以上内容都无法解决我的问题，怎么办？</string>
     <string name="faq_a_unresolved">A： 请前往反馈页面提交 Issue。   - <b>推荐渠道</b>： GitHub Issues（处理效率最高）。  - <b>备用渠道</b>： WPS 表单（可能需要登录）。   <b>重要</b>： 提交反馈时，请务必附带 <b>日志（Log）</b> 以便我们排查问题。</string>
 
-    <string name="faq_q_get_log">Q：如何获取日志（Log）？</string>
-    <string name="faq_a_get_log">A： 根据你安装的版本，获取方式略有不同：\n\n
-- <b>Debug 版本</b>： 自带 Log Console（日志控制台），可直接查看输出的完整日志。\n
-- <b>Release / Pre-release 版本</b>： 在应用内找到版本号或 Commit 号，连续点击即可唤出 Log Console。</string>
+    <string name="faq_q_get_log">Q：如何获取与导出诊断日志？</string>
+    <string name="faq_a_get_log">A： 请参考以下标准流程：\n\n
+<b>1. 激活诊断工具</b>\n
+- <b>Debug 版本</b>： 设置页直接提供 Log Console 入口。\n
+- <b>Release 版本</b>： 导航至“设置”页面，连续点击“内部开发号”或“Commit Hash” 7 次，即可解锁“诊断工具”入口。\n\n
+<b>2. 导出 ZIP 压缩包</b>\n
+进入日志界面后，点击右上角的“分享/导出”按钮。您可以根据需求选择特定的时间跨度，App 将自动对环境上下文信息与系统日志进行打包。在提交 GitHub Issue 或填写反馈单时，请务必作为附件上传此 ZIP 文件。</string>
 
     <!-- 通知设置 -->
     <string name="action_miplay">小米妙播</string>

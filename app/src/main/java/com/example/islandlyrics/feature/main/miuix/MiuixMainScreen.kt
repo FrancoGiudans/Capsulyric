@@ -272,7 +272,7 @@ fun MiuixMainScreen(
         if (updateReleaseInfo != null) {
             MiuixUpdateDialog(
                 show = true,
-                releaseInfo = updateReleaseInfo!!,
+                releaseInfo = updateReleaseInfo,
                 onDismiss = onUpdateDismiss,
                 onIgnore = onUpdateIgnore
             )
