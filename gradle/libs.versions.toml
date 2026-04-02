@@ -12,6 +12,7 @@ composeBom = "2026.03.01"
 markwon = "4.6.2"
 coil = "2.7.0"
 miuix = "0.8.8"
+miuixBlur = "0.9.0"
 shizuku = "13.1.5"
 focusApi = "1.4"
 palette = "1.0.0"
@@ -50,6 +51,7 @@ markwon-html = { group = "io.noties.markwon", name = "html", version.ref = "mark
 markwon-image-coil = { group = "io.noties.markwon", name = "image-coil", version.ref = "markwon" }
 coil = { group = "io.coil-kt", name = "coil", version.ref = "coil" }
 miuix = { group = "top.yukonga.miuix.kmp", name = "miuix-android", version.ref = "miuix" }
+miuix-blur = { group = "top.yukonga.miuix.kmp", name = "miuix-blur-android", version.ref = "miuixBlur" }
 
 # Shizuku
 shizuku-api = { group = "dev.rikka.shizuku", name = "api", version.ref = "shizuku" }

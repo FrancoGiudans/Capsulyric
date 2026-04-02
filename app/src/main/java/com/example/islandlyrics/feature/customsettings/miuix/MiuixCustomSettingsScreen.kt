@@ -44,6 +44,7 @@ import top.yukonga.miuix.kmp.extra.SuperDropdown
 import top.yukonga.miuix.kmp.extra.SuperSwitch
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.MiuixPopupUtils.Companion.MiuixPopupHost
+import com.example.islandlyrics.ui.miuix.*
 
 @Composable
 fun MiuixCustomSettingsScreen(
@@ -86,6 +87,8 @@ fun MiuixCustomSettingsScreen(
     var superIslandShareFormat by remember { mutableStateOf(prefs.getString("super_island_share_format", "format_1") ?: "format_1") }
     var miuixEnabled by remember { mutableStateOf(prefs.getBoolean("ui_use_miuix", false)) }
     var predictiveBackEnabled by remember { mutableStateOf(prefs.getBoolean("predictive_back_enabled", false)) }
+    var monetEnabled by remember { mutableStateOf(prefs.getBoolean("theme_dynamic_color", true)) }
+    var cardBlurEnabled by remember { mutableStateOf(prefs.getBoolean("card_blur_enabled", false)) }
     var blockXmsfEnabled by remember { mutableStateOf(prefs.getBoolean("block_xmsf_network", false)) }
     val showBlockXmsfDialog = remember { mutableStateOf(false) }
 
@@ -104,9 +107,9 @@ fun MiuixCustomSettingsScreen(
         }
     }
 
-    Scaffold(
+    MiuixBlurScaffold(
         topBar = {
-            TopAppBar(
+            MiuixBlurTopAppBar(
                 title = stringResource(R.string.page_title_personalization),
                 scrollBehavior = scrollBehavior,
                 navigationIcon = {
@@ -120,7 +123,6 @@ fun MiuixCustomSettingsScreen(
                 }
             )
         },
-        popupHost = { MiuixPopupHost() }
     ) { padding ->
         // Tab Row + Pager
         Column(modifier = Modifier.padding(padding).fillMaxSize()) {
@@ -450,6 +452,29 @@ fun MiuixCustomSettingsScreen(
                                         onCheckedChange = {
                                             predictiveBackEnabled = it
                                             prefs.edit().putBoolean("predictive_back_enabled", it).apply()
+                                        }
+                                    )
+                                    SuperSwitch(
+                                        title = stringResource(R.string.settings_theme_dynamic_color),
+                                        summary = stringResource(R.string.settings_theme_dynamic_color_desc),
+                                        checked = monetEnabled,
+                                        onCheckedChange = { enabled ->
+                                            monetEnabled = enabled
+                                            ThemeHelper.setDynamicColor(context, enabled)
+                                            // Restart to apply new ThemeController mode
+                                            val restartIntent = Intent(context, MainActivity::class.java)
+                                            restartIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                                            context.startActivity(restartIntent)
+                                            (context as? Activity)?.finish()
+                                        }
+                                    )
+                                    SuperSwitch(
+                                        title = stringResource(R.string.settings_card_blur),
+                                        summary = stringResource(R.string.settings_card_blur_desc),
+                                        checked = cardBlurEnabled,
+                                        onCheckedChange = {
+                                            cardBlurEnabled = it
+                                            prefs.edit().putBoolean("card_blur_enabled", it).apply()
                                         }
                                     )
                                 }

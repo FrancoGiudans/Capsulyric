@@ -206,6 +206,10 @@
     <string name="settings_hide_recents_desc">Automatically remove from recents when app goes to background</string>
     <string name="settings_predictive_back">Predictive Back Gesture</string>
     <string name="settings_predictive_back_desc">Show a preview of the previous screen when swiping back. Restart to apply.</string>
+    <string name="settings_monet_color">Monet Dynamic Color</string>
+    <string name="settings_monet_color_desc">Extract accent color from your wallpaper (Android 12+). App will restart.</string>
+    <string name="settings_card_blur">Media Card Blur Effect</string>
+    <string name="settings_card_blur_desc">Apply frosted glass blur on album art background of the media card.</string>
     
     <!-- Languages & Toasts -->
     <string name="lang_sys_default">System Default</string>

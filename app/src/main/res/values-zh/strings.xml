@@ -361,6 +361,10 @@
     <string name="ui_style_material">Material Design</string>
     <string name="ui_style_miuix">Miuix</string>
     <string name="settings_predictive_back">预测性返回</string>
+    <string name="settings_monet_color">Monet 动态取色</string>
+    <string name="settings_monet_color_desc">从壁纸中提取强调色（Android 12+），应用将重启</string>
+    <string name="settings_card_blur">高级材质</string>
+    <string name="settings_card_blur_desc">在部分界面应用高级材质效果</string>
     <string name="lang_sys_default">跟随系统</string>
     <string name="lang_english">English</string>
     <string name="lang_chinese">简体中文</string>

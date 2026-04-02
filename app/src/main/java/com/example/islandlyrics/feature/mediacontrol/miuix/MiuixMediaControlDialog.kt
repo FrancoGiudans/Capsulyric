@@ -15,6 +15,12 @@ import android.media.session.MediaController
 import android.media.session.MediaSessionManager
 import android.media.session.PlaybackState
 import android.widget.Toast
+import top.yukonga.miuix.kmp.blur.textureBlur
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
+import android.os.Build
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -103,15 +109,98 @@ fun MiuixMediaControlDialog(
     val repoLyric by repo.liveLyric.observeAsState()
     val repoProgress by repo.liveProgress.observeAsState()
 
-    WindowDialog(
-        title = stringResource(R.string.media_control_title),
-        show = show,
-        onDismissRequest = onDismiss
-    ) {
-        Column(
-            modifier = Modifier.padding(top = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+    val blurEnabled = remember { context.getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE).getBoolean("card_blur_enabled", false) }
+    
+    var visibleState by remember { mutableStateOf(false) }
+    LaunchedEffect(show) { 
+        if (show) visibleState = true 
+    }
+
+    if (show || visibleState) {
+        androidx.compose.ui.window.Dialog(
+            onDismissRequest = onDismiss,
+            properties = androidx.compose.ui.window.DialogProperties(
+                usePlatformDefaultWidth = false,
+                decorFitsSystemWindows = false
+            )
         ) {
+            val view = androidx.compose.ui.platform.LocalView.current
+            
+            // Runs synchronously after composition before draw
+            SideEffect {
+                val window = (view.parent as? androidx.compose.ui.window.DialogWindowProvider)?.window
+                if (window != null) {
+                    window.setGravity(android.view.Gravity.BOTTOM)
+                    val params = window.attributes
+                    params.width = android.view.WindowManager.LayoutParams.MATCH_PARENT
+                    params.height = android.view.WindowManager.LayoutParams.WRAP_CONTENT
+                    window.attributes = params
+
+                    window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_DIM_BEHIND)
+                    window.setDimAmount(0f)
+                    window.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(0))
+                }
+            }
+
+            LaunchedEffect(view, blurEnabled) {
+                val window = (view.parent as? androidx.compose.ui.window.DialogWindowProvider)?.window
+                if (window != null) {
+                    if (blurEnabled && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                        try { window.setBackgroundBlurRadius(100) } catch (e: Exception) {}
+                    } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                        try { window.setBackgroundBlurRadius(0) } catch (e: Exception) {}
+                    }
+                }
+            }
+
+            // Miuix scale/fade animation
+            val scale by androidx.compose.animation.core.animateFloatAsState(
+                targetValue = if (visibleState && show) 1f else 0.8f,
+                animationSpec = androidx.compose.animation.core.spring(dampingRatio = 0.8f, stiffness = 300f),
+                finishedListener = { if (!show) visibleState = false },
+                label = "scale"
+            )
+            val alpha by androidx.compose.animation.core.animateFloatAsState(
+                targetValue = if (visibleState && show) 1f else 0f,
+                animationSpec = androidx.compose.animation.core.tween(200),
+                label = "alpha"
+            )
+
+            // Miuix Bottom Sheet Container
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 32.dp)
+            ) {
+                androidx.compose.material3.Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                        .graphicsLayer {
+                            scaleX = scale
+                            scaleY = scale
+                            this.alpha = alpha
+                            transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0.5f, 1f)
+                        },
+                    shape = RoundedCornerShape(28.dp),
+                    colors = androidx.compose.material3.CardDefaults.cardColors(
+                        containerColor = MiuixTheme.colorScheme.surface.copy(alpha = if (blurEnabled) 0.65f else 1f)
+                    ),
+                    elevation = androidx.compose.material3.CardDefaults.cardElevation(defaultElevation = 0.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
+                            Text(
+                                text = stringResource(R.string.media_control_title),
+                                color = MiuixTheme.colorScheme.onSurface,
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                modifier = Modifier.padding(top = 4.dp, bottom = 8.dp)
+                            )
+                        }
             if (whitelistedControllers.isNotEmpty()) {
                 val pagerState = androidx.compose.foundation.pager.rememberPagerState(pageCount = { whitelistedControllers.size })
                 
@@ -228,6 +317,9 @@ fun MiuixMediaControlDialog(
         }
     }
 }
+        }
+    }
+}
 
 @Composable
 fun MiuixMediaSessionLayout(
@@ -304,6 +396,19 @@ fun MiuixMediaSessionLayout(
     val isPlaying = playbackState?.state == PlaybackState.STATE_PLAYING || playbackState?.state == PlaybackState.STATE_BUFFERING
     val duration = metadata?.getLong(MediaMetadata.METADATA_KEY_DURATION) ?: 0L
     val position = if (isPrimary) primaryProgress?.position ?: 0L else playbackState?.position ?: 0L
+
+    val dominantColor by produceState<Color?>(initialValue = null, key1 = albumArtBitmap) {
+        value = albumArtBitmap?.let { bmp ->
+            val palette = Palette.from(bmp).generate()
+            val swatch = palette.vibrantSwatch ?: palette.mutedSwatch ?: palette.dominantSwatch
+            swatch?.rgb?.let { Color(it) }
+        }
+    }
+    val animatedAccent by animateColorAsState(
+        targetValue = dominantColor ?: MiuixTheme.colorScheme.primary,
+        animationSpec = tween(600),
+        label = "accent"
+    )
 
     Column(
         modifier = Modifier.fillMaxWidth()
@@ -461,7 +566,9 @@ fun MiuixMediaSessionLayout(
                     controller.transportControls.seekTo((dragProgress * duration).toLong())
                 }
             },
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            height = 12.dp,
+            colors = SliderDefaults.sliderColors(foregroundColor = animatedAccent, thumbColor = animatedAccent)
         )
 
         Row(

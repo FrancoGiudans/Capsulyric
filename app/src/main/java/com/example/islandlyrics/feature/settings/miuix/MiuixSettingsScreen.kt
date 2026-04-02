@@ -44,6 +44,7 @@ import top.yukonga.miuix.kmp.extra.SuperDialog
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.MiuixPopupUtils.Companion.MiuixPopupHost
 import com.example.islandlyrics.feature.update.miuix.MiuixUpdateDialog
+import com.example.islandlyrics.ui.miuix.*
 
 @Composable
 fun MiuixSettingsScreen(
@@ -115,9 +116,9 @@ fun MiuixSettingsScreen(
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
-    Scaffold(
+    MiuixBlurScaffold(
         topBar = {
-            TopAppBar(
+            MiuixBlurTopAppBar(
                 title = stringResource(R.string.title_app_settings),
                 scrollBehavior = scrollBehavior,
                 navigationIcon = {
@@ -131,7 +132,6 @@ fun MiuixSettingsScreen(
                 }
             )
         },
-        popupHost = { MiuixPopupHost() }
     ) { padding ->
         LazyColumn(
             modifier = Modifier

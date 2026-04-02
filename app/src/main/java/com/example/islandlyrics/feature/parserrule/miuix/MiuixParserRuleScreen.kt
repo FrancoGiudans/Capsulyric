@@ -36,6 +36,7 @@ import top.yukonga.miuix.kmp.extra.SuperDropdown
 import top.yukonga.miuix.kmp.extra.SuperSwitch
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.MiuixPopupUtils.Companion.MiuixPopupHost
+import com.example.islandlyrics.ui.miuix.*
 
 @Composable
 fun MiuixParserRuleScreen(
@@ -62,9 +63,9 @@ fun MiuixParserRuleScreen(
         com.example.islandlyrics.service.MediaMonitorService.triggerRecheck()
     }
 
-    Scaffold(
+    MiuixBlurScaffold(
         topBar = {
-            TopAppBar(
+            MiuixBlurTopAppBar(
                 title = stringResource(R.string.title_parser_whitelist_manager),
                 scrollBehavior = scrollBehavior,
                 navigationIcon = {

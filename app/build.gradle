@@ -27,7 +27,7 @@ if (localPropertiesFile.exists()) {
 
 android {
     namespace = 'com.example.islandlyrics'
-    compileSdk = 36
+    compileSdk = 37
 
     // Check if custom keystore is available
     def keystorePath = localProperties.getProperty('store.file')
@@ -155,6 +155,7 @@ dependencies {
 
     // Miuix UI
     implementation libs.miuix
+    implementation libs.miuix.blur
     implementation libs.navigationevent.compose
 
     // Shizuku
