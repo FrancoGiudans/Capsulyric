@@ -28,7 +28,7 @@ class MediaControlActivity : ComponentActivity() {
                 MiuixAppTheme {
                     if (showDialog.value) {
                         MiuixMediaControlDialog(
-                            show = showDialog,
+                            show = showDialog.value,
                             onDismiss = { finish() }
                         )
                     } else {

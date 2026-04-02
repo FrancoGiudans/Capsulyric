@@ -96,25 +96,14 @@ class MainActivity : BaseActivity() {
                             onStatusCardTap = {
                                 MediaMonitorService.requestRebind(this@MainActivity)
                                 Toast.makeText(this@MainActivity, "Requesting Rebind...", Toast.LENGTH_SHORT).show()
+                            },
+                            updateReleaseInfo = updateReleaseInfo,
+                            onUpdateDismiss = { updateReleaseInfo = null },
+                            onUpdateIgnore = { tag ->
+                                UpdateChecker.setIgnoredVersion(this@MainActivity, tag)
+                                AppLogger.getInstance().log("Update", "Ignored version: $tag")
                             }
                         )
-                    
-                    if (updateReleaseInfo != null) {
-                        val showDialog = androidx.compose.runtime.remember(updateReleaseInfo) { androidx.compose.runtime.mutableStateOf(true) }
-                        if (showDialog.value) {
-                            MiuixUpdateDialog(
-                                show = showDialog,
-                                releaseInfo = updateReleaseInfo!!,
-                                onDismiss = { updateReleaseInfo = null },
-                                onIgnore = { tag ->
-                                    UpdateChecker.setIgnoredVersion(this@MainActivity, tag)
-                                    AppLogger.getInstance().log("Update", "Ignored version: $tag")
-                                }
-                            )
-                        } else {
-                            updateReleaseInfo = null
-                        }
-                    }
                 }
             } else {
                 AppTheme {

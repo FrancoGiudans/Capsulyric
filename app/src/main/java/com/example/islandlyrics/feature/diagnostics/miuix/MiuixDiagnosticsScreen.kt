@@ -24,6 +24,7 @@ import top.yukonga.miuix.kmp.basic.*
 import top.yukonga.miuix.kmp.extra.SuperArrow
 import top.yukonga.miuix.kmp.extra.SuperDialog
 import top.yukonga.miuix.kmp.theme.MiuixTheme
+import top.yukonga.miuix.kmp.utils.MiuixPopupUtils.Companion.MiuixPopupHost
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -32,6 +33,8 @@ fun MiuixDiagnosticsScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     val scrollBehavior = MiuixScrollBehavior(rememberTopAppBarState())
     val diagnostics by LyricRepository.getInstance().liveDiagnostics.observeAsState()
+    val showDisableDialog = remember { mutableStateOf(false) }
+    val prefs = remember { context.getSharedPreferences("IslandLyricsPrefs", android.content.Context.MODE_PRIVATE) }
 
     Scaffold(
         topBar = {
@@ -48,7 +51,8 @@ fun MiuixDiagnosticsScreen(onBack: () -> Unit) {
                     }
                 }
             )
-        }
+        },
+        popupHost = { MiuixPopupHost() }
     ) { padding ->
         LazyColumn(
             modifier = Modifier
@@ -163,9 +167,6 @@ fun MiuixDiagnosticsScreen(onBack: () -> Unit) {
             item { Spacer(modifier = Modifier.height(24.dp)) }
 
             item {
-                var showDisableDialog = remember { mutableStateOf(false) }
-                val prefs = remember { context.getSharedPreferences("IslandLyricsPrefs", android.content.Context.MODE_PRIVATE) }
-
                 androidx.compose.material3.TextButton(
                     onClick = { showDisableDialog.value = true },
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
@@ -179,39 +180,38 @@ fun MiuixDiagnosticsScreen(onBack: () -> Unit) {
                         fontWeight = androidx.compose.ui.text.font.FontWeight.Medium
                     )
                 }
+            }
+        }
 
-                if (showDisableDialog.value) {
-                    SuperDialog(
-                        title = stringResource(R.string.dialog_disable_diagnostics_title),
-                        summary = stringResource(R.string.dialog_disable_diagnostics_message),
-                        show = showDisableDialog,
-                        onDismissRequest = { showDisableDialog.value = false }
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            TextButton(
-                                text = stringResource(android.R.string.cancel),
-                                onClick = { showDisableDialog.value = false },
-                                modifier = Modifier.weight(1f),
-                                colors = ButtonDefaults.textButtonColors(
-                                    textColor = MiuixTheme.colorScheme.onSurfaceVariantActions
-                                )
-                            )
-                            Spacer(modifier = Modifier.width(12.dp))
-                            TextButton(
-                                text = stringResource(android.R.string.ok),
-                                onClick = {
-                                    LyricRepository.getInstance().setDevMode(context, false)
-                                    onBack()
-                                },
-                                modifier = Modifier.weight(1f),
-                                colors = ButtonDefaults.textButtonColorsPrimary()
-                            )
-                        }
-                    }
-                }
+        // SuperDialog must be a sibling to LazyColumn inside Scaffold lambda
+        SuperDialog(
+            title = stringResource(R.string.dialog_disable_diagnostics_title),
+            summary = stringResource(R.string.dialog_disable_diagnostics_message),
+            show = showDisableDialog.value,
+            onDismissRequest = { showDisableDialog.value = false }
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                TextButton(
+                    text = stringResource(android.R.string.cancel),
+                    onClick = { showDisableDialog.value = false },
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.textButtonColors(
+                        textColor = MiuixTheme.colorScheme.onSurfaceVariantActions
+                    )
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                TextButton(
+                    text = stringResource(android.R.string.ok),
+                    onClick = {
+                        LyricRepository.getInstance().setDevMode(context, false)
+                        onBack()
+                    },
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.textButtonColorsPrimary()
+                )
             }
         }
     }

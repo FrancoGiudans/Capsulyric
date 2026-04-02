@@ -53,14 +53,13 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 fun MiuixMediaControlDialog(
-    show: MutableState<Boolean>,
+    show: Boolean,
     onDismiss: () -> Unit
 ) {
     val context = LocalContext.current
     var activeControllers by remember { mutableStateOf<List<MediaController>>(emptyList()) }
     var statusMessage by remember { mutableStateOf(context.getString(R.string.media_control_scanning)) }
-    MiuixBackHandler(enabled = show.value) {
-        show.value = false
+    MiuixBackHandler(enabled = show) {
         onDismiss()
     }
     
@@ -107,10 +106,7 @@ fun MiuixMediaControlDialog(
     WindowDialog(
         title = stringResource(R.string.media_control_title),
         show = show,
-        onDismissRequest = {
-            show.value = false
-            onDismiss()
-        }
+        onDismissRequest = onDismiss
     ) {
         Column(
             modifier = Modifier.padding(top = 16.dp),
@@ -135,7 +131,6 @@ fun MiuixMediaControlDialog(
                             primaryLyric = if (isPrimary) repoLyric?.lyric else null,
                             primaryProgress = if (isPrimary) repoProgress else null,
                             onOpenApp = {
-                                show.value = false
                                 onDismiss()
                             }
                         )
@@ -177,7 +172,6 @@ fun MiuixMediaControlDialog(
                             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
                         }
                         context.startActivity(intent)
-                        show.value = false
                         onDismiss()
                     },
                     modifier = Modifier.background(MiuixTheme.colorScheme.surfaceVariant, CircleShape)
@@ -201,7 +195,6 @@ fun MiuixMediaControlDialog(
                                 )
                                 intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
                                 context.startActivity(intent)
-                                show.value = false
                                 onDismiss()
                             } catch (e: Exception) {
                                 Toast.makeText(context, context.getString(R.string.media_control_miplay_failed, e.message), Toast.LENGTH_SHORT).show()

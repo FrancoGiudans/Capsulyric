@@ -86,6 +86,8 @@ fun MiuixCustomSettingsScreen(
     var superIslandShareFormat by remember { mutableStateOf(prefs.getString("super_island_share_format", "format_1") ?: "format_1") }
     var miuixEnabled by remember { mutableStateOf(prefs.getBoolean("ui_use_miuix", false)) }
     var predictiveBackEnabled by remember { mutableStateOf(prefs.getBoolean("predictive_back_enabled", false)) }
+    var blockXmsfEnabled by remember { mutableStateOf(prefs.getBoolean("block_xmsf_network", false)) }
+    val showBlockXmsfDialog = remember { mutableStateOf(false) }
 
     val isLiveUpdateSupported = remember { RomUtils.isLiveUpdateSupported() }
     val isHyperOs = remember { RomUtils.isHyperOs() }
@@ -275,8 +277,6 @@ fun MiuixCustomSettingsScreen(
                                                 )
                                             }
 
-                                            var blockXmsfEnabled by remember { mutableStateOf(prefs.getBoolean("block_xmsf_network", false)) }
-                                            val showBlockXmsfDialog = remember { mutableStateOf(false) }
                                             SuperSwitch(
                                                 title = stringResource(R.string.settings_block_xmsf),
                                                 summary = stringResource(R.string.settings_block_xmsf_desc),
@@ -290,42 +290,6 @@ fun MiuixCustomSettingsScreen(
                                                     }
                                                 }
                                             )
-
-                                            SuperDialog(
-                                                title = stringResource(R.string.dialog_block_xmsf_title),
-                                                summary = stringResource(R.string.dialog_block_xmsf_message),
-                                                show = showBlockXmsfDialog,
-                                                onDismissRequest = { showBlockXmsfDialog.value = false }
-                                            ) {
-                                                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                                    TextButton(
-                                                        text = stringResource(R.string.dialog_btn_cancel),
-                                                        onClick = {
-                                                            showBlockXmsfDialog.value = false
-                                                            blockXmsfEnabled = false
-                                                        },
-                                                        modifier = Modifier.weight(1f)
-                                                    )
-                                                    TextButton(
-                                                        text = stringResource(R.string.dialog_block_xmsf_confirm),
-                                                        onClick = {
-                                                            showBlockXmsfDialog.value = false
-                                                            scope.launch {
-                                                                try {
-                                                                    com.example.islandlyrics.integration.shizuku.requireShizukuPermissionGranted {
-                                                                        blockXmsfEnabled = true
-                                                                        prefs.edit().putBoolean("block_xmsf_network", true).apply()
-                                                                    }
-                                                                } catch (e: Exception) {
-                                                                    Toast.makeText(context, "Shizuku permission required", Toast.LENGTH_LONG).show()
-                                                                }
-                                                            }
-                                                        },
-                                                        modifier = Modifier.weight(1f),
-                                                        colors = ButtonDefaults.textButtonColorsPrimary()
-                                                    )
-                                                }
-                                            }
 
                                         }
                                     }
@@ -495,6 +459,42 @@ fun MiuixCustomSettingsScreen(
                 }
             }
         }
-    }
 
+        // SuperDialog must be inside Scaffold content for MiuixPopupHost
+        SuperDialog(
+            title = stringResource(R.string.dialog_block_xmsf_title),
+            summary = stringResource(R.string.dialog_block_xmsf_message),
+            show = showBlockXmsfDialog.value,
+            onDismissRequest = { showBlockXmsfDialog.value = false }
+        ) {
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                TextButton(
+                    text = stringResource(R.string.dialog_btn_cancel),
+                    onClick = {
+                        showBlockXmsfDialog.value = false
+                        blockXmsfEnabled = false
+                    },
+                    modifier = Modifier.weight(1f)
+                )
+                TextButton(
+                    text = stringResource(R.string.dialog_block_xmsf_confirm),
+                    onClick = {
+                        showBlockXmsfDialog.value = false
+                        scope.launch {
+                            try {
+                                com.example.islandlyrics.integration.shizuku.requireShizukuPermissionGranted {
+                                    blockXmsfEnabled = true
+                                    prefs.edit().putBoolean("block_xmsf_network", true).apply()
+                                }
+                            } catch (e: Exception) {
+                                Toast.makeText(context, "Shizuku permission required", Toast.LENGTH_LONG).show()
+                            }
+                        }
+                    },
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.textButtonColorsPrimary()
+                )
+            }
+        }
+    }
 }

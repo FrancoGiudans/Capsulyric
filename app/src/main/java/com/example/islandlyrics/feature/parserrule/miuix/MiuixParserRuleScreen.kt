@@ -194,10 +194,8 @@ fun MiuixParserRuleScreen(
                 }
             }
         }
-    }
 
-    // Miuix Edit Dialog
-    if (showEditDialog.value) {
+        // Dialogs must be inside Scaffold content for MiuixPopupHost
         MiuixEditRuleDialog(
             rule = editingRule,
             show = showEditDialog,
@@ -219,14 +217,11 @@ fun MiuixParserRuleScreen(
                 showEditDialog.value = false
             }
         )
-    }
 
-    // Miuix Delete Dialog
-    if (showDeleteDialog.value && deletingRule != null) {
         SuperDialog(
             title = stringResource(R.string.parser_delete),
             summary = stringResource(R.string.dialog_delete_confirm, deletingRule?.customName ?: deletingRule?.packageName ?: ""),
-            show = showDeleteDialog,
+            show = showDeleteDialog.value,
             onDismissRequest = { showDeleteDialog.value = false }
         ) {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -338,7 +333,7 @@ fun MiuixEditRuleDialog(
 
     SuperDialog(
         title = if (rule == null) stringResource(R.string.parser_add_rule) else stringResource(R.string.parser_edit),
-        show = show,
+        show = show.value,
         onDismissRequest = { show.value = false }
     ) {
         Column(

@@ -12,7 +12,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
@@ -29,15 +28,14 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 @Composable
 fun MiuixUpdateDialog(
-    show: MutableState<Boolean>,
+    show: Boolean,
     releaseInfo: UpdateChecker.ReleaseInfo,
     onDismiss: () -> Unit,
     onIgnore: (String) -> Unit
 ) {
     val context = LocalContext.current
     
-    MiuixBackHandler(enabled = show.value) {
-        show.value = false
+    MiuixBackHandler(enabled = show) {
         onDismiss()
     }
     
@@ -51,10 +49,7 @@ fun MiuixUpdateDialog(
     SuperDialog(
         title = stringResource(R.string.update_available_title, releaseInfo.tagName),
         show = show,
-        onDismissRequest = {
-            show.value = false
-            onDismiss()
-        }
+        onDismissRequest = onDismiss
     ) {
         Column(
             modifier = Modifier.fillMaxWidth()
@@ -99,7 +94,6 @@ fun MiuixUpdateDialog(
                     text = stringResource(R.string.update_ignore),
                     onClick = {
                         onIgnore(releaseInfo.tagName)
-                        show.value = false
                         onDismiss()
                     },
                     colors = ButtonDefaults.textButtonColors(
@@ -117,7 +111,6 @@ fun MiuixUpdateDialog(
                         } catch (e: Exception) {
                             e.printStackTrace()
                         }
-                        show.value = false
                         onDismiss()
                     },
                     modifier = Modifier.weight(1f),

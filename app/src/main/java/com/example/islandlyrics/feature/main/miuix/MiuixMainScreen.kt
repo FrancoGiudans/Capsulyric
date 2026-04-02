@@ -51,6 +51,8 @@ import top.yukonga.miuix.kmp.basic.*
 import top.yukonga.miuix.kmp.extra.SuperArrow
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.MiuixPopupUtils.Companion.MiuixPopupHost
+import com.example.islandlyrics.core.update.UpdateChecker
+import com.example.islandlyrics.feature.update.miuix.MiuixUpdateDialog
 
 // Status colors
 private val StatusActive = Color(0xFF4CAF50)
@@ -66,6 +68,9 @@ fun MiuixMainScreen(
     onOpenDebug: () -> Unit,
     onOpenPromotedSettings: () -> Unit,
     onStatusCardTap: () -> Unit,
+    updateReleaseInfo: UpdateChecker.ReleaseInfo? = null,
+    onUpdateDismiss: () -> Unit = {},
+    onUpdateIgnore: (String) -> Unit = {}
 ) {
     val repo = remember { LyricRepository.getInstance() }
     val context = LocalContext.current
@@ -262,6 +267,15 @@ fun MiuixMainScreen(
                     }
                 }
             }
+        }
+
+        if (updateReleaseInfo != null) {
+            MiuixUpdateDialog(
+                show = true,
+                releaseInfo = updateReleaseInfo!!,
+                onDismiss = onUpdateDismiss,
+                onIgnore = onUpdateIgnore
+            )
         }
     }
 }

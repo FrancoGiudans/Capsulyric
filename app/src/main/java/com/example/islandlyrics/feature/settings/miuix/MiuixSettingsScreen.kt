@@ -43,13 +43,17 @@ import top.yukonga.miuix.kmp.extra.SuperSwitch
 import top.yukonga.miuix.kmp.extra.SuperDialog
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.MiuixPopupUtils.Companion.MiuixPopupHost
+import com.example.islandlyrics.feature.update.miuix.MiuixUpdateDialog
 
 @Composable
 fun MiuixSettingsScreen(
     onCheckUpdate: () -> Unit,
     onShowDiagnostics: () -> Unit,
     updateVersionText: String,
-    updateBuildText: String
+    updateBuildText: String,
+    updateReleaseInfo: UpdateChecker.ReleaseInfo? = null,
+    onUpdateDismiss: () -> Unit = {},
+    onUpdateIgnore: (String) -> Unit = {}
 ) {
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences("IslandLyricsPrefs", android.content.Context.MODE_PRIVATE) }
@@ -57,6 +61,7 @@ fun MiuixSettingsScreen(
 
     // State
     var autoUpdateEnabled by remember { mutableStateOf(UpdateChecker.isAutoUpdateEnabled(context)) }
+    var prereleaseEnabled by remember { mutableStateOf(UpdateChecker.isPrereleaseEnabled(context)) }
     var followSystem by remember { mutableStateOf(prefs.getBoolean("theme_follow_system", true)) }
     var darkMode by remember { mutableStateOf(prefs.getBoolean("theme_dark_mode", false)) }
     var pureBlack by remember { mutableStateOf(prefs.getBoolean("theme_pure_black", false)) }
@@ -244,7 +249,6 @@ fun MiuixSettingsScreen(
                         }
                     )
 
-                    var prereleaseEnabled by remember { mutableStateOf(UpdateChecker.isPrereleaseEnabled(context)) }
 
                     SuperSwitch(
                         title = stringResource(R.string.settings_prerelease_update),
@@ -283,69 +287,6 @@ fun MiuixSettingsScreen(
                             title = stringResource(R.string.settings_prerelease_desc),
                             onClick = { showPrereleaseDescDialog.value = true }
                         )
-
-                        if (showPrereleaseDescDialog.value) {
-                            SuperDialog(
-                                title = stringResource(R.string.dialog_prerelease_desc_title),
-                                summary = stringResource(R.string.dialog_prerelease_desc_message),
-                                show = showPrereleaseDescDialog,
-                                onDismissRequest = { showPrereleaseDescDialog.value = false }
-                            ) {
-                                TextButton(
-                                    text = stringResource(android.R.string.ok),
-                                    onClick = { showPrereleaseDescDialog.value = false },
-                                    modifier = Modifier.fillMaxWidth(),
-                                    colors = ButtonDefaults.textButtonColorsPrimary()
-                                )
-                            }
-                        }
-                    }
-
-                    if (showPrereleaseDialog.value) {
-                        SuperDialog(
-                            title = stringResource(R.string.dialog_prerelease_warning_title),
-                            show = showPrereleaseDialog,
-                            onDismissRequest = {
-                                prereleaseEnabled = false
-                                UpdateChecker.setPrereleaseEnabled(context, false)
-                                showPrereleaseDialog.value = false 
-                            }
-                        ) {
-                            androidx.compose.material3.Text(
-                                text = stringResource(R.string.dialog_prerelease_warning_message),
-                                color = MiuixTheme.colorScheme.onSurface,
-                                fontSize = MiuixTheme.textStyles.body2.fontSize,
-                                modifier = Modifier.padding(bottom = 24.dp)
-                            )
-                            Row(
-                                modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                TextButton(
-                                    text = stringResource(android.R.string.cancel),
-                                    onClick = {
-                                        prereleaseEnabled = false
-                                        UpdateChecker.setPrereleaseEnabled(context, false)
-                                        showPrereleaseDialog.value = false
-                                    },
-                                    modifier = Modifier.weight(1f),
-                                    colors = ButtonDefaults.textButtonColors(
-                                        textColor = MiuixTheme.colorScheme.onSurfaceVariantActions
-                                    )
-                                )
-                                Spacer(modifier = Modifier.width(12.dp))
-                                TextButton(
-                                    text = stringResource(android.R.string.ok),
-                                    onClick = {
-                                        prereleaseEnabled = true
-                                        UpdateChecker.setPrereleaseEnabled(context, true)
-                                        showPrereleaseDialog.value = false
-                                    },
-                                    modifier = Modifier.weight(1f),
-                                    colors = ButtonDefaults.textButtonColorsPrimary()
-                                )
-                            }
-                        }
                     }
 
                     SuperArrow(
@@ -374,7 +315,7 @@ fun MiuixSettingsScreen(
                             }
                         )
                         SuperListPopup(
-                            show = showFeedbackPopup,
+                            show = showFeedbackPopup.value,
                             alignment = PopupPositionProvider.Align.TopEnd,
                             onDismissRequest = { showFeedbackPopup.value = false }
                         ) {
@@ -455,13 +396,70 @@ fun MiuixSettingsScreen(
                 }
             }
         }
-    }
 
-    // --- Dialogs ---
-    if (showPrivacyDialog.value) {
+        // --- Dialogs (must be inside Scaffold content for MiuixPopupHost) ---
+        SuperDialog(
+            title = stringResource(R.string.dialog_prerelease_desc_title),
+            summary = stringResource(R.string.dialog_prerelease_desc_message),
+            show = showPrereleaseDescDialog.value,
+            onDismissRequest = { showPrereleaseDescDialog.value = false }
+        ) {
+            TextButton(
+                text = stringResource(android.R.string.ok),
+                onClick = { showPrereleaseDescDialog.value = false },
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.textButtonColorsPrimary()
+            )
+        }
+
+        SuperDialog(
+            title = stringResource(R.string.dialog_prerelease_warning_title),
+            show = showPrereleaseDialog.value,
+            onDismissRequest = {
+                prereleaseEnabled = false
+                UpdateChecker.setPrereleaseEnabled(context, false)
+                showPrereleaseDialog.value = false
+            }
+        ) {
+            androidx.compose.material3.Text(
+                text = stringResource(R.string.dialog_prerelease_warning_message),
+                color = MiuixTheme.colorScheme.onSurface,
+                fontSize = MiuixTheme.textStyles.body2.fontSize,
+                modifier = Modifier.padding(bottom = 24.dp)
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                TextButton(
+                    text = stringResource(android.R.string.cancel),
+                    onClick = {
+                        prereleaseEnabled = false
+                        UpdateChecker.setPrereleaseEnabled(context, false)
+                        showPrereleaseDialog.value = false
+                    },
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.textButtonColors(
+                        textColor = MiuixTheme.colorScheme.onSurfaceVariantActions
+                    )
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                TextButton(
+                    text = stringResource(android.R.string.ok),
+                    onClick = {
+                        prereleaseEnabled = true
+                        UpdateChecker.setPrereleaseEnabled(context, true)
+                        showPrereleaseDialog.value = false
+                    },
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.textButtonColorsPrimary()
+                )
+            }
+        }
+
         SuperDialog(
             title = stringResource(R.string.dialog_privacy_title),
-            show = showPrivacyDialog,
+            show = showPrivacyDialog.value,
             onDismissRequest = { showPrivacyDialog.value = false }
         ) {
             androidx.compose.material3.Text(
@@ -493,6 +491,15 @@ fun MiuixSettingsScreen(
                     colors = ButtonDefaults.textButtonColorsPrimary()
                 )
             }
+        }
+
+        if (updateReleaseInfo != null) {
+            MiuixUpdateDialog(
+                show = true,
+                releaseInfo = updateReleaseInfo!!,
+                onDismiss = onUpdateDismiss,
+                onIgnore = onUpdateIgnore
+            )
         }
     }
 }

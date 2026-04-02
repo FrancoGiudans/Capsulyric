@@ -217,22 +217,20 @@ fun MiuixLogViewerScreen(
                 }
             }
         }
-    }
 
-    // Export Dialog
-    if (showExportDialog.value) {
-        var selectedIndex by remember { mutableStateOf(1) } // Default 24h
-        val options = listOf("Last 1 Hour", "Last 24 Hours", "All Time")
-        
+        // Export Dialog — must be inside Scaffold lambda for MiuixPopupHost
+        var selectedIndex by remember { mutableStateOf(1) }
+        val exportOptions = listOf("Last 1 Hour", "Last 24 Hours", "All Time")
+
         SuperDialog(
             title = "Export Logs",
-            show = showExportDialog,
+            show = showExportDialog.value,
             onDismissRequest = { showExportDialog.value = false }
         ) {
             Column {
                 SuperDropdown(
                     title = "Time Range",
-                    items = options,
+                    items = exportOptions,
                     selectedIndex = selectedIndex,
                     onSelectedIndexChange = { selectedIndex = it }
                 )
@@ -264,14 +262,12 @@ fun MiuixLogViewerScreen(
                 }
             }
         }
-    }
 
-    // Clear Confirmation
-    if (showClearDialog.value) {
+        // Clear Confirmation Dialog
         SuperDialog(
             title = "Clear Logs",
             summary = "This will permanently delete all logs.",
-            show = showClearDialog,
+            show = showClearDialog.value,
             onDismissRequest = { showClearDialog.value = false }
         ) {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {

@@ -251,14 +251,11 @@ fun MiuixDebugCenterScreen(
                 }
             }
         }
-    }
 
-    // Show update dialog if needed
-    if (showUpdateDialog && updateReleaseInfo != null) {
-        val dialogState = remember(updateReleaseInfo) { mutableStateOf(true) }
-        if (dialogState.value) {
+        // Dialogs — must be inside Scaffold content for MiuixPopupHost
+        if (showUpdateDialog && updateReleaseInfo != null) {
             MiuixUpdateDialog(
-                show = dialogState,
+                show = true,
                 releaseInfo = updateReleaseInfo!!,
                 onDismiss = {
                     showUpdateDialog = false
@@ -270,23 +267,16 @@ fun MiuixDebugCenterScreen(
                     updateReleaseInfo = null
                 }
             )
-        } else {
-            showUpdateDialog = false
-            updateReleaseInfo = null
         }
-    }
 
-    if (showMediaControlDialog.value) {
         MiuixMediaControlDialog(
-            show = showMediaControlDialog,
+            show = showMediaControlDialog.value,
             onDismiss = { showMediaControlDialog.value = false }
         )
-    }
 
-    if (showSystemInfoDialog.value) {
         SuperDialog(
             title = "System Info",
-            show = showSystemInfoDialog,
+            show = showSystemInfoDialog.value,
             onDismissRequest = { showSystemInfoDialog.value = false }
         ) {
             Column(
@@ -298,23 +288,23 @@ fun MiuixDebugCenterScreen(
                     fontSize = MiuixTheme.textStyles.body1.fontSize,
                     color = MiuixTheme.colorScheme.onSurface
                 )
-                
+
                 val romInfo = remember { RomUtils.getRomInfo() }
                 if (romInfo.isNotEmpty()) {
                     Text(
-                        "ROM Version: $romInfo", 
-                        fontSize = MiuixTheme.textStyles.title4.fontSize, 
+                        "ROM Version: $romInfo",
+                        fontSize = MiuixTheme.textStyles.title4.fontSize,
                         color = MiuixTheme.colorScheme.primary
                     )
                 }
-                
+
                 val deviceType = remember { "${android.os.Build.MANUFACTURER}/${RomUtils.getRomType()}" }
                 Text(
-                    "Device Type: $deviceType", 
-                    fontSize = MiuixTheme.textStyles.body2.fontSize, 
+                    "Device Type: $deviceType",
+                    fontSize = MiuixTheme.textStyles.body2.fontSize,
                     color = MiuixTheme.colorScheme.onSurfaceSecondary
                 )
-                
+
                 Text("Build ID: ${android.os.Build.DISPLAY}", fontSize = MiuixTheme.textStyles.body2.fontSize)
                 Text("Manufacturer: ${android.os.Build.MANUFACTURER}", fontSize = MiuixTheme.textStyles.body2.fontSize)
                 Text("Model: ${android.os.Build.MODEL} (${android.os.Build.DEVICE})", fontSize = MiuixTheme.textStyles.body2.fontSize)
@@ -322,20 +312,18 @@ fun MiuixDebugCenterScreen(
                 Text("Product: ${android.os.Build.PRODUCT}", fontSize = MiuixTheme.textStyles.body2.fontSize)
                 Text("Hardware: ${android.os.Build.HARDWARE}", fontSize = MiuixTheme.textStyles.body2.fontSize)
                 Text(
-                    "Fingerprint:\n${android.os.Build.FINGERPRINT}", 
+                    "Fingerprint:\n${android.os.Build.FINGERPRINT}",
                     fontSize = MiuixTheme.textStyles.body2.fontSize,
                     color = MiuixTheme.colorScheme.onSurfaceSecondary
                 )
             }
         }
-    }
 
-    val diagnostics by LyricRepository.getInstance().liveDiagnostics.observeAsState()
-    
-    if (showDiagnosticsDialog.value) {
+        val diagnostics by LyricRepository.getInstance().liveDiagnostics.observeAsState()
+
         SuperDialog(
             title = "Service Diagnostics",
-            show = showDiagnosticsDialog,
+            show = showDiagnosticsDialog.value,
             onDismissRequest = { showDiagnosticsDialog.value = false }
         ) {
             Column(
@@ -344,7 +332,7 @@ fun MiuixDebugCenterScreen(
             ) {
                 if (diagnostics == null) {
                     Text(
-                        "Waiting for data...", 
+                        "Waiting for data...",
                         fontSize = MiuixTheme.textStyles.body2.fontSize,
                         color = MiuixTheme.colorScheme.onSurfaceSecondary
                     )
