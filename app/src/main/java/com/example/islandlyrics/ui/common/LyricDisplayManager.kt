@@ -25,6 +25,7 @@ class LyricDisplayManager(private val context: Context) {
 
     private val mainHandler = Handler(Looper.getMainLooper())
     private var isRunning = false
+    private var pendingImmediateUpdate = false
     
     // Core state
     private var currentAlbumColor = LyricCapsuleHandler.COLOR_PRIMARY
@@ -148,16 +149,19 @@ class LyricDisplayManager(private val context: Context) {
         LyricRepository.getInstance().liveParsedLyrics.observeForever(parsedLyricsObserver)
         LyricRepository.getInstance().liveAlbumArt.observeForever(albumArtObserver)
         
-        lastLyricChangeTime = 0
-        lastLyricLength = 0
-        lyricDurations.clear()
-        adaptiveDelay = LyricCapsuleHandler.SCROLL_STEP_DELAY
-        scrollState = ScrollState.INITIAL_PAUSE
-        initialPauseStartTime = System.currentTimeMillis()
+        if (!pendingImmediateUpdate) {
+            lastLyricChangeTime = 0
+            lastLyricLength = 0
+            lyricDurations.clear()
+            adaptiveDelay = LyricCapsuleHandler.SCROLL_STEP_DELAY
+            scrollState = ScrollState.INITIAL_PAUSE
+            initialPauseStartTime = System.currentTimeMillis()
+        }
         
         LogManager.getInstance().i(context, "LyricDisplayManager", 
             "Initialized. ROM: ${RomUtils.getRomType()}, HeavySkin: $isHeavySkin, MaxWeight: $maxDisplayWeight")
         
+        pendingImmediateUpdate = false
         mainHandler.post(visualizerLoop)
     }
 
@@ -179,6 +183,8 @@ class LyricDisplayManager(private val context: Context) {
         if (isRunning) {
             mainHandler.removeCallbacks(visualizerLoop)
             mainHandler.post(visualizerLoop)
+        } else {
+            pendingImmediateUpdate = true
         }
     }
 
@@ -210,7 +216,11 @@ class LyricDisplayManager(private val context: Context) {
 
         // Always kick the display loop so the notification fires immediately
         // instead of waiting for the next scheduled timer tick.
-        forceUpdate()
+        if (isRunning) {
+            forceUpdate()
+        } else {
+            pendingImmediateUpdate = true
+        }
     }
 
     private fun processTick() {

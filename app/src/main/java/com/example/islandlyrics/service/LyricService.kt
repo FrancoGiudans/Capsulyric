@@ -313,16 +313,16 @@ class LyricService : Service() {
         } else if (RomUtils.isLiveUpdateSupported() && !isSuperIslandMode && capsuleHandler?.isRunning() == true) {
             displayManager.forceUpdate()
         } else {
-            // Only use fallback if service is starting up and no handler is ready yet
-            if (action == "null" || action == "ACTION_START") {
-                val currentInfo = LyricRepository.getInstance().liveLyric.value
-                val title = currentInfo?.sourceApp ?: "Island Lyrics"
-                val text = currentInfo?.lyric ?: "Initializing..."
-                try {
-                    startForeground(NOTIFICATION_ID, buildNotification(text, title, ""))
-                } catch (e: Exception) {
-                    AppLogger.getInstance().e(TAG, "Failed startForeground in fallback: ${e.message}")
-                }
+            // Always preheat the foreground slot with a plain notification before
+            // the richer renderer takes over. This matches the observed behavior
+            // on MIUI where a missed warm-up causes the first lyric update to lag.
+            val currentInfo = LyricRepository.getInstance().liveLyric.value
+            val title = currentInfo?.sourceApp ?: "Island Lyrics"
+            val text = currentInfo?.lyric ?: "Initializing..."
+            try {
+                startForeground(NOTIFICATION_ID, buildNotification(text, title, ""))
+            } catch (e: Exception) {
+                AppLogger.getInstance().e(TAG, "Failed startForeground in fallback: ${e.message}")
             }
         }
 
