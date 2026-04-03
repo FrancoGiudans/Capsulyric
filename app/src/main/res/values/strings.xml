@@ -431,4 +431,26 @@ Within the log interface, select the share/export icon. You can specify a timefr
     <string name="diag_enabled">✅ Enabled</string>
     <string name="diag_disabled">❌ Disabled</string>
     <string name="diag_btn_refresh">Refresh APIs</string>
+
+    <!-- Floating Lyrics -->
+    <string name="floating_lyrics_title">Desktop Lyrics</string>
+    <string name="floating_lyrics_summary">Show a draggable floating lyrics overlay on screen</string>
+    <string name="floating_lyrics_grant_perm">Grant Overlay Permission</string>
+    <string name="floating_lyrics_grant_perm_summary">Requires "Display over other apps" permission</string>
+    <string name="floating_lyrics_enabled_toast">Floating lyrics enabled</string>
+    <string name="floating_lyrics_disabled_toast">Floating lyrics disabled</string>
+
+    <string name="settings_floating_lyrics">Floating</string>
+    <string name="settings_floating_lyrics_enabled">Enable Floating Lyrics</string>
+    <string name="settings_floating_lyrics_enabled_desc">Show floating lyrics on screen, supports minimal and expanded modes</string>
+    <string name="settings_floating_show_album_art">Show Album Art</string>
+    <string name="settings_floating_show_album_art_desc">Display current album art on the left of lyrics</string>
+    <string name="settings_floating_text_stroke">Text Outline</string>
+    <string name="settings_floating_text_stroke_desc">Add stroke effect to improve legibility</string>
+    <string name="settings_floating_text_background">Minimal Mode Background</string>
+    <string name="settings_floating_text_background_desc">Add a subtle dark background behind text in minimal state</string>
+    <string name="settings_floating_follow_album_color">Follow Album Color</string>
+    <string name="settings_floating_follow_album_color_desc">Automatically use dominant color extracted from album art</string>
+    <string name="settings_floating_text_color">Custom Color</string>
+    <string name="settings_floating_text_size">Text Size</string>
 </resources>

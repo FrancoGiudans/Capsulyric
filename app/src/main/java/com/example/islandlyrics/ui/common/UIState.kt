@@ -1,5 +1,6 @@
 package com.example.islandlyrics.ui.common
 
+import android.graphics.Bitmap
 import com.example.islandlyrics.data.lyric.OnlineLyricFetcher
 
 /**
@@ -18,5 +19,6 @@ data class UIState(
     val useSyllableScrolling: Boolean = false,
     val syllableLines: List<OnlineLyricFetcher.LyricLine>? = null,
     val currentLineIndex: Int = -1,
-    val mediaPackage: String = ""
+    val mediaPackage: String = "",
+    val albumArt: Bitmap? = null
 )

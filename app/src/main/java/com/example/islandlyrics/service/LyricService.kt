@@ -28,6 +28,7 @@ import com.example.islandlyrics.data.lyric.SuperLyricSource
 import com.example.islandlyrics.feature.main.MainActivity
 import com.example.islandlyrics.ui.common.LyricCapsuleHandler
 import com.example.islandlyrics.ui.common.LyricDisplayManager
+import com.example.islandlyrics.ui.common.FloatingLyricsRenderer
 import com.example.islandlyrics.ui.common.SuperIslandHandler
 
 class LyricService : Service() {
@@ -154,6 +155,7 @@ class LyricService : Service() {
     private var capsuleHandler: LyricCapsuleHandler? = null
     private lateinit var superIslandHandler: SuperIslandHandler
     private lateinit var displayManager: LyricDisplayManager
+    private var floatingLyricsRenderer: FloatingLyricsRenderer? = null
     // Live Update builds read mode from prefs; otherwise default to SuperIsland
     private var isSuperIslandMode = !RomUtils.isLiveUpdateSupported()
 
@@ -186,6 +188,14 @@ class LyricService : Service() {
             AppLogger.getInstance().log(TAG, "Mode Switched via Settings -> isSuperIslandMode: $isSuperIslandMode")
             renderModeCoordinator?.setMode(isSuperIslandMode)
             updateActiveHandler()
+        } else if (key == FloatingLyricsRenderer.PREF_KEY) {
+            val enabled = p.getBoolean(FloatingLyricsRenderer.PREF_KEY, false)
+            AppLogger.getInstance().log(TAG, "Floating lyrics toggled -> enabled: $enabled")
+            if (enabled) {
+                floatingLyricsRenderer?.start()
+            } else {
+                floatingLyricsRenderer?.stop()
+            }
         }
     }
 
@@ -205,9 +215,11 @@ class LyricService : Service() {
             capsuleHandler = LyricCapsuleHandler(this, this)
         }
         superIslandHandler = SuperIslandHandler(this, this)
+        floatingLyricsRenderer = FloatingLyricsRenderer(this)
         displayManager = LyricDisplayManager(this).apply {
             onStateUpdated = { state ->
                 renderModeCoordinator?.render(state)
+                floatingLyricsRenderer?.render(state)
             }
         }
         renderModeCoordinator = RenderModeCoordinator(displayManager, capsuleHandler, superIslandHandler)
@@ -264,6 +276,15 @@ class LyricService : Service() {
         repo.liveMetadata.observeForever(metadataObserver)
     }
 
+    private fun syncFloatingLyricsState(prefs: android.content.SharedPreferences) {
+        val enabled = prefs.getBoolean(FloatingLyricsRenderer.PREF_KEY, false)
+        if (enabled && !floatingLyricsRenderer!!.isRunning) {
+            floatingLyricsRenderer?.start()
+        } else if (!enabled && floatingLyricsRenderer!!.isRunning) {
+            floatingLyricsRenderer?.stop()
+        }
+    }
+
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val action = intent?.action ?: "null"
         AppLogger.getInstance().log(TAG, "onStartCommand Received Action: $action")
@@ -277,6 +298,7 @@ class LyricService : Service() {
             isSuperIslandMode = true
             renderModeCoordinator?.setMode(true)
         }
+        syncFloatingLyricsState(prefs)
 
         // [Fix Task 1] Immediate Foreground Promotion
         createNotificationChannel()
@@ -335,6 +357,7 @@ class LyricService : Service() {
         AppLogger.getInstance().log(TAG, "Service Destroyed")
         progressSyncController.stop()
         delayedStopController?.cancel()
+        floatingLyricsRenderer?.stop()
         renderModeCoordinator?.stopAll() ?: run {
             // Fallback: manually stop SuperIsland when coordinator isn't initialized
             superIslandHandler.stop()

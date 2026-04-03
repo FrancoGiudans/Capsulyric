@@ -52,33 +52,15 @@ fun CustomSettingsScreen(
     
     // Pager State
     // Pager State
-    val pagerState = rememberPagerState(pageCount = { 3 })
+    val pagerState = rememberPagerState(pageCount = { 4 })
     val tabs = listOf(
         stringResource(R.string.tab_capsule),
         stringResource(R.string.tab_notification),
-        stringResource(R.string.tab_app_ui)
+        stringResource(R.string.tab_app_ui),
+        stringResource(R.string.settings_floating_lyrics)
     )
 
-    // ... (State setup lines 44-152 omitted for brevity as they don't change, assuming contextual match) ...
-    // Note: I cannot omit lines in replace_file_content unless I use multiple chunks or careful selection.
-    // The user wants me to reorder the content. The State setup is needed for the content.
-    // I will target the TopAppBar and HorizontalPager parts specifically.
-
-    /*
-       Wait, I can't easily skip the middle part if I want to update 'tabs' definition (line 42) AND 'HorizontalPager' (line 178).
-       I should do this in multiple chunks using multi_replace_file_content if possible, or just replace the big affected blocks.
-       
-       Let's use multi_replace_file_content.
-    */
-    
-    // Changing strategy to multi_replace_file_content in the thought block, but here I am in the tool call.
-    // I will cancel this tool call logic and use multi_replace_file_content instead.
-    
-    // ERROR in thought process: I am in the tool argument generation.
-    // I will generate a multi_replace_file_content call.
- 
-
-    // --- State Duplication from SettingsScreen ---
+    // --- State Duplication ---
 
     // Preferences State
     var autoUpdateEnabled by remember { mutableStateOf(UpdateChecker.isAutoUpdateEnabled(context)) }
@@ -676,6 +658,9 @@ fun CustomSettingsScreen(
                                      prefs.edit().putBoolean("predictive_back_enabled", it).apply()
                                  }
                              )
+                        }
+                        3 -> {
+                            FloatingLyricsSettingsSubScreen(prefs)
                         }
                     }
                     Spacer(modifier = Modifier.height(24.dp))

@@ -418,4 +418,26 @@
     <string name="diag_unsupported">❌ 不支持</string>
     <string name="diag_enabled">✅ 已开启</string>
     <string name="diag_disabled">❌ 未开启</string>
+
+    <!-- 悬浮窗歌词 -->
+    <string name="floating_lyrics_title">桌面歌词</string>
+    <string name="floating_lyrics_summary">在屏幕上悬浮显示歌词，可拖动</string>
+    <string name="floating_lyrics_grant_perm">授权悬浮窗</string>
+    <string name="floating_lyrics_grant_perm_summary">需要"显示在其他应用上层"权限后才能使用</string>
+    <string name="floating_lyrics_enabled_toast">悬浮窗歌词已开启</string>
+    <string name="floating_lyrics_disabled_toast">悬浮窗歌词已关闭</string>
+
+    <string name="settings_floating_lyrics">桌面歌词</string>
+    <string name="settings_floating_lyrics_enabled">开启桌面歌词</string>
+    <string name="settings_floating_lyrics_enabled_desc">在屏幕上悬浮显示歌词，支持极简和展开模式</string>
+    <string name="settings_floating_show_album_art">显示专辑图</string>
+    <string name="settings_floating_show_album_art_desc">在歌词左侧显示当前播放歌曲的专辑图</string>
+    <string name="settings_floating_text_stroke">文字描边</string>
+    <string name="settings_floating_text_stroke_desc">为文字添加描边效果提升可辨识度</string>
+    <string name="settings_floating_text_background">极简模式底纹</string>
+    <string name="settings_floating_text_background_desc">在折叠（极简）状态下为文字后方加入灰色底纹</string>
+    <string name="settings_floating_follow_album_color">文字颜色跟随专辑图</string>
+    <string name="settings_floating_follow_album_color_desc">自动从提取的专辑图调色板中获取最佳文字颜色</string>
+    <string name="settings_floating_text_color">自选颜色</string>
+    <string name="settings_floating_text_size">字号大小</string>
 </resources>
