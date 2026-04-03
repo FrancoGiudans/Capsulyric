@@ -15,7 +15,6 @@ import android.media.session.MediaController
 import android.media.session.MediaSessionManager
 import android.media.session.PlaybackState
 import android.widget.Toast
-import top.yukonga.miuix.kmp.blur.textureBlur
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
@@ -39,6 +38,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontStyle
@@ -46,14 +46,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.isActive
 import androidx.palette.graphics.Palette
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.CardDefaults
 import top.yukonga.miuix.kmp.basic.Slider
 import top.yukonga.miuix.kmp.basic.SliderDefaults
-import top.yukonga.miuix.kmp.extra.WindowDialog
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
@@ -125,6 +122,7 @@ fun MiuixMediaControlDialog(
             )
         ) {
             val view = androidx.compose.ui.platform.LocalView.current
+            val density = LocalDensity.current
             
             // Runs synchronously after composition before draw
             SideEffect {
@@ -132,23 +130,18 @@ fun MiuixMediaControlDialog(
                 if (window != null) {
                     window.setGravity(android.view.Gravity.BOTTOM)
                     val params = window.attributes
-                    params.width = android.view.WindowManager.LayoutParams.MATCH_PARENT
+                    val horizontalMarginPx = with(density) { 16.dp.roundToPx() }
+                    params.width = (view.resources.displayMetrics.widthPixels - horizontalMarginPx * 2).coerceAtLeast(0)
                     params.height = android.view.WindowManager.LayoutParams.WRAP_CONTENT
                     window.attributes = params
 
                     window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_DIM_BEHIND)
                     window.setDimAmount(0f)
                     window.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(0))
-                }
-            }
-
-            LaunchedEffect(view, blurEnabled) {
-                val window = (view.parent as? androidx.compose.ui.window.DialogWindowProvider)?.window
-                if (window != null) {
-                    if (blurEnabled && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                        try { window.setBackgroundBlurRadius(100) } catch (e: Exception) {}
-                    } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                        try { window.setBackgroundBlurRadius(0) } catch (e: Exception) {}
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                        try {
+                            window.setBackgroundBlurRadius(if (blurEnabled) 140 else 0)
+                        } catch (_: Exception) {}
                     }
                 }
             }
@@ -175,7 +168,6 @@ fun MiuixMediaControlDialog(
                 androidx.compose.material3.Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp)
                         .graphicsLayer {
                             scaleX = scale
                             scaleY = scale
@@ -184,7 +176,7 @@ fun MiuixMediaControlDialog(
                         },
                     shape = RoundedCornerShape(28.dp),
                     colors = androidx.compose.material3.CardDefaults.cardColors(
-                        containerColor = MiuixTheme.colorScheme.surface.copy(alpha = if (blurEnabled) 0.65f else 1f)
+                        containerColor = MiuixTheme.colorScheme.surface.copy(alpha = if (blurEnabled) 0.38f else 0.92f)
                     ),
                     elevation = androidx.compose.material3.CardDefaults.cardElevation(defaultElevation = 0.dp)
                 ) {

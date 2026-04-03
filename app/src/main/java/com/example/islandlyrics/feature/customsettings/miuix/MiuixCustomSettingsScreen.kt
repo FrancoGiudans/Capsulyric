@@ -14,9 +14,6 @@ import android.net.Uri
 import android.os.Build
 import android.provider.Settings
 import android.widget.Toast
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.pager.HorizontalPager
@@ -24,24 +21,17 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.basic.*
-import top.yukonga.miuix.kmp.extra.SuperArrow
-import top.yukonga.miuix.kmp.extra.SuperDialog
-import top.yukonga.miuix.kmp.extra.SuperDropdown
-import top.yukonga.miuix.kmp.extra.SuperSwitch
+import top.yukonga.miuix.kmp.preference.ArrowPreference as SuperArrow
+import top.yukonga.miuix.kmp.preference.OverlayDropdownPreference as SuperDropdown
+import top.yukonga.miuix.kmp.preference.SwitchPreference as SuperSwitch
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.MiuixPopupUtils.Companion.MiuixPopupHost
 import com.example.islandlyrics.ui.miuix.*
@@ -110,7 +100,7 @@ fun MiuixCustomSettingsScreen(
 
     MiuixBlurScaffold(
         topBar = {
-            MiuixBlurTopAppBar(
+            MiuixBlurSmallTopAppBar(
                 title = stringResource(R.string.page_title_personalization),
                 scrollBehavior = scrollBehavior,
                 navigationIcon = {
@@ -128,44 +118,23 @@ fun MiuixCustomSettingsScreen(
         // Tab Row + Pager
         Column(modifier = Modifier.padding(padding).fillMaxSize()) {
             Spacer(modifier = Modifier.height(12.dp))
-            // HyperOS-style pill tab row
-            Row(
+            TabRowWithContour(
+                tabs = tabs,
+                selectedTabIndex = pagerState.currentPage,
+                onTabSelected = { index ->
+                    scope.launch { pagerState.animateScrollToPage(index) }
+                },
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 12.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                tabs.forEachIndexed { index, title ->
-                    val selected = pagerState.currentPage == index
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(
-                                if (selected) MiuixTheme.colorScheme.onBackground.copy(alpha = 0.12f)
-                                else Color.Transparent
-                            )
-                            .then(
-                                if (!selected) Modifier.border(
-                                    width = 1.dp,
-                                    color = MiuixTheme.colorScheme.onBackground.copy(alpha = 0.2f),
-                                    shape = RoundedCornerShape(12.dp)
-                                ) else Modifier
-                            )
-                            .clickable { scope.launch { pagerState.animateScrollToPage(index) } }
-                            .padding(vertical = 10.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = title,
-                            fontSize = 14.sp,
-                            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
-                            color = if (selected) MiuixTheme.colorScheme.onBackground
-                                    else MiuixTheme.colorScheme.onSurfaceVariantActions
-                        )
-                    }
-                }
-            }
+                colors = TabRowDefaults.tabRowColors(
+                    backgroundColor = MiuixTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f),
+                    contentColor = MiuixTheme.colorScheme.onSurfaceVariantActions,
+                    selectedBackgroundColor = MiuixTheme.colorScheme.onBackground.copy(alpha = 0.12f),
+                    selectedContentColor = MiuixTheme.colorScheme.onBackground
+                ),
+                maxWidth = 96.dp
+            )
 
             Spacer(modifier = Modifier.height(8.dp))
 
@@ -492,7 +461,7 @@ fun MiuixCustomSettingsScreen(
         }
 
         // SuperDialog must be inside Scaffold content for MiuixPopupHost
-        SuperDialog(
+        MiuixBlurDialog(
             title = stringResource(R.string.dialog_block_xmsf_title),
             summary = stringResource(R.string.dialog_block_xmsf_message),
             show = showBlockXmsfDialog.value,

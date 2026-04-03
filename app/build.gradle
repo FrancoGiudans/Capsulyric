@@ -154,7 +154,8 @@ dependencies {
     implementation libs.coil
 
     // Miuix UI
-    implementation libs.miuix
+    implementation libs.miuix.ui
+    implementation libs.miuix.preference
     implementation libs.miuix.blur
     implementation libs.navigationevent.compose
 

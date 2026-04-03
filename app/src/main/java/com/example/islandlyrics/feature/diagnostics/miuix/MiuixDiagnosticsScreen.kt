@@ -21,10 +21,12 @@ import com.example.islandlyrics.core.platform.RomUtils
 import com.example.islandlyrics.feature.logviewer.LogViewerActivity
 import androidx.compose.ui.unit.sp
 import top.yukonga.miuix.kmp.basic.*
-import top.yukonga.miuix.kmp.extra.SuperArrow
-import top.yukonga.miuix.kmp.extra.SuperDialog
+import top.yukonga.miuix.kmp.preference.ArrowPreference as SuperArrow
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.MiuixPopupUtils.Companion.MiuixPopupHost
+import com.example.islandlyrics.ui.miuix.MiuixBlurDialog
+import com.example.islandlyrics.ui.miuix.MiuixBlurScaffold
+import com.example.islandlyrics.ui.miuix.MiuixBlurTopAppBar
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -36,9 +38,9 @@ fun MiuixDiagnosticsScreen(onBack: () -> Unit) {
     val showDisableDialog = remember { mutableStateOf(false) }
     val prefs = remember { context.getSharedPreferences("IslandLyricsPrefs", android.content.Context.MODE_PRIVATE) }
 
-    Scaffold(
+    MiuixBlurScaffold(
         topBar = {
-            TopAppBar(
+            MiuixBlurTopAppBar(
                 title = stringResource(R.string.title_diagnostics),
                 scrollBehavior = scrollBehavior,
                 navigationIcon = {
@@ -184,7 +186,7 @@ fun MiuixDiagnosticsScreen(onBack: () -> Unit) {
         }
 
         // SuperDialog must be a sibling to LazyColumn inside Scaffold lambda
-        SuperDialog(
+        MiuixBlurDialog(
             title = stringResource(R.string.dialog_disable_diagnostics_title),
             summary = stringResource(R.string.dialog_disable_diagnostics_message),
             show = showDisableDialog.value,

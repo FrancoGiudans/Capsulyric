@@ -5,7 +5,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
-import androidx.compose.ui.unit.Dp
 import top.yukonga.miuix.kmp.basic.ScrollBehavior
 import top.yukonga.miuix.kmp.basic.SmallTopAppBar
 import top.yukonga.miuix.kmp.basic.TopAppBar
@@ -32,9 +31,9 @@ fun MiuixBlurTopAppBar(
     actions: @Composable RowScope.() -> Unit = {},
     scrollBehavior: ScrollBehavior? = null,
     defaultWindowInsetsPadding: Boolean = true,
-    titlePadding: Dp = TopAppBarDefaults.HorizontalPadding,
-    navigationIconPadding: Dp = TopAppBarDefaults.HorizontalPadding,
-    actionIconPadding: Dp = TopAppBarDefaults.HorizontalPadding,
+    titlePadding: androidx.compose.ui.unit.Dp = TopAppBarDefaults.TitlePadding,
+    navigationIconPadding: androidx.compose.ui.unit.Dp = TopAppBarDefaults.NavigationIconPadding,
+    actionIconPadding: androidx.compose.ui.unit.Dp = TopAppBarDefaults.ActionIconPadding,
     bottomContent: @Composable () -> Unit = {},
 ) {
     val backdrop = LocalMiuixBlurBackdrop.current
@@ -60,11 +59,16 @@ fun MiuixBlurTopAppBar(
         titleColor = titleColor,
         largeTitle = largeTitle,
         largeTitleColor = largeTitleColor,
+        subtitle = subtitle,
+        subtitleColor = subtitleColor,
         navigationIcon = navigationIcon,
         actions = actions,
         scrollBehavior = scrollBehavior,
         defaultWindowInsetsPadding = defaultWindowInsetsPadding,
-        horizontalPadding = titlePadding
+        titlePadding = titlePadding,
+        navigationIconPadding = navigationIconPadding,
+        actionIconPadding = actionIconPadding,
+        bottomContent = bottomContent
     )
 }
 
@@ -83,9 +87,9 @@ fun MiuixBlurSmallTopAppBar(
     actions: @Composable RowScope.() -> Unit = {},
     scrollBehavior: ScrollBehavior? = null,
     defaultWindowInsetsPadding: Boolean = true,
-    titlePadding: Dp = TopAppBarDefaults.HorizontalPadding,
-    navigationIconPadding: Dp = TopAppBarDefaults.HorizontalPadding,
-    actionIconPadding: Dp = TopAppBarDefaults.HorizontalPadding,
+    titlePadding: androidx.compose.ui.unit.Dp = TopAppBarDefaults.TitlePadding,
+    navigationIconPadding: androidx.compose.ui.unit.Dp = TopAppBarDefaults.NavigationIconPadding,
+    actionIconPadding: androidx.compose.ui.unit.Dp = TopAppBarDefaults.ActionIconPadding,
     bottomContent: @Composable () -> Unit = {},
 ) {
     val backdrop = LocalMiuixBlurBackdrop.current
@@ -109,10 +113,15 @@ fun MiuixBlurSmallTopAppBar(
         modifier = modifier.then(blurModifier),
         color = if (blurEnabled && backdrop != null) Color.Transparent else color,
         titleColor = titleColor,
+        subtitle = subtitle,
+        subtitleColor = subtitleColor,
         navigationIcon = navigationIcon,
         actions = actions,
         scrollBehavior = scrollBehavior,
         defaultWindowInsetsPadding = defaultWindowInsetsPadding,
-        horizontalPadding = titlePadding
+        titlePadding = titlePadding,
+        navigationIconPadding = navigationIconPadding,
+        actionIconPadding = actionIconPadding,
+        bottomContent = bottomContent
     )
 }

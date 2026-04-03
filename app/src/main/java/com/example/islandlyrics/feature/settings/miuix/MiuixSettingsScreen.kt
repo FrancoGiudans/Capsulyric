@@ -36,11 +36,10 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.basic.*
-import top.yukonga.miuix.kmp.extra.SuperArrow
-import top.yukonga.miuix.kmp.extra.SuperDropdown
-import top.yukonga.miuix.kmp.extra.SuperListPopup
-import top.yukonga.miuix.kmp.extra.SuperSwitch
-import top.yukonga.miuix.kmp.extra.SuperDialog
+import top.yukonga.miuix.kmp.overlay.OverlayListPopup as SuperListPopup
+import top.yukonga.miuix.kmp.preference.ArrowPreference as SuperArrow
+import top.yukonga.miuix.kmp.preference.OverlayDropdownPreference as SuperDropdown
+import top.yukonga.miuix.kmp.preference.SwitchPreference as SuperSwitch
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.MiuixPopupUtils.Companion.MiuixPopupHost
 import com.example.islandlyrics.feature.update.miuix.MiuixUpdateDialog
@@ -398,7 +397,7 @@ fun MiuixSettingsScreen(
         }
 
         // --- Dialogs (must be inside Scaffold content for MiuixPopupHost) ---
-        SuperDialog(
+        MiuixBlurDialog(
             title = stringResource(R.string.dialog_prerelease_desc_title),
             summary = stringResource(R.string.dialog_prerelease_desc_message),
             show = showPrereleaseDescDialog.value,
@@ -412,7 +411,7 @@ fun MiuixSettingsScreen(
             )
         }
 
-        SuperDialog(
+        MiuixBlurDialog(
             title = stringResource(R.string.dialog_prerelease_warning_title),
             show = showPrereleaseDialog.value,
             onDismissRequest = {
@@ -457,7 +456,7 @@ fun MiuixSettingsScreen(
             }
         }
 
-        SuperDialog(
+        MiuixBlurDialog(
             title = stringResource(R.string.dialog_privacy_title),
             show = showPrivacyDialog.value,
             onDismissRequest = { showPrivacyDialog.value = false }

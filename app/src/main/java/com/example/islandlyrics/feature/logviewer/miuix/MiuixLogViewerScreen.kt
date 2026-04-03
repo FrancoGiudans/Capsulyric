@@ -35,10 +35,12 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import top.yukonga.miuix.kmp.basic.*
-import top.yukonga.miuix.kmp.extra.SuperDialog
-import top.yukonga.miuix.kmp.extra.SuperDropdown
+import top.yukonga.miuix.kmp.preference.OverlayDropdownPreference as SuperDropdown
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.MiuixPopupUtils.Companion.MiuixPopupHost
+import com.example.islandlyrics.ui.miuix.MiuixBlurDialog
+import com.example.islandlyrics.ui.miuix.MiuixBlurScaffold
+import com.example.islandlyrics.ui.miuix.MiuixBlurTopAppBar
 
 private enum class LogAction { SHARE, SAVE }
 
@@ -85,9 +87,9 @@ fun MiuixLogViewerScreen(
         }
     }
 
-    Scaffold(
+    MiuixBlurScaffold(
         topBar = {
-            TopAppBar(
+            MiuixBlurTopAppBar(
                 title = "Log Console",
                 scrollBehavior = scrollBehavior,
                 navigationIcon = {
@@ -222,7 +224,7 @@ fun MiuixLogViewerScreen(
         var selectedIndex by remember { mutableStateOf(1) }
         val exportOptions = listOf("Last 1 Hour", "Last 24 Hours", "All Time")
 
-        SuperDialog(
+        MiuixBlurDialog(
             title = "Export Logs",
             show = showExportDialog.value,
             onDismissRequest = { showExportDialog.value = false }
@@ -264,7 +266,7 @@ fun MiuixLogViewerScreen(
         }
 
         // Clear Confirmation Dialog
-        SuperDialog(
+        MiuixBlurDialog(
             title = "Clear Logs",
             summary = "This will permanently delete all logs.",
             show = showClearDialog.value,

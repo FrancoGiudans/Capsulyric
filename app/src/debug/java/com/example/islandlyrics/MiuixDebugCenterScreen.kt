@@ -32,11 +32,14 @@ import androidx.lifecycle.lifecycleScope
 import androidx.compose.runtime.livedata.observeAsState
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.basic.*
-import top.yukonga.miuix.kmp.extra.SuperArrow
-import top.yukonga.miuix.kmp.extra.SuperDialog
-import top.yukonga.miuix.kmp.extra.SuperSwitch
+import top.yukonga.miuix.kmp.preference.ArrowPreference as SuperArrow
+import top.yukonga.miuix.kmp.preference.OverlayDropdownPreference as SuperDropdown
+import top.yukonga.miuix.kmp.preference.SwitchPreference as SuperSwitch
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.MiuixPopupUtils.Companion.MiuixPopupHost
+import com.example.islandlyrics.ui.miuix.MiuixBlurDialog
+import com.example.islandlyrics.ui.miuix.MiuixBlurScaffold
+import com.example.islandlyrics.ui.miuix.MiuixBlurTopAppBar
 
 @Composable
 fun MiuixDebugCenterScreen(
@@ -74,9 +77,9 @@ fun MiuixDebugCenterScreen(
     val showSystemInfoDialog = remember { mutableStateOf(false) }
     val showDiagnosticsDialog = remember { mutableStateOf(false) }
 
-    Scaffold(
+    MiuixBlurScaffold(
         topBar = {
-            TopAppBar(
+            MiuixBlurTopAppBar(
                 title = "Debug Center",
                 scrollBehavior = scrollBehavior,
                 navigationIcon = {
@@ -268,7 +271,7 @@ fun MiuixDebugCenterScreen(
                     val romOptions = listOf("Auto", "HyperOS", "OneUI", "ColorOS", "OriginOS/FuntouchOS", "Flyme", "AOSP")
                     val currentRom = prefs.getString("debug_forced_rom_type", null) ?: "Auto"
                     val currentIndex = romOptions.indexOf(currentRom).coerceAtLeast(0)
-                    top.yukonga.miuix.kmp.extra.SuperDropdown(
+                    SuperDropdown(
                         title = "Device Identifier Override",
                         items = romOptions,
                         selectedIndex = currentIndex,
@@ -306,7 +309,7 @@ fun MiuixDebugCenterScreen(
             onDismiss = { showMediaControlDialog.value = false }
         )
 
-        SuperDialog(
+        MiuixBlurDialog(
             title = "System Info",
             show = showSystemInfoDialog.value,
             onDismissRequest = { showSystemInfoDialog.value = false }
@@ -353,7 +356,7 @@ fun MiuixDebugCenterScreen(
 
         val diagnostics by LyricRepository.getInstance().liveDiagnostics.observeAsState()
 
-        SuperDialog(
+        MiuixBlurDialog(
             title = "Service Diagnostics",
             show = showDiagnosticsDialog.value,
             onDismissRequest = { showDiagnosticsDialog.value = false }

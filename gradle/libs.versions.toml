@@ -11,7 +11,7 @@ activityCompose = "1.13.0"
 composeBom = "2026.03.01"
 markwon = "4.6.2"
 coil = "2.7.0"
-miuix = "0.8.8"
+miuix = "0.9.0"
 miuixBlur = "0.9.0"
 shizuku = "13.1.5"
 focusApi = "1.4"
@@ -50,7 +50,8 @@ markwon-ext-tasklist = { group = "io.noties.markwon", name = "ext-tasklist", ver
 markwon-html = { group = "io.noties.markwon", name = "html", version.ref = "markwon" }
 markwon-image-coil = { group = "io.noties.markwon", name = "image-coil", version.ref = "markwon" }
 coil = { group = "io.coil-kt", name = "coil", version.ref = "coil" }
-miuix = { group = "top.yukonga.miuix.kmp", name = "miuix-android", version.ref = "miuix" }
+miuix-ui = { group = "top.yukonga.miuix.kmp", name = "miuix-ui-android", version.ref = "miuix" }
+miuix-preference = { group = "top.yukonga.miuix.kmp", name = "miuix-preference-android", version.ref = "miuix" }
 miuix-blur = { group = "top.yukonga.miuix.kmp", name = "miuix-blur-android", version.ref = "miuixBlur" }
 
 # Shizuku

@@ -31,9 +31,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import top.yukonga.miuix.kmp.basic.*
-import top.yukonga.miuix.kmp.extra.SuperDialog
-import top.yukonga.miuix.kmp.extra.SuperDropdown
-import top.yukonga.miuix.kmp.extra.SuperSwitch
+import top.yukonga.miuix.kmp.preference.ArrowPreference as SuperArrow
+import top.yukonga.miuix.kmp.preference.OverlayDropdownPreference as SuperDropdown
+import top.yukonga.miuix.kmp.preference.SwitchPreference as SuperSwitch
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.MiuixPopupUtils.Companion.MiuixPopupHost
 import com.example.islandlyrics.ui.miuix.*
@@ -232,7 +232,7 @@ fun MiuixParserRuleScreen(
             }
         )
 
-        SuperDialog(
+        MiuixBlurDialog(
             title = stringResource(R.string.parser_delete),
             summary = stringResource(R.string.dialog_delete_confirm, deletingRule?.customName ?: deletingRule?.packageName ?: ""),
             show = showDeleteDialog.value,
@@ -345,7 +345,7 @@ fun MiuixEditRuleDialog(
         mutableStateOf(if (idx >= 0) idx else 0)
     }
 
-    SuperDialog(
+    MiuixBlurDialog(
         title = if (rule == null) stringResource(R.string.parser_add_rule) else stringResource(R.string.parser_edit),
         show = show.value,
         onDismissRequest = { show.value = false }
@@ -425,7 +425,7 @@ fun MiuixEditRuleDialog(
                 SmallTitle(text = stringResource(R.string.settings_help_about_header))
                 Card(modifier = Modifier.fillMaxWidth()) {
                     val actContext = LocalContext.current
-                    top.yukonga.miuix.kmp.extra.SuperArrow(
+                    SuperArrow(
                         title = stringResource(R.string.faq_title),
                         summary = stringResource(R.string.summary_faq),
                         onClick = {

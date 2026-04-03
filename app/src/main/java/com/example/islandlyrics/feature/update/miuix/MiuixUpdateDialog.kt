@@ -23,8 +23,8 @@ import com.example.islandlyrics.feature.update.UpdateMarkdown
 import com.example.islandlyrics.feature.update.UpdateParser
 import top.yukonga.miuix.kmp.basic.ButtonDefaults
 import top.yukonga.miuix.kmp.basic.TextButton
-import top.yukonga.miuix.kmp.extra.SuperDialog
 import top.yukonga.miuix.kmp.theme.MiuixTheme
+import com.example.islandlyrics.ui.miuix.MiuixBlurDialog
 
 @Composable
 fun MiuixUpdateDialog(
@@ -46,7 +46,7 @@ fun MiuixUpdateDialog(
     
     val textColor = MiuixTheme.colorScheme.onSurface.toArgb()
 
-    SuperDialog(
+    MiuixBlurDialog(
         title = stringResource(R.string.update_available_title, releaseInfo.tagName),
         show = show,
         onDismissRequest = onDismiss
