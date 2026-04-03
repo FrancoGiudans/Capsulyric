@@ -9,6 +9,7 @@ import com.example.islandlyrics.data.ParserRuleHelper
 import com.example.islandlyrics.data.LyricRepository
 import com.example.islandlyrics.feature.main.MainActivity
 import android.content.Intent
+import android.graphics.drawable.GradientDrawable
 import android.graphics.Bitmap
 import android.media.MediaMetadata
 import android.media.session.MediaController
@@ -128,16 +129,25 @@ fun MiuixMediaControlDialog(
             SideEffect {
                 val window = (view.parent as? androidx.compose.ui.window.DialogWindowProvider)?.window
                 if (window != null) {
+                    val horizontalMarginPx = with(density) { 16.dp.roundToPx() }
+                    val bottomOffsetPx = with(density) { 32.dp.roundToPx() }
+                    val cornerRadiusPx = with(density) { 28.dp.toPx() }
                     window.setGravity(android.view.Gravity.BOTTOM)
                     val params = window.attributes
-                    val horizontalMarginPx = with(density) { 16.dp.roundToPx() }
                     params.width = (view.resources.displayMetrics.widthPixels - horizontalMarginPx * 2).coerceAtLeast(0)
                     params.height = android.view.WindowManager.LayoutParams.WRAP_CONTENT
+                    params.y = bottomOffsetPx
                     window.attributes = params
 
                     window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_DIM_BEHIND)
                     window.setDimAmount(0f)
-                    window.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(0))
+                    window.setBackgroundDrawable(
+                        GradientDrawable().apply {
+                            shape = GradientDrawable.RECTANGLE
+                            cornerRadius = cornerRadiusPx
+                            setColor(android.graphics.Color.TRANSPARENT)
+                        }
+                    )
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                         try {
                             window.setBackgroundBlurRadius(if (blurEnabled) 140 else 0)
@@ -163,7 +173,6 @@ fun MiuixMediaControlDialog(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(bottom = 32.dp)
             ) {
                 androidx.compose.material3.Card(
                     modifier = Modifier
