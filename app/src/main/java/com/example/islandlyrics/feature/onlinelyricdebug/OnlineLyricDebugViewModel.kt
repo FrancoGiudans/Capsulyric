@@ -24,6 +24,8 @@ class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(app
 
     private val _providerOrder = MutableLiveData(OnlineLyricProvider.defaultOrder())
     val providerOrder: LiveData<List<OnlineLyricProvider>> = _providerOrder
+    private val _useSmartSelection = MutableLiveData(true)
+    val useSmartSelection: LiveData<Boolean> = _useSmartSelection
 
     private val _attempts = MutableLiveData<List<OnlineLyricFetcher.ProviderAttempt>>(emptyList())
     val attempts: LiveData<List<OnlineLyricFetcher.ProviderAttempt>> = _attempts
@@ -49,6 +51,7 @@ class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(app
         val pkg = liveMetadata.value?.packageName ?: return
         val rule = ParserRuleHelper.getRuleForPackage(getApplication(), pkg)
             ?: ParserRuleHelper.createDefaultRule(pkg)
+        _useSmartSelection.value = rule.useSmartOnlineLyricSelection
         _providerOrder.value = OnlineLyricProvider.normalizeOrder(rule.onlineLyricProviderOrder)
     }
 
@@ -94,7 +97,12 @@ class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(app
                 val outcome = fetcher.fetchLyrics(
                     title = queryTitle,
                     artist = queryArtist,
-                    providerOrderIds = _providerOrder.value.orEmpty().map { it.id }
+                    providerOrderIds = if (rule.useSmartOnlineLyricSelection) {
+                        OnlineLyricProvider.defaultIds()
+                    } else {
+                        _providerOrder.value.orEmpty().map { it.id }
+                    },
+                    useSmartSelection = rule.useSmartOnlineLyricSelection
                 )
                 _attempts.value = outcome.attempts
                 _usedCleanTitleFallback.value = outcome.usedCleanTitleFallback

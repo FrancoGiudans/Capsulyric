@@ -84,21 +84,23 @@ class OnlineLyricFetcher {
     suspend fun fetchBestLyrics(
         title: String,
         artist: String,
-        providerOrderIds: List<String> = OnlineLyricProvider.defaultIds()
+        providerOrderIds: List<String> = OnlineLyricProvider.defaultIds(),
+        useSmartSelection: Boolean = true
     ): LyricResult? {
-        return fetchLyrics(title, artist, providerOrderIds).bestResult
+        return fetchLyrics(title, artist, providerOrderIds, useSmartSelection).bestResult
     }
 
     @OptIn(ExperimentalCoroutinesApi::class)
     suspend fun fetchLyrics(
         title: String,
         artist: String,
-        providerOrderIds: List<String> = OnlineLyricProvider.defaultIds()
+        providerOrderIds: List<String> = OnlineLyricProvider.defaultIds(),
+        useSmartSelection: Boolean = true
     ): FetchOutcome {
         val providerOrder = OnlineLyricProvider.normalizeOrder(providerOrderIds)
         val query = LyricQuery(title = title, artist = artist)
         val exactAttempts = fetchAllProviders(query, providerOrder, usedCleanTitleFallback = false)
-        val exactBest = selectBestResult(exactAttempts, title, artist, providerOrder)
+        val exactBest = selectBestResult(exactAttempts, title, artist, providerOrder, useSmartSelection)
         if (exactBest != null) {
             return FetchOutcome(query, exactBest, exactAttempts, false)
         }
@@ -110,7 +112,7 @@ class OnlineLyricFetcher {
             val cleanAttempts = fetchAllProviders(cleanQuery, providerOrder, usedCleanTitleFallback = true)
             return FetchOutcome(
                 query = query,
-                bestResult = selectBestResult(cleanAttempts, cleanTitle, artist, providerOrder),
+                bestResult = selectBestResult(cleanAttempts, cleanTitle, artist, providerOrder, useSmartSelection),
                 attempts = exactAttempts + cleanAttempts,
                 usedCleanTitleFallback = cleanAttempts.any { it.result != null }
             )
@@ -700,8 +702,22 @@ class OnlineLyricFetcher {
         attempts: List<ProviderAttempt>,
         targetTitle: String,
         targetArtist: String,
-        providerOrder: List<OnlineLyricProvider>
+        providerOrder: List<OnlineLyricProvider>,
+        useSmartSelection: Boolean
     ): LyricResult? {
+        val usableResults = attempts.mapNotNull { it.result }
+            .filter { it.parsedLines?.isNotEmpty() == true }
+
+        if (!useSmartSelection) {
+            val firstByPriority = providerOrder.firstNotNullOfOrNull { provider ->
+                usableResults.firstOrNull { it.provider == provider }
+            }
+            usableResults.forEach { result ->
+                result.score = if (result == firstByPriority) 150 else 0
+            }
+            return firstByPriority
+        }
+
         val providerPriority = providerOrder.withIndex().associate { it.value to it.index }
         val results = attempts.mapNotNull { it.result }
         for (result in results) {
@@ -727,8 +743,6 @@ class OnlineLyricFetcher {
                 "LrcApi" -> score += 55 
                 "Netease" -> score += 5
             }
-            score += (providerOrder.size - (providerPriority[result.provider] ?: providerOrder.size)) * 3
-            
             // 标题匹配加分逻辑 (V3 优化)
             val matchedTitle = result.matchedTitle
             

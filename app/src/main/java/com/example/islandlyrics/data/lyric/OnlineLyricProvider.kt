@@ -2,14 +2,14 @@ package com.example.islandlyrics.data.lyric
 
 enum class OnlineLyricProvider(
     val id: String,
-    val displayName: String
+    @param:androidx.annotation.StringRes val nameResId: Int
 ) {
-    QQMusic("qq_music", "QQ音乐"),
-    Kugou("kugou", "酷狗"),
-    SodaMusic("soda_music", "汽水音乐"),
-    Lrclib("lrclib", "LRCLIB"),
-    Netease("netease", "网易云"),
-    LrcApi("lrc_api", "LrcApi");
+    QQMusic("qq_music", com.example.islandlyrics.R.string.provider_qq_music),
+    Kugou("kugou", com.example.islandlyrics.R.string.provider_kugou_music),
+    SodaMusic("soda_music", com.example.islandlyrics.R.string.provider_soda_music),
+    Lrclib("lrclib", com.example.islandlyrics.R.string.provider_lrclib),
+    Netease("netease", com.example.islandlyrics.R.string.provider_netease_music),
+    LrcApi("lrc_api", com.example.islandlyrics.R.string.provider_lrcapi);
 
     companion object {
         fun fromId(id: String?): OnlineLyricProvider? {
@@ -17,7 +17,7 @@ enum class OnlineLyricProvider(
             return entries.firstOrNull { it.id.equals(id, ignoreCase = true) }
         }
 
-        fun defaultOrder(): List<OnlineLyricProvider> = listOf(QQMusic, Kugou, SodaMusic, Lrclib, LrcApi, Netease)
+        fun defaultOrder(): List<OnlineLyricProvider> = listOf(QQMusic, Netease, Kugou, SodaMusic, LrcApi, Lrclib)
 
         fun defaultIds(): List<String> = defaultOrder().map { it.id }
 
@@ -35,4 +35,6 @@ enum class OnlineLyricProvider(
             return resolved
         }
     }
+
+    fun displayName(context: android.content.Context): String = context.getString(nameResId)
 }

@@ -266,6 +266,7 @@ fun MiuixParserRuleItem(
     onLongClick: () -> Unit,
     onToggle: (Boolean) -> Unit
 ) {
+    val context = LocalContext.current
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -291,9 +292,11 @@ fun MiuixParserRuleItem(
                 )
             }
             Spacer(modifier = Modifier.height(6.dp))
-            if (rule.useOnlineLyrics) {
+            if (rule.useOnlineLyrics && !rule.useSmartOnlineLyricSelection) {
+                val orderSummary = OnlineLyricProvider.normalizeOrder(rule.onlineLyricProviderOrder)
+                    .joinToString(" > ") { it.displayName(context) }
                 Text(
-                    text = "在线优先级: ${OnlineLyricProvider.normalizeOrder(rule.onlineLyricProviderOrder).joinToString(" > ") { it.displayName }}",
+                    text = stringResource(R.string.parser_online_priority_summary, orderSummary),
                     fontSize = 12.sp,
                     color = MiuixTheme.colorScheme.onSurfaceVariantActions
                 )
@@ -323,193 +326,5 @@ fun MiuixStatusBadge(active: Boolean, label: String) {
         fontSize = 10.sp,
         color = if (active) MiuixTheme.colorScheme.primary else MiuixTheme.colorScheme.onSurfaceVariantActions.copy(alpha = 0.5f)
     )
-}
-
-@Composable
-fun MiuixEditRuleDialog(
-    rule: ParserRule?,
-    show: MutableState<Boolean>,
-    onSave: (ParserRule) -> Unit
-) {
-    var packageName by remember(rule, show.value) { mutableStateOf(rule?.packageName ?: "") }
-    var customName by remember(rule, show.value) { mutableStateOf(rule?.customName ?: "") }
-    var usesCarProtocol by remember(rule, show.value) { mutableStateOf(rule?.usesCarProtocol ?: true) }
-    var useOnlineLyrics by remember(rule, show.value) { mutableStateOf(rule?.useOnlineLyrics ?: false) }
-    var onlineLyricProviderOrder by remember(rule, show.value) {
-        mutableStateOf(OnlineLyricProvider.normalizeOrder(rule?.onlineLyricProviderOrder))
-    }
-    var useSuperLyricApi by remember(rule, show.value) { mutableStateOf(rule?.useSuperLyricApi ?: false) }
-    var useLyricGetterApi by remember(rule, show.value) { mutableStateOf(rule?.useLyricGetterApi ?: false) }
-    
-    val separators = listOf("-", " - ", " | ")
-    var separatorIndex by remember(rule, show.value) { 
-        val idx = separators.indexOf(rule?.separatorPattern ?: "-")
-        mutableStateOf(if (idx >= 0) idx else 0)
-    }
-    
-    val orders = listOf(FieldOrder.ARTIST_TITLE, FieldOrder.TITLE_ARTIST)
-    var orderIndex by remember(rule, show.value) {
-        val idx = orders.indexOf(rule?.fieldOrder ?: FieldOrder.TITLE_ARTIST)
-        mutableStateOf(if (idx >= 0) idx else 0)
-    }
-
-    MiuixBlurDialog(
-        title = if (rule == null) stringResource(R.string.parser_add_rule) else stringResource(R.string.parser_edit),
-        show = show.value,
-        onDismissRequest = { show.value = false }
-    ) {
-        Column(
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            // Scrollable Content Area for form fields
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f, fill = false)
-                    .verticalScroll(rememberScrollState())
-            ) {
-                SmallTitle(text = stringResource(R.string.parser_app_info))
-                Card(modifier = Modifier.fillMaxWidth()) {
-                    TextField(
-                        value = customName,
-                        onValueChange = { customName = it },
-                        label = stringResource(R.string.parser_app_name),
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    TextField(
-                        value = packageName,
-                        onValueChange = { packageName = it },
-                        label = stringResource(R.string.parser_package_name),
-                        modifier = Modifier.fillMaxWidth(),
-                        enabled = rule == null
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-                SmallTitle(text = stringResource(R.string.parser_logic_header))
-                Card(modifier = Modifier.fillMaxWidth()) {
-                    SuperSwitch(
-                        title = stringResource(R.string.parser_car_protocol),
-                        summary = stringResource(R.string.parser_notify_lyric_desc),
-                        checked = usesCarProtocol,
-                        onCheckedChange = { usesCarProtocol = it }
-                    )
-                    if (usesCarProtocol) {
-                        SuperDropdown(
-                            title = stringResource(R.string.parser_separator_label),
-                            items = separators,
-                            selectedIndex = separatorIndex,
-                            onSelectedIndexChange = { separatorIndex = it }
-                        )
-                        SuperDropdown(
-                            title = stringResource(R.string.parser_field_order_label),
-                            items = orders.map { if (it == FieldOrder.ARTIST_TITLE) stringResource(R.string.parser_order_artist_title) else stringResource(R.string.parser_order_title_artist) },
-                            selectedIndex = orderIndex,
-                            onSelectedIndexChange = { orderIndex = it }
-                        )
-                    }
-                    SuperSwitch(
-                        title = stringResource(R.string.settings_use_online_lyrics),
-                        summary = stringResource(R.string.parser_online_lyric_desc_short),
-                        checked = useOnlineLyrics,
-                        onCheckedChange = { useOnlineLyrics = it }
-                    )
-                    if (useOnlineLyrics) {
-                        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
-                            Text("在线歌词优先级", color = MiuixTheme.colorScheme.primary)
-                            Spacer(modifier = Modifier.height(8.dp))
-                            onlineLyricProviderOrder.forEachIndexed { index, provider ->
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text("${index + 1}. ${provider.displayName}", modifier = Modifier.weight(1f))
-                                    IconButton(onClick = {
-                                        onlineLyricProviderOrder = onlineLyricProviderOrder.toMutableList().apply {
-                                            removeAt(index)
-                                            add(index - 1, provider)
-                                        }
-                                    }, enabled = index > 0) {
-                                        Icon(Icons.Default.KeyboardArrowUp, contentDescription = "上移")
-                                    }
-                                    IconButton(onClick = {
-                                        onlineLyricProviderOrder = onlineLyricProviderOrder.toMutableList().apply {
-                                            removeAt(index)
-                                            add(index + 1, provider)
-                                        }
-                                    }, enabled = index < onlineLyricProviderOrder.lastIndex) {
-                                        Icon(Icons.Default.KeyboardArrowDown, contentDescription = "下移")
-                                    }
-                                }
-                            }
-                            Button(onClick = { onlineLyricProviderOrder = OnlineLyricProvider.defaultOrder() }) {
-                                Icon(Icons.Default.Refresh, contentDescription = null)
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text("恢复默认顺序")
-                            }
-                        }
-                    }
-                    SuperSwitch(
-                        title = stringResource(R.string.parser_super_lyric),
-                        summary = stringResource(R.string.parser_super_lyric_desc_short),
-                        checked = useSuperLyricApi,
-                        onCheckedChange = { useSuperLyricApi = it }
-                    )
-                    SuperSwitch(
-                        title = stringResource(R.string.parser_lgetter_lyric),
-                        summary = stringResource(R.string.parser_lgetter_lyric_desc_short),
-                        checked = useLyricGetterApi,
-                        onCheckedChange = { useLyricGetterApi = it }
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-                SmallTitle(text = stringResource(R.string.settings_help_about_header))
-                Card(modifier = Modifier.fillMaxWidth()) {
-                    val actContext = LocalContext.current
-                    SuperArrow(
-                        title = stringResource(R.string.faq_title),
-                        summary = stringResource(R.string.summary_faq),
-                        onClick = {
-                            actContext.startActivity(android.content.Intent(actContext, com.example.islandlyrics.feature.faq.FAQActivity::class.java))
-                        }
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Fixed Action Buttons Row (persistent at the bottom)
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                TextButton(
-                    text = stringResource(R.string.dialog_btn_cancel),
-                    onClick = { show.value = false },
-                    modifier = Modifier.weight(1f)
-                )
-                TextButton(
-                    text = stringResource(R.string.parser_save),
-                    onClick = {
-                        if (packageName.isNotBlank()) {
-                            onSave(ParserRule(
-                                packageName = packageName.trim(),
-                                customName = customName.trim().ifEmpty { null },
-                                enabled = rule?.enabled ?: true,
-                                usesCarProtocol = usesCarProtocol,
-                                separatorPattern = separators[separatorIndex],
-                                fieldOrder = orders[orderIndex],
-                                useOnlineLyrics = useOnlineLyrics,
-                                onlineLyricProviderOrder = onlineLyricProviderOrder.map { it.id },
-                                useSuperLyricApi = useSuperLyricApi,
-                                useLyricGetterApi = useLyricGetterApi
-                            ))
-                        }
-                    },
-                    modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.textButtonColorsPrimary()
-                )
-            }
-        }
-    }
 }
 

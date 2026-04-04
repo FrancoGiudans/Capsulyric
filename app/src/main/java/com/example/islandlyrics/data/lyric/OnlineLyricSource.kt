@@ -79,7 +79,16 @@ class OnlineLyricSource(private val context: Context) {
 
         fetchJob = scope.launch {
             try {
-                val outcome = fetcher.fetchLyrics(queryTitle, queryArtist, rule.onlineLyricProviderOrder)
+                val outcome = fetcher.fetchLyrics(
+                    title = queryTitle,
+                    artist = queryArtist,
+                    providerOrderIds = if (rule.useSmartOnlineLyricSelection) {
+                        OnlineLyricProvider.defaultIds()
+                    } else {
+                        rule.onlineLyricProviderOrder
+                    },
+                    useSmartSelection = rule.useSmartOnlineLyricSelection
+                )
                 val result = outcome.bestResult
 
                 // Staleness check: ensure the song hasn't changed while we were fetching

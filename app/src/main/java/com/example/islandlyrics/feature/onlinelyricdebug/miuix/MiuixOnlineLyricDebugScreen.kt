@@ -64,11 +64,14 @@ fun MiuixOnlineLyricDebugScreen(
     val selectedResult by viewModel.selectedResult.observeAsState()
     val error by viewModel.error.observeAsState()
     val providerOrder by viewModel.providerOrder.observeAsState(OnlineLyricProvider.defaultOrder())
+    val useSmartSelection by viewModel.useSmartSelection.observeAsState(true)
     val usedCleanTitleFallback by viewModel.usedCleanTitleFallback.observeAsState(false)
     val dialogAttempt by viewModel.dialogAttempt.observeAsState()
-    val showPrioritySection = remember(mediaInfo?.packageName) {
+    val showPrioritySection = remember(mediaInfo?.packageName, useSmartSelection) {
         val pkg = mediaInfo?.packageName
-        pkg != null && (ParserRuleHelper.getRuleForPackage(context, pkg)?.useOnlineLyrics == true)
+        pkg != null &&
+            (ParserRuleHelper.getRuleForPackage(context, pkg)?.useOnlineLyrics == true) &&
+            !useSmartSelection
     }
 
     LaunchedEffect(mediaInfo?.packageName) {
@@ -121,7 +124,7 @@ fun MiuixOnlineLyricDebugScreen(
                         Column(modifier = Modifier.padding(16.dp)) {
                             providerOrder.forEachIndexed { index, provider ->
                                 Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                                    Text("${index + 1}. ${provider.displayName}", modifier = Modifier.weight(1f))
+                                    Text("${index + 1}. ${provider.displayName(context)}", modifier = Modifier.weight(1f))
                                     IconButton(onClick = { viewModel.moveProvider(provider, -1) }, enabled = index > 0) {
                                         androidx.compose.material3.Icon(Icons.Default.KeyboardArrowUp, contentDescription = "上移")
                                     }
@@ -147,7 +150,13 @@ fun MiuixOnlineLyricDebugScreen(
                             Text(if (isFetching) "获取中..." else "获取并自动选择最佳歌词")
                         }
                         error?.let { Text(it, color = MiuixTheme.colorScheme.error) }
-                        Text("Provider 顺序: ${providerOrder.joinToString(" > ") { it.displayName }}")
+                        Text(
+                            if (useSmartSelection) {
+                                "获取模式: 智能获取"
+                            } else {
+                                "Provider 顺序: ${providerOrder.joinToString(" > ") { it.displayName(context) }}"
+                            }
+                        )
                         Text("标题清洗兜底: ${if (usedCleanTitleFallback) "已触发" else "未触发"}")
                         attempts.forEach { attempt ->
                             val result = attempt.result
@@ -157,7 +166,7 @@ fun MiuixOnlineLyricDebugScreen(
                                     .clickable(enabled = result != null) { viewModel.openAttempt(attempt) }
                                     .padding(vertical = 6.dp)
                             ) {
-                                Text("${if (result == selectedResult) "★ " else ""}${attempt.provider.displayName} (${attempt.durationMs}ms)")
+                                Text("${if (result == selectedResult) "★ " else ""}${attempt.provider.displayName(context)} (${attempt.durationMs}ms)")
                                 Text(
                                     when {
                                         result == null -> "无可用结果"
@@ -186,7 +195,7 @@ fun MiuixOnlineLyricDebugScreen(
         dialogAttempt?.let { attempt ->
             val result = attempt.result
             MiuixBlurDialog(
-                title = "${attempt.provider.displayName} 最终结果",
+                title = "${attempt.provider.displayName(context)} 最终结果",
                 show = true,
                 onDismissRequest = { viewModel.closeDialog() }
             ) {

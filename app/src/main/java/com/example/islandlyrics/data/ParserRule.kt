@@ -20,6 +20,7 @@ data class ParserRule(
     
     // Lyric source settings (per-app)
     val useOnlineLyrics: Boolean = false,      // Whether to fetch lyrics from online APIs
+    val useSmartOnlineLyricSelection: Boolean = true,
     val useRawMetadataForOnlineMatching: Boolean = false,
     val onlineLyricProviderOrder: List<String> = emptyList(),
     val useSuperLyricApi: Boolean = false,     // Whether to use SuperLyric API callbacks

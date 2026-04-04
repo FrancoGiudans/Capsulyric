@@ -86,6 +86,7 @@ object ParserRuleHelper {
                             separatorPattern = obj.optString("separator", "-"),
                             fieldOrder = FieldOrder.valueOf(obj.optString("fieldOrder", "ARTIST_TITLE")),
                             useOnlineLyrics = obj.optBoolean("useOnlineLyrics", false),
+                            useSmartOnlineLyricSelection = obj.optBoolean("useSmartOnlineLyricSelection", true),
                             useRawMetadataForOnlineMatching = obj.optBoolean("useRawMetadataForOnlineMatching", false),
                             onlineLyricProviderOrder = OnlineLyricProvider.normalizeOrder(providerOrder).map { it.id },
                             useSuperLyricApi = obj.optBoolean("useSuperLyricApi", false),
@@ -133,6 +134,7 @@ object ParserRuleHelper {
                 obj.put("separator", rule.separatorPattern)
                 obj.put("fieldOrder", rule.fieldOrder.name)
                 obj.put("useOnlineLyrics", rule.useOnlineLyrics)
+                obj.put("useSmartOnlineLyricSelection", rule.useSmartOnlineLyricSelection)
                 obj.put("useRawMetadataForOnlineMatching", rule.useRawMetadataForOnlineMatching)
                 obj.put("onlineLyricProviderOrder", JSONArray(OnlineLyricProvider.normalizeOrder(rule.onlineLyricProviderOrder).map { it.id }))
                 obj.put("useSuperLyricApi", rule.useSuperLyricApi)
@@ -196,6 +198,7 @@ object ParserRuleHelper {
             separatorPattern = "-",
             fieldOrder = FieldOrder.TITLE_ARTIST,
             useOnlineLyrics = false, // DISABLED BY DEFAULT
+            useSmartOnlineLyricSelection = true,
             useRawMetadataForOnlineMatching = false,
             onlineLyricProviderOrder = OnlineLyricProvider.defaultIds(),
             useSuperLyricApi = false, // DISABLED BY DEFAULT

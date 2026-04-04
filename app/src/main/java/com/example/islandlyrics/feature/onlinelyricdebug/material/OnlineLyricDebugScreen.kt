@@ -70,11 +70,14 @@ fun OnlineLyricDebugScreen(
     val selectedResult by viewModel.selectedResult.observeAsState()
     val error by viewModel.error.observeAsState()
     val providerOrder by viewModel.providerOrder.observeAsState(OnlineLyricProvider.defaultOrder())
+    val useSmartSelection by viewModel.useSmartSelection.observeAsState(true)
     val usedCleanTitleFallback by viewModel.usedCleanTitleFallback.observeAsState(false)
     val dialogAttempt by viewModel.dialogAttempt.observeAsState()
-    val showPrioritySection = remember(mediaInfo?.packageName) {
+    val showPrioritySection = remember(mediaInfo?.packageName, useSmartSelection) {
         val pkg = mediaInfo?.packageName
-        pkg != null && (ParserRuleHelper.getRuleForPackage(context, pkg)?.useOnlineLyrics == true)
+        pkg != null &&
+            (ParserRuleHelper.getRuleForPackage(context, pkg)?.useOnlineLyrics == true) &&
+            !useSmartSelection
     }
 
     LaunchedEffect(mediaInfo?.packageName) {
@@ -124,7 +127,7 @@ fun OnlineLyricDebugScreen(
                 DebugInfoCard(title = "在线歌词优先级") {
                     providerOrder.forEachIndexed { index, provider ->
                         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                            Text("${index + 1}. ${provider.displayName}", modifier = Modifier.weight(1f))
+                            Text("${index + 1}. ${provider.displayName(context)}", modifier = Modifier.weight(1f))
                             IconButton(onClick = { viewModel.moveProvider(provider, -1) }, enabled = index > 0) {
                                 Icon(Icons.Default.KeyboardArrowUp, contentDescription = "上移")
                             }
@@ -151,7 +154,13 @@ fun OnlineLyricDebugScreen(
                 }
                 error?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(top = 8.dp)) }
                 Spacer(modifier = Modifier.height(8.dp))
-                Text("Provider 顺序: ${providerOrder.joinToString(" > ") { it.displayName }}")
+                Text(
+                    if (useSmartSelection) {
+                        "获取模式: 智能获取"
+                    } else {
+                        "Provider 顺序: ${providerOrder.joinToString(" > ") { it.displayName(context) }}"
+                    }
+                )
                 Text("标题清洗兜底: ${if (usedCleanTitleFallback) "已触发" else "未触发"}")
                 Spacer(modifier = Modifier.height(8.dp))
                 attempts.forEach { attempt ->
@@ -163,7 +172,7 @@ fun OnlineLyricDebugScreen(
                         )
                     ) {
                         Column(modifier = Modifier.padding(14.dp)) {
-                            Text("${if (result == selectedResult) "★ " else ""}${attempt.provider.displayName} (${attempt.durationMs}ms)", fontWeight = FontWeight.SemiBold)
+                            Text("${if (result == selectedResult) "★ " else ""}${attempt.provider.displayName(context)} (${attempt.durationMs}ms)", fontWeight = FontWeight.SemiBold)
                             if (attempt.usedCleanTitleFallback) {
                                 Text("使用清洗标题重试", color = MaterialTheme.colorScheme.tertiary)
                             }
@@ -195,7 +204,7 @@ fun OnlineLyricDebugScreen(
         val result = attempt.result
         AlertDialog(
             onDismissRequest = { viewModel.closeDialog() },
-            title = { Text("${attempt.provider.displayName} 最终结果") },
+            title = { Text("${attempt.provider.displayName(context)} 最终结果") },
             text = {
                 Column {
                     Text("耗时: ${attempt.durationMs}ms")

@@ -201,12 +201,12 @@ fun DebugLyricScreen(
                         if (attempts.isEmpty()) {
                             append("等待获取歌词...")
                         } else {
-                            append("Provider 顺序: ${providerOrder.joinToString(" > ") { it.displayName }}\n")
+                            append("Provider 顺序: ${providerOrder.joinToString(" > ") { it.displayName(context) }}\n")
                             append("标题清洗兜底: ${if (usedCleanTitleFallback) "已触发" else "未触发"}\n\n")
                             attempts.forEach { attempt ->
                                 val result = attempt.result
                                 val prefix = if (result == selectedResult) "★ [已选择] " else "  "
-                                append("$prefix${attempt.provider.displayName} (${attempt.durationMs}ms)\n")
+                                append("$prefix${attempt.provider.displayName(context)} (${attempt.durationMs}ms)\n")
                                 if (attempt.usedCleanTitleFallback) {
                                     append("  使用清洗标题重试\n")
                                 }
@@ -255,11 +255,12 @@ private fun ProviderOrderRow(
     onMoveUp: () -> Unit,
     onMoveDown: () -> Unit
 ) {
+    val context = androidx.compose.ui.platform.LocalContext.current
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text("${index + 1}. ${provider.displayName}", modifier = Modifier.weight(1f))
+        Text("${index + 1}. ${provider.displayName(context)}", modifier = Modifier.weight(1f))
         IconButton(onClick = onMoveUp, enabled = canMoveUp) {
             Icon(Icons.Default.KeyboardArrowUp, contentDescription = "上移")
         }

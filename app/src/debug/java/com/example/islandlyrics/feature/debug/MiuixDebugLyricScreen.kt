@@ -114,7 +114,7 @@ fun MiuixDebugLyricScreen(
                                     modifier = Modifier.fillMaxWidth(),
                                     verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
                                 ) {
-                                    Text("${index + 1}. ${provider.displayName}", modifier = Modifier.weight(1f))
+                                    Text("${index + 1}. ${provider.displayName(context)}", modifier = Modifier.weight(1f))
                                     IconButton(onClick = { viewModel.moveProvider(provider, -1) }, enabled = index > 0) {
                                         androidx.compose.material3.Icon(Icons.Default.KeyboardArrowUp, contentDescription = "上移")
                                     }
@@ -162,7 +162,7 @@ fun MiuixDebugLyricScreen(
                         Spacer(modifier = Modifier.height(16.dp))
                         Text("请求详情", color = MiuixTheme.colorScheme.primary)
                         
-                        Text("Provider 顺序: ${providerOrder.joinToString(" > ") { it.displayName }}")
+                        Text("Provider 顺序: ${providerOrder.joinToString(" > ") { it.displayName(context) }}")
                         Text("标题清洗兜底: ${if (usedCleanTitleFallback) "已触发" else "未触发"}")
                         Spacer(modifier = Modifier.height(8.dp))
 
@@ -170,7 +170,7 @@ fun MiuixDebugLyricScreen(
                             val result = attempt.result
                             val isSelected = result == selectedResult
                             Text(
-                                text = "${if (isSelected) "★ " else ""}${attempt.provider.displayName} (${attempt.durationMs}ms)",
+                                text = "${if (isSelected) "★ " else ""}${attempt.provider.displayName(context)} (${attempt.durationMs}ms)",
                                 color = if (isSelected) MiuixTheme.colorScheme.primary else MiuixTheme.colorScheme.onSurface
                             )
                             val summary = when {

@@ -164,7 +164,10 @@ fun MiuixParserRuleEditorScreen(
                     summary = stringResource(R.string.parser_online_lyric_desc_short),
                     checked = state.useOnlineLyrics,
                     onCheckedChange = {
-                        state = state.copy(useOnlineLyrics = it)
+                        state = state.copy(
+                            useOnlineLyrics = it,
+                            useSmartOnlineLyricSelection = if (it) true else state.useSmartOnlineLyricSelection
+                        )
                         if (it && state.usesCarProtocol) {
                             showOnlineSuggestionDialog = true
                         }
@@ -172,60 +175,68 @@ fun MiuixParserRuleEditorScreen(
                 )
                 if (state.useOnlineLyrics) {
                     SuperSwitch(
+                        title = stringResource(R.string.parser_smart_online_fetch),
+                        summary = stringResource(R.string.parser_smart_online_fetch_desc),
+                        checked = state.useSmartOnlineLyricSelection,
+                        onCheckedChange = { state = state.copy(useSmartOnlineLyricSelection = it) }
+                    )
+                    SuperSwitch(
                         title = stringResource(R.string.parser_use_raw_metadata_for_online_match),
                         summary = stringResource(R.string.parser_use_raw_metadata_for_online_match_desc),
                         checked = state.useRawMetadataForOnlineMatching,
                         onCheckedChange = { state = state.copy(useRawMetadataForOnlineMatching = it) }
                     )
-                    Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
-                        Text(stringResource(R.string.parser_online_priority))
-                        Spacer(modifier = Modifier.height(8.dp))
-                        state.onlineLyricProviderOrder.forEachIndexed { index, provider ->
-                            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                                Text("${index + 1}. ${provider.displayName}", modifier = Modifier.weight(1f))
-                                IconButton(
-                                    onClick = {
-                                        state = state.copy(
-                                            onlineLyricProviderOrder = state.onlineLyricProviderOrder.toMutableList().apply {
-                                                removeAt(index)
-                                                add(index - 1, provider)
-                                            }
+                    if (!state.useSmartOnlineLyricSelection) {
+                        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+                            Text(stringResource(R.string.parser_online_priority))
+                            Spacer(modifier = Modifier.height(8.dp))
+                            state.onlineLyricProviderOrder.forEachIndexed { index, provider ->
+                                Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                                    Text("${index + 1}. ${provider.displayName(context)}", modifier = Modifier.weight(1f))
+                                    IconButton(
+                                        onClick = {
+                                            state = state.copy(
+                                                onlineLyricProviderOrder = state.onlineLyricProviderOrder.toMutableList().apply {
+                                                    removeAt(index)
+                                                    add(index - 1, provider)
+                                                }
+                                            )
+                                        },
+                                        enabled = index > 0
+                                    ) {
+                                        androidx.compose.material3.Icon(
+                                            Icons.Default.KeyboardArrowUp,
+                                            contentDescription = stringResource(R.string.action_move_up),
+                                            tint = if (index > 0) MiuixTheme.colorScheme.onSurface
+                                            else MiuixTheme.colorScheme.onSurfaceVariantSummary
                                         )
-                                    },
-                                    enabled = index > 0
-                                ) {
-                                    androidx.compose.material3.Icon(
-                                        Icons.Default.KeyboardArrowUp,
-                                        contentDescription = stringResource(R.string.action_move_up),
-                                        tint = if (index > 0) MiuixTheme.colorScheme.onSurface
-                                        else MiuixTheme.colorScheme.onSurfaceVariantSummary
-                                    )
-                                }
-                                IconButton(
-                                    onClick = {
-                                        state = state.copy(
-                                            onlineLyricProviderOrder = state.onlineLyricProviderOrder.toMutableList().apply {
-                                                removeAt(index)
-                                                add(index + 1, provider)
-                                            }
+                                    }
+                                    IconButton(
+                                        onClick = {
+                                            state = state.copy(
+                                                onlineLyricProviderOrder = state.onlineLyricProviderOrder.toMutableList().apply {
+                                                    removeAt(index)
+                                                    add(index + 1, provider)
+                                                }
+                                            )
+                                        },
+                                        enabled = index < state.onlineLyricProviderOrder.lastIndex
+                                    ) {
+                                        androidx.compose.material3.Icon(
+                                            Icons.Default.KeyboardArrowDown,
+                                            contentDescription = stringResource(R.string.action_move_down),
+                                            tint = if (index < state.onlineLyricProviderOrder.lastIndex) MiuixTheme.colorScheme.onSurface
+                                            else MiuixTheme.colorScheme.onSurfaceVariantSummary
                                         )
-                                    },
-                                    enabled = index < state.onlineLyricProviderOrder.lastIndex
-                                ) {
-                                    androidx.compose.material3.Icon(
-                                        Icons.Default.KeyboardArrowDown,
-                                        contentDescription = stringResource(R.string.action_move_down),
-                                        tint = if (index < state.onlineLyricProviderOrder.lastIndex) MiuixTheme.colorScheme.onSurface
-                                        else MiuixTheme.colorScheme.onSurfaceVariantSummary
-                                    )
+                                    }
                                 }
                             }
-                        }
-                        Button(
-                            onClick = { state = state.copy(onlineLyricProviderOrder = OnlineLyricProvider.defaultOrder()) },
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text(stringResource(R.string.parser_reset_online_priority))
+                            Button(
+                                onClick = { state = state.copy(onlineLyricProviderOrder = OnlineLyricProvider.defaultOrder()) },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text(stringResource(R.string.parser_reset_online_priority))
+                            }
                         }
                     }
                 }

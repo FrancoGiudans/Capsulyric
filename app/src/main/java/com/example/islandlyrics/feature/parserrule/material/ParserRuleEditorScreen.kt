@@ -197,7 +197,10 @@ fun ParserRuleEditorScreen(
                 subtitle = stringResource(R.string.parser_online_lyric_desc_short),
                 checked = state.useOnlineLyrics,
                 onCheckedChange = {
-                    state = state.copy(useOnlineLyrics = it)
+                    state = state.copy(
+                        useOnlineLyrics = it,
+                        useSmartOnlineLyricSelection = if (it) true else state.useSmartOnlineLyricSelection
+                    )
                     if (it && state.usesCarProtocol) {
                         showOnlineSuggestionDialog = true
                     }
@@ -211,49 +214,57 @@ fun ParserRuleEditorScreen(
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         SwitchRow(
+                            title = stringResource(R.string.parser_smart_online_fetch),
+                            subtitle = stringResource(R.string.parser_smart_online_fetch_desc),
+                            checked = state.useSmartOnlineLyricSelection,
+                            onCheckedChange = { state = state.copy(useSmartOnlineLyricSelection = it) }
+                        )
+                        SwitchRow(
                             title = stringResource(R.string.parser_use_raw_metadata_for_online_match),
                             subtitle = stringResource(R.string.parser_use_raw_metadata_for_online_match_desc),
                             checked = state.useRawMetadataForOnlineMatching,
                             onCheckedChange = { state = state.copy(useRawMetadataForOnlineMatching = it) }
                         )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text("在线歌词优先级", color = MaterialTheme.colorScheme.primary)
-                        Spacer(modifier = Modifier.height(8.dp))
-                        state.onlineLyricProviderOrder.forEachIndexed { index, provider ->
-                            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                                Text("${index + 1}. ${provider.displayName}", modifier = Modifier.weight(1f))
-                                IconButton(
-                                    onClick = {
-                                        state = state.copy(
-                                            onlineLyricProviderOrder = state.onlineLyricProviderOrder.toMutableList().apply {
-                                                removeAt(index)
-                                                add(index - 1, provider)
-                                            }
-                                        )
-                                    },
-                                    enabled = index > 0
-                                ) {
-                                    Icon(Icons.Default.KeyboardArrowUp, contentDescription = "上移")
-                                }
-                                IconButton(
-                                    onClick = {
-                                        state = state.copy(
-                                            onlineLyricProviderOrder = state.onlineLyricProviderOrder.toMutableList().apply {
-                                                removeAt(index)
-                                                add(index + 1, provider)
-                                            }
-                                        )
-                                    },
-                                    enabled = index < state.onlineLyricProviderOrder.lastIndex
-                                ) {
-                                    Icon(Icons.Default.KeyboardArrowDown, contentDescription = "下移")
+                        if (!state.useSmartOnlineLyricSelection) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(stringResource(R.string.parser_online_priority), color = MaterialTheme.colorScheme.primary)
+                            Spacer(modifier = Modifier.height(8.dp))
+                            state.onlineLyricProviderOrder.forEachIndexed { index, provider ->
+                                Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                                    Text("${index + 1}. ${provider.displayName(context)}", modifier = Modifier.weight(1f))
+                                    IconButton(
+                                        onClick = {
+                                            state = state.copy(
+                                                onlineLyricProviderOrder = state.onlineLyricProviderOrder.toMutableList().apply {
+                                                    removeAt(index)
+                                                    add(index - 1, provider)
+                                                }
+                                            )
+                                        },
+                                        enabled = index > 0
+                                    ) {
+                                        Icon(Icons.Default.KeyboardArrowUp, contentDescription = stringResource(R.string.action_move_up))
+                                    }
+                                    IconButton(
+                                        onClick = {
+                                            state = state.copy(
+                                                onlineLyricProviderOrder = state.onlineLyricProviderOrder.toMutableList().apply {
+                                                    removeAt(index)
+                                                    add(index + 1, provider)
+                                                }
+                                            )
+                                        },
+                                        enabled = index < state.onlineLyricProviderOrder.lastIndex
+                                    ) {
+                                        Icon(Icons.Default.KeyboardArrowDown, contentDescription = stringResource(R.string.action_move_down))
+                                    }
                                 }
                             }
-                        }
-                        TextButton(onClick = { state = state.copy(onlineLyricProviderOrder = OnlineLyricProvider.defaultOrder()) }) {
-                            Icon(Icons.Default.Refresh, contentDescription = null)
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("恢复默认顺序")
+                            TextButton(onClick = { state = state.copy(onlineLyricProviderOrder = OnlineLyricProvider.defaultOrder()) }) {
+                                Icon(Icons.Default.Refresh, contentDescription = null)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(stringResource(R.string.parser_reset_online_priority))
+                            }
                         }
                     }
                 }
