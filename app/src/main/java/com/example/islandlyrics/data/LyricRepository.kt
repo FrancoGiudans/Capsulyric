@@ -19,7 +19,9 @@ class LyricRepository private constructor() {
         val title: String,
         val artist: String,
         val packageName: String,
-        val duration: Long
+        val duration: Long,
+        val rawTitle: String = title,
+        val rawArtist: String = artist
     )
 
     // Atomic Lyric Container
@@ -44,7 +46,9 @@ class LyricRepository private constructor() {
     // Parsed lyrics from online sources (for syllable-based scrolling)
     data class ParsedLyricsInfo(
         val lines: List<OnlineLyricFetcher.LyricLine>,
-        val hasSyllable: Boolean
+        val hasSyllable: Boolean,
+        val sourceLabel: String? = null,
+        val apiPath: String? = null
     )
     val liveParsedLyrics = MutableLiveData<ParsedLyricsInfo?>()
     
@@ -73,8 +77,15 @@ class LyricRepository private constructor() {
         updatePlaybackStatus(true)
     }
 
-    fun updateMediaMetadata(title: String, artist: String, packageName: String, duration: Long) {
-        val newInfo = MediaInfo(title, artist, packageName, duration)
+    fun updateMediaMetadata(
+        title: String,
+        artist: String,
+        packageName: String,
+        duration: Long,
+        rawTitle: String = title,
+        rawArtist: String = artist
+    ) {
+        val newInfo = MediaInfo(title, artist, packageName, duration, rawTitle, rawArtist)
         if (liveMetadata.value == newInfo) return
 
         // Detect song change to clear old lyrics
@@ -96,7 +107,7 @@ class LyricRepository private constructor() {
     val liveSuggestionMetadata = MutableLiveData<MediaInfo?>()
 
     fun updateSuggestionMetadata(title: String, artist: String, packageName: String, duration: Long) {
-        liveSuggestionMetadata.postValue(MediaInfo(title, artist, packageName, duration))
+        liveSuggestionMetadata.postValue(MediaInfo(title, artist, packageName, duration, title, artist))
     }
 
     fun updateProgress(position: Long, duration: Long) {
@@ -109,8 +120,13 @@ class LyricRepository private constructor() {
         liveAlbumArt.postValue(bitmap)
     }
     
-    fun updateParsedLyrics(lines: List<OnlineLyricFetcher.LyricLine>, hasSyllable: Boolean) {
-        liveParsedLyrics.postValue(ParsedLyricsInfo(lines, hasSyllable))
+    fun updateParsedLyrics(
+        lines: List<OnlineLyricFetcher.LyricLine>,
+        hasSyllable: Boolean,
+        sourceLabel: String? = null,
+        apiPath: String? = null
+    ) {
+        liveParsedLyrics.postValue(ParsedLyricsInfo(lines, hasSyllable, sourceLabel, apiPath))
         AppLogger.getInstance().log("Repo", "📝 Parsed lyrics updated: ${lines.size} lines, syllable: $hasSyllable")
     }
     

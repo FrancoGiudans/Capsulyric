@@ -6,6 +6,7 @@ import com.example.islandlyrics.R
 import com.example.islandlyrics.data.ParserRuleHelper
 import com.example.islandlyrics.data.ParserRule
 import com.example.islandlyrics.data.LyricRepository
+import com.example.islandlyrics.data.lyric.OnlineLyricProvider
 import com.example.islandlyrics.feature.settings.material.SettingsSectionHeader
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
@@ -13,10 +14,16 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
 import androidx.compose.material3.*
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -31,6 +38,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.example.islandlyrics.feature.parserrule.ParserRuleEditorActivity
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -39,9 +47,18 @@ fun ParserRuleScreen(
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     var rules by remember { mutableStateOf(ParserRuleHelper.loadRules(context)) }
-    var showEditDialog by remember { mutableStateOf(false) }
-    var editingRule by remember { mutableStateOf<ParserRule?>(null) }
     var showDeleteDialog by remember { mutableStateOf<ParserRule?>(null) }
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+
+    DisposableEffect(lifecycleOwner, context) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                rules = ParserRuleHelper.loadRules(context)
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
 
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     
@@ -115,13 +132,13 @@ fun ParserRuleScreen(
                         } catch (e: Exception) {
                             ""
                         }
-                        
-                        editingRule = ParserRuleHelper.createDefaultRule(pkg).copy(customName = label)
-                        showEditDialog = true
+                        context.startActivity(
+                            android.content.Intent(context, ParserRuleEditorActivity::class.java)
+                                .putExtra(ParserRuleEditorActivity.EXTRA_PACKAGE_NAME, pkg)
+                                .putExtra(ParserRuleEditorActivity.EXTRA_SUGGESTED_NAME, label)
+                        )
                     } else {
-                        // Standard Add
-                        editingRule = null
-                        showEditDialog = true
+                        context.startActivity(android.content.Intent(context, ParserRuleEditorActivity::class.java))
                     }
                 },
                 expanded = showRecommendation,
@@ -165,8 +182,10 @@ fun ParserRuleScreen(
                         }
                     },
                     onEdit = {
-                        editingRule = rule
-                        showEditDialog = true
+                        context.startActivity(
+                            android.content.Intent(context, ParserRuleEditorActivity::class.java)
+                                .putExtra(ParserRuleEditorActivity.EXTRA_PACKAGE_NAME, rule.packageName)
+                        )
                     },
                     onDelete = {
                         showDeleteDialog = rule
@@ -175,49 +194,6 @@ fun ParserRuleScreen(
                 HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
             }
         }
-    }
-
-    if (showEditDialog) {
-        EditRuleDialog(
-            rule = editingRule,
-            onDismiss = { showEditDialog = false },
-            onSave = { newRule ->
-                val newRules = rules.toMutableList()
-                if (editingRule == null) {
-                    // Add
-                    if (newRules.any { it.packageName == newRule.packageName }) {
-                        android.widget.Toast.makeText(context, context.getString(R.string.parser_pkg_exists), android.widget.Toast.LENGTH_SHORT).show()
-                    } else {
-                        newRules.add(newRule)
-                        newRules.sort()
-                        rules = newRules
-                        ParserRuleHelper.saveRules(context, rules)
-                        showEditDialog = false
-                    }
-                } else {
-                    // Update or Add Recommendation
-                    val index = newRules.indexOf(editingRule)
-                    if (index != -1) {
-                        newRules[index] = newRule
-                        newRules.sort() 
-                        rules = newRules
-                        ParserRuleHelper.saveRules(context, rules)
-                        showEditDialog = false
-                    } else {
-                        // Recommendation case: editingRule not in list
-                        if (newRules.any { it.packageName == newRule.packageName }) {
-                            android.widget.Toast.makeText(context, context.getString(R.string.parser_pkg_exists), android.widget.Toast.LENGTH_SHORT).show()
-                        } else {
-                            newRules.add(newRule)
-                            newRules.sort()
-                            rules = newRules
-                            ParserRuleHelper.saveRules(context, rules)
-                            showEditDialog = false
-                        }
-                    }
-                }
-            }
-        )
     }
 
     if (showDeleteDialog != null) {
@@ -279,6 +255,16 @@ fun ParserRuleItem(
             }
             
             Spacer(modifier = Modifier.height(4.dp))
+            if (rule.useOnlineLyrics) {
+                val onlineOrderSummary = OnlineLyricProvider.normalizeOrder(rule.onlineLyricProviderOrder)
+                    .joinToString(" > ") { it.displayName }
+                Text(
+                    text = "在线优先级: $onlineOrderSummary",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+            }
             
             // Status Badges
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -323,6 +309,9 @@ fun EditRuleDialog(
     // Logic Switches
     var usesCarProtocol by remember(rule) { mutableStateOf(rule?.usesCarProtocol ?: true) }
     var useOnlineLyrics by remember(rule) { mutableStateOf(rule?.useOnlineLyrics ?: false) }
+    var onlineLyricProviderOrder by remember(rule) {
+        mutableStateOf(OnlineLyricProvider.normalizeOrder(rule?.onlineLyricProviderOrder))
+    }
     var useSuperLyricApi by remember(rule) { mutableStateOf(rule?.useSuperLyricApi ?: false) }
     var useLyricGetterApi by remember(rule) { mutableStateOf(rule?.useLyricGetterApi ?: false) }
     
@@ -452,6 +441,52 @@ fun EditRuleDialog(
                         checked = useOnlineLyrics,
                         onCheckedChange = { useOnlineLyrics = it }
                     )
+                    if (useOnlineLyrics) {
+                        Card(
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+                        ) {
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                Text("在线歌词优先级", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+                                Spacer(modifier = Modifier.height(8.dp))
+                                onlineLyricProviderOrder.forEachIndexed { index, provider ->
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text("${index + 1}. ${provider.displayName}", modifier = Modifier.weight(1f))
+                                        IconButton(
+                                            onClick = {
+                                                onlineLyricProviderOrder = onlineLyricProviderOrder.toMutableList().apply {
+                                                    removeAt(index)
+                                                    add(index - 1, provider)
+                                                }
+                                            },
+                                            enabled = index > 0
+                                        ) {
+                                            Icon(Icons.Default.KeyboardArrowUp, contentDescription = "上移")
+                                        }
+                                        IconButton(
+                                            onClick = {
+                                                onlineLyricProviderOrder = onlineLyricProviderOrder.toMutableList().apply {
+                                                    removeAt(index)
+                                                    add(index + 1, provider)
+                                                }
+                                            },
+                                            enabled = index < onlineLyricProviderOrder.lastIndex
+                                        ) {
+                                            Icon(Icons.Default.KeyboardArrowDown, contentDescription = "下移")
+                                        }
+                                    }
+                                }
+                                TextButton(onClick = { onlineLyricProviderOrder = OnlineLyricProvider.defaultOrder() }) {
+                                    Icon(Icons.Default.Refresh, contentDescription = null)
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text("恢复默认顺序")
+                                }
+                            }
+                        }
+                    }
 
                     // D. SuperLyric API
                     SwitchRow(
@@ -504,6 +539,7 @@ fun EditRuleDialog(
                                     separatorPattern = separator,
                                     fieldOrder = fieldOrder,
                                     useOnlineLyrics = useOnlineLyrics,
+                                    onlineLyricProviderOrder = onlineLyricProviderOrder.map { it.id },
                                     useSuperLyricApi = useSuperLyricApi,
                                     useLyricGetterApi = useLyricGetterApi
                                 )

@@ -35,7 +35,8 @@ fun MiuixBlurScaffold(
     val backdrop = rememberLayerBackdrop()
     
     CompositionLocalProvider(
-        LocalMiuixBlurBackdrop provides backdrop
+        LocalMiuixBlurBackdrop provides backdrop,
+        LocalMiuixBlurEnabled provides true
     ) {
         Scaffold(
             modifier = modifier,

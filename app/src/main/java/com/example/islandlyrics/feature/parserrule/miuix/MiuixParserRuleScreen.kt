@@ -7,6 +7,7 @@ import com.example.islandlyrics.R
 import com.example.islandlyrics.data.ParserRuleHelper
 import com.example.islandlyrics.data.ParserRule
 import com.example.islandlyrics.data.LyricRepository
+import com.example.islandlyrics.data.lyric.OnlineLyricProvider
 import android.widget.Toast
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
@@ -19,9 +20,14 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.Refresh
 import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -37,6 +43,7 @@ import top.yukonga.miuix.kmp.preference.SwitchPreference as SuperSwitch
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.MiuixPopupUtils.Companion.MiuixPopupHost
 import com.example.islandlyrics.ui.miuix.*
+import com.example.islandlyrics.feature.parserrule.ParserRuleEditorActivity
 
 @Composable
 fun MiuixParserRuleScreen(
@@ -46,16 +53,24 @@ fun MiuixParserRuleScreen(
     val scrollBehavior = MiuixScrollBehavior(rememberTopAppBarState())
 
     var rules by remember { mutableStateOf(ParserRuleHelper.loadRules(context)) }
-    var showEditDialog = remember { mutableStateOf(false) }
     var showDeleteDialog = remember { mutableStateOf(false) }
-    var editingRule by remember { mutableStateOf<ParserRule?>(null) }
     var deletingRule by remember { mutableStateOf<ParserRule?>(null) }
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
 
-    MiuixBackHandler(enabled = showEditDialog.value) { showEditDialog.value = false }
     MiuixBackHandler(enabled = showDeleteDialog.value) { showDeleteDialog.value = false }
 
     fun refreshRules() {
         rules = ParserRuleHelper.loadRules(context)
+    }
+
+    DisposableEffect(lifecycleOwner, context) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                refreshRules()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
     // Refresh recommendations on enter
@@ -124,11 +139,13 @@ fun MiuixParserRuleScreen(
                 onClick = {
                     if (showRecommendation) {
                         val pkg = currentPkg
-                        editingRule = ParserRuleHelper.createDefaultRule(pkg).copy(customName = appLabel)
-                        showEditDialog.value = true
+                        context.startActivity(
+                            android.content.Intent(context, ParserRuleEditorActivity::class.java)
+                                .putExtra(ParserRuleEditorActivity.EXTRA_PACKAGE_NAME, pkg)
+                                .putExtra(ParserRuleEditorActivity.EXTRA_SUGGESTED_NAME, appLabel)
+                        )
                     } else {
-                        editingRule = null
-                        showEditDialog.value = true
+                        context.startActivity(android.content.Intent(context, ParserRuleEditorActivity::class.java))
                     }
                 },
                 modifier = Modifier.padding(bottom = 16.dp, end = 8.dp)
@@ -186,8 +203,10 @@ fun MiuixParserRuleScreen(
                             MiuixParserRuleItem(
                                 rule = rule,
                                 onClick = {
-                                    editingRule = rule
-                                    showEditDialog.value = true
+                                    context.startActivity(
+                                        android.content.Intent(context, ParserRuleEditorActivity::class.java)
+                                            .putExtra(ParserRuleEditorActivity.EXTRA_PACKAGE_NAME, rule.packageName)
+                                    )
                                 },
                                 onLongClick = {
                                     deletingRule = rule
@@ -210,28 +229,6 @@ fun MiuixParserRuleScreen(
         }
 
         // Dialogs must be inside Scaffold content for MiuixPopupHost
-        MiuixEditRuleDialog(
-            rule = editingRule,
-            show = showEditDialog,
-            onSave = { newRule ->
-                val updatedRules = rules.toMutableList()
-                if (editingRule != null && updatedRules.any { it.packageName == editingRule!!.packageName }) {
-                    val index = updatedRules.indexOfFirst { it.packageName == editingRule!!.packageName }
-                    if (index >= 0) updatedRules[index] = newRule
-                } else {
-                    if (updatedRules.any { it.packageName == newRule.packageName }) {
-                        Toast.makeText(context, context.getString(R.string.parser_pkg_exists), Toast.LENGTH_SHORT).show()
-                    } else {
-                        updatedRules.add(newRule)
-                    }
-                }
-                updatedRules.sort()
-                ParserRuleHelper.saveRules(context, updatedRules)
-                refreshRules()
-                showEditDialog.value = false
-            }
-        )
-
         MiuixBlurDialog(
             title = stringResource(R.string.parser_delete),
             summary = stringResource(R.string.dialog_delete_confirm, deletingRule?.customName ?: deletingRule?.packageName ?: ""),
@@ -294,6 +291,14 @@ fun MiuixParserRuleItem(
                 )
             }
             Spacer(modifier = Modifier.height(6.dp))
+            if (rule.useOnlineLyrics) {
+                Text(
+                    text = "在线优先级: ${OnlineLyricProvider.normalizeOrder(rule.onlineLyricProviderOrder).joinToString(" > ") { it.displayName }}",
+                    fontSize = 12.sp,
+                    color = MiuixTheme.colorScheme.onSurfaceVariantActions
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+            }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 MiuixStatusBadge(active = rule.usesCarProtocol, label = "Notify")
                 Spacer(modifier = Modifier.width(8.dp))
@@ -330,6 +335,9 @@ fun MiuixEditRuleDialog(
     var customName by remember(rule, show.value) { mutableStateOf(rule?.customName ?: "") }
     var usesCarProtocol by remember(rule, show.value) { mutableStateOf(rule?.usesCarProtocol ?: true) }
     var useOnlineLyrics by remember(rule, show.value) { mutableStateOf(rule?.useOnlineLyrics ?: false) }
+    var onlineLyricProviderOrder by remember(rule, show.value) {
+        mutableStateOf(OnlineLyricProvider.normalizeOrder(rule?.onlineLyricProviderOrder))
+    }
     var useSuperLyricApi by remember(rule, show.value) { mutableStateOf(rule?.useSuperLyricApi ?: false) }
     var useLyricGetterApi by remember(rule, show.value) { mutableStateOf(rule?.useLyricGetterApi ?: false) }
     
@@ -407,6 +415,41 @@ fun MiuixEditRuleDialog(
                         checked = useOnlineLyrics,
                         onCheckedChange = { useOnlineLyrics = it }
                     )
+                    if (useOnlineLyrics) {
+                        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+                            Text("在线歌词优先级", color = MiuixTheme.colorScheme.primary)
+                            Spacer(modifier = Modifier.height(8.dp))
+                            onlineLyricProviderOrder.forEachIndexed { index, provider ->
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text("${index + 1}. ${provider.displayName}", modifier = Modifier.weight(1f))
+                                    IconButton(onClick = {
+                                        onlineLyricProviderOrder = onlineLyricProviderOrder.toMutableList().apply {
+                                            removeAt(index)
+                                            add(index - 1, provider)
+                                        }
+                                    }, enabled = index > 0) {
+                                        Icon(Icons.Default.KeyboardArrowUp, contentDescription = "上移")
+                                    }
+                                    IconButton(onClick = {
+                                        onlineLyricProviderOrder = onlineLyricProviderOrder.toMutableList().apply {
+                                            removeAt(index)
+                                            add(index + 1, provider)
+                                        }
+                                    }, enabled = index < onlineLyricProviderOrder.lastIndex) {
+                                        Icon(Icons.Default.KeyboardArrowDown, contentDescription = "下移")
+                                    }
+                                }
+                            }
+                            Button(onClick = { onlineLyricProviderOrder = OnlineLyricProvider.defaultOrder() }) {
+                                Icon(Icons.Default.Refresh, contentDescription = null)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("恢复默认顺序")
+                            }
+                        }
+                    }
                     SuperSwitch(
                         title = stringResource(R.string.parser_super_lyric),
                         summary = stringResource(R.string.parser_super_lyric_desc_short),
@@ -456,6 +499,7 @@ fun MiuixEditRuleDialog(
                                 separatorPattern = separators[separatorIndex],
                                 fieldOrder = orders[orderIndex],
                                 useOnlineLyrics = useOnlineLyrics,
+                                onlineLyricProviderOrder = onlineLyricProviderOrder.map { it.id },
                                 useSuperLyricApi = useSuperLyricApi,
                                 useLyricGetterApi = useLyricGetterApi
                             ))

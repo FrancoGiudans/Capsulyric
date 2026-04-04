@@ -92,8 +92,9 @@ class ProgressSyncController(
 
             val metadata = repo.liveMetadata.value
             val source = metadata?.packageName?.let { appNameProvider(it) } ?: "Online Lyrics"
-
-            repo.updateLyric(line.text, source, "Online API")
+            val parsedInfo = repo.liveParsedLyrics.value
+            val apiPath = parsedInfo?.apiPath ?: "Online API"
+            repo.updateLyric(line.text, source, apiPath)
             repo.updateCurrentLine(line)
         }
     }

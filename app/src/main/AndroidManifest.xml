@@ -46,6 +46,10 @@
             android:name="com.example.islandlyrics.feature.parserrule.ParserRuleActivity"
             android:label="@string/title_parser_whitelist_manager"
             android:parentActivityName="com.example.islandlyrics.feature.main.MainActivity" />
+        <activity
+            android:name="com.example.islandlyrics.feature.parserrule.ParserRuleEditorActivity"
+            android:label="@string/parser_edit"
+            android:parentActivityName="com.example.islandlyrics.feature.parserrule.ParserRuleActivity" />
 
         <service 
             android:name=".service.LyricService"
@@ -68,6 +72,9 @@
         <activity android:name="com.example.islandlyrics.feature.diagnostics.DiagnosticsActivity"
                   android:label="@string/title_diagnostics"
                   android:parentActivityName="com.example.islandlyrics.feature.settings.SettingsActivity" />
+        <activity android:name="com.example.islandlyrics.feature.onlinelyricdebug.OnlineLyricDebugActivity"
+                  android:label="在线歌词调试"
+                  android:parentActivityName="com.example.islandlyrics.feature.diagnostics.DiagnosticsActivity" />
 
         <activity android:name="com.example.islandlyrics.feature.logviewer.LogViewerActivity"
                   android:label="Developer Logs"

@@ -121,6 +121,10 @@
     <string name="parser_logic_desc">歌词来源与功能</string>
     <string name="parser_notify_lyric_desc">从通知标题中提取歌词</string>
     <string name="parser_online_lyric_desc_short">从互联网 API 获取</string>
+    <string name="parser_online_priority">在线歌词优先级</string>
+    <string name="parser_reset_online_priority">恢复默认顺序</string>
+    <string name="action_move_up">上移</string>
+    <string name="action_move_down">下移</string>
     <string name="parser_super_lyric">SuperLyric API</string>
     <string name="parser_super_lyric_desc_short">通过 SuperLyric 广播接收</string>
     <string name="parser_lgetter_lyric">Lyric Getter API</string>
@@ -133,6 +137,8 @@
     <!-- 在线歌词设置 -->
     <string name="settings_use_online_lyrics">使用在线歌词 API</string>
     <string name="settings_use_online_lyrics_desc">从多个在线源(酷狗/网易/LrcApi)获取带时间轴的歌词</string>
+    <string name="parser_use_raw_metadata_for_online_match">使用原始播放信息进行在线匹配</string>
+    <string name="parser_use_raw_metadata_for_online_match_desc">在线歌词搜索时跳过标题解析，直接使用播放器提供的原始歌名和歌手</string>
     <string name="settings_use_superlyric_api">使用 SuperLyric API</string>
     <string name="settings_use_superlyric_api_desc">(预留) 增强歌词API集成</string>
 

@@ -134,7 +134,12 @@ class SuperLyricSource(
                 // Each word becomes a single-word "line"; aggregate by lyric
                 // boundaries if delay info is available.
                 val lines = convertEnhancedToLines(lyric, enhancedData)
-                LyricRepository.getInstance().updateParsedLyrics(lines, hasSyllable = true)
+                LyricRepository.getInstance().updateParsedLyrics(
+                    lines = lines,
+                    hasSyllable = true,
+                    sourceLabel = getAppName(pkg),
+                    apiPath = "SuperLyric"
+                )
                 AppLogger.getInstance().d(TAG, "EnhancedLRC: ${lines.size} lines — online fetch skipped")
                 return   // No need to fetch online
             }

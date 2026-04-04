@@ -1,0 +1,45 @@
+package com.example.islandlyrics.feature.parserrule
+
+import com.example.islandlyrics.data.FieldOrder
+import com.example.islandlyrics.data.ParserRule
+import com.example.islandlyrics.data.lyric.OnlineLyricProvider
+
+data class ParserRuleEditorState(
+    val packageName: String,
+    val customName: String,
+    val usesCarProtocol: Boolean,
+    val separator: String,
+    val fieldOrder: FieldOrder,
+    val useOnlineLyrics: Boolean,
+    val useRawMetadataForOnlineMatching: Boolean,
+    val onlineLyricProviderOrder: List<OnlineLyricProvider>,
+    val useSuperLyricApi: Boolean,
+    val useLyricGetterApi: Boolean
+)
+
+fun ParserRule.toEditorState(): ParserRuleEditorState = ParserRuleEditorState(
+    packageName = packageName,
+    customName = customName.orEmpty(),
+    usesCarProtocol = usesCarProtocol,
+    separator = separatorPattern,
+    fieldOrder = fieldOrder,
+    useOnlineLyrics = useOnlineLyrics,
+    useRawMetadataForOnlineMatching = useRawMetadataForOnlineMatching,
+    onlineLyricProviderOrder = OnlineLyricProvider.normalizeOrder(onlineLyricProviderOrder),
+    useSuperLyricApi = useSuperLyricApi,
+    useLyricGetterApi = useLyricGetterApi
+)
+
+fun ParserRuleEditorState.toRule(previousRule: ParserRule?, isNewRule: Boolean): ParserRule = ParserRule(
+    packageName = packageName.trim(),
+    customName = customName.trim().ifEmpty { null },
+    enabled = previousRule?.enabled ?: true,
+    usesCarProtocol = usesCarProtocol,
+    separatorPattern = separator,
+    fieldOrder = fieldOrder,
+    useOnlineLyrics = useOnlineLyrics,
+    useRawMetadataForOnlineMatching = useRawMetadataForOnlineMatching,
+    onlineLyricProviderOrder = onlineLyricProviderOrder.map { it.id },
+    useSuperLyricApi = useSuperLyricApi,
+    useLyricGetterApi = useLyricGetterApi
+)

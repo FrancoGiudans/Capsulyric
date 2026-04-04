@@ -122,6 +122,16 @@
     <string name="parser_logic_desc">Lyric Sources &amp; Features</string>
     <string name="parser_notify_lyric_desc">Extract lyrics from notification title</string>
     <string name="parser_online_lyric_desc_short">Fetch from internet APIs</string>
+    <string name="parser_online_priority">Online Lyric Priority</string>
+    <string name="parser_reset_online_priority">Reset to Default Order</string>
+    <string name="action_move_up">Move Up</string>
+    <string name="action_move_down">Move Down</string>
+    <string name="parser_use_raw_metadata_for_online_match">Use original playback info for online matching</string>
+    <string name="parser_use_raw_metadata_for_online_match_desc">Skip title parsing and use raw title/artist from the player when searching online lyrics</string>
+    <string name="parser_online_conflict_title">Online lyrics work better without notification lyrics</string>
+    <string name="parser_online_conflict_message">If online lyrics are your main source, it is recommended to turn off media notification lyrics to avoid static text or duplicate triggers. Do you want to turn it off now?</string>
+    <string name="parser_online_conflict_keep">Keep current setting</string>
+    <string name="parser_online_conflict_disable_notify">Turn off notification lyrics</string>
     <string name="parser_super_lyric">SuperLyric API</string>
     <string name="parser_super_lyric_desc_short">Receive via broadcast</string>
     <string name="parser_lgetter_lyric">Lyric Getter API</string>

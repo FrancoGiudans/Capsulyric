@@ -714,7 +714,14 @@ class MediaMonitorService : NotificationListenerService() {
 
 
         // Update PUBLIC Metadata (Main UI)
-        LyricRepository.getInstance().updateMediaMetadata(finalTitle ?: "Unknown", finalArtist ?: "Unknown", pkg, duration)
+        LyricRepository.getInstance().updateMediaMetadata(
+            title = finalTitle ?: "Unknown",
+            artist = finalArtist ?: "Unknown",
+            packageName = pkg,
+            duration = duration,
+            rawTitle = rawTitle ?: finalTitle ?: "Unknown",
+            rawArtist = rawArtist ?: finalArtist ?: "Unknown"
+        )
 
         // Update Lyric if available
         if (finalLyric != null) {

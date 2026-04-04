@@ -1,6 +1,7 @@
 package com.example.islandlyrics.data
 
 import android.content.Context
+import com.example.islandlyrics.data.lyric.OnlineLyricProvider
 import org.json.JSONArray
 import org.json.JSONObject
 import java.util.Collections
@@ -33,13 +34,13 @@ object ParserRuleHelper {
      */
     private val DEFAULTS = listOf(
         // Native notification lyric support (car/bluetooth protocol)
-        ParserRule("com.tencent.qqmusic", customName="QQ Music", enabled=true, usesCarProtocol=true, separatorPattern="-", fieldOrder=FieldOrder.TITLE_ARTIST, useSuperLyricApi=false, useLyricGetterApi=false),
-        ParserRule("com.netease.cloudmusic", customName="NetEase Cloud Music", enabled=true, usesCarProtocol=true, separatorPattern=" - ", fieldOrder=FieldOrder.TITLE_ARTIST, useSuperLyricApi=false, useLyricGetterApi=false),
-        ParserRule("com.miui.player", customName="Mi Music", enabled=true, usesCarProtocol=true, separatorPattern="-", fieldOrder=FieldOrder.TITLE_ARTIST, useSuperLyricApi=false, useLyricGetterApi=false),
+        ParserRule("com.tencent.qqmusic", customName="QQ Music", enabled=true, usesCarProtocol=true, separatorPattern="-", fieldOrder=FieldOrder.TITLE_ARTIST, onlineLyricProviderOrder = OnlineLyricProvider.defaultIds(), useSuperLyricApi=false, useLyricGetterApi=false),
+        ParserRule("com.netease.cloudmusic", customName="NetEase Cloud Music", enabled=true, usesCarProtocol=true, separatorPattern=" - ", fieldOrder=FieldOrder.TITLE_ARTIST, onlineLyricProviderOrder = OnlineLyricProvider.defaultIds(), useSuperLyricApi=false, useLyricGetterApi=false),
+        ParserRule("com.miui.player", customName="Mi Music", enabled=true, usesCarProtocol=true, separatorPattern="-", fieldOrder=FieldOrder.TITLE_ARTIST, onlineLyricProviderOrder = OnlineLyricProvider.defaultIds(), useSuperLyricApi=false, useLyricGetterApi=false),
         
         // Require superlyricapi or other methods (car protocol disabled by default)
-        ParserRule("com.kugou.android", customName="KuGou Music", enabled=true, usesCarProtocol=true, separatorPattern="-", fieldOrder=FieldOrder.TITLE_ARTIST, useSuperLyricApi=false, useLyricGetterApi=false),
-        ParserRule("com.apple.android.music", customName="Apple Music", enabled=true, usesCarProtocol=false, separatorPattern=" - ", fieldOrder=FieldOrder.TITLE_ARTIST, useSuperLyricApi=true, useLyricGetterApi=false)
+        ParserRule("com.kugou.android", customName="KuGou Music", enabled=true, usesCarProtocol=true, separatorPattern="-", fieldOrder=FieldOrder.TITLE_ARTIST, onlineLyricProviderOrder = OnlineLyricProvider.defaultIds(), useSuperLyricApi=false, useLyricGetterApi=false),
+        ParserRule("com.apple.android.music", customName="Apple Music", enabled=true, usesCarProtocol=false, separatorPattern=" - ", fieldOrder=FieldOrder.TITLE_ARTIST, onlineLyricProviderOrder = OnlineLyricProvider.defaultIds(), useSuperLyricApi=true, useLyricGetterApi=false)
     )
 
     /**
@@ -60,6 +61,22 @@ object ParserRuleHelper {
                     // Backward compatibility: "name" might not exist, defaults to null (which is fine)
                     val name = if (obj.has("name")) obj.getString("name") else null
                     
+                    val providerOrder = when {
+                        obj.has("onlineLyricProviderOrder") -> {
+                            val array = obj.optJSONArray("onlineLyricProviderOrder")
+                            if (array != null) {
+                                buildList {
+                                    for (index in 0 until array.length()) {
+                                        add(array.optString(index))
+                                    }
+                                }
+                            } else {
+                                OnlineLyricProvider.defaultIds()
+                            }
+                        }
+                        else -> OnlineLyricProvider.defaultIds()
+                    }
+
                     rules.add(
                         ParserRule(
                             packageName = obj.getString("pkg"),
@@ -69,6 +86,8 @@ object ParserRuleHelper {
                             separatorPattern = obj.optString("separator", "-"),
                             fieldOrder = FieldOrder.valueOf(obj.optString("fieldOrder", "ARTIST_TITLE")),
                             useOnlineLyrics = obj.optBoolean("useOnlineLyrics", false),
+                            useRawMetadataForOnlineMatching = obj.optBoolean("useRawMetadataForOnlineMatching", false),
+                            onlineLyricProviderOrder = OnlineLyricProvider.normalizeOrder(providerOrder).map { it.id },
                             useSuperLyricApi = obj.optBoolean("useSuperLyricApi", false),
                             useLyricGetterApi = obj.optBoolean("useLyricGetterApi", false)
                         )
@@ -114,6 +133,8 @@ object ParserRuleHelper {
                 obj.put("separator", rule.separatorPattern)
                 obj.put("fieldOrder", rule.fieldOrder.name)
                 obj.put("useOnlineLyrics", rule.useOnlineLyrics)
+                obj.put("useRawMetadataForOnlineMatching", rule.useRawMetadataForOnlineMatching)
+                obj.put("onlineLyricProviderOrder", JSONArray(OnlineLyricProvider.normalizeOrder(rule.onlineLyricProviderOrder).map { it.id }))
                 obj.put("useSuperLyricApi", rule.useSuperLyricApi)
                 obj.put("useLyricGetterApi", rule.useLyricGetterApi)
                 array.put(obj)
@@ -175,6 +196,8 @@ object ParserRuleHelper {
             separatorPattern = "-",
             fieldOrder = FieldOrder.TITLE_ARTIST,
             useOnlineLyrics = false, // DISABLED BY DEFAULT
+            useRawMetadataForOnlineMatching = false,
+            onlineLyricProviderOrder = OnlineLyricProvider.defaultIds(),
             useSuperLyricApi = false, // DISABLED BY DEFAULT
             useLyricGetterApi = false // DISABLED BY DEFAULT
         )
@@ -195,7 +218,12 @@ object ParserRuleHelper {
             separator = " - "
         }
         
-        val splitIndex = input.indexOf(separator)
+        val splitIndex = when (rule.fieldOrder) {
+            // "Title-Artist" 更容易出现歌名中自带连字符，所以优先从最后一个分隔符切分
+            FieldOrder.TITLE_ARTIST -> input.lastIndexOf(separator)
+            // "Artist-Title" 场景下，歌手字段通常更短，优先从第一个分隔符切分
+            FieldOrder.ARTIST_TITLE -> input.indexOf(separator)
+        }
         
         if (splitIndex == -1) {
             return Triple(input, "", false)

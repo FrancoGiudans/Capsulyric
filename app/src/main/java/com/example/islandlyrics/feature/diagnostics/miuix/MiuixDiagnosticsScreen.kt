@@ -19,6 +19,7 @@ import androidx.compose.ui.unit.dp
 import com.example.islandlyrics.R
 import com.example.islandlyrics.core.platform.RomUtils
 import com.example.islandlyrics.feature.logviewer.LogViewerActivity
+import com.example.islandlyrics.feature.onlinelyricdebug.OnlineLyricDebugActivity
 import androidx.compose.ui.unit.sp
 import top.yukonga.miuix.kmp.basic.*
 import top.yukonga.miuix.kmp.preference.ArrowPreference as SuperArrow
@@ -68,6 +69,13 @@ fun MiuixDiagnosticsScreen(onBack: () -> Unit) {
             item { SmallTitle(text = stringResource(R.string.diag_header_tools)) }
             item {
                 Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
+                    SuperArrow(
+                        title = "在线歌词调试",
+                        summary = "查看每个在线歌词 API 的最终结果",
+                        onClick = {
+                            context.startActivity(android.content.Intent(context, OnlineLyricDebugActivity::class.java))
+                        }
+                    )
                     SuperArrow(
                         title = stringResource(R.string.menu_log),
                         summary = stringResource(R.string.summary_view_logs),

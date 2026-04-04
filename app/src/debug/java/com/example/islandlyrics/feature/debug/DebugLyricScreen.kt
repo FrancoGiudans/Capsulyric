@@ -7,6 +7,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
@@ -27,7 +30,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.graphics.SolidColor
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.islandlyrics.DebugLyricViewModel
+import com.example.islandlyrics.data.ParserRuleHelper
 import com.example.islandlyrics.data.lyric.OnlineLyricFetcher
+import com.example.islandlyrics.data.lyric.OnlineLyricProvider
 import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -43,9 +48,23 @@ fun DebugLyricScreen(
     val isPlaying by viewModel.isPlaying.observeAsState(false)
     val isFetching by viewModel.isFetching.observeAsState(false)
     val apiResults by viewModel.apiResults.observeAsState(emptyList())
+    val attempts by viewModel.attempts.observeAsState(emptyList())
     val selectedResult by viewModel.selectedResult.observeAsState()
     val parsedLyrics by viewModel.parsedLyrics.observeAsState(emptyList())
     val error by viewModel.error.observeAsState()
+    val providerOrder by viewModel.providerOrder.observeAsState(OnlineLyricProvider.defaultOrder())
+    val usedCleanTitleFallback by viewModel.usedCleanTitleFallback.observeAsState(false)
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val showPrioritySection = remember(mediaInfo?.packageName) {
+        val pkg = mediaInfo?.packageName
+        pkg != null && (ParserRuleHelper.getRuleForPackage(context, pkg)?.useOnlineLyrics == true)
+    }
+
+    LaunchedEffect(mediaInfo?.packageName) {
+        if (mediaInfo?.packageName != null) {
+            viewModel.syncProviderOrderFromCurrentRule()
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -105,6 +124,32 @@ fun DebugLyricScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
+            if (showPrioritySection) {
+                DebugInfoCard(title = "在线歌词优先级") {
+                    Text(
+                        "当前调试请求会按下面顺序参与评分与兜底。",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    providerOrder.forEachIndexed { index, provider ->
+                        ProviderOrderRow(
+                            provider = provider,
+                            index = index,
+                            canMoveUp = index > 0,
+                            canMoveDown = index < providerOrder.lastIndex,
+                            onMoveUp = { viewModel.moveProvider(provider, -1) },
+                            onMoveDown = { viewModel.moveProvider(provider, 1) }
+                        )
+                    }
+                    TextButton(onClick = { viewModel.resetProviderOrder() }) {
+                        Icon(Icons.Default.Refresh, contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("恢复默认顺序")
+                    }
+                }
+                Spacer(modifier = Modifier.height(24.dp))
+            }
+
             // Fetch Lyrics Card
             DebugInfoCard(title = "获取歌词") {
                 Text(
@@ -125,7 +170,7 @@ fun DebugLyricScreen(
                             strokeWidth = 2.dp
                         )
                     } else {
-                        Text("选择API并获取歌词")
+                        Text("获取并自动选择最佳歌词")
                     }
                 }
 
@@ -143,43 +188,45 @@ fun DebugLyricScreen(
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
-                Text("完整歌词:", fontWeight = FontWeight.Bold)
+                Text("请求详情:", fontWeight = FontWeight.Bold)
 
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .heightIn(min = 200.dp)
+                        .heightIn(min = 280.dp)
                         .background(MaterialTheme.colorScheme.surface, MaterialTheme.shapes.medium)
                         .padding(16.dp)
                 ) {
                     val resultText = buildString {
-                        if (apiResults.isEmpty()) {
+                        if (attempts.isEmpty()) {
                             append("等待获取歌词...")
                         } else {
-                            append("所有API结果（按评分排序）:\n\n")
-                            apiResults.forEach { result ->
+                            append("Provider 顺序: ${providerOrder.joinToString(" > ") { it.displayName }}\n")
+                            append("标题清洗兜底: ${if (usedCleanTitleFallback) "已触发" else "未触发"}\n\n")
+                            attempts.forEach { attempt ->
+                                val result = attempt.result
                                 val prefix = if (result == selectedResult) "★ [已选择] " else "  "
-                                append("$prefix${result.api} (得分: ${result.score})\n")
-                                if (result.error != null) {
+                                append("$prefix${attempt.provider.displayName} (${attempt.durationMs}ms)\n")
+                                if (attempt.usedCleanTitleFallback) {
+                                    append("  使用清洗标题重试\n")
+                                }
+                                if (result == null) {
+                                    append("  ✗ 无可用结果\n")
+                                } else if (result.error != null) {
                                     append("  ✗ 错误: ${result.error}\n")
                                 } else {
+                                    append("  来源: ${result.api} / 得分: ${result.score}\n")
                                     result.matchedTitle?.let { append("  标题: $it\n") }
                                     result.matchedArtist?.let { append("  艺术家: $it\n") }
-                                    if (result.hasSyllable) append("  ✓ 有逐字歌词 (+30分)\n")
+                                    if (result.hasSyllable) append("  ✓ 有逐字歌词\n")
                                     else if (result.lyrics != null) append("  标准LRC歌词\n")
-                                    
                                     result.lyrics?.let {
-                                        val preview = it.take(100).replace("\n", " ")
-                                        append("  预览: $preview...\n")
+                                        append("  完整结果:\n")
+                                        append(it)
+                                        append("\n")
                                     }
                                 }
                                 append("\n")
-                            }
-                            selectedResult?.lyrics?.let {
-                                append("─────────────────────\n")
-                                append("已应用 ${selectedResult?.api} 的歌词\n")
-                                append("─────────────────────\n\n")
-                                append(it)
                             }
                         }
                     }
@@ -195,6 +242,29 @@ fun DebugLyricScreen(
                 Text("返回")
             }
             Spacer(modifier = Modifier.height(32.dp))
+        }
+    }
+}
+
+@Composable
+private fun ProviderOrderRow(
+    provider: OnlineLyricProvider,
+    index: Int,
+    canMoveUp: Boolean,
+    canMoveDown: Boolean,
+    onMoveUp: () -> Unit,
+    onMoveDown: () -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text("${index + 1}. ${provider.displayName}", modifier = Modifier.weight(1f))
+        IconButton(onClick = onMoveUp, enabled = canMoveUp) {
+            Icon(Icons.Default.KeyboardArrowUp, contentDescription = "上移")
+        }
+        IconButton(onClick = onMoveDown, enabled = canMoveDown) {
+            Icon(Icons.Default.KeyboardArrowDown, contentDescription = "下移")
         }
     }
 }

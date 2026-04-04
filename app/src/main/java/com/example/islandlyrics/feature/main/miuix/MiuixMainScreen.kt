@@ -78,6 +78,7 @@ fun MiuixMainScreen(
     val repoLyric by repo.liveLyric.observeAsState()
     val repoAlbumArt by repo.liveAlbumArt.observeAsState()
     val repoProgress by repo.liveProgress.observeAsState()
+    val repoParsedLyrics by repo.liveParsedLyrics.observeAsState()
 
     var activeControllers by remember { mutableStateOf<List<MediaController>>(emptyList()) }
 
@@ -131,7 +132,7 @@ fun MiuixMainScreen(
 
     MiuixBlurScaffold(
         topBar = {
-            MiuixBlurTopAppBar(
+            MiuixBlurSmallTopAppBar(
                 title = stringResource(R.string.app_name),
                 scrollBehavior = scrollBehavior,
                 navigationIcon = {
@@ -191,6 +192,7 @@ fun MiuixMainScreen(
                                 isPrimary = isPrimary,
                                 primaryMetadata = if (isPrimary) repoMetadata else null,
                                 primaryLyric = if (isPrimary) repoLyric?.lyric else null,
+                                primaryLyricSource = if (isPrimary && repoLyric?.apiPath == "Online API") repoParsedLyrics?.sourceLabel else null,
                                 primaryAlbumArt = if (isPrimary) repoAlbumArt else null,
                                 primaryProgress = if (isPrimary) repoProgress else null
                             )
@@ -285,6 +287,7 @@ private fun MiuixMediaSessionCard(
     isPrimary: Boolean,
     primaryMetadata: LyricRepository.MediaInfo?,
     primaryLyric: String?,
+    primaryLyricSource: String?,
     primaryAlbumArt: Bitmap?,
     primaryProgress: LyricRepository.PlaybackProgress?
 ) {
@@ -369,6 +372,10 @@ private fun MiuixMediaSessionCard(
                     }
                     // App name uses palette accent
                     Text(text = appName, fontSize = 12.sp, color = animatedAccent, maxLines = 1)
+                    if (isPrimary && !primaryLyricSource.isNullOrBlank()) {
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(text = "当前在线源: $primaryLyricSource", fontSize = 11.sp, color = MiuixTheme.colorScheme.onSurfaceSecondary, maxLines = 1)
+                    }
                 }
             }
 

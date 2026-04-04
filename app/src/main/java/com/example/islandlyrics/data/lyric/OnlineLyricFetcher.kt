@@ -4,7 +4,8 @@ import android.util.Base64
 import com.example.islandlyrics.core.logging.AppLogger
 import kotlinx.coroutines.*
 import okhttp3.*
-import org.json.JSONArray
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 import java.io.ByteArrayOutputStream
 import java.io.IOException
@@ -20,6 +21,11 @@ import kotlin.coroutines.resumeWithException
  * 支持从多个在线源(酷狗/网易/LrcApi)获取带时间轴的歌词
  */
 class OnlineLyricFetcher {
+
+    data class LyricQuery(
+        val title: String,
+        val artist: String
+    )
     
     // 歌词行数据类
     data class LyricLine(
@@ -43,9 +49,24 @@ class OnlineLyricFetcher {
         val parsedLines: List<LyricLine>?,   // 解析后的歌词行
         val hasSyllable: Boolean,            // 是否有逐字信息
         var score: Int = 0,                  // 评分
+        val provider: OnlineLyricProvider,
         val matchedTitle: String? = null,    // 匹配到的标题
         val matchedArtist: String? = null,   // 匹配到的艺术家
         val error: String? = null            // 错误信息
+    )
+
+    data class ProviderAttempt(
+        val provider: OnlineLyricProvider,
+        val result: LyricResult?,
+        val durationMs: Long,
+        val usedCleanTitleFallback: Boolean
+    )
+
+    data class FetchOutcome(
+        val query: LyricQuery,
+        val bestResult: LyricResult?,
+        val attempts: List<ProviderAttempt>,
+        val usedCleanTitleFallback: Boolean
     )
     
     private val client = OkHttpClient.Builder()
@@ -60,34 +81,72 @@ class OnlineLyricFetcher {
     /**
      * 从多个API获取歌词并选择最佳结果
      */
-    suspend fun fetchBestLyrics(title: String, artist: String): LyricResult? {
-        // 1. 尝试精确搜索
-        val exactResult = fetchBestLyricsInternal(title, artist)
-        if (exactResult != null) return exactResult
-        
-        // 2. 尝试清理标题后搜索 (Fallback)
-        val cleanTitle = cleanTitle(title)
-        if (cleanTitle != title) {
-            AppLogger.getInstance().i("OnlineLyric", "精确搜索未找到，尝试清理标题: $cleanTitle")
-            val cleanResult = fetchBestLyricsInternal(cleanTitle, artist)
-            if (cleanResult != null) return cleanResult
-        }
-        
-        return null
+    suspend fun fetchBestLyrics(
+        title: String,
+        artist: String,
+        providerOrderIds: List<String> = OnlineLyricProvider.defaultIds()
+    ): LyricResult? {
+        return fetchLyrics(title, artist, providerOrderIds).bestResult
     }
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    private suspend fun fetchBestLyricsInternal(title: String, artist: String): LyricResult? {
+    suspend fun fetchLyrics(
+        title: String,
+        artist: String,
+        providerOrderIds: List<String> = OnlineLyricProvider.defaultIds()
+    ): FetchOutcome {
+        val providerOrder = OnlineLyricProvider.normalizeOrder(providerOrderIds)
+        val query = LyricQuery(title = title, artist = artist)
+        val exactAttempts = fetchAllProviders(query, providerOrder, usedCleanTitleFallback = false)
+        val exactBest = selectBestResult(exactAttempts, title, artist, providerOrder)
+        if (exactBest != null) {
+            return FetchOutcome(query, exactBest, exactAttempts, false)
+        }
+
+        val cleanTitle = cleanTitle(title)
+        if (cleanTitle != title) {
+            AppLogger.getInstance().i("OnlineLyric", "精确搜索未找到，尝试清理标题: $cleanTitle")
+            val cleanQuery = query.copy(title = cleanTitle)
+            val cleanAttempts = fetchAllProviders(cleanQuery, providerOrder, usedCleanTitleFallback = true)
+            return FetchOutcome(
+                query = query,
+                bestResult = selectBestResult(cleanAttempts, cleanTitle, artist, providerOrder),
+                attempts = exactAttempts + cleanAttempts,
+                usedCleanTitleFallback = cleanAttempts.any { it.result != null }
+            )
+        }
+
+        return FetchOutcome(query, null, exactAttempts, false)
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private suspend fun fetchAllProviders(
+        query: LyricQuery,
+        providerOrder: List<OnlineLyricProvider>,
+        usedCleanTitleFallback: Boolean
+    ): List<ProviderAttempt> {
         return withContext(Dispatchers.IO) {
             try {
-                // 使用SupervisorScope以允许子协程独立失败/超时
-                val deferreds = listOf(
-                    async { fetchKugouAsync(title, artist) },
-                    async { fetchNeteaseAsync(title, artist) },
-                    async { fetchLrcApiAsync(title, artist) }
-                )
+                val deferreds = providerOrder.map { provider ->
+                    async {
+                        val startedAt = System.currentTimeMillis()
+                        val result = when (provider) {
+                            OnlineLyricProvider.QQMusic -> fetchQQMusicAsync(query.title, query.artist)
+                            OnlineLyricProvider.Kugou -> fetchKugouAsync(query.title, query.artist)
+                            OnlineLyricProvider.SodaMusic -> fetchSodaMusicAsync(query.title, query.artist)
+                            OnlineLyricProvider.Lrclib -> fetchLrclibAsync(query.title, query.artist)
+                            OnlineLyricProvider.Netease -> fetchNeteaseAsync(query.title, query.artist)
+                            OnlineLyricProvider.LrcApi -> fetchLrcApiAsync(query.title, query.artist)
+                        }
+                        ProviderAttempt(
+                            provider = provider,
+                            result = result,
+                            durationMs = System.currentTimeMillis() - startedAt,
+                            usedCleanTitleFallback = usedCleanTitleFallback
+                        )
+                    }
+                }
 
-                // 等待所有任务完成或超时(10s)
                 try {
                     withTimeout(10000) {
                         deferreds.awaitAll()
@@ -96,8 +155,7 @@ class OnlineLyricFetcher {
                     AppLogger.getInstance().i("OnlineLyric", "部分或者全部请求超时，尝试收集已完成结果")
                 }
 
-                // 收集成功完成的结果
-                val results = deferreds.mapNotNull { 
+                deferreds.mapNotNull {
                     if (it.isCompleted && !it.isCancelled) {
                         try {
                             it.getCompleted()
@@ -110,15 +168,9 @@ class OnlineLyricFetcher {
                     }
                 }
 
-                if (results.isEmpty()) {
-                    return@withContext null
-                }
-                
-                // 选择最佳结果
-                selectBestResult(results, title, artist)
             } catch (e: Exception) {
                 AppLogger.getInstance().e("OnlineLyric", "获取歌词失败: ${e.message}")
-                null
+                emptyList()
             }
         }
     }
@@ -141,6 +193,122 @@ class OnlineLyricFetcher {
         return clean.trim().replace("\\s+".toRegex(), " ")
     }
     
+    // ========== QQ音乐API ==========
+
+    private suspend fun fetchQQMusicAsync(title: String, artist: String): LyricResult? = withContext(Dispatchers.IO) {
+        try {
+            val keyword = "$title $artist"
+            val searchPayload = """
+                {"music.search.SearchCgiService":{"method":"DoSearchForQQMusicDesktop","module":"music.search.SearchCgiService","param":{"num_per_page":10,"page_num":1,"query":"${escapeJson(keyword)}","search_type":0}}}
+            """.trimIndent()
+
+            val searchResponse = postJsonString(
+                url = "https://u.y.qq.com/cgi-bin/musicu.fcg",
+                bodyJson = searchPayload,
+                headers = qqHeaders("https://c.y.qq.com/")
+            ) ?: return@withContext null
+
+            val searchJson = JSONObject(searchResponse)
+            val songs = searchJson
+                .optJSONObject("music.search.SearchCgiService")
+                ?.optJSONObject("data")
+                ?.optJSONObject("body")
+                ?.optJSONObject("song")
+                ?.optJSONArray("list")
+                ?: searchJson
+                    .optJSONObject("req_1")
+                    ?.optJSONObject("data")
+                    ?.optJSONObject("body")
+                    ?.optJSONObject("song")
+                    ?.optJSONArray("list")
+
+            if (songs == null || songs.length() == 0) return@withContext null
+
+            val firstSong = songs.getJSONObject(0)
+            val songMid = firstSong.optString("mid", "")
+            val matchedTitle = firstSong.optString("title", firstSong.optString("name", ""))
+            val matchedArtist = firstSong.optJSONArray("singer")
+                ?.let { singers ->
+                    buildString {
+                        for (index in 0 until singers.length()) {
+                            val name = singers.optJSONObject(index)?.optString("name").orEmpty()
+                            if (name.isBlank()) continue
+                            if (isNotEmpty()) append("/")
+                            append(name)
+                        }
+                    }
+                }
+                .orEmpty()
+
+            if (songMid.isBlank()) {
+                return@withContext LyricResult(
+                    api = "QQMusic",
+                    lyrics = null,
+                    parsedLines = null,
+                    hasSyllable = false,
+                    provider = OnlineLyricProvider.QQMusic,
+                    matchedTitle = matchedTitle,
+                    matchedArtist = matchedArtist,
+                    error = "无 songMid"
+                )
+            }
+
+            val callback = "MusicJsonCallback_lrc"
+            val lyricResponse = postForm(
+                url = "https://c.y.qq.com/lyric/fcgi-bin/fcg_query_lyric_new.fcg",
+                form = linkedMapOf(
+                    "callback" to callback,
+                    "pcachetime" to System.currentTimeMillis().toString(),
+                    "songmid" to songMid,
+                    "g_tk" to "5381",
+                    "jsonpCallback" to callback,
+                    "loginUin" to "0",
+                    "hostUin" to "0",
+                    "format" to "jsonp",
+                    "inCharset" to "utf8",
+                    "outCharset" to "utf8",
+                    "notice" to "0",
+                    "platform" to "yqq",
+                    "needNewCode" to "0"
+                ),
+                headers = qqHeaders("https://c.y.qq.com/")
+            ) ?: return@withContext null
+
+            val lyricJsonText = unwrapJsonp(callback, lyricResponse) ?: return@withContext null
+            val lyricJson = JSONObject(lyricJsonText)
+            val lyricContent = decodeBase64Text(lyricJson.optString("lyric", ""))
+            val transContent = decodeBase64Text(lyricJson.optString("trans", ""))
+            val mergedContent = lyricContent.ifBlank { transContent }
+
+            if (mergedContent.isBlank()) {
+                return@withContext LyricResult(
+                    api = "QQMusic",
+                    lyrics = null,
+                    parsedLines = null,
+                    hasSyllable = false,
+                    provider = OnlineLyricProvider.QQMusic,
+                    matchedTitle = matchedTitle,
+                    matchedArtist = matchedArtist,
+                    error = "无歌词内容"
+                )
+            }
+
+            val parsedLines = parseLrcLyrics(mergedContent)
+            LyricResult(
+                api = "QQMusic",
+                lyrics = mergedContent,
+                parsedLines = parsedLines,
+                hasSyllable = false,
+                provider = OnlineLyricProvider.QQMusic,
+                matchedTitle = matchedTitle,
+                matchedArtist = matchedArtist
+            )
+        } catch (e: Exception) {
+            AppLogger.getInstance().log("OnlineLyric", "QQMusic API错误: ${e.message}")
+            null
+        }
+    }
+
     // ========== 酷狗API ==========
     
     private suspend fun fetchKugouAsync(title: String, artist: String): LyricResult? = withContext(Dispatchers.IO) {
@@ -181,7 +349,7 @@ class OnlineLyricFetcher {
             val hash = firstSong.optString("hash", "")
 
             if (hash.isEmpty()) {
-                return@withContext LyricResult("Kugou", null, null, false, matchedTitle = matchedTitle, matchedArtist = matchedArtist, error = "无歌曲hash")
+                return@withContext LyricResult("Kugou", null, null, false, provider = OnlineLyricProvider.Kugou, matchedTitle = matchedTitle, matchedArtist = matchedArtist, error = "无歌曲hash")
             }
 
             // 获取歌词 (step 2)
@@ -200,14 +368,14 @@ class OnlineLyricFetcher {
             }
 
             if (lyricResponse == null) {
-                return@withContext LyricResult("Kugou", null, null, false, matchedTitle = matchedTitle, matchedArtist = matchedArtist, error = "歌词请求失败")
+                return@withContext LyricResult("Kugou", null, null, false, provider = OnlineLyricProvider.Kugou, matchedTitle = matchedTitle, matchedArtist = matchedArtist, error = "歌词请求失败")
             }
 
             val lyricJson = JSONObject(lyricResponse)
             val candidates = lyricJson.optJSONArray("candidates")
 
             if (candidates == null || candidates.length() == 0) {
-                return@withContext LyricResult("Kugou", null, null, false, matchedTitle = matchedTitle, matchedArtist = matchedArtist, error = "无候选歌词")
+                return@withContext LyricResult("Kugou", null, null, false, provider = OnlineLyricProvider.Kugou, matchedTitle = matchedTitle, matchedArtist = matchedArtist, error = "无候选歌词")
             }
 
             val lyricInfo = candidates.getJSONObject(0)
@@ -246,14 +414,14 @@ class OnlineLyricFetcher {
 
             if (lyricEncoded.isEmpty()) {
                 val msg = "歌词内容为空"
-                return@withContext LyricResult("Kugou", null, null, false, matchedTitle = matchedTitle, matchedArtist = matchedArtist, error = msg)
+                return@withContext LyricResult("Kugou", null, null, false, provider = OnlineLyricProvider.Kugou, matchedTitle = matchedTitle, matchedArtist = matchedArtist, error = msg)
             }
 
             val lyricContent = decodeKugouLyric(lyricEncoded)
             val hasSyllable = lyricContent.contains("<") && lyricContent.contains(">")
             val parsedLines = if (hasSyllable) parseKrcLyrics(lyricContent) else parseLrcLyrics(lyricContent)
 
-            LyricResult("Kugou", lyricContent, parsedLines, hasSyllable, matchedTitle = matchedTitle, matchedArtist = matchedArtist)
+            LyricResult("Kugou", lyricContent, parsedLines, hasSyllable, provider = OnlineLyricProvider.Kugou, matchedTitle = matchedTitle, matchedArtist = matchedArtist)
 
         } catch (e: Exception) {
             AppLogger.getInstance().log("OnlineLyric", "Kugou API错误: ${e.message}")
@@ -262,6 +430,143 @@ class OnlineLyricFetcher {
     }
     
     // ========== 网易云API ==========
+
+    private suspend fun fetchSodaMusicAsync(title: String, artist: String): LyricResult? = withContext(Dispatchers.IO) {
+        try {
+            val keyword = "$title $artist"
+            val searchUrl = "https://api.qishui.com/luna/pc/search/track?aid=386088&app_name=&region=&geo_region=&os_region=&sim_region=&device_id=&cdid=&iid=&version_name=&version_code=&channel=&build_mode=&network_carrier=&ac=&tz_name=&resolution=&device_platform=&device_type=&os_version=&fp=&q=${keyword.encodeURL()}&cursor=&search_id=&search_method=input&debug_params=&from_search_id=&search_scene="
+            val searchResponse = executeRequest(searchUrl, headers = sodaHeaders()) ?: return@withContext null
+            val searchJson = JSONObject(searchResponse)
+            val resultGroups = searchJson.optJSONArray("result_groups")
+            if (resultGroups == null || resultGroups.length() == 0) return@withContext null
+
+            var firstTrack: JSONObject? = null
+            for (groupIndex in 0 until resultGroups.length()) {
+                val group = resultGroups.optJSONObject(groupIndex) ?: continue
+                val data = group.optJSONArray("data") ?: continue
+                for (itemIndex in 0 until data.length()) {
+                    val item = data.optJSONObject(itemIndex) ?: continue
+                    val meta = item.optJSONObject("meta")
+                    if (meta?.optString("item_type") != "track") continue
+                    firstTrack = item.optJSONObject("entity")?.optJSONObject("track")
+                    if (firstTrack != null) break
+                }
+                if (firstTrack != null) break
+            }
+
+            if (firstTrack == null) return@withContext null
+
+            val trackId = firstTrack.optString("id", "")
+            val matchedTitle = firstTrack.optString("name", "")
+            val artists = firstTrack.optJSONArray("artists")
+            val matchedArtist = buildString {
+                if (artists != null) {
+                    for (index in 0 until artists.length()) {
+                        val name = artists.optJSONObject(index)?.optString("name").orEmpty()
+                        if (name.isBlank()) continue
+                        if (isNotEmpty()) append("/")
+                        append(name)
+                    }
+                }
+            }
+
+            if (trackId.isBlank()) {
+                return@withContext LyricResult(
+                    api = "SodaMusic",
+                    lyrics = null,
+                    parsedLines = null,
+                    hasSyllable = false,
+                    provider = OnlineLyricProvider.SodaMusic,
+                    matchedTitle = matchedTitle,
+                    matchedArtist = matchedArtist,
+                    error = "无 track_id"
+                )
+            }
+
+            val detailResponse = postForm(
+                url = "https://api.qishui.com/luna/pc/track_v2",
+                form = linkedMapOf(
+                    "track_id" to trackId,
+                    "media_type" to "track",
+                    "queue_type" to ""
+                ),
+                headers = sodaHeaders()
+            ) ?: return@withContext null
+
+            val detailJson = JSONObject(detailResponse)
+            val lyric = detailJson.optJSONObject("lyric")
+            val lyricContent = lyric?.optString("content", "").orEmpty()
+            val lyricType = lyric?.optString("type", "").orEmpty()
+
+            if (lyricContent.isBlank()) {
+                return@withContext LyricResult(
+                    api = "SodaMusic",
+                    lyrics = null,
+                    parsedLines = null,
+                    hasSyllable = false,
+                    provider = OnlineLyricProvider.SodaMusic,
+                    matchedTitle = matchedTitle,
+                    matchedArtist = matchedArtist,
+                    error = "无歌词内容"
+                )
+            }
+
+            val parsedLines = if (lyricContent.contains("[")) parseLrcLyrics(lyricContent) else emptyList()
+            val hasSyllable = lyricType.contains("word", ignoreCase = true) || lyricType.contains("syllable", ignoreCase = true)
+            LyricResult(
+                api = "SodaMusic",
+                lyrics = lyricContent,
+                parsedLines = parsedLines,
+                hasSyllable = hasSyllable,
+                provider = OnlineLyricProvider.SodaMusic,
+                matchedTitle = matchedTitle,
+                matchedArtist = matchedArtist
+            )
+        } catch (e: Exception) {
+            AppLogger.getInstance().log("OnlineLyric", "SodaMusic API错误: ${e.message}")
+            null
+        }
+    }
+
+    private suspend fun fetchLrclibAsync(title: String, artist: String): LyricResult? = withContext(Dispatchers.IO) {
+        try {
+            val url = "https://lrclib.net/api/get?track_name=${title.encodeURL()}&artist_name=${artist.encodeURL()}"
+            val response = executeRequest(url) ?: return@withContext null
+            val json = JSONObject(response)
+
+            if (json.optBoolean("instrumental", false)) {
+                return@withContext LyricResult(
+                    api = "LRCLIB",
+                    lyrics = null,
+                    parsedLines = null,
+                    hasSyllable = false,
+                    provider = OnlineLyricProvider.Lrclib,
+                    matchedTitle = json.optString("trackName"),
+                    matchedArtist = json.optString("artistName"),
+                    error = "纯音乐"
+                )
+            }
+
+            val synced = json.optString("syncedLyrics", "")
+            val plain = json.optString("plainLyrics", "")
+            val lyricContent = synced.ifBlank { plain }
+            if (lyricContent.isBlank()) return@withContext null
+
+            val parsedLines = if (synced.isNotBlank()) parseLrcLyrics(synced) else emptyList()
+            LyricResult(
+                api = "LRCLIB",
+                lyrics = lyricContent,
+                parsedLines = parsedLines,
+                hasSyllable = false,
+                provider = OnlineLyricProvider.Lrclib,
+                matchedTitle = json.optString("trackName"),
+                matchedArtist = json.optString("artistName")
+            )
+        } catch (e: Exception) {
+            AppLogger.getInstance().log("OnlineLyric", "LRCLIB错误: ${e.message}")
+            null
+        }
+    }
     
     private suspend fun fetchNeteaseAsync(title: String, artist: String): LyricResult? = withContext(Dispatchers.IO) {
         try {
@@ -329,7 +634,7 @@ class OnlineLyricFetcher {
             }
             
             val parsedLines = parseLrcLyrics(lyricContent)
-            LyricResult("Netease", lyricContent, parsedLines, false, matchedTitle = matchedTitle, matchedArtist = matchedArtist)
+            LyricResult("Netease", lyricContent, parsedLines, false, provider = OnlineLyricProvider.Netease, matchedTitle = matchedTitle, matchedArtist = matchedArtist)
         } catch (e: Exception) {
             AppLogger.getInstance().log("OnlineLyric", "Netease API错误: ${e.message}")
             null
@@ -380,7 +685,7 @@ class OnlineLyricFetcher {
             val hasSyllable = response.contains("<") && response.contains(">") && response.contains("[") && response.length > 1 && response[1].isDigit()
             val parsedLines = if (hasSyllable) parseKrcLyrics(response) else parseLrcLyrics(response)
             
-            LyricResult("LrcApi", response, parsedLines, hasSyllable)
+            LyricResult("LrcApi", response, parsedLines, hasSyllable, provider = OnlineLyricProvider.LrcApi)
         } catch (e: Exception) {
             AppLogger.getInstance().log("OnlineLyric", "LrcApi错误: ${e.message}")
             null
@@ -391,7 +696,14 @@ class OnlineLyricFetcher {
     
     // ========== 评分选择系统 ==========
     
-    private fun selectBestResult(results: List<LyricResult>, targetTitle: String, targetArtist: String): LyricResult {
+    private fun selectBestResult(
+        attempts: List<ProviderAttempt>,
+        targetTitle: String,
+        targetArtist: String,
+        providerOrder: List<OnlineLyricProvider>
+    ): LyricResult? {
+        val providerPriority = providerOrder.withIndex().associate { it.value to it.index }
+        val results = attempts.mapNotNull { it.result }
         for (result in results) {
             var score = 0
             
@@ -407,11 +719,15 @@ class OnlineLyricFetcher {
             
             // API质量与信任分
             when (result.api) {
+                "QQMusic" -> score += if (result.parsedLines.isNullOrEmpty()) 3 else 12
                 "Kugou" -> score += if (result.hasSyllable) 10 else 5
+                "SodaMusic" -> score += if (result.parsedLines.isNullOrEmpty()) 4 else 13
+                "LRCLIB" -> score += if (result.parsedLines.isNullOrEmpty()) 2 else 12
                 // LrcApi: 基础分5 + 信任分50 = 55 (弥补无标题缺失)
                 "LrcApi" -> score += 55 
                 "Netease" -> score += 5
             }
+            score += (providerOrder.size - (providerPriority[result.provider] ?: providerOrder.size)) * 3
             
             // 标题匹配加分逻辑 (V3 优化)
             val matchedTitle = result.matchedTitle
@@ -445,10 +761,15 @@ class OnlineLyricFetcher {
             
             result.score = score
         }
-        
-        // 优先选择分数最高的
-        // 如果分数相同，优先选择有逐字信息的
-        return results.sortedWith(compareByDescending<LyricResult> { it.score }.thenByDescending { it.hasSyllable }).first()
+
+        return results
+            .filter { it.parsedLines?.isNotEmpty() == true }
+            .sortedWith(
+                compareByDescending<LyricResult> { it.score }
+                    .thenBy { providerPriority[it.provider] ?: Int.MAX_VALUE }
+                    .thenByDescending { it.hasSyllable }
+            )
+            .firstOrNull()
     }
     
     // ========== KRC解析 ==========
@@ -598,4 +919,100 @@ class OnlineLyricFetcher {
     private fun String.encodeURL(): String {
         return URLEncoder.encode(this, "UTF-8")
     }
+
+    private fun qqHeaders(referer: String): Map<String, String> = mapOf(
+        "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/63.0.3239.132 Safari/537.36",
+        "Referer" to referer,
+        "Cookie" to "os=pc;osver=Microsoft-Windows-10-Professional-build-16299.125-64bit;appver=2.0.3.131777;channel=netease;__remember_me=true"
+    )
+
+    private fun sodaHeaders(): Map<String, String> = mapOf(
+        "User-Agent" to "LunaPC/2.6.5(197449790)",
+        "Referer" to "https://api.qishui.com/"
+    )
+
+    private fun decodeBase64Text(value: String): String {
+        if (value.isBlank()) return ""
+        return try {
+            String(Base64.decode(value, Base64.DEFAULT), Charsets.UTF_8)
+        } catch (_: Exception) {
+            ""
+        }
+    }
+
+    private fun unwrapJsonp(callback: String, raw: String): String? {
+        val prefix = "$callback("
+        if (!raw.startsWith(prefix) || !raw.endsWith(")")) return null
+        return raw.removePrefix(prefix).dropLast(1)
+    }
+
+    private fun escapeJson(input: String): String {
+        return input
+            .replace("\\", "\\\\")
+            .replace("\"", "\\\"")
+            .replace("\n", "\\n")
+            .replace("\r", "\\r")
+            .replace("\t", "\\t")
+    }
+
+    private suspend fun executeRequest(
+        url: String,
+        headers: Map<String, String> = emptyMap()
+    ): String? = suspendCancellableCoroutine { continuation ->
+        val request = Request.Builder().url(url).apply {
+            headers.forEach { (key, value) -> header(key, value) }
+        }.build()
+        client.newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                continuation.resume(null)
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                continuation.resume(response.body.string())
+            }
+        })
+    }
+
+    private suspend fun postForm(
+        url: String,
+        form: Map<String, String>,
+        headers: Map<String, String> = emptyMap()
+    ): String? = suspendCancellableCoroutine { continuation ->
+        val requestBody = FormBody.Builder().apply {
+            form.forEach { (key, value) -> add(key, value) }
+        }.build()
+        val request = Request.Builder().url(url).post(requestBody).apply {
+            headers.forEach { (key, value) -> header(key, value) }
+        }.build()
+        client.newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                continuation.resume(null)
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                continuation.resume(response.body.string())
+            }
+        })
+    }
+
+    private suspend fun postJsonString(
+        url: String,
+        bodyJson: String,
+        headers: Map<String, String> = emptyMap()
+    ): String? = suspendCancellableCoroutine { continuation ->
+        val requestBody = bodyJson.toRequestBody("application/json; charset=utf-8".toMediaType())
+        val request = Request.Builder().url(url).post(requestBody).apply {
+            headers.forEach { (key, value) -> header(key, value) }
+        }.build()
+        client.newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                continuation.resume(null)
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                continuation.resume(response.body.string())
+            }
+        })
+    }
+
 }

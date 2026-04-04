@@ -4,6 +4,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Modifier
@@ -12,6 +15,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.text.withStyle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.islandlyrics.DebugLyricViewModel
+import com.example.islandlyrics.data.ParserRuleHelper
+import com.example.islandlyrics.data.lyric.OnlineLyricProvider
 import top.yukonga.miuix.kmp.basic.*
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
@@ -27,9 +32,23 @@ fun MiuixDebugLyricScreen(
     val isPlaying by viewModel.isPlaying.observeAsState(false)
     val isFetching by viewModel.isFetching.observeAsState(false)
     val apiResults by viewModel.apiResults.observeAsState(emptyList())
+    val attempts by viewModel.attempts.observeAsState(emptyList())
     val selectedResult by viewModel.selectedResult.observeAsState()
     val parsedLyrics by viewModel.parsedLyrics.observeAsState(emptyList())
     val error by viewModel.error.observeAsState()
+    val providerOrder by viewModel.providerOrder.observeAsState(OnlineLyricProvider.defaultOrder())
+    val usedCleanTitleFallback by viewModel.usedCleanTitleFallback.observeAsState(false)
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val showPrioritySection = remember(mediaInfo?.packageName) {
+        val pkg = mediaInfo?.packageName
+        pkg != null && (ParserRuleHelper.getRuleForPackage(context, pkg)?.useOnlineLyrics == true)
+    }
+
+    LaunchedEffect(mediaInfo?.packageName) {
+        if (mediaInfo?.packageName != null) {
+            viewModel.syncProviderOrderFromCurrentRule()
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -83,6 +102,37 @@ fun MiuixDebugLyricScreen(
                 }
             }
 
+            if (showPrioritySection) {
+                item { SmallTitle(text = "在线歌词优先级") }
+                item {
+                    Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Text("当前调试页会按照下列顺序进行在线歌词请求与评分。")
+                            Spacer(modifier = Modifier.height(12.dp))
+                            providerOrder.forEachIndexed { index, provider ->
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                                ) {
+                                    Text("${index + 1}. ${provider.displayName}", modifier = Modifier.weight(1f))
+                                    IconButton(onClick = { viewModel.moveProvider(provider, -1) }, enabled = index > 0) {
+                                        androidx.compose.material3.Icon(Icons.Default.KeyboardArrowUp, contentDescription = "上移")
+                                    }
+                                    IconButton(onClick = { viewModel.moveProvider(provider, 1) }, enabled = index < providerOrder.lastIndex) {
+                                        androidx.compose.material3.Icon(Icons.Default.KeyboardArrowDown, contentDescription = "下移")
+                                    }
+                                }
+                            }
+                            Button(onClick = { viewModel.resetProviderOrder() }) {
+                                androidx.compose.material3.Icon(Icons.Default.Refresh, contentDescription = null)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("恢复默认顺序")
+                            }
+                        }
+                    }
+                }
+            }
+
             item { SmallTitle(text = "获取歌词") }
             item {
                 Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
@@ -92,7 +142,7 @@ fun MiuixDebugLyricScreen(
                             enabled = !isFetching,
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            Text(if (isFetching) "获取中..." else "选择API并获取歌词")
+                            Text(if (isFetching) "获取中..." else "获取并自动选择最佳歌词")
                         }
                         
                         error?.let {
@@ -110,15 +160,34 @@ fun MiuixDebugLyricScreen(
                         )
 
                         Spacer(modifier = Modifier.height(16.dp))
-                        Text("API 结果评分", color = MiuixTheme.colorScheme.primary)
+                        Text("请求详情", color = MiuixTheme.colorScheme.primary)
                         
-                        apiResults.forEach { result ->
+                        Text("Provider 顺序: ${providerOrder.joinToString(" > ") { it.displayName }}")
+                        Text("标题清洗兜底: ${if (usedCleanTitleFallback) "已触发" else "未触发"}")
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        attempts.forEach { attempt ->
+                            val result = attempt.result
                             val isSelected = result == selectedResult
                             Text(
-                                text = "${if (isSelected) "★ " else ""}${result.api}: ${result.score}分" + 
-                                       (if (result.error != null) " (错误: ${result.error})" else ""),
+                                text = "${if (isSelected) "★ " else ""}${attempt.provider.displayName} (${attempt.durationMs}ms)",
                                 color = if (isSelected) MiuixTheme.colorScheme.primary else MiuixTheme.colorScheme.onSurface
                             )
+                            val summary = when {
+                                result == null -> "无可用结果"
+                                result.error != null -> "错误: ${result.error}"
+                                else -> "${result.api} / ${result.score}分 / ${if (result.hasSyllable) "逐字" else "LRC"}"
+                            }
+                            Text(summary, color = MiuixTheme.colorScheme.onSurfaceSecondary)
+                            if (result?.lyrics != null && result.error == null) {
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    result.lyrics,
+                                    color = MiuixTheme.colorScheme.onSurface,
+                                    fontSize = MiuixTheme.textStyles.body2.fontSize
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(6.dp))
                         }
                     }
                 }

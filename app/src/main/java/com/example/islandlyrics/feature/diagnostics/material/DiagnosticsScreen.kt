@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import com.example.islandlyrics.R
 import com.example.islandlyrics.core.platform.RomUtils
 import com.example.islandlyrics.feature.logviewer.LogViewerActivity
+import com.example.islandlyrics.feature.onlinelyricdebug.OnlineLyricDebugActivity
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -65,6 +66,15 @@ fun DiagnosticsScreen(onBack: () -> Unit) {
                 title = stringResource(R.string.menu_log),
                 icon = Icons.Default.Terminal
             ) {
+                Button(
+                    onClick = {
+                        context.startActivity(android.content.Intent(context, OnlineLyricDebugActivity::class.java))
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("在线歌词调试")
+                }
+                Spacer(modifier = Modifier.height(8.dp))
                 Button(
                     onClick = { LogViewerActivity.start(context) },
                     modifier = Modifier.fillMaxWidth()

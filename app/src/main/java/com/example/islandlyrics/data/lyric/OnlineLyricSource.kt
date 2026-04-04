@@ -31,6 +31,23 @@ class OnlineLyricSource(private val context: Context) {
     // Track the last request so we can discard stale results
     private var pendingTitle  = ""
     private var pendingArtist = ""
+    private var pendingPackageName = ""
+
+    private fun resolveQuery(
+        packageName: String,
+        fallbackTitle: String,
+        fallbackArtist: String
+    ): Pair<String, String> {
+        val rule = ParserRuleHelper.getRuleForPackage(context, packageName)
+            ?: ParserRuleHelper.createDefaultRule(packageName)
+        val liveMetadata = LyricRepository.getInstance().liveMetadata.value
+        val metadata = if (liveMetadata?.packageName == packageName) liveMetadata else null
+        return if (rule.useRawMetadataForOnlineMatching && metadata != null) {
+            (metadata.rawTitle.ifBlank { fallbackTitle }) to (metadata.rawArtist.ifBlank { fallbackArtist })
+        } else {
+            fallbackTitle to fallbackArtist
+        }
+    }
 
     /**
      * Triggers an online lyric fetch for the given track.
@@ -45,25 +62,34 @@ class OnlineLyricSource(private val context: Context) {
             return
         }
 
-        if (title.isBlank() || artist.isBlank()) {
+        val (queryTitle, queryArtist) = resolveQuery(packageName, title, artist)
+
+        if (queryTitle.isBlank() || queryArtist.isBlank()) {
             AppLogger.getInstance().log(TAG, "Missing title/artist — cannot fetch")
             return
         }
 
         // Cancel any in-flight request (e.g. rapid song skips)
         fetchJob?.cancel()
-        pendingTitle  = title
-        pendingArtist = artist
+        pendingTitle  = queryTitle
+        pendingArtist = queryArtist
+        pendingPackageName = packageName
 
-        AppLogger.getInstance().i(TAG, "🚀 Online fetch: $title - $artist [$packageName]")
+        AppLogger.getInstance().i(TAG, "🚀 Online fetch: $queryTitle - $queryArtist [$packageName]")
 
         fetchJob = scope.launch {
             try {
-                val result = fetcher.fetchBestLyrics(title, artist)
+                val outcome = fetcher.fetchLyrics(queryTitle, queryArtist, rule.onlineLyricProviderOrder)
+                val result = outcome.bestResult
 
                 // Staleness check: ensure the song hasn't changed while we were fetching
                 val current = LyricRepository.getInstance().liveMetadata.value
-                if (current?.title != pendingTitle || current.artist != pendingArtist) {
+                val currentQuery = if (current?.packageName == pendingPackageName) {
+                    resolveQuery(current.packageName, current.title, current.artist)
+                } else {
+                    null
+                }
+                if (currentQuery?.first != pendingTitle || currentQuery.second != pendingArtist) {
                     AppLogger.getInstance().i(TAG,
                         "⚠️ Stale fetch discarded (song changed). Expected: $pendingTitle")
                     return@launch
@@ -74,9 +100,14 @@ class OnlineLyricSource(private val context: Context) {
                     result.parsedLines.isNotEmpty())
                 {
                     AppLogger.getInstance().i(TAG,
-                        "✅ Online fetch OK [${result.api}] syllable=${result.hasSyllable}")
+                        "✅ Online fetch OK [${result.api}] syllable=${result.hasSyllable} fallback=${outcome.usedCleanTitleFallback}")
                     LyricRepository.getInstance()
-                        .updateParsedLyrics(result.parsedLines, result.hasSyllable)
+                        .updateParsedLyrics(
+                            lines = result.parsedLines,
+                            hasSyllable = result.hasSyllable,
+                            sourceLabel = result.api,
+                            apiPath = "Online API"
+                        )
                 } else {
                     AppLogger.getInstance().i(TAG, "Online fetch: no usable result")
                 }
