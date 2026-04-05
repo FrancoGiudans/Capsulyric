@@ -31,6 +31,7 @@ class SettingsActivity : BaseActivity() {
         // Retrieve version info
         var version = "Unknown"
         var build = "Unknown"
+        val codename = BuildConfig.VERSION_CODENAME
         try {
             val pInfo = packageManager.getPackageInfo(packageName, 0)
             version = pInfo.versionName ?: "Unknown"
@@ -46,6 +47,7 @@ class SettingsActivity : BaseActivity() {
                         onCheckUpdate = { performUpdateCheck() },
                         onShowDiagnostics = { showDiagnostics() },
                         updateVersionText = version,
+                        updateCodenameText = codename,
                         updateBuildText = build,
                         onOpenCustomSettings = {
                             startActivity(android.content.Intent(this@SettingsActivity, CustomSettingsActivity::class.java))
@@ -64,6 +66,7 @@ class SettingsActivity : BaseActivity() {
                         onCheckUpdate = { performUpdateCheck() },
                         onShowDiagnostics = { showDiagnostics() },
                         updateVersionText = version,
+                        updateCodenameText = codename,
                         updateBuildText = build,
                         onOpenCustomSettings = {
                             startActivity(android.content.Intent(this@SettingsActivity, CustomSettingsActivity::class.java))

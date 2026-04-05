@@ -54,6 +54,7 @@ fun SettingsScreen(
     onCheckUpdate: () -> Unit,
     onShowDiagnostics: () -> Unit,
     updateVersionText: String,
+    updateCodenameText: String,
     updateBuildText: String,
     onOpenCustomSettings: () -> Unit = {},
     showBackButton: Boolean = true,
@@ -450,10 +451,15 @@ fun SettingsScreen(
                     value = updateVersionText,
                     onClick = {
                         val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                        val copyText = "$updateVersionText ($updateBuildText)"
+                        val copyText = "$updateVersionText [$updateCodenameText] ($updateBuildText)"
                         cm.setPrimaryClip(ClipData.newPlainText("Version", copyText))
                         Toast.makeText(context, context.getString(R.string.toast_copied), Toast.LENGTH_SHORT).show()
                     }
+                )
+
+                SettingsValueItem(
+                    title = stringResource(R.string.about_codename),
+                    value = updateCodenameText
                 )
 
                 // Build Number (Dev Trigger)

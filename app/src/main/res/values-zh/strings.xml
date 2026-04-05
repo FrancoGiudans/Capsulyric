@@ -157,6 +157,7 @@
     <!-- 关于 & 更新检测 -->
     <string name="about_title">关于</string>
     <string name="about_version">版本号</string>
+    <string name="about_codename">开发代号</string>
     <string name="about_build">内部版本号</string>
     <string name="about_commit">内部开发号</string>
     <string name="update_check_title">检查更新</string>

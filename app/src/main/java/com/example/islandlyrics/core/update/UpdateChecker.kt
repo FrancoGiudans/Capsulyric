@@ -298,6 +298,10 @@ object UpdateChecker {
         return 0
     }
 
+    private fun isCanaryTag(tag: String): Boolean {
+        return tag.startsWith("Canary.Version") || tag.contains(".Canary")
+    }
+
     private fun isUpdateAllowedForChannel(release: ReleaseInfo, userChannel: String): Boolean {
         // Rule 1: Everyone receives stable releases
         if (!release.prerelease) return true
@@ -309,12 +313,11 @@ object UpdateChecker {
         
         // Rule 3: Canary channel ONLY receives Canary updates
         if (userChannel == "Canary") {
-            return tag.startsWith("Canary.Version")
+            return isCanaryTag(tag)
         }
 
         // Rule 4: Tagged prerelease channels (Alpha, Beta, Pre) never receive Canary
-        val isCanary = tag.startsWith("Canary.Version") || (tag.contains("_C") && !tag.contains(".Alpha") && !tag.contains(".Beta") && !tag.contains(".Pre"))
-        if (isCanary) return false
+        if (isCanaryTag(tag)) return false
 
         // Rule 5: Traditional pre-release hierarchy
         val isAlpha = tag.contains(".Alpha")

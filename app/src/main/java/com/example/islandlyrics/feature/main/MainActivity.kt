@@ -292,6 +292,7 @@ class MainActivity : BaseActivity() {
                         onCheckUpdate = { performUpdateCheckFromMain() },
                         onShowDiagnostics = { showDiagnosticsFromMain() },
                         updateVersionText = getVersionNameForUi(),
+                        updateCodenameText = BuildConfig.VERSION_CODENAME,
                         updateBuildText = BuildConfig.GIT_COMMIT_HASH,
                         onOpenCustomSettings = {
                             startActivity(Intent(this@MainActivity, CustomSettingsActivity::class.java))
@@ -359,6 +360,7 @@ class MainActivity : BaseActivity() {
                                 onCheckUpdate = { performUpdateCheckFromMain() },
                                 onShowDiagnostics = { showDiagnosticsFromMain() },
                                 updateVersionText = getVersionNameForUi(),
+                                updateCodenameText = BuildConfig.VERSION_CODENAME,
                                 updateBuildText = BuildConfig.GIT_COMMIT_HASH,
                                 onOpenCustomSettings = {
                                     startActivity(Intent(this@MainActivity, CustomSettingsActivity::class.java))

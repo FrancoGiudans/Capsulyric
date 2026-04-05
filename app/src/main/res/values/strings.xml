@@ -162,6 +162,7 @@
     <!-- About & Update Checker -->
     <string name="about_title">About</string>
     <string name="about_version">Version</string>
+    <string name="about_codename">Codename</string>
     <string name="about_build">Build</string>
     <string name="about_commit">Commit</string>
     <string name="update_check_title">Check for Updates</string>

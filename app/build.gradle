@@ -1,3 +1,7 @@
+import java.time.ZoneId
+import java.time.ZonedDateTime
+import java.time.format.DateTimeFormatter
+
 plugins {
     id 'com.android.application'
     alias(libs.plugins.kotlin.compose)
@@ -17,6 +21,24 @@ static def getGitCommitCount() {
     } catch (Exception ignored) {
         return 1
     }
+}
+
+static def getBuildMetadata(project, propertyName, envName, fallbackValue) {
+    def value = project.findProperty(propertyName)
+    if (value == null || value.toString().trim().isEmpty()) {
+        value = System.getenv(envName)
+    }
+    value = value?.toString()?.trim()
+    return value ? value : fallbackValue
+}
+
+static def getDefaultVersionPrefix() {
+    def now = ZonedDateTime.now(ZoneId.of("Asia/Shanghai"))
+    return now.format(DateTimeFormatter.ofPattern("'Version.'yy.M"))
+}
+
+static def escapeForBuildConfig(String value) {
+    return value.replace("\\", "\\\\").replace("\"", "\\\"")
 }
 
 def localProperties = new Properties()
@@ -53,10 +75,13 @@ android {
         minSdk = 35
         targetSdk = 36
 
-        def baseVersion = project.hasProperty("versionName") ? project.versionName : "Canary.Version"
+        def versionPrefix = getBuildMetadata(project, "versionPrefix", "APP_VERSION_PREFIX", getDefaultVersionPrefix())
+        def baseVersion = getBuildMetadata(project, "versionName", "APP_VERSION_NAME", "${versionPrefix}.Canary")
+        def appCodename = getBuildMetadata(project, "appCodename", "APP_CODENAME", "Unassigned")
         versionName = "${baseVersion}_C${getGitCommitCount()}"
 
         buildConfigField "String", "GIT_COMMIT_HASH", "\"${getGitCommitHash()}\""
+        buildConfigField "String", "VERSION_CODENAME", "\"${escapeForBuildConfig(appCodename)}\""
         buildConfigField "boolean", "LIVE_UPDATE_ENABLED", "true"
 
         // Strip unused localized resources to reduce APK size

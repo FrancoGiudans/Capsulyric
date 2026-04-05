@@ -54,6 +54,7 @@ fun MiuixSettingsScreen(
     onCheckUpdate: () -> Unit,
     onShowDiagnostics: () -> Unit,
     updateVersionText: String,
+    updateCodenameText: String,
     updateBuildText: String,
     onOpenCustomSettings: () -> Unit = {},
     showBackButton: Boolean = true,
@@ -421,10 +422,15 @@ fun MiuixSettingsScreen(
                         summary = updateVersionText,
                         onClick = {
                             val cm = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as ClipboardManager
-                            val copyText = "$updateVersionText ($updateBuildText)"
+                            val copyText = "$updateVersionText [$updateCodenameText] ($updateBuildText)"
                             cm.setPrimaryClip(ClipData.newPlainText("Version", copyText))
                             Toast.makeText(context, context.getString(R.string.toast_copied), Toast.LENGTH_SHORT).show()
                         }
+                    )
+
+                    BasicComponent(
+                        title = stringResource(R.string.about_codename),
+                        summary = updateCodenameText
                     )
 
                     // Build Number (Dev Trigger)
