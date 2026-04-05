@@ -9,17 +9,21 @@ import com.example.islandlyrics.core.update.UpdateChecker
 import com.example.islandlyrics.core.logging.AppLogger
 import com.example.islandlyrics.service.MediaMonitorService
 import com.example.islandlyrics.feature.customsettings.CustomSettingsActivity
-import com.example.islandlyrics.feature.parserrule.ParserRuleActivity
-import com.example.islandlyrics.feature.settings.SettingsActivity
-import com.example.islandlyrics.feature.update.miuix.MiuixUpdateDialog
+import com.example.islandlyrics.feature.navigation.MaterialTopLevelNavigationBar
+import com.example.islandlyrics.feature.navigation.MiuixTopLevelFloatingNavigationBar
+import com.example.islandlyrics.feature.navigation.TopLevelDestination
 import com.example.islandlyrics.feature.main.miuix.MiuixMainScreen
+import com.example.islandlyrics.feature.parserrule.material.ParserRuleScreen
+import com.example.islandlyrics.feature.settings.material.SettingsScreen
 import com.example.islandlyrics.ui.miuix.MiuixAppTheme
+import com.example.islandlyrics.ui.miuix.LocalMiuixBlurBackdrop
+import com.example.islandlyrics.ui.miuix.LocalMiuixBlurEnabled
 import com.example.islandlyrics.feature.update.material.UpdateDialog
 import com.example.islandlyrics.feature.main.material.MainScreen
 import com.example.islandlyrics.ui.theme.material.AppTheme
 import android.content.Context
 import android.content.Intent
-import android.content.IntentFilter
+import android.content.SharedPreferences
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.os.Build
@@ -29,11 +33,33 @@ import android.os.Looper
 import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.compose.setContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.material3.Scaffold
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
+import top.yukonga.miuix.kmp.blur.layerBackdrop
+import top.yukonga.miuix.kmp.blur.rememberLayerBackdrop
 
 class MainActivity : BaseActivity() {
 
@@ -78,67 +104,10 @@ class MainActivity : BaseActivity() {
         setContent {
             if (useMiuix) {
                 MiuixAppTheme {
-                        MiuixMainScreen(
-                            versionText = versionText,
-                            isDebugBuild = BuildConfig.DEBUG,
-                            onOpenSettings = { startActivity(Intent(this@MainActivity, SettingsActivity::class.java)) },
-                            onOpenPersonalization = { startActivity(Intent(this@MainActivity, CustomSettingsActivity::class.java)) },
-                            onOpenWhitelist = { startActivity(Intent(this@MainActivity, ParserRuleActivity::class.java)) },
-                            onOpenDebug = {
-                                try {
-                                    val clazz = Class.forName("com.example.islandlyrics.DebugCenterActivity")
-                                    startActivity(Intent(this@MainActivity, clazz))
-                                } catch (e: Exception) {
-                                    Toast.makeText(this@MainActivity, "Debug Activity not found", Toast.LENGTH_SHORT).show()
-                                }
-                            },
-                            onOpenPromotedSettings = { openPromotedSettings() },
-                            onStatusCardTap = {
-                                MediaMonitorService.requestRebind(this@MainActivity)
-                                Toast.makeText(this@MainActivity, "Requesting Rebind...", Toast.LENGTH_SHORT).show()
-                            },
-                            updateReleaseInfo = updateReleaseInfo,
-                            onUpdateDismiss = { updateReleaseInfo = null },
-                            onUpdateIgnore = { tag ->
-                                UpdateChecker.setIgnoredVersion(this@MainActivity, tag)
-                                AppLogger.getInstance().log("Update", "Ignored version: $tag")
-                            }
-                        )
+                    MiuixTopLevelPager()
                 }
             } else {
-                AppTheme {
-                    MainScreen(
-                        versionText = versionText,
-                        isDebugBuild = BuildConfig.DEBUG,
-                        onOpenSettings = { startActivity(Intent(this@MainActivity, SettingsActivity::class.java)) },
-                        onOpenPersonalization = { startActivity(Intent(this@MainActivity, CustomSettingsActivity::class.java)) },
-                        onOpenWhitelist = { startActivity(Intent(this@MainActivity, ParserRuleActivity::class.java)) },
-                        onOpenDebug = {
-                            try {
-                                val clazz = Class.forName("com.example.islandlyrics.DebugCenterActivity")
-                                startActivity(Intent(this@MainActivity, clazz))
-                            } catch (e: Exception) {
-                                Toast.makeText(this@MainActivity, "Debug Activity not found", Toast.LENGTH_SHORT).show()
-                            }
-                        },
-                        onOpenPromotedSettings = { openPromotedSettings() },
-                        onStatusCardTap = {
-                            MediaMonitorService.requestRebind(this@MainActivity)
-                            Toast.makeText(this@MainActivity, "Requesting Rebind...", Toast.LENGTH_SHORT).show()
-                        }
-                    )
-                    
-                    if (updateReleaseInfo != null) {
-                        UpdateDialog(
-                            releaseInfo = updateReleaseInfo!!,
-                            onDismiss = { updateReleaseInfo = null },
-                            onIgnore = { tag ->
-                                UpdateChecker.setIgnoredVersion(this@MainActivity, tag)
-                                AppLogger.getInstance().log("Update", "Ignored version: $tag")
-                            }
-                        )
-                    }
-                }
+                MaterialThemeHost()
             }
         }
 
@@ -232,5 +201,236 @@ class MainActivity : BaseActivity() {
         private const val TAG = "IslandLyrics"
         private const val PREFS_NAME = "IslandLyricsPrefs"
         private var hasCheckedForUpdates = false
+    }
+
+    @Composable
+    private fun MaterialThemeHost() {
+        val prefs = remember { getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE) }
+        var followSystem by remember { mutableStateOf(prefs.getBoolean("theme_follow_system", true)) }
+        var darkMode by remember { mutableStateOf(prefs.getBoolean("theme_dark_mode", false)) }
+        var pureBlack by remember { mutableStateOf(prefs.getBoolean("theme_pure_black", false)) }
+        var dynamicColor by remember { mutableStateOf(prefs.getBoolean("theme_dynamic_color", true)) }
+
+        DisposableEffect(prefs) {
+            val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+                when (key) {
+                    "theme_follow_system" -> followSystem = prefs.getBoolean("theme_follow_system", true)
+                    "theme_dark_mode" -> darkMode = prefs.getBoolean("theme_dark_mode", false)
+                    "theme_pure_black" -> pureBlack = prefs.getBoolean("theme_pure_black", false)
+                    "theme_dynamic_color" -> dynamicColor = prefs.getBoolean("theme_dynamic_color", true)
+                }
+            }
+            prefs.registerOnSharedPreferenceChangeListener(listener)
+            onDispose { prefs.unregisterOnSharedPreferenceChangeListener(listener) }
+        }
+
+        val isSystemDark = androidx.compose.foundation.isSystemInDarkTheme()
+        val useDarkTheme = if (followSystem) isSystemDark else darkMode
+
+        AppTheme(
+            darkTheme = useDarkTheme,
+            dynamicColor = dynamicColor,
+            pureBlack = pureBlack && useDarkTheme
+        ) {
+            MaterialTopLevelPager()
+
+            if (updateReleaseInfo != null) {
+                UpdateDialog(
+                    releaseInfo = updateReleaseInfo!!,
+                    onDismiss = { updateReleaseInfo = null },
+                    onIgnore = { tag ->
+                        UpdateChecker.setIgnoredVersion(this@MainActivity, tag)
+                        AppLogger.getInstance().log("Update", "Ignored version: $tag")
+                    }
+                )
+            }
+        }
+    }
+
+    @Composable
+    private fun MaterialTopLevelPager() {
+        val pagerState = rememberPagerState(pageCount = { TopLevelDestination.entries.size })
+        val scope = rememberCoroutineScope()
+
+        Scaffold(
+            contentWindowInsets = WindowInsets(0, 0, 0, 0),
+            bottomBar = {
+                MaterialTopLevelNavigationBar(
+                    currentDestination = TopLevelDestination.entries[pagerState.currentPage],
+                    onNavigate = { destination ->
+                        scope.launch { pagerState.animateScrollToPage(TopLevelDestination.entries.indexOf(destination)) }
+                    }
+                )
+            }
+        ) { paddingValues ->
+            HorizontalPager(
+                state = pagerState,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+            ) { page ->
+                when (TopLevelDestination.entries[page]) {
+                    TopLevelDestination.HOME -> MainScreen(
+                        versionText = versionText,
+                        isDebugBuild = BuildConfig.DEBUG,
+                        onOpenSettings = {},
+                        onOpenPersonalization = { startActivity(Intent(this@MainActivity, CustomSettingsActivity::class.java)) },
+                        onOpenWhitelist = {},
+                        onOpenDebug = { openDebugCenter() },
+                        onOpenPromotedSettings = { openPromotedSettings() },
+                        onStatusCardTap = {
+                            MediaMonitorService.requestRebind(this@MainActivity)
+                            Toast.makeText(this@MainActivity, "Requesting Rebind...", Toast.LENGTH_SHORT).show()
+                        }
+                    )
+
+                    TopLevelDestination.PARSER_RULES -> ParserRuleScreen(
+                        showBackButton = false
+                    )
+
+                    TopLevelDestination.SETTINGS -> SettingsScreen(
+                        onCheckUpdate = { performUpdateCheckFromMain() },
+                        onShowDiagnostics = { showDiagnosticsFromMain() },
+                        updateVersionText = getVersionNameForUi(),
+                        updateBuildText = BuildConfig.GIT_COMMIT_HASH,
+                        onOpenCustomSettings = {
+                            startActivity(Intent(this@MainActivity, CustomSettingsActivity::class.java))
+                        },
+                        showBackButton = false
+                    )
+                }
+            }
+        }
+    }
+
+    @Composable
+    private fun MiuixTopLevelPager() {
+        val pagerState = rememberPagerState(pageCount = { TopLevelDestination.entries.size })
+        val scope = rememberCoroutineScope()
+        var bottomBarVisible by androidx.compose.runtime.remember { mutableStateOf(true) }
+        val backdrop = rememberLayerBackdrop()
+
+        androidx.compose.runtime.LaunchedEffect(pagerState.currentPage) {
+            bottomBarVisible = true
+        }
+
+        CompositionLocalProvider(
+            LocalMiuixBlurBackdrop provides backdrop,
+            LocalMiuixBlurEnabled provides true
+        ) {
+            Box(modifier = Modifier.fillMaxSize()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .layerBackdrop(backdrop)
+                ) {
+                    HorizontalPager(
+                        state = pagerState,
+                        modifier = Modifier.fillMaxSize()
+                    ) { page ->
+                        when (TopLevelDestination.entries[page]) {
+                            TopLevelDestination.HOME -> MiuixMainScreen(
+                                versionText = versionText,
+                                isDebugBuild = BuildConfig.DEBUG,
+                                onOpenSettings = {},
+                                onOpenPersonalization = { startActivity(Intent(this@MainActivity, CustomSettingsActivity::class.java)) },
+                                onOpenWhitelist = {},
+                                onOpenDebug = { openDebugCenter() },
+                                onOpenPromotedSettings = { openPromotedSettings() },
+                                onStatusCardTap = {
+                                    MediaMonitorService.requestRebind(this@MainActivity)
+                                    Toast.makeText(this@MainActivity, "Requesting Rebind...", Toast.LENGTH_SHORT).show()
+                                },
+                                onBottomBarVisibilityChange = { bottomBarVisible = it },
+                                updateReleaseInfo = updateReleaseInfo,
+                                onUpdateDismiss = { updateReleaseInfo = null },
+                                onUpdateIgnore = { tag ->
+                                    UpdateChecker.setIgnoredVersion(this@MainActivity, tag)
+                                    AppLogger.getInstance().log("Update", "Ignored version: $tag")
+                                }
+                            )
+
+                            TopLevelDestination.PARSER_RULES -> com.example.islandlyrics.feature.parserrule.miuix.MiuixParserRuleScreen(
+                                showBackButton = false,
+                                onBottomBarVisibilityChange = { bottomBarVisible = it }
+                            )
+
+                            TopLevelDestination.SETTINGS -> com.example.islandlyrics.feature.settings.miuix.MiuixSettingsScreen(
+                                onCheckUpdate = { performUpdateCheckFromMain() },
+                                onShowDiagnostics = { showDiagnosticsFromMain() },
+                                updateVersionText = getVersionNameForUi(),
+                                updateBuildText = BuildConfig.GIT_COMMIT_HASH,
+                                onOpenCustomSettings = {
+                                    startActivity(Intent(this@MainActivity, CustomSettingsActivity::class.java))
+                                },
+                                showBackButton = false,
+                                onBottomBarVisibilityChange = { bottomBarVisible = it },
+                                updateReleaseInfo = updateReleaseInfo,
+                                onUpdateDismiss = { updateReleaseInfo = null },
+                                onUpdateIgnore = { tag ->
+                                    UpdateChecker.setIgnoredVersion(this@MainActivity, tag)
+                                    AppLogger.getInstance().log("Update", "Ignored version: $tag")
+                                }
+                            )
+                        }
+                    }
+                }
+
+                AnimatedVisibility(
+                    visible = bottomBarVisible,
+                    enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
+                    exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(horizontal = 8.dp)
+                ) {
+                    MiuixTopLevelFloatingNavigationBar(
+                        currentDestination = TopLevelDestination.entries[pagerState.currentPage],
+                        onNavigate = { destination ->
+                            scope.launch { pagerState.animateScrollToPage(TopLevelDestination.entries.indexOf(destination)) }
+                        }
+                    )
+                }
+            }
+        }
+    }
+
+    private fun openDebugCenter() {
+        try {
+            val clazz = Class.forName("com.example.islandlyrics.DebugCenterActivity")
+            startActivity(Intent(this@MainActivity, clazz))
+        } catch (e: Exception) {
+            Toast.makeText(this@MainActivity, "Debug Activity not found", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun getVersionNameForUi(): String {
+        return try {
+            packageManager.getPackageInfo(packageName, 0).versionName ?: "Unknown"
+        } catch (_: Exception) {
+            "Unknown"
+        }
+    }
+
+    private fun performUpdateCheckFromMain() {
+        Toast.makeText(this, "Checking for updates...", Toast.LENGTH_SHORT).show()
+        lifecycleScope.launch {
+            try {
+                val release = UpdateChecker.checkForUpdate(this@MainActivity)
+                if (release != null) {
+                    updateReleaseInfo = release
+                    AppLogger.getInstance().log("MainActivity", "Update found from settings page: ${release.tagName}")
+                } else {
+                    Toast.makeText(this@MainActivity, R.string.update_no_update, Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                Toast.makeText(this@MainActivity, R.string.update_check_failed, Toast.LENGTH_SHORT).show()
+                AppLogger.getInstance().log("MainActivity", "Settings-page update check failed: ${e.message}")
+            }
+        }
+    }
+
+    private fun showDiagnosticsFromMain() {
+        startActivity(Intent(this, com.example.islandlyrics.feature.diagnostics.DiagnosticsActivity::class.java))
     }
 }

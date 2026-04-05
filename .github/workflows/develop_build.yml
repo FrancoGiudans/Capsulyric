@@ -54,7 +54,7 @@ jobs:
           distribution: 'temurin'
 
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@v6
         with:
           cache-read-only: false
 
@@ -91,7 +91,7 @@ jobs:
 
 
       - name: Upload Standard Signed Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: Capsulyric-Standard-Prerelease-Signed
           path: |

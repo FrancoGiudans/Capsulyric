@@ -1,6 +1,5 @@
 package com.example.islandlyrics.ui.miuix
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -14,9 +13,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import top.yukonga.miuix.kmp.basic.Text
-import top.yukonga.miuix.kmp.blur.BlendColorEntry
-import top.yukonga.miuix.kmp.blur.BlurColors
-import top.yukonga.miuix.kmp.blur.textureBlur
 import top.yukonga.miuix.kmp.overlay.OverlayDialog
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
@@ -56,24 +52,11 @@ fun MiuixBlurDialog(
     ) {
         val panelModifier = Modifier
             .fillMaxWidth()
-            .then(
-                if (blurEnabled && backdrop != null) {
-                    Modifier.textureBlur(
-                        backdrop = backdrop,
-                        shape = BlurDialogShape,
-                        blurRadius = 52f,
-                        colors = BlurColors(
-                            blendColors = listOf(
-                                BlendColorEntry(panelColor),
-                                BlendColorEntry(MiuixTheme.colorScheme.surfaceVariant.copy(alpha = 0.22f))
-                            ),
-                            contrast = 1.04f,
-                            saturation = 1.08f
-                        )
-                    )
-                } else {
-                    Modifier.background(panelColor, BlurDialogShape)
-                }
+            .miuixSurfaceBlur(
+                enabled = blurEnabled,
+                backdrop = backdrop,
+                shape = BlurDialogShape,
+                fallbackColor = panelColor
             )
             .padding(horizontal = 24.dp, vertical = 22.dp)
 

@@ -15,6 +15,7 @@ import java.util.zip.Inflater
 import javax.net.ssl.HostnameVerifier
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
+import kotlin.text.RegexOption.DOT_MATCHES_ALL
 
 /**
  * 在线歌词获取器
@@ -513,8 +514,10 @@ class OnlineLyricFetcher {
                 )
             }
 
-            val parsedLines = if (lyricContent.contains("[")) parseLrcLyrics(lyricContent) else emptyList()
-            val hasSyllable = lyricType.contains("word", ignoreCase = true) || lyricType.contains("syllable", ignoreCase = true)
+            val hasSyllable = lyricType.contains("word", ignoreCase = true) ||
+                lyricType.contains("syllable", ignoreCase = true) ||
+                lyricContent.trimStart().startsWith("<tt")
+            val parsedLines = parseSodaLyrics(lyricContent, lyricType)
             LyricResult(
                 api = "SodaMusic",
                 lyrics = lyricContent,
@@ -706,7 +709,7 @@ class OnlineLyricFetcher {
         useSmartSelection: Boolean
     ): LyricResult? {
         val usableResults = attempts.mapNotNull { it.result }
-            .filter { it.parsedLines?.isNotEmpty() == true }
+            .filter { isUsableResult(it) }
 
         if (!useSmartSelection) {
             val firstByPriority = providerOrder.firstNotNullOfOrNull { provider ->
@@ -777,13 +780,17 @@ class OnlineLyricFetcher {
         }
 
         return results
-            .filter { it.parsedLines?.isNotEmpty() == true }
+            .filter { isUsableResult(it) }
             .sortedWith(
                 compareByDescending<LyricResult> { it.score }
                     .thenBy { providerPriority[it.provider] ?: Int.MAX_VALUE }
                     .thenByDescending { it.hasSyllable }
             )
             .firstOrNull()
+    }
+
+    private fun isUsableResult(result: LyricResult): Boolean {
+        return !result.lyrics.isNullOrBlank() && !result.parsedLines.isNullOrEmpty()
     }
     
     // ========== KRC解析 ==========
@@ -884,6 +891,94 @@ class OnlineLyricFetcher {
         }
         
         return lines
+    }
+
+    private fun parseSodaLyrics(lyricContent: String, lyricType: String): List<LyricLine> {
+        val trimmed = lyricContent.trimStart()
+        return when {
+            trimmed.startsWith("<tt") -> parseTtmlLyrics(lyricContent)
+            lyricContent.contains("[") -> parseLrcLyrics(lyricContent)
+            lyricType.contains("lrc", ignoreCase = true) -> parseLrcLyrics(lyricContent)
+            else -> emptyList()
+        }
+    }
+
+    private fun parseTtmlLyrics(ttmlContent: String): List<LyricLine> {
+        val lines = mutableListOf<LyricLine>()
+        val lineRegex = Regex("<p\\b([^>]*)>(.*?)</p>", DOT_MATCHES_ALL)
+        val spanRegex = Regex("<span\\b([^>]*)>(.*?)</span>", DOT_MATCHES_ALL)
+
+        for (lineMatch in lineRegex.findAll(ttmlContent)) {
+            val lineAttributes = parseXmlAttributes(lineMatch.groupValues[1])
+            val lineBody = lineMatch.groupValues[2]
+            val lineStart = parseFlexibleTimeToMs(lineAttributes["begin"]) ?: continue
+            val lineEnd = parseFlexibleTimeToMs(lineAttributes["end"])
+
+            val syllables = mutableListOf<SyllableInfo>()
+            for (spanMatch in spanRegex.findAll(lineBody)) {
+                val spanAttributes = parseXmlAttributes(spanMatch.groupValues[1])
+                val start = parseFlexibleTimeToMs(spanAttributes["begin"]) ?: continue
+                val end = parseFlexibleTimeToMs(spanAttributes["end"]) ?: continue
+                val text = decodeXmlText(stripXmlTags(spanMatch.groupValues[2])).trim()
+                if (text.isBlank()) continue
+                syllables.add(SyllableInfo(start, end, text))
+            }
+
+            val text = decodeXmlText(stripXmlTags(lineBody))
+                .replace(Regex("\\s+"), " ")
+                .trim()
+            if (text.isBlank()) continue
+
+            lines.add(
+                LyricLine(
+                    startTime = lineStart,
+                    endTime = lineEnd ?: syllables.lastOrNull()?.endTime ?: (lineStart + 5000),
+                    text = text,
+                    syllables = syllables.ifEmpty { null }
+                )
+            )
+        }
+
+        return lines.sortedBy { it.startTime }
+    }
+
+    private fun parseXmlAttributes(raw: String): Map<String, String> {
+        val attributes = mutableMapOf<String, String>()
+        val attrRegex = Regex("""([A-Za-z_:][A-Za-z0-9_:\-.]*)="([^"]*)"""")
+        for (match in attrRegex.findAll(raw)) {
+            attributes[match.groupValues[1]] = match.groupValues[2]
+        }
+        return attributes
+    }
+
+    private fun stripXmlTags(text: String): String {
+        return text.replace(Regex("<[^>]+>"), " ")
+    }
+
+    private fun decodeXmlText(text: String): String {
+        return text
+            .replace("&lt;", "<")
+            .replace("&gt;", ">")
+            .replace("&amp;", "&")
+            .replace("&quot;", "\"")
+            .replace("&apos;", "'")
+            .replace("&#39;", "'")
+    }
+
+    private fun parseFlexibleTimeToMs(raw: String?): Long? {
+        if (raw.isNullOrBlank()) return null
+        val normalized = raw.trim().removeSuffix("s")
+        val parts = normalized.split(":")
+        return try {
+            when (parts.size) {
+                1 -> (parts[0].toDouble() * 1000).toLong()
+                2 -> ((parts[0].toLong() * 60_000) + (parts[1].toDouble() * 1000)).toLong()
+                3 -> ((parts[0].toLong() * 3_600_000) + (parts[1].toLong() * 60_000) + (parts[2].toDouble() * 1000)).toLong()
+                else -> null
+            }
+        } catch (_: NumberFormatException) {
+            null
+        }
     }
     
     // ========== 酷狗解密 ==========

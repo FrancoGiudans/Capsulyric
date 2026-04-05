@@ -18,8 +18,10 @@ import com.example.islandlyrics.data.LyricRepository
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Palette
 import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -44,6 +46,8 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.MiuixPopupUtils.Companion.MiuixPopupHost
 import com.example.islandlyrics.feature.update.miuix.MiuixUpdateDialog
 import com.example.islandlyrics.ui.miuix.*
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 
 @Composable
 fun MiuixSettingsScreen(
@@ -51,6 +55,10 @@ fun MiuixSettingsScreen(
     onShowDiagnostics: () -> Unit,
     updateVersionText: String,
     updateBuildText: String,
+    onOpenCustomSettings: () -> Unit = {},
+    showBackButton: Boolean = true,
+    bottomBar: @Composable () -> Unit = {},
+    onBottomBarVisibilityChange: (Boolean) -> Unit = {},
     updateReleaseInfo: UpdateChecker.ReleaseInfo? = null,
     onUpdateDismiss: () -> Unit = {},
     onUpdateIgnore: (String) -> Unit = {}
@@ -58,6 +66,7 @@ fun MiuixSettingsScreen(
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences("IslandLyricsPrefs", android.content.Context.MODE_PRIVATE) }
     val scrollBehavior = MiuixScrollBehavior(rememberTopAppBarState())
+    val listState = rememberLazyListState()
 
     // State
     var autoUpdateEnabled by remember { mutableStateOf(UpdateChecker.isAutoUpdateEnabled(context)) }
@@ -115,33 +124,86 @@ fun MiuixSettingsScreen(
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
+    LaunchedEffect(listState) {
+        var previousIndex = 0
+        var previousOffset = 0
+        snapshotFlow { listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset }
+            .map { (index, offset) ->
+                val delta = when {
+                    index != previousIndex -> (index - previousIndex) * 10_000 + (offset - previousOffset)
+                    else -> offset - previousOffset
+                }
+                previousIndex = index
+                previousOffset = offset
+                delta
+            }
+            .distinctUntilChanged()
+            .collect { delta ->
+                when {
+                    listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0 -> onBottomBarVisibilityChange(true)
+                    delta > 6 -> onBottomBarVisibilityChange(false)
+                    delta < -6 -> onBottomBarVisibilityChange(true)
+                }
+            }
+    }
+
+    val popupShowing = showPrivacyDialog.value ||
+            showFeedbackPopup.value ||
+            showPrereleaseDialog.value ||
+            showPrereleaseDescDialog.value
+
+    LaunchedEffect(popupShowing) {
+        if (popupShowing) {
+            onBottomBarVisibilityChange(false)
+        } else if (listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0) {
+            onBottomBarVisibilityChange(true)
+        }
+    }
+
     MiuixBlurScaffold(
         topBar = {
-            MiuixBlurTopAppBar(
+            MiuixBlurSmallTopAppBar(
                 title = stringResource(R.string.title_app_settings),
                 scrollBehavior = scrollBehavior,
-                navigationIcon = {
-                    IconButton(onClick = { (context as? Activity)?.finish() }, modifier = Modifier.padding(start = 12.dp)) {
-                        androidx.compose.material3.Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
-                            tint = MiuixTheme.colorScheme.onBackground
-                        )
+                navigationIcon = if (showBackButton) {
+                    {
+                        IconButton(onClick = { (context as? Activity)?.finish() }, modifier = Modifier.padding(start = 12.dp)) {
+                            androidx.compose.material3.Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "Back",
+                                tint = MiuixTheme.colorScheme.onBackground
+                            )
+                        }
                     }
+                } else {
+                    {}
                 }
             )
         },
+        bottomBar = bottomBar,
     ) { padding ->
         LazyColumn(
+            state = listState,
             modifier = Modifier
                 .fillMaxSize()
                 .nestedScroll(scrollBehavior.nestedScrollConnection),
             contentPadding = PaddingValues(
                 top = padding.calculateTopPadding() + 12.dp,
-                bottom = padding.calculateBottomPadding() + 24.dp
+                bottom = padding.calculateBottomPadding() + 116.dp
             )
         ) {
-            // ═══ 1. General ═══
+            // ═══ 1. Personalization ═══
+            item { SmallTitle(text = stringResource(R.string.settings_personalization_header)) }
+            item {
+                Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
+                    SuperArrow(
+                        title = stringResource(R.string.page_title_personalization),
+                        onClick = onOpenCustomSettings
+                    )
+                }
+            }
+
+            // ═══ 2. General ═══
             item { SmallTitle(text = stringResource(R.string.settings_general_header)) }
             item {
                 Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
@@ -193,7 +255,7 @@ fun MiuixSettingsScreen(
                 }
             }
 
-            // ═══ 2. System & Permissions ═══
+            // ═══ 3. System & Permissions ═══
             item { SmallTitle(text = stringResource(R.string.settings_core_services_header)) }
             item {
                 Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
@@ -234,7 +296,7 @@ fun MiuixSettingsScreen(
                 }
             }
 
-            // ═══ 3. Updates ═══
+            // ═══ 4. Updates ═══
             item { SmallTitle(text = stringResource(R.string.update_check_title)) }
             item {
                 Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
@@ -296,7 +358,7 @@ fun MiuixSettingsScreen(
                 }
             }
 
-            // ═══ 4. Help & About ═══
+            // ═══ 5. Help & About ═══
             item { SmallTitle(text = stringResource(R.string.settings_help_about_header)) }
             item {
                 Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {

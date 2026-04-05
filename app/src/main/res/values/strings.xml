@@ -65,8 +65,11 @@
     <string name="settings_general_battery">Ignore Battery Optimization</string>
     <string name="settings_about_header">About</string>
     <string name="settings_about_github">GitHub Repository</string>
-    <string name="title_app_settings">App Settings</string>
-    <string name="title_parser_whitelist_manager">Parser Whitelist Management</string>
+    <string name="title_app_settings">Settings</string>
+    <string name="title_parser_whitelist_manager">Rules</string>
+    <string name="tab_home">Home</string>
+    <string name="tab_rules">Rules</string>
+    <string name="tab_settings">Settings</string>
     <string name="settings_console_log">Log Console</string>
     <string name="settings_general_header">General</string>
     <string name="settings_core_services_header">Core Services</string>
@@ -93,7 +96,7 @@
     <string name="settings_oneui_capsule_color_desc">Dynamic capsule background color. Uses black when off.</string>
 
     <!-- Parser Rule Settings -->
-    <string name="parser_rule_title">Notification Rules</string>
+    <string name="parser_rule_title">Rules</string>
     <string name="parser_rule_subtitle">Configure how to parse notifications from music apps</string>
     <string name="parser_add_rule">Add Music App</string>
     <string name="parser_edit">Edit</string>

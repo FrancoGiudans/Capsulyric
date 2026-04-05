@@ -2,14 +2,14 @@ package com.example.islandlyrics.feature.parserrule
 
 import com.example.islandlyrics.ui.common.BaseActivity
 import android.content.Context
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.activity.compose.setContent
 import com.example.islandlyrics.ui.miuix.isMiuixEnabled
 import com.example.islandlyrics.feature.parserrule.miuix.MiuixParserRuleScreen
 import com.example.islandlyrics.ui.miuix.MiuixAppTheme
 import com.example.islandlyrics.feature.parserrule.material.ParserRuleScreen
 import com.example.islandlyrics.ui.theme.material.AppTheme
-import androidx.activity.compose.setContent
 import android.os.Bundle
-import androidx.compose.foundation.isSystemInDarkTheme
 
 class ParserRuleActivity : BaseActivity() {
 

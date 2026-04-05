@@ -67,6 +67,9 @@
     <string name="settings_about_github">GitHub 仓库</string>
     <string name="title_app_settings">应用设置</string>
     <string name="title_parser_whitelist_manager">解析规则</string>
+    <string name="tab_home">首页</string>
+    <string name="tab_rules">规则</string>
+    <string name="tab_settings">设置</string>
     <string name="settings_console_log">日志控制台</string>
     <string name="settings_general_header">通用</string>
     <string name="settings_core_services_header">核心服务</string>

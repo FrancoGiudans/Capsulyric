@@ -7,7 +7,6 @@ import com.example.islandlyrics.data.ParserRuleHelper
 import com.example.islandlyrics.data.ParserRule
 import com.example.islandlyrics.data.LyricRepository
 import com.example.islandlyrics.data.lyric.OnlineLyricProvider
-import com.example.islandlyrics.feature.settings.material.SettingsSectionHeader
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -43,7 +42,9 @@ import com.example.islandlyrics.feature.parserrule.ParserRuleEditorActivity
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ParserRuleScreen(
-    onBack: () -> Unit
+    onBack: () -> Unit = {},
+    showBackButton: Boolean = true,
+    bottomBar: @Composable () -> Unit = {}
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     var rules by remember { mutableStateOf(ParserRuleHelper.loadRules(context)) }
@@ -60,25 +61,29 @@ fun ParserRuleScreen(
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
-    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
-    
     // Refresh recommendations on enter
     LaunchedEffect(Unit) {
         com.example.islandlyrics.service.MediaMonitorService.triggerRecheck()
     }
+
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             LargeTopAppBar(
                 title = { Text(stringResource(R.string.parser_rule_title)) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(
-                            imageVector = ParserLocalIcons.ArrowBack,
-                            contentDescription = "Back"
-                        )
+                navigationIcon = if (showBackButton) {
+                    {
+                        IconButton(onClick = onBack) {
+                            Icon(
+                                imageVector = ParserLocalIcons.ArrowBack,
+                                contentDescription = "Back"
+                            )
+                        }
                     }
+                } else {
+                    {}
                 },
                 actions = {
                     IconButton(onClick = {
@@ -100,6 +105,7 @@ fun ParserRuleScreen(
                 )
             )
         },
+        bottomBar = bottomBar,
 
         floatingActionButton = {
             // Recommendation Logic

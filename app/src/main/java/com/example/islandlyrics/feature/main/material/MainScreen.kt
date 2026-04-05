@@ -71,6 +71,7 @@ fun MainScreen(
     onOpenDebug: () -> Unit,
     onOpenPromotedSettings: () -> Unit,
     onStatusCardTap: () -> Unit,
+    contentPadding: PaddingValues = PaddingValues(),
 ) {
     val repo = remember { LyricRepository.getInstance() }
     val context = LocalContext.current
@@ -160,7 +161,8 @@ fun MainScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .systemBarsPadding()
+            .padding(contentPadding)
+            .statusBarsPadding()
             .verticalScroll(rememberScrollState())
             .padding(24.dp)
     ) {
@@ -194,6 +196,16 @@ fun MainScreen(
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface
             )
+            Spacer(modifier = Modifier.weight(1f))
+            if (isDebugBuild) {
+                IconButton(onClick = onOpenDebug) {
+                    Icon(
+                        imageVector = Icons.Filled.BugReport,
+                        contentDescription = "Debug Center",
+                        tint = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+            }
         }
 
         // ── Status Pill ──
@@ -256,56 +268,6 @@ fun MainScreen(
                     }
                 }
              }
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // ── Action Buttons ──
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            // Row 1: Personalization & Whitelist
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                ActionButton(
-                    text = stringResource(R.string.page_title_personalization),
-                    icon = Icons.Filled.Palette,
-                    onClick = onOpenPersonalization,
-                    modifier = Modifier.weight(1f)
-                )
-
-                ActionButton(
-                    text = stringResource(R.string.title_parser_whitelist_manager),
-                    icon = Icons.AutoMirrored.Filled.FormatListBulleted,
-                    onClick = onOpenWhitelist,
-                    modifier = Modifier.weight(1f)
-                )
-            }
-
-            // Row 2: App Settings & Debug
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                 ActionButton(
-                    text = stringResource(R.string.title_app_settings),
-                    icon = Icons.Filled.Settings,
-                    onClick = onOpenSettings,
-                    modifier = Modifier.weight(1f)
-                )
-
-                if (isDebugBuild) {
-                    ActionButton(
-                        text = "Debug",
-                        icon = Icons.Filled.BugReport,
-                        onClick = onOpenDebug,
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-            }
         }
     }
 }

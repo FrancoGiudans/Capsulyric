@@ -9,9 +9,6 @@ import top.yukonga.miuix.kmp.basic.ScrollBehavior
 import top.yukonga.miuix.kmp.basic.SmallTopAppBar
 import top.yukonga.miuix.kmp.basic.TopAppBar
 import top.yukonga.miuix.kmp.basic.TopAppBarDefaults
-import top.yukonga.miuix.kmp.blur.BlendColorEntry
-import top.yukonga.miuix.kmp.blur.BlurColors
-import top.yukonga.miuix.kmp.blur.textureBlur
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 /**
@@ -38,24 +35,17 @@ fun MiuixBlurTopAppBar(
 ) {
     val backdrop = LocalMiuixBlurBackdrop.current
     val blurEnabled = LocalMiuixBlurEnabled.current
-    
-    val blurModifier = if (blurEnabled && backdrop != null) {
-        Modifier.textureBlur(
-            backdrop = backdrop,
-            shape = RectangleShape,
-            blurRadius = 25f,
-            colors = BlurColors(
-                blendColors = listOf(BlendColorEntry(color.copy(alpha = 0.7f)))
-            )
-        )
-    } else {
-        Modifier
-    }
+    val blurModifier = Modifier.miuixSurfaceBlur(
+        enabled = blurEnabled,
+        backdrop = backdrop,
+        shape = RectangleShape,
+        fallbackColor = color.copy(alpha = 0.72f)
+    )
 
     TopAppBar(
         title = title,
         modifier = modifier.then(blurModifier),
-        color = if (blurEnabled && backdrop != null) Color.Transparent else color,
+        color = Color.Transparent,
         titleColor = titleColor,
         largeTitle = largeTitle,
         largeTitleColor = largeTitleColor,
@@ -94,24 +84,17 @@ fun MiuixBlurSmallTopAppBar(
 ) {
     val backdrop = LocalMiuixBlurBackdrop.current
     val blurEnabled = LocalMiuixBlurEnabled.current
-    
-    val blurModifier = if (blurEnabled && backdrop != null) {
-        Modifier.textureBlur(
-            backdrop = backdrop,
-            shape = RectangleShape,
-            blurRadius = 25f,
-            colors = BlurColors(
-                blendColors = listOf(BlendColorEntry(color.copy(alpha = 0.7f)))
-            )
-        )
-    } else {
-        Modifier
-    }
+    val blurModifier = Modifier.miuixSurfaceBlur(
+        enabled = blurEnabled,
+        backdrop = backdrop,
+        shape = RectangleShape,
+        fallbackColor = color.copy(alpha = 0.72f)
+    )
 
     SmallTopAppBar(
         title = title,
         modifier = modifier.then(blurModifier),
-        color = if (blurEnabled && backdrop != null) Color.Transparent else color,
+        color = Color.Transparent,
         titleColor = titleColor,
         subtitle = subtitle,
         subtitleColor = subtitleColor,

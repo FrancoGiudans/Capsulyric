@@ -2,10 +2,15 @@ package com.example.islandlyrics.ui.miuix
 
 import android.app.Activity
 import android.content.Context
+import android.content.SharedPreferences
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
@@ -30,11 +35,26 @@ fun MiuixAppTheme(
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE) }
 
-    val isDynamicColor = remember { prefs.getBoolean("theme_dynamic_color", true) }
-    val followSystem    = remember { prefs.getBoolean("theme_follow_system", true) }
-    val forceDark       = remember { prefs.getBoolean("theme_dark_mode", false) }
-    val cardBlurEnabled = remember { prefs.getBoolean("card_blur_enabled", false) }
+    var isDynamicColor by remember { mutableStateOf(prefs.getBoolean("theme_dynamic_color", true)) }
+    var followSystem by remember { mutableStateOf(prefs.getBoolean("theme_follow_system", true)) }
+    var forceDark by remember { mutableStateOf(prefs.getBoolean("theme_dark_mode", false)) }
+    var cardBlurEnabled by remember { mutableStateOf(prefs.getBoolean("card_blur_enabled", false)) }
     val isSystemDark    = isSystemInDarkTheme()
+
+    DisposableEffect(prefs) {
+        val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+            when (key) {
+                "theme_dynamic_color" -> isDynamicColor = prefs.getBoolean("theme_dynamic_color", true)
+                "theme_follow_system" -> followSystem = prefs.getBoolean("theme_follow_system", true)
+                "theme_dark_mode" -> forceDark = prefs.getBoolean("theme_dark_mode", false)
+                "card_blur_enabled" -> cardBlurEnabled = prefs.getBoolean("card_blur_enabled", false)
+            }
+        }
+        prefs.registerOnSharedPreferenceChangeListener(listener)
+        onDispose {
+            prefs.unregisterOnSharedPreferenceChangeListener(listener)
+        }
+    }
 
     // Determine whether we should be in dark mode right now
     val isDark = if (followSystem) isSystemDark else forceDark

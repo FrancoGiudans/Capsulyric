@@ -14,6 +14,7 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -44,13 +45,19 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.MiuixPopupUtils.Companion.MiuixPopupHost
 import com.example.islandlyrics.ui.miuix.*
 import com.example.islandlyrics.feature.parserrule.ParserRuleEditorActivity
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 
 @Composable
 fun MiuixParserRuleScreen(
-    onBack: () -> Unit
+    onBack: () -> Unit = {},
+    showBackButton: Boolean = true,
+    bottomBar: @Composable () -> Unit = {},
+    onBottomBarVisibilityChange: (Boolean) -> Unit = {}
 ) {
     val context = LocalContext.current
     val scrollBehavior = MiuixScrollBehavior(rememberTopAppBarState())
+    val listState = rememberLazyListState()
 
     var rules by remember { mutableStateOf(ParserRuleHelper.loadRules(context)) }
     var showDeleteDialog = remember { mutableStateOf(false) }
@@ -73,6 +80,29 @@ fun MiuixParserRuleScreen(
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
+    LaunchedEffect(listState) {
+        var previousIndex = 0
+        var previousOffset = 0
+        snapshotFlow { listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset }
+            .map { (index, offset) ->
+                val delta = when {
+                    index != previousIndex -> (index - previousIndex) * 10_000 + (offset - previousOffset)
+                    else -> offset - previousOffset
+                }
+                previousIndex = index
+                previousOffset = offset
+                delta
+            }
+            .distinctUntilChanged()
+            .collect { delta ->
+                when {
+                    listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0 -> onBottomBarVisibilityChange(true)
+                    delta > 6 -> onBottomBarVisibilityChange(false)
+                    delta < -6 -> onBottomBarVisibilityChange(true)
+                }
+            }
+    }
+
     // Refresh recommendations on enter
     LaunchedEffect(Unit) {
         com.example.islandlyrics.service.MediaMonitorService.triggerRecheck()
@@ -80,17 +110,21 @@ fun MiuixParserRuleScreen(
 
     MiuixBlurScaffold(
         topBar = {
-            MiuixBlurTopAppBar(
-                title = stringResource(R.string.title_parser_whitelist_manager),
+            MiuixBlurSmallTopAppBar(
+                title = stringResource(R.string.parser_rule_title),
                 scrollBehavior = scrollBehavior,
-                navigationIcon = {
-                    IconButton(onClick = onBack, modifier = Modifier.padding(start = 12.dp)) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
-                            tint = MiuixTheme.colorScheme.onBackground
-                        )
+                navigationIcon = if (showBackButton) {
+                    {
+                        IconButton(onClick = onBack, modifier = Modifier.padding(start = 12.dp)) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "Back",
+                                tint = MiuixTheme.colorScheme.onBackground
+                            )
+                        }
                     }
+                } else {
+                    {}
                 },
                 actions = {
                     IconButton(onClick = {
@@ -106,6 +140,7 @@ fun MiuixParserRuleScreen(
                 }
             )
         },
+        bottomBar = bottomBar,
         floatingActionButton = {
             // Recommendation Logic
             val recommendEnabled = remember { 
@@ -148,7 +183,7 @@ fun MiuixParserRuleScreen(
                         context.startActivity(android.content.Intent(context, ParserRuleEditorActivity::class.java))
                     }
                 },
-                modifier = Modifier.padding(bottom = 16.dp, end = 8.dp)
+                modifier = Modifier.padding(bottom = 108.dp, end = 8.dp)
             ) {
                 Row(
                     modifier = Modifier.padding(horizontal = 16.dp),
@@ -176,12 +211,13 @@ fun MiuixParserRuleScreen(
         popupHost = { MiuixPopupHost() }
     ) { padding ->
         LazyColumn(
+            state = listState,
             modifier = Modifier
                 .fillMaxSize()
                 .nestedScroll(scrollBehavior.nestedScrollConnection),
             contentPadding = PaddingValues(
                 top = padding.calculateTopPadding() + 12.dp,
-                bottom = padding.calculateBottomPadding() + 80.dp
+                bottom = padding.calculateBottomPadding() + 136.dp
             )
         ) {
             if (rules.isEmpty()) {

@@ -19,8 +19,11 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.*
@@ -51,6 +54,8 @@ import top.yukonga.miuix.kmp.utils.MiuixPopupUtils.Companion.MiuixPopupHost
 import com.example.islandlyrics.core.update.UpdateChecker
 import com.example.islandlyrics.feature.update.miuix.MiuixUpdateDialog
 import com.example.islandlyrics.ui.miuix.*
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 
 private val StatusActive = Color(0xFF4CAF50)
 private val StatusInactive = Color(0xFFF44336)
@@ -65,6 +70,8 @@ fun MiuixMainScreen(
     onOpenDebug: () -> Unit,
     onOpenPromotedSettings: () -> Unit,
     onStatusCardTap: () -> Unit,
+    bottomBar: @Composable () -> Unit = {},
+    onBottomBarVisibilityChange: (Boolean) -> Unit = {},
     updateReleaseInfo: UpdateChecker.ReleaseInfo? = null,
     onUpdateDismiss: () -> Unit = {},
     onUpdateIgnore: (String) -> Unit = {}
@@ -72,6 +79,9 @@ fun MiuixMainScreen(
     val repo = remember { LyricRepository.getInstance() }
     val context = LocalContext.current
     val scrollBehavior = MiuixScrollBehavior(rememberTopAppBarState())
+    val listState = rememberLazyListState()
+    val prefs = remember { context.getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE) }
+    var dynamicThemeEnabled by remember { mutableStateOf(prefs.getBoolean("theme_dynamic_color", true)) }
 
     val repoPlaying by repo.isPlaying.observeAsState(false)
     val repoMetadata by repo.liveMetadata.observeAsState()
@@ -81,6 +91,39 @@ fun MiuixMainScreen(
     val repoParsedLyrics by repo.liveParsedLyrics.observeAsState()
 
     var activeControllers by remember { mutableStateOf<List<MediaController>>(emptyList()) }
+
+    DisposableEffect(prefs) {
+        val listener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+            if (key == "theme_dynamic_color") {
+                dynamicThemeEnabled = prefs.getBoolean("theme_dynamic_color", true)
+            }
+        }
+        prefs.registerOnSharedPreferenceChangeListener(listener)
+        onDispose { prefs.unregisterOnSharedPreferenceChangeListener(listener) }
+    }
+
+    LaunchedEffect(listState) {
+        var previousIndex = 0
+        var previousOffset = 0
+        snapshotFlow { listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset }
+            .map { (index, offset) ->
+                val delta = when {
+                    index != previousIndex -> (index - previousIndex) * 10_000 + (offset - previousOffset)
+                    else -> offset - previousOffset
+                }
+                previousIndex = index
+                previousOffset = offset
+                delta
+            }
+            .distinctUntilChanged()
+            .collect { delta ->
+                when {
+                    listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0 -> onBottomBarVisibilityChange(true)
+                    delta > 6 -> onBottomBarVisibilityChange(false)
+                    delta < -6 -> onBottomBarVisibilityChange(true)
+                }
+            }
+    }
 
     DisposableEffect(Unit) {
         val mediaSessionManager = context.getSystemService(android.content.Context.MEDIA_SESSION_SERVICE) as MediaSessionManager
@@ -149,18 +192,31 @@ fun MiuixMainScreen(
                         contentDescription = "App Icon",
                         modifier = Modifier.padding(start = 16.dp).size(32.dp).clip(CircleShape)
                     )
+                },
+                actions = {
+                    if (isDebugBuild) {
+                        IconButton(onClick = onOpenDebug, modifier = Modifier.padding(end = 12.dp)) {
+                            androidx.compose.material3.Icon(
+                                imageVector = Icons.Filled.BugReport,
+                                contentDescription = "Debug Center",
+                                tint = MiuixTheme.colorScheme.onBackground
+                            )
+                        }
+                    }
                 }
             )
         },
+        bottomBar = bottomBar,
         popupHost = { MiuixPopupHost() }
     ) { padding ->
         LazyColumn(
+            state = listState,
             modifier = Modifier
                 .fillMaxSize()
                 .nestedScroll(scrollBehavior.nestedScrollConnection),
             contentPadding = PaddingValues(
                 top = padding.calculateTopPadding() + 12.dp,
-                bottom = padding.calculateBottomPadding() + 24.dp
+                bottom = padding.calculateBottomPadding() + 116.dp
             )
         ) {
             item {
@@ -190,6 +246,7 @@ fun MiuixMainScreen(
                             MiuixMediaSessionCard(
                                 controller = controller,
                                 isPrimary = isPrimary,
+                                dynamicThemeEnabled = dynamicThemeEnabled,
                                 primaryMetadata = if (isPrimary) repoMetadata else null,
                                 primaryLyric = if (isPrimary) repoLyric?.lyric else null,
                                 primaryLyricSource = if (isPrimary && repoLyric?.apiPath == "Online API") repoParsedLyrics?.sourceLabel else null,
@@ -208,23 +265,6 @@ fun MiuixMainScreen(
                                 }
                             }
                         }
-                    }
-                }
-            }
-
-            item { Spacer(modifier = Modifier.height(24.dp)) }
-
-            item { SmallTitle(text = "Quick Access") }
-            item {
-                Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
-                    SuperArrow(title = stringResource(R.string.page_title_personalization),
-                        summary = "Customize appearance", onClick = onOpenPersonalization)
-                    SuperArrow(title = stringResource(R.string.title_parser_whitelist_manager),
-                        summary = "Manage app whitelist", onClick = onOpenWhitelist)
-                    SuperArrow(title = stringResource(R.string.title_app_settings),
-                        summary = "App settings", onClick = onOpenSettings)
-                    if (isDebugBuild) {
-                        SuperArrow(title = "Debug", summary = "Debug Center", onClick = onOpenDebug)
                     }
                 }
             }
@@ -285,6 +325,7 @@ private fun MiuixIdleCard() {
 private fun MiuixMediaSessionCard(
     controller: MediaController,
     isPrimary: Boolean,
+    dynamicThemeEnabled: Boolean,
     primaryMetadata: LyricRepository.MediaInfo?,
     primaryLyric: String?,
     primaryLyricSource: String?,
@@ -321,10 +362,14 @@ private fun MiuixMediaSessionCard(
 
     // ── Palette accent from album art ──
     val dominantColor by produceState<Color?>(initialValue = null, key1 = albumArt) {
-        value = albumArt?.let { bmp ->
-            val palette = Palette.from(bmp).generate()
-            val swatch = palette.vibrantSwatch ?: palette.mutedSwatch ?: palette.dominantSwatch
-            swatch?.rgb?.let { Color(it) }
+        value = if (dynamicThemeEnabled) {
+            albumArt?.let { bmp ->
+                val palette = Palette.from(bmp).generate()
+                val swatch = palette.vibrantSwatch ?: palette.mutedSwatch ?: palette.dominantSwatch
+                swatch?.rgb?.let { Color(it) }
+            }
+        } else {
+            null
         }
     }
     val animatedAccent by animateColorAsState(

@@ -7,7 +7,6 @@ import com.example.islandlyrics.core.update.UpdateChecker
 import com.example.islandlyrics.core.theme.ThemeHelper
 import com.example.islandlyrics.core.platform.RomUtils
 import com.example.islandlyrics.feature.faq.FAQActivity
-import com.example.islandlyrics.ui.theme.material.AppTheme
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -22,6 +21,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.material3.*
+import androidx.compose.material3.HorizontalDivider as MaterialHorizontalDivider
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -39,6 +39,7 @@ import androidx.compose.material.icons.Icons
 
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.MusicNote
+import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.automirrored.filled.Help
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Link
@@ -52,7 +53,10 @@ fun SettingsScreen(
     onCheckUpdate: () -> Unit,
     onShowDiagnostics: () -> Unit,
     updateVersionText: String,
-    updateBuildText: String
+    updateBuildText: String,
+    onOpenCustomSettings: () -> Unit = {},
+    showBackButton: Boolean = true,
+    bottomBar: @Composable () -> Unit = {}
 ) {
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE) }
@@ -138,46 +142,55 @@ fun SettingsScreen(
         }
     }
 
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 
-    // Determine actual dark mode for AppTheme
-    val isSystemDark = androidx.compose.foundation.isSystemInDarkTheme()
-    val useDarkTheme = if (followSystem) isSystemDark else darkMode
-
-    AppTheme(
-        darkTheme = useDarkTheme,
-        dynamicColor = dynamicColor,
-        pureBlack = pureBlack && useDarkTheme
-    ) {
-        val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
-        Scaffold(
-            modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
-            topBar = {
-                LargeTopAppBar(
-                    title = { Text(stringResource(R.string.title_app_settings)) },
-                    navigationIcon = {
+    Scaffold(
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+        topBar = {
+            LargeTopAppBar(
+                title = { Text(stringResource(R.string.title_app_settings)) },
+                navigationIcon = if (showBackButton) {
+                    {
                         IconButton(onClick = { (context as? Activity)?.finish() }) {
                             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                         }
-                    },
-                    scrollBehavior = scrollBehavior,
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.background,
-                        scrolledContainerColor = MaterialTheme.colorScheme.background,
-                        titleContentColor = MaterialTheme.colorScheme.onBackground
-                    )
+                    }
+                } else {
+                    {}
+                },
+                scrollBehavior = scrollBehavior,
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background,
+                    scrolledContainerColor = MaterialTheme.colorScheme.background,
+                    titleContentColor = MaterialTheme.colorScheme.onBackground
                 )
-            },
-            containerColor = MaterialTheme.colorScheme.background
-        ) { paddingValues ->
-            Column(
-                modifier = Modifier
-                    .padding(paddingValues)
-                    .fillMaxSize()
-                    .verticalScroll(scrollState)
-            ) {
+            )
+        },
+        bottomBar = bottomBar,
+        containerColor = MaterialTheme.colorScheme.background
+    ) { paddingValues ->
+        Column(
+            modifier = Modifier
+                .padding(paddingValues)
+                .fillMaxSize()
+                .verticalScroll(scrollState)
+        ) {
 
                 // ═══════════════════════════════════════
-                // ── 1. General ──
+                // ── 1. Personalization ──
+                // ═══════════════════════════════════════
+                SettingsSectionHeader(text = stringResource(R.string.settings_personalization_header))
+
+                SettingsActionItem(
+                    title = stringResource(R.string.page_title_personalization),
+                    icon = Icons.Filled.Palette,
+                    onClick = onOpenCustomSettings
+                )
+
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+
+                // ═══════════════════════════════════════
+                // ── 2. General ──
                 // ═══════════════════════════════════════
                 SettingsSectionHeader(text = stringResource(R.string.settings_general_header))
 
@@ -245,7 +258,7 @@ fun SettingsScreen(
                 HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
                 // ═══════════════════════════════════════
-                // ── 2. System & Permissions ──
+                // ── 3. System & Permissions ──
                 // ═══════════════════════════════════════
                 SettingsSectionHeader(text = stringResource(R.string.settings_core_services_header))
 
@@ -293,7 +306,7 @@ fun SettingsScreen(
                 HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
                 // ═══════════════════════════════════════
-                // ── 3. Updates ──
+                // ── 4. Updates ──
                 // ═══════════════════════════════════════
                 SettingsSectionHeader(text = stringResource(R.string.update_check_title))
 
@@ -405,7 +418,7 @@ fun SettingsScreen(
                 HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
                 // ═══════════════════════════════════════
-                // ── 4. Help & About ──
+                // ── 5. Help & About ──
                 // ═══════════════════════════════════════
                 SettingsSectionHeader(text = stringResource(R.string.settings_help_about_header))
 
@@ -553,8 +566,6 @@ fun SettingsScreen(
             }
         }
     }
-}
-
 @Composable
 fun FeedbackSelectionDialog(onDismiss: () -> Unit) {
     val context = LocalContext.current
@@ -1047,7 +1058,7 @@ fun SettingsValueItem(
 
 @Composable
 fun HorizontalDivider(modifier: Modifier = Modifier) {
-    HorizontalDivider(
+    MaterialHorizontalDivider(
         modifier = modifier.padding(horizontal = 24.dp),
         thickness = 1.dp,
         color = MaterialTheme.colorScheme.outlineVariant

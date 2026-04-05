@@ -8,6 +8,7 @@ import com.example.islandlyrics.R
 import com.example.islandlyrics.core.update.UpdateChecker
 import com.example.islandlyrics.core.logging.AppLogger
 import com.example.islandlyrics.feature.diagnostics.DiagnosticsActivity
+import com.example.islandlyrics.feature.customsettings.CustomSettingsActivity
 import com.example.islandlyrics.feature.update.miuix.MiuixUpdateDialog
 import com.example.islandlyrics.feature.settings.miuix.MiuixSettingsScreen
 import com.example.islandlyrics.ui.miuix.MiuixAppTheme
@@ -46,6 +47,9 @@ class SettingsActivity : BaseActivity() {
                         onShowDiagnostics = { showDiagnostics() },
                         updateVersionText = version,
                         updateBuildText = build,
+                        onOpenCustomSettings = {
+                            startActivity(android.content.Intent(this@SettingsActivity, CustomSettingsActivity::class.java))
+                        },
                         updateReleaseInfo = updateReleaseInfo,
                         onUpdateDismiss = { updateReleaseInfo = null },
                         onUpdateIgnore = { tag ->
@@ -60,7 +64,10 @@ class SettingsActivity : BaseActivity() {
                         onCheckUpdate = { performUpdateCheck() },
                         onShowDiagnostics = { showDiagnostics() },
                         updateVersionText = version,
-                        updateBuildText = build
+                        updateBuildText = build,
+                        onOpenCustomSettings = {
+                            startActivity(android.content.Intent(this@SettingsActivity, CustomSettingsActivity::class.java))
+                        }
                     )
 
                     if (updateReleaseInfo != null) {
