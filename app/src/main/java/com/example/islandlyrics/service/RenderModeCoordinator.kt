@@ -17,19 +17,19 @@ class RenderModeCoordinator(
 
     fun isSuperIslandMode(): Boolean = isSuperIslandMode
 
-    fun updateActiveHandler(playing: Boolean, hasLyric: Boolean) {
+    fun updateActiveHandler(shouldRender: Boolean) {
         if (isSuperIslandMode) {
             if (capsuleHandler?.isRunning() == true) {
                 capsuleHandler.stop()
             }
-            if (playing && hasLyric && superIslandHandler.isRunning != true) {
+            if (shouldRender && superIslandHandler.isRunning != true) {
                 superIslandHandler.start()
             }
         } else {
             if (superIslandHandler.isRunning == true) {
                 superIslandHandler.stop()
             }
-            if (playing && hasLyric && capsuleHandler?.isRunning() == false) {
+            if (shouldRender && capsuleHandler?.isRunning() == false) {
                 capsuleHandler.start()
             }
         }

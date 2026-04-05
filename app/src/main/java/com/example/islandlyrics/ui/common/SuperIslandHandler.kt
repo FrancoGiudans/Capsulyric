@@ -22,6 +22,8 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 /**
  * SuperIslandHandler
@@ -37,9 +39,6 @@ class SuperIslandHandler(
     var isRunning = false
         private set
 
-    private var cachedNotification: Notification? = null
-    private var cachedBuilder: Notification.Builder? = null
-    
     private val scope = CoroutineScope(Dispatchers.Main + Job())
     
     // Preferences
@@ -52,8 +51,12 @@ class SuperIslandHandler(
 
     private var cachedContentIntent: PendingIntent? = null
     private var networkCutJob: kotlinx.coroutines.Job? = null
-    private val networkCutDurationMs = 50L
+    // Keep the blind window aligned with the working InstallerX implementation.
+    // 50ms is too tight on HyperOS 3.0 / Android 16 and often expires before
+    // SystemUI finishes scanning the posted notification.
+    private val networkCutDurationMs = 100L
     private var networkCutSeq = 0L
+    private val networkCutMutex = Mutex()
 
     private val prefs by lazy { context.getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE) }
     private val prefListener = SharedPreferences.OnSharedPreferenceChangeListener { p, key ->
@@ -89,6 +92,7 @@ class SuperIslandHandler(
     private var lastSentTitle = ""
     private var lastSentArtist = ""
     private var isFirstNotification = true
+    private var lastFocusParam = ""
     
     private var lastNotifyTime = 0L
     private val throttleIntervalMs = 1000L
@@ -135,13 +139,7 @@ class SuperIslandHandler(
         cachedPlayPauseIcon = null
         cachedNextIcon = null
 
-        cachedBuilder = Notification.Builder(context, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_music_note)
-            .setOngoing(true)
-            .setOnlyAlertOnce(true)
-            .setVisibility(Notification.VISIBILITY_PUBLIC)
-            
-        cachedNotification = cachedBuilder?.build()
+        lastFocusParam = ""
     }
 
     fun stop() {
@@ -149,8 +147,7 @@ class SuperIslandHandler(
         isRunning = false
         prefs.unregisterOnSharedPreferenceChangeListener(prefListener)
         manager?.cancel(NOTIFICATION_ID)
-        cachedNotification = null
-        cachedBuilder = null
+        lastFocusParam = ""
         
         // Cancel all pending scope jobs
         // But wait, if we cancel the whole scope we might not be able to restart it?
@@ -233,9 +230,17 @@ class SuperIslandHandler(
         }
     }
 
+    private fun createBaseBuilder(): Notification.Builder {
+        return Notification.Builder(context, CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_music_note)
+            .setOngoing(true)
+            .setOnlyAlertOnce(true)
+            .setVisibility(Notification.VISIBILITY_PUBLIC)
+            .setContentIntent(cachedContentIntent)
+    }
+
     fun render(state: UIState) {
         if (!isRunning) return
-        val notification = cachedNotification ?: return
 
         val displayLyric = state.displayLyric
         val subText = if (state.artist.isNotBlank()) "${state.title} - ${state.artist}" else state.title
@@ -246,13 +251,8 @@ class SuperIslandHandler(
         val trackChanged = state.title != lastSentTitle || state.artist != lastSentArtist
         if (trackChanged && !isFirstNotification) {
             com.example.islandlyrics.core.logging.AppLogger.getInstance().d("SuperIsland", "Track changed: ${state.title}. Resetting builder.")
-            cachedBuilder = Notification.Builder(context, CHANNEL_ID)
-                .setSmallIcon(R.drawable.ic_music_note)
-                .setOngoing(true)
-                .setOnlyAlertOnce(true)
-                .setVisibility(Notification.VISIBILITY_PUBLIC)
-            cachedNotification = cachedBuilder?.build()
             isFirstNotification = true
+            lastFocusParam = ""
         }
 
         // Color changed?
@@ -297,6 +297,7 @@ class SuperIslandHandler(
 
         val extras = FocusNotification.buildV3 {
             business = "lyric_display"
+            isShowNotification = true
             enableFloat = false
             updatable = true
             islandFirstFloat = false
@@ -307,6 +308,8 @@ class SuperIslandHandler(
             val islandKey = cachedIslandIcon?.let { createPicture("miui.focus.pic_island", it) }
             val islandSmallKey = cachedIslandSmallIcon?.let { createPicture("miui.land.pic_island", it) }
             val shareKey = cachedShareIcon?.let { createPicture("miui.focus.pic_share", it) }
+            ticker = displayLyric.ifEmpty { subText.ifEmpty { state.title.ifEmpty { "♪" } } }
+            tickerPic = appKey ?: islandSmallKey ?: avatarKey
             
             chatInfo {
                 picProfile = avatarKey
@@ -436,21 +439,22 @@ class SuperIslandHandler(
 
         val newParams = extras.getString("miui.focus.param")
 
-        // Secondary CHANGE DETECTION
-        val oldParams = notification.extras.getString("miui.focus.param")
-        if (oldParams == newParams && !colorChanged && !isFirstNotification) {
+        if (newParams == lastFocusParam && !colorChanged && !isFirstNotification) {
             return
         }
 
-        // Apply new extras (clearing old explicitly replaced parts)
-        notification.extras.putAll(extras)
-        
-        notification.color = if (cachedActionStyle == "media_controls") 0xFF757575.toInt() else albumColor
-        lastAppliedAlbumColor = albumColor
+        val notificationTitle = displayLyric.ifEmpty { state.fullLyric.ifEmpty { state.title.ifEmpty { "Capsulyric" } } }
+        val notificationText = subText.ifEmpty { context.getString(R.string.channel_live_lyrics) }
+        val notification = createBaseBuilder()
+            .setContentTitle(notificationTitle)
+            .setContentText(notificationText)
+            .setSubText(if (state.mediaPackage.isNotBlank()) state.mediaPackage else null)
+            .setColor(if (cachedActionStyle == "media_controls") 0xFF757575.toInt() else albumColor)
+            .addExtras(extras)
+            .build()
 
-        notification.extras.putString(Notification.EXTRA_TITLE, state.fullLyric.ifEmpty { "Capsulyric" })
-        notification.extras.putString(Notification.EXTRA_TEXT, subText)
-        notification.contentIntent = cachedContentIntent
+        lastAppliedAlbumColor = albumColor
+        lastFocusParam = newParams.orEmpty()
 
         lastSentDisplayLyric = displayLyric
         lastSentProgressPercent = progressPercent
@@ -471,26 +475,31 @@ class SuperIslandHandler(
         if (bypassWhitelist) {
             networkCutJob?.cancel()
             val seq = ++networkCutSeq
-            networkCutJob = scope.launch {
-                // Avoid cancelling Shizuku bind on slower devices (e.g., MTK) by running in NonCancellable.
-                withContext(NonCancellable) {
-                    com.example.islandlyrics.integration.shizuku.XmsfNetworkHelper.setXmsfNetworkingEnabled(context, false)
-                }
-                if (isFirst) {
-                    service.startForeground(NOTIFICATION_ID, notification)
-                } else {
-                    manager?.notify(NOTIFICATION_ID, notification)
-                }
-                // Keep offline for a brief moment; if a new send happens within this window,
-                // the previous restore will be cancelled.
-                try {
-                    kotlinx.coroutines.delay(networkCutDurationMs)
-                } catch (_: CancellationException) {
-                    // A newer job will handle restore.
-                }
-                if (seq == networkCutSeq) {
+            networkCutJob = scope.launch(Dispatchers.IO) {
+                networkCutMutex.withLock {
+                    // Avoid cancelling Shizuku bind on slower devices (e.g., MTK) by running in NonCancellable.
                     withContext(NonCancellable) {
-                        com.example.islandlyrics.integration.shizuku.XmsfNetworkHelper.setXmsfNetworkingEnabled(context, true)
+                        com.example.islandlyrics.integration.shizuku.XmsfNetworkHelper.setXmsfNetworkingEnabled(context, false)
+                    }
+                    // During the blind window we must go through NotificationManager directly.
+                    // startForeground() adds extra service/AMS hops, which can let HyperOS finish
+                    // the whitelist scan after the network has already been restored.
+                    if (manager != null) {
+                        manager.notify(NOTIFICATION_ID, notification)
+                    } else if (isFirst) {
+                        service.startForeground(NOTIFICATION_ID, notification)
+                    }
+                    // Keep offline for a brief moment; if a new send happens within this window,
+                    // the previous restore will be cancelled.
+                    try {
+                        kotlinx.coroutines.delay(networkCutDurationMs)
+                    } catch (_: CancellationException) {
+                        // A newer job will handle restore.
+                    }
+                    if (seq == networkCutSeq) {
+                        withContext(NonCancellable) {
+                            com.example.islandlyrics.integration.shizuku.XmsfNetworkHelper.setXmsfNetworkingEnabled(context, true)
+                        }
                     }
                 }
             }

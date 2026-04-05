@@ -35,6 +35,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
+import com.example.islandlyrics.ui.theme.material.neutralMaterialTopBarColors
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
@@ -193,7 +194,8 @@ fun CustomSettingsScreen(
                             IconButton(onClick = onBack) {
                                 Icon(painterResource(R.drawable.ic_arrow_back), contentDescription = "Back")
                             }
-                        }
+                        },
+                        colors = neutralMaterialTopBarColors()
                     )
                     PrimaryTabRow(selectedTabIndex = pagerState.currentPage) {
                         tabs.forEachIndexed { index, title ->

@@ -56,6 +56,7 @@ import com.example.islandlyrics.feature.parserrule.ParserRuleEditorState
 import com.example.islandlyrics.feature.parserrule.toEditorState
 import com.example.islandlyrics.feature.parserrule.toRule
 import com.example.islandlyrics.feature.settings.material.SettingsSectionHeader
+import com.example.islandlyrics.ui.theme.material.neutralMaterialTopBarColors
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -103,7 +104,8 @@ fun ParserRuleEditorScreen(
                         }
                     }
                 },
-                scrollBehavior = scrollBehavior
+                scrollBehavior = scrollBehavior,
+                colors = neutralMaterialTopBarColors()
             )
         }
     ) { padding ->

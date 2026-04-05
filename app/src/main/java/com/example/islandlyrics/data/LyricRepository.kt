@@ -72,9 +72,6 @@ class LyricRepository private constructor() {
         if (liveLyric.value == newInfo) return
         
         postOrSet(liveLyric, newInfo)
-
-        // Implicitly playing if we get lyric data
-        updatePlaybackStatus(true)
     }
 
     fun updateMediaMetadata(

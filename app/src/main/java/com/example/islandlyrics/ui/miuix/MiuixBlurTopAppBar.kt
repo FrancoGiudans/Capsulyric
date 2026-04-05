@@ -18,7 +18,7 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
 fun MiuixBlurTopAppBar(
     title: String,
     modifier: Modifier = Modifier,
-    color: Color = MiuixTheme.colorScheme.surface,
+    color: Color = Color.Unspecified,
     titleColor: Color = MiuixTheme.colorScheme.onSurface,
     largeTitle: String = title,
     largeTitleColor: Color = MiuixTheme.colorScheme.onSurface,
@@ -35,11 +35,12 @@ fun MiuixBlurTopAppBar(
 ) {
     val backdrop = LocalMiuixBlurBackdrop.current
     val blurEnabled = LocalMiuixBlurEnabled.current
+    val topBarColor = if (color == Color.Unspecified) neutralMiuixTopBarColor() else color
     val blurModifier = Modifier.miuixSurfaceBlur(
         enabled = blurEnabled,
         backdrop = backdrop,
         shape = RectangleShape,
-        fallbackColor = color.copy(alpha = 0.72f)
+        fallbackColor = topBarColor.copy(alpha = 0.72f)
     )
 
     TopAppBar(
@@ -69,7 +70,7 @@ fun MiuixBlurTopAppBar(
 fun MiuixBlurSmallTopAppBar(
     title: String,
     modifier: Modifier = Modifier,
-    color: Color = MiuixTheme.colorScheme.surface,
+    color: Color = Color.Unspecified,
     titleColor: Color = MiuixTheme.colorScheme.onSurface,
     subtitle: String = "",
     subtitleColor: Color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
@@ -84,11 +85,12 @@ fun MiuixBlurSmallTopAppBar(
 ) {
     val backdrop = LocalMiuixBlurBackdrop.current
     val blurEnabled = LocalMiuixBlurEnabled.current
+    val topBarColor = if (color == Color.Unspecified) neutralMiuixTopBarColor() else color
     val blurModifier = Modifier.miuixSurfaceBlur(
         enabled = blurEnabled,
         backdrop = backdrop,
         shape = RectangleShape,
-        fallbackColor = color.copy(alpha = 0.72f)
+        fallbackColor = topBarColor.copy(alpha = 0.72f)
     )
 
     SmallTopAppBar(

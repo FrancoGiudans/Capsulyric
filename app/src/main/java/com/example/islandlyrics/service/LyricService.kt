@@ -303,6 +303,19 @@ class LyricService : Service() {
         // [Fix Task 1] Immediate Foreground Promotion
         createNotificationChannel()
 
+        val shouldWarmForegroundForXmsfBypass =
+            isSuperIslandMode && prefs.getBoolean("block_xmsf_network", false)
+        if (shouldWarmForegroundForXmsfBypass) {
+            val currentInfo = LyricRepository.getInstance().liveLyric.value
+            val title = currentInfo?.sourceApp ?: "Island Lyrics"
+            val text = currentInfo?.lyric ?: "Initializing..."
+            try {
+                startForeground(NOTIFICATION_ID, buildNotification(text, title, ""))
+            } catch (e: Exception) {
+                AppLogger.getInstance().e(TAG, "Failed to warm foreground for XMSF bypass: ${e.message}")
+            }
+        }
+
         // 2. Ensure only the correct handler is running
         updateActiveHandler()
 
@@ -613,17 +626,20 @@ class LyricService : Service() {
     private fun updateActiveHandler() {
         val currentLyric = LyricRepository.getInstance().liveLyric.value
         val hasLyric = currentLyric != null && currentLyric.lyric.isNotBlank()
+        val hasMetadata = LyricRepository.getInstance().liveMetadata.value != null
         val playing = LyricRepository.getInstance().isPlaying.value ?: false
+        val shouldRender = playing && (hasMetadata || hasLyric)
 
         val coordinator = renderModeCoordinator
         if (coordinator != null) {
-            // Live Update enabled: delegate to coordinator
-            coordinator.updateActiveHandler(playing, hasLyric)
+            // Render state should follow MediaSession playback + session content,
+            // not whether a lyric source happened to push a line.
+            coordinator.updateActiveHandler(shouldRender)
         } else {
             // Live Update disabled: SuperIsland is the only renderer
-            if (playing && hasLyric && !superIslandHandler.isRunning) {
+            if (shouldRender && !superIslandHandler.isRunning) {
                 superIslandHandler.start()
-            } else if (!playing || !hasLyric) {
+            } else if (!shouldRender) {
                 superIslandHandler.stop()
             }
         }

@@ -35,18 +35,10 @@ object XmsfNetworkHelper {
                     
                     for (attempt in 0 until MAX_RETRIES) {
                         try {
-                            logger.d(TAG, "📡 Attempt ${attempt + 1}/$MAX_RETRIES: Getting privileged service...")
-                            val service = ShizukuUserServiceRecycler.getPrivilegedService()
-                            logger.d(TAG, "✓ Got privileged service, calling setPackageNetworkingEnabled...")
-                            
-                            val success = service.setPackageNetworkingEnabled(uid, enabled)
-                            if (success) {
-                                logger.d(TAG, "✓ Successfully set XMSF networking to $enabled")
-                                return@requireShizukuPermissionGranted true
-                            } else {
-                                logger.e(TAG, "❌ Privileged service returned failure for $uid")
-                                lastError = Exception("Privileged service internal failure")
-                            }
+                            logger.d(TAG, "📡 Attempt ${attempt + 1}/$MAX_RETRIES: Calling hooked ConnectivityManager...")
+                            ShizukuHook.setPackageNetworkingEnabled(uid, enabled)
+                            logger.d(TAG, "✓ Successfully set XMSF networking to $enabled via hooked binder")
+                            return@requireShizukuPermissionGranted true
                         } catch (e: CancellationException) {
                             logger.w(TAG, "⚠️ Operation cancelled")
                             return@requireShizukuPermissionGranted false
@@ -57,10 +49,14 @@ object XmsfNetworkHelper {
                                 delay(RETRY_DELAY_MS)
                             }
                         } catch (e: Exception) {
+                            lastError = e
                             logger.e(TAG, "❌ Error on attempt ${attempt + 1}: ${e.message}")
-                            return@requireShizukuPermissionGranted false
+                            if (attempt + 1 < MAX_RETRIES) {
+                                delay(RETRY_DELAY_MS)
+                            }
                         }
                     }
+                    lastError?.let { logger.e(TAG, "❌ Hooked binder flow failed after retries: ${it.message}") }
                     false
                 }
             } catch (e: Exception) {
