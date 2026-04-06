@@ -3,6 +3,7 @@ package com.example.islandlyrics.core.update
 import android.content.Context
 import com.example.islandlyrics.BuildConfig
 import com.example.islandlyrics.core.logging.AppLogger
+import com.example.islandlyrics.core.network.OfflineModeManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
@@ -97,6 +98,10 @@ object UpdateChecker {
     }
 
     suspend fun fetchAbsoluteLatestRelease(context: Context, currentVersionOverride: String? = null): ReleaseInfo? = withContext(Dispatchers.IO) {
+        if (OfflineModeManager.isEnabled(context)) {
+            AppLogger.getInstance().i(TAG, "Offline mode enabled, skipping absolute release lookup")
+            return@withContext null
+        }
         try {
             val apiUrl = "https://api.github.com/repos/FrancoGiudans/Capsulyric/releases"
             val url = URL(apiUrl)
@@ -131,6 +136,10 @@ object UpdateChecker {
     }
 
     suspend fun checkForUpdate(context: Context, currentVersionOverride: String? = null): ReleaseInfo? = withContext(Dispatchers.IO) {
+        if (OfflineModeManager.isEnabled(context)) {
+            AppLogger.getInstance().i(TAG, "Offline mode enabled, skipping update check")
+            return@withContext null
+        }
         try {
             updateLastCheckTime(context)
             val includePrerelease = isPrereleaseEnabled(context)

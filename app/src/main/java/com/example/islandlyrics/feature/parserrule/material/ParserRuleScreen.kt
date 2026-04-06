@@ -3,6 +3,7 @@ package com.example.islandlyrics.feature.parserrule.material
 import androidx.compose.foundation.clickable
 import com.example.islandlyrics.data.FieldOrder
 import com.example.islandlyrics.R
+import com.example.islandlyrics.core.network.OfflineModeManager
 import com.example.islandlyrics.data.ParserRuleHelper
 import com.example.islandlyrics.data.ParserRule
 import com.example.islandlyrics.data.LyricRepository
@@ -48,6 +49,7 @@ fun ParserRuleScreen(
     bottomBar: @Composable () -> Unit = {}
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
+    val offlineModeEnabled = OfflineModeManager.isEnabled(context)
     var rules by remember { mutableStateOf(ParserRuleHelper.loadRules(context)) }
     var showDeleteDialog by remember { mutableStateOf<ParserRule?>(null) }
     val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
@@ -175,6 +177,7 @@ fun ParserRuleScreen(
             items(rules) { rule ->
                 ParserRuleItem(
                     rule = rule,
+                    offlineModeEnabled = offlineModeEnabled,
                     onToggleEnabled = { enabled ->
                         val index = rules.indexOf(rule)
                         if (index != -1) {
@@ -227,6 +230,7 @@ fun ParserRuleScreen(
 @Composable
 fun ParserRuleItem(
     rule: ParserRule,
+    offlineModeEnabled: Boolean,
     onToggleEnabled: (Boolean) -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit
@@ -258,7 +262,7 @@ fun ParserRuleItem(
             }
             
             Spacer(modifier = Modifier.height(4.dp))
-            if (rule.useOnlineLyrics && !rule.useSmartOnlineLyricSelection) {
+            if (!offlineModeEnabled && rule.useOnlineLyrics && !rule.useSmartOnlineLyricSelection) {
                 val onlineOrderSummary = OnlineLyricProvider.normalizeOrder(rule.onlineLyricProviderOrder)
                     .joinToString(" > ") { it.displayName(context) }
                 Text(
@@ -272,8 +276,10 @@ fun ParserRuleItem(
             // Status Badges
             Row(verticalAlignment = Alignment.CenterVertically) {
                 StatusBadge(active = rule.usesCarProtocol, label = "Notify Lyric")
-                Spacer(modifier = Modifier.width(8.dp))
-                StatusBadge(active = rule.useOnlineLyrics, label = "Online")
+                if (!offlineModeEnabled) {
+                    Spacer(modifier = Modifier.width(8.dp))
+                    StatusBadge(active = rule.useOnlineLyrics, label = "Online")
+                }
                 Spacer(modifier = Modifier.width(8.dp))
                 StatusBadge(active = rule.useSuperLyricApi, label = "SuperLyric")
                 Spacer(modifier = Modifier.width(8.dp))

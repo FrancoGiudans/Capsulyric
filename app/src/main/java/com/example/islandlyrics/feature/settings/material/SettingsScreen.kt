@@ -3,6 +3,10 @@ package com.example.islandlyrics.feature.settings.material
 import android.app.Activity
 import com.example.islandlyrics.BuildConfig
 import com.example.islandlyrics.R
+import com.example.islandlyrics.core.feed.CommunityFeed
+import com.example.islandlyrics.core.feed.CommunityFeedItem
+import com.example.islandlyrics.core.feed.CommunityFeedRepository
+import com.example.islandlyrics.core.network.OfflineModeManager
 import com.example.islandlyrics.core.update.UpdateChecker
 import com.example.islandlyrics.core.theme.ThemeHelper
 import com.example.islandlyrics.core.platform.RomUtils
@@ -63,6 +67,7 @@ fun SettingsScreen(
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE) }
     val scrollState = rememberScrollState()
+    var offlineModeEnabled by remember { mutableStateOf(OfflineModeManager.isEnabled(context)) }
 
     // Preferences State
     var autoUpdateEnabled by remember { mutableStateOf(UpdateChecker.isAutoUpdateEnabled(context)) }
@@ -80,6 +85,8 @@ fun SettingsScreen(
     var showIconStyleDialog by remember { mutableStateOf(false) }
     var showPrivacyDialog by remember { mutableStateOf(false) }
     var showFeedbackDialog by remember { mutableStateOf(false) }
+    var communityFeed by remember { mutableStateOf<CommunityFeed?>(null) }
+    var communityFeedLoaded by remember { mutableStateOf(false) }
 
     // Notification Action Style State
     var actionStyle by remember { mutableStateOf(prefs.getString("notification_actions_style", "disabled") ?: "disabled") }
@@ -99,6 +106,16 @@ fun SettingsScreen(
 
     // Check for HyperOS 3.0.300+
     val isHyperOsSupported = remember { RomUtils.isHyperOsVersionAtLeast(3, 0, 300) }
+
+    LaunchedEffect(offlineModeEnabled) {
+        if (offlineModeEnabled) {
+            communityFeed = null
+            communityFeedLoaded = true
+        } else {
+            communityFeed = CommunityFeedRepository.fetchFeed(context)
+            communityFeedLoaded = true
+        }
+    }
 
     // Logic for permissions status
     fun checkNotificationPermission(): Boolean {
@@ -229,6 +246,16 @@ fun SettingsScreen(
                     }
                 }
 
+                SettingsSwitchItem(
+                    title = stringResource(R.string.settings_full_offline_mode),
+                    subtitle = stringResource(R.string.settings_full_offline_mode_desc),
+                    checked = offlineModeEnabled,
+                    onCheckedChange = {
+                        offlineModeEnabled = it
+                        OfflineModeManager.setEnabled(context, it)
+                    }
+                )
+
                 // Suggest Current App
                 var recommendMediaAppEnabled by remember { mutableStateOf(prefs.getBoolean("recommend_media_app", true)) }
                 SettingsSwitchItem(
@@ -306,119 +333,163 @@ fun SettingsScreen(
                 // ═══════════════════════════════════════
                 // ── 4. Updates ──
                 // ═══════════════════════════════════════
-                SettingsSectionHeader(text = stringResource(R.string.update_check_title))
+                if (!offlineModeEnabled) {
+                    SettingsSectionHeader(text = stringResource(R.string.update_check_title))
 
-                SettingsSwitchItem(
-                    title = stringResource(R.string.settings_auto_update),
-                    subtitle = stringResource(R.string.settings_auto_update_desc),
-                    checked = autoUpdateEnabled,
-                    onCheckedChange = {
-                        autoUpdateEnabled = it
-                        UpdateChecker.setAutoUpdateEnabled(context, it)
-                    }
-                )
-
-                // Prerelease Updates
-                var prereleaseEnabled by remember { mutableStateOf(UpdateChecker.isPrereleaseEnabled(context)) }
-                var showPrereleaseDialog by remember { mutableStateOf(false) }
-
-                SettingsSwitchItem(
-                    title = stringResource(R.string.settings_prerelease_update),
-                    subtitle = stringResource(R.string.settings_prerelease_update_desc),
-                    checked = prereleaseEnabled,
-                    onCheckedChange = { checked ->
-                        if (checked) {
-                            showPrereleaseDialog = true
-                        } else {
-                            prereleaseEnabled = false
-                            UpdateChecker.setPrereleaseEnabled(context, false)
+                    SettingsSwitchItem(
+                        title = stringResource(R.string.settings_auto_update),
+                        subtitle = stringResource(R.string.settings_auto_update_desc),
+                        checked = autoUpdateEnabled,
+                        onCheckedChange = {
+                            autoUpdateEnabled = it
+                            UpdateChecker.setAutoUpdateEnabled(context, it)
                         }
-                    }
-                )
-                
-                if (prereleaseEnabled) {
-                    var showPrereleaseDescDialog by remember { mutableStateOf(false) }
+                    )
 
-                    Box(modifier = Modifier.fillMaxWidth()) {
-                        SettingsTextItem(
-                            title = stringResource(R.string.settings_prerelease_channel),
-                            value = currentChannel,
-                            onClick = { showChannelDropdown = true }
-                        )
-                        Box(modifier = Modifier.matchParentSize().wrapContentSize(Alignment.CenterEnd)) {
-                            DropdownMenu(
-                                expanded = showChannelDropdown,
-                                onDismissRequest = { showChannelDropdown = false }
-                            ) {
-                                val channels = listOf("Alpha", "Beta", "Pre", "Canary")
-                                channels.forEach { ch ->
-                                    DropdownMenuItem(
-                                        text = { Text(ch) },
-                                        onClick = {
-                                            currentChannel = ch
-                                            UpdateChecker.setPrereleaseChannel(context, ch)
-                                            showChannelDropdown = false
-                                        }
-                                    )
+                    // Prerelease Updates
+                    var prereleaseEnabled by remember { mutableStateOf(UpdateChecker.isPrereleaseEnabled(context)) }
+                    var showPrereleaseDialog by remember { mutableStateOf(false) }
+
+                    SettingsSwitchItem(
+                        title = stringResource(R.string.settings_prerelease_update),
+                        subtitle = stringResource(R.string.settings_prerelease_update_desc),
+                        checked = prereleaseEnabled,
+                        onCheckedChange = { checked ->
+                            if (checked) {
+                                showPrereleaseDialog = true
+                            } else {
+                                prereleaseEnabled = false
+                                UpdateChecker.setPrereleaseEnabled(context, false)
+                            }
+                        }
+                    )
+
+                    if (prereleaseEnabled) {
+                        var showPrereleaseDescDialog by remember { mutableStateOf(false) }
+
+                        Box(modifier = Modifier.fillMaxWidth()) {
+                            SettingsTextItem(
+                                title = stringResource(R.string.settings_prerelease_channel),
+                                value = currentChannel,
+                                onClick = { showChannelDropdown = true }
+                            )
+                            Box(modifier = Modifier.matchParentSize().wrapContentSize(Alignment.CenterEnd)) {
+                                DropdownMenu(
+                                    expanded = showChannelDropdown,
+                                    onDismissRequest = { showChannelDropdown = false }
+                                ) {
+                                    val channels = listOf("Alpha", "Beta", "Pre", "Canary")
+                                    channels.forEach { ch ->
+                                        DropdownMenuItem(
+                                            text = { Text(ch) },
+                                            onClick = {
+                                                currentChannel = ch
+                                                UpdateChecker.setPrereleaseChannel(context, ch)
+                                                showChannelDropdown = false
+                                            }
+                                        )
+                                    }
                                 }
                             }
                         }
+
+                        SettingsActionItem(
+                            title = stringResource(R.string.settings_prerelease_desc),
+                            icon = Icons.AutoMirrored.Filled.Help,
+                            onClick = { showPrereleaseDescDialog = true }
+                        )
+
+                        if (showPrereleaseDescDialog) {
+                            AlertDialog(
+                                onDismissRequest = { showPrereleaseDescDialog = false },
+                                title = { Text(stringResource(R.string.dialog_prerelease_desc_title)) },
+                                text = { Text(stringResource(R.string.dialog_prerelease_desc_message)) },
+                                confirmButton = {
+                                    TextButton(onClick = { showPrereleaseDescDialog = false }) {
+                                        Text(stringResource(android.R.string.ok))
+                                    }
+                                }
+                            )
+                        }
+                    }
+
+                    if (showPrereleaseDialog) {
+                        AlertDialog(
+                            onDismissRequest = { showPrereleaseDialog = false },
+                            title = { Text(stringResource(R.string.dialog_prerelease_warning_title)) },
+                            text = { Text(stringResource(R.string.dialog_prerelease_warning_message)) },
+                            confirmButton = {
+                                TextButton(onClick = {
+                                    prereleaseEnabled = true
+                                    UpdateChecker.setPrereleaseEnabled(context, true)
+                                    showPrereleaseDialog = false
+                                }) {
+                                    Text(stringResource(android.R.string.ok))
+                                }
+                            },
+                            dismissButton = {
+                                TextButton(onClick = { showPrereleaseDialog = false }) {
+                                    Text(stringResource(android.R.string.cancel))
+                                }
+                            }
+                        )
                     }
 
                     SettingsActionItem(
-                        title = stringResource(R.string.settings_prerelease_desc),
-                        icon = Icons.AutoMirrored.Filled.Help,
-                        onClick = { showPrereleaseDescDialog = true }
+                        title = stringResource(R.string.update_check_title),
+                        icon = Icons.Filled.Sync,
+                        onClick = onCheckUpdate
                     )
 
-                    if (showPrereleaseDescDialog) {
-                        AlertDialog(
-                            onDismissRequest = { showPrereleaseDescDialog = false },
-                            title = { Text(stringResource(R.string.dialog_prerelease_desc_title)) },
-                            text = { Text(stringResource(R.string.dialog_prerelease_desc_message)) },
-                            confirmButton = {
-                                TextButton(onClick = { showPrereleaseDescDialog = false }) {
-                                    Text(stringResource(android.R.string.ok))
-                                }
-                            }
-                        )
-                    }
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
                 }
-
-                if (showPrereleaseDialog) {
-                    AlertDialog(
-                        onDismissRequest = { showPrereleaseDialog = false },
-                        title = { Text(stringResource(R.string.dialog_prerelease_warning_title)) },
-                        text = { Text(stringResource(R.string.dialog_prerelease_warning_message)) },
-                        confirmButton = {
-                            TextButton(onClick = {
-                                prereleaseEnabled = true
-                                UpdateChecker.setPrereleaseEnabled(context, true)
-                                showPrereleaseDialog = false
-                            }) {
-                                Text(stringResource(android.R.string.ok))
-                            }
-                        },
-                        dismissButton = {
-                            TextButton(onClick = { showPrereleaseDialog = false }) {
-                                Text(stringResource(android.R.string.cancel))
-                            }
-                        }
-                    )
-                }
-
-                SettingsActionItem(
-                     title = stringResource(R.string.update_check_title),
-                     icon = Icons.Filled.Sync,
-                     onClick = onCheckUpdate
-                )
-
-                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
                 // ═══════════════════════════════════════
                 // ── 5. Help & About ──
                 // ═══════════════════════════════════════
                 SettingsSectionHeader(text = stringResource(R.string.settings_help_about_header))
+
+                if (!offlineModeEnabled && (!communityFeedLoaded || communityFeed?.hasContent == true)) {
+                    SettingsSectionHeader(
+                        text = stringResource(R.string.settings_community_header),
+                        marginTop = 0.dp
+                    )
+
+                    if (!communityFeedLoaded) {
+                        SettingsActionItem(
+                            title = stringResource(R.string.community_loading_title),
+                            summary = stringResource(R.string.community_loading_desc),
+                            icon = Icons.Filled.Sync,
+                            onClick = {}
+                        )
+                    } else {
+                        communityFeed?.announcement?.let { announcement ->
+                            CommunityActionItem(
+                                title = stringResource(R.string.community_announcement_title),
+                                item = announcement,
+                                fallbackSummary = stringResource(R.string.community_open_in_browser),
+                                icon = Icons.Filled.Info,
+                                onClick = {
+                                    val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse(announcement.url))
+                                    context.startActivity(browserIntent)
+                                }
+                            )
+                        }
+
+                        communityFeed?.poll?.let { poll ->
+                            CommunityActionItem(
+                                title = stringResource(R.string.community_poll_title),
+                                item = poll,
+                                fallbackSummary = stringResource(R.string.community_open_in_browser),
+                                icon = Icons.Filled.Link,
+                                onClick = {
+                                    val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse(poll.url))
+                                    context.startActivity(browserIntent)
+                                }
+                            )
+                        }
+                    }
+                }
 
                 SettingsActionItem(
                     title = stringResource(R.string.faq_title),
@@ -428,22 +499,24 @@ fun SettingsScreen(
                     }
                 )
 
-                SettingsActionItem(
-                    title = stringResource(R.string.settings_feedback),
-                    icon = Icons.AutoMirrored.Filled.Send,
-                    onClick = {
-                        showFeedbackDialog = true
-                    }
-                )
+                if (!offlineModeEnabled) {
+                    SettingsActionItem(
+                        title = stringResource(R.string.settings_feedback),
+                        icon = Icons.AutoMirrored.Filled.Send,
+                        onClick = {
+                            showFeedbackDialog = true
+                        }
+                    )
 
-                SettingsActionItem(
-                    title = stringResource(R.string.settings_about_github),
-                    icon = Icons.Filled.Link,
-                    onClick = {
-                         val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/FrancoGiudans/Capsulyric"))
-                         context.startActivity(browserIntent)
-                    }
-                )
+                    SettingsActionItem(
+                        title = stringResource(R.string.settings_about_github),
+                        icon = Icons.Filled.Link,
+                        onClick = {
+                             val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/FrancoGiudans/Capsulyric"))
+                             context.startActivity(browserIntent)
+                        }
+                    )
+                }
 
                 // Version
                 SettingsValueItem(
@@ -1001,6 +1074,28 @@ fun SettingsActionItem(
              tint = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
+}
+
+@Composable
+private fun CommunityActionItem(
+    title: String,
+    item: CommunityFeedItem,
+    fallbackSummary: String,
+    icon: ImageVector,
+    onClick: () -> Unit
+) {
+    val summaryLines = buildList {
+        add(item.title)
+        item.summary.takeIf { it.isNotBlank() }?.let { add(it) }
+        item.actionText.takeIf { it.isNotBlank() }?.let { add(it) }
+    }
+
+    SettingsActionItem(
+        title = title,
+        icon = icon,
+        summary = summaryLines.joinToString("\n").ifBlank { fallbackSummary },
+        onClick = onClick
+    )
 }
 
 

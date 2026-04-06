@@ -4,6 +4,10 @@ import com.example.islandlyrics.ui.miuix.MiuixBackHandler
 import android.app.Activity
 import com.example.islandlyrics.BuildConfig
 import com.example.islandlyrics.R
+import com.example.islandlyrics.core.feed.CommunityFeed
+import com.example.islandlyrics.core.feed.CommunityFeedItem
+import com.example.islandlyrics.core.feed.CommunityFeedRepository
+import com.example.islandlyrics.core.network.OfflineModeManager
 import com.example.islandlyrics.core.update.UpdateChecker
 import com.example.islandlyrics.core.theme.ThemeHelper
 import com.example.islandlyrics.core.platform.RomUtils
@@ -68,6 +72,7 @@ fun MiuixSettingsScreen(
     val prefs = remember { context.getSharedPreferences("IslandLyricsPrefs", android.content.Context.MODE_PRIVATE) }
     val scrollBehavior = MiuixScrollBehavior(rememberTopAppBarState())
     val listState = rememberLazyListState()
+    var offlineModeEnabled by remember { mutableStateOf(OfflineModeManager.isEnabled(context)) }
 
     // State
     var autoUpdateEnabled by remember { mutableStateOf(UpdateChecker.isAutoUpdateEnabled(context)) }
@@ -81,12 +86,24 @@ fun MiuixSettingsScreen(
     val showFeedbackPopup = remember { mutableStateOf(false) }
     val showPrereleaseDialog = remember { mutableStateOf(false) }
     val showPrereleaseDescDialog = remember { mutableStateOf(false) }
+    var communityFeed by remember { mutableStateOf<CommunityFeed?>(null) }
+    var communityFeedLoaded by remember { mutableStateOf(false) }
 
     MiuixBackHandler(enabled = showPrivacyDialog.value) { showPrivacyDialog.value = false }
     MiuixBackHandler(enabled = showFeedbackPopup.value) { showFeedbackPopup.value = false }
     MiuixBackHandler(enabled = showPrereleaseDescDialog.value) { showPrereleaseDescDialog.value = false }
     MiuixBackHandler(enabled = showPrereleaseDialog.value) {
         showPrereleaseDialog.value = false
+    }
+
+    LaunchedEffect(offlineModeEnabled) {
+        if (offlineModeEnabled) {
+            communityFeed = null
+            communityFeedLoaded = true
+        } else {
+            communityFeed = CommunityFeedRepository.fetchFeed(context)
+            communityFeedLoaded = true
+        }
     }
 
     val isHyperOsSupported = remember { RomUtils.isHyperOsVersionAtLeast(3, 0, 300) }
@@ -230,6 +247,16 @@ fun MiuixSettingsScreen(
                         }
                     )
 
+                    SuperSwitch(
+                        title = stringResource(R.string.settings_full_offline_mode),
+                        summary = stringResource(R.string.settings_full_offline_mode_desc),
+                        checked = offlineModeEnabled,
+                        onCheckedChange = {
+                            offlineModeEnabled = it
+                            OfflineModeManager.setEnabled(context, it)
+                        }
+                    )
+
                     // Recommend Media App
                     var recommendMediaAppEnabled by remember { mutableStateOf(prefs.getBoolean("recommend_media_app", true)) }
                     SuperSwitch(
@@ -298,64 +325,103 @@ fun MiuixSettingsScreen(
             }
 
             // ═══ 4. Updates ═══
-            item { SmallTitle(text = stringResource(R.string.update_check_title)) }
-            item {
-                Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
-                    SuperSwitch(
-                        title = stringResource(R.string.settings_auto_update),
-                        summary = stringResource(R.string.settings_auto_update_desc),
-                        checked = autoUpdateEnabled,
-                        onCheckedChange = {
-                            autoUpdateEnabled = it
-                            UpdateChecker.setAutoUpdateEnabled(context, it)
-                        }
-                    )
-
-
-                    SuperSwitch(
-                        title = stringResource(R.string.settings_prerelease_update),
-                        summary = stringResource(R.string.settings_prerelease_update_desc),
-                        checked = prereleaseEnabled,
-                        onCheckedChange = { checked ->
-                            if (checked) {
-                                showPrereleaseDialog.value = true
-                            } else {
-                                prereleaseEnabled = false
-                                UpdateChecker.setPrereleaseEnabled(context, false)
-                            }
-                        }
-                    )
-
-                    if (prereleaseEnabled) {
-                        val channelOptions = listOf("Alpha", "Beta", "Pre", "Canary")
-                        val channelNames = listOf("Alpha", "Beta", "Pre", "Canary")
-                        
-                        var currentChannel by remember { mutableStateOf(UpdateChecker.getPrereleaseChannel(context)) }
-                        val channelIndex = channelOptions.indexOf(currentChannel).takeIf { it >= 0 } ?: 0
-                        
-                        SuperDropdown(
-                            title = stringResource(R.string.settings_prerelease_channel),
-                            items = channelNames,
-                            selectedIndex = channelIndex,
-                            onSelectedIndexChange = { index ->
-                                val channel = channelOptions[index]
-                                UpdateChecker.setPrereleaseChannel(context, channel)
-                                currentChannel = channel
+            if (!offlineModeEnabled) {
+                item { SmallTitle(text = stringResource(R.string.update_check_title)) }
+                item {
+                    Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
+                        SuperSwitch(
+                            title = stringResource(R.string.settings_auto_update),
+                            summary = stringResource(R.string.settings_auto_update_desc),
+                            checked = autoUpdateEnabled,
+                            onCheckedChange = {
+                                autoUpdateEnabled = it
+                                UpdateChecker.setAutoUpdateEnabled(context, it)
                             }
                         )
 
+                        SuperSwitch(
+                            title = stringResource(R.string.settings_prerelease_update),
+                            summary = stringResource(R.string.settings_prerelease_update_desc),
+                            checked = prereleaseEnabled,
+                            onCheckedChange = { checked ->
+                                if (checked) {
+                                    showPrereleaseDialog.value = true
+                                } else {
+                                    prereleaseEnabled = false
+                                    UpdateChecker.setPrereleaseEnabled(context, false)
+                                }
+                            }
+                        )
+
+                        if (prereleaseEnabled) {
+                            val channelOptions = listOf("Alpha", "Beta", "Pre", "Canary")
+                            val channelNames = listOf("Alpha", "Beta", "Pre", "Canary")
+
+                            var currentChannel by remember { mutableStateOf(UpdateChecker.getPrereleaseChannel(context)) }
+                            val channelIndex = channelOptions.indexOf(currentChannel).takeIf { it >= 0 } ?: 0
+
+                            SuperDropdown(
+                                title = stringResource(R.string.settings_prerelease_channel),
+                                items = channelNames,
+                                selectedIndex = channelIndex,
+                                onSelectedIndexChange = { index ->
+                                    val channel = channelOptions[index]
+                                    UpdateChecker.setPrereleaseChannel(context, channel)
+                                    currentChannel = channel
+                                }
+                            )
+
+                            SuperArrow(
+                                title = stringResource(R.string.settings_prerelease_desc),
+                                onClick = { showPrereleaseDescDialog.value = true }
+                            )
+                        }
 
                         SuperArrow(
-                            title = stringResource(R.string.settings_prerelease_desc),
-                            onClick = { showPrereleaseDescDialog.value = true }
+                            title = stringResource(R.string.update_check_title),
+                            summary = stringResource(R.string.summary_check_updates_now),
+                            onClick = onCheckUpdate
                         )
                     }
+                }
 
-                    SuperArrow(
-                        title = stringResource(R.string.update_check_title),
-                        summary = stringResource(R.string.summary_check_updates_now),
-                        onClick = onCheckUpdate
-                    )
+                if (!communityFeedLoaded || communityFeed?.hasContent == true) {
+                    item { SmallTitle(text = stringResource(R.string.settings_community_header)) }
+                    item {
+                        Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
+                            if (!communityFeedLoaded) {
+                                SuperArrow(
+                                    title = stringResource(R.string.community_loading_title),
+                                    summary = stringResource(R.string.community_loading_desc),
+                                    onClick = {}
+                                )
+                            } else {
+                                communityFeed?.announcement?.let { announcement ->
+                                    CommunityArrowItem(
+                                        title = stringResource(R.string.community_announcement_title),
+                                        item = announcement,
+                                        fallbackSummary = stringResource(R.string.community_open_in_browser),
+                                        onClick = {
+                                            val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse(announcement.url))
+                                            context.startActivity(browserIntent)
+                                        }
+                                    )
+                                }
+
+                                communityFeed?.poll?.let { poll ->
+                                    CommunityArrowItem(
+                                        title = stringResource(R.string.community_poll_title),
+                                        item = poll,
+                                        fallbackSummary = stringResource(R.string.community_open_in_browser),
+                                        onClick = {
+                                            val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse(poll.url))
+                                            context.startActivity(browserIntent)
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    }
                 }
             }
 
@@ -368,53 +434,55 @@ fun MiuixSettingsScreen(
                         summary = stringResource(R.string.summary_faq),
                         onClick = { context.startActivity(Intent(context, FAQActivity::class.java)) }
                     )
-                    Box {
+                    if (!offlineModeEnabled) {
+                        Box {
+                            SuperArrow(
+                                title = stringResource(R.string.settings_feedback),
+                                summary = stringResource(R.string.summary_feedback),
+                                onClick = {
+                                    showFeedbackPopup.value = true
+                                }
+                            )
+                            SuperListPopup(
+                                show = showFeedbackPopup.value,
+                                alignment = PopupPositionProvider.Align.TopEnd,
+                                onDismissRequest = { showFeedbackPopup.value = false }
+                            ) {
+                                ListPopupColumn {
+                                    DropdownImpl(
+                                        text = stringResource(R.string.dialog_feedback_github),
+                                        optionSize = 2,
+                                        isSelected = false,
+                                        index = 0,
+                                        onSelectedIndexChange = {
+                                            showFeedbackPopup.value = false
+                                            val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/FrancoGiudans/Capsulyric/issues/new?template=bug_report.yml"))
+                                            context.startActivity(browserIntent)
+                                        }
+                                    )
+                                    DropdownImpl(
+                                        text = stringResource(R.string.dialog_feedback_wps),
+                                        optionSize = 2,
+                                        isSelected = false,
+                                        index = 1,
+                                        onSelectedIndexChange = {
+                                            showFeedbackPopup.value = false
+                                            val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://f.wps.cn/g/qACKW9I3/"))
+                                            context.startActivity(browserIntent)
+                                        }
+                                    )
+                                }
+                            }
+                        }
                         SuperArrow(
-                            title = stringResource(R.string.settings_feedback),
-                            summary = stringResource(R.string.summary_feedback),
+                            title = stringResource(R.string.settings_about_github),
+                            summary = stringResource(R.string.summary_github),
                             onClick = {
-                                showFeedbackPopup.value = true
+                                val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/FrancoGiudans/Capsulyric"))
+                                context.startActivity(browserIntent)
                             }
                         )
-                        SuperListPopup(
-                            show = showFeedbackPopup.value,
-                            alignment = PopupPositionProvider.Align.TopEnd,
-                            onDismissRequest = { showFeedbackPopup.value = false }
-                        ) {
-                            ListPopupColumn {
-                                DropdownImpl(
-                                    text = stringResource(R.string.dialog_feedback_github),
-                                    optionSize = 2,
-                                    isSelected = false,
-                                    index = 0,
-                                    onSelectedIndexChange = {
-                                        showFeedbackPopup.value = false
-                                        val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/FrancoGiudans/Capsulyric/issues/new?template=bug_report.yml"))
-                                        context.startActivity(browserIntent)
-                                    }
-                                )
-                                DropdownImpl(
-                                    text = stringResource(R.string.dialog_feedback_wps),
-                                    optionSize = 2,
-                                    isSelected = false,
-                                    index = 1,
-                                    onSelectedIndexChange = {
-                                        showFeedbackPopup.value = false
-                                        val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://f.wps.cn/g/qACKW9I3/"))
-                                        context.startActivity(browserIntent)
-                                    }
-                                )
-                            }
-                        }
                     }
-                    SuperArrow(
-                        title = stringResource(R.string.settings_about_github),
-                        summary = stringResource(R.string.summary_github),
-                        onClick = {
-                            val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/FrancoGiudans/Capsulyric"))
-                            context.startActivity(browserIntent)
-                        }
-                    )
 
                     // Version
                     BasicComponent(
@@ -569,4 +637,24 @@ fun MiuixSettingsScreen(
             )
         }
     }
+}
+
+@Composable
+private fun CommunityArrowItem(
+    title: String,
+    item: CommunityFeedItem,
+    fallbackSummary: String,
+    onClick: () -> Unit
+) {
+    val summaryLines = buildList {
+        add(item.title)
+        item.summary.takeIf { it.isNotBlank() }?.let { add(it) }
+        item.actionText.takeIf { it.isNotBlank() }?.let { add(it) }
+    }
+
+    SuperArrow(
+        title = title,
+        summary = summaryLines.joinToString("\n").ifBlank { fallbackSummary },
+        onClick = onClick
+    )
 }

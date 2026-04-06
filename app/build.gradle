@@ -78,10 +78,12 @@ android {
         def versionPrefix = getBuildMetadata(project, "versionPrefix", "APP_VERSION_PREFIX", getDefaultVersionPrefix())
         def baseVersion = getBuildMetadata(project, "versionName", "APP_VERSION_NAME", "${versionPrefix}.Canary")
         def appCodename = getBuildMetadata(project, "appCodename", "APP_CODENAME", "Unassigned")
+        def communityFeedBaseUrl = getBuildMetadata(project, "appCommunityFeedBaseUrl", "APP_COMMUNITY_FEED_BASE_URL", "https://raw.githubusercontent.com/FrancoGiudans/Caps-feed/main/data")
         versionName = "${baseVersion}_C${getGitCommitCount()}"
 
         buildConfigField "String", "GIT_COMMIT_HASH", "\"${getGitCommitHash()}\""
         buildConfigField "String", "VERSION_CODENAME", "\"${escapeForBuildConfig(appCodename)}\""
+        buildConfigField "String", "COMMUNITY_FEED_BASE_URL", "\"${escapeForBuildConfig(communityFeedBaseUrl)}\""
         buildConfigField "boolean", "LIVE_UPDATE_ENABLED", "true"
 
         // Strip unused localized resources to reduce APK size

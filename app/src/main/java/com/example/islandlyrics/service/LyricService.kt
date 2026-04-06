@@ -20,6 +20,7 @@ import com.example.islandlyrics.R
 import com.example.islandlyrics.core.platform.RomUtils
 import com.example.islandlyrics.core.logging.AppLogger
 import com.example.islandlyrics.core.logging.LogManager
+import com.example.islandlyrics.core.network.OfflineModeManager
 import com.example.islandlyrics.data.LyricRepository
 import com.example.islandlyrics.data.ParserRuleHelper
 import com.example.islandlyrics.data.lyric.LyricGetterSource
@@ -196,6 +197,9 @@ class LyricService : Service() {
             } else {
                 floatingLyricsRenderer?.stop()
             }
+        } else if (key == OfflineModeManager.KEY_FULLY_OFFLINE_MODE && p.getBoolean(key, false)) {
+            AppLogger.getInstance().log(TAG, "Offline mode enabled -> cancelling online lyric requests")
+            onlineLyricSource.cancel()
         }
     }
 

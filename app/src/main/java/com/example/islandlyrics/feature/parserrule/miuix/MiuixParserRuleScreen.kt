@@ -4,6 +4,7 @@ import com.example.islandlyrics.ui.miuix.MiuixBackHandler
 import android.content.Context
 import com.example.islandlyrics.data.FieldOrder
 import com.example.islandlyrics.R
+import com.example.islandlyrics.core.network.OfflineModeManager
 import com.example.islandlyrics.data.ParserRuleHelper
 import com.example.islandlyrics.data.ParserRule
 import com.example.islandlyrics.data.LyricRepository
@@ -56,6 +57,7 @@ fun MiuixParserRuleScreen(
     onBottomBarVisibilityChange: (Boolean) -> Unit = {}
 ) {
     val context = LocalContext.current
+    val offlineModeEnabled = OfflineModeManager.isEnabled(context)
     val scrollBehavior = MiuixScrollBehavior(rememberTopAppBarState())
     val listState = rememberLazyListState()
 
@@ -238,6 +240,7 @@ fun MiuixParserRuleScreen(
                         rules.forEach { rule ->
                             MiuixParserRuleItem(
                                 rule = rule,
+                                offlineModeEnabled = offlineModeEnabled,
                                 onClick = {
                                     context.startActivity(
                                         android.content.Intent(context, ParserRuleEditorActivity::class.java)
@@ -298,6 +301,7 @@ fun MiuixParserRuleScreen(
 @Composable
 fun MiuixParserRuleItem(
     rule: ParserRule,
+    offlineModeEnabled: Boolean,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
     onToggle: (Boolean) -> Unit
@@ -328,7 +332,7 @@ fun MiuixParserRuleItem(
                 )
             }
             Spacer(modifier = Modifier.height(6.dp))
-            if (rule.useOnlineLyrics && !rule.useSmartOnlineLyricSelection) {
+            if (!offlineModeEnabled && rule.useOnlineLyrics && !rule.useSmartOnlineLyricSelection) {
                 val orderSummary = OnlineLyricProvider.normalizeOrder(rule.onlineLyricProviderOrder)
                     .joinToString(" > ") { it.displayName(context) }
                 Text(
@@ -340,8 +344,10 @@ fun MiuixParserRuleItem(
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 MiuixStatusBadge(active = rule.usesCarProtocol, label = "Notify")
-                Spacer(modifier = Modifier.width(8.dp))
-                MiuixStatusBadge(active = rule.useOnlineLyrics, label = "Online")
+                if (!offlineModeEnabled) {
+                    Spacer(modifier = Modifier.width(8.dp))
+                    MiuixStatusBadge(active = rule.useOnlineLyrics, label = "Online")
+                }
                 Spacer(modifier = Modifier.width(8.dp))
                 MiuixStatusBadge(active = rule.useSuperLyricApi, label = "Super")
                 Spacer(modifier = Modifier.width(8.dp))

@@ -2,6 +2,7 @@ package com.example.islandlyrics.data.lyric
 
 import android.content.Context
 import com.example.islandlyrics.core.logging.AppLogger
+import com.example.islandlyrics.core.network.OfflineModeManager
 import com.example.islandlyrics.service.LyricService
 import com.example.islandlyrics.data.ParserRuleHelper
 import com.example.islandlyrics.data.LyricRepository
@@ -54,6 +55,12 @@ class OnlineLyricSource(private val context: Context) {
      * A concurrent fetch for a previous track is cancelled automatically.
      */
     fun fetchFor(title: String, artist: String, packageName: String) {
+        if (OfflineModeManager.isEnabled(context)) {
+            AppLogger.getInstance().i(TAG, "[$packageName] Offline mode enabled — skipped")
+            cancel()
+            return
+        }
+
         val rule = ParserRuleHelper.getRuleForPackage(context, packageName)
                    ?: ParserRuleHelper.createDefaultRule(packageName)
 

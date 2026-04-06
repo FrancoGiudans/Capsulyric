@@ -72,6 +72,8 @@
     <string name="tab_settings">设置</string>
     <string name="settings_console_log">日志控制台</string>
     <string name="settings_general_header">通用</string>
+    <string name="settings_full_offline_mode">完全离线模式</string>
+    <string name="settings_full_offline_mode_desc">隐藏所有需要联网的功能，并阻止更新检查、社区动态和在线歌词请求</string>
     <string name="settings_core_services_header">核心服务</string>
     <string name="settings_block_xmsf">绕过小米超级岛白名单</string>
     <string name="settings_block_xmsf_desc">发送通知时临时断开 XMSF 网络以绕过系统白名单限制（需要 Shizuku 环境）</string>
@@ -83,6 +85,7 @@
     <string name="settings_recommend_media_app">推荐当前播放应用</string>
     <string name="settings_recommend_media_app_desc">进入解析规则界面时自动推荐当前播放应用</string>
     <string name="settings_help_about_header">帮助与关于</string>
+    <string name="settings_community_header">社区动态</string>
 
     <string name="settings_dynamic_icon_desc">展示歌名-歌手，仅HyperOS 3.0.300+可用</string>
     <string name="channel_live_lyrics">实时歌词更新</string>
@@ -210,6 +213,7 @@
     <!-- FAQ Strings -->
     <string name="settings_predictive_back_desc">重启应用生效</string>
     <string name="summary_view_logs">查看日志文件</string>
+    <string name="offline_mode_network_blocked">完全离线模式已开启，联网操作已被阻止</string>
     <string name="faq_title">常见问题解答</string>
     <string name="faq_cat_guide">使用指引</string>
     <string name="faq_q_add_rule">Q：如何为我的音乐软件添加解析规则？</string>
@@ -459,4 +463,9 @@
     <string name="settings_floating_follow_album_color_desc">自动从提取的专辑图调色板中获取最佳文字颜色</string>
     <string name="settings_floating_text_color">自选颜色</string>
     <string name="settings_floating_text_size">字号大小</string>
+    <string name="community_loading_title">正在加载社区动态</string>
+    <string name="community_loading_desc">正在从远程 feed 获取公告和投票</string>
+    <string name="community_announcement_title">公告</string>
+    <string name="community_poll_title">投票</string>
+    <string name="community_open_in_browser">在浏览器中打开</string>
 </resources>

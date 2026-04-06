@@ -7,6 +7,7 @@ import com.example.islandlyrics.BuildConfig
 import com.example.islandlyrics.R
 import com.example.islandlyrics.core.update.UpdateChecker
 import com.example.islandlyrics.core.logging.AppLogger
+import com.example.islandlyrics.core.network.OfflineModeManager
 import com.example.islandlyrics.service.MediaMonitorService
 import com.example.islandlyrics.feature.customsettings.CustomSettingsActivity
 import com.example.islandlyrics.feature.navigation.MaterialTopLevelNavigationBar
@@ -84,7 +85,7 @@ class MainActivity : BaseActivity() {
         updateVersionInfo()
 
         // Auto-check for updates on startup
-        if (UpdateChecker.isAutoUpdateEnabled(this) && !hasCheckedForUpdates) {
+        if (!OfflineModeManager.isEnabled(this) && UpdateChecker.isAutoUpdateEnabled(this) && !hasCheckedForUpdates) {
             hasCheckedForUpdates = true
             lifecycleScope.launch {
                 try {
@@ -415,6 +416,10 @@ class MainActivity : BaseActivity() {
     }
 
     private fun performUpdateCheckFromMain() {
+        if (OfflineModeManager.isEnabled(this)) {
+            Toast.makeText(this, R.string.offline_mode_network_blocked, Toast.LENGTH_SHORT).show()
+            return
+        }
         Toast.makeText(this, "Checking for updates...", Toast.LENGTH_SHORT).show()
         lifecycleScope.launch {
             try {

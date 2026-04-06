@@ -7,6 +7,7 @@ import com.example.islandlyrics.BuildConfig
 import com.example.islandlyrics.R
 import com.example.islandlyrics.core.update.UpdateChecker
 import com.example.islandlyrics.core.logging.AppLogger
+import com.example.islandlyrics.core.network.OfflineModeManager
 import com.example.islandlyrics.feature.diagnostics.DiagnosticsActivity
 import com.example.islandlyrics.feature.customsettings.CustomSettingsActivity
 import com.example.islandlyrics.feature.update.miuix.MiuixUpdateDialog
@@ -89,6 +90,10 @@ class SettingsActivity : BaseActivity() {
     }
 
     private fun performUpdateCheck() {
+        if (OfflineModeManager.isEnabled(this)) {
+            Toast.makeText(this, R.string.offline_mode_network_blocked, Toast.LENGTH_SHORT).show()
+            return
+        }
         Toast.makeText(this, "Checking for updates...", Toast.LENGTH_SHORT).show()
         
         lifecycleScope.launch {

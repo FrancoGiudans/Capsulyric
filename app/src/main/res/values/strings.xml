@@ -72,6 +72,8 @@
     <string name="tab_settings">Settings</string>
     <string name="settings_console_log">Log Console</string>
     <string name="settings_general_header">General</string>
+    <string name="settings_full_offline_mode">Full Offline Mode</string>
+    <string name="settings_full_offline_mode_desc">Hide all network-related features and block update checks, community feed, and online lyric requests</string>
     <string name="settings_core_services_header">Core Services</string>
     <string name="settings_block_xmsf">Bypass Super Island Whitelist</string>
     <string name="settings_block_xmsf_desc">Temporarily disconnects XMSF network when sending notifications to bypass the system whitelist (Requires Shizuku)</string>
@@ -83,6 +85,7 @@
     <string name="settings_recommend_media_app">Recommend current media app</string>
     <string name="settings_recommend_media_app_desc">Automatically recommend the current media app when entering rule settings</string>
     <string name="settings_help_about_header">Help &amp; About</string>
+    <string name="settings_community_header">Community</string>
     <string name="settings_dynamic_icon_desc">Show song/artist, only for HyperOS 3.0.300+</string>
 
     
@@ -249,6 +252,7 @@
     <string name="summary_feedback">Send feedback or report issues</string>
     <string name="summary_github">View source on GitHub</string>
     <string name="summary_view_logs">View logs</string>
+    <string name="offline_mode_network_blocked">Full Offline Mode is enabled. Network actions are blocked.</string>
 
     <!-- FAQ Strings -->
     <string name="faq_title">FAQ</string>
@@ -476,4 +480,9 @@ Within the log interface, select the share/export icon. You can specify a timefr
     <string name="settings_floating_follow_album_color_desc">Automatically use dominant color extracted from album art</string>
     <string name="settings_floating_text_color">Custom Color</string>
     <string name="settings_floating_text_size">Text Size</string>
+    <string name="community_loading_title">Loading Community Feed</string>
+    <string name="community_loading_desc">Fetching announcements and votes from the remote feed</string>
+    <string name="community_announcement_title">Announcement</string>
+    <string name="community_poll_title">Vote</string>
+    <string name="community_open_in_browser">Open in browser</string>
 </resources>
