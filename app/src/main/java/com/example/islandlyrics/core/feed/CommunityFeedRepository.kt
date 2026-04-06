@@ -35,6 +35,8 @@ object CommunityFeedRepository {
     private const val TAG = "CommunityFeed"
     private const val ANNOUNCEMENTS_PATH = "announcements.json"
     private const val POLLS_PATH = "polls.json"
+    private const val PRIMARY_BASE_URL = "https://raw.githubusercontent.com/FrancoGiudans/CapsulyricFeed/main/data"
+    private const val LEGACY_BASE_URL = "https://raw.githubusercontent.com/FrancoGiudans/Caps-feed/main/data"
 
     suspend fun fetchFeed(context: Context): CommunityFeed = withContext(Dispatchers.IO) {
         if (OfflineModeManager.isEnabled(context)) {
@@ -50,9 +52,21 @@ object CommunityFeedRepository {
     }
 
     private fun fetchItems(context: Context, relativePath: String): List<CommunityFeedItem> {
-        val baseUrl = BuildConfig.COMMUNITY_FEED_BASE_URL.trimEnd('/')
-        val response = fetchText("$baseUrl/$relativePath") ?: return emptyList()
+        val response = buildBaseUrls()
+            .asSequence()
+            .map { baseUrl -> baseUrl to fetchText("$baseUrl/$relativePath") }
+            .firstOrNull { (_, response) -> response != null }
+            ?.second
+            ?: return emptyList()
         return parseItems(response, context)
+    }
+
+    private fun buildBaseUrls(): List<String> {
+        return linkedSetOf(
+            BuildConfig.COMMUNITY_FEED_BASE_URL.trimEnd('/'),
+            PRIMARY_BASE_URL,
+            LEGACY_BASE_URL
+        ).filter { it.isNotBlank() }
     }
 
     private fun fetchText(urlString: String): String? {

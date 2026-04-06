@@ -4,11 +4,11 @@ import android.content.Context
 import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.Drawable
 import android.widget.TextView
-import coil.Coil
 import coil.ImageLoader
 import coil.request.ErrorResult
 import coil.request.ImageRequest
 import coil.request.SuccessResult
+import com.example.islandlyrics.core.cache.AppImageCacheManager
 import io.noties.markwon.Markwon
 import io.noties.markwon.SoftBreakAddsNewLinePlugin
 import io.noties.markwon.ext.strikethrough.StrikethroughPlugin
@@ -21,7 +21,7 @@ import kotlin.math.roundToInt
 
 object UpdateMarkdown {
     fun create(context: Context): Markwon {
-        val imageLoader = Coil.imageLoader(context)
+        val imageLoader = AppImageCacheManager.getImageLoader(context)
         val coilStore = object : CoilImagesPlugin.CoilStore {
             override fun load(drawable: AsyncDrawable): ImageRequest {
                 val placeholder = createPlaceholder(context, drawable)

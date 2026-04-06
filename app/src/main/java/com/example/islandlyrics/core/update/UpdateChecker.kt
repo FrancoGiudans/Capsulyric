@@ -24,6 +24,7 @@ object UpdateChecker {
     private const val KEY_LAST_CHECK = "last_update_check_time"
     private const val KEY_PRERELEASE_UPDATES = "allow_prerelease_updates"
     private const val KEY_PRERELEASE_CHANNEL = "prerelease_channel" // Alpha, Beta, Pre, Canary
+    private val VERSION_IN_TITLE_REGEX = Regex("""Version\.\d{2}\.\d+(?:\.[A-Za-z0-9]+)?_C\d+""")
 
     data class ReleaseInfo(
         val tagName: String,        // e.g., "v1.0_C25"
@@ -169,7 +170,7 @@ object UpdateChecker {
 
                 for (release in allReleases) {
                     if (isUpdateAllowedForChannel(release, userChannel)) {
-                        if (compareVersions(release.tagName, currentVersion) > 0) {
+                        if (compareVersions(getComparableVersion(release), currentVersion) > 0) {
                             newerReleases.add(release)
                         }
                     }
@@ -178,7 +179,7 @@ object UpdateChecker {
                 if (newerReleases.isEmpty()) return@withContext null
                 val latestRelease = newerReleases.first()
                 val ignoredVersion = getIgnoredVersion(context)
-                if (ignoredVersion != null && latestRelease.tagName == ignoredVersion) return@withContext null
+                if (ignoredVersion != null && getComparableVersion(latestRelease) == ignoredVersion) return@withContext null
 
                 if (newerReleases.size == 1) return@withContext latestRelease
                 return@withContext latestRelease.copy(body = mergeChangelogs(newerReleases))
@@ -205,15 +206,15 @@ object UpdateChecker {
 
             if (cn.isNotEmpty()) {
                 if (cnMerged.isNotEmpty()) cnMerged.append("\n\n")
-                cnMerged.append("### ${release.tagName}\n$cn")
+                cnMerged.append("### ${getComparableVersion(release)}\n$cn")
             }
             if (en.isNotEmpty()) {
                 if (enMerged.isNotEmpty()) enMerged.append("\n\n")
-                enMerged.append("### ${release.tagName}\n$en")
+                enMerged.append("### ${getComparableVersion(release)}\n$en")
             }
             if (gh.isNotEmpty()) {
                 if (ghMerged.isNotEmpty()) ghMerged.append("\n\n")
-                ghMerged.append("### ${release.tagName}\n$gh")
+                ghMerged.append("### ${getComparableVersion(release)}\n$gh")
             }
         }
         
@@ -287,6 +288,14 @@ object UpdateChecker {
         )
     }
 
+    fun getComparableVersion(release: ReleaseInfo): String {
+        val normalizedTag = release.tagName.removePrefix("v")
+        if (!isCanaryTag(release.tagName)) {
+            return normalizedTag
+        }
+        return extractVersionFromTitle(release.name) ?: normalizedTag
+    }
+
     /**
      * Compare version strings using commit count (_C) as the absolute source of truth.
      * @return Positive if v1 > v2, negative if v1 < v2, 0 if equal
@@ -305,6 +314,10 @@ object UpdateChecker {
             return countStr.toIntOrNull() ?: 0
         }
         return 0
+    }
+
+    private fun extractVersionFromTitle(title: String): String? {
+        return VERSION_IN_TITLE_REGEX.find(title)?.value
     }
 
     private fun isCanaryTag(tag: String): Boolean {

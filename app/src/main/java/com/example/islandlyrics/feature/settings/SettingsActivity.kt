@@ -8,6 +8,7 @@ import com.example.islandlyrics.R
 import com.example.islandlyrics.core.update.UpdateChecker
 import com.example.islandlyrics.core.logging.AppLogger
 import com.example.islandlyrics.core.network.OfflineModeManager
+import com.example.islandlyrics.feature.cache.CacheManagementActivity
 import com.example.islandlyrics.feature.diagnostics.DiagnosticsActivity
 import com.example.islandlyrics.feature.customsettings.CustomSettingsActivity
 import com.example.islandlyrics.feature.update.miuix.MiuixUpdateDialog
@@ -25,6 +26,16 @@ import kotlinx.coroutines.launch
 class SettingsActivity : BaseActivity() {
 
     private var updateReleaseInfo by mutableStateOf<UpdateChecker.ReleaseInfo?>(null)
+
+    private fun openCacheManagement() {
+        try {
+            AppLogger.getInstance().log("Settings", "Opening CacheManagementActivity")
+            startActivity(android.content.Intent(this, CacheManagementActivity::class.java))
+        } catch (e: Exception) {
+            AppLogger.getInstance().e("Settings", "Failed to open CacheManagementActivity: ${e.message}", e)
+            Toast.makeText(this, "Failed to open cache management", Toast.LENGTH_SHORT).show()
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -53,6 +64,7 @@ class SettingsActivity : BaseActivity() {
                         onOpenCustomSettings = {
                             startActivity(android.content.Intent(this@SettingsActivity, CustomSettingsActivity::class.java))
                         },
+                        onOpenCacheManagement = { openCacheManagement() },
                         updateReleaseInfo = updateReleaseInfo,
                         onUpdateDismiss = { updateReleaseInfo = null },
                         onUpdateIgnore = { tag ->
@@ -71,7 +83,8 @@ class SettingsActivity : BaseActivity() {
                         updateBuildText = build,
                         onOpenCustomSettings = {
                             startActivity(android.content.Intent(this@SettingsActivity, CustomSettingsActivity::class.java))
-                        }
+                        },
+                        onOpenCacheManagement = { openCacheManagement() }
                     )
 
                     if (updateReleaseInfo != null) {

@@ -74,7 +74,7 @@ fun ParserRuleScreen(
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
-            LargeTopAppBar(
+            MediumTopAppBar(
                 title = { Text(stringResource(R.string.parser_rule_title)) },
                 navigationIcon = if (showBackButton) {
                     {

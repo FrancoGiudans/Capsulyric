@@ -40,7 +40,7 @@ import com.example.islandlyrics.feature.parserrule.toEditorState
 import com.example.islandlyrics.feature.parserrule.toRule
 import com.example.islandlyrics.ui.miuix.MiuixBlurDialog
 import com.example.islandlyrics.ui.miuix.MiuixBlurScaffold
-import com.example.islandlyrics.ui.miuix.MiuixBlurTopAppBar
+import com.example.islandlyrics.ui.miuix.MiuixBlurSmallTopAppBar
 import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.IconButton
@@ -73,7 +73,7 @@ fun MiuixParserRuleEditorScreen(
 
     MiuixBlurScaffold(
         topBar = {
-            MiuixBlurTopAppBar(
+            MiuixBlurSmallTopAppBar(
                 title = if (isNewRule) stringResource(R.string.parser_add_rule) else stringResource(R.string.parser_edit),
                 scrollBehavior = scrollBehavior,
                 navigationIcon = {

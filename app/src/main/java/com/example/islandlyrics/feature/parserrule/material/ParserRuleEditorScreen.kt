@@ -29,8 +29,8 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MediumTopAppBar
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
@@ -78,7 +78,7 @@ fun ParserRuleEditorScreen(
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
-            LargeTopAppBar(
+            MediumTopAppBar(
                 title = { Text(if (isNewRule) stringResource(R.string.parser_add_rule) else stringResource(R.string.parser_edit)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {

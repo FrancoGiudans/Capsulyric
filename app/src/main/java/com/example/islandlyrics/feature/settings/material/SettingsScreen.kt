@@ -11,6 +11,9 @@ import com.example.islandlyrics.core.update.UpdateChecker
 import com.example.islandlyrics.core.theme.ThemeHelper
 import com.example.islandlyrics.core.platform.RomUtils
 import com.example.islandlyrics.feature.faq.FAQActivity
+import com.example.islandlyrics.feature.settings.CommunityDialogState
+import com.example.islandlyrics.feature.settings.CommunityMarkdownBody
+import com.example.islandlyrics.feature.settings.buildCommunityMarkdown
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -34,6 +37,7 @@ import android.content.ClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -61,6 +65,7 @@ fun SettingsScreen(
     updateCodenameText: String,
     updateBuildText: String,
     onOpenCustomSettings: () -> Unit = {},
+    onOpenCacheManagement: () -> Unit = {},
     showBackButton: Boolean = true,
     bottomBar: @Composable () -> Unit = {}
 ) {
@@ -87,6 +92,7 @@ fun SettingsScreen(
     var showFeedbackDialog by remember { mutableStateOf(false) }
     var communityFeed by remember { mutableStateOf<CommunityFeed?>(null) }
     var communityFeedLoaded by remember { mutableStateOf(false) }
+    var communityDialogState by remember { mutableStateOf<CommunityDialogState?>(null) }
 
     // Notification Action Style State
     var actionStyle by remember { mutableStateOf(prefs.getString("notification_actions_style", "disabled") ?: "disabled") }
@@ -166,7 +172,7 @@ fun SettingsScreen(
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
-            LargeTopAppBar(
+            MediumTopAppBar(
                 title = { Text(stringResource(R.string.title_app_settings)) },
                 navigationIcon = if (showBackButton) {
                     {
@@ -450,6 +456,8 @@ fun SettingsScreen(
                 SettingsSectionHeader(text = stringResource(R.string.settings_help_about_header))
 
                 if (!offlineModeEnabled && (!communityFeedLoaded || communityFeed?.hasContent == true)) {
+                    val announcementSectionTitle = stringResource(R.string.community_announcement_title)
+                    val pollSectionTitle = stringResource(R.string.community_poll_title)
                     SettingsSectionHeader(
                         text = stringResource(R.string.settings_community_header),
                         marginTop = 0.dp
@@ -463,31 +471,25 @@ fun SettingsScreen(
                             onClick = {}
                         )
                     } else {
-                        communityFeed?.announcement?.let { announcement ->
-                            CommunityActionItem(
-                                title = stringResource(R.string.community_announcement_title),
-                                item = announcement,
-                                fallbackSummary = stringResource(R.string.community_open_in_browser),
-                                icon = Icons.Filled.Info,
-                                onClick = {
-                                    val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse(announcement.url))
-                                    context.startActivity(browserIntent)
+                                communityFeed?.announcement?.let { announcement ->
+                                    CommunityActionItem(
+                                        title = announcementSectionTitle,
+                                        item = announcement,
+                                        fallbackSummary = stringResource(R.string.community_open_in_browser),
+                                        icon = Icons.Filled.Info,
+                                        onClick = { communityDialogState = CommunityDialogState(announcementSectionTitle, announcement) }
+                                    )
                                 }
-                            )
-                        }
 
-                        communityFeed?.poll?.let { poll ->
-                            CommunityActionItem(
-                                title = stringResource(R.string.community_poll_title),
-                                item = poll,
-                                fallbackSummary = stringResource(R.string.community_open_in_browser),
-                                icon = Icons.Filled.Link,
-                                onClick = {
-                                    val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse(poll.url))
-                                    context.startActivity(browserIntent)
+                                communityFeed?.poll?.let { poll ->
+                                    CommunityActionItem(
+                                        title = pollSectionTitle,
+                                        item = poll,
+                                        fallbackSummary = stringResource(R.string.community_open_in_browser),
+                                        icon = Icons.Filled.Link,
+                                        onClick = { communityDialogState = CommunityDialogState(pollSectionTitle, poll) }
+                                    )
                                 }
-                            )
-                        }
                     }
                 }
 
@@ -497,6 +499,13 @@ fun SettingsScreen(
                     onClick = {
                         context.startActivity(Intent(context, FAQActivity::class.java))
                     }
+                )
+
+                SettingsActionItem(
+                    title = stringResource(R.string.settings_cache_management),
+                    summary = stringResource(R.string.settings_cache_management_desc),
+                    icon = Icons.Filled.Sync,
+                    onClick = onOpenCacheManagement
                 )
 
                 if (!offlineModeEnabled) {
@@ -639,6 +648,18 @@ fun SettingsScreen(
 
             if (showFeedbackDialog) {
                 FeedbackSelectionDialog(onDismiss = { showFeedbackDialog = false })
+            }
+
+            communityDialogState?.let { dialogState ->
+                CommunityDetailsDialog(
+                    state = dialogState,
+                    onDismiss = { communityDialogState = null },
+                    onOpen = {
+                        val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse(dialogState.item.url))
+                        context.startActivity(browserIntent)
+                        communityDialogState = null
+                    }
+                )
             }
         }
     }
@@ -1095,6 +1116,53 @@ private fun CommunityActionItem(
         icon = icon,
         summary = summaryLines.joinToString("\n").ifBlank { fallbackSummary },
         onClick = onClick
+    )
+}
+
+@Composable
+private fun CommunityDetailsDialog(
+    state: CommunityDialogState,
+    onDismiss: () -> Unit,
+    onOpen: () -> Unit
+) {
+    val markdown = buildCommunityMarkdown(state.item)
+    val textColor = MaterialTheme.colorScheme.onSurface.toArgb()
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text = state.sectionTitle,
+                style = MaterialTheme.typography.headlineSmall
+            )
+        },
+        text = {
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState())
+            ) {
+                Text(
+                    text = state.item.title,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                CommunityMarkdownBody(
+                    markdown = markdown,
+                    textColor = textColor,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onOpen) {
+                Text(stringResource(R.string.community_dialog_open))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.community_dialog_close))
+            }
+        }
     )
 }
 

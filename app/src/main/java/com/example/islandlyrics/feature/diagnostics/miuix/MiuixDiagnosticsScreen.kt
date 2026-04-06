@@ -18,6 +18,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.example.islandlyrics.R
 import com.example.islandlyrics.core.platform.RomUtils
+import com.example.islandlyrics.feature.cache.CacheManagementActivity
 import com.example.islandlyrics.feature.logviewer.LogViewerActivity
 import com.example.islandlyrics.feature.onlinelyricdebug.OnlineLyricDebugActivity
 import androidx.compose.ui.unit.sp
@@ -74,6 +75,13 @@ fun MiuixDiagnosticsScreen(onBack: () -> Unit) {
                         summary = "查看每个在线歌词 API 的最终结果",
                         onClick = {
                             context.startActivity(android.content.Intent(context, OnlineLyricDebugActivity::class.java))
+                        }
+                    )
+                    SuperArrow(
+                        title = stringResource(R.string.title_cache_management),
+                        summary = stringResource(R.string.settings_cache_management_desc),
+                        onClick = {
+                            context.startActivity(android.content.Intent(context, CacheManagementActivity::class.java))
                         }
                     )
                     SuperArrow(

@@ -74,6 +74,8 @@
     <string name="settings_general_header">General</string>
     <string name="settings_full_offline_mode">Full Offline Mode</string>
     <string name="settings_full_offline_mode_desc">Hide all network-related features and block update checks, community feed, and online lyric requests</string>
+    <string name="settings_cache_management">Cache Management</string>
+    <string name="settings_cache_management_desc">Manage cached online lyrics and remote images</string>
     <string name="settings_core_services_header">Core Services</string>
     <string name="settings_block_xmsf">Bypass Super Island Whitelist</string>
     <string name="settings_block_xmsf_desc">Temporarily disconnects XMSF network when sending notifications to bypass the system whitelist (Requires Shizuku)</string>
@@ -168,6 +170,7 @@
     <string name="about_codename">Codename</string>
     <string name="about_build">Build</string>
     <string name="about_commit">Commit</string>
+    <string name="title_cache_management">Cache Management</string>
     <string name="update_check_title">Check for Updates</string>
     <string name="update_available_title">Update Available: %s</string>
     <string name="update_current_version">Current: %s</string>
@@ -257,6 +260,7 @@
     <!-- FAQ Strings -->
     <string name="faq_title">FAQ</string>
     <string name="faq_cat_guide">Setup Guide</string>
+    <string name="faq_cat_online">Online Lyrics &amp; Cache</string>
     <string name="faq_q_add_rule">Q: How to add parser rules for my music app?</string>
     <string name="faq_a_add_rule">Follow these steps to add a rule:\n\n
 1. <b>Enable App Settings</b>: Ensure features like "Notification Lyrics", "Media Notification Lyrics", or "Car Bluetooth Lyrics" are enabled in your music app.\n\n
@@ -279,6 +283,41 @@
 - <b>Whitelist Bypass Methods</b>:\n
   • <b>Root Access</b>: Recommended to use modules such as HyperCeiler to eliminate system-level application restrictions.\n
   • <b>Non-Root</b>: Requires Shizuku authorization and enabling the "Bypass Xiaomi Super Island Whitelist" feature. (Note: This may result in intermittent increases in power consumption or notification latency.)</string>
+    <string name="faq_q_config_online_lyrics">Q: How do I configure online lyrics?</string>
+    <string name="faq_a_config_online_lyrics">A: Online lyrics are useful when notification lyrics are unavailable, incomplete, or when you need more accurate timed lyrics.\n\n
+1. Open the current music app rule on the Parser Rules page.\n\n
+2. Enable <b>"Use Online Lyrics API"</b>.\n\n
+3. If the player reports more accurate song title and artist data, enable <b>"Use Raw Metadata for Online Matching"</b>.\n\n
+4. It is recommended to keep <b>"Smart Fetch"</b> enabled so the app can choose a better result automatically. If you prefer manual control, disable Smart Fetch and adjust <b>"Online Lyrics Priority"</b> yourself.\n\n
+5. If one song keeps matching incorrectly, open <b>"Online Lyrics Debug"</b>, fill in a custom match title or artist for the current song, then run <b>"Ignore Cache and Force Refresh"</b>.</string>
+    <string name="faq_q_online_match_wrong">Q: Why are the online lyric search results incorrect?</string>
+    <string name="faq_a_online_match_wrong">A: Online lyrics rely on the current song's matching information. If the player reports incomplete title or artist data, or if the title contains extra tags such as Live, Remix, cover, show names, or bracketed suffixes, the match may be wrong.\n\n
+Try the following:\n\n
+1. Open <b>"Online Lyrics Debug"</b> and check the actual match title and artist currently in use.\n\n
+2. Manually fill in a custom match title or artist for the current song.\n\n
+3. Save it, then run <b>"Ignore Cache and Force Refresh"</b> once.\n\n
+4. If the result is still wrong, check whether <b>"Use Raw Metadata for Online Matching"</b> should be enabled.</string>
+    <string name="faq_q_online_match_no_change">Q: Why didn't the lyrics change after I edited the custom match info?</string>
+    <string name="faq_a_online_match_no_change">A: Custom match information affects future online searches and cache hits, but it does not automatically replace results that are already being displayed.\n\n
+If nothing changes after editing it, follow this order:\n\n
+1. Save the current song's custom match information first.\n\n
+2. In <b>"Online Lyrics Debug"</b>, run <b>"Ignore Cache and Force Refresh"</b> once.\n\n
+3. If the result still does not change, the displayed lyric may still be coming from old cache data.\n\n
+4. In that case, clear the lyric cache entry for this song and fetch it again.\n\n
+<b>Note</b>: Custom matching supports partial override. If only the title or only the artist is filled in, the blank field will be completed automatically using the original playback information.</string>
+    <string name="faq_q_clear_online_cache">Q: How do I clear the online lyric cache?</string>
+    <string name="faq_a_clear_online_cache">A: The app provides a dedicated <b>"Cache Management"</b> page for viewing and clearing online lyric cache entries.\n\n
+Available actions include:\n\n
+1. View the number of cached lyric entries, their total size, and the last update time.\n\n
+2. Delete a single lyric cache entry.\n\n
+3. Clear all lyric cache.\n\n
+4. Clear image cache as well if needed.\n\n
+If online lyric results never update, or if you already corrected the match information but still see the old result, it is recommended to delete the cache entry for that song first and fetch it again.</string>
+    <string name="faq_q_access_diagnostics">Q: How to access Cache Management and Lyric Debugging?</string>
+    <string name="faq_a_access_diagnostics">A: You can access the <b>Diagnostics Tool</b> by repeatedly tapping the <b>"Internal Development Number"</b> (or "Commit Hash") in the <b>About</b> section of Settings. Both Cache Management and Online Lyric Debugging pages are located within the Diagnostics Tool. Note that the <b>custom matching</b> feature is found inside the "Online Lyric Debugging" page.</string>
+    <string name="faq_q_offline_mode_online_lyrics">Q: Does Full Offline Mode affect online lyrics?</string>
+    <string name="faq_a_offline_mode_online_lyrics">A: Yes. After <b>"Full Offline Mode"</b> is enabled, all online lyric requests are disabled. Update checks and other network-dependent content are also blocked.\n\n
+If you want to use online lyrics, please turn off Full Offline Mode first.</string>
     <string name="faq_cat_func">Troubleshooting</string>
     <string name="faq_q_no_lyrics">Q: Troubleshooting: Lyrics/Island Not Displayed After Configuration?</string>
     <string name="faq_a_no_lyrics">A: Please perform the following standardized diagnostic steps:\n\n
@@ -485,4 +524,6 @@ Within the log interface, select the share/export icon. You can specify a timefr
     <string name="community_announcement_title">Announcement</string>
     <string name="community_poll_title">Vote</string>
     <string name="community_open_in_browser">Open in browser</string>
+    <string name="community_dialog_open">Open link</string>
+    <string name="community_dialog_close">Close</string>
 </resources>

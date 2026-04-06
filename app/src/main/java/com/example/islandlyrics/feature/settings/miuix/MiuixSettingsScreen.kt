@@ -12,6 +12,9 @@ import com.example.islandlyrics.core.update.UpdateChecker
 import com.example.islandlyrics.core.theme.ThemeHelper
 import com.example.islandlyrics.core.platform.RomUtils
 import com.example.islandlyrics.feature.faq.FAQActivity
+import com.example.islandlyrics.feature.settings.CommunityDialogState
+import com.example.islandlyrics.feature.settings.CommunityMarkdownBody
+import com.example.islandlyrics.feature.settings.buildCommunityMarkdown
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
@@ -23,6 +26,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Palette
@@ -35,6 +40,7 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -61,6 +67,7 @@ fun MiuixSettingsScreen(
     updateCodenameText: String,
     updateBuildText: String,
     onOpenCustomSettings: () -> Unit = {},
+    onOpenCacheManagement: () -> Unit = {},
     showBackButton: Boolean = true,
     bottomBar: @Composable () -> Unit = {},
     onBottomBarVisibilityChange: (Boolean) -> Unit = {},
@@ -86,6 +93,7 @@ fun MiuixSettingsScreen(
     val showFeedbackPopup = remember { mutableStateOf(false) }
     val showPrereleaseDialog = remember { mutableStateOf(false) }
     val showPrereleaseDescDialog = remember { mutableStateOf(false) }
+    val showCommunityDialog = remember { mutableStateOf<CommunityDialogState?>(null) }
     var communityFeed by remember { mutableStateOf<CommunityFeed?>(null) }
     var communityFeedLoaded by remember { mutableStateOf(false) }
 
@@ -95,6 +103,7 @@ fun MiuixSettingsScreen(
     MiuixBackHandler(enabled = showPrereleaseDialog.value) {
         showPrereleaseDialog.value = false
     }
+    MiuixBackHandler(enabled = showCommunityDialog.value != null) { showCommunityDialog.value = null }
 
     LaunchedEffect(offlineModeEnabled) {
         if (offlineModeEnabled) {
@@ -168,7 +177,8 @@ fun MiuixSettingsScreen(
     val popupShowing = showPrivacyDialog.value ||
             showFeedbackPopup.value ||
             showPrereleaseDialog.value ||
-            showPrereleaseDescDialog.value
+            showPrereleaseDescDialog.value ||
+            showCommunityDialog.value != null
 
     LaunchedEffect(popupShowing) {
         if (popupShowing) {
@@ -388,6 +398,8 @@ fun MiuixSettingsScreen(
                 if (!communityFeedLoaded || communityFeed?.hasContent == true) {
                     item { SmallTitle(text = stringResource(R.string.settings_community_header)) }
                     item {
+                        val announcementSectionTitle = stringResource(R.string.community_announcement_title)
+                        val pollSectionTitle = stringResource(R.string.community_poll_title)
                         Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
                             if (!communityFeedLoaded) {
                                 SuperArrow(
@@ -398,25 +410,19 @@ fun MiuixSettingsScreen(
                             } else {
                                 communityFeed?.announcement?.let { announcement ->
                                     CommunityArrowItem(
-                                        title = stringResource(R.string.community_announcement_title),
+                                        title = announcementSectionTitle,
                                         item = announcement,
                                         fallbackSummary = stringResource(R.string.community_open_in_browser),
-                                        onClick = {
-                                            val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse(announcement.url))
-                                            context.startActivity(browserIntent)
-                                        }
+                                        onClick = { showCommunityDialog.value = CommunityDialogState(announcementSectionTitle, announcement) }
                                     )
                                 }
 
                                 communityFeed?.poll?.let { poll ->
                                     CommunityArrowItem(
-                                        title = stringResource(R.string.community_poll_title),
+                                        title = pollSectionTitle,
                                         item = poll,
                                         fallbackSummary = stringResource(R.string.community_open_in_browser),
-                                        onClick = {
-                                            val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse(poll.url))
-                                            context.startActivity(browserIntent)
-                                        }
+                                        onClick = { showCommunityDialog.value = CommunityDialogState(pollSectionTitle, poll) }
                                     )
                                 }
                             }
@@ -433,6 +439,11 @@ fun MiuixSettingsScreen(
                         title = stringResource(R.string.faq_title),
                         summary = stringResource(R.string.summary_faq),
                         onClick = { context.startActivity(Intent(context, FAQActivity::class.java)) }
+                    )
+                    SuperArrow(
+                        title = stringResource(R.string.settings_cache_management),
+                        summary = stringResource(R.string.settings_cache_management_desc),
+                        onClick = onOpenCacheManagement
                     )
                     if (!offlineModeEnabled) {
                         Box {
@@ -628,6 +639,18 @@ fun MiuixSettingsScreen(
             }
         }
 
+        showCommunityDialog.value?.let { dialogState ->
+            CommunityDetailsDialog(
+                state = dialogState,
+                onDismiss = { showCommunityDialog.value = null },
+                onOpen = {
+                    val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse(dialogState.item.url))
+                    context.startActivity(browserIntent)
+                    showCommunityDialog.value = null
+                }
+            )
+        }
+
         if (updateReleaseInfo != null) {
             MiuixUpdateDialog(
                 show = true,
@@ -657,4 +680,66 @@ private fun CommunityArrowItem(
         summary = summaryLines.joinToString("\n").ifBlank { fallbackSummary },
         onClick = onClick
     )
+}
+
+@Composable
+private fun CommunityDetailsDialog(
+    state: CommunityDialogState,
+    onDismiss: () -> Unit,
+    onOpen: () -> Unit
+) {
+    val markdown = buildCommunityMarkdown(state.item)
+    val textColor = MiuixTheme.colorScheme.onSurface.toArgb()
+
+    MiuixBlurDialog(
+        title = state.sectionTitle,
+        show = true,
+        onDismissRequest = onDismiss
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f, fill = false)
+                    .verticalScroll(rememberScrollState())
+            ) {
+                Text(
+                    text = state.item.title,
+                    fontSize = MiuixTheme.textStyles.body1.fontSize,
+                    color = MiuixTheme.colorScheme.primary
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                CommunityMarkdownBody(
+                    markdown = markdown,
+                    textColor = textColor,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                TextButton(
+                    text = stringResource(R.string.community_dialog_close),
+                    onClick = onDismiss,
+                    colors = ButtonDefaults.textButtonColors(
+                        textColor = MiuixTheme.colorScheme.onSurfaceVariantActions
+                    ),
+                    modifier = Modifier.weight(1f)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                TextButton(
+                    text = stringResource(R.string.community_dialog_open),
+                    onClick = onOpen,
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.textButtonColorsPrimary()
+                )
+            }
+        }
+    }
 }

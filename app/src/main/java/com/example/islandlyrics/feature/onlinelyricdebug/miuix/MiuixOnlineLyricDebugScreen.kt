@@ -43,6 +43,7 @@ import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.SmallTitle
 import top.yukonga.miuix.kmp.basic.Text
+import top.yukonga.miuix.kmp.basic.TextField
 import top.yukonga.miuix.kmp.basic.rememberTopAppBarState
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
 import top.yukonga.miuix.kmp.theme.MiuixTheme
@@ -67,6 +68,11 @@ fun MiuixOnlineLyricDebugScreen(
     val useSmartSelection by viewModel.useSmartSelection.observeAsState(true)
     val usedCleanTitleFallback by viewModel.usedCleanTitleFallback.observeAsState(false)
     val dialogAttempt by viewModel.dialogAttempt.observeAsState()
+    val customMatchTitle by viewModel.customMatchTitle.observeAsState("")
+    val customMatchArtist by viewModel.customMatchArtist.observeAsState("")
+    val effectiveQuery by viewModel.effectiveQuery.observeAsState("" to "")
+    val querySourceLabel by viewModel.querySourceLabel.observeAsState("")
+    val cacheStatus by viewModel.cacheStatus.observeAsState()
     val showPrioritySection = remember(mediaInfo?.packageName, useSmartSelection) {
         val pkg = mediaInfo?.packageName
         pkg != null &&
@@ -75,7 +81,10 @@ fun MiuixOnlineLyricDebugScreen(
     }
 
     LaunchedEffect(mediaInfo?.packageName) {
-        if (mediaInfo?.packageName != null) viewModel.syncProviderOrderFromCurrentRule()
+        if (mediaInfo?.packageName != null) {
+            viewModel.syncProviderOrderFromCurrentRule()
+            viewModel.syncCurrentSongQuery()
+        }
     }
 
     MiuixBlurScaffold(
@@ -102,7 +111,51 @@ fun MiuixOnlineLyricDebugScreen(
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text("歌曲: ${mediaInfo?.title ?: "无"}")
                         Text("歌手: ${mediaInfo?.artist ?: "无"}", color = MiuixTheme.colorScheme.onSurfaceSecondary)
+                        Text("匹配歌名: ${effectiveQuery.first.ifBlank { "无" }}")
+                        Text("匹配歌手: ${effectiveQuery.second.ifBlank { "无" }}")
+                        Text(querySourceLabel, color = MiuixTheme.colorScheme.primary)
+                        cacheStatus?.let {
+                            Text(it, color = MiuixTheme.colorScheme.primary)
+                        }
                         Text("播放时间: ${formatTime(liveProgress?.position ?: 0)} / ${formatTime(liveProgress?.duration ?: 0)}", color = MiuixTheme.colorScheme.primary)
+                    }
+                }
+            }
+            item { SmallTitle(text = "当前歌曲在线匹配") }
+            item {
+                Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        TextField(
+                            value = customMatchTitle,
+                            onValueChange = viewModel::updateCustomMatchTitle,
+                            label = "自定义匹配歌名",
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        TextField(
+                            value = customMatchArtist,
+                            onValueChange = viewModel::updateCustomMatchArtist,
+                            label = "自定义匹配歌手",
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Button(
+                                onClick = { viewModel.saveCurrentSongMatchOverride() },
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text("保存到缓存")
+                            }
+                            Button(
+                                onClick = { viewModel.clearCurrentSongMatchOverride() },
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text("清除自定义")
+                            }
+                        }
                     }
                 }
             }
@@ -147,7 +200,14 @@ fun MiuixOnlineLyricDebugScreen(
                 Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
                     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Button(onClick = { viewModel.fetchLyrics() }, enabled = !isFetching, modifier = Modifier.fillMaxWidth()) {
-                            Text(if (isFetching) "获取中..." else "获取并自动选择最佳歌词")
+                            Text(if (isFetching) "获取中..." else "优先使用缓存获取歌词")
+                        }
+                        Button(
+                            onClick = { viewModel.fetchLyrics(forceRefresh = true) },
+                            enabled = !isFetching,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("忽略缓存并强制联网刷新")
                         }
                         error?.let { Text(it, color = MiuixTheme.colorScheme.error) }
                         Text(
@@ -158,6 +218,7 @@ fun MiuixOnlineLyricDebugScreen(
                             }
                         )
                         Text("标题清洗兜底: ${if (usedCleanTitleFallback) "已触发" else "未触发"}")
+                        Text("当前实际查询: ${effectiveQuery.first.ifBlank { "无" }} / ${effectiveQuery.second.ifBlank { "无" }}")
                         attempts.forEach { attempt ->
                             val result = attempt.result
                             Column(

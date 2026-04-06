@@ -43,9 +43,20 @@ fun FAQScreen(onBack: () -> Unit) {
                 context.getString(R.string.faq_cat_guide),
                 listOfNotNull(
                     QAItem(context.resources.getText(R.string.faq_q_add_rule), context.resources.getText(R.string.faq_a_add_rule)),
+                    QAItem(context.resources.getText(R.string.faq_q_config_online_lyrics), context.resources.getText(R.string.faq_a_config_online_lyrics)),
                     if (com.example.islandlyrics.core.platform.RomUtils.isHyperOsVersionAtLeast(3, 0, 0) || android.os.Build.VERSION.SDK_INT >= 36) {
                         QAItem(context.resources.getText(R.string.faq_q_island_modes), context.resources.getText(R.string.faq_a_island_modes))
                     } else null
+                )
+            ),
+            FAQCategory(
+                context.getString(R.string.faq_cat_online),
+                listOf(
+                    QAItem(context.resources.getText(R.string.faq_q_online_match_wrong), context.resources.getText(R.string.faq_a_online_match_wrong)),
+                    QAItem(context.resources.getText(R.string.faq_q_online_match_no_change), context.resources.getText(R.string.faq_a_online_match_no_change)),
+                    QAItem(context.resources.getText(R.string.faq_q_clear_online_cache), context.resources.getText(R.string.faq_a_clear_online_cache)),
+                    QAItem(context.resources.getText(R.string.faq_q_access_diagnostics), context.resources.getText(R.string.faq_a_access_diagnostics)),
+                    QAItem(context.resources.getText(R.string.faq_q_offline_mode_online_lyrics), context.resources.getText(R.string.faq_a_offline_mode_online_lyrics))
                 )
             ),
             FAQCategory(
@@ -69,7 +80,7 @@ fun FAQScreen(onBack: () -> Unit) {
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
-            LargeTopAppBar(
+            MediumTopAppBar(
                 title = { Text(stringResource(R.string.faq_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {

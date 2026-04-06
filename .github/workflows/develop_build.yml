@@ -117,6 +117,7 @@ jobs:
           SHORT_SHA=$(git rev-parse --short=7 HEAD)
           VERSION_PREFIX="${{ steps.build_meta.outputs.version_prefix }}"
           CODENAME="${{ steps.build_meta.outputs.codename }}"
+          DISPLAY_VERSION="${VERSION_PREFIX}.Canary_C${COUNT}"
           echo "count=$COUNT" >> $GITHUB_OUTPUT
           echo "short_sha=$SHORT_SHA" >> $GITHUB_OUTPUT
           
@@ -128,8 +129,8 @@ jobs:
           fi
           
           # Base name of the release
-          REL_NAME="Canary Build ${VERSION_PREFIX}.Canary_C${COUNT}"
-          TAG_NAME="${VERSION_PREFIX}.Canary_C${COUNT}"
+          REL_NAME="Canary Build ${DISPLAY_VERSION}"
+          TAG_NAME="Canary.Version_C${COUNT}"
           echo "rel_name=$REL_NAME" >> $GITHUB_OUTPUT
           echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
 
@@ -143,7 +144,8 @@ jobs:
           echo "" >> canary_body.md
           echo "## Canary Build (Rolling)" >> canary_body.md
           echo "- **Codename:** \`${CODENAME}\`" >> canary_body.md
-          echo "- **Version:** \`${TAG_NAME}\`" >> canary_body.md
+          echo "- **Version:** \`${DISPLAY_VERSION}\`" >> canary_body.md
+          echo "- **Tag:** \`${TAG_NAME}\`" >> canary_body.md
           echo "- **Build Number:** \`_C${COUNT}\`" >> canary_body.md
           echo "- **Latest Commit:** \`${SHORT_SHA}\`" >> canary_body.md
           echo "- **Branch:** \`develop\`" >> canary_body.md

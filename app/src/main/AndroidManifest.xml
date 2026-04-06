@@ -39,6 +39,10 @@
             android:label="@string/page_title_personalization"
             android:parentActivityName="com.example.islandlyrics.feature.main.MainActivity" />
         <activity
+            android:name="com.example.islandlyrics.feature.cache.CacheManagementActivity"
+            android:label="@string/title_cache_management"
+            android:parentActivityName="com.example.islandlyrics.feature.settings.SettingsActivity" />
+        <activity
             android:name="com.example.islandlyrics.feature.faq.FAQActivity"
             android:label="@string/faq_title"
             android:exported="false" />

@@ -25,6 +25,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.islandlyrics.R
 import com.example.islandlyrics.core.platform.RomUtils
+import com.example.islandlyrics.feature.cache.CacheManagementActivity
 import com.example.islandlyrics.feature.logviewer.LogViewerActivity
 import com.example.islandlyrics.feature.onlinelyricdebug.OnlineLyricDebugActivity
 import java.text.SimpleDateFormat
@@ -75,6 +76,15 @@ fun DiagnosticsScreen(onBack: () -> Unit) {
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text("在线歌词调试")
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                Button(
+                    onClick = {
+                        context.startActivity(android.content.Intent(context, CacheManagementActivity::class.java))
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(stringResource(R.string.title_cache_management))
                 }
                 Spacer(modifier = Modifier.height(8.dp))
                 Button(

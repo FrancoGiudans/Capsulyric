@@ -33,6 +33,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -74,6 +75,11 @@ fun OnlineLyricDebugScreen(
     val useSmartSelection by viewModel.useSmartSelection.observeAsState(true)
     val usedCleanTitleFallback by viewModel.usedCleanTitleFallback.observeAsState(false)
     val dialogAttempt by viewModel.dialogAttempt.observeAsState()
+    val customMatchTitle by viewModel.customMatchTitle.observeAsState("")
+    val customMatchArtist by viewModel.customMatchArtist.observeAsState("")
+    val effectiveQuery by viewModel.effectiveQuery.observeAsState("" to "")
+    val querySourceLabel by viewModel.querySourceLabel.observeAsState("")
+    val cacheStatus by viewModel.cacheStatus.observeAsState()
     val showPrioritySection = remember(mediaInfo?.packageName, useSmartSelection) {
         val pkg = mediaInfo?.packageName
         pkg != null &&
@@ -82,7 +88,10 @@ fun OnlineLyricDebugScreen(
     }
 
     LaunchedEffect(mediaInfo?.packageName) {
-        if (mediaInfo?.packageName != null) viewModel.syncProviderOrderFromCurrentRule()
+        if (mediaInfo?.packageName != null) {
+            viewModel.syncProviderOrderFromCurrentRule()
+            viewModel.syncCurrentSongQuery()
+        }
     }
 
     Scaffold(
@@ -110,12 +119,54 @@ fun OnlineLyricDebugScreen(
             DebugInfoCard(title = "当前播放音乐") {
                 Text("歌曲: ${mediaInfo?.title ?: "无"}")
                 Text("歌手: ${mediaInfo?.artist ?: "无"}")
+                Text("匹配歌名: ${effectiveQuery.first.ifBlank { "无" }}")
+                Text("匹配歌手: ${effectiveQuery.second.ifBlank { "无" }}")
+                Text(querySourceLabel, color = MaterialTheme.colorScheme.secondary)
+                cacheStatus?.let {
+                    Text(it, color = MaterialTheme.colorScheme.tertiary)
+                }
                 Text(
                     "播放时间: ${formatTime(liveProgress?.position ?: 0)} / ${formatTime(liveProgress?.duration ?: 0)}",
                     color = MaterialTheme.colorScheme.primary,
                     fontFamily = FontFamily.Monospace,
                     fontSize = 14.sp
                 )
+            }
+
+            DebugInfoCard(title = "当前歌曲在线匹配") {
+                OutlinedTextField(
+                    value = customMatchTitle,
+                    onValueChange = viewModel::updateCustomMatchTitle,
+                    label = { Text("自定义匹配歌名") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                OutlinedTextField(
+                    value = customMatchArtist,
+                    onValueChange = viewModel::updateCustomMatchArtist,
+                    label = { Text("自定义匹配歌手") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Button(
+                        onClick = { viewModel.saveCurrentSongMatchOverride() },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("保存到缓存")
+                    }
+                    OutlinedButton(
+                        onClick = { viewModel.clearCurrentSongMatchOverride() },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("清除自定义")
+                    }
+                }
             }
 
             DebugInfoCard(title = "实时歌词状态") {
@@ -151,8 +202,16 @@ fun OnlineLyricDebugScreen(
                     if (isFetching) {
                         CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
                     } else {
-                        Text("获取并自动选择最佳歌词")
+                        Text("优先使用缓存获取歌词")
                     }
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedButton(
+                    onClick = { viewModel.fetchLyrics(forceRefresh = true) },
+                    enabled = !isFetching,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("忽略缓存并强制联网刷新")
                 }
                 error?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(top = 8.dp)) }
                 Spacer(modifier = Modifier.height(8.dp))
@@ -164,6 +223,7 @@ fun OnlineLyricDebugScreen(
                     }
                 )
                 Text("标题清洗兜底: ${if (usedCleanTitleFallback) "已触发" else "未触发"}")
+                Text("当前实际查询: ${effectiveQuery.first.ifBlank { "无" }} / ${effectiveQuery.second.ifBlank { "无" }}")
                 Spacer(modifier = Modifier.height(8.dp))
                 attempts.forEach { attempt ->
                     val result = attempt.result

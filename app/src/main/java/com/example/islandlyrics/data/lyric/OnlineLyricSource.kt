@@ -10,6 +10,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * OnlineLyricSource
@@ -26,6 +27,7 @@ import kotlinx.coroutines.launch
 class OnlineLyricSource(private val context: Context) {
 
     private val fetcher    = OnlineLyricFetcher()
+    private val cacheStore = OnlineLyricCacheStore(context)
     private val scope      = CoroutineScope(Dispatchers.Main + Job())
     private var fetchJob: Job? = null
 
@@ -43,8 +45,15 @@ class OnlineLyricSource(private val context: Context) {
             ?: ParserRuleHelper.createDefaultRule(packageName)
         val liveMetadata = LyricRepository.getInstance().liveMetadata.value
         val metadata = if (liveMetadata?.packageName == packageName) liveMetadata else null
-        return if (rule.useRawMetadataForOnlineMatching && metadata != null) {
-            (metadata.rawTitle.ifBlank { fallbackTitle }) to (metadata.rawArtist.ifBlank { fallbackArtist })
+        return if (metadata != null) {
+            cacheStore.resolveQuery(
+                mediaInfo = metadata,
+                fallbackTitle = fallbackTitle,
+                fallbackArtist = fallbackArtist,
+                useRawMetadata = rule.useRawMetadataForOnlineMatching
+            )
+        } else if (rule.useRawMetadataForOnlineMatching) {
+            fallbackTitle to fallbackArtist
         } else {
             fallbackTitle to fallbackArtist
         }
@@ -86,6 +95,29 @@ class OnlineLyricSource(private val context: Context) {
 
         fetchJob = scope.launch {
             try {
+                val metadata = LyricRepository.getInstance().liveMetadata.value
+                val cacheHit = if (metadata?.packageName == packageName) {
+                    withContext(Dispatchers.IO) {
+                        cacheStore.getCachedLyric(metadata, queryTitle, queryArtist)
+                    }
+                } else {
+                    null
+                }
+
+                if (cacheHit != null) {
+                    AppLogger.getInstance().i(
+                        TAG,
+                        "♻️ Online lyric cache hit [${cacheHit.result.api}] custom=${cacheHit.hasCustomMatch}"
+                    )
+                    LyricRepository.getInstance().updateParsedLyrics(
+                        lines = cacheHit.result.parsedLines.orEmpty(),
+                        hasSyllable = cacheHit.result.hasSyllable,
+                        sourceLabel = "${cacheHit.result.api} · Cache",
+                        apiPath = "Online Cache"
+                    )
+                    return@launch
+                }
+
                 val outcome = fetcher.fetchLyrics(
                     title = queryTitle,
                     artist = queryArtist,
@@ -115,6 +147,17 @@ class OnlineLyricSource(private val context: Context) {
                     result.parsedLines != null &&
                     result.parsedLines.isNotEmpty())
                 {
+                    val currentMetadata = LyricRepository.getInstance().liveMetadata.value
+                    if (currentMetadata?.packageName == packageName) {
+                        withContext(Dispatchers.IO) {
+                            cacheStore.saveLyricResult(
+                                mediaInfo = currentMetadata,
+                                queryTitle = queryTitle,
+                                queryArtist = queryArtist,
+                                result = result
+                            )
+                        }
+                    }
                     AppLogger.getInstance().i(TAG,
                         "✅ Online fetch OK [${result.api}] syllable=${result.hasSyllable} fallback=${outcome.usedCleanTitleFallback}")
                     LyricRepository.getInstance()

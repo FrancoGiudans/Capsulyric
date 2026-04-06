@@ -142,6 +142,7 @@ class MediaMonitorService : NotificationListenerService() {
         // CRITICAL FIX: Reload whitelist to ensure it's current
         // This prevents stale or empty whitelist after service restart
         loadWhitelist()
+        resetSessionTracking(clearControllers = false)
         
         mediaSessionManager = getSystemService(Context.MEDIA_SESSION_SERVICE) as MediaSessionManager
         componentName = ComponentName(this, MediaMonitorService::class.java)
@@ -192,6 +193,8 @@ class MediaMonitorService : NotificationListenerService() {
             controllerCallbacks.clear()
             activeControllers.clear()
         }
+        resetSessionTracking(clearControllers = false)
+        LyricRepository.getInstance().updatePlaybackStatus(false)
     }
 
     override fun onDestroy() {
@@ -222,10 +225,7 @@ class MediaMonitorService : NotificationListenerService() {
     fun recheckSessions() {
         if (mediaSessionManager != null && componentName != null) {
             try {
-                // FORCE UPDATE: Reset metadata hash so next update propagates immediately
-                lastMetadataHash = 0
-                lastComputedIsPlaying = null
-                lastControllerSignatures = "" // Reset signature deduplication
+                resetSessionTracking(clearControllers = false)
                 updateControllers(mediaSessionManager?.getActiveSessions(componentName))
             } catch (e: SecurityException) {
                 AppLogger.getInstance().log(TAG, "Error refreshing sessions: ${e.message}")
@@ -260,9 +260,9 @@ class MediaMonitorService : NotificationListenerService() {
         
         // DEDUPLICATION CHECK
         val currentSignatures = controllers?.joinToString("|") { "${it.packageName}@${it.hashCode()}" } ?: "null"
-        if (currentSignatures == lastControllerSignatures) {
-             AppLogger.getInstance().d(TAG, "Duplicate session update ignored.")
-             return
+        if (currentSignatures == lastControllerSignatures && hasFreshControllerBindings(controllers)) {
+            AppLogger.getInstance().d(TAG, "Duplicate session update ignored.")
+            return
         }
         lastControllerSignatures = currentSignatures
         AppLogger.getInstance().d(TAG, "Processing new session update: $currentSignatures")
@@ -285,40 +285,45 @@ class MediaMonitorService : NotificationListenerService() {
                     try {
                         val callback = object : MediaController.Callback() {
                             override fun onPlaybackStateChanged(state: PlaybackState?) {
-                                checkServiceState() // Priority might have changed
-                                
-                                val primary = getPrimaryController()
-                                if (primary != null && primary.packageName == controller.packageName) {
-                                    // Buggy apps don't always fire onMetadataChanged (e.g., Xiaomi Music with SuperLyric module).
-                                    // We manually compute the un-parsed hash here. 
-                                    // If it differs from lastMetadataHash, they covertly changed the song!
-                                    val meta = primary.metadata
-                                    if (meta != null) {
-                                        val artHash = (meta.getBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART) ?: meta.getBitmap(MediaMetadata.METADATA_KEY_ART))?.hashCode() ?: 0
-                                        val currentHash = java.util.Objects.hash(
-                                            meta.getString(MediaMetadata.METADATA_KEY_TITLE),
-                                            meta.getString(MediaMetadata.METADATA_KEY_ARTIST),
-                                            primary.packageName,
-                                            meta.getLong(MediaMetadata.METADATA_KEY_DURATION),
-                                            artHash
-                                        )
-                                        if (currentHash != lastMetadataHash) {
-                                            AppLogger.getInstance().d(TAG, "Caught unannounced metadata change via playback state!")
-                                            updateMetadataIfPrimary(primary)
+                                handler.post {
+                                    checkServiceState() // Priority might have changed
+
+                                    val primary = getPrimaryController()
+                                    if (primary != null && primary.packageName == controller.packageName) {
+                                        // Buggy apps don't always fire onMetadataChanged (e.g., Xiaomi Music with SuperLyric module).
+                                        // We manually compute the un-parsed hash here.
+                                        // If it differs from lastMetadataHash, they covertly changed the song.
+                                        val meta = primary.metadata
+                                        if (meta != null) {
+                                            val artHash = (meta.getBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART)
+                                                ?: meta.getBitmap(MediaMetadata.METADATA_KEY_ART))?.hashCode() ?: 0
+                                            val currentHash = java.util.Objects.hash(
+                                                meta.getString(MediaMetadata.METADATA_KEY_TITLE),
+                                                meta.getString(MediaMetadata.METADATA_KEY_ARTIST),
+                                                primary.packageName,
+                                                meta.getLong(MediaMetadata.METADATA_KEY_DURATION),
+                                                artHash
+                                            )
+                                            if (currentHash != lastMetadataHash) {
+                                                AppLogger.getInstance().d(TAG, "Caught unannounced metadata change via playback state!")
+                                                updateMetadataIfPrimary(primary)
+                                            }
                                         }
                                     }
-                                }
-                                
-                                // Suggestion update: find the best candidate for recommendation
-                                // This ensures recommendations refresh when any app starts playing
-                                val suggestion = getSuggestionController()
-                                if (suggestion != null) {
-                                    updateMetadataForSuggestion(suggestion)
+
+                                    val suggestion = getSuggestionController()
+                                    if (suggestion != null) {
+                                        updateMetadataForSuggestion(suggestion)
+                                    }
+                                    updateDiagnostics()
                                 }
                             }
 
                             override fun onMetadataChanged(metadata: MediaMetadata?) {
-                                updateMetadataIfPrimary(controller)
+                                handler.post {
+                                    updateMetadataIfPrimary(controller)
+                                    updateDiagnostics()
+                                }
                             }
                             
                             override fun onSessionDestroyed() {
@@ -375,6 +380,34 @@ class MediaMonitorService : NotificationListenerService() {
                 hasFocusPermission = com.example.islandlyrics.core.platform.RomUtils.hasFocusPermission(this),
                 canPostPromoted = com.example.islandlyrics.core.platform.RomUtils.canPostPromotedNotifications(this)
             )
+        }
+    }
+
+    private fun hasFreshControllerBindings(controllers: List<MediaController>?): Boolean {
+        val expectedCount = controllers?.size ?: 0
+        synchronized(activeControllers) {
+            if (activeControllers.size != expectedCount || controllerCallbacks.size != expectedCount) {
+                return false
+            }
+            return controllers?.all { controllerCallbacks.containsKey(it) } ?: controllerCallbacks.isEmpty()
+        }
+    }
+
+    private fun resetSessionTracking(clearControllers: Boolean) {
+        lastMetadataHash = 0
+        lastComputedIsPlaying = null
+        lastControllerSignatures = ""
+        if (!clearControllers) return
+
+        synchronized(activeControllers) {
+            controllerCallbacks.forEach { (controller, callback) ->
+                try {
+                    controller.unregisterCallback(callback)
+                } catch (_: Exception) {
+                }
+            }
+            controllerCallbacks.clear()
+            activeControllers.clear()
         }
     }
 

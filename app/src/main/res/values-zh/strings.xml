@@ -74,6 +74,8 @@
     <string name="settings_general_header">通用</string>
     <string name="settings_full_offline_mode">完全离线模式</string>
     <string name="settings_full_offline_mode_desc">隐藏所有需要联网的功能，并阻止更新检查、社区动态和在线歌词请求</string>
+    <string name="settings_cache_management">缓存管理</string>
+    <string name="settings_cache_management_desc">管理在线歌词缓存和远程图片缓存</string>
     <string name="settings_core_services_header">核心服务</string>
     <string name="settings_block_xmsf">绕过小米超级岛白名单</string>
     <string name="settings_block_xmsf_desc">发送通知时临时断开 XMSF 网络以绕过系统白名单限制（需要 Shizuku 环境）</string>
@@ -163,6 +165,7 @@
     <string name="about_codename">开发代号</string>
     <string name="about_build">内部版本号</string>
     <string name="about_commit">内部开发号</string>
+    <string name="title_cache_management">缓存管理</string>
     <string name="update_check_title">检查更新</string>
     <string name="update_available_title">发现新版本: %s</string>
     <string name="update_current_version">当前版本: %s</string>
@@ -216,6 +219,7 @@
     <string name="offline_mode_network_blocked">完全离线模式已开启，联网操作已被阻止</string>
     <string name="faq_title">常见问题解答</string>
     <string name="faq_cat_guide">使用指引</string>
+    <string name="faq_cat_online">在线歌词与缓存</string>
     <string name="faq_q_add_rule">Q：如何为我的音乐软件添加解析规则？</string>
     <string name="faq_a_add_rule">请按照以下步骤添加：\n\n
 1. <b>开启应用设置</b>：先确认音乐应用内是否存在“通知栏歌词”“媒体通知歌词”或“车载蓝牙歌词”功能并开启。\n\n
@@ -238,6 +242,41 @@
 - <b>白名单突破方案</b>：\n
   • <b>已获取 Root 权限</b>：建议配合 HyperCeiler 等模块解除系统的应用限制。\n
   • <b>未获取 Root 权限</b>：需通过 Shizuku 进行授权，并启用“绕过小米超级岛白名单”功能。（注：该方案由于强制系统重定向通知，可能导致间歇性耗电增加或消息延迟。）</string>
+    <string name="faq_q_config_online_lyrics">Q：如何配置在线歌词？</string>
+    <string name="faq_a_config_online_lyrics">A：在线歌词适合在通知歌词不可用、歌词不完整，或者需要更准确时间轴时使用。\n\n
+1. 进入“解析规则”页面，打开当前音乐应用对应的规则。\n\n
+2. 开启<b>“使用在线歌词 API”</b>。\n\n
+3. 如果播放器上报的原始歌名、歌手更准确，可以开启<b>“使用原始播放信息进行在线匹配”</b>。\n\n
+4. 默认建议保持<b>“智能获取”</b>开启，由应用自动选择更合适的结果；如果你想手动控制来源顺序，可关闭“智能获取”后再调整<b>“在线歌词优先级”</b>。\n\n
+5. 如果某一首歌始终匹配不准，可进入<b>“在线歌词调试”</b>，为当前歌曲填写“自定义匹配歌名”或“自定义匹配歌手”，然后执行一次<b>“忽略缓存并强制联网刷新”</b>。</string>
+    <string name="faq_q_online_match_wrong">Q：为什么在线歌词搜索到的结果不对？</string>
+    <string name="faq_a_online_match_wrong">A：在线歌词依赖当前歌曲的匹配信息进行搜索。如果播放器上报的歌名、歌手不完整，或者标题中包含 Live、Remix、翻唱、节目名、括号附加信息，就可能匹配到错误结果。\n\n
+你可以尝试以下方法：\n\n
+1. 进入<b>“在线歌词调试”</b>，查看当前实际使用的“匹配歌名”和“匹配歌手”。\n\n
+2. 手动填写当前歌曲的“自定义匹配歌名”或“自定义匹配歌手”。\n\n
+3. 保存后执行一次<b>“忽略缓存并强制联网刷新”</b>。\n\n
+4. 如果仍然不准确，再检查是否需要开启<b>“使用原始播放信息进行在线匹配”</b>。</string>
+    <string name="faq_q_online_match_no_change">Q：为什么我修改了自定义匹配信息后，歌词还是没变化？</string>
+    <string name="faq_a_online_match_no_change">A：自定义匹配信息会影响后续的在线搜索和缓存命中，但不会自动替换已经显示出来的旧结果。\n\n
+如果修改后没有变化，请按以下顺序处理：\n\n
+1. 先保存当前歌曲的自定义匹配信息。\n\n
+2. 在<b>“在线歌词调试”</b>中执行一次<b>“忽略缓存并强制联网刷新”</b>。\n\n
+3. 如果结果仍然没有变化，说明当前显示内容可能仍然来自旧缓存。\n\n
+4. 此时可清除该歌曲对应的歌词缓存，再重新获取。\n\n
+<b>补充</b>：自定义匹配支持半覆盖。只填写歌名或歌手中的一项时，留空项会自动使用原始播放信息补足。</string>
+    <string name="faq_q_clear_online_cache">Q：如何清理在线歌词缓存？</string>
+    <string name="faq_a_clear_online_cache">A：应用提供了独立的<b>“缓存管理”</b>页面，用于查看和清理在线歌词缓存。\n\n
+你可以执行以下操作：\n\n
+1. 查看当前歌词缓存条目数量、体积和更新时间。\n\n
+2. 删除单条歌词缓存。\n\n
+3. 清空全部歌词缓存。\n\n
+4. 必要时连同图片缓存一起清理。\n\n
+如果在线歌词结果一直不更新，或者你已经修正了匹配信息但仍然显示旧结果，建议先删除对应歌曲的歌词缓存，再重新获取。</string>
+    <string name="faq_q_access_diagnostics">Q：如何进入缓存管理页面和歌词调试页面？</string>
+    <string name="faq_a_access_diagnostics">A：通过在“关于”页面连续点击<b>“内部开发号”</b>即可唤出<b>诊断工具</b>，缓存管理和在线歌词调试页面均位于其中。其中<b>自定义匹配</b>功能位于“在线歌词调试”页面内。</string>
+    <string name="faq_q_offline_mode_online_lyrics">Q：完全离线模式会影响在线歌词吗？</string>
+    <string name="faq_a_offline_mode_online_lyrics">A：会。开启<b>“完全离线模式”</b>后，所有在线歌词请求都会被禁用，同时也不会检查更新或加载其他需要联网的内容。\n\n
+如果你需要使用在线歌词，请先关闭“完全离线模式”。</string>
     <string name="faq_cat_func">功能异常排查</string>
     <string name="faq_q_no_lyrics">Q：配置完成后歌词岛仍未正常显示？</string>
     <string name="faq_a_no_lyrics">A： 请按以下步骤进行标准化排查：\n\n
@@ -468,4 +507,6 @@
     <string name="community_announcement_title">公告</string>
     <string name="community_poll_title">投票</string>
     <string name="community_open_in_browser">在浏览器中打开</string>
+    <string name="community_dialog_open">前往链接</string>
+    <string name="community_dialog_close">关闭</string>
 </resources>
