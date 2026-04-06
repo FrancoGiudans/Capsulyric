@@ -20,3 +20,6 @@ build_log*.txt
 autobuild.sh
 .kotlin/
 .codex/
+tools/
+autobuild_cli.sh
+autobuild.bat
