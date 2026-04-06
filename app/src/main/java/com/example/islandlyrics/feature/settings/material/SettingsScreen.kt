@@ -65,7 +65,6 @@ fun SettingsScreen(
     updateCodenameText: String,
     updateBuildText: String,
     onOpenCustomSettings: () -> Unit = {},
-    onOpenCacheManagement: () -> Unit = {},
     showBackButton: Boolean = true,
     bottomBar: @Composable () -> Unit = {}
 ) {
@@ -499,13 +498,6 @@ fun SettingsScreen(
                     onClick = {
                         context.startActivity(Intent(context, FAQActivity::class.java))
                     }
-                )
-
-                SettingsActionItem(
-                    title = stringResource(R.string.settings_cache_management),
-                    summary = stringResource(R.string.settings_cache_management_desc),
-                    icon = Icons.Filled.Sync,
-                    onClick = onOpenCacheManagement
                 )
 
                 if (!offlineModeEnabled) {

@@ -67,7 +67,6 @@ fun MiuixSettingsScreen(
     updateCodenameText: String,
     updateBuildText: String,
     onOpenCustomSettings: () -> Unit = {},
-    onOpenCacheManagement: () -> Unit = {},
     showBackButton: Boolean = true,
     bottomBar: @Composable () -> Unit = {},
     onBottomBarVisibilityChange: (Boolean) -> Unit = {},
@@ -439,11 +438,6 @@ fun MiuixSettingsScreen(
                         title = stringResource(R.string.faq_title),
                         summary = stringResource(R.string.summary_faq),
                         onClick = { context.startActivity(Intent(context, FAQActivity::class.java)) }
-                    )
-                    SuperArrow(
-                        title = stringResource(R.string.settings_cache_management),
-                        summary = stringResource(R.string.settings_cache_management_desc),
-                        onClick = onOpenCacheManagement
                     )
                     if (!offlineModeEnabled) {
                         Box {

@@ -291,20 +291,9 @@
 4. It is recommended to keep <b>"Smart Fetch"</b> enabled so the app can choose a better result automatically. If you prefer manual control, disable Smart Fetch and adjust <b>"Online Lyrics Priority"</b> yourself.\n\n
 5. If one song keeps matching incorrectly, open <b>"Online Lyrics Debug"</b>, fill in a custom match title or artist for the current song, then run <b>"Ignore Cache and Force Refresh"</b>.</string>
     <string name="faq_q_online_match_wrong">Q: Why are the online lyric search results incorrect?</string>
-    <string name="faq_a_online_match_wrong">A: Online lyrics rely on the current song's matching information. If the player reports incomplete title or artist data, or if the title contains extra tags such as Live, Remix, cover, show names, or bracketed suffixes, the match may be wrong.\n\n
-Try the following:\n\n
-1. Open <b>"Online Lyrics Debug"</b> and check the actual match title and artist currently in use.\n\n
-2. Manually fill in a custom match title or artist for the current song.\n\n
-3. Save it, then run <b>"Ignore Cache and Force Refresh"</b> once.\n\n
-4. If the result is still wrong, check whether <b>"Use Raw Metadata for Online Matching"</b> should be enabled.</string>
-    <string name="faq_q_online_match_no_change">Q: Why didn't the lyrics change after I edited the custom match info?</string>
-    <string name="faq_a_online_match_no_change">A: Custom match information affects future online searches and cache hits, but it does not automatically replace results that are already being displayed.\n\n
-If nothing changes after editing it, follow this order:\n\n
-1. Save the current song's custom match information first.\n\n
-2. In <b>"Online Lyrics Debug"</b>, run <b>"Ignore Cache and Force Refresh"</b> once.\n\n
-3. If the result still does not change, the displayed lyric may still be coming from old cache data.\n\n
-4. In that case, clear the lyric cache entry for this song and fetch it again.\n\n
-<b>Note</b>: Custom matching supports partial override. If only the title or only the artist is filled in, the blank field will be completed automatically using the original playback information.</string>
+    <string name="faq_a_online_match_wrong">A: Online lyrics rely on the current track matching information. If the player reports incomplete title or artist data, or if the title contains extra tags such as Live, Remix, cover, show names, or bracketed suffixes, the match may be wrong.\n\nTry the following:\n\n1. Open <b>"Online Lyrics Debug"</b> and check the actual match title and artist currently in use.\n\n2. Manually fill in a custom match title or artist for the current song.\n\n3. Save it, then run <b>"Ignore Cache and Force Refresh"</b> once.\n\n4. If the result is still wrong, check whether <b>"Use Raw Metadata for Online Matching"</b> should be enabled.</string>
+    <string name="faq_q_online_match_no_change">Q: Why did the lyrics not change after I edited the custom match info?</string>
+    <string name="faq_a_online_match_no_change">A: Custom match information affects future online searches and cache hits, but it does not automatically replace results that are already being displayed.\n\nIf nothing changes after editing it, follow this order:\n\n1. Save the custom match information for the current song first.\n\n2. In <b>"Online Lyrics Debug"</b>, run <b>"Ignore Cache and Force Refresh"</b> once.\n\n3. If the result still does not change, the displayed lyric may still be coming from old cache data.\n\n4. In that case, clear the lyric cache entry for this song and fetch it again.\n\n<b>Note</b>: Custom matching supports partial override. If only the title or only the artist is filled in, the blank field will be completed automatically using the original playback information.</string>
     <string name="faq_q_clear_online_cache">Q: How do I clear the online lyric cache?</string>
     <string name="faq_a_clear_online_cache">A: The app provides a dedicated <b>"Cache Management"</b> page for viewing and clearing online lyric cache entries.\n\n
 Available actions include:\n\n
