@@ -525,7 +525,7 @@ fun SettingsScreen(
                     value = updateVersionText,
                     onClick = {
                         val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                        val copyText = "$updateVersionText [$updateCodenameText] ($updateBuildText)"
+                        val copyText = "$updateVersionText（$updateCodenameText，$updateBuildText）"
                         cm.setPrimaryClip(ClipData.newPlainText("Version", copyText))
                         Toast.makeText(context, context.getString(R.string.toast_copied), Toast.LENGTH_SHORT).show()
                     }

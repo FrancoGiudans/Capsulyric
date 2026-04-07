@@ -35,6 +35,7 @@ import com.example.islandlyrics.ui.common.SuperIslandHandler
 class LyricService : Service() {
 
     private var lastUpdateTime = 0L
+    private var lastObservedTrackKey: String? = null
 
     // ── Lyric sources (each handles one acquisition path) ────────────────────
     private lateinit var onlineLyricSource: OnlineLyricSource
@@ -108,14 +109,20 @@ class LyricService : Service() {
     private val metadataObserver = Observer<LyricRepository.MediaInfo?> { info ->
         if (info != null) {
             progressSyncController.setDurationIfValid(info.duration)
+            val trackKey = "${info.packageName}|${info.title}|${info.artist}"
+            val trackChanged = trackKey != lastObservedTrackKey
+            lastObservedTrackKey = trackKey
 
-            // CRITICAL CLEAR: Ensure old lyrics do not hang around across songs!
-            LyricRepository.getInstance().updateLyric("", info.packageName, "System")
-
-            // Reset parsed lyrics on song change
-            LyricRepository.getInstance().updateParsedLyrics(emptyList(), false)
-            LyricRepository.getInstance().updateCurrentLine(null)
-            progressSyncController.resetLineIndex()
+            if (trackChanged) {
+                // Only clear lyric-related state when the actual track identity changes.
+                // Metadata can refresh multiple times per song, and wiping here would
+                // replace an already received lyric with the placeholder notification.
+                LyricRepository.getInstance().updateLyric("", info.packageName, "System")
+                LyricRepository.getInstance().updateParsedLyrics(emptyList(), false)
+                LyricRepository.getInstance().updateCurrentLine(null)
+                progressSyncController.resetLineIndex()
+                progressSyncController.resetProgressForTrackChange(info.duration)
+            }
 
             // Proactive online lyric fetching logic
             val rule = ParserRuleHelper.getRuleForPackage(this, info.packageName)
@@ -126,7 +133,7 @@ class LyricService : Service() {
                 "Metadata Change: ${info.title} (${info.packageName}) | Rule: Active | Online: ${rule.useOnlineLyrics} | Car: ${rule.usesCarProtocol}"
             )
 
-            if (rule.useOnlineLyrics) {
+            if (trackChanged && rule.useOnlineLyrics) {
                 if (!rule.usesCarProtocol) {
                     AppLogger.getInstance().log(TAG, "[${info.packageName}] Non-CarProtocol app, triggering fetch...")
                     onlineLyricSource.fetchFor(info.title, info.artist, info.packageName)
@@ -373,6 +380,7 @@ class LyricService : Service() {
         super.onDestroy()
         AppLogger.getInstance().log(TAG, "Service Destroyed")
         progressSyncController.stop()
+        progressSyncController.destroy()
         delayedStopController?.cancel()
         floatingLyricsRenderer?.stop()
         renderModeCoordinator?.stopAll() ?: run {

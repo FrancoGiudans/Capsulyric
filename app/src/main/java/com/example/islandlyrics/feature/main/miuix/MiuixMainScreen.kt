@@ -54,8 +54,10 @@ import top.yukonga.miuix.kmp.utils.MiuixPopupUtils.Companion.MiuixPopupHost
 import com.example.islandlyrics.core.update.UpdateChecker
 import com.example.islandlyrics.feature.update.miuix.MiuixUpdateDialog
 import com.example.islandlyrics.ui.miuix.*
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.withContext
 
 private val StatusActive = Color(0xFF4CAF50)
 private val StatusInactive = Color(0xFFF44336)
@@ -249,7 +251,11 @@ fun MiuixMainScreen(
                                 dynamicThemeEnabled = dynamicThemeEnabled,
                                 primaryMetadata = if (isPrimary) repoMetadata else null,
                                 primaryLyric = if (isPrimary) repoLyric?.lyric else null,
-                                primaryLyricSource = if (isPrimary && repoLyric?.apiPath == "Online API") repoParsedLyrics?.sourceLabel else null,
+                                primaryLyricSource = if (isPrimary) {
+                                    formatPrimaryLyricSource(repoLyric?.apiPath, repoParsedLyrics?.sourceLabel)
+                                } else {
+                                    null
+                                },
                                 primaryAlbumArt = if (isPrimary) repoAlbumArt else null,
                                 primaryProgress = if (isPrimary) repoProgress else null
                             )
@@ -352,7 +358,7 @@ private fun MiuixMediaSessionCard(
         else (localMetadata?.getBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART)
             ?: localMetadata?.getBitmap(MediaMetadata.METADATA_KEY_ART))
     val lyric = if (isPrimary) primaryLyric else null
-    val duration = if (isPrimary) primaryMetadata?.duration ?: 0L
+    val duration = if (isPrimary) primaryProgress?.duration ?: primaryMetadata?.duration ?: 0L
         else localMetadata?.getLong(MediaMetadata.METADATA_KEY_DURATION) ?: 0L
     val position = if (isPrimary) primaryProgress?.position ?: 0L else localPlaybackState?.position ?: 0L
     val isPlaying = localPlaybackState?.state == PlaybackState.STATE_PLAYING ||
@@ -361,12 +367,14 @@ private fun MiuixMediaSessionCard(
     val context = LocalContext.current
 
     // ── Palette accent from album art ──
-    val dominantColor by produceState<Color?>(initialValue = null, key1 = albumArt) {
+    val dominantColor by produceState<Color?>(initialValue = null, key1 = albumArt, key2 = dynamicThemeEnabled) {
         value = if (dynamicThemeEnabled) {
             albumArt?.let { bmp ->
-                val palette = Palette.from(bmp).generate()
-                val swatch = palette.vibrantSwatch ?: palette.mutedSwatch ?: palette.dominantSwatch
-                swatch?.rgb?.let { Color(it) }
+                withContext(Dispatchers.Default) {
+                    val palette = Palette.from(bmp).generate()
+                    val swatch = palette.vibrantSwatch ?: palette.mutedSwatch ?: palette.dominantSwatch
+                    swatch?.rgb?.let { Color(it) }
+                }
             }
         } else {
             null
@@ -419,7 +427,7 @@ private fun MiuixMediaSessionCard(
                     Text(text = appName, fontSize = 12.sp, color = animatedAccent, maxLines = 1)
                     if (isPrimary && !primaryLyricSource.isNullOrBlank()) {
                         Spacer(modifier = Modifier.height(2.dp))
-                        Text(text = "当前在线源: $primaryLyricSource", fontSize = 11.sp, color = MiuixTheme.colorScheme.onSurfaceSecondary, maxLines = 1)
+                        Text(text = "当前歌词源: $primaryLyricSource", fontSize = 11.sp, color = MiuixTheme.colorScheme.onSurfaceSecondary, maxLines = 1)
                     }
                 }
             }
@@ -516,5 +524,15 @@ private fun MiuixMediaSessionCard(
                 }
             }
         }
+    }
+}
+
+private fun formatPrimaryLyricSource(apiPath: String?, sourceLabel: String?): String? {
+    val label = sourceLabel?.trim().orEmpty()
+    if (label.isBlank()) return null
+    return when (apiPath) {
+        "Online API" -> "$label [在线]"
+        "Online Cache" -> "$label [缓存]"
+        else -> null
     }
 }

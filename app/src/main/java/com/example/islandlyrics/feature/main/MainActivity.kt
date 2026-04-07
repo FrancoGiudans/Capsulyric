@@ -311,20 +311,31 @@ class MainActivity : BaseActivity() {
         val scope = rememberCoroutineScope()
         var bottomBarVisible by androidx.compose.runtime.remember { mutableStateOf(true) }
         val backdrop = rememberLayerBackdrop()
+        val prefs = remember { getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE) }
+        var blurEnabled by remember { mutableStateOf(prefs.getBoolean("card_blur_enabled", false)) }
 
         androidx.compose.runtime.LaunchedEffect(pagerState.currentPage) {
             bottomBarVisible = true
         }
+        DisposableEffect(prefs) {
+            val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+                if (key == "card_blur_enabled") {
+                    blurEnabled = prefs.getBoolean(key, false)
+                }
+            }
+            prefs.registerOnSharedPreferenceChangeListener(listener)
+            onDispose { prefs.unregisterOnSharedPreferenceChangeListener(listener) }
+        }
 
         CompositionLocalProvider(
             LocalMiuixBlurBackdrop provides backdrop,
-            LocalMiuixBlurEnabled provides true
+            LocalMiuixBlurEnabled provides blurEnabled
         ) {
             Box(modifier = Modifier.fillMaxSize()) {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .layerBackdrop(backdrop)
+                        .then(if (blurEnabled) Modifier.layerBackdrop(backdrop) else Modifier)
                 ) {
                     HorizontalPager(
                         state = pagerState,

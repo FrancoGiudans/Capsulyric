@@ -6,6 +6,8 @@ import android.media.session.MediaController
 import android.media.session.MediaSessionManager
 import android.media.session.PlaybackState
 import android.os.Handler
+import android.os.HandlerThread
+import android.os.SystemClock
 import android.util.Log
 import com.example.islandlyrics.core.logging.AppLogger
 import com.example.islandlyrics.data.LyricRepository
@@ -22,6 +24,14 @@ class ProgressSyncController(
     private var currentPosition = 0L
     private var duration = 0L
     private var lastLineIndex = -1
+    private var lastControllerSyncAt = 0L
+    private var lastPlaybackState = PlaybackState.STATE_NONE
+    private var lastPlaybackSpeed = 1f
+    private var lastPlaybackPosition = 0L
+    private var lastPlaybackPositionAt = 0L
+
+    private val workerThread = HandlerThread("ProgressSyncController").apply { start() }
+    private val workerHandler = Handler(workerThread.looper)
 
     private val updateTask = object : Runnable {
         private var logCounter = 0
@@ -38,14 +48,19 @@ class ProgressSyncController(
                 AppLogger.getInstance().log(TAG, "🔄 updateTask running...")
             }
 
-            updateProgressFromController(shouldLog)
+            val now = SystemClock.elapsedRealtime()
+            if (shouldSyncController(now)) {
+                syncProgressFromController(shouldLog, now)
+            } else {
+                updateEstimatedProgress(now)
+            }
 
             val parsedLines = repo.liveParsedLyrics.value?.lines
             if (!parsedLines.isNullOrEmpty()) {
                 updateCurrentLyricLine(parsedLines)
             }
 
-            handler.postDelayed(this, 200)
+            workerHandler.postDelayed(this, computeNextDelay(parsedLines))
         }
     }
 
@@ -53,7 +68,7 @@ class ProgressSyncController(
         AppLogger.getInstance().log(TAG, "▶️ startProgressUpdater() called, isRunning=$isRunning")
         if (!isRunning) {
             isRunning = true
-            handler.post(updateTask)
+            workerHandler.post(updateTask)
             AppLogger.getInstance().log(TAG, "✅ Posted updateTask to handler")
         } else {
             AppLogger.getInstance().log(TAG, "⚠️ Already running, skipping post")
@@ -62,7 +77,12 @@ class ProgressSyncController(
 
     fun stop() {
         isRunning = false
-        handler.removeCallbacks(updateTask)
+        workerHandler.removeCallbacks(updateTask)
+    }
+
+    fun destroy() {
+        stop()
+        workerThread.quitSafely()
     }
 
     fun setDurationIfValid(value: Long) {
@@ -73,22 +93,43 @@ class ProgressSyncController(
         lastLineIndex = -1
     }
 
+    fun resetProgressForTrackChange(newDuration: Long) {
+        duration = newDuration.coerceAtLeast(0L)
+        currentPosition = 0L
+        lastPlaybackPosition = 0L
+        lastPlaybackPositionAt = 0L
+        lastPlaybackSpeed = 1f
+        lastPlaybackState = PlaybackState.STATE_NONE
+        lastControllerSyncAt = 0L
+        repo.updateProgress(0L, duration)
+    }
+
     private fun updateCurrentLyricLine(lines: List<OnlineLyricFetcher.LyricLine>) {
         val position = currentPosition
-        var index = -1
+        var activeIndex = -1
 
         for (i in lines.indices) {
             val line = lines[i]
-            if (position >= line.startTime) {
-                index = i
-            } else {
+            if (position >= line.startTime && position < line.endTime) {
+                activeIndex = i
+                break
+            }
+            if (position < line.startTime) {
                 break
             }
         }
 
-        if (index != -1 && index != lastLineIndex) {
-            lastLineIndex = index
-            val line = lines[index]
+        if (activeIndex == -1) {
+            if (lastLineIndex != -1 || repo.liveCurrentLine.value != null) {
+                lastLineIndex = -1
+                repo.updateCurrentLine(null)
+            }
+            return
+        }
+
+        if (activeIndex != lastLineIndex) {
+            lastLineIndex = activeIndex
+            val line = lines[activeIndex]
 
             val metadata = repo.liveMetadata.value
             val source = metadata?.packageName?.let { appNameProvider(it) } ?: "Online Lyrics"
@@ -99,7 +140,28 @@ class ProgressSyncController(
         }
     }
 
-    private fun updateProgressFromController(shouldLog: Boolean = true) {
+    private fun shouldSyncController(now: Long): Boolean {
+        if (lastControllerSyncAt == 0L) return true
+        val interval = when (lastPlaybackState) {
+            PlaybackState.STATE_PLAYING -> CONTROLLER_SYNC_INTERVAL_PLAYING_MS
+            PlaybackState.STATE_BUFFERING,
+            PlaybackState.STATE_CONNECTING,
+            PlaybackState.STATE_FAST_FORWARDING,
+            PlaybackState.STATE_REWINDING -> CONTROLLER_SYNC_INTERVAL_ACTIVE_MS
+            else -> CONTROLLER_SYNC_INTERVAL_IDLE_MS
+        }
+        return now - lastControllerSyncAt >= interval
+    }
+
+    private fun computeNextDelay(parsedLines: List<OnlineLyricFetcher.LyricLine>?): Long {
+        return when {
+            !parsedLines.isNullOrEmpty() -> FAST_LOOP_INTERVAL_MS
+            lastPlaybackState == PlaybackState.STATE_PLAYING -> NORMAL_LOOP_INTERVAL_MS
+            else -> IDLE_LOOP_INTERVAL_MS
+        }
+    }
+
+    private fun syncProgressFromController(shouldLog: Boolean = true, now: Long = SystemClock.elapsedRealtime()) {
         if (shouldLog) {
             AppLogger.getInstance().log(TAG, "⚙️ updateProgressFromController() called")
         }
@@ -121,35 +183,49 @@ class ProgressSyncController(
                 if (durationLong > 0) duration = durationLong
 
                 if (state != null) {
-                    val lastPosition = state.position
-                    val lastUpdateTimeVal = state.lastPositionUpdateTime
-                    val speed = state.playbackSpeed
+                    lastPlaybackState = state.state
+                    lastPlaybackPosition = state.position
+                    lastPlaybackPositionAt = state.lastPositionUpdateTime
+                    lastPlaybackSpeed = state.playbackSpeed.takeUnless { it == 0f } ?: 1f
+                    lastControllerSyncAt = now
 
-                    var currentPos = lastPosition
-                    if (state.state == PlaybackState.STATE_PLAYING) {
-                        val timeDelta = android.os.SystemClock.elapsedRealtime() - lastUpdateTimeVal
-                        currentPos += (timeDelta * speed).toLong()
-                    }
-
-                    if (duration > 0 && currentPos > duration) currentPos = duration
-                    if (currentPos < 0) currentPos = 0
-
-                    currentPosition = currentPos
+                    updateEstimatedProgress(now)
 
                     if (shouldLog) {
                         AppLogger.getInstance().log(
                             TAG,
-                            "📍 Progress [${activeController.packageName}]: ${currentPos}ms / ${duration}ms"
+                            "📍 Progress [${activeController.packageName}]: ${currentPosition}ms / ${duration}ms"
                         )
                     }
-                    repo.updateProgress(currentPos, duration)
                 }
-            } else if (shouldLog) {
-                AppLogger.getInstance().log(TAG, "⚠️ No matching active MediaController found")
+            } else {
+                lastControllerSyncAt = now
+                if (shouldLog) {
+                    AppLogger.getInstance().log(TAG, "⚠️ No matching active MediaController found")
+                }
             }
         } catch (e: Exception) {
             Log.e(TAG, "Progress Update Error: ${e.message}")
         }
+    }
+
+    private fun updateEstimatedProgress(now: Long) {
+        var estimated = lastPlaybackPosition
+        if (lastPlaybackState == PlaybackState.STATE_PLAYING) {
+            val positionBase = if (lastPlaybackPositionAt > 0L) lastPlaybackPositionAt else now
+            val timeDelta = now - positionBase
+            estimated += (timeDelta * lastPlaybackSpeed).toLong()
+        }
+
+        if (duration > 0 && estimated > duration) estimated = duration
+        if (estimated < 0) estimated = 0
+
+        if (estimated == currentPosition && repo.liveProgress.value?.duration == duration) {
+            return
+        }
+
+        currentPosition = estimated
+        repo.updateProgress(estimated, duration)
     }
 
     private fun resolveActiveController(
@@ -172,5 +248,11 @@ class ProgressSyncController(
 
     private companion object {
         private const val TAG = "ProgressSyncController"
+        private const val FAST_LOOP_INTERVAL_MS = 250L
+        private const val NORMAL_LOOP_INTERVAL_MS = 500L
+        private const val IDLE_LOOP_INTERVAL_MS = 1000L
+        private const val CONTROLLER_SYNC_INTERVAL_PLAYING_MS = 1000L
+        private const val CONTROLLER_SYNC_INTERVAL_ACTIVE_MS = 750L
+        private const val CONTROLLER_SYNC_INTERVAL_IDLE_MS = 1500L
     }
 }

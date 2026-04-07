@@ -769,6 +769,12 @@ class MediaMonitorService : NotificationListenerService() {
     }
 
     private fun saveParserState(pkg: String, title: String?, artist: String?, lyricMode: Boolean, duration: Long) {
+        val newState = PersistedParserState(title, artist, lyricMode, duration)
+        if (persistedParserStates[pkg] == newState) {
+            return
+        }
+        persistedParserStates[pkg] = newState
+
         val statePrefs = getSharedPreferences(PREFS_PARSER_STATE, MODE_PRIVATE)
         val historyJson = statePrefs.getString(PREF_STATE_HISTORY, "[]") ?: "[]"
         val history = JSONArray(historyJson)
@@ -822,6 +828,12 @@ class MediaMonitorService : NotificationListenerService() {
                     packageLyricMode[pkg] = entry.getBoolean("mode")
                     packageLastDuration[pkg] = savedDuration
                     packageLastArtist[pkg] = savedArtist
+                    persistedParserStates[pkg] = PersistedParserState(
+                        title = entry.opt("title") as? String,
+                        artist = savedArtist,
+                        lyricMode = entry.getBoolean("mode"),
+                        duration = savedDuration
+                    )
                     AppLogger.getInstance().log(TAG, "♻️ Restored parser state for $pkg: ${entry.optString("title")}")
                     return true
                 }
@@ -852,6 +864,13 @@ class MediaMonitorService : NotificationListenerService() {
     }
 
     companion object {
+        private data class PersistedParserState(
+            val title: String?,
+            val artist: String?,
+            val lyricMode: Boolean,
+            val duration: Long
+        )
+
         private const val TAG = "MediaMonitorService"
         private const val PREFS_NAME = "IslandLyricsPrefs"
         private const val PREF_PARSER_RULES = "parser_rules_json"
@@ -867,6 +886,7 @@ class MediaMonitorService : NotificationListenerService() {
         // Cached confirmed real song identity (set at lyric-mode transition)
         private val packageRealTitle    = HashMap<String, String?>()
         private val packageRealArtist   = HashMap<String, String?>()
+        private val persistedParserStates = HashMap<String, PersistedParserState>()
 
         // Singleton instance — set in onCreate, cleared in onDestroy
         @Volatile private var instance: MediaMonitorService? = null

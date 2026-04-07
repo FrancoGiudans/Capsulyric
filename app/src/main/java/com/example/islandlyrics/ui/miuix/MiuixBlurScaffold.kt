@@ -8,8 +8,14 @@ import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.union
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import top.yukonga.miuix.kmp.basic.FabPosition
 import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.theme.MiuixTheme
@@ -32,11 +38,27 @@ fun MiuixBlurScaffold(
     contentWindowInsets: WindowInsets = WindowInsets.systemBars.union(WindowInsets.displayCutout),
     content: @Composable (PaddingValues) -> Unit,
 ) {
+    val context = LocalContext.current
+    val prefs = remember(context) {
+        context.getSharedPreferences("IslandLyricsPrefs", android.content.Context.MODE_PRIVATE)
+    }
+    var blurEnabled by remember(prefs) {
+        mutableStateOf(prefs.getBoolean("card_blur_enabled", false))
+    }
+    DisposableEffect(prefs) {
+        val listener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+            if (key == "card_blur_enabled") {
+                blurEnabled = prefs.getBoolean(key, false)
+            }
+        }
+        prefs.registerOnSharedPreferenceChangeListener(listener)
+        onDispose { prefs.unregisterOnSharedPreferenceChangeListener(listener) }
+    }
     val backdrop = rememberLayerBackdrop()
     
     CompositionLocalProvider(
         LocalMiuixBlurBackdrop provides backdrop,
-        LocalMiuixBlurEnabled provides true
+        LocalMiuixBlurEnabled provides blurEnabled
     ) {
         Scaffold(
             modifier = modifier,
@@ -48,7 +70,7 @@ fun MiuixBlurScaffold(
             contentWindowInsets = contentWindowInsets,
             popupHost = popupHost
         ) { paddingValues ->
-            Box(modifier = Modifier.layerBackdrop(backdrop)) {
+            Box(modifier = if (blurEnabled) Modifier.layerBackdrop(backdrop) else Modifier) {
                 content(paddingValues)
             }
         }

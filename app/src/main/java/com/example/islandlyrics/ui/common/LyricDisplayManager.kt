@@ -36,6 +36,12 @@ class LyricDisplayManager(private val context: Context) {
     private enum class ScrollState {
         INITIAL_PAUSE, SCROLLING, FINAL_PAUSE, DONE
     }
+
+    private data class GapDisplay(
+        val displayLyric: String,
+        val fullLyric: String,
+        val isAnimated: Boolean
+    )
     private var scrollState = ScrollState.INITIAL_PAUSE
     private var initialPauseStartTime: Long = 0
     
@@ -60,11 +66,20 @@ class LyricDisplayManager(private val context: Context) {
     private val baseFocusDelay = 500L
     private val staticTimeReserve = 1000L
     private val compensationThreshold = 20
+    private val timingGapHoldThresholdMs = 2000L
+    private val timingGapAnimationLeadMs = 800L
+    private val timingGapDotFrameMs = 450L
+    private val timingGapAnimationTotalMs = timingGapDotFrameMs * 3
+    private val timingGapFullSequenceMs = timingGapAnimationLeadMs + timingGapAnimationTotalMs
+    private val timingPlaceholder = "♪"
     
     // Current parsed lyrics info
     private var useSyllableScrolling = false
     private var useLrcScrolling = false
     private var currentParsedLines: List<OnlineLyricFetcher.LyricLine>? = null
+    private var lastStableDisplayLyric = ""
+    private var lastStableFullLyric = ""
+    private var timingGapActive = false
     
     // Observers
     private val parsedLyricsObserver = Observer<LyricRepository.ParsedLyricsInfo?> { parsedInfo ->
@@ -121,17 +136,8 @@ class LyricDisplayManager(private val context: Context) {
             if (!isRunning) return
             try {
                 processTick()
-                
-                if (scrollState == ScrollState.DONE) {
-                    mainHandler.postDelayed(this, 1000)
-                } else {
-                    val currentLine = LyricRepository.getInstance().liveCurrentLine.value
-                    if (currentLine != null) {
-                        mainHandler.postDelayed(this, 200)
-                    } else {
-                        mainHandler.postDelayed(this, adaptiveDelay)
-                    }
-                }
+
+                mainHandler.postDelayed(this, computeNextFrameDelay())
             } catch (t: Throwable) {
                 Log.e("LyricDisplayManager", "Crash in display loop", t)
             }
@@ -233,17 +239,27 @@ class LyricDisplayManager(private val context: Context) {
         val currentLyric = lyricInfo?.lyric ?: ""
         val sourceApp = lyricInfo?.sourceApp ?: ""
         val currentPosition = progressInfo?.position ?: 0L
-        val duration = metaInfo?.duration ?: 0L
+        val duration = progressInfo?.duration ?: metaInfo?.duration ?: 0L
         
         var displayLyric = ""
+        var fullLyricForDisplay = currentLyric
         var isStatic = false
+        timingGapActive = false
         
         if (disableScrolling) {
             val currentLine = if (currentParsedLines != null) findCurrentLine(currentParsedLines!!, currentPosition) else null
             if (currentLine != null) {
                 displayLyric = extractByWeight(currentLine.text, 0, maxDisplayWeight)
+                fullLyricForDisplay = currentLine.text
             } else {
-                displayLyric = extractByWeight(currentLyric, 0, maxDisplayWeight)
+                val gapDisplay = resolveTimingGapDisplay(currentParsedLines, currentPosition, isPlaying)
+                if (gapDisplay != null) {
+                    displayLyric = gapDisplay.displayLyric
+                    fullLyricForDisplay = gapDisplay.fullLyric
+                    timingGapActive = true
+                } else {
+                    displayLyric = extractByWeight(currentLyric, 0, maxDisplayWeight)
+                }
             }
             scrollState = ScrollState.DONE
             isStatic = true
@@ -252,16 +268,30 @@ class LyricDisplayManager(private val context: Context) {
             if (currentLine != null && !currentLine.syllables.isNullOrEmpty()) {
                 val sungSyllables = currentLine.syllables.filter { it.startTime <= currentPosition }
                 val unsungSyllables = currentLine.syllables.filter { it.startTime > currentPosition }
-                displayLyric = calculateSyllableWindow(sungSyllables.joinToString("") { it.text }, unsungSyllables.joinToString("") { it.text })
+                displayLyric = calculateSyllableWindow(
+                    fullText = currentLine.text,
+                    sungText = sungSyllables.joinToString("") { it.text },
+                    unsungText = unsungSyllables.joinToString("") { it.text }
+                )
+                fullLyricForDisplay = currentLine.text
                 scrollState = ScrollState.SCROLLING
             } else if (currentLine != null) {
                 displayLyric = extractByWeight(currentLine.text, 0, maxDisplayWeight)
+                fullLyricForDisplay = currentLine.text
             } else {
-                displayLyric = " "
+                val gapDisplay = resolveTimingGapDisplay(currentParsedLines, currentPosition, isPlaying)
+                if (gapDisplay != null) {
+                    displayLyric = gapDisplay.displayLyric
+                    fullLyricForDisplay = gapDisplay.fullLyric
+                    timingGapActive = true
+                } else {
+                    displayLyric = extractByWeight(currentLyric, 0, maxDisplayWeight)
+                }
             }
         } else if (useLrcScrolling && currentParsedLines != null) {
             val foundLine = findCurrentLine(currentParsedLines!!, currentPosition)
             if (foundLine != null) {
+                fullLyricForDisplay = foundLine.text
                 val lineDuration = foundLine.endTime - foundLine.startTime
                 val lineProgress = if (lineDuration > 0) {
                     ((currentPosition - foundLine.startTime).toFloat() / lineDuration.toFloat()).coerceIn(0f, 1f)
@@ -281,11 +311,24 @@ class LyricDisplayManager(private val context: Context) {
                 }
                 scrollState = ScrollState.SCROLLING
             } else {
-                displayLyric = " "
+                val gapDisplay = resolveTimingGapDisplay(currentParsedLines, currentPosition, isPlaying)
+                if (gapDisplay != null) {
+                    displayLyric = gapDisplay.displayLyric
+                    fullLyricForDisplay = gapDisplay.fullLyric
+                    timingGapActive = true
+                } else {
+                    displayLyric = extractByWeight(currentLyric, 0, maxDisplayWeight)
+                }
             }
         } else {
             val totalWeight = calculateWeight(currentLyric)
             displayLyric = calculateAdaptiveScroll(currentLyric, totalWeight)
+        }
+
+        val shouldPersistStableDisplay = !timingGapActive && displayLyric.isNotBlank()
+        if (shouldPersistStableDisplay) {
+            lastStableDisplayLyric = displayLyric
+            lastStableFullLyric = fullLyricForDisplay
         }
         
         val progressPercent = if (duration > 0) ((currentPosition.toFloat() / duration.toFloat()) * 100).toInt() else -1
@@ -295,7 +338,7 @@ class LyricDisplayManager(private val context: Context) {
             title = metaInfo?.title ?: sourceApp,
             artist = metaInfo?.artist ?: "",
             displayLyric = displayLyric,
-            fullLyric = currentLyric,
+            fullLyric = fullLyricForDisplay,
             isStatic = isStatic,
             progressMax = 100,
             progressCurrent = progressPercent,
@@ -309,6 +352,20 @@ class LyricDisplayManager(private val context: Context) {
         onStateUpdated?.invoke(state)
     }
 
+    private fun computeNextFrameDelay(): Long {
+        if (scrollState == ScrollState.DONE) {
+            return if (timingGapActive) 120L else 1000L
+        }
+
+        return when {
+            timingGapActive -> 120L
+            useSyllableScrolling -> 120L
+            useLrcScrolling -> 350L
+            LyricRepository.getInstance().liveCurrentLine.value != null -> 350L
+            else -> adaptiveDelay
+        }
+    }
+
     // ---------- Helper Methods ----------
     private fun findCurrentLine(lines: List<OnlineLyricFetcher.LyricLine>, position: Long): OnlineLyricFetcher.LyricLine? {
         for (line in lines) {
@@ -318,6 +375,7 @@ class LyricDisplayManager(private val context: Context) {
     }
 
     private fun charWeight(c: Char): Int {
+        if (c.isWhitespace()) return 0
         return when (Character.UnicodeBlock.of(c)) {
             Character.UnicodeBlock.CJK_UNIFIED_IDEOGRAPHS,
             Character.UnicodeBlock.CJK_UNIFIED_IDEOGRAPHS_EXTENSION_A,
@@ -333,8 +391,9 @@ class LyricDisplayManager(private val context: Context) {
     private fun calculateWeight(text: String): Int = text.sumOf { charWeight(it) }
     
     private fun isMostlyWestern(text: String): Boolean {
-        if (text.isEmpty()) return false
-        return text.count { charWeight(it) == 2 } <= text.length / 2
+        val nonWhitespaceChars = text.count { !it.isWhitespace() }
+        if (nonWhitespaceChars == 0) return false
+        return text.count { !it.isWhitespace() && charWeight(it) == 2 } <= nonWhitespaceChars / 2
     }
     
     private fun extractByWeight(text: String, startWeight: Int, maxWeight: Int): String {
@@ -348,6 +407,9 @@ class LyricDisplayManager(private val context: Context) {
             }
             currentWeight += charWeight(text[i])
         }
+        while (startIndex < text.length && text[startIndex].isWhitespace()) {
+            startIndex++
+        }
         currentWeight = 0
         for (i in startIndex until text.length) {
             currentWeight += charWeight(text[i])
@@ -355,28 +417,93 @@ class LyricDisplayManager(private val context: Context) {
             endIndex = i + 1
         }
         if (endIndex <= startIndex) return ""
-        return text.substring(startIndex, endIndex).trimEnd()
+        return text.substring(startIndex, endIndex).trim()
     }
     
-    private fun calculateSyllableWindow(sungText: String, unsungText: String): String {
+    private fun calculateSyllableWindow(fullText: String, sungText: String, unsungText: String): String {
+        val fullWeight = calculateWeight(fullText)
+        if (fullWeight <= maxDisplayWeight) {
+            return fullText
+        }
+
         val sungWeight = calculateWeight(sungText)
-        val remainingCapacityWeight = maxOf(0, maxDisplayWeight - sungWeight)
-        
-        if (remainingCapacityWeight >= calculateWeight(unsungText)) {
-            return "${sungText}${unsungText}"
-        }
-        
-        val maxSafeSungWeight = maxDisplayWeight / 2
-        
-        if (sungWeight > maxSafeSungWeight) {
-            val offsetWeight = sungWeight - maxSafeSungWeight
-            val visibleSung = extractByWeight(sungText, offsetWeight, maxSafeSungWeight)
-            val visibleUnsung = extractByWeight(unsungText, 0, maxDisplayWeight - calculateWeight(visibleSung))
-            return "${visibleSung}${visibleUnsung}"
+        val unsungWeight = calculateWeight(unsungText)
+        val scrollStartThreshold = if (isMostlyWestern(fullText)) 4 else maxDisplayWeight / 2
+        val minTailVisibleWeight = maxOf(maxDisplayWeight - 2, maxDisplayWeight / 2)
+        val maxOffset = maxOf(0, fullWeight - minTailVisibleWeight)
+        val targetOffset = maxOf(0, sungWeight - scrollStartThreshold)
+        val finalOffset = minOf(targetOffset, maxOffset)
+        val visibleWeight = if (unsungWeight <= minTailVisibleWeight || finalOffset >= maxOffset) {
+            minTailVisibleWeight
         } else {
-            val visibleUnsung = extractByWeight(unsungText, 0, maxDisplayWeight - sungWeight)
-            return "${sungText}${visibleUnsung}"
+            maxDisplayWeight
         }
+        return extractByWeight(fullText, finalOffset, visibleWeight)
+    }
+
+    private fun resolveTimingGapDisplay(
+        lines: List<OnlineLyricFetcher.LyricLine>?,
+        position: Long,
+        isPlaying: Boolean
+    ): GapDisplay? {
+        if (!isPlaying || lines.isNullOrEmpty()) return null
+
+        val firstLine = lines.first()
+        if (position < firstLine.startTime) {
+            val remainingUntilFirst = firstLine.startTime - position
+            return if (firstLine.startTime >= timingGapFullSequenceMs &&
+                remainingUntilFirst <= timingGapAnimationTotalMs) {
+                buildCountdownGapDisplay(remainingUntilFirst)
+            } else {
+                GapDisplay(timingPlaceholder, timingPlaceholder, false)
+            }
+        }
+
+        val lastLine = lines.last()
+        if (position >= lastLine.endTime) {
+            return GapDisplay(timingPlaceholder, timingPlaceholder, false)
+        }
+
+        for (index in 0 until lines.lastIndex) {
+            val current = lines[index]
+            val next = lines[index + 1]
+            if (position < current.endTime || position >= next.startTime) continue
+
+            val gapDuration = next.startTime - current.endTime
+            if (gapDuration < timingGapHoldThresholdMs) {
+                return stableGapFallback(current)
+            }
+
+            val remainingUntilNext = next.startTime - position
+            return if (gapDuration >= timingGapFullSequenceMs) {
+                if (remainingUntilNext <= timingGapAnimationTotalMs) {
+                    buildCountdownGapDisplay(remainingUntilNext)
+                } else {
+                    GapDisplay(timingPlaceholder, timingPlaceholder, false)
+                }
+            } else {
+                GapDisplay(timingPlaceholder, timingPlaceholder, false)
+            }
+        }
+
+        return null
+    }
+
+    private fun stableGapFallback(previousLine: OnlineLyricFetcher.LyricLine): GapDisplay {
+        val display = lastStableDisplayLyric.ifBlank {
+            extractByWeight(previousLine.text, 0, maxDisplayWeight)
+        }
+        val full = lastStableFullLyric.ifBlank { previousLine.text }
+        return GapDisplay(display, full, false)
+    }
+
+    private fun buildCountdownGapDisplay(remainingUntilNext: Long): GapDisplay {
+        val indicator = when {
+            remainingUntilNext > timingGapDotFrameMs * 2 -> "●●●"
+            remainingUntilNext > timingGapDotFrameMs -> "●●"
+            else -> "●"
+        }
+        return GapDisplay(indicator, indicator, true)
     }
     
     private var scrollOffset = 0
@@ -426,19 +553,15 @@ class LyricDisplayManager(private val context: Context) {
         val segment = extractByWeight(text, currentOffset, 10)
         if (segment.isEmpty()) return 2
         
-        val cjkCount = segment.count { charWeight(it) == 2 }
-        val isCJK = cjkCount > segment.length / 2
+        val nonWhitespaceChars = segment.count { !it.isWhitespace() }
+        val cjkCount = segment.count { !it.isWhitespace() && charWeight(it) == 2 }
+        val isCJK = nonWhitespaceChars > 0 && cjkCount > nonWhitespaceChars / 2
         
         return if (isCJK) {
             // Smoother for Japanese - shift by 2 weights (1 ideograph)
             if (segment.isNotEmpty()) charWeight(segment[0]) else 2
         } else {
-            val spaceIndex = segment.indexOf(' ', 2)
-            if (spaceIndex in 2..4) {
-                calculateWeight(segment.take(spaceIndex + 1))
-            } else if (segment.length >= 3) {
-                calculateWeight(segment.take(3))
-            } else 3
+            2
         }
     }
     

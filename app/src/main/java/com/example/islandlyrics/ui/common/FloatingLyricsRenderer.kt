@@ -87,11 +87,25 @@ class FloatingLyricsRenderer(private val context: Context) {
 
     private var currentState = DisplayState.MINIMAL
     private var lastState: UIState? = null
+    private var lastAppliedSnapshot: ViewSnapshot? = null
 
     var isRunning = false
         private set
 
     private val collapseRunnable = Runnable { switchToMinimal() }
+
+    private data class ViewSnapshot(
+        val lyric: String,
+        val title: String,
+        val artist: String,
+        val isPlaying: Boolean,
+        val textSizeSp: Float,
+        val textColor: Int,
+        val showAlbumArt: Boolean,
+        val albumArtHash: Int,
+        val enableTextStroke: Boolean,
+        val enableTextBackground: Boolean
+    )
 
     private val prefChangeListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
         when (key) {
@@ -239,6 +253,7 @@ class FloatingLyricsRenderer(private val context: Context) {
         minimalContainer = null; expandedContainer = null
         minimalTextBackgroundContainer = null
         lastState = null; currentState = DisplayState.MINIMAL
+        lastAppliedSnapshot = null
         isRunning = false
         Log.i(TAG, "Floating lyrics overlay detached")
     }
@@ -420,8 +435,23 @@ class FloatingLyricsRenderer(private val context: Context) {
 
     private fun applyState(state: UIState) {
         val lyric = state.fullLyric.ifBlank { state.displayLyric.ifBlank { "♪" } }
-        
         val actualColor = if (followAlbumColor) state.albumColor else baseTextColor
+        val snapshot = ViewSnapshot(
+            lyric = lyric,
+            title = state.title,
+            artist = state.artist,
+            isPlaying = state.isPlaying,
+            textSizeSp = textSizeSp,
+            textColor = actualColor,
+            showAlbumArt = showAlbumArt,
+            albumArtHash = state.albumArt?.hashCode() ?: 0,
+            enableTextStroke = enableTextStroke,
+            enableTextBackground = enableTextBackground
+        )
+        if (snapshot == lastAppliedSnapshot) {
+            return
+        }
+        lastAppliedSnapshot = snapshot
 
         // Apply to minimal
         minimalLyricTv?.text = lyric

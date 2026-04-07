@@ -242,7 +242,11 @@ fun MainScreen(
                         // If primary, inject repo data. If not, pass null to let card extract from controller.
                         primaryMetadata = if (isPrimary) repoMetadata else null,
                         primaryLyric = if (isPrimary) repoLyric?.lyric else null,
-                        primaryLyricSource = if (isPrimary && repoLyric?.apiPath == "Online API") repoParsedLyrics?.sourceLabel else null,
+                        primaryLyricSource = if (isPrimary) {
+                            formatPrimaryLyricSource(repoLyric?.apiPath, repoParsedLyrics?.sourceLabel)
+                        } else {
+                            null
+                        },
                         primaryAlbumArt = if (isPrimary) repoAlbumArt else null,
                         primaryProgress = if (isPrimary) repoProgress else null
                     )
@@ -359,28 +363,6 @@ private fun MediaSessionCard(
     // If not primary, we need to observe the controller directly
     var localMetadata by remember(controller) { mutableStateOf(controller.metadata) }
     var localPlaybackState by remember(controller) { mutableStateOf(controller.playbackState) }
-
-    if (!isPrimary) {
-        DisposableEffect(controller) {
-            val callback = object : MediaController.Callback() {
-                override fun onPlaybackStateChanged(state: PlaybackState?) { 
-                    localPlaybackState = state 
-                }
-                override fun onMetadataChanged(meta: MediaMetadata?) { localMetadata = meta }
-            }
-            controller.registerCallback(callback)
-            onDispose { controller.unregisterCallback(callback) }
-        }
-    }
-    
-    // Explicitly observe primary state if isPrimary to ensure UI updates
-    // Compose state `repoPlaying` is already observed in parent, but `isPlaying` here calculates from `localPlaybackState`
-    // We need to ensure `localPlaybackState` is correct for primary too if we use it, 
-    // OR just rely entirely on `repoPlaying` for primary.
-    // The previous logic `val isPlaying = if (isPrimary) localPlaybackState?.state ...` 
-    // used `localPlaybackState` which wasn't updated for Primary because we didn't register the callback!
-    // FIX: For primary, use the `repoPlaying` passed down (we need to pass it) OR register callback for primary too.
-    // Better: Register callback for ALL controllers to get immediate transport state updates.
     
     DisposableEffect(controller) {
         val callback = object : MediaController.Callback() {
@@ -408,7 +390,7 @@ private fun MediaSessionCard(
     // Only primary has live progress from repo (which might be polled or event based).
     // For non-primary, we might not have real-time progress unless we poll.
     // Let's just use Repo progress for primary, and 0 for others to keep it simple, or static.
-    val duration = if (isPrimary) primaryMetadata?.duration ?: 0L else localMetadata?.getLong(MediaMetadata.METADATA_KEY_DURATION) ?: 0L
+    val duration = if (isPrimary) primaryProgress?.duration ?: primaryMetadata?.duration ?: 0L else localMetadata?.getLong(MediaMetadata.METADATA_KEY_DURATION) ?: 0L
     val position = if (isPrimary) primaryProgress?.position ?: 0L else localPlaybackState?.position ?: 0L
 
     val isPlaying = localPlaybackState?.state == PlaybackState.STATE_PLAYING || localPlaybackState?.state == PlaybackState.STATE_BUFFERING
@@ -482,7 +464,7 @@ private fun MediaSessionCard(
                     if (isPrimary && !primaryLyricSource.isNullOrBlank()) {
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
-                            text = "当前在线源: $primaryLyricSource",
+                            text = "当前歌词源: $primaryLyricSource",
                             fontSize = 11.sp,
                             color = MaterialTheme.colorScheme.secondary,
                             maxLines = 1,
@@ -650,6 +632,16 @@ private fun MediaSessionCard(
                 }
             }
         }
+    }
+}
+
+private fun formatPrimaryLyricSource(apiPath: String?, sourceLabel: String?): String? {
+    val label = sourceLabel?.trim().orEmpty()
+    if (label.isBlank()) return null
+    return when (apiPath) {
+        "Online API" -> "$label [在线]"
+        "Online Cache" -> "$label [缓存]"
+        else -> null
     }
 }
 

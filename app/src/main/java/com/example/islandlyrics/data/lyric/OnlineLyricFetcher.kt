@@ -421,8 +421,8 @@ class OnlineLyricFetcher {
             }
 
             val lyricContent = decodeKugouLyric(lyricEncoded)
-            val hasSyllable = lyricContent.contains("<") && lyricContent.contains(">")
-            val parsedLines = if (hasSyllable) parseKrcLyrics(lyricContent) else parseLrcLyrics(lyricContent)
+            val hasSyllable = isWordLevelLyrics(lyricContent)
+            val parsedLines = if (hasSyllable) parseWordLevelLyrics(lyricContent) else parseLrcLyrics(lyricContent)
 
             LyricResult("Kugou", lyricContent, parsedLines, hasSyllable, provider = OnlineLyricProvider.Kugou, matchedTitle = matchedTitle, matchedArtist = matchedArtist)
 
@@ -514,9 +514,7 @@ class OnlineLyricFetcher {
                 )
             }
 
-            val hasSyllable = lyricType.contains("word", ignoreCase = true) ||
-                lyricType.contains("syllable", ignoreCase = true) ||
-                lyricContent.trimStart().startsWith("<tt")
+            val hasSyllable = isWordLevelLyrics(lyricContent, lyricType)
             val parsedLines = parseSodaLyrics(lyricContent, lyricType)
             LyricResult(
                 api = "SodaMusic",
@@ -687,8 +685,8 @@ class OnlineLyricFetcher {
                 return@withContext null
             }
             
-            val hasSyllable = response.contains("<") && response.contains(">") && response.contains("[") && response.length > 1 && response[1].isDigit()
-            val parsedLines = if (hasSyllable) parseKrcLyrics(response) else parseLrcLyrics(response)
+            val hasSyllable = isWordLevelLyrics(response)
+            val parsedLines = if (hasSyllable) parseWordLevelLyrics(response) else parseLrcLyrics(response)
             
             LyricResult("LrcApi", response, parsedLines, hasSyllable, provider = OnlineLyricProvider.LrcApi)
         } catch (e: Exception) {
@@ -724,59 +722,7 @@ class OnlineLyricFetcher {
         val providerPriority = providerOrder.withIndex().associate { it.value to it.index }
         val results = attempts.mapNotNull { it.result }
         for (result in results) {
-            var score = 0
-            
-            // 有逐字歌词 30分
-            if (result.hasSyllable) score += 30
-            
-            // 歌词带有时间轴 20分
-            // 如果是逐字歌词(hasSyllable)，必然包含时间轴
-            val timestampRegex = Regex("\\[\\d{1,2}[.:]\\d{1,2}[.:]\\d{1,3}]")
-            if (result.hasSyllable || (result.lyrics != null && timestampRegex.containsMatchIn(result.lyrics))) {
-                score += 20
-            }
-            
-            // API质量与信任分
-            when (result.api) {
-                "QQMusic" -> score += if (result.parsedLines.isNullOrEmpty()) 3 else 12
-                "Kugou" -> score += if (result.hasSyllable) 10 else 5
-                "SodaMusic" -> score += if (result.parsedLines.isNullOrEmpty()) 4 else 13
-                "LRCLIB" -> score += if (result.parsedLines.isNullOrEmpty()) 2 else 12
-                // LrcApi: 基础分5 + 信任分50 = 55 (弥补无标题缺失)
-                "LrcApi" -> score += 55 
-                "Netease" -> score += 5
-            }
-            // 标题匹配加分逻辑 (V3 优化)
-            val matchedTitle = result.matchedTitle
-            
-            if (matchedTitle != null && matchedTitle.isNotEmpty()) {
-                if (matchedTitle.equals(targetTitle, ignoreCase = true)) {
-                    // 原标题完全匹配：+50
-                    score += 50
-                } else {
-                    val cleanTarget = cleanTitle(targetTitle)
-                    val cleanMatched = cleanTitle(matchedTitle)
-                    
-                    if (cleanMatched.equals(cleanTarget, ignoreCase = true)) {
-                        // 清洗后标题匹配：+20
-                        score += 20
-                    } else {
-                        // 清洗后仍不匹配：-50 (强力惩罚)
-                        score -= 50
-                    }
-                }
-            } else {
-                // 无标题信息，视为风险，微扣分
-                score -= 10
-            }
-            
-            // 过滤纯音/无歌词
-             if (result.lyrics?.contains("纯音乐", ignoreCase = true) == true || 
-                 result.lyrics?.contains("No lyrics", ignoreCase = true) == true) {
-                 score -= 100 // 惩罚纯音乐，除非没有其他选择
-             }
-            
-            result.score = score
+            result.score = buildQualityScore(result, targetTitle, targetArtist)
         }
 
         return results
@@ -792,8 +738,108 @@ class OnlineLyricFetcher {
     private fun isUsableResult(result: LyricResult): Boolean {
         return !result.lyrics.isNullOrBlank() && !result.parsedLines.isNullOrEmpty()
     }
+
+    private fun buildQualityScore(
+        result: LyricResult,
+        targetTitle: String,
+        targetArtist: String
+    ): Int {
+        var score = 0
+
+        val parsedLines = result.parsedLines.orEmpty()
+        val lineCount = parsedLines.size
+        val wordLineCount = parsedLines.count { !it.syllables.isNullOrEmpty() }
+
+        if (result.hasSyllable || wordLineCount > 0) {
+            score += 42
+        } else if (lineCount > 0) {
+            score += 24
+        }
+
+        score += minOf(lineCount, 12)
+        if (wordLineCount > 0) {
+            score += minOf(wordLineCount, 10)
+        }
+
+        score += when (result.provider) {
+            OnlineLyricProvider.QQMusic -> 11
+            OnlineLyricProvider.Kugou -> 10
+            OnlineLyricProvider.SodaMusic -> 11
+            OnlineLyricProvider.Lrclib -> 8
+            OnlineLyricProvider.LrcApi -> 8
+            OnlineLyricProvider.Netease -> 9
+        }
+
+        score += scoreTitleMatch(targetTitle, result.matchedTitle)
+        score += scoreArtistMatch(targetArtist, result.matchedArtist)
+
+        if (result.lyrics?.contains("纯音乐", ignoreCase = true) == true ||
+            result.lyrics?.contains("No lyrics", ignoreCase = true) == true) {
+            score -= 100
+        }
+
+        return score
+    }
+
+    private fun scoreTitleMatch(targetTitle: String, matchedTitle: String?): Int {
+        if (matchedTitle.isNullOrBlank()) return -8
+        if (matchedTitle.equals(targetTitle, ignoreCase = true)) return 36
+
+        val cleanTarget = cleanTitle(targetTitle).lowercase()
+        val cleanMatched = cleanTitle(matchedTitle).lowercase()
+        return when {
+            cleanTarget.isBlank() || cleanMatched.isBlank() -> -8
+            cleanMatched == cleanTarget -> 20
+            cleanMatched.contains(cleanTarget) || cleanTarget.contains(cleanMatched) -> 8
+            else -> -30
+        }
+    }
+
+    private fun scoreArtistMatch(targetArtist: String, matchedArtist: String?): Int {
+        if (targetArtist.isBlank()) return 0
+        if (matchedArtist.isNullOrBlank()) return -4
+
+        val targetTokens = normalizeArtistTokens(targetArtist)
+        val matchedTokens = normalizeArtistTokens(matchedArtist)
+        if (targetTokens.isEmpty() || matchedTokens.isEmpty()) return -4
+
+        val overlap = targetTokens.intersect(matchedTokens).size
+        return when {
+            overlap == 0 -> -18
+            overlap == targetTokens.size && overlap == matchedTokens.size -> 18
+            overlap == targetTokens.size || overlap == matchedTokens.size -> 12
+            else -> 6
+        }
+    }
+
+    private fun normalizeArtistTokens(artist: String): Set<String> {
+        return artist
+            .split("/", "&", ",", "、", " feat. ", " ft. ", " x ", " X ", ";")
+            .map { it.trim().lowercase() }
+            .map { it.replace(Regex("\\s+"), " ") }
+            .filter { it.isNotBlank() }
+            .toSet()
+    }
     
     // ========== KRC解析 ==========
+
+    private fun parseWordLevelLyrics(content: String): List<LyricLine> {
+        val trimmed = content.trimStart()
+        return when {
+            trimmed.startsWith("<tt") -> parseTtmlLyrics(content)
+            else -> parseBracketWordLyrics(content)
+        }
+    }
+
+    private fun isWordLevelLyrics(content: String, lyricTypeHint: String? = null): Boolean {
+        val trimmed = content.trimStart()
+        if (trimmed.startsWith("<tt")) return true
+        if (lyricTypeHint?.contains("word", ignoreCase = true) == true) return true
+        if (lyricTypeHint?.contains("syllable", ignoreCase = true) == true) return true
+
+        val bracketWordRegex = Regex("""(?m)^\[\d+(?:,\d+)?]\s*(?:<\d+,\d+,\d+>[^<\r\n]*)+""")
+        return bracketWordRegex.containsMatchIn(content)
+    }
     
     private fun parseKrcLyrics(krcContent: String): List<LyricLine> {
         val lines = mutableListOf<LyricLine>()
@@ -809,6 +855,58 @@ class OnlineLyricFetcher {
         }
         
         return lines.sortedBy { it.startTime }
+    }
+
+    private fun parseBracketWordLyrics(content: String): List<LyricLine> {
+        val lines = content.lines()
+            .mapNotNull { parseBracketWordLine(it) }
+            .sortedBy { it.startTime }
+
+        if (lines.isEmpty()) return emptyList()
+
+        return lines.mapIndexed { index, line ->
+            val nextStart = lines.getOrNull(index + 1)?.startTime
+            if (nextStart != null && line.endTime <= line.startTime) {
+                line.copy(endTime = nextStart)
+            } else {
+                line
+            }
+        }
+    }
+
+    private fun parseBracketWordLine(line: String): LyricLine? {
+        val headerMatch = Regex("""^\[(\d+)(?:,(\d+))?]""").find(line) ?: return null
+        val lineStartTime = headerMatch.groupValues[1].toLongOrNull() ?: return null
+        val explicitDuration = headerMatch.groupValues.getOrNull(2)?.toLongOrNull()
+        val contentPart = line.substring(headerMatch.range.last + 1)
+
+        val syllableRegex = Regex("""<(\d+),(\d+),(\d+)>([^<]*)""")
+        val syllables = mutableListOf<SyllableInfo>()
+        val fullText = StringBuilder()
+
+        for (match in syllableRegex.findAll(contentPart)) {
+            val offset = match.groupValues[1].toLong()
+            val duration = match.groupValues[2].toLong()
+            val text = match.groupValues[4]
+            if (text.isBlank()) continue
+
+            val absStartTime = lineStartTime + offset
+            val absEndTime = absStartTime + duration
+            syllables.add(SyllableInfo(absStartTime, absEndTime, text))
+            fullText.append(text)
+        }
+
+        if (syllables.isEmpty()) return null
+
+        val lineEndTime = explicitDuration?.let { lineStartTime + it }
+            ?: syllables.maxOf { it.endTime }
+
+        return LyricLine(
+            startTime = lineStartTime,
+            endTime = lineEndTime,
+            text = fullText.toString(),
+            syllables = syllables
+        )
     }
     
     private fun parseKrcLine(line: String): LyricLine? {
@@ -897,10 +995,15 @@ class OnlineLyricFetcher {
         val trimmed = lyricContent.trimStart()
         return when {
             trimmed.startsWith("<tt") -> parseTtmlLyrics(lyricContent)
-            lyricContent.contains("[") -> parseLrcLyrics(lyricContent)
+            isWordLevelLyrics(lyricContent, lyricType) -> parseWordLevelLyrics(lyricContent)
+            hasLrcTimestamps(lyricContent) -> parseLrcLyrics(lyricContent)
             lyricType.contains("lrc", ignoreCase = true) -> parseLrcLyrics(lyricContent)
             else -> emptyList()
         }
+    }
+
+    private fun hasLrcTimestamps(content: String): Boolean {
+        return Regex("""\[\d{2}:\d{2}\.\d{2,3}]""").containsMatchIn(content)
     }
 
     private fun parseTtmlLyrics(ttmlContent: String): List<LyricLine> {
