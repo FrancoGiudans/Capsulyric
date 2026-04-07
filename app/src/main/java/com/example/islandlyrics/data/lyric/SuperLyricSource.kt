@@ -29,7 +29,8 @@ import com.hchen.superlyricapi.SuperLyricTool
  */
 class SuperLyricSource(
     private val context: Context,
-    private val onlineLyricSource: OnlineLyricSource
+    private val onlineLyricSource: OnlineLyricSource,
+    private val onProgressHint: (packageName: String, position: Long, duration: Long) -> Unit = { _, _, _ -> }
 ) {
     private val mainHandler = Handler(Looper.getMainLooper())
 
@@ -97,10 +98,11 @@ class SuperLyricSource(
             // re-couple the lyric source back into the playback state machine.
             val playbackState = data.playbackState
             if (playbackState != null) {
-                // ONLY SYNC PROGRESS (Fallback for apps with broken MediaSession progress)
+                // Pass progress hints into the dedicated progress synchronizer so the
+                // repository has a single authority for progress writes.
                 val liveDuration = LyricRepository.getInstance().liveMetadata.value?.duration ?: 0L
                 if (liveDuration > 0 && playbackState.position > 0) {
-                    LyricRepository.getInstance().updateProgress(playbackState.position, liveDuration)
+                    onProgressHint(pkg, playbackState.position, liveDuration)
                 }
             }
 

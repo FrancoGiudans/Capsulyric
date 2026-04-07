@@ -73,6 +73,9 @@ fun MiuixOnlineLyricDebugScreen(
     val effectiveQuery by viewModel.effectiveQuery.observeAsState("" to "")
     val querySourceLabel by viewModel.querySourceLabel.observeAsState("")
     val cacheStatus by viewModel.cacheStatus.observeAsState()
+    val canSelectDialogResult = dialogAttempt?.result?.let { result ->
+        result.error == null && !result.parsedLines.isNullOrEmpty()
+    } == true
     val showPrioritySection = remember(mediaInfo?.packageName, useSmartSelection) {
         val pkg = mediaInfo?.packageName
         pkg != null &&
@@ -273,6 +276,27 @@ fun MiuixOnlineLyricDebugScreen(
                             .heightIn(min = 120.dp, max = 360.dp)
                             .verticalScroll(rememberScrollState())
                     )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        if (canSelectDialogResult) {
+                            Button(
+                                onClick = { viewModel.selectAttempt(attempt) },
+                                enabled = !isFetching,
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text("选中这个结果")
+                            }
+                        }
+                        Button(
+                            onClick = { viewModel.closeDialog() },
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text("关闭")
+                        }
+                    }
                 }
             }
         }

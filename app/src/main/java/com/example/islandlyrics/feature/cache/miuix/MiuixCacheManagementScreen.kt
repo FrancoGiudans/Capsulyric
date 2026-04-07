@@ -31,7 +31,7 @@ import com.example.islandlyrics.core.cache.AppImageCacheManager
 import com.example.islandlyrics.data.lyric.OnlineLyricCacheStore
 import com.example.islandlyrics.feature.cache.CacheManagementViewModel
 import com.example.islandlyrics.ui.miuix.MiuixBlurScaffold
-import com.example.islandlyrics.ui.miuix.MiuixBlurSmallTopAppBar
+import com.example.islandlyrics.ui.miuix.MiuixBlurTopAppBar
 import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.IconButton
@@ -66,8 +66,9 @@ fun MiuixCacheManagementScreen(
 
     MiuixBlurScaffold(
         topBar = {
-            MiuixBlurSmallTopAppBar(
+            MiuixBlurTopAppBar(
                 title = stringResource(R.string.title_cache_management),
+                largeTitle = stringResource(R.string.title_cache_management),
                 scrollBehavior = scrollBehavior,
                 navigationIcon = {
                     IconButton(onClick = onBack, modifier = Modifier.padding(start = 12.dp)) {
@@ -86,9 +87,11 @@ fun MiuixCacheManagementScreen(
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .nestedScroll(scrollBehavior.nestedScrollConnection)
-                .padding(top = padding.calculateTopPadding(), bottom = padding.calculateBottomPadding()),
-            contentPadding = PaddingValues(top = 12.dp, bottom = 24.dp)
+                .nestedScroll(scrollBehavior.nestedScrollConnection),
+            contentPadding = PaddingValues(
+                top = padding.calculateTopPadding() + 12.dp,
+                bottom = padding.calculateBottomPadding() + 24.dp
+            )
         ) {
             item { SmallTitle(text = "歌词缓存") }
             item {
@@ -98,13 +101,8 @@ fun MiuixCacheManagementScreen(
                         MiuixStatRow("缓存体积", formatBytes(lyricStats.totalBytes))
                         MiuixStatRow("最后更新", formatTimestamp(lyricStats.lastUpdatedAt))
                         Spacer(modifier = Modifier.height(12.dp))
-                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-                            Button(onClick = { viewModel.clearLyricCache() }, enabled = !busy, modifier = Modifier.weight(1f)) {
-                                Text("清空歌词缓存")
-                            }
-                            Button(onClick = { viewModel.clearAllCaches() }, enabled = !busy, modifier = Modifier.weight(1f)) {
-                                Text("清空全部缓存")
-                            }
+                        Button(onClick = { viewModel.clearLyricCache() }, enabled = !busy, modifier = Modifier.fillMaxWidth()) {
+                            Text("清空歌词缓存")
                         }
                     }
                 }
@@ -120,6 +118,23 @@ fun MiuixCacheManagementScreen(
                         Spacer(modifier = Modifier.height(12.dp))
                         Button(onClick = { viewModel.clearImageCache() }, enabled = !busy, modifier = Modifier.fillMaxWidth()) {
                             Text("清空图片缓存")
+                        }
+                    }
+                }
+            }
+            item { SmallTitle(text = "危险操作") }
+            item {
+                Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text("清空所有缓存数据", fontWeight = FontWeight.SemiBold, color = MiuixTheme.colorScheme.error)
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            "将同时删除歌词缓存和图片缓存，无法撤销。",
+                            color = MiuixTheme.colorScheme.onSurfaceSecondary
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Button(onClick = { viewModel.clearAllCaches() }, enabled = !busy, modifier = Modifier.fillMaxWidth()) {
+                            Text("清空全部缓存")
                         }
                     }
                 }

@@ -104,21 +104,12 @@ fun CacheManagementScreen(
                     CacheStatRow("缓存体积", formatBytes(lyricStats.totalBytes))
                     CacheStatRow("最后更新", formatTimestamp(lyricStats.lastUpdatedAt))
                     Spacer(modifier = Modifier.height(12.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-                        Button(
-                            onClick = { viewModel.clearLyricCache() },
-                            enabled = !busy,
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Text("清空歌词缓存")
-                        }
-                        OutlinedButton(
-                            onClick = { viewModel.clearAllCaches() },
-                            enabled = !busy,
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Text("清空全部缓存")
-                        }
+                    Button(
+                        onClick = { viewModel.clearLyricCache() },
+                        enabled = !busy,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("清空歌词缓存")
                     }
                 }
             }
@@ -139,6 +130,23 @@ fun CacheManagementScreen(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text("清空图片缓存")
+                    }
+                }
+            }
+
+            item {
+                CacheSectionCard(title = "危险操作") {
+                    Text(
+                        text = "将同时删除歌词缓存和图片缓存，无法撤销。",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    OutlinedButton(
+                        onClick = { viewModel.clearAllCaches() },
+                        enabled = !busy,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("清空全部缓存", color = MaterialTheme.colorScheme.error)
                     }
                 }
             }

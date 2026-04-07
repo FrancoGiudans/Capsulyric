@@ -6,12 +6,12 @@ import android.media.session.MediaController
 import android.media.session.MediaSessionManager
 import android.media.session.PlaybackState
 import android.os.Handler
-import android.os.HandlerThread
 import android.os.SystemClock
 import android.util.Log
 import com.example.islandlyrics.core.logging.AppLogger
 import com.example.islandlyrics.data.LyricRepository
 import com.example.islandlyrics.data.lyric.OnlineLyricFetcher
+import kotlin.math.abs
 
 class ProgressSyncController(
     private val handler: Handler,
@@ -20,18 +20,21 @@ class ProgressSyncController(
     private val mediaSessionManagerProvider: () -> MediaSessionManager?,
     private val mediaComponentProvider: () -> ComponentName?
 ) {
+    private data class ExternalProgressHint(
+        val packageName: String,
+        val position: Long,
+        val duration: Long,
+        val receivedAtMs: Long
+    )
+
     private var isRunning = false
     private var currentPosition = 0L
     private var duration = 0L
     private var lastLineIndex = -1
-    private var lastControllerSyncAt = 0L
-    private var lastPlaybackState = PlaybackState.STATE_NONE
-    private var lastPlaybackSpeed = 1f
-    private var lastPlaybackPosition = 0L
-    private var lastPlaybackPositionAt = 0L
-
-    private val workerThread = HandlerThread("ProgressSyncController").apply { start() }
-    private val workerHandler = Handler(workerThread.looper)
+    private var consecutiveResolveMisses = 0
+    private var lastResolvedControllerKey: String? = null
+    private var lastRecheckRequestAtMs = 0L
+    private var externalProgressHint: ExternalProgressHint? = null
 
     private val updateTask = object : Runnable {
         private var logCounter = 0
@@ -48,19 +51,14 @@ class ProgressSyncController(
                 AppLogger.getInstance().log(TAG, "🔄 updateTask running...")
             }
 
-            val now = SystemClock.elapsedRealtime()
-            if (shouldSyncController(now)) {
-                syncProgressFromController(shouldLog, now)
-            } else {
-                updateEstimatedProgress(now)
-            }
+            updateProgressFromController(shouldLog)
 
             val parsedLines = repo.liveParsedLyrics.value?.lines
             if (!parsedLines.isNullOrEmpty()) {
                 updateCurrentLyricLine(parsedLines)
             }
 
-            workerHandler.postDelayed(this, computeNextDelay(parsedLines))
+            handler.postDelayed(this, 200)
         }
     }
 
@@ -68,7 +66,7 @@ class ProgressSyncController(
         AppLogger.getInstance().log(TAG, "▶️ startProgressUpdater() called, isRunning=$isRunning")
         if (!isRunning) {
             isRunning = true
-            workerHandler.post(updateTask)
+            handler.post(updateTask)
             AppLogger.getInstance().log(TAG, "✅ Posted updateTask to handler")
         } else {
             AppLogger.getInstance().log(TAG, "⚠️ Already running, skipping post")
@@ -77,12 +75,11 @@ class ProgressSyncController(
 
     fun stop() {
         isRunning = false
-        workerHandler.removeCallbacks(updateTask)
+        handler.removeCallbacks(updateTask)
     }
 
     fun destroy() {
         stop()
-        workerThread.quitSafely()
     }
 
     fun setDurationIfValid(value: Long) {
@@ -96,12 +93,27 @@ class ProgressSyncController(
     fun resetProgressForTrackChange(newDuration: Long) {
         duration = newDuration.coerceAtLeast(0L)
         currentPosition = 0L
-        lastPlaybackPosition = 0L
-        lastPlaybackPositionAt = 0L
-        lastPlaybackSpeed = 1f
-        lastPlaybackState = PlaybackState.STATE_NONE
-        lastControllerSyncAt = 0L
+        consecutiveResolveMisses = 0
+        lastResolvedControllerKey = null
         repo.updateProgress(0L, duration)
+    }
+
+    fun syncExternalProgress(packageName: String, position: Long, duration: Long) {
+        if (packageName.isBlank() || duration <= 0L) return
+
+        externalProgressHint = ExternalProgressHint(
+            packageName = packageName,
+            position = position.coerceIn(0L, duration),
+            duration = duration,
+            receivedAtMs = SystemClock.elapsedRealtime()
+        )
+
+        if (isRunning) {
+            handler.post {
+                val metadata = repo.liveMetadata.value
+                maybeApplyExternalProgress(metadata, shouldLog = false)
+            }
+        }
     }
 
     private fun updateCurrentLyricLine(lines: List<OnlineLyricFetcher.LyricLine>) {
@@ -140,28 +152,7 @@ class ProgressSyncController(
         }
     }
 
-    private fun shouldSyncController(now: Long): Boolean {
-        if (lastControllerSyncAt == 0L) return true
-        val interval = when (lastPlaybackState) {
-            PlaybackState.STATE_PLAYING -> CONTROLLER_SYNC_INTERVAL_PLAYING_MS
-            PlaybackState.STATE_BUFFERING,
-            PlaybackState.STATE_CONNECTING,
-            PlaybackState.STATE_FAST_FORWARDING,
-            PlaybackState.STATE_REWINDING -> CONTROLLER_SYNC_INTERVAL_ACTIVE_MS
-            else -> CONTROLLER_SYNC_INTERVAL_IDLE_MS
-        }
-        return now - lastControllerSyncAt >= interval
-    }
-
-    private fun computeNextDelay(parsedLines: List<OnlineLyricFetcher.LyricLine>?): Long {
-        return when {
-            !parsedLines.isNullOrEmpty() -> FAST_LOOP_INTERVAL_MS
-            lastPlaybackState == PlaybackState.STATE_PLAYING -> NORMAL_LOOP_INTERVAL_MS
-            else -> IDLE_LOOP_INTERVAL_MS
-        }
-    }
-
-    private fun syncProgressFromController(shouldLog: Boolean = true, now: Long = SystemClock.elapsedRealtime()) {
+    private fun updateProgressFromController(shouldLog: Boolean = true) {
         if (shouldLog) {
             AppLogger.getInstance().log(TAG, "⚙️ updateProgressFromController() called")
         }
@@ -172,35 +163,44 @@ class ProgressSyncController(
             val controllers = mm.getActiveSessions(component)
 
             val currentMetadata = repo.liveMetadata.value
-            val targetPackage = currentMetadata?.packageName
-
-            val activeController = resolveActiveController(controllers, targetPackage, shouldLog)
+            val activeController = resolveActiveController(controllers, currentMetadata, shouldLog)
 
             if (activeController != null) {
+                consecutiveResolveMisses = 0
                 val state = activeController.playbackState
                 val meta = activeController.metadata
                 val durationLong = meta?.getLong(MediaMetadata.METADATA_KEY_DURATION) ?: 0L
                 if (durationLong > 0) duration = durationLong
 
                 if (state != null) {
-                    lastPlaybackState = state.state
-                    lastPlaybackPosition = state.position
-                    lastPlaybackPositionAt = state.lastPositionUpdateTime
-                    lastPlaybackSpeed = state.playbackSpeed.takeUnless { it == 0f } ?: 1f
-                    lastControllerSyncAt = now
+                    val lastPosition = state.position
+                    val lastUpdateTimeVal = state.lastPositionUpdateTime
+                    val speed = state.playbackSpeed
 
-                    updateEstimatedProgress(now)
+                    var currentPos = lastPosition
+                    if (state.state == PlaybackState.STATE_PLAYING) {
+                        val timeDelta = android.os.SystemClock.elapsedRealtime() - lastUpdateTimeVal
+                        currentPos += (timeDelta * speed).toLong()
+                    }
+
+                    if (duration > 0 && currentPos > duration) currentPos = duration
+                    if (currentPos < 0) currentPos = 0
+
+                    currentPosition = currentPos
 
                     if (shouldLog) {
                         AppLogger.getInstance().log(
                             TAG,
-                            "📍 Progress [${activeController.packageName}]: ${currentPosition}ms / ${duration}ms"
+                            "📍 Progress [${activeController.packageName}]: ${currentPos}ms / ${duration}ms"
                         )
                     }
+                    repo.updateProgress(currentPos, duration)
                 }
             } else {
-                lastControllerSyncAt = now
-                if (shouldLog) {
+                consecutiveResolveMisses++
+                val usedExternalFallback = maybeApplyExternalProgress(currentMetadata, shouldLog)
+                maybeTriggerSessionRecheck(currentMetadata?.packageName, shouldLog)
+                if (shouldLog && !usedExternalFallback) {
                     AppLogger.getInstance().log(TAG, "⚠️ No matching active MediaController found")
                 }
             }
@@ -209,50 +209,110 @@ class ProgressSyncController(
         }
     }
 
-    private fun updateEstimatedProgress(now: Long) {
-        var estimated = lastPlaybackPosition
-        if (lastPlaybackState == PlaybackState.STATE_PLAYING) {
-            val positionBase = if (lastPlaybackPositionAt > 0L) lastPlaybackPositionAt else now
-            val timeDelta = now - positionBase
-            estimated += (timeDelta * lastPlaybackSpeed).toLong()
-        }
-
-        if (duration > 0 && estimated > duration) estimated = duration
-        if (estimated < 0) estimated = 0
-
-        if (estimated == currentPosition && repo.liveProgress.value?.duration == duration) {
-            return
-        }
-
-        currentPosition = estimated
-        repo.updateProgress(estimated, duration)
-    }
-
     private fun resolveActiveController(
         controllers: List<MediaController>,
-        targetPackage: String?,
+        currentMetadata: LyricRepository.MediaInfo?,
         shouldLog: Boolean
     ): MediaController? {
-        if (targetPackage != null) {
-            val controller = controllers.firstOrNull { it.packageName == targetPackage }
-            if (controller == null && shouldLog) {
+        val targetPackage = currentMetadata?.packageName
+        val controller = MediaControllerSelection.selectProgressTarget(
+            controllers = controllers,
+            targetPackage = targetPackage,
+            targetTitle = currentMetadata?.rawTitle ?: currentMetadata?.title,
+            targetArtist = currentMetadata?.rawArtist ?: currentMetadata?.artist,
+            targetDuration = currentMetadata?.duration ?: duration
+        )
+
+        if (controller == null) {
+            if (!targetPackage.isNullOrBlank() && shouldLog) {
                 AppLogger.getInstance().d(TAG, "⚠️ Target package '$targetPackage' has no active controller session")
             }
-            return controller
+            lastResolvedControllerKey = null
+            return null
         }
 
-        return controllers.firstOrNull {
-            it.playbackState != null && it.playbackState?.state == PlaybackState.STATE_PLAYING
+        val resolvedKey = buildControllerKey(controller)
+        if (resolvedKey != lastResolvedControllerKey) {
+            if (shouldLog) {
+                AppLogger.getInstance().log(
+                    TAG,
+                    "🎯 Resolved controller -> ${controller.packageName} | ${controller.metadata?.getString(MediaMetadata.METADATA_KEY_TITLE) ?: "Unknown"}"
+                )
+            }
+            lastResolvedControllerKey = resolvedKey
+        }
+
+        return controller
+    }
+
+    private fun maybeApplyExternalProgress(
+        currentMetadata: LyricRepository.MediaInfo?,
+        shouldLog: Boolean
+    ): Boolean {
+        val hint = externalProgressHint ?: return false
+        val targetPackage = currentMetadata?.packageName ?: return false
+        if (hint.packageName != targetPackage) return false
+
+        val ageMs = SystemClock.elapsedRealtime() - hint.receivedAtMs
+        if (ageMs > EXTERNAL_PROGRESS_TTL_MS) return false
+
+        val expectedDuration = currentMetadata.duration.takeIf { it > 0L } ?: hint.duration
+        if (currentMetadata.duration > 0L && hint.duration > 0L &&
+            abs(currentMetadata.duration - hint.duration) > EXTERNAL_DURATION_TOLERANCE_MS
+        ) {
+            return false
+        }
+
+        currentPosition = hint.position.coerceIn(0L, expectedDuration)
+        duration = expectedDuration
+        repo.updateProgress(currentPosition, duration)
+
+        if (shouldLog) {
+            AppLogger.getInstance().log(
+                TAG,
+                "🩹 Applied external progress fallback [$targetPackage]: ${currentPosition}ms / ${duration}ms"
+            )
+        }
+        return true
+    }
+
+    private fun maybeTriggerSessionRecheck(targetPackage: String?, shouldLog: Boolean) {
+        if (targetPackage.isNullOrBlank()) return
+        if (consecutiveResolveMisses < RECHECK_THRESHOLD) return
+
+        val now = SystemClock.elapsedRealtime()
+        if (now - lastRecheckRequestAtMs < RECHECK_COOLDOWN_MS) return
+
+        lastRecheckRequestAtMs = now
+        if (shouldLog) {
+            AppLogger.getInstance().log(
+                TAG,
+                "🔁 Controller resolve missed $consecutiveResolveMisses times for $targetPackage, requesting session recheck"
+            )
+        }
+        MediaMonitorService.triggerRecheck()
+    }
+
+    private fun buildControllerKey(controller: MediaController): String {
+        val metadata = controller.metadata
+        return buildString {
+            append(controller.packageName)
+            append('|')
+            append(controller.playbackState?.state ?: -1)
+            append('|')
+            append(metadata?.getString(MediaMetadata.METADATA_KEY_TITLE) ?: "")
+            append('|')
+            append(metadata?.getString(MediaMetadata.METADATA_KEY_ARTIST) ?: "")
+            append('|')
+            append(metadata?.getLong(MediaMetadata.METADATA_KEY_DURATION) ?: 0L)
         }
     }
 
     private companion object {
         private const val TAG = "ProgressSyncController"
-        private const val FAST_LOOP_INTERVAL_MS = 250L
-        private const val NORMAL_LOOP_INTERVAL_MS = 500L
-        private const val IDLE_LOOP_INTERVAL_MS = 1000L
-        private const val CONTROLLER_SYNC_INTERVAL_PLAYING_MS = 1000L
-        private const val CONTROLLER_SYNC_INTERVAL_ACTIVE_MS = 750L
-        private const val CONTROLLER_SYNC_INTERVAL_IDLE_MS = 1500L
+        private const val RECHECK_THRESHOLD = 5
+        private const val RECHECK_COOLDOWN_MS = 1_500L
+        private const val EXTERNAL_PROGRESS_TTL_MS = 3_000L
+        private const val EXTERNAL_DURATION_TOLERANCE_MS = 5_000L
     }
 }

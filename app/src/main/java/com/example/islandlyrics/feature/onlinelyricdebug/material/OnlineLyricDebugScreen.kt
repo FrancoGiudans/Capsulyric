@@ -80,6 +80,9 @@ fun OnlineLyricDebugScreen(
     val effectiveQuery by viewModel.effectiveQuery.observeAsState("" to "")
     val querySourceLabel by viewModel.querySourceLabel.observeAsState("")
     val cacheStatus by viewModel.cacheStatus.observeAsState()
+    val canSelectDialogResult = dialogAttempt?.result?.let { result ->
+        result.error == null && !result.parsedLines.isNullOrEmpty()
+    } == true
     val showPrioritySection = remember(mediaInfo?.packageName, useSmartSelection) {
         val pkg = mediaInfo?.packageName
         pkg != null &&
@@ -286,6 +289,13 @@ fun OnlineLyricDebugScreen(
                 }
             },
             confirmButton = {
+                if (canSelectDialogResult) {
+                    TextButton(onClick = { viewModel.selectAttempt(attempt) }, enabled = !isFetching) {
+                        Text("选中这个结果")
+                    }
+                }
+            },
+            dismissButton = {
                 TextButton(onClick = { viewModel.closeDialog() }) {
                     Text("关闭")
                 }

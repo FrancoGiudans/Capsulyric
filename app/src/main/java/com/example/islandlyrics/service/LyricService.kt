@@ -100,8 +100,6 @@ class LyricService : Service() {
             // next visualizerLoop tick. This is especially important when resuming
             // after a background pause where the loop was idle.
             displayManager.forceUpdate()
-        } else {
-            progressSyncController.stop()
         }
         delayedStopController?.onPlaybackChanged(playing)
     }
@@ -122,6 +120,11 @@ class LyricService : Service() {
                 LyricRepository.getInstance().updateCurrentLine(null)
                 progressSyncController.resetLineIndex()
                 progressSyncController.resetProgressForTrackChange(info.duration)
+
+                if (LyricRepository.getInstance().isPlaying.value == true) {
+                    progressSyncController.start()
+                    updateActiveHandler()
+                }
             }
 
             // Proactive online lyric fetching logic
@@ -239,6 +242,7 @@ class LyricService : Service() {
             handler = handler,
             prefsProvider = { getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE) },
             onStop = {
+                progressSyncController.stop()
                 renderModeCoordinator!!.stopForCurrentMode()
                 AppLogger.getInstance().log(TAG, "🛑 Renderer stopped: Playback stopped (Delayed)")
             }
@@ -257,7 +261,13 @@ class LyricService : Service() {
         
         // Initialise lyric sources
         onlineLyricSource = OnlineLyricSource(this)
-        superLyricSource  = SuperLyricSource(this, onlineLyricSource)
+        superLyricSource  = SuperLyricSource(
+            context = this,
+            onlineLyricSource = onlineLyricSource,
+            onProgressHint = { packageName, position, progressDuration ->
+                progressSyncController.syncExternalProgress(packageName, position, progressDuration)
+            }
+        )
         superLyricSource.start()
         AppLogger.getInstance().d(TAG, "SuperLyricSource started")
         lyricGetterSource = LyricGetterSource(this, onlineLyricSource)

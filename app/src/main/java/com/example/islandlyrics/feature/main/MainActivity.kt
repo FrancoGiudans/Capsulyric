@@ -61,6 +61,7 @@ import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.blur.layerBackdrop
 import top.yukonga.miuix.kmp.blur.rememberLayerBackdrop
+import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 class MainActivity : BaseActivity() {
 
@@ -310,7 +311,11 @@ class MainActivity : BaseActivity() {
         val pagerState = rememberPagerState(pageCount = { TopLevelDestination.entries.size })
         val scope = rememberCoroutineScope()
         var bottomBarVisible by androidx.compose.runtime.remember { mutableStateOf(true) }
-        val backdrop = rememberLayerBackdrop()
+        val backdropBackground = MiuixTheme.colorScheme.surface
+        val backdrop = rememberLayerBackdrop {
+            drawRect(backdropBackground)
+            drawContent()
+        }
         val prefs = remember { getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE) }
         var blurEnabled by remember { mutableStateOf(prefs.getBoolean("card_blur_enabled", false)) }
 

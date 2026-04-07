@@ -112,8 +112,9 @@ fun MiuixParserRuleScreen(
 
     MiuixBlurScaffold(
         topBar = {
-            MiuixBlurSmallTopAppBar(
+            MiuixBlurTopAppBar(
                 title = stringResource(R.string.parser_rule_title),
+                largeTitle = stringResource(R.string.parser_rule_title),
                 scrollBehavior = scrollBehavior,
                 navigationIcon = if (showBackButton) {
                     {

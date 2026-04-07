@@ -18,9 +18,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import top.yukonga.miuix.kmp.basic.FabPosition
 import top.yukonga.miuix.kmp.basic.Scaffold
-import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.blur.layerBackdrop
 import top.yukonga.miuix.kmp.blur.rememberLayerBackdrop
+import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 /**
  * A wrapper for [Scaffold] that provides a [top.yukonga.miuix.kmp.blur.Backdrop]
@@ -54,7 +54,15 @@ fun MiuixBlurScaffold(
         prefs.registerOnSharedPreferenceChangeListener(listener)
         onDispose { prefs.unregisterOnSharedPreferenceChangeListener(listener) }
     }
-    val backdrop = rememberLayerBackdrop()
+    val backdropBackground = if (containerColor.alpha > 0f) {
+        containerColor
+    } else {
+        MiuixTheme.colorScheme.surface
+    }
+    val backdrop = rememberLayerBackdrop {
+        drawRect(backdropBackground)
+        drawContent()
+    }
     
     CompositionLocalProvider(
         LocalMiuixBlurBackdrop provides backdrop,

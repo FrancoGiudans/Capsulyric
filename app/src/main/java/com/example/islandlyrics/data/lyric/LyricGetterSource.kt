@@ -86,7 +86,6 @@ class LyricGetterSource(
             val appName = getAppName(effectivePkg.ifEmpty { livePkg })
 
             AppLogger.getInstance().i(TAG, "📥 Lyric received from [$effectivePkg]: $lyric")
-            LyricRepository.getInstance().updatePlaybackStatus(true)
             LyricRepository.getInstance().updateLyric(lyric, appName, "Lyric Getter")
 
             // Optionally trigger online lyric fetch
@@ -99,7 +98,6 @@ class LyricGetterSource(
 
         override fun onStop(lyricData: LyricData) {
             AppLogger.getInstance().d(TAG, "onStop received")
-            LyricRepository.getInstance().updatePlaybackStatus(false)
             lastLyric = "" // Reset deduplication state on stop
         }
     }

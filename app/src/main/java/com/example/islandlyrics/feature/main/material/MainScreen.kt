@@ -363,6 +363,19 @@ private fun MediaSessionCard(
     // If not primary, we need to observe the controller directly
     var localMetadata by remember(controller) { mutableStateOf(controller.metadata) }
     var localPlaybackState by remember(controller) { mutableStateOf(controller.playbackState) }
+
+    if (!isPrimary) {
+        DisposableEffect(controller) {
+            val callback = object : MediaController.Callback() {
+                override fun onPlaybackStateChanged(state: PlaybackState?) {
+                    localPlaybackState = state
+                }
+                override fun onMetadataChanged(meta: MediaMetadata?) { localMetadata = meta }
+            }
+            controller.registerCallback(callback)
+            onDispose { controller.unregisterCallback(callback) }
+        }
+    }
     
     DisposableEffect(controller) {
         val callback = object : MediaController.Callback() {

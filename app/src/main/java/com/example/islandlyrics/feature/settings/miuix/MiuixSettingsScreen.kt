@@ -189,8 +189,9 @@ fun MiuixSettingsScreen(
 
     MiuixBlurScaffold(
         topBar = {
-            MiuixBlurSmallTopAppBar(
+            MiuixBlurTopAppBar(
                 title = stringResource(R.string.title_app_settings),
+                largeTitle = stringResource(R.string.title_app_settings),
                 scrollBehavior = scrollBehavior,
                 navigationIcon = if (showBackButton) {
                     {

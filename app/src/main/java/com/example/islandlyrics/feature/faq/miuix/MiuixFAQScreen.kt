@@ -22,8 +22,14 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.viewinterop.AndroidView
-import top.yukonga.miuix.kmp.basic.*
+import com.example.islandlyrics.ui.miuix.MiuixBlurScaffold
+import com.example.islandlyrics.ui.miuix.MiuixBlurTopAppBar
+import top.yukonga.miuix.kmp.basic.Card
+import top.yukonga.miuix.kmp.basic.IconButton
+import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
+import top.yukonga.miuix.kmp.basic.SmallTitle
+import top.yukonga.miuix.kmp.basic.Text
+import top.yukonga.miuix.kmp.basic.rememberTopAppBarState
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.MiuixPopupUtils.Companion.MiuixPopupHost
 
@@ -75,10 +81,11 @@ fun MiuixFAQScreen(onBack: () -> Unit) {
         )
     }
 
-    Scaffold(
+    MiuixBlurScaffold(
         topBar = {
-            TopAppBar(
+            MiuixBlurTopAppBar(
                 title = stringResource(R.string.faq_title),
+                largeTitle = stringResource(R.string.faq_title),
                 scrollBehavior = scrollBehavior,
                 navigationIcon = {
                     IconButton(onClick = onBack, modifier = Modifier.padding(start = 12.dp)) {

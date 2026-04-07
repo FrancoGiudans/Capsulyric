@@ -66,6 +66,61 @@ class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(app
     val liveProgress = repo.liveProgress
     val isPlaying = repo.isPlaying
 
+    private fun findCurrentLine(
+        lines: List<OnlineLyricFetcher.LyricLine>,
+        position: Long
+    ): OnlineLyricFetcher.LyricLine? {
+        return lines.firstOrNull { position >= it.startTime && position < it.endTime }
+    }
+
+    private fun findFallbackLine(
+        lines: List<OnlineLyricFetcher.LyricLine>,
+        position: Long
+    ): OnlineLyricFetcher.LyricLine? {
+        return lines.lastOrNull { it.startTime <= position }
+    }
+
+    private fun applyResultToRepository(
+        mediaInfo: LyricRepository.MediaInfo,
+        result: OnlineLyricFetcher.LyricResult,
+        apiPath: String = "Online API"
+    ) {
+        val lines = result.parsedLines.orEmpty()
+        repo.updateParsedLyrics(
+            lines = lines,
+            hasSyllable = result.hasSyllable,
+            sourceLabel = result.api,
+            apiPath = apiPath
+        )
+
+        val appLabel = ParserRuleHelper.getAppNameForPackage(getApplication(), mediaInfo.packageName)
+        val position = liveProgress.value?.position ?: 0L
+        val currentLine = findCurrentLine(lines, position)
+        repo.updateCurrentLine(currentLine)
+        repo.updateLyric((currentLine ?: findFallbackLine(lines, position))?.text.orEmpty(), appLabel, apiPath)
+    }
+
+    private suspend fun persistAndApplyResult(
+        mediaInfo: LyricRepository.MediaInfo,
+        queryTitle: String,
+        queryArtist: String,
+        result: OnlineLyricFetcher.LyricResult,
+        cacheMessage: String
+    ) {
+        withContext(Dispatchers.IO) {
+            cacheStore.saveLyricResult(
+                mediaInfo = mediaInfo,
+                queryTitle = queryTitle,
+                queryArtist = queryArtist,
+                result = result
+            )
+        }
+        applyResultToRepository(mediaInfo, result)
+        _selectedResult.value = result
+        _parsedLyrics.value = result.parsedLines.orEmpty()
+        _cacheStatus.value = cacheMessage
+    }
+
     fun syncProviderOrderFromCurrentRule() {
         val pkg = liveMetadata.value?.packageName ?: return
         val rule = ParserRuleHelper.getRuleForPackage(getApplication(), pkg)
@@ -209,6 +264,7 @@ class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(app
                         _parsedLyrics.value = cacheHit.result.parsedLines ?: emptyList()
                         _attempts.value = emptyList()
                         _cacheStatus.value = "本次结果来自歌词缓存"
+                        applyResultToRepository(mediaInfo, cacheHit.result, apiPath = "Online Cache")
                         return@launch
                     }
                 }
@@ -230,15 +286,13 @@ class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(app
                 if (outcome.bestResult == null) {
                     _error.value = "所有API都未返回结果"
                 } else {
-                    withContext(Dispatchers.IO) {
-                        cacheStore.saveLyricResult(
-                            mediaInfo = mediaInfo,
-                            queryTitle = queryTitle,
-                            queryArtist = queryArtist,
-                            result = outcome.bestResult
-                        )
-                    }
-                    _cacheStatus.value = "已刷新歌词缓存"
+                    persistAndApplyResult(
+                        mediaInfo = mediaInfo,
+                        queryTitle = queryTitle,
+                        queryArtist = queryArtist,
+                        result = outcome.bestResult,
+                        cacheMessage = "已切换到 ${outcome.bestResult.api} 并刷新歌词缓存"
+                    )
                     AppLogger.getInstance().log("OnlineLyricDebug", "自动选择: ${outcome.bestResult.api} (${outcome.bestResult.score})")
                 }
             } catch (e: Exception) {
@@ -256,5 +310,48 @@ class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(app
 
     fun closeDialog() {
         _dialogAttempt.value = null
+    }
+
+    fun selectAttempt(attempt: OnlineLyricFetcher.ProviderAttempt) {
+        val mediaInfo = liveMetadata.value ?: run {
+            _error.value = "没有可用的歌曲信息"
+            return
+        }
+        val result = attempt.result
+        if (result == null || result.error != null || result.parsedLines.isNullOrEmpty()) {
+            _error.value = "这个结果不可用，无法切换"
+            return
+        }
+
+        _isFetching.value = true
+        _error.value = null
+        viewModelScope.launch {
+            try {
+                val rule = ParserRuleHelper.getRuleForPackage(getApplication(), mediaInfo.packageName)
+                    ?: ParserRuleHelper.createDefaultRule(mediaInfo.packageName)
+                val currentSongState = withContext(Dispatchers.IO) {
+                    cacheStore.getCurrentSongState(
+                        mediaInfo = mediaInfo,
+                        fallbackTitle = mediaInfo.title,
+                        fallbackArtist = mediaInfo.artist,
+                        useRawMetadata = rule.useRawMetadataForOnlineMatching
+                    )
+                }
+                persistAndApplyResult(
+                    mediaInfo = mediaInfo,
+                    queryTitle = currentSongState.effectiveTitle,
+                    queryArtist = currentSongState.effectiveArtist,
+                    result = result,
+                    cacheMessage = "已切换到 ${result.api} 并写入歌词缓存"
+                )
+                _dialogAttempt.value = null
+                AppLogger.getInstance().log("OnlineLyricDebug", "手动选择: ${result.api} (${result.score})")
+            } catch (e: Exception) {
+                _error.value = "切换失败: ${e.message}"
+            } finally {
+                _isFetching.value = false
+                syncCurrentSongQuery()
+            }
+        }
     }
 }

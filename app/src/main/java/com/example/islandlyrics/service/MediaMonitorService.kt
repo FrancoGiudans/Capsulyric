@@ -321,6 +321,7 @@ class MediaMonitorService : NotificationListenerService() {
 
                             override fun onMetadataChanged(metadata: MediaMetadata?) {
                                 handler.post {
+                                    checkServiceState()
                                     updateMetadataIfPrimary(controller)
                                     updateDiagnostics()
                                 }
@@ -472,60 +473,13 @@ class MediaMonitorService : NotificationListenerService() {
 
     private fun getPrimaryController(): MediaController? {
         synchronized(activeControllers) {
-            // Priority 1: Whitelisted + Playing/Buffering/Skipping
-            // We want to show lyrics for these immediately
-            val whitelistedPlaying = activeControllers.firstOrNull { 
-                val st = it.playbackState?.state
-                allowedPackages.contains(it.packageName) && 
-                (st == PlaybackState.STATE_PLAYING || 
-                 st == PlaybackState.STATE_BUFFERING ||
-                 st == PlaybackState.STATE_CONNECTING ||
-                 st == PlaybackState.STATE_SKIPPING_TO_NEXT ||
-                 st == PlaybackState.STATE_SKIPPING_TO_PREVIOUS ||
-                 st == PlaybackState.STATE_FAST_FORWARDING ||
-                 st == PlaybackState.STATE_REWINDING)
-            }
-            if (whitelistedPlaying != null) {
-                // AppLogger.getInstance().log("Select", "Selected Priority 1 (Whitelisted+Playing): ${whitelistedPlaying.packageName}")
-                return whitelistedPlaying
-            }
-
-            // Priority 2: Whitelisted + Paused
-            // Keep showing lyrics if user just paused music
-            val whitelistedPaused = activeControllers.firstOrNull {
-                 allowedPackages.contains(it.packageName)
-            }
-            if (whitelistedPaused != null) {
-                // AppLogger.getInstance().log("Select", "Selected Priority 2 (Whitelisted+Paused): ${whitelistedPaused.packageName}")
-                return whitelistedPaused
-            }
-
-            // Priority 3: Oldest active (Fallback)
-            return activeControllers.firstOrNull()
+            return MediaControllerSelection.selectPrimary(activeControllers, allowedPackages)
         }
     }
 
     private fun getSuggestionController(): MediaController? {
         synchronized(activeControllers) {
-            // Priority 1: Playing + NOT whitelisted (The most likely one to add)
-            val playingNotWhitelisted = activeControllers.firstOrNull {
-                it.playbackState?.state == PlaybackState.STATE_PLAYING && !allowedPackages.contains(it.packageName)
-            }
-            if (playingNotWhitelisted != null) return playingNotWhitelisted
-
-            // Priority 2: Any Playing
-            val anyPlaying = activeControllers.firstOrNull {
-                it.playbackState?.state == PlaybackState.STATE_PLAYING
-            }
-            if (anyPlaying != null) return anyPlaying
-
-            // Priority 3: Any whitelisted but NOT playing (Still useful as backup)
-            val whitelisted = activeControllers.firstOrNull {
-                allowedPackages.contains(it.packageName)
-            }
-            if (whitelisted != null) return whitelisted
-
-            return activeControllers.firstOrNull()
+            return MediaControllerSelection.selectSuggestion(activeControllers, allowedPackages)
         }
     }
 

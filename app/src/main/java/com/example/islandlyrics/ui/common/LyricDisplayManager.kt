@@ -40,7 +40,8 @@ class LyricDisplayManager(private val context: Context) {
     private data class GapDisplay(
         val displayLyric: String,
         val fullLyric: String,
-        val isAnimated: Boolean
+        val isAnimated: Boolean,
+        val nextDelayMs: Long
     )
     private var scrollState = ScrollState.INITIAL_PAUSE
     private var initialPauseStartTime: Long = 0
@@ -80,6 +81,7 @@ class LyricDisplayManager(private val context: Context) {
     private var lastStableDisplayLyric = ""
     private var lastStableFullLyric = ""
     private var timingGapActive = false
+    private var timingGapNextDelayMs = 0L
     
     // Observers
     private val parsedLyricsObserver = Observer<LyricRepository.ParsedLyricsInfo?> { parsedInfo ->
@@ -95,6 +97,15 @@ class LyricDisplayManager(private val context: Context) {
             useSyllableScrolling = false
             useLrcScrolling = false
             currentParsedLines = null
+        }
+
+        // Parsed lyrics can arrive in the middle of a slow idle frame window.
+        // Refresh immediately so BEFORE_FIRST / long-gap placeholder states do
+        // not miss their entry point and accidentally show the lyric first.
+        if (isRunning) {
+            forceUpdate()
+        } else {
+            pendingImmediateUpdate = true
         }
     }
     
@@ -245,6 +256,7 @@ class LyricDisplayManager(private val context: Context) {
         var fullLyricForDisplay = currentLyric
         var isStatic = false
         timingGapActive = false
+        timingGapNextDelayMs = 0L
         
         if (disableScrolling) {
             val currentLine = if (currentParsedLines != null) findCurrentLine(currentParsedLines!!, currentPosition) else null
@@ -257,6 +269,7 @@ class LyricDisplayManager(private val context: Context) {
                     displayLyric = gapDisplay.displayLyric
                     fullLyricForDisplay = gapDisplay.fullLyric
                     timingGapActive = true
+                    timingGapNextDelayMs = gapDisplay.nextDelayMs
                 } else {
                     displayLyric = extractByWeight(currentLyric, 0, maxDisplayWeight)
                 }
@@ -284,6 +297,7 @@ class LyricDisplayManager(private val context: Context) {
                     displayLyric = gapDisplay.displayLyric
                     fullLyricForDisplay = gapDisplay.fullLyric
                     timingGapActive = true
+                    timingGapNextDelayMs = gapDisplay.nextDelayMs
                 } else {
                     displayLyric = extractByWeight(currentLyric, 0, maxDisplayWeight)
                 }
@@ -316,6 +330,7 @@ class LyricDisplayManager(private val context: Context) {
                     displayLyric = gapDisplay.displayLyric
                     fullLyricForDisplay = gapDisplay.fullLyric
                     timingGapActive = true
+                    timingGapNextDelayMs = gapDisplay.nextDelayMs
                 } else {
                     displayLyric = extractByWeight(currentLyric, 0, maxDisplayWeight)
                 }
@@ -353,12 +368,15 @@ class LyricDisplayManager(private val context: Context) {
     }
 
     private fun computeNextFrameDelay(): Long {
+        if (timingGapActive) {
+            return timingGapNextDelayMs.coerceAtLeast(1L)
+        }
+
         if (scrollState == ScrollState.DONE) {
-            return if (timingGapActive) 120L else 1000L
+            return 1000L
         }
 
         return when {
-            timingGapActive -> 120L
             useSyllableScrolling -> 120L
             useLrcScrolling -> 350L
             LyricRepository.getInstance().liveCurrentLine.value != null -> 350L
@@ -455,13 +473,21 @@ class LyricDisplayManager(private val context: Context) {
                 remainingUntilFirst <= timingGapAnimationTotalMs) {
                 buildCountdownGapDisplay(remainingUntilFirst)
             } else {
-                GapDisplay(timingPlaceholder, timingPlaceholder, false)
+                GapDisplay(
+                    displayLyric = timingPlaceholder,
+                    fullLyric = timingPlaceholder,
+                    isAnimated = false,
+                    nextDelayMs = computeGapPlaceholderDelay(
+                        remainingMs = remainingUntilFirst,
+                        supportsCountdown = firstLine.startTime >= timingGapFullSequenceMs
+                    )
+                )
             }
         }
 
         val lastLine = lines.last()
         if (position >= lastLine.endTime) {
-            return GapDisplay(timingPlaceholder, timingPlaceholder, false)
+            return GapDisplay(timingPlaceholder, timingPlaceholder, false, 1000L)
         }
 
         for (index in 0 until lines.lastIndex) {
@@ -469,41 +495,85 @@ class LyricDisplayManager(private val context: Context) {
             val next = lines[index + 1]
             if (position < current.endTime || position >= next.startTime) continue
 
+            val remainingUntilNext = next.startTime - position
             val gapDuration = next.startTime - current.endTime
             if (gapDuration < timingGapHoldThresholdMs) {
-                return stableGapFallback(current)
+                return stableGapFallback(current, remainingUntilNext)
             }
 
-            val remainingUntilNext = next.startTime - position
             return if (gapDuration >= timingGapFullSequenceMs) {
                 if (remainingUntilNext <= timingGapAnimationTotalMs) {
                     buildCountdownGapDisplay(remainingUntilNext)
                 } else {
-                    GapDisplay(timingPlaceholder, timingPlaceholder, false)
+                    GapDisplay(
+                        displayLyric = timingPlaceholder,
+                        fullLyric = timingPlaceholder,
+                        isAnimated = false,
+                        nextDelayMs = computeGapPlaceholderDelay(
+                            remainingMs = remainingUntilNext,
+                            supportsCountdown = true
+                        )
+                    )
                 }
             } else {
-                GapDisplay(timingPlaceholder, timingPlaceholder, false)
+                GapDisplay(
+                    displayLyric = timingPlaceholder,
+                    fullLyric = timingPlaceholder,
+                    isAnimated = false,
+                    nextDelayMs = computeGapPlaceholderDelay(
+                        remainingMs = remainingUntilNext,
+                        supportsCountdown = false
+                    )
+                )
             }
         }
 
         return null
     }
 
-    private fun stableGapFallback(previousLine: OnlineLyricFetcher.LyricLine): GapDisplay {
+    private fun stableGapFallback(
+        previousLine: OnlineLyricFetcher.LyricLine,
+        remainingUntilNext: Long
+    ): GapDisplay {
         val display = lastStableDisplayLyric.ifBlank {
             extractByWeight(previousLine.text, 0, maxDisplayWeight)
         }
         val full = lastStableFullLyric.ifBlank { previousLine.text }
-        return GapDisplay(display, full, false)
+        return GapDisplay(display, full, false, remainingUntilNext.coerceAtLeast(1L))
     }
 
     private fun buildCountdownGapDisplay(remainingUntilNext: Long): GapDisplay {
-        val indicator = when {
-            remainingUntilNext > timingGapDotFrameMs * 2 -> "●●●"
-            remainingUntilNext > timingGapDotFrameMs -> "●●"
-            else -> "●"
+        val indicator: String
+        val nextDelayMs: Long
+
+        when {
+            remainingUntilNext > timingGapDotFrameMs * 2 -> {
+                indicator = "●●●"
+                nextDelayMs = remainingUntilNext - timingGapDotFrameMs * 2
+            }
+            remainingUntilNext > timingGapDotFrameMs -> {
+                indicator = "●●"
+                nextDelayMs = remainingUntilNext - timingGapDotFrameMs
+            }
+            else -> {
+                indicator = "●"
+                nextDelayMs = remainingUntilNext
+            }
         }
-        return GapDisplay(indicator, indicator, true)
+        return GapDisplay(indicator, indicator, true, nextDelayMs.coerceAtLeast(1L))
+    }
+
+    private fun computeGapPlaceholderDelay(remainingMs: Long, supportsCountdown: Boolean): Long {
+        if (remainingMs <= 0L) return 1L
+        if (!supportsCountdown) return remainingMs.coerceAtLeast(1L)
+        return when {
+            remainingMs > timingGapFullSequenceMs ->
+                (remainingMs - timingGapFullSequenceMs).coerceAtLeast(1L)
+            remainingMs > timingGapAnimationTotalMs ->
+                (remainingMs - timingGapAnimationTotalMs).coerceAtLeast(1L)
+            else ->
+                remainingMs.coerceAtLeast(1L)
+        }
     }
     
     private var scrollOffset = 0
