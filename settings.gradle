@@ -18,3 +18,4 @@ dependencyResolutionManagement {
 }
 rootProject.name = "Capsulyric"
 include ':app'
+include ':hidden-api'
