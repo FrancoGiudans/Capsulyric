@@ -111,6 +111,10 @@ jobs:
             app/build/outputs/apk/prerelease/app-prerelease-signed.apk.md5
 
       - name: Generate Canary Metadata
+        if: |
+          github.event_name == 'push' &&
+          github.ref == 'refs/heads/develop' &&
+          !contains(github.event.head_commit.message, '[assemble only]')
         id: meta
         run: |
           COUNT=$(git rev-list --count HEAD)
@@ -171,7 +175,10 @@ jobs:
           echo "---" >> canary_body.md
 
       - name: Delete old Canary releases and tags
-        if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+        if: |
+          github.event_name == 'push' &&
+          github.ref == 'refs/heads/develop' &&
+          !contains(github.event.head_commit.message, '[assemble only]')
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -189,7 +196,10 @@ jobs:
           fi
 
       - name: Rolling Canary Release
-        if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+        if: |
+          github.event_name == 'push' &&
+          github.ref == 'refs/heads/develop' &&
+          !contains(github.event.head_commit.message, '[assemble only]')
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.meta.outputs.tag_name }}
