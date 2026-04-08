@@ -127,6 +127,16 @@ fun MiuixMainScreen(
             }
     }
 
+    val popupShowing = updateReleaseInfo != null
+
+    LaunchedEffect(popupShowing) {
+        if (popupShowing) {
+            onBottomBarVisibilityChange(false)
+        } else if (listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0) {
+            onBottomBarVisibilityChange(true)
+        }
+    }
+
     DisposableEffect(Unit) {
         val mediaSessionManager = context.getSystemService(android.content.Context.MEDIA_SESSION_SERVICE) as MediaSessionManager
         val componentName = android.content.ComponentName(context, MediaMonitorService::class.java)

@@ -177,7 +177,8 @@ fun MiuixSettingsScreen(
             showFeedbackPopup.value ||
             showPrereleaseDialog.value ||
             showPrereleaseDescDialog.value ||
-            showCommunityDialog.value != null
+            showCommunityDialog.value != null ||
+            updateReleaseInfo != null
 
     LaunchedEffect(popupShowing) {
         if (popupShowing) {
