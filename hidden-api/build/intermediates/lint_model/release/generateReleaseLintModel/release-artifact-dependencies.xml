@@ -1,0 +1,20 @@
+<dependencies>
+  <compile
+      roots="org.jetbrains.kotlin:kotlin-stdlib:2.3.20@jar,org.jetbrains:annotations:13.0@jar">
+    <dependency
+        name="org.jetbrains.kotlin:kotlin-stdlib:2.3.20@jar"
+        simpleName="org.jetbrains.kotlin:kotlin-stdlib"/>
+    <dependency
+        name="org.jetbrains:annotations:13.0@jar"
+        simpleName="org.jetbrains:annotations"/>
+  </compile>
+  <package
+      roots="org.jetbrains.kotlin:kotlin-stdlib:2.3.20@jar,org.jetbrains:annotations:13.0@jar">
+    <dependency
+        name="org.jetbrains.kotlin:kotlin-stdlib:2.3.20@jar"
+        simpleName="org.jetbrains.kotlin:kotlin-stdlib"/>
+    <dependency
+        name="org.jetbrains:annotations:13.0@jar"
+        simpleName="org.jetbrains:annotations"/>
+  </package>
+</dependencies>

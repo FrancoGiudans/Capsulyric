@@ -1,0 +1,20 @@
+<lint-module
+    format="1"
+    dir="C:\Android\IslandLyrics\hidden-api"
+    name=":hidden-api"
+    type="LIBRARY"
+    maven="Capsulyric:hidden-api:unspecified"
+    agpVersion="9.2.0-alpha06"
+    buildFolder="build"
+    bootClassPath="C:\Users\Franco\AppData\Local\Android\Sdk\platforms\android-37.0\android.jar;C:\Users\Franco\AppData\Local\Android\Sdk\build-tools\36.0.0\core-lambda-stubs.jar"
+    javaSourceLevel="21"
+    compileTarget="android-37"
+    neverShrinking="true"
+    highlightGradualR8Api="false">
+  <lintOptions
+      abortOnError="true"
+      absolutePaths="true"
+      checkReleaseBuilds="true"
+      explainIssues="true"/>
+  <variant name="release"/>
+</lint-module>

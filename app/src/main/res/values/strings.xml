@@ -352,6 +352,9 @@ Within the log interface, select the share/export icon. You can specify a timefr
     <string name="settings_action_style_media_desc">Media control buttons (Pause, Next Track)</string>
     <string name="settings_action_style_miplay">MiPlay</string>
     <string name="settings_action_style_miplay_desc">Launch Xiaomi MiPlay panel</string>
+    <string name="settings_super_island_media_button_layout">Playback Button Layout</string>
+    <string name="super_island_media_button_layout_two">2 Buttons (Play/Pause, Next)</string>
+    <string name="super_island_media_button_layout_three">3 Buttons (Previous, Play/Pause, Next)</string>
     <string name="settings_progress_color">Colorize Progress Bar</string>
     <string name="settings_progress_color_desc">Extract album art color for notification progress bar</string>
     <string name="settings_dismiss_delay_title">Dismiss Delay</string>

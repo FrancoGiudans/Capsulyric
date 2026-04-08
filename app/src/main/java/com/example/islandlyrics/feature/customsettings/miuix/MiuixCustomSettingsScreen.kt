@@ -64,6 +64,7 @@ fun MiuixCustomSettingsScreen(
     var iconStyle by remember { mutableStateOf(prefs.getString("dynamic_icon_style", "disabled") ?: "disabled") }
 
     var actionStyle by remember { mutableStateOf(prefs.getString("notification_actions_style", "disabled") ?: "disabled") }
+    var superIslandMediaButtonLayout by remember { mutableStateOf(prefs.getString("super_island_media_button_layout", "two_button") ?: "two_button") }
     var notificationClickStyle by remember { mutableStateOf(prefs.getString("notification_click_style", "default") ?: "default") }
     var dismissDelay by remember { mutableLongStateOf(prefs.getLong("notification_dismiss_delay", 0L)) }
 
@@ -293,7 +294,8 @@ fun MiuixCustomSettingsScreen(
                                     progressColorEnabled = progressColorEnabled,
                                     actionStyle = actionStyle,
                                     superIslandEnabled = superIslandEnabled,
-                                    superIslandTextColorEnabled = superIslandTextColorEnabled
+                                    superIslandTextColorEnabled = superIslandTextColorEnabled,
+                                    superIslandMediaButtonLayout = superIslandMediaButtonLayout
                                 )
                             }
                             item { Spacer(modifier = Modifier.height(16.dp)) }
@@ -333,6 +335,26 @@ fun MiuixCustomSettingsScreen(
                                             prefs.edit().putString("notification_actions_style", newStyle).apply()
                                         }
                                     )
+
+                                    if (actionStyle == "media_controls" && (superIslandEnabled || !isLiveUpdateSupported)) {
+                                        val buttonLayouts = listOf("two_button", "three_button")
+                                        val buttonLayoutNames = listOf(
+                                            stringResource(R.string.super_island_media_button_layout_two),
+                                            stringResource(R.string.super_island_media_button_layout_three)
+                                        )
+                                        val currentButtonLayoutIndex = buttonLayouts.indexOf(superIslandMediaButtonLayout).takeIf { it >= 0 } ?: 0
+
+                                        SuperDropdown(
+                                            title = stringResource(R.string.settings_super_island_media_button_layout),
+                                            items = buttonLayoutNames,
+                                            selectedIndex = currentButtonLayoutIndex,
+                                            onSelectedIndexChange = { index ->
+                                                val newLayout = buttonLayouts[index]
+                                                superIslandMediaButtonLayout = newLayout
+                                                prefs.edit().putString("super_island_media_button_layout", newLayout).apply()
+                                            }
+                                        )
+                                    }
 
                                     val clickStyles = listOf("default", "media_controls")
                                     val clickStyleNames = listOf(

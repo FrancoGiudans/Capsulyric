@@ -35,9 +35,16 @@ object XmsfNetworkHelper {
                     
                     for (attempt in 0 until MAX_RETRIES) {
                         try {
-                            logger.d(TAG, "📡 Attempt ${attempt + 1}/$MAX_RETRIES: Calling hooked ConnectivityManager...")
-                            ShizukuHook.setPackageNetworkingEnabled(uid, enabled)
-                            logger.d(TAG, "✓ Successfully set XMSF networking to $enabled via hooked binder")
+                            logger.d(TAG, "📡 Attempt ${attempt + 1}/$MAX_RETRIES: Getting privileged service...")
+                            val service = ShizukuUserServiceRecycler.getPrivilegedService()
+                            logger.d(TAG, "✓ Got privileged service, calling setPackageNetworkingEnabled...")
+
+                            val success = service.setPackageNetworkingEnabled(uid, enabled)
+                            if (!success) {
+                                throw IllegalStateException("Privileged service returned failure for uid=$uid")
+                            }
+
+                            logger.d(TAG, "✓ Successfully set XMSF networking to $enabled via privileged service")
                             return@requireShizukuPermissionGranted true
                         } catch (e: CancellationException) {
                             logger.w(TAG, "⚠️ Operation cancelled")
@@ -50,13 +57,25 @@ object XmsfNetworkHelper {
                             }
                         } catch (e: Exception) {
                             lastError = e
-                            logger.e(TAG, "❌ Error on attempt ${attempt + 1}: ${e.message}")
+                            logger.w(TAG, "⚠️ Privileged service path failed on attempt ${attempt + 1}: ${e.message}")
+                            try {
+                                logger.d(TAG, "🪝 Attempt ${attempt + 1}/$MAX_RETRIES: Falling back to hooked binder...")
+                                ShizukuHook.setPackageNetworkingEnabled(uid, enabled)
+                                logger.d(TAG, "✓ Successfully set XMSF networking to $enabled via hooked binder fallback")
+                                return@requireShizukuPermissionGranted true
+                            } catch (hookError: Exception) {
+                                lastError = hookError
+                                logger.e(
+                                    TAG,
+                                    "❌ Error on attempt ${attempt + 1}: service=${e.message}; hook=${hookError.message}"
+                                )
+                            }
                             if (attempt + 1 < MAX_RETRIES) {
                                 delay(RETRY_DELAY_MS)
                             }
                         }
                     }
-                    lastError?.let { logger.e(TAG, "❌ Hooked binder flow failed after retries: ${it.message}") }
+                    lastError?.let { logger.e(TAG, "❌ All XMSF networking paths failed after retries: ${it.message}") }
                     false
                 }
             } catch (e: Exception) {

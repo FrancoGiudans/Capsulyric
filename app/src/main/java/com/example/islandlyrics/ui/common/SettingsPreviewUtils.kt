@@ -178,7 +178,8 @@ fun NotificationPreview(
     progressColorEnabled: Boolean,
     actionStyle: String,
     superIslandEnabled: Boolean = false,
-    superIslandTextColorEnabled: Boolean = false
+    superIslandTextColorEnabled: Boolean = false,
+    superIslandMediaButtonLayout: String = "two_button"
 ) {
     val context = LocalContext.current
     val repo = remember { LyricRepository.getInstance() }
@@ -255,6 +256,7 @@ fun NotificationPreview(
                 .padding(16.dp)
         ) {
             if (actionStyle == "media_controls") {
+                val showPrevButton = superIslandMediaButtonLayout == "three_button"
                 // Template 12 Layout: [Album Art] [Lyrics / Title-Artist] [Buttons Group]
                 // All on the same row, reflecting real clipping/blocking behavior
                 Row(
@@ -310,6 +312,17 @@ fun NotificationPreview(
                     Row(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
+                        if (showPrevButton) {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_skip_previous),
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(28.dp)
+                            )
+
+                            Spacer(modifier = Modifier.width(8.dp))
+                        }
+
                         // Play/Pause with Progress Ring
                         Box(
                             contentAlignment = Alignment.Center,

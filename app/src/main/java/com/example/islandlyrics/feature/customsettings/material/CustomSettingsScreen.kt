@@ -80,7 +80,9 @@ fun CustomSettingsScreen(
 
     // Notification Action Style State
     var actionStyle by remember { mutableStateOf(prefs.getString("notification_actions_style", "disabled") ?: "disabled") }
+    var superIslandMediaButtonLayout by remember { mutableStateOf(prefs.getString("super_island_media_button_layout", "two_button") ?: "two_button") }
     var showActionStyleDropdown by remember { mutableStateOf(false) }
+    var showSuperIslandMediaButtonLayoutDropdown by remember { mutableStateOf(false) }
 
     // Share Format Dropdown State
     var showShareFormatDropdown by remember { mutableStateOf(false) }
@@ -439,7 +441,9 @@ fun CustomSettingsScreen(
                              NotificationPreview(
                                  progressColorEnabled = progressColorEnabled,
                                  actionStyle = actionStyle,
-                                 superIslandEnabled = superIslandEnabled
+                                 superIslandEnabled = superIslandEnabled,
+                                 superIslandTextColorEnabled = superIslandTextColorEnabled,
+                                 superIslandMediaButtonLayout = superIslandMediaButtonLayout
                              )
                              Spacer(modifier = Modifier.height(16.dp))
 
@@ -490,6 +494,41 @@ fun CustomSettingsScreen(
                                                     showActionStyleDropdown = false
                                                 }
                                             )
+                                        }
+                                    }
+                                }
+                            }
+
+                            if (actionStyle == "media_controls" && (superIslandEnabled || !isLiveUpdateSupported)) {
+                                val layoutDisplayName = when (superIslandMediaButtonLayout) {
+                                    "three_button" -> stringResource(R.string.super_island_media_button_layout_three)
+                                    else -> stringResource(R.string.super_island_media_button_layout_two)
+                                }
+                                Box(modifier = Modifier.fillMaxWidth()) {
+                                    SettingsTextItem(
+                                        title = stringResource(R.string.settings_super_island_media_button_layout),
+                                        value = layoutDisplayName,
+                                        onClick = { showSuperIslandMediaButtonLayoutDropdown = true }
+                                    )
+                                    Box(modifier = Modifier.matchParentSize().wrapContentSize(Alignment.Center)) {
+                                        DropdownMenu(
+                                            expanded = showSuperIslandMediaButtonLayoutDropdown,
+                                            onDismissRequest = { showSuperIslandMediaButtonLayoutDropdown = false }
+                                        ) {
+                                            val layoutOptions = listOf(
+                                                "two_button" to R.string.super_island_media_button_layout_two,
+                                                "three_button" to R.string.super_island_media_button_layout_three
+                                            )
+                                            layoutOptions.forEach { (layoutId, nameId) ->
+                                                DropdownMenuItem(
+                                                    text = { Text(stringResource(nameId)) },
+                                                    onClick = {
+                                                        superIslandMediaButtonLayout = layoutId
+                                                        prefs.edit().putString("super_island_media_button_layout", layoutId).apply()
+                                                        showSuperIslandMediaButtonLayoutDropdown = false
+                                                    }
+                                                )
+                                            }
                                         }
                                     }
                                 }
