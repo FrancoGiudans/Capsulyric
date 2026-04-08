@@ -640,8 +640,10 @@ fun MiuixSettingsScreen(
                 state = dialogState,
                 onDismiss = { showCommunityDialog.value = null },
                 onOpen = {
-                    val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse(dialogState.item.url))
-                    context.startActivity(browserIntent)
+                    if (dialogState.item.hasUrl) {
+                        val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse(dialogState.item.url))
+                        context.startActivity(browserIntent)
+                    }
                     showCommunityDialog.value = null
                 }
             )
@@ -686,6 +688,7 @@ private fun CommunityDetailsDialog(
 ) {
     val markdown = buildCommunityMarkdown(state.item)
     val textColor = MiuixTheme.colorScheme.onSurface.toArgb()
+    val hasUrl = state.item.hasUrl
 
     MiuixBlurDialog(
         title = state.sectionTitle,
@@ -729,12 +732,14 @@ private fun CommunityDetailsDialog(
                     modifier = Modifier.weight(1f)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
-                TextButton(
-                    text = stringResource(R.string.community_dialog_open),
-                    onClick = onOpen,
-                    modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.textButtonColorsPrimary()
-                )
+                if (hasUrl) {
+                    TextButton(
+                        text = stringResource(R.string.community_dialog_open),
+                        onClick = onOpen,
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.textButtonColorsPrimary()
+                    )
+                }
             }
         }
     }

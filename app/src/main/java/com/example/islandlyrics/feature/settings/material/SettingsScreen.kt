@@ -647,8 +647,10 @@ fun SettingsScreen(
                     state = dialogState,
                     onDismiss = { communityDialogState = null },
                     onOpen = {
-                        val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse(dialogState.item.url))
-                        context.startActivity(browserIntent)
+                        if (dialogState.item.hasUrl) {
+                            val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse(dialogState.item.url))
+                            context.startActivity(browserIntent)
+                        }
                         communityDialogState = null
                     }
                 )
@@ -1119,6 +1121,7 @@ private fun CommunityDetailsDialog(
 ) {
     val markdown = buildCommunityMarkdown(state.item)
     val textColor = MaterialTheme.colorScheme.onSurface.toArgb()
+    val hasUrl = state.item.hasUrl
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -1146,8 +1149,10 @@ private fun CommunityDetailsDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = onOpen) {
-                Text(stringResource(R.string.community_dialog_open))
+            if (hasUrl) {
+                TextButton(onClick = onOpen) {
+                    Text(stringResource(R.string.community_dialog_open))
+                }
             }
         },
         dismissButton = {

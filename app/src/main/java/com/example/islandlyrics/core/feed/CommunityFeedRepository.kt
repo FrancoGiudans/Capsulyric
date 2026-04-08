@@ -21,7 +21,10 @@ data class CommunityFeedItem(
     val body: String,
     val url: String,
     val actionText: String
-)
+) {
+    val hasUrl: Boolean
+        get() = url.isNotBlank()
+}
 
 data class CommunityFeed(
     val announcement: CommunityFeedItem? = null,
@@ -115,7 +118,7 @@ object CommunityFeedRepository {
         val preferChinese = prefersChinese(context)
         val title = getLocalizedText(item, "title", preferChinese)
         val url = item.optString("url").trim()
-        if (title.isEmpty() || url.isEmpty()) return null
+        if (title.isEmpty()) return null
         if (!matchesChannels(item, context)) return null
         if (!matchesVersionWindow(item)) return null
         if (!matchesTimeWindow(item)) return null
