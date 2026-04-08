@@ -528,12 +528,15 @@ class SuperIslandHandler(
                     withContext(NonCancellable) {
                         com.example.islandlyrics.integration.shizuku.XmsfNetworkHelper.setXmsfNetworkingEnabled(context, false)
                     }
-                    // During the blind window we must go through NotificationManager directly.
-                    // startForeground() adds extra service/AMS hops, which can let HyperOS finish
-                    // the whitelist scan after the network has already been restored.
-                    if (manager != null) {
+                    // Lyric line changes mark this send as "first" on purpose to force
+                    // a full re-layout of the compact island. If we bypass that path here,
+                    // HyperOS can keep showing the first collapsed line while the expanded
+                    // panel already reflects the new extras.
+                    if (isFirst) {
+                        service.startForeground(NOTIFICATION_ID, notification)
+                    } else if (manager != null) {
                         manager.notify(NOTIFICATION_ID, notification)
-                    } else if (isFirst) {
+                    } else {
                         service.startForeground(NOTIFICATION_ID, notification)
                     }
                     // Keep offline for a brief moment; if a new send happens within this window,
