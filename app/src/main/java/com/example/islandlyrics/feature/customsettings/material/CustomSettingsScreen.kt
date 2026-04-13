@@ -81,8 +81,10 @@ fun CustomSettingsScreen(
     // Notification Action Style State
     var actionStyle by remember { mutableStateOf(prefs.getString("notification_actions_style", "disabled") ?: "disabled") }
     var superIslandMediaButtonLayout by remember { mutableStateOf(prefs.getString("super_island_media_button_layout", "two_button") ?: "two_button") }
+    var superIslandNotificationStyle by remember { mutableStateOf(prefs.getString("super_island_notification_style", "standard") ?: "standard") }
     var showActionStyleDropdown by remember { mutableStateOf(false) }
     var showSuperIslandMediaButtonLayoutDropdown by remember { mutableStateOf(false) }
+    var showSuperIslandNotificationStyleDropdown by remember { mutableStateOf(false) }
 
     // Share Format Dropdown State
     var showShareFormatDropdown by remember { mutableStateOf(false) }
@@ -338,6 +340,7 @@ fun CustomSettingsScreen(
                                             prefs.edit().putBoolean("super_island_share_enabled", it).apply()
                                         }
                                     )
+
                                     if (superIslandShareEnabled) {
                                         val formatDisplayName = when (superIslandShareFormat) {
                                             "format_2" -> stringResource(R.string.share_format_2)
@@ -443,12 +446,13 @@ fun CustomSettingsScreen(
                                  actionStyle = actionStyle,
                                  superIslandEnabled = superIslandEnabled,
                                  superIslandTextColorEnabled = superIslandTextColorEnabled,
-                                 superIslandMediaButtonLayout = superIslandMediaButtonLayout
+                                 superIslandMediaButtonLayout = superIslandMediaButtonLayout,
+                                 superIslandNotificationStyle = superIslandNotificationStyle
                              )
                              Spacer(modifier = Modifier.height(16.dp))
 
 
-                            if (actionStyle == "disabled") {
+                            if (actionStyle == "disabled" || (actionStyle == "media_controls" && superIslandNotificationStyle == "advanced_beta")) {
                                  SettingsSwitchItem(
                                     title = stringResource(R.string.settings_progress_color),
                                     subtitle = stringResource(R.string.settings_progress_color_desc),
@@ -500,34 +504,69 @@ fun CustomSettingsScreen(
                             }
 
                             if (actionStyle == "media_controls" && (superIslandEnabled || !isLiveUpdateSupported)) {
-                                val layoutDisplayName = when (superIslandMediaButtonLayout) {
-                                    "three_button" -> stringResource(R.string.super_island_media_button_layout_three)
-                                    else -> stringResource(R.string.super_island_media_button_layout_two)
+                                val notificationStyleDisplayName = when (superIslandNotificationStyle) {
+                                    "advanced_beta" -> stringResource(R.string.super_island_notification_style_advanced_beta)
+                                    else -> stringResource(R.string.super_island_notification_style_standard)
                                 }
                                 Box(modifier = Modifier.fillMaxWidth()) {
                                     SettingsTextItem(
-                                        title = stringResource(R.string.settings_super_island_media_button_layout),
-                                        value = layoutDisplayName,
-                                        onClick = { showSuperIslandMediaButtonLayoutDropdown = true }
+                                        title = stringResource(R.string.settings_super_island_notification_style),
+                                        value = notificationStyleDisplayName,
+                                        onClick = { showSuperIslandNotificationStyleDropdown = true }
                                     )
                                     Box(modifier = Modifier.matchParentSize().wrapContentSize(Alignment.Center)) {
                                         DropdownMenu(
-                                            expanded = showSuperIslandMediaButtonLayoutDropdown,
-                                            onDismissRequest = { showSuperIslandMediaButtonLayoutDropdown = false }
+                                            expanded = showSuperIslandNotificationStyleDropdown,
+                                            onDismissRequest = { showSuperIslandNotificationStyleDropdown = false }
                                         ) {
-                                            val layoutOptions = listOf(
-                                                "two_button" to R.string.super_island_media_button_layout_two,
-                                                "three_button" to R.string.super_island_media_button_layout_three
+                                            val styleOptions = listOf(
+                                                "standard" to R.string.super_island_notification_style_standard,
+                                                "advanced_beta" to R.string.super_island_notification_style_advanced_beta
                                             )
-                                            layoutOptions.forEach { (layoutId, nameId) ->
+                                            styleOptions.forEach { (styleId, nameId) ->
                                                 DropdownMenuItem(
                                                     text = { Text(stringResource(nameId)) },
                                                     onClick = {
-                                                        superIslandMediaButtonLayout = layoutId
-                                                        prefs.edit().putString("super_island_media_button_layout", layoutId).apply()
-                                                        showSuperIslandMediaButtonLayoutDropdown = false
+                                                        superIslandNotificationStyle = styleId
+                                                        prefs.edit().putString("super_island_notification_style", styleId).apply()
+                                                        showSuperIslandNotificationStyleDropdown = false
                                                     }
                                                 )
+                                            }
+                                        }
+                                    }
+                                }
+
+                                if (superIslandNotificationStyle != "advanced_beta") {
+                                    val layoutDisplayName = when (superIslandMediaButtonLayout) {
+                                        "three_button" -> stringResource(R.string.super_island_media_button_layout_three)
+                                        else -> stringResource(R.string.super_island_media_button_layout_two)
+                                    }
+                                    Box(modifier = Modifier.fillMaxWidth()) {
+                                        SettingsTextItem(
+                                            title = stringResource(R.string.settings_super_island_media_button_layout),
+                                            value = layoutDisplayName,
+                                            onClick = { showSuperIslandMediaButtonLayoutDropdown = true }
+                                        )
+                                        Box(modifier = Modifier.matchParentSize().wrapContentSize(Alignment.Center)) {
+                                            DropdownMenu(
+                                                expanded = showSuperIslandMediaButtonLayoutDropdown,
+                                                onDismissRequest = { showSuperIslandMediaButtonLayoutDropdown = false }
+                                            ) {
+                                                val layoutOptions = listOf(
+                                                    "two_button" to R.string.super_island_media_button_layout_two,
+                                                    "three_button" to R.string.super_island_media_button_layout_three
+                                                )
+                                                layoutOptions.forEach { (layoutId, nameId) ->
+                                                    DropdownMenuItem(
+                                                        text = { Text(stringResource(nameId)) },
+                                                        onClick = {
+                                                            superIslandMediaButtonLayout = layoutId
+                                                            prefs.edit().putString("super_island_media_button_layout", layoutId).apply()
+                                                            showSuperIslandMediaButtonLayoutDropdown = false
+                                                        }
+                                                    )
+                                                }
                                             }
                                         }
                                     }

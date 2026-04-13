@@ -179,7 +179,8 @@ fun NotificationPreview(
     actionStyle: String,
     superIslandEnabled: Boolean = false,
     superIslandTextColorEnabled: Boolean = false,
-    superIslandMediaButtonLayout: String = "two_button"
+    superIslandMediaButtonLayout: String = "two_button",
+    superIslandNotificationStyle: String = "standard"
 ) {
     val context = LocalContext.current
     val repo = remember { LyricRepository.getInstance() }
@@ -256,7 +257,8 @@ fun NotificationPreview(
                 .padding(16.dp)
         ) {
             if (actionStyle == "media_controls") {
-                val showPrevButton = superIslandMediaButtonLayout == "three_button"
+                val showAdvancedStyle = superIslandNotificationStyle == "advanced_beta"
+                val showPrevButton = if (showAdvancedStyle) true else superIslandMediaButtonLayout == "three_button"
                 // Template 12 Layout: [Album Art] [Lyrics / Title-Artist] [Buttons Group]
                 // All on the same row, reflecting real clipping/blocking behavior
                 Row(
@@ -286,7 +288,7 @@ fun NotificationPreview(
 
                     Spacer(modifier = Modifier.width(12.dp))
 
-                    // Middle: Text Info (Constrained width to show blocking)
+                    // Middle: Text Info
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = currentLyric,
@@ -308,7 +310,7 @@ fun NotificationPreview(
 
                     Spacer(modifier = Modifier.width(8.dp))
 
-                    // Right Group: Playback Controls (Blocking area)
+                    // Right Group: Playback Controls
                     Row(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -328,18 +330,19 @@ fun NotificationPreview(
                             contentAlignment = Alignment.Center,
                             modifier = Modifier.size(44.dp)
                         ) {
-                            // Subtle background fix for progress ring
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxSize(0.85f)
-                                    .clip(CircleShape)
-                                    .background(Color.White.copy(alpha = 0.15f))
-                            )
+                            if (!showAdvancedStyle) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize(0.85f)
+                                        .clip(CircleShape)
+                                        .background(Color.White.copy(alpha = 0.15f))
+                                )
+                            }
                             CircularProgressIndicator(
                                 progress = { progress },
                                 strokeWidth = 3.dp,
                                 color = if (progressColorEnabled) barColor else Color.White,
-                                trackColor = Color.Transparent,
+                                trackColor = if (showAdvancedStyle) Color.White.copy(alpha = 0.18f) else Color.Transparent,
                                 modifier = Modifier.fillMaxSize()
                             )
                             val isPlaying = repo.isPlaying.value ?: false

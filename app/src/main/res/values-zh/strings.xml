@@ -317,9 +317,14 @@
     <string name="settings_action_style_media_desc">媒体控制按键（暂停、下一曲）</string>
     <string name="settings_action_style_miplay">妙播</string>
     <string name="settings_action_style_miplay_desc">打开小米妙播面板</string>
+    <string name="settings_super_island_notification_style">通知样式</string>
+    <string name="super_island_notification_style_standard">标准小米超级岛样式</string>
+    <string name="super_island_notification_style_advanced_beta">高级样式（Beta）</string>
     <string name="settings_super_island_media_button_layout">播放按键布局</string>
     <string name="super_island_media_button_layout_two">双按键（播放/暂停、下一首）</string>
     <string name="super_island_media_button_layout_three">三按键（上一首、播放/暂停、下一首）</string>
+    <string name="settings_super_island_custom_expand_test">测试自定义展开布局</string>
+    <string name="settings_super_island_custom_expand_test_desc">使用自定义超级岛展开态布局进行测试，包含横向进度条和三个播放控制按键。</string>
     <string name="settings_progress_color">为进度条着色</string>
     <string name="settings_progress_color_desc">从专辑封面提取颜色应用到通知进度条</string>
     <string name="settings_dismiss_delay_title">消失延迟</string>
