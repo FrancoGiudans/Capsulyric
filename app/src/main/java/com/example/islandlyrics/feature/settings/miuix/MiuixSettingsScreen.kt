@@ -409,7 +409,7 @@ fun MiuixSettingsScreen(
                                     onClick = {}
                                 )
                             } else {
-                                communityFeed?.announcement?.let { announcement ->
+                                communityFeed?.announcements?.forEach { announcement ->
                                     CommunityArrowItem(
                                         title = announcementSectionTitle,
                                         item = announcement,
@@ -418,7 +418,7 @@ fun MiuixSettingsScreen(
                                     )
                                 }
 
-                                communityFeed?.poll?.let { poll ->
+                                communityFeed?.polls?.forEach { poll ->
                                     CommunityArrowItem(
                                         title = pollSectionTitle,
                                         item = poll,

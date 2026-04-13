@@ -470,7 +470,7 @@ fun SettingsScreen(
                             onClick = {}
                         )
                     } else {
-                                communityFeed?.announcement?.let { announcement ->
+                                communityFeed?.announcements?.forEach { announcement ->
                                     CommunityActionItem(
                                         title = announcementSectionTitle,
                                         item = announcement,
@@ -480,7 +480,7 @@ fun SettingsScreen(
                                     )
                                 }
 
-                                communityFeed?.poll?.let { poll ->
+                                communityFeed?.polls?.forEach { poll ->
                                     CommunityActionItem(
                                         title = pollSectionTitle,
                                         item = poll,

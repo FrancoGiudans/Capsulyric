@@ -5,6 +5,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
+import com.example.islandlyrics.R
 import com.example.islandlyrics.core.cache.AppImageCacheManager
 import com.example.islandlyrics.data.lyric.OnlineLyricCacheStore
 import kotlinx.coroutines.Dispatchers
@@ -29,6 +30,7 @@ class CacheManagementViewModel(application: Application) : AndroidViewModel(appl
 
     private val _statusMessage = MutableLiveData<String?>(null)
     val statusMessage: LiveData<String?> = _statusMessage
+    private fun s(id: Int, vararg args: Any): String = getApplication<Application>().getString(id, *args)
 
     init {
         refresh()
@@ -53,7 +55,7 @@ class CacheManagementViewModel(application: Application) : AndroidViewModel(appl
             withContext(Dispatchers.IO) {
                 lyricCacheStore.deleteLyricEntry(entryId)
             }
-            _statusMessage.value = "已删除歌词缓存"
+            _statusMessage.value = s(R.string.cache_management_status_deleted)
             refresh()
         }
     }
@@ -64,7 +66,7 @@ class CacheManagementViewModel(application: Application) : AndroidViewModel(appl
             withContext(Dispatchers.IO) {
                 lyricCacheStore.clearLyricCache()
             }
-            _statusMessage.value = "已清空歌词缓存"
+            _statusMessage.value = s(R.string.cache_management_status_lyrics_cleared)
             refresh()
         }
     }
@@ -75,7 +77,7 @@ class CacheManagementViewModel(application: Application) : AndroidViewModel(appl
             withContext(Dispatchers.IO) {
                 AppImageCacheManager.clear(getApplication())
             }
-            _statusMessage.value = "已清空图片缓存"
+            _statusMessage.value = s(R.string.cache_management_status_images_cleared)
             refresh()
         }
     }
@@ -87,7 +89,7 @@ class CacheManagementViewModel(application: Application) : AndroidViewModel(appl
                 lyricCacheStore.clearLyricCache()
                 AppImageCacheManager.clear(getApplication())
             }
-            _statusMessage.value = "已清空全部缓存"
+            _statusMessage.value = s(R.string.cache_management_status_all_cleared)
             refresh()
         }
     }

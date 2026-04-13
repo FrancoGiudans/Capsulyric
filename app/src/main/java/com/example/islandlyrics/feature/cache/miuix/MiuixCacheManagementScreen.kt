@@ -72,12 +72,12 @@ fun MiuixCacheManagementScreen(
                 scrollBehavior = scrollBehavior,
                 navigationIcon = {
                     IconButton(onClick = onBack, modifier = Modifier.padding(start = 12.dp)) {
-                        androidx.compose.material3.Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回", tint = MiuixTheme.colorScheme.onBackground)
+                        androidx.compose.material3.Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.cache_management_back), tint = MiuixTheme.colorScheme.onBackground)
                     }
                 },
                 actions = {
                     IconButton(onClick = { viewModel.refresh() }) {
-                        androidx.compose.material3.Icon(Icons.Default.Refresh, contentDescription = "刷新", tint = MiuixTheme.colorScheme.onBackground)
+                        androidx.compose.material3.Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.cache_management_refresh), tint = MiuixTheme.colorScheme.onBackground)
                     }
                 }
             )
@@ -93,57 +93,57 @@ fun MiuixCacheManagementScreen(
                 bottom = padding.calculateBottomPadding() + 24.dp
             )
         ) {
-            item { SmallTitle(text = "歌词缓存") }
+            item { SmallTitle(text = stringResource(R.string.cache_management_lyric_cache)) }
             item {
                 Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
                     Column(modifier = Modifier.padding(16.dp)) {
-                        MiuixStatRow("缓存条目", lyricStats.entryCount.toString())
-                        MiuixStatRow("缓存体积", formatBytes(lyricStats.totalBytes))
-                        MiuixStatRow("最后更新", formatTimestamp(lyricStats.lastUpdatedAt))
+                        MiuixStatRow(stringResource(R.string.cache_management_entry_count), lyricStats.entryCount.toString())
+                        MiuixStatRow(stringResource(R.string.cache_management_total_size), formatBytes(lyricStats.totalBytes))
+                        MiuixStatRow(stringResource(R.string.cache_management_last_updated), formatTimestamp(stringResource(R.string.cache_management_none), lyricStats.lastUpdatedAt))
                         Spacer(modifier = Modifier.height(12.dp))
                         Button(onClick = { viewModel.clearLyricCache() }, enabled = !busy, modifier = Modifier.fillMaxWidth()) {
-                            Text("清空歌词缓存")
+                            Text(stringResource(R.string.cache_management_clear_lyric_cache))
                         }
                     }
                 }
             }
-            item { SmallTitle(text = "图片缓存") }
+            item { SmallTitle(text = stringResource(R.string.cache_management_image_cache)) }
             item {
                 Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
                     Column(modifier = Modifier.padding(16.dp)) {
-                        MiuixStatRow("缓存文件", imageStats.fileCount.toString())
-                        MiuixStatRow("缓存体积", formatBytes(imageStats.totalBytes))
-                        MiuixStatRow("最后更新", formatTimestamp(imageStats.lastUpdatedAt))
-                        Text("包括更新日志中的远程图片缓存", color = MiuixTheme.colorScheme.onSurfaceSecondary)
+                        MiuixStatRow(stringResource(R.string.cache_management_file_count), imageStats.fileCount.toString())
+                        MiuixStatRow(stringResource(R.string.cache_management_total_size), formatBytes(imageStats.totalBytes))
+                        MiuixStatRow(stringResource(R.string.cache_management_last_updated), formatTimestamp(stringResource(R.string.cache_management_none), imageStats.lastUpdatedAt))
+                        Text(stringResource(R.string.cache_management_remote_images_hint), color = MiuixTheme.colorScheme.onSurfaceSecondary)
                         Spacer(modifier = Modifier.height(12.dp))
                         Button(onClick = { viewModel.clearImageCache() }, enabled = !busy, modifier = Modifier.fillMaxWidth()) {
-                            Text("清空图片缓存")
+                            Text(stringResource(R.string.cache_management_clear_image_cache))
                         }
                     }
                 }
             }
-            item { SmallTitle(text = "危险操作") }
+            item { SmallTitle(text = stringResource(R.string.cache_management_danger_zone)) }
             item {
                 Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
                     Column(modifier = Modifier.padding(16.dp)) {
-                        Text("清空所有缓存数据", fontWeight = FontWeight.SemiBold, color = MiuixTheme.colorScheme.error)
+                        Text(stringResource(R.string.cache_management_clear_all_title), fontWeight = FontWeight.SemiBold, color = MiuixTheme.colorScheme.error)
                         Spacer(modifier = Modifier.height(6.dp))
                         Text(
-                            "将同时删除歌词缓存和图片缓存，无法撤销。",
+                            stringResource(R.string.cache_management_clear_all_desc),
                             color = MiuixTheme.colorScheme.onSurfaceSecondary
                         )
                         Spacer(modifier = Modifier.height(12.dp))
                         Button(onClick = { viewModel.clearAllCaches() }, enabled = !busy, modifier = Modifier.fillMaxWidth()) {
-                            Text("清空全部缓存")
+                            Text(stringResource(R.string.cache_management_clear_all))
                         }
                     }
                 }
             }
-            item { SmallTitle(text = "歌词缓存条目") }
+            item { SmallTitle(text = stringResource(R.string.cache_management_entries_title)) }
             if (lyricEntries.isEmpty()) {
                 item {
                     Text(
-                        text = "当前没有可管理的歌词缓存",
+                        text = stringResource(R.string.cache_management_no_entries),
                         modifier = Modifier.padding(horizontal = 16.dp),
                         color = MiuixTheme.colorScheme.onSurfaceSecondary
                     )
@@ -162,17 +162,17 @@ fun MiuixCacheManagementScreen(
                                     Text(entry.packageName, color = MiuixTheme.colorScheme.onSurfaceSecondary)
                                 }
                                 TextButton(
-                                    text = "删除",
+                                    text = stringResource(R.string.cache_management_delete),
                                     onClick = { viewModel.deleteLyricEntry(entry.id) }
                                 )
                             }
                             Spacer(modifier = Modifier.height(8.dp))
-                            MiuixStatRow("查询信息", "${entry.queryTitle} / ${entry.queryArtist}")
-                            MiuixStatRow("来源", entry.providerLabel.ifBlank { "未知" })
-                            MiuixStatRow("缓存体积", formatBytes(entry.sizeBytes))
-                            MiuixStatRow("更新时间", formatTimestamp(entry.updatedAt))
+                            MiuixStatRow(stringResource(R.string.cache_management_query_info), "${entry.queryTitle} / ${entry.queryArtist}")
+                            MiuixStatRow(stringResource(R.string.cache_management_provider), entry.providerLabel.ifBlank { stringResource(R.string.cache_management_unknown) })
+                            MiuixStatRow(stringResource(R.string.cache_management_total_size), formatBytes(entry.sizeBytes))
+                            MiuixStatRow(stringResource(R.string.cache_management_updated_at), formatTimestamp(stringResource(R.string.cache_management_none), entry.updatedAt))
                             if (entry.hasCustomMatch) {
-                                Text("包含自定义匹配信息", color = MiuixTheme.colorScheme.primary)
+                                Text(stringResource(R.string.cache_management_has_custom_match), color = MiuixTheme.colorScheme.primary)
                             }
                         }
                     }
@@ -205,7 +205,7 @@ private fun formatBytes(bytes: Long): String {
     }
 }
 
-private fun formatTimestamp(timestamp: Long?): String {
-    if (timestamp == null || timestamp <= 0L) return "无"
+private fun formatTimestamp(emptyValue: String, timestamp: Long?): String {
+    if (timestamp == null || timestamp <= 0L) return emptyValue
     return SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date(timestamp))
 }

@@ -77,12 +77,12 @@ fun CacheManagementScreen(
                 title = { Text(stringResource(R.string.title_cache_management)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.cache_management_back))
                     }
                 },
                 actions = {
                     IconButton(onClick = { viewModel.refresh() }) {
-                        Icon(Icons.Default.Refresh, contentDescription = "刷新")
+                        Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.cache_management_refresh))
                     }
                 },
                 colors = neutralMaterialTopBarColors(),
@@ -99,28 +99,28 @@ fun CacheManagementScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             item {
-                CacheSectionCard(title = "歌词缓存") {
-                    CacheStatRow("缓存条目", lyricStats.entryCount.toString())
-                    CacheStatRow("缓存体积", formatBytes(lyricStats.totalBytes))
-                    CacheStatRow("最后更新", formatTimestamp(lyricStats.lastUpdatedAt))
+                CacheSectionCard(title = stringResource(R.string.cache_management_lyric_cache)) {
+                    CacheStatRow(stringResource(R.string.cache_management_entry_count), lyricStats.entryCount.toString())
+                    CacheStatRow(stringResource(R.string.cache_management_total_size), formatBytes(lyricStats.totalBytes))
+                    CacheStatRow(stringResource(R.string.cache_management_last_updated), formatTimestamp(stringResource(R.string.cache_management_none), lyricStats.lastUpdatedAt))
                     Spacer(modifier = Modifier.height(12.dp))
                     Button(
                         onClick = { viewModel.clearLyricCache() },
                         enabled = !busy,
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text("清空歌词缓存")
+                        Text(stringResource(R.string.cache_management_clear_lyric_cache))
                     }
                 }
             }
 
             item {
-                CacheSectionCard(title = "图片缓存") {
-                    CacheStatRow("缓存文件", imageStats.fileCount.toString())
-                    CacheStatRow("缓存体积", formatBytes(imageStats.totalBytes))
-                    CacheStatRow("最后更新", formatTimestamp(imageStats.lastUpdatedAt))
+                CacheSectionCard(title = stringResource(R.string.cache_management_image_cache)) {
+                    CacheStatRow(stringResource(R.string.cache_management_file_count), imageStats.fileCount.toString())
+                    CacheStatRow(stringResource(R.string.cache_management_total_size), formatBytes(imageStats.totalBytes))
+                    CacheStatRow(stringResource(R.string.cache_management_last_updated), formatTimestamp(stringResource(R.string.cache_management_none), imageStats.lastUpdatedAt))
                     Text(
-                        text = "包括更新日志中的远程图片缓存",
+                        text = stringResource(R.string.cache_management_remote_images_hint),
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Spacer(modifier = Modifier.height(12.dp))
@@ -129,15 +129,15 @@ fun CacheManagementScreen(
                         enabled = !busy,
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text("清空图片缓存")
+                        Text(stringResource(R.string.cache_management_clear_image_cache))
                     }
                 }
             }
 
             item {
-                CacheSectionCard(title = "危险操作") {
+                CacheSectionCard(title = stringResource(R.string.cache_management_danger_zone)) {
                     Text(
-                        text = "将同时删除歌词缓存和图片缓存，无法撤销。",
+                        text = stringResource(R.string.cache_management_clear_all_desc),
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Spacer(modifier = Modifier.height(12.dp))
@@ -146,7 +146,7 @@ fun CacheManagementScreen(
                         enabled = !busy,
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text("清空全部缓存", color = MaterialTheme.colorScheme.error)
+                        Text(stringResource(R.string.cache_management_clear_all), color = MaterialTheme.colorScheme.error)
                     }
                 }
             }
@@ -157,7 +157,7 @@ fun CacheManagementScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("歌词缓存条目", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Text(stringResource(R.string.cache_management_entries_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                     if (busy) {
                         CircularProgressIndicator(modifier = Modifier.height(18.dp))
                     }
@@ -167,7 +167,7 @@ fun CacheManagementScreen(
             if (lyricEntries.isEmpty()) {
                 item {
                     Text(
-                        text = "当前没有可管理的歌词缓存",
+                        text = stringResource(R.string.cache_management_no_entries),
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
@@ -187,16 +187,16 @@ fun CacheManagementScreen(
                                     Text(entry.packageName, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 }
                                 IconButton(onClick = { viewModel.deleteLyricEntry(entry.id) }, enabled = !busy) {
-                                    Icon(Icons.Default.Delete, contentDescription = "删除")
+                                    Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.cache_management_delete))
                                 }
                             }
                             Spacer(modifier = Modifier.height(8.dp))
-                            CacheStatRow("查询信息", "${entry.queryTitle} / ${entry.queryArtist}")
-                            CacheStatRow("来源", entry.providerLabel.ifBlank { "未知" })
-                            CacheStatRow("缓存体积", formatBytes(entry.sizeBytes))
-                            CacheStatRow("更新时间", formatTimestamp(entry.updatedAt))
+                            CacheStatRow(stringResource(R.string.cache_management_query_info), "${entry.queryTitle} / ${entry.queryArtist}")
+                            CacheStatRow(stringResource(R.string.cache_management_provider), entry.providerLabel.ifBlank { stringResource(R.string.cache_management_unknown) })
+                            CacheStatRow(stringResource(R.string.cache_management_total_size), formatBytes(entry.sizeBytes))
+                            CacheStatRow(stringResource(R.string.cache_management_updated_at), formatTimestamp(stringResource(R.string.cache_management_none), entry.updatedAt))
                             if (entry.hasCustomMatch) {
-                                Text("包含自定义匹配信息", color = MaterialTheme.colorScheme.primary)
+                                Text(stringResource(R.string.cache_management_has_custom_match), color = MaterialTheme.colorScheme.primary)
                             }
                         }
                     }
@@ -246,7 +246,7 @@ private fun formatBytes(bytes: Long): String {
     }
 }
 
-private fun formatTimestamp(timestamp: Long?): String {
-    if (timestamp == null || timestamp <= 0L) return "无"
+private fun formatTimestamp(emptyValue: String, timestamp: Long?): String {
+    if (timestamp == null || timestamp <= 0L) return emptyValue
     return SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date(timestamp))
 }

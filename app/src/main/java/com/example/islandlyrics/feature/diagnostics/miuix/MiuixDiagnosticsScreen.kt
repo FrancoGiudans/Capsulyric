@@ -50,7 +50,7 @@ fun MiuixDiagnosticsScreen(onBack: () -> Unit) {
                     IconButton(onClick = onBack, modifier = Modifier.padding(start = 12.dp)) {
                         androidx.compose.material3.Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
+                            contentDescription = stringResource(R.string.online_lyric_debug_back),
                             tint = MiuixTheme.colorScheme.onBackground
                         )
                     }
@@ -72,16 +72,16 @@ fun MiuixDiagnosticsScreen(onBack: () -> Unit) {
             item {
                 Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
                     SuperArrow(
-                        title = "在线歌词调试",
-                        summary = "查看每个在线歌词 API 的最终结果",
+                        title = stringResource(R.string.diag_online_lyric_debug_title),
+                        summary = stringResource(R.string.diag_online_lyric_debug_desc),
                         onClick = {
                             context.startActivity(android.content.Intent(context, OnlineLyricDebugActivity::class.java))
                         }
                     )
                     if (BuildConfig.DEBUG) {
                         SuperArrow(
-                            title = "QQ 罗马音抓取",
-                            summary = "直接抓取并完整输出 QQ 的 contentroma",
+                            title = stringResource(R.string.diag_qq_roman_debug_title),
+                            summary = stringResource(R.string.diag_qq_roman_debug_desc),
                             onClick = {
                                 launchQqRomanDebug(context)
                             }

@@ -17,6 +17,7 @@ import com.example.islandlyrics.feature.main.MainActivity
 import com.example.islandlyrics.feature.mediacontrol.MediaControlActivity
 import com.xzakota.hyper.notification.focus.FocusNotification
 import com.xzakota.hyper.notification.focus.template.CustomFocusTemplate
+import com.xzakota.hyper.notification.focus.template.CustomFocusTemplateV3
 import org.json.JSONObject
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -355,12 +356,32 @@ class SuperIslandHandler(
                 ticker = displayLyric.ifEmpty { subText.ifEmpty { state.title.ifEmpty { "♪" } } }
                 tickerPic = appKey ?: islandSmallKey ?: avatarKey
 
-                val customViews = createCustomExpandRemoteViews(state, subText, progressPercent, progressBarColor)
-                val tinyViews = createCustomTinyRemoteViews(state, subText, progressPercent)
-                createRemoteViews(CustomFocusTemplate.LAYOUT, customViews)
-                createRemoteViews(CustomFocusTemplate.LAYOUT_NIGHT, customViews)
+                val customLightViews = createCustomExpandRemoteViews(
+                    state = state,
+                    subText = subText,
+                    progressPercent = progressPercent,
+                    progressBarColor = progressBarColor,
+                    darkMode = false
+                )
+                val customDarkViews = createCustomExpandRemoteViews(
+                    state = state,
+                    subText = subText,
+                    progressPercent = progressPercent,
+                    progressBarColor = progressBarColor,
+                    darkMode = true
+                )
+                val tinyViews = createCustomTinyRemoteViews(
+                    state = state,
+                    subText = subText,
+                    progressPercent = progressPercent,
+                    progressBarColor = progressBarColor,
+                    darkMode = true
+                )
+                createRemoteViews(CustomFocusTemplate.LAYOUT, customLightViews)
+                createRemoteViews(CustomFocusTemplate.LAYOUT_NIGHT, customDarkViews)
                 createRemoteViews(CustomFocusTemplate.LAYOUT_FLIP_TINY, tinyViews)
                 createRemoteViews(CustomFocusTemplate.LAYOUT_FLIP_TINY_NIGHT, tinyViews)
+                createRemoteViews(CustomFocusTemplateV3.LAYOUT_ISLAND_EXPAND, customDarkViews)
 
                 island {
                     islandProperty = 1
@@ -428,30 +449,6 @@ class SuperIslandHandler(
 
         val newParams = extras.getString("miui.focus.param")
         val newCustomParams = extras.getString("miui.focus.param.custom")
-
-        if (cachedActionStyle == "media_controls") {
-            val logger = com.example.islandlyrics.core.logging.AppLogger.getInstance()
-            if (customExpandEnabled) {
-                val hasRv = extras.containsKey("miui.focus.rv")
-                val hasRvNight = extras.containsKey("miui.focus.rvNight")
-                val hasTiny = extras.containsKey("miui.focus.rv.tiny")
-                val hasTinyNight = extras.containsKey("miui.focus.rv.tinyNight")
-                val hasIslandExpand = extras.containsKey("miui.focus.rv.island.expand")
-                logger.d(
-                    "SuperIsland",
-                    "Focus param custom: ${newCustomParams.orEmpty()}"
-                )
-                logger.d(
-                    "SuperIsland",
-                    "Focus custom rv keys: rv=$hasRv, rvNight=$hasRvNight, tiny=$hasTiny, tinyNight=$hasTinyNight, islandExpand=$hasIslandExpand"
-                )
-            } else {
-                logger.d(
-                    "SuperIsland",
-                    "Focus param (media_controls): ${newParams.orEmpty()}"
-                )
-            }
-        }
 
         val focusSignature = if (customExpandEnabled) newCustomParams.orEmpty() else newParams.orEmpty()
         if (focusSignature == lastFocusParam && !colorChanged && !isFirstNotification) {
@@ -606,14 +603,20 @@ class SuperIslandHandler(
         state: UIState,
         subText: String,
         progressPercent: Int,
-        progressBarColor: String
+        progressBarColor: String,
+        darkMode: Boolean
     ): RemoteViews {
         val views = RemoteViews(context.packageName, R.layout.super_island_custom_expand)
+        val primaryTextColor = android.graphics.Color.parseColor(if (darkMode) "#FFFFFFFF" else "#FF111111")
+        val secondaryTextColor = android.graphics.Color.parseColor(if (darkMode) "#B3FFFFFF" else "#99000000")
+        val iconTintColor = primaryTextColor
         views.setTextViewText(
             R.id.custom_expand_title,
             state.fullLyric.ifEmpty { state.displayLyric.ifEmpty { "♪" } }
         )
         views.setTextViewText(R.id.custom_expand_subtitle, subText.ifEmpty { context.getString(R.string.channel_live_lyrics) })
+        views.setTextColor(R.id.custom_expand_title, primaryTextColor)
+        views.setTextColor(R.id.custom_expand_subtitle, secondaryTextColor)
         val albumArt = LyricRepository.getInstance().liveAlbumArt.value
         if (albumArt != null) {
             views.setImageViewBitmap(R.id.custom_expand_cover, scaleBitmap(albumArt, 116))
@@ -622,12 +625,15 @@ class SuperIslandHandler(
         }
         views.setImageViewBitmap(
             R.id.custom_expand_progress,
-            createProgressBarBitmap(progressPercent, progressBarColor)
+            createProgressBarBitmap(progressPercent, progressBarColor, darkMode)
         )
         views.setImageViewResource(
             R.id.custom_expand_play_pause,
             if (state.isPlaying) R.drawable.ic_pause else R.drawable.ic_play_arrow
         )
+        views.setInt(R.id.custom_expand_prev, "setColorFilter", iconTintColor)
+        views.setInt(R.id.custom_expand_play_pause, "setColorFilter", iconTintColor)
+        views.setInt(R.id.custom_expand_next, "setColorFilter", iconTintColor)
         views.setOnClickPendingIntent(
             R.id.custom_expand_prev,
             PendingIntent.getBroadcast(
@@ -664,7 +670,11 @@ class SuperIslandHandler(
         return views
     }
 
-    private fun createProgressBarBitmap(progressPercent: Int, progressColor: String): Bitmap {
+    private fun createProgressBarBitmap(
+        progressPercent: Int,
+        progressColor: String,
+        darkMode: Boolean
+    ): Bitmap {
         val width = dpToPx(240)
         val height = dpToPx(6)
         val radius = height / 2f
@@ -676,7 +686,7 @@ class SuperIslandHandler(
         val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG)
         val rect = android.graphics.RectF(0f, 0f, width.toFloat(), height.toFloat())
 
-        paint.color = android.graphics.Color.parseColor("#33FFFFFF")
+        paint.color = android.graphics.Color.parseColor(if (darkMode) "#33FFFFFF" else "#26000000")
         canvas.drawRoundRect(rect, radius, radius, paint)
 
         if (progressWidth > 0f) {
@@ -699,9 +709,13 @@ class SuperIslandHandler(
     private fun createCustomTinyRemoteViews(
         state: UIState,
         subText: String,
-        progressPercent: Int
+        progressPercent: Int,
+        progressBarColor: String,
+        darkMode: Boolean
     ): RemoteViews {
         val views = RemoteViews(context.packageName, R.layout.super_island_custom_tiny)
+        val primaryTextColor = android.graphics.Color.parseColor(if (darkMode) "#FFFFFFFF" else "#FF111111")
+        val secondaryTextColor = android.graphics.Color.parseColor(if (darkMode) "#B3FFFFFF" else "#99000000")
         views.setTextViewText(
             R.id.custom_tiny_title,
             state.displayLyric.ifEmpty { state.title.ifEmpty { "♪" } }
@@ -710,7 +724,12 @@ class SuperIslandHandler(
             R.id.custom_tiny_subtitle,
             subText.ifEmpty { context.getString(R.string.channel_live_lyrics) }
         )
-        views.setProgressBar(R.id.custom_tiny_progress, 100, progressPercent.coerceIn(0, 100), false)
+        views.setTextColor(R.id.custom_tiny_title, primaryTextColor)
+        views.setTextColor(R.id.custom_tiny_subtitle, secondaryTextColor)
+        views.setImageViewBitmap(
+            R.id.custom_tiny_progress,
+            createTinyProgressBarBitmap(progressPercent, progressBarColor, darkMode)
+        )
 
         val albumArt = LyricRepository.getInstance().liveAlbumArt.value
         if (albumArt != null) {
@@ -719,6 +738,38 @@ class SuperIslandHandler(
             views.setImageViewResource(R.id.custom_tiny_cover, R.drawable.ic_music_note)
         }
         return views
+    }
+
+    private fun createTinyProgressBarBitmap(
+        progressPercent: Int,
+        progressColor: String,
+        darkMode: Boolean
+    ): Bitmap {
+        val width = dpToPx(44)
+        val height = dpToPx(4)
+        val radius = height / 2f
+        val progress = progressPercent.coerceIn(0, 100)
+        val progressWidth = if (progress <= 0) 0f else (width * (progress / 100f)).coerceAtLeast(radius * 2)
+
+        val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        val canvas = android.graphics.Canvas(bitmap)
+        val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG)
+        val rect = android.graphics.RectF(0f, 0f, width.toFloat(), height.toFloat())
+
+        paint.color = android.graphics.Color.parseColor(if (darkMode) "#33FFFFFF" else "#26000000")
+        canvas.drawRoundRect(rect, radius, radius, paint)
+
+        if (progressWidth > 0f) {
+            paint.color = android.graphics.Color.parseColor(progressColor)
+            canvas.drawRoundRect(
+                android.graphics.RectF(0f, 0f, progressWidth, height.toFloat()),
+                radius,
+                radius,
+                paint
+            )
+        }
+
+        return bitmap
     }
 
     private fun buildStandardFocusBundle(

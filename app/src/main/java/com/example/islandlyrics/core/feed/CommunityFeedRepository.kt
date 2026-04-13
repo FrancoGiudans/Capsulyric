@@ -27,11 +27,11 @@ data class CommunityFeedItem(
 }
 
 data class CommunityFeed(
-    val announcement: CommunityFeedItem? = null,
-    val poll: CommunityFeedItem? = null
+    val announcements: List<CommunityFeedItem> = emptyList(),
+    val polls: List<CommunityFeedItem> = emptyList()
 ) {
     val hasContent: Boolean
-        get() = announcement != null || poll != null
+        get() = announcements.isNotEmpty() || polls.isNotEmpty()
 }
 
 object CommunityFeedRepository {
@@ -49,8 +49,8 @@ object CommunityFeedRepository {
         val announcements = fetchItems(context, ANNOUNCEMENTS_PATH)
         val polls = fetchItems(context, POLLS_PATH)
         CommunityFeed(
-            announcement = announcements.firstOrNull(),
-            poll = polls.firstOrNull()
+            announcements = announcements,
+            polls = polls
         )
     }
 

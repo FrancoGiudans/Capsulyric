@@ -49,7 +49,7 @@ fun DiagnosticsScreen(onBack: () -> Unit) {
                 title = { Text(stringResource(R.string.title_diagnostics)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.online_lyric_debug_back))
                     }
                 },
                 scrollBehavior = scrollBehavior,
@@ -76,7 +76,7 @@ fun DiagnosticsScreen(onBack: () -> Unit) {
                     },
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("在线歌词调试")
+                    Text(stringResource(R.string.diag_online_lyric_debug_title))
                 }
                 if (BuildConfig.DEBUG) {
                     Spacer(modifier = Modifier.height(8.dp))
@@ -86,7 +86,7 @@ fun DiagnosticsScreen(onBack: () -> Unit) {
                         },
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text("QQ 罗马音抓取")
+                        Text(stringResource(R.string.diag_qq_roman_debug_title))
                     }
                 }
                 Spacer(modifier = Modifier.height(8.dp))

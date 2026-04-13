@@ -29,9 +29,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.islandlyrics.R
 import com.example.islandlyrics.data.ParserRuleHelper
 import com.example.islandlyrics.data.lyric.OnlineLyricProvider
 import com.example.islandlyrics.feature.onlinelyricdebug.OnlineLyricDebugViewModel
@@ -93,11 +95,11 @@ fun MiuixOnlineLyricDebugScreen(
     MiuixBlurScaffold(
         topBar = {
             MiuixBlurTopAppBar(
-                title = "在线歌词调试",
+                title = stringResource(R.string.online_lyric_debug_title),
                 scrollBehavior = scrollBehavior,
                 navigationIcon = {
                     IconButton(onClick = onBack, modifier = Modifier.padding(start = 12.dp)) {
-                        androidx.compose.material3.Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回", tint = MiuixTheme.colorScheme.onBackground)
+                        androidx.compose.material3.Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.online_lyric_debug_back), tint = MiuixTheme.colorScheme.onBackground)
                     }
                 }
             )
@@ -108,37 +110,44 @@ fun MiuixOnlineLyricDebugScreen(
             modifier = Modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection),
             contentPadding = PaddingValues(top = padding.calculateTopPadding() + 12.dp, bottom = padding.calculateBottomPadding() + 24.dp)
         ) {
-            item { SmallTitle(text = "当前播放音乐") }
+            item { SmallTitle(text = stringResource(R.string.online_lyric_debug_now_playing)) }
             item {
                 Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
                     Column(modifier = Modifier.padding(16.dp)) {
-                        Text("歌曲: ${mediaInfo?.title ?: "无"}")
-                        Text("歌手: ${mediaInfo?.artist ?: "无"}", color = MiuixTheme.colorScheme.onSurfaceSecondary)
-                        Text("匹配歌名: ${effectiveQuery.first.ifBlank { "无" }}")
-                        Text("匹配歌手: ${effectiveQuery.second.ifBlank { "无" }}")
+                        Text(stringResource(R.string.online_lyric_debug_song_fmt, mediaInfo?.title ?: stringResource(R.string.online_lyric_debug_none)))
+                        Text(stringResource(R.string.online_lyric_debug_artist_fmt, mediaInfo?.artist ?: stringResource(R.string.online_lyric_debug_none)), color = MiuixTheme.colorScheme.onSurfaceSecondary)
+                        Text(stringResource(R.string.online_lyric_debug_match_title_fmt, effectiveQuery.first.ifBlank { stringResource(R.string.online_lyric_debug_none) }))
+                        Text(stringResource(R.string.online_lyric_debug_match_artist_fmt, effectiveQuery.second.ifBlank { stringResource(R.string.online_lyric_debug_none) }))
                         Text(querySourceLabel, color = MiuixTheme.colorScheme.primary)
                         cacheStatus?.let {
                             Text(it, color = MiuixTheme.colorScheme.primary)
                         }
-                        Text("播放时间: ${formatTime(liveProgress?.position ?: 0)} / ${formatTime(liveProgress?.duration ?: 0)}", color = MiuixTheme.colorScheme.primary)
+                        Text(
+                            stringResource(
+                                R.string.online_lyric_debug_playback_time_fmt,
+                                formatTime(liveProgress?.position ?: 0),
+                                formatTime(liveProgress?.duration ?: 0)
+                            ),
+                            color = MiuixTheme.colorScheme.primary
+                        )
                     }
                 }
             }
-            item { SmallTitle(text = "当前歌曲在线匹配") }
+            item { SmallTitle(text = stringResource(R.string.online_lyric_debug_current_match)) }
             item {
                 Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         TextField(
                             value = customMatchTitle,
                             onValueChange = viewModel::updateCustomMatchTitle,
-                            label = "自定义匹配歌名",
+                            label = stringResource(R.string.online_lyric_debug_custom_title),
                             modifier = Modifier.fillMaxWidth()
                         )
                         Spacer(modifier = Modifier.height(12.dp))
                         TextField(
                             value = customMatchArtist,
                             onValueChange = viewModel::updateCustomMatchArtist,
-                            label = "自定义匹配歌手",
+                            label = stringResource(R.string.online_lyric_debug_custom_artist),
                             modifier = Modifier.fillMaxWidth()
                         )
                         Spacer(modifier = Modifier.height(12.dp))
@@ -150,31 +159,48 @@ fun MiuixOnlineLyricDebugScreen(
                                 onClick = { viewModel.saveCurrentSongMatchOverride() },
                                 modifier = Modifier.weight(1f)
                             ) {
-                                Text("保存到缓存")
+                                Text(stringResource(R.string.online_lyric_debug_save))
                             }
                             Button(
                                 onClick = { viewModel.clearCurrentSongMatchOverride() },
                                 modifier = Modifier.weight(1f)
                             ) {
-                                Text("清除自定义")
+                                Text(stringResource(R.string.online_lyric_debug_clear_custom))
                             }
                         }
                     }
                 }
             }
-            item { SmallTitle(text = "实时歌词状态") }
+            item { SmallTitle(text = stringResource(R.string.online_lyric_debug_live_status)) }
             item {
                 Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
                     Column(modifier = Modifier.padding(16.dp)) {
-                        Text("歌词来源: ${liveLyric?.apiPath ?: "—"} / ${liveLyric?.sourceApp?.ifBlank { "—" } ?: "—"}")
-                        Text("当前歌词: ${liveLyric?.lyric?.ifBlank { "(空)" } ?: "—"}", color = MiuixTheme.colorScheme.primary)
-                        Text("播放应用: ${mediaInfo?.packageName ?: "—"}", color = MiuixTheme.colorScheme.onSurfaceSecondary)
-                        Text("播放状态: ${if (isPlaying) "▶ 播放中" else "⏸ 暂停"}")
+                        Text(
+                            stringResource(
+                                R.string.online_lyric_debug_lyric_source_fmt,
+                                liveLyric?.apiPath ?: stringResource(R.string.online_lyric_debug_dash),
+                                liveLyric?.sourceApp?.ifBlank { stringResource(R.string.online_lyric_debug_dash) } ?: stringResource(R.string.online_lyric_debug_dash)
+                            )
+                        )
+                        Text(
+                            stringResource(
+                                R.string.online_lyric_debug_current_lyric_fmt,
+                                liveLyric?.lyric?.ifBlank { stringResource(R.string.online_lyric_debug_empty) } ?: stringResource(R.string.online_lyric_debug_dash)
+                            ),
+                            color = MiuixTheme.colorScheme.primary
+                        )
+                        Text(stringResource(R.string.online_lyric_debug_playing_app_fmt, mediaInfo?.packageName ?: stringResource(R.string.online_lyric_debug_dash)), color = MiuixTheme.colorScheme.onSurfaceSecondary)
+                        Text(
+                            stringResource(
+                                R.string.online_lyric_debug_play_state_fmt,
+                                if (isPlaying) stringResource(R.string.online_lyric_debug_state_playing) else stringResource(R.string.online_lyric_debug_state_paused)
+                            )
+                        )
                     }
                 }
             }
             if (showPrioritySection) {
-                item { SmallTitle(text = "在线歌词优先级") }
+                item { SmallTitle(text = stringResource(R.string.online_lyric_debug_priority)) }
                 item {
                     Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
                         Column(modifier = Modifier.padding(16.dp)) {
@@ -182,46 +208,57 @@ fun MiuixOnlineLyricDebugScreen(
                                 Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                                     Text("${index + 1}. ${provider.displayName(context)}", modifier = Modifier.weight(1f))
                                     IconButton(onClick = { viewModel.moveProvider(provider, -1) }, enabled = index > 0) {
-                                        androidx.compose.material3.Icon(Icons.Default.KeyboardArrowUp, contentDescription = "上移")
+                                        androidx.compose.material3.Icon(Icons.Default.KeyboardArrowUp, contentDescription = stringResource(R.string.online_lyric_debug_move_up))
                                     }
                                     IconButton(onClick = { viewModel.moveProvider(provider, 1) }, enabled = index < providerOrder.lastIndex) {
-                                        androidx.compose.material3.Icon(Icons.Default.KeyboardArrowDown, contentDescription = "下移")
+                                        androidx.compose.material3.Icon(Icons.Default.KeyboardArrowDown, contentDescription = stringResource(R.string.online_lyric_debug_move_down))
                                     }
                                 }
                             }
                             Button(onClick = { viewModel.resetProviderOrder() }) {
                                 androidx.compose.material3.Icon(Icons.Default.Refresh, contentDescription = null)
                                 Spacer(modifier = Modifier.width(8.dp))
-                                Text("恢复默认顺序")
+                                Text(stringResource(R.string.online_lyric_debug_reset_order))
                             }
                         }
                     }
                 }
             }
-            item { SmallTitle(text = "获取歌词") }
+            item { SmallTitle(text = stringResource(R.string.online_lyric_debug_fetch)) }
             item {
                 Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
                     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Button(onClick = { viewModel.fetchLyrics() }, enabled = !isFetching, modifier = Modifier.fillMaxWidth()) {
-                            Text(if (isFetching) "获取中..." else "优先使用缓存获取歌词")
+                            Text(if (isFetching) stringResource(R.string.online_lyric_debug_fetching) else stringResource(R.string.online_lyric_debug_fetch_cached))
                         }
                         Button(
                             onClick = { viewModel.fetchLyrics(forceRefresh = true) },
                             enabled = !isFetching,
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            Text("忽略缓存并强制联网刷新")
+                            Text(stringResource(R.string.online_lyric_debug_force_refresh))
                         }
                         error?.let { Text(it, color = MiuixTheme.colorScheme.error) }
                         Text(
                             if (useSmartSelection) {
-                                "获取模式: 智能获取"
+                                stringResource(R.string.online_lyric_debug_fetch_mode_smart)
                             } else {
-                                "Provider 顺序: ${providerOrder.joinToString(" > ") { it.displayName(context) }}"
+                                stringResource(R.string.online_lyric_debug_provider_order_fmt, providerOrder.joinToString(" > ") { it.displayName(context) })
                             }
                         )
-                        Text("标题清洗兜底: ${if (usedCleanTitleFallback) "已触发" else "未触发"}")
-                        Text("当前实际查询: ${effectiveQuery.first.ifBlank { "无" }} / ${effectiveQuery.second.ifBlank { "无" }}")
+                        Text(
+                            stringResource(
+                                R.string.online_lyric_debug_title_fallback_fmt,
+                                if (usedCleanTitleFallback) stringResource(R.string.online_lyric_debug_triggered) else stringResource(R.string.online_lyric_debug_not_triggered)
+                            )
+                        )
+                        Text(
+                            stringResource(
+                                R.string.online_lyric_debug_effective_query_fmt,
+                                effectiveQuery.first.ifBlank { stringResource(R.string.online_lyric_debug_none) },
+                                effectiveQuery.second.ifBlank { stringResource(R.string.online_lyric_debug_none) }
+                            )
+                        )
                         attempts.forEach { attempt ->
                             val result = attempt.result
                             Column(
@@ -230,18 +267,30 @@ fun MiuixOnlineLyricDebugScreen(
                                     .clickable(enabled = result != null) { viewModel.openAttempt(attempt) }
                                     .padding(vertical = 6.dp)
                             ) {
-                                Text("${if (result == selectedResult) "★ " else ""}${attempt.provider.displayName(context)} (${attempt.durationMs}ms)")
+                                Text(
+                                    stringResource(
+                                        R.string.online_lyric_debug_attempt_header_fmt,
+                                        if (result == selectedResult) stringResource(R.string.online_lyric_debug_selected_prefix) else "",
+                                        attempt.provider.displayName(context),
+                                        attempt.durationMs
+                                    )
+                                )
                                 Text(
                                     when {
-                                        result == null -> "无可用结果"
-                                        result.error != null -> "错误: ${result.error}"
-                                        else -> "${result.api} / ${result.score}分 / ${if (result.hasSyllable) "逐字" else "LRC或文本"}"
+                                        result == null -> stringResource(R.string.online_lyric_debug_no_result)
+                                        result.error != null -> stringResource(R.string.online_lyric_debug_error_fmt, result.error)
+                                        else -> stringResource(
+                                            R.string.online_lyric_debug_result_summary_fmt,
+                                            result.api,
+                                            result.score,
+                                            if (result.hasSyllable) stringResource(R.string.online_lyric_debug_result_syllable) else stringResource(R.string.online_lyric_debug_result_lrc_or_text)
+                                        )
                                     },
                                     color = MiuixTheme.colorScheme.onSurfaceSecondary,
                                     fontSize = 13.sp
                                 )
                                 if (result != null && result.error == null) {
-                                    Text("点击查看完整结果", color = MiuixTheme.colorScheme.primary, fontSize = 12.sp)
+                                    Text(stringResource(R.string.online_lyric_debug_tap_for_full_result), color = MiuixTheme.colorScheme.primary, fontSize = 12.sp)
                                 }
                             }
                         }
@@ -251,7 +300,7 @@ fun MiuixOnlineLyricDebugScreen(
             item {
                 Spacer(modifier = Modifier.height(24.dp))
                 Button(onClick = onBack, modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
-                    Text("返回")
+                    Text(stringResource(R.string.online_lyric_debug_back))
                 }
             }
         }
@@ -259,18 +308,20 @@ fun MiuixOnlineLyricDebugScreen(
         dialogAttempt?.let { attempt ->
             val result = attempt.result
             MiuixBlurDialog(
-                title = "${attempt.provider.displayName(context)} 最终结果",
+                title = stringResource(R.string.online_lyric_debug_attempt_title_fmt, attempt.provider.displayName(context)),
                 show = true,
                 onDismissRequest = { viewModel.closeDialog() }
             ) {
                 Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
-                    Text("耗时: ${attempt.durationMs}ms")
+                    Text(stringResource(R.string.online_lyric_debug_duration_fmt, attempt.durationMs))
                     if (attempt.usedCleanTitleFallback) {
-                        Text("本次使用了清洗标题兜底", color = MiuixTheme.colorScheme.primary)
+                        Text(stringResource(R.string.online_lyric_debug_clean_title_used), color = MiuixTheme.colorScheme.primary)
                     }
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = result?.error?.let { "错误: $it" } ?: result?.lyrics ?: "无可用结果",
+                        text = result?.error?.let { stringResource(R.string.online_lyric_debug_error_fmt, it) }
+                            ?: result?.lyrics
+                            ?: stringResource(R.string.online_lyric_debug_no_result),
                         modifier = Modifier
                             .fillMaxWidth()
                             .heightIn(min = 120.dp, max = 360.dp)
@@ -287,14 +338,14 @@ fun MiuixOnlineLyricDebugScreen(
                                 enabled = !isFetching,
                                 modifier = Modifier.weight(1f)
                             ) {
-                                Text("选中这个结果")
+                                Text(stringResource(R.string.online_lyric_debug_select_result))
                             }
                         }
                         Button(
                             onClick = { viewModel.closeDialog() },
                             modifier = Modifier.weight(1f)
                         ) {
-                            Text("关闭")
+                            Text(stringResource(R.string.online_lyric_debug_close))
                         }
                     }
                 }

@@ -45,11 +45,14 @@ import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.islandlyrics.R
 import com.example.islandlyrics.data.ParserRuleHelper
 import com.example.islandlyrics.data.lyric.OnlineLyricProvider
 import com.example.islandlyrics.feature.onlinelyricdebug.OnlineLyricDebugViewModel
@@ -62,7 +65,7 @@ fun OnlineLyricDebugScreen(
     viewModel: OnlineLyricDebugViewModel = viewModel()
 ) {
     val scrollState = rememberScrollState()
-    val context = androidx.compose.ui.platform.LocalContext.current
+    val context = LocalContext.current
     val mediaInfo by viewModel.liveMetadata.observeAsState()
     val liveProgress by viewModel.liveProgress.observeAsState()
     val liveLyric by viewModel.liveLyric.observeAsState()
@@ -100,10 +103,10 @@ fun OnlineLyricDebugScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("在线歌词调试") },
+                title = { Text(stringResource(R.string.online_lyric_debug_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.online_lyric_debug_back))
                     }
                 },
                 colors = neutralMaterialTopBarColors()
@@ -119,28 +122,32 @@ fun OnlineLyricDebugScreen(
             verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
             Spacer(modifier = Modifier.height(1.dp))
-            DebugInfoCard(title = "当前播放音乐") {
-                Text("歌曲: ${mediaInfo?.title ?: "无"}")
-                Text("歌手: ${mediaInfo?.artist ?: "无"}")
-                Text("匹配歌名: ${effectiveQuery.first.ifBlank { "无" }}")
-                Text("匹配歌手: ${effectiveQuery.second.ifBlank { "无" }}")
+            DebugInfoCard(title = stringResource(R.string.online_lyric_debug_now_playing)) {
+                Text(stringResource(R.string.online_lyric_debug_song_fmt, mediaInfo?.title ?: stringResource(R.string.online_lyric_debug_none)))
+                Text(stringResource(R.string.online_lyric_debug_artist_fmt, mediaInfo?.artist ?: stringResource(R.string.online_lyric_debug_none)))
+                Text(stringResource(R.string.online_lyric_debug_match_title_fmt, effectiveQuery.first.ifBlank { stringResource(R.string.online_lyric_debug_none) }))
+                Text(stringResource(R.string.online_lyric_debug_match_artist_fmt, effectiveQuery.second.ifBlank { stringResource(R.string.online_lyric_debug_none) }))
                 Text(querySourceLabel, color = MaterialTheme.colorScheme.secondary)
                 cacheStatus?.let {
                     Text(it, color = MaterialTheme.colorScheme.tertiary)
                 }
                 Text(
-                    "播放时间: ${formatTime(liveProgress?.position ?: 0)} / ${formatTime(liveProgress?.duration ?: 0)}",
+                    stringResource(
+                        R.string.online_lyric_debug_playback_time_fmt,
+                        formatTime(liveProgress?.position ?: 0),
+                        formatTime(liveProgress?.duration ?: 0)
+                    ),
                     color = MaterialTheme.colorScheme.primary,
                     fontFamily = FontFamily.Monospace,
                     fontSize = 14.sp
                 )
             }
 
-            DebugInfoCard(title = "当前歌曲在线匹配") {
+            DebugInfoCard(title = stringResource(R.string.online_lyric_debug_current_match)) {
                 OutlinedTextField(
                     value = customMatchTitle,
                     onValueChange = viewModel::updateCustomMatchTitle,
-                    label = { Text("自定义匹配歌名") },
+                    label = { Text(stringResource(R.string.online_lyric_debug_custom_title)) },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true
                 )
@@ -148,7 +155,7 @@ fun OnlineLyricDebugScreen(
                 OutlinedTextField(
                     value = customMatchArtist,
                     onValueChange = viewModel::updateCustomMatchArtist,
-                    label = { Text("自定义匹配歌手") },
+                    label = { Text(stringResource(R.string.online_lyric_debug_custom_artist)) },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true
                 )
@@ -161,51 +168,76 @@ fun OnlineLyricDebugScreen(
                         onClick = { viewModel.saveCurrentSongMatchOverride() },
                         modifier = Modifier.weight(1f)
                     ) {
-                        Text("保存到缓存")
+                        Text(stringResource(R.string.online_lyric_debug_save))
                     }
                     OutlinedButton(
                         onClick = { viewModel.clearCurrentSongMatchOverride() },
                         modifier = Modifier.weight(1f)
                     ) {
-                        Text("清除自定义")
+                        Text(stringResource(R.string.online_lyric_debug_clear_custom))
                     }
                 }
             }
 
-            DebugInfoCard(title = "实时歌词状态") {
-                Text("歌词来源: ${liveLyric?.apiPath ?: "—"} / ${liveLyric?.sourceApp?.ifBlank { "—" } ?: "—"}")
-                Text("当前歌词: ${liveLyric?.lyric?.ifBlank { "(空)" } ?: "—"}", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                Text("播放应用: ${mediaInfo?.packageName ?: "—"}", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp, fontFamily = FontFamily.Monospace)
-                Text("播放状态: ${if (isPlaying) "▶ 播放中" else "⏸ 暂停"}", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+            DebugInfoCard(title = stringResource(R.string.online_lyric_debug_live_status)) {
+                Text(
+                    stringResource(
+                        R.string.online_lyric_debug_lyric_source_fmt,
+                        liveLyric?.apiPath ?: stringResource(R.string.online_lyric_debug_dash),
+                        liveLyric?.sourceApp?.ifBlank { stringResource(R.string.online_lyric_debug_dash) } ?: stringResource(R.string.online_lyric_debug_dash)
+                    )
+                )
+                Text(
+                    stringResource(
+                        R.string.online_lyric_debug_current_lyric_fmt,
+                        liveLyric?.lyric?.ifBlank { stringResource(R.string.online_lyric_debug_empty) } ?: stringResource(R.string.online_lyric_debug_dash)
+                    ),
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp
+                )
+                Text(
+                    stringResource(R.string.online_lyric_debug_playing_app_fmt, mediaInfo?.packageName ?: stringResource(R.string.online_lyric_debug_dash)),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontSize = 12.sp,
+                    fontFamily = FontFamily.Monospace
+                )
+                Text(
+                    stringResource(
+                        R.string.online_lyric_debug_play_state_fmt,
+                        if (isPlaying) stringResource(R.string.online_lyric_debug_state_playing) else stringResource(R.string.online_lyric_debug_state_paused)
+                    ),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontSize = 12.sp
+                )
             }
 
             if (showPrioritySection) {
-                DebugInfoCard(title = "在线歌词优先级") {
+                DebugInfoCard(title = stringResource(R.string.online_lyric_debug_priority)) {
                     providerOrder.forEachIndexed { index, provider ->
                         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                             Text("${index + 1}. ${provider.displayName(context)}", modifier = Modifier.weight(1f))
                             IconButton(onClick = { viewModel.moveProvider(provider, -1) }, enabled = index > 0) {
-                                Icon(Icons.Default.KeyboardArrowUp, contentDescription = "上移")
+                                Icon(Icons.Default.KeyboardArrowUp, contentDescription = stringResource(R.string.online_lyric_debug_move_up))
                             }
                             IconButton(onClick = { viewModel.moveProvider(provider, 1) }, enabled = index < providerOrder.lastIndex) {
-                                Icon(Icons.Default.KeyboardArrowDown, contentDescription = "下移")
+                                Icon(Icons.Default.KeyboardArrowDown, contentDescription = stringResource(R.string.online_lyric_debug_move_down))
                             }
                         }
                     }
                     TextButton(onClick = { viewModel.resetProviderOrder() }) {
                         Icon(Icons.Default.Refresh, contentDescription = null)
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("恢复默认顺序")
+                        Text(stringResource(R.string.online_lyric_debug_reset_order))
                     }
                 }
             }
 
-            DebugInfoCard(title = "获取歌词") {
+            DebugInfoCard(title = stringResource(R.string.online_lyric_debug_fetch)) {
                 Button(onClick = { viewModel.fetchLyrics() }, enabled = !isFetching, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.filledTonalButtonColors()) {
                     if (isFetching) {
                         CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
                     } else {
-                        Text("优先使用缓存获取歌词")
+                        Text(stringResource(R.string.online_lyric_debug_fetch_cached))
                     }
                 }
                 Spacer(modifier = Modifier.height(8.dp))
@@ -214,19 +246,33 @@ fun OnlineLyricDebugScreen(
                     enabled = !isFetching,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("忽略缓存并强制联网刷新")
+                    Text(stringResource(R.string.online_lyric_debug_force_refresh))
                 }
                 error?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(top = 8.dp)) }
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
                     if (useSmartSelection) {
-                        "获取模式: 智能获取"
+                        stringResource(R.string.online_lyric_debug_fetch_mode_smart)
                     } else {
-                        "Provider 顺序: ${providerOrder.joinToString(" > ") { it.displayName(context) }}"
+                        stringResource(
+                            R.string.online_lyric_debug_provider_order_fmt,
+                            providerOrder.joinToString(" > ") { it.displayName(context) }
+                        )
                     }
                 )
-                Text("标题清洗兜底: ${if (usedCleanTitleFallback) "已触发" else "未触发"}")
-                Text("当前实际查询: ${effectiveQuery.first.ifBlank { "无" }} / ${effectiveQuery.second.ifBlank { "无" }}")
+                Text(
+                    stringResource(
+                        R.string.online_lyric_debug_title_fallback_fmt,
+                        if (usedCleanTitleFallback) stringResource(R.string.online_lyric_debug_triggered) else stringResource(R.string.online_lyric_debug_not_triggered)
+                    )
+                )
+                Text(
+                    stringResource(
+                        R.string.online_lyric_debug_effective_query_fmt,
+                        effectiveQuery.first.ifBlank { stringResource(R.string.online_lyric_debug_none) },
+                        effectiveQuery.second.ifBlank { stringResource(R.string.online_lyric_debug_none) }
+                    )
+                )
                 Spacer(modifier = Modifier.height(8.dp))
                 attempts.forEach { attempt ->
                     val result = attempt.result
@@ -237,20 +283,33 @@ fun OnlineLyricDebugScreen(
                         )
                     ) {
                         Column(modifier = Modifier.padding(14.dp)) {
-                            Text("${if (result == selectedResult) "★ " else ""}${attempt.provider.displayName(context)} (${attempt.durationMs}ms)", fontWeight = FontWeight.SemiBold)
+                            Text(
+                                stringResource(
+                                    R.string.online_lyric_debug_attempt_header_fmt,
+                                    if (result == selectedResult) stringResource(R.string.online_lyric_debug_selected_prefix) else "",
+                                    attempt.provider.displayName(context),
+                                    attempt.durationMs
+                                ),
+                                fontWeight = FontWeight.SemiBold
+                            )
                             if (attempt.usedCleanTitleFallback) {
-                                Text("使用清洗标题重试", color = MaterialTheme.colorScheme.tertiary)
+                                Text(stringResource(R.string.online_lyric_debug_retry_clean_title), color = MaterialTheme.colorScheme.tertiary)
                             }
                             Text(
                                 when {
-                                    result == null -> "无可用结果"
-                                    result.error != null -> "错误: ${result.error}"
-                                    else -> "${result.api} / ${result.score}分 / ${if (result.hasSyllable) "逐字" else "LRC或文本"}"
+                                    result == null -> stringResource(R.string.online_lyric_debug_no_result)
+                                    result.error != null -> stringResource(R.string.online_lyric_debug_error_fmt, result.error)
+                                    else -> stringResource(
+                                        R.string.online_lyric_debug_result_summary_fmt,
+                                        result.api,
+                                        result.score,
+                                        if (result.hasSyllable) stringResource(R.string.online_lyric_debug_result_syllable) else stringResource(R.string.online_lyric_debug_result_lrc_or_text)
+                                    )
                                 },
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             if (result != null && result.error == null) {
-                                Text("点击查看完整结果", color = MaterialTheme.colorScheme.primary, fontSize = 12.sp)
+                                Text(stringResource(R.string.online_lyric_debug_tap_for_full_result), color = MaterialTheme.colorScheme.primary, fontSize = 12.sp)
                             }
                         }
                     }
@@ -259,7 +318,7 @@ fun OnlineLyricDebugScreen(
             }
 
             OutlinedButton(onClick = onBack, modifier = Modifier.fillMaxWidth()) {
-                Text("返回")
+                Text(stringResource(R.string.online_lyric_debug_back))
             }
             Spacer(modifier = Modifier.height(24.dp))
         }
@@ -269,16 +328,18 @@ fun OnlineLyricDebugScreen(
         val result = attempt.result
         AlertDialog(
             onDismissRequest = { viewModel.closeDialog() },
-            title = { Text("${attempt.provider.displayName(context)} 最终结果") },
+            title = { Text(stringResource(R.string.online_lyric_debug_attempt_title_fmt, attempt.provider.displayName(context))) },
             text = {
                 Column {
-                    Text("耗时: ${attempt.durationMs}ms")
+                    Text(stringResource(R.string.online_lyric_debug_duration_fmt, attempt.durationMs))
                     if (attempt.usedCleanTitleFallback) {
-                        Text("本次使用了清洗标题兜底", color = MaterialTheme.colorScheme.tertiary)
+                        Text(stringResource(R.string.online_lyric_debug_clean_title_used), color = MaterialTheme.colorScheme.tertiary)
                     }
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = result?.error?.let { "错误: $it" } ?: result?.lyrics ?: "无可用结果",
+                        text = result?.error?.let { stringResource(R.string.online_lyric_debug_error_fmt, it) }
+                            ?: result?.lyrics
+                            ?: stringResource(R.string.online_lyric_debug_no_result),
                         modifier = Modifier
                             .fillMaxWidth()
                             .heightIn(min = 120.dp, max = 360.dp)
@@ -291,13 +352,13 @@ fun OnlineLyricDebugScreen(
             confirmButton = {
                 if (canSelectDialogResult) {
                     TextButton(onClick = { viewModel.selectAttempt(attempt) }, enabled = !isFetching) {
-                        Text("选中这个结果")
+                        Text(stringResource(R.string.online_lyric_debug_select_result))
                     }
                 }
             },
             dismissButton = {
                 TextButton(onClick = { viewModel.closeDialog() }) {
-                    Text("关闭")
+                    Text(stringResource(R.string.online_lyric_debug_close))
                 }
             }
         )
