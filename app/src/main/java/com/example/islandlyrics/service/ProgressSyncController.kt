@@ -11,7 +11,6 @@ import android.util.Log
 import com.example.islandlyrics.core.logging.AppLogger
 import com.example.islandlyrics.data.LyricRepository
 import com.example.islandlyrics.data.lyric.OnlineLyricFetcher
-import kotlin.math.abs
 
 class ProgressSyncController(
     private val handler: Handler,
@@ -20,13 +19,6 @@ class ProgressSyncController(
     private val mediaSessionManagerProvider: () -> MediaSessionManager?,
     private val mediaComponentProvider: () -> ComponentName?
 ) {
-    private data class ExternalProgressHint(
-        val packageName: String,
-        val position: Long,
-        val duration: Long,
-        val receivedAtMs: Long
-    )
-
     private var isRunning = false
     private var currentPosition = 0L
     private var duration = 0L
@@ -34,7 +26,6 @@ class ProgressSyncController(
     private var consecutiveResolveMisses = 0
     private var lastResolvedControllerKey: String? = null
     private var lastRecheckRequestAtMs = 0L
-    private var externalProgressHint: ExternalProgressHint? = null
 
     private val updateTask = object : Runnable {
         private var logCounter = 0
@@ -96,24 +87,6 @@ class ProgressSyncController(
         consecutiveResolveMisses = 0
         lastResolvedControllerKey = null
         repo.updateProgress(0L, duration)
-    }
-
-    fun syncExternalProgress(packageName: String, position: Long, duration: Long) {
-        if (packageName.isBlank() || duration <= 0L) return
-
-        externalProgressHint = ExternalProgressHint(
-            packageName = packageName,
-            position = position.coerceIn(0L, duration),
-            duration = duration,
-            receivedAtMs = SystemClock.elapsedRealtime()
-        )
-
-        if (isRunning) {
-            handler.post {
-                val metadata = repo.liveMetadata.value
-                maybeApplyExternalProgress(metadata, shouldLog = false)
-            }
-        }
     }
 
     private fun updateCurrentLyricLine(lines: List<OnlineLyricFetcher.LyricLine>) {
@@ -198,9 +171,8 @@ class ProgressSyncController(
                 }
             } else {
                 consecutiveResolveMisses++
-                val usedExternalFallback = maybeApplyExternalProgress(currentMetadata, shouldLog)
                 maybeTriggerSessionRecheck(currentMetadata?.packageName, shouldLog)
-                if (shouldLog && !usedExternalFallback) {
+                if (shouldLog) {
                     AppLogger.getInstance().log(TAG, "⚠️ No matching active MediaController found")
                 }
             }
@@ -245,37 +217,6 @@ class ProgressSyncController(
         return controller
     }
 
-    private fun maybeApplyExternalProgress(
-        currentMetadata: LyricRepository.MediaInfo?,
-        shouldLog: Boolean
-    ): Boolean {
-        val hint = externalProgressHint ?: return false
-        val targetPackage = currentMetadata?.packageName ?: return false
-        if (hint.packageName != targetPackage) return false
-
-        val ageMs = SystemClock.elapsedRealtime() - hint.receivedAtMs
-        if (ageMs > EXTERNAL_PROGRESS_TTL_MS) return false
-
-        val expectedDuration = currentMetadata.duration.takeIf { it > 0L } ?: hint.duration
-        if (currentMetadata.duration > 0L && hint.duration > 0L &&
-            abs(currentMetadata.duration - hint.duration) > EXTERNAL_DURATION_TOLERANCE_MS
-        ) {
-            return false
-        }
-
-        currentPosition = hint.position.coerceIn(0L, expectedDuration)
-        duration = expectedDuration
-        repo.updateProgress(currentPosition, duration)
-
-        if (shouldLog) {
-            AppLogger.getInstance().log(
-                TAG,
-                "🩹 Applied external progress fallback [$targetPackage]: ${currentPosition}ms / ${duration}ms"
-            )
-        }
-        return true
-    }
-
     private fun maybeTriggerSessionRecheck(targetPackage: String?, shouldLog: Boolean) {
         if (targetPackage.isNullOrBlank()) return
         if (consecutiveResolveMisses < RECHECK_THRESHOLD) return
@@ -312,7 +253,5 @@ class ProgressSyncController(
         private const val TAG = "ProgressSyncController"
         private const val RECHECK_THRESHOLD = 5
         private const val RECHECK_COOLDOWN_MS = 1_500L
-        private const val EXTERNAL_PROGRESS_TTL_MS = 3_000L
-        private const val EXTERNAL_DURATION_TOLERANCE_MS = 5_000L
     }
 }

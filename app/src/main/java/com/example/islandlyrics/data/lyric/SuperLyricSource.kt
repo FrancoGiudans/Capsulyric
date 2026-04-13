@@ -1,26 +1,25 @@
 package com.example.islandlyrics.data.lyric
 
 import android.content.Context
-import com.example.islandlyrics.core.logging.AppLogger
-import com.example.islandlyrics.service.MediaMonitorService
-import com.example.islandlyrics.data.ParserRuleHelper
-import com.example.islandlyrics.data.LyricRepository
-import android.media.MediaMetadata
 import android.os.Handler
 import android.os.Looper
-import com.hchen.superlyricapi.ISuperLyric
+import com.example.islandlyrics.core.logging.AppLogger
+import com.example.islandlyrics.data.LyricRepository
+import com.example.islandlyrics.data.ParserRuleHelper
+import com.hchen.superlyricapi.ISuperLyricReceiver
 import com.hchen.superlyricapi.SuperLyricData
-import com.hchen.superlyricapi.SuperLyricTool
+import com.hchen.superlyricapi.SuperLyricHelper
+import com.hchen.superlyricapi.SuperLyricLine
 
 /**
  * SuperLyricSource
  *
- * Handles the SuperLyric Xposed-module lyric push path.
+ * Handles the SuperLyric Xposed-module lyric push path on the 3.x API.
  * Responsibilities:
- *  - Register / unregister the ISuperLyric AIDL stub
+ *  - Register / unregister the ISuperLyricReceiver AIDL stub
  *  - Detect song changes from incoming SuperLyricData and immediately update
  *    metadata + album art (instead of waiting for a MediaSession callback)
- *  - Convert EnhancedLRCData (word-level) into LyricLine and push to the
+ *  - Convert SuperLyricLine / SuperLyricWord (word-level) into LyricLine and push to the
  *    repository, so the online-lyric fetch can be skipped when data is already
  *    available
  *  - Delegate online-lyric fetching to [OnlineLyricSource] when needed
@@ -29,32 +28,55 @@ import com.hchen.superlyricapi.SuperLyricTool
  */
 class SuperLyricSource(
     private val context: Context,
-    private val onlineLyricSource: OnlineLyricSource,
-    private val onProgressHint: (packageName: String, position: Long, duration: Long) -> Unit = { _, _, _ -> }
+    private val onlineLyricSource: OnlineLyricSource
 ) {
     private val mainHandler = Handler(Looper.getMainLooper())
+    private var started = false
+    private var receiverRegistered = false
 
-    // Track the last song identity to detect genuine song changes
-    private var lastPackageName = ""
-    private var lastTitle = ""
-    private var lastArtist = ""
     // Deduplicate consecutive identical lyric lines
     private var lastLyric = ""
 
     // Cache app-display-names to avoid repeated PackageManager IPC
     private val appNameCache = HashMap<String, String>()
 
-    // ── ISuperLyric AIDL stub ─────────────────────────────────────────────────
+    private val registerReceiverRunnable = object : Runnable {
+        override fun run() {
+            if (!started || receiverRegistered) return
 
-    private val stub = object : ISuperLyric.Stub() {
+            try {
+                SuperLyricHelper.registerReceiver(stub)
+                receiverRegistered = true
+                AppLogger.getInstance().log(TAG, "SuperLyricSource started — receiver registered")
+            } catch (t: IllegalStateException) {
+                AppLogger.getInstance().w(
+                    TAG,
+                    "SuperLyric service unavailable, retrying in ${REGISTER_RETRY_DELAY_MS}ms: ${t.message}"
+                )
+                mainHandler.postDelayed(this, REGISTER_RETRY_DELAY_MS)
+            } catch (t: Throwable) {
+                AppLogger.getInstance().e(TAG, "Failed to register SuperLyric receiver", t)
+            }
+        }
+    }
 
-        override fun onSuperLyric(data: SuperLyricData?) {
+    // ── ISuperLyricReceiver AIDL stub ─────────────────────────────────────────
+
+    private val stub = object : ISuperLyricReceiver.Stub() {
+
+        override fun onLyric(publisher: String?, data: SuperLyricData?) {
             if (data == null) {
-                AppLogger.getInstance().d(TAG, "onSuperLyric: null data — ignored")
+                AppLogger.getInstance().d(TAG, "onLyric: null data — ignored")
                 return
             }
 
-            val pkg  = data.packageName
+            val liveMeta = LyricRepository.getInstance().liveMetadata.value
+            val pkg = publisher?.takeIf { it.isNotBlank() } ?: liveMeta?.packageName.orEmpty()
+            if (pkg.isBlank()) {
+                AppLogger.getInstance().d(TAG, "onLyric: publisher missing and no active session — ignored")
+                return
+            }
+
             val rule = ParserRuleHelper.getRuleForPackage(context, pkg)
                        ?: ParserRuleHelper.createDefaultRule(pkg)
 
@@ -64,22 +86,19 @@ class SuperLyricSource(
             }
 
             // ── Phase 1: Verify song identity (rely entirely on MediaMonitorService for actual metadata/album art) ──
-            val liveMeta = LyricRepository.getInstance().liveMetadata.value
             val liveTitle = liveMeta?.title ?: ""
             val liveArtist = liveMeta?.artist ?: ""
             val livePkg = liveMeta?.packageName ?: ""
 
-            // What did SuperLyric give us?
-            val meta = data.mediaMetadata
-            val providedTitle = if (data.isExistMediaMetadata) meta?.getString(MediaMetadata.METADATA_KEY_TITLE) ?: "" else ""
-            val providedArtist = if (data.isExistMediaMetadata) meta?.getString(MediaMetadata.METADATA_KEY_ARTIST) ?: "" else ""
-            
-            // If SuperLyric provided metadata, we strictly verify it against what the system MediaSession says is playing.
-            // If it doesn't match, this is a stale or cross-app lyric packet, ignore it.
-            // If SuperLyric didn't provide metadata (e.g., just sending lyrics for the current song), we allow it
-            // as long as the packageName matches our currently active session.
-            val isMatch = if (data.isExistMediaMetadata) {
-                (providedTitle.equals(liveTitle, ignoreCase = true) || liveTitle.isEmpty()) && pkg == livePkg // Allow slight artist mismatch if title & pkg match, but strict title is usually best
+            val providedTitle = data.title.orEmpty()
+            val providedArtist = data.artist.orEmpty()
+
+            // 3.x API exposes lightweight title/artist fields only.
+            // Playback state and progress remain fully owned by MediaSession.
+            val isMatch = if (providedTitle.isNotBlank() || providedArtist.isNotBlank()) {
+                val titleMatches = providedTitle.isBlank() || liveTitle.isBlank() || providedTitle.equals(liveTitle, ignoreCase = true)
+                val artistMatches = providedArtist.isBlank() || liveArtist.isBlank() || providedArtist.equals(liveArtist, ignoreCase = true)
+                pkg == livePkg && titleMatches && artistMatches
             } else {
                 pkg == livePkg
             }
@@ -89,25 +108,13 @@ class SuperLyricSource(
                 return
             }
 
-            // We are confident this lyric belongs to the currently playing song handled by MediaSession
-
-            // Sync progress if SuperLyricData carries explicit playback state.
-            // NOTE: We intentionally do NOT write isPlaying here.
-            // MediaMonitorService (via MediaSession) is the sole authority for playback state.
-            // Writing isPlaying from SuperLyric would bypass whitelist checks and
-            // re-couple the lyric source back into the playback state machine.
-            val playbackState = data.playbackState
-            if (playbackState != null) {
-                // Pass progress hints into the dedicated progress synchronizer so the
-                // repository has a single authority for progress writes.
-                val liveDuration = LyricRepository.getInstance().liveMetadata.value?.duration ?: 0L
-                if (liveDuration > 0 && playbackState.position > 0) {
-                    onProgressHint(pkg, playbackState.position, liveDuration)
-                }
-            }
-
             // ── Phase 2: handle lyric text ────────────────────────────────────
-            val lyric = data.lyric
+            val lyricLine = data.lyric
+            val lyric = lyricLine?.text.orEmpty()
+            if (lyric.isBlank()) {
+                AppLogger.getInstance().d(TAG, "[$pkg] Empty lyric line — ignored")
+                return
+            }
 
             // Instrumental / no-lyrics marker
             if (lyric.matches(".*(纯音乐|Instrumental|No lyrics|请欣赏|没有歌词).*".toRegex())) {
@@ -129,20 +136,20 @@ class SuperLyricSource(
             // MediaMonitorService which checks the actual MediaSession state and whitelist.
             LyricRepository.getInstance().updateLyric(lyric, getAppName(pkg), "SuperLyric")
 
-            // ── Phase 3: handle EnhancedLRCData (word-level syllable data) ───
-            val enhancedData = data.enhancedLRCData
-            if (!enhancedData.isNullOrEmpty()) {
-                // Convert API EnhancedLRCData into internal LyricLine list.
-                // Each word becomes a single-word "line"; aggregate by lyric
-                // boundaries if delay info is available.
-                val lines = convertEnhancedToLines(lyric, enhancedData)
+            // ── Phase 3: handle SuperLyricLine / SuperLyricWord (word-level syllable data) ──
+            val words = lyricLine?.words
+            if (!words.isNullOrEmpty()) {
+                val lines = convertLineToParsedLyrics(lyric = lyricLine)
                 LyricRepository.getInstance().updateParsedLyrics(
                     lines = lines,
                     hasSyllable = true,
                     sourceLabel = getAppName(pkg),
                     apiPath = "SuperLyric"
                 )
-                AppLogger.getInstance().d(TAG, "EnhancedLRC: ${lines.size} lines — online fetch skipped")
+                AppLogger.getInstance().d(
+                    TAG,
+                    "SuperLyric 3.x line converted: ${lines.size} line(s), words=${words.size}, translation=${data.translation != null}, secondary=${data.secondary != null}"
+                )
                 return   // No need to fetch online
             }
 
@@ -153,8 +160,8 @@ class SuperLyricSource(
             }
         }
 
-        override fun onStop(data: SuperLyricData?) {
-            AppLogger.getInstance().d(TAG, "onStop: ${data?.packageName}")
+        override fun onStop(publisher: String?, data: SuperLyricData?) {
+            AppLogger.getInstance().d(TAG, "onStop: ${publisher ?: data?.title ?: "unknown"}")
             // Only propagate the stop signal when MediaMonitorService agrees that nothing is
             // playing. If MediaSession still reports STATE_PLAYING (e.g. the module fired
             // prematurely), we skip writing to avoid overriding the authoritative state.
@@ -171,58 +178,78 @@ class SuperLyricSource(
     // ── Public lifecycle ──────────────────────────────────────────────────────
 
     fun start() {
-        SuperLyricTool.registerSuperLyric(context, stub)
-        AppLogger.getInstance().log(TAG, "SuperLyricSource started — AIDL stub registered")
+        started = true
+        mainHandler.removeCallbacks(registerReceiverRunnable)
+        mainHandler.post {
+            registerReceiverRunnable.run()
+        }
     }
 
     fun stop() {
-        SuperLyricTool.unregisterSuperLyric(context, stub)
-        reset()
-        AppLogger.getInstance().log(TAG, "SuperLyricSource stopped — AIDL stub unregistered")
+        started = false
+        mainHandler.removeCallbacks(registerReceiverRunnable)
+        mainHandler.post {
+            if (receiverRegistered) {
+                try {
+                    SuperLyricHelper.unregisterReceiver(stub)
+                } catch (t: IllegalStateException) {
+                    AppLogger.getInstance().w(TAG, "SuperLyric service unavailable during unregister: ${t.message}")
+                } catch (t: Throwable) {
+                    AppLogger.getInstance().e(TAG, "Failed to unregister SuperLyric receiver", t)
+                }
+            }
+            receiverRegistered = false
+            reset()
+            AppLogger.getInstance().log(TAG, "SuperLyricSource stopped")
+        }
     }
 
     private fun reset() {
-        lastPackageName = ""
-        lastTitle  = ""
-        lastArtist = ""
         lastLyric  = ""
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     /**
-     * Converts an [Array] of [SuperLyricData.EnhancedLRCData] syllable entries
-     * into a list of [OnlineLyricFetcher.LyricLine] objects.
-     *
-     * Each word/syllable becomes a [OnlineLyricFetcher.SyllableInfo] under a single
-     * parent line that spans the full lyric.
+     * Converts a 3.x [SuperLyricLine] and its optional companion lines into the
+     * repository format used by the existing progress/highlighting pipeline.
      */
-    private fun convertEnhancedToLines(
-        fullLyric: String,
-        words: Array<SuperLyricData.EnhancedLRCData>
+    private fun convertLineToParsedLyrics(
+        lyric: SuperLyricLine
     ): List<OnlineLyricFetcher.LyricLine> {
-        if (words.isEmpty()) return emptyList()
-
-        val startMs = words.first().startTime.toLong()
-        val endMs   = words.last().endTime.toLong()
-
-        val syllables = words.map { w ->
-            OnlineLyricFetcher.SyllableInfo(
-                startTime = w.startTime.toLong(),
-                endTime   = w.endTime.toLong(),
-                text      = w.word
-            )
+        val words = lyric.words
+        val baseStart = when {
+            lyric.startTime > 0L -> lyric.startTime
+            !words.isNullOrEmpty() -> words.first().startTime
+            else -> 0L
+        }
+        val baseEnd = when {
+            lyric.endTime > 0L -> lyric.endTime
+            !words.isNullOrEmpty() -> words.last().endTime
+            else -> baseStart
         }
 
-        val line = OnlineLyricFetcher.LyricLine(
-            startTime  = startMs,
-            endTime    = endMs,
-            text       = fullLyric.ifBlank { words.joinToString("") { it.word } },
-            syllables  = syllables
-        )
-        return listOf(line)
-    }
+        val syllables = buildList {
+            words.orEmpty().forEach { word ->
+                add(
+                    OnlineLyricFetcher.SyllableInfo(
+                        startTime = word.startTime,
+                        endTime = word.endTime,
+                        text = word.word
+                    )
+                )
+            }
+        }.takeIf { it.isNotEmpty() }
 
+        return listOf(
+            OnlineLyricFetcher.LyricLine(
+                startTime = baseStart,
+                endTime = maxOf(baseEnd, baseStart),
+                text = lyric.text.ifBlank { words.orEmpty().joinToString("") { it.word } },
+                syllables = syllables
+            )
+        )
+    }
 
     private fun getAppName(pkg: String): String {
         appNameCache[pkg]?.let { return it }
@@ -237,5 +264,6 @@ class SuperLyricSource(
 
     companion object {
         private const val TAG = "SuperLyricSource"
+        private const val REGISTER_RETRY_DELAY_MS = 5_000L
     }
 }

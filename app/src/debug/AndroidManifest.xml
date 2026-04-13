@@ -11,6 +11,10 @@
         <activity android:name=".DebugLyricActivity"
                   android:label="Debug Lyric API"
                   android:parentActivityName=".DebugCenterActivity" />
+        <activity
+            android:name="com.example.islandlyrics.feature.qqroman.QqRomanDebugActivity"
+            android:label="QQ 罗马音抓取"
+            android:parentActivityName="com.example.islandlyrics.feature.diagnostics.DiagnosticsActivity" />
 
     </application>
 </manifest>

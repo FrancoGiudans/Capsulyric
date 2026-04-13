@@ -1,4 +1,5 @@
 -keep class com.hchen.superlyricapi.** { *; }
+-dontwarn android.os.ServiceManager
 
 # Lyric Getter API (required to prevent obfuscation breaking the broadcast Parcelable)
 -keep class cn.lyric.getter.api.data.** { *; }

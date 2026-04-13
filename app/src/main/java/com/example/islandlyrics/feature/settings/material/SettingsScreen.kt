@@ -1102,7 +1102,6 @@ private fun CommunityActionItem(
     val summaryLines = buildList {
         add(item.title)
         item.summary.takeIf { it.isNotBlank() }?.let { add(it) }
-        item.actionText.takeIf { it.isNotBlank() }?.let { add(it) }
     }
 
     SettingsActionItem(
@@ -1122,6 +1121,7 @@ private fun CommunityDetailsDialog(
     val markdown = buildCommunityMarkdown(state.item)
     val textColor = MaterialTheme.colorScheme.onSurface.toArgb()
     val hasUrl = state.item.hasUrl
+    val openText = state.item.actionText.takeIf { it.isNotBlank() } ?: stringResource(R.string.community_dialog_open)
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -1151,7 +1151,7 @@ private fun CommunityDetailsDialog(
         confirmButton = {
             if (hasUrl) {
                 TextButton(onClick = onOpen) {
-                    Text(stringResource(R.string.community_dialog_open))
+                    Text(openText)
                 }
             }
         },

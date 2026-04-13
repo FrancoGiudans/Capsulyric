@@ -24,6 +24,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.islandlyrics.R
+import com.example.islandlyrics.BuildConfig
 import com.example.islandlyrics.core.platform.RomUtils
 import com.example.islandlyrics.feature.cache.CacheManagementActivity
 import com.example.islandlyrics.feature.logviewer.LogViewerActivity
@@ -76,6 +77,17 @@ fun DiagnosticsScreen(onBack: () -> Unit) {
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text("在线歌词调试")
+                }
+                if (BuildConfig.DEBUG) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Button(
+                        onClick = {
+                            launchQqRomanDebug(context)
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("QQ 罗马音抓取")
+                    }
                 }
                 Spacer(modifier = Modifier.height(8.dp))
                 Button(
@@ -255,4 +267,9 @@ fun InfoRow(label: String, value: String) {
         Text(label, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Text(value, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Medium)
     }
+}
+
+private fun launchQqRomanDebug(context: android.content.Context) {
+    val activityClass = Class.forName("com.example.islandlyrics.feature.qqroman.QqRomanDebugActivity")
+    context.startActivity(android.content.Intent(context, activityClass))
 }

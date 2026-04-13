@@ -17,6 +17,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.example.islandlyrics.R
+import com.example.islandlyrics.BuildConfig
 import com.example.islandlyrics.core.platform.RomUtils
 import com.example.islandlyrics.feature.cache.CacheManagementActivity
 import com.example.islandlyrics.feature.logviewer.LogViewerActivity
@@ -77,6 +78,15 @@ fun MiuixDiagnosticsScreen(onBack: () -> Unit) {
                             context.startActivity(android.content.Intent(context, OnlineLyricDebugActivity::class.java))
                         }
                     )
+                    if (BuildConfig.DEBUG) {
+                        SuperArrow(
+                            title = "QQ 罗马音抓取",
+                            summary = "直接抓取并完整输出 QQ 的 contentroma",
+                            onClick = {
+                                launchQqRomanDebug(context)
+                            }
+                        )
+                    }
                     SuperArrow(
                         title = stringResource(R.string.title_cache_management),
                         summary = stringResource(R.string.settings_cache_management_desc),
@@ -256,4 +266,9 @@ fun MiuixInfoRow(label: String, value: String) {
             textAlign = androidx.compose.ui.text.style.TextAlign.End
         )
     }
+}
+
+private fun launchQqRomanDebug(context: android.content.Context) {
+    val activityClass = Class.forName("com.example.islandlyrics.feature.qqroman.QqRomanDebugActivity")
+    context.startActivity(android.content.Intent(context, activityClass))
 }

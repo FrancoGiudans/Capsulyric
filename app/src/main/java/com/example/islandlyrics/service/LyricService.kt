@@ -263,10 +263,7 @@ class LyricService : Service() {
         onlineLyricSource = OnlineLyricSource(this)
         superLyricSource  = SuperLyricSource(
             context = this,
-            onlineLyricSource = onlineLyricSource,
-            onProgressHint = { packageName, position, progressDuration ->
-                progressSyncController.syncExternalProgress(packageName, position, progressDuration)
-            }
+            onlineLyricSource = onlineLyricSource
         )
         superLyricSource.start()
         AppLogger.getInstance().d(TAG, "SuperLyricSource started")

@@ -16,7 +16,6 @@ data class CommunityDialogState(
 
 fun buildCommunityMarkdown(item: CommunityFeedItem): String {
     return buildList {
-        item.summary.takeIf { it.isNotBlank() }?.let { add(it) }
         item.body.takeIf { it.isNotBlank() }?.let { add(it) }
         if (isEmpty() && item.hasUrl) {
             add(item.url)
