@@ -33,10 +33,11 @@
                 android:id="@+id/custom_expand_title"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:lineSpacingExtra="2dp"
+                android:lineSpacingExtra="3dp"
                 android:maxLines="4"
                 android:textColor="@android:color/white"
-                android:textSize="15sp" />
+                android:textSize="17sp"
+                android:textStyle="bold" />
 
             <TextView
                 android:id="@+id/custom_expand_subtitle"
@@ -48,6 +49,18 @@
                 android:textColor="#B3FFFFFF"
                 android:textSize="13sp" />
         </LinearLayout>
+
+        <ImageButton
+            android:id="@+id/custom_expand_miplay"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:layout_marginStart="8dp"
+            android:layout_gravity="top"
+            android:background="@android:color/transparent"
+            android:padding="8dp"
+            android:scaleType="centerInside"
+            android:src="@drawable/ic_miplay"
+            android:tint="@android:color/white" />
     </LinearLayout>
 
     <ImageView

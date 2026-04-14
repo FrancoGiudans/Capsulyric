@@ -56,6 +56,7 @@ class SuperIslandHandler(
     private var cachedSuperIslandNotificationStyle = "standard"
 
     private var cachedContentIntent: PendingIntent? = null
+    private var cachedMiPlayIntent: PendingIntent? = null
     private var networkCutJob: kotlinx.coroutines.Job? = null
     // Keep the blind window aligned with the working InstallerX implementation.
     // 50ms is too tight on HyperOS 3.0 / Android 16 and often expires before
@@ -70,6 +71,7 @@ class SuperIslandHandler(
             "notification_click_style" -> {
                 cachedClickStyle = p.getString(key, "default") ?: "default"
                 cachedContentIntent = createContentIntent()
+                cachedMiPlayIntent = createMiPlayIntent()
             }
             "super_island_text_color_enabled" -> cachedSuperIslandTextColorEnabled = p.getBoolean(key, false)
             "super_island_share_enabled" -> cachedSuperIslandShareEnabled = p.getBoolean(key, true)
@@ -84,6 +86,7 @@ class SuperIslandHandler(
     private fun loadPreferences() {
         cachedClickStyle = prefs.getString("notification_click_style", "default") ?: "default"
         cachedContentIntent = createContentIntent()
+        cachedMiPlayIntent = createMiPlayIntent()
         cachedSuperIslandTextColorEnabled = prefs.getBoolean("super_island_text_color_enabled", false)
         cachedSuperIslandShareEnabled = prefs.getBoolean("super_island_share_enabled", true)
         cachedSuperIslandShareFormat = prefs.getString("super_island_share_format", "format_1") ?: "format_1"
@@ -332,7 +335,6 @@ class SuperIslandHandler(
             progressPercent = progressPercent,
             hexColor = hexColor,
             showHighlightColor = showHighlightColor,
-            ringColor = ringColor,
             progressBarColor = progressBarColor,
             packageName = packageName,
             titleWithArtist = titleWithArtist
@@ -599,6 +601,23 @@ class SuperIslandHandler(
         }
     }
 
+    private fun createMiPlayIntent(): PendingIntent? {
+        return runCatching {
+            PendingIntent.getActivity(
+                context,
+                4,
+                Intent().apply {
+                    component = android.content.ComponentName(
+                        "miui.systemui.plugin",
+                        "miui.systemui.miplay.MiPlayDetailActivity"
+                    )
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                },
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+            )
+        }.getOrNull()
+    }
+
     private fun createCustomExpandRemoteViews(
         state: UIState,
         subText: String,
@@ -634,6 +653,7 @@ class SuperIslandHandler(
         views.setInt(R.id.custom_expand_prev, "setColorFilter", iconTintColor)
         views.setInt(R.id.custom_expand_play_pause, "setColorFilter", iconTintColor)
         views.setInt(R.id.custom_expand_next, "setColorFilter", iconTintColor)
+        views.setInt(R.id.custom_expand_miplay, "setColorFilter", iconTintColor)
         views.setOnClickPendingIntent(
             R.id.custom_expand_prev,
             PendingIntent.getBroadcast(
@@ -667,6 +687,7 @@ class SuperIslandHandler(
                 PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
             )
         )
+        cachedMiPlayIntent?.let { views.setOnClickPendingIntent(R.id.custom_expand_miplay, it) }
         return views
     }
 
@@ -779,7 +800,6 @@ class SuperIslandHandler(
         progressPercent: Int,
         hexColor: String,
         showHighlightColor: Boolean,
-        ringColor: String,
         progressBarColor: String,
         packageName: String,
         titleWithArtist: String
@@ -931,11 +951,6 @@ class SuperIslandHandler(
                             type = 1
                             pic = islandSmallKey
                         }
-                    }
-                    progressInfo {
-                        progress = progressPercent
-                        colorReach = ringColor
-                        colorUnReach = "#333333"
                     }
                 }
             }
