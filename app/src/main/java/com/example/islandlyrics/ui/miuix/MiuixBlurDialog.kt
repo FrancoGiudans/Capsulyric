@@ -34,7 +34,8 @@ fun MiuixBlurDialog(
 ) {
     val backdrop = LocalMiuixBlurBackdrop.current
     val blurEnabled = LocalMiuixBlurEnabled.current
-    val panelColor = MiuixTheme.colorScheme.surface.copy(alpha = 0.72f)
+    val shouldUseBlur = blurEnabled && backdrop != null
+    val panelColor = MiuixTheme.colorScheme.surface
 
     OverlayDialog(
         show = show,
@@ -53,7 +54,7 @@ fun MiuixBlurDialog(
         val panelModifier = Modifier
             .fillMaxWidth()
             .miuixSurfaceBlur(
-                enabled = blurEnabled,
+                enabled = shouldUseBlur,
                 backdrop = backdrop,
                 shape = BlurDialogShape,
                 fallbackColor = panelColor

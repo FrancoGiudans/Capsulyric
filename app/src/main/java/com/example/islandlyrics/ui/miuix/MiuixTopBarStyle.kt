@@ -6,5 +6,5 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 @Composable
 internal fun neutralMiuixTopBarColor(): Color {
-    return MiuixTheme.colorScheme.background
+    return MiuixTheme.colorScheme.surface
 }

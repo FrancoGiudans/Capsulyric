@@ -36,17 +36,19 @@ fun MiuixBlurTopAppBar(
     val backdrop = LocalMiuixBlurBackdrop.current
     val blurEnabled = LocalMiuixBlurEnabled.current
     val topBarColor = if (color == Color.Unspecified) neutralMiuixTopBarColor() else color
+    val shouldUseBlur = blurEnabled && backdrop != null
     val blurModifier = Modifier.miuixSurfaceBlur(
-        enabled = blurEnabled,
+        enabled = shouldUseBlur,
         backdrop = backdrop,
         shape = RectangleShape,
-        fallbackColor = topBarColor.copy(alpha = 0.72f)
+        fallbackColor = topBarColor,
+        surfaceVariantColor = topBarColor
     )
 
     TopAppBar(
         title = title,
         modifier = modifier.then(blurModifier),
-        color = Color.Transparent,
+        color = if (shouldUseBlur) Color.Transparent else topBarColor,
         titleColor = titleColor,
         largeTitle = largeTitle,
         largeTitleColor = largeTitleColor,
@@ -86,17 +88,19 @@ fun MiuixBlurSmallTopAppBar(
     val backdrop = LocalMiuixBlurBackdrop.current
     val blurEnabled = LocalMiuixBlurEnabled.current
     val topBarColor = if (color == Color.Unspecified) neutralMiuixTopBarColor() else color
+    val shouldUseBlur = blurEnabled && backdrop != null
     val blurModifier = Modifier.miuixSurfaceBlur(
-        enabled = blurEnabled,
+        enabled = shouldUseBlur,
         backdrop = backdrop,
         shape = RectangleShape,
-        fallbackColor = topBarColor.copy(alpha = 0.72f)
+        fallbackColor = topBarColor,
+        surfaceVariantColor = topBarColor
     )
 
     SmallTopAppBar(
         title = title,
         modifier = modifier.then(blurModifier),
-        color = Color.Transparent,
+        color = if (shouldUseBlur) Color.Transparent else topBarColor,
         titleColor = titleColor,
         subtitle = subtitle,
         subtitleColor = subtitleColor,

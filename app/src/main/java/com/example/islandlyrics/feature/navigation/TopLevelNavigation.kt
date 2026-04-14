@@ -90,10 +90,11 @@ fun MiuixTopLevelFloatingNavigationBar(
 ) {
     val backdrop = LocalMiuixBlurBackdrop.current
     val blurEnabled = LocalMiuixBlurEnabled.current
+    val shouldUseBlur = blurEnabled && backdrop != null
     val navShape = RoundedCornerShape(28.dp)
-    val navColor = MiuixTheme.colorScheme.surface.copy(alpha = 0.72f)
+    val navColor = MiuixTheme.colorScheme.surface
     val navModifier = Modifier.miuixSurfaceBlur(
-        enabled = blurEnabled,
+        enabled = shouldUseBlur,
         backdrop = backdrop,
         shape = navShape,
         fallbackColor = navColor
@@ -101,7 +102,7 @@ fun MiuixTopLevelFloatingNavigationBar(
 
     FloatingNavigationBar(
         modifier = navModifier,
-        color = Color.Transparent,
+        color = if (shouldUseBlur) Color.Transparent else navColor,
         cornerRadius = 28.dp,
         horizontalOutSidePadding = 24.dp,
         mode = FloatingNavigationBarDisplayMode.IconOnly
