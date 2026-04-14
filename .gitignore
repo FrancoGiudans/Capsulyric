@@ -1,14 +1,9 @@
 *.iml
 .gradle/
+.gradlew-user-home/
 .idea/
 .vscode/
 /local.properties
-/.idea/caches
-/.idea/libraries
-/.idea/modules.xml
-/.idea/workspace.xml
-/.idea/navEditor.xml
-/.idea/assetWizardSettings.xml
 .DS_Store
 /build/
 /captures/
@@ -16,7 +11,7 @@
 .cxx
 local.properties
 /app/build/
-/hidden-api/build/
+hidden-api/build/
 build_log*.txt
 autobuild.sh
 .kotlin/
