@@ -11,7 +11,7 @@
 .cxx
 local.properties
 /app/build/
-hidden-api/build/
+/hidden-api/build/
 build_log*.txt
 autobuild.sh
 .kotlin/
