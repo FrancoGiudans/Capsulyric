@@ -335,6 +335,7 @@ class SuperIslandHandler(
             progressPercent = progressPercent,
             hexColor = hexColor,
             showHighlightColor = showHighlightColor,
+            ringColor = ringColor,
             progressBarColor = progressBarColor,
             packageName = packageName,
             titleWithArtist = titleWithArtist
@@ -434,11 +435,6 @@ class SuperIslandHandler(
                                     type = 1
                                     pic = islandSmallKey
                                 }
-                            }
-                            progressInfo {
-                                progress = progressPercent
-                                colorReach = ringColor
-                                colorUnReach = "#333333"
                             }
                         }
                     }
@@ -800,6 +796,7 @@ class SuperIslandHandler(
         progressPercent: Int,
         hexColor: String,
         showHighlightColor: Boolean,
+        ringColor: String,
         progressBarColor: String,
         packageName: String,
         titleWithArtist: String
@@ -883,10 +880,6 @@ class SuperIslandHandler(
                     clickWithCollapse = false
                     actionBgColor = "#1A1A1A"
                     actionBgColorDark = "#1A1A1A"
-                    progressInfo {
-                        progress = progressPercent
-                        colorProgress = "#FFFFFF"
-                    }
                 }
                 addActionInfo {
                     actionIcon = cachedNextIcon?.let { createPicture("miui.focus.pic_btn_next", it) }
@@ -951,6 +944,11 @@ class SuperIslandHandler(
                             type = 1
                             pic = islandSmallKey
                         }
+                    }
+                    progressInfo {
+                        progress = progressPercent
+                        colorReach = ringColor
+                        colorUnReach = "#333333"
                     }
                 }
             }
