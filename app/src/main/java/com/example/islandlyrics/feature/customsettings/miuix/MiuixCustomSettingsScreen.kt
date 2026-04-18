@@ -3,6 +3,7 @@ package com.example.islandlyrics.feature.customsettings.miuix
 import android.app.Activity
 import com.example.islandlyrics.ui.common.NotificationPreview
 import com.example.islandlyrics.ui.common.CapsulePreview
+import com.example.islandlyrics.ui.common.OneUiCapsuleColorMode
 import com.example.islandlyrics.R
 import com.example.islandlyrics.core.theme.ThemeHelper
 import com.example.islandlyrics.core.platform.RomUtils
@@ -27,11 +28,13 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
+import androidx.compose.ui.Alignment
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.basic.*
 import top.yukonga.miuix.kmp.preference.ArrowPreference as SuperArrow
 import top.yukonga.miuix.kmp.preference.OverlayDropdownPreference as SuperDropdown
 import top.yukonga.miuix.kmp.preference.SwitchPreference as SuperSwitch
+import top.yukonga.miuix.kmp.overlay.OverlayListPopup as SuperListPopup
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.MiuixPopupUtils.Companion.MiuixPopupHost
 import com.example.islandlyrics.ui.miuix.*
@@ -71,7 +74,8 @@ fun MiuixCustomSettingsScreen(
 
     var progressColorEnabled by remember { mutableStateOf(prefs.getBoolean("progress_bar_color_enabled", false)) }
     var disableScrolling by remember { mutableStateOf(prefs.getBoolean("disable_lyric_scrolling", false)) }
-    var oneuiCapsuleColorEnabled by remember { mutableStateOf(prefs.getBoolean("oneui_capsule_color_enabled", false)) }
+    var oneuiCapsuleColorMode by remember { mutableStateOf(OneUiCapsuleColorMode.read(prefs)) }
+    var showOneUiCapsuleColorPopup by remember { mutableStateOf(false) }
 
     var superIslandEnabled by remember { mutableStateOf(prefs.getBoolean("super_island_enabled", false)) }
     var superIslandTextColorEnabled by remember { mutableStateOf(prefs.getBoolean("super_island_text_color_enabled", false)) }
@@ -155,7 +159,7 @@ fun MiuixCustomSettingsScreen(
                                 CapsulePreview(
                                     dynamicIconEnabled = if (superIslandEnabled) true else iconStyle != "disabled",
                                     iconStyle = previewIconStyle,
-                                    oneuiCapsuleColorEnabled = oneuiCapsuleColorEnabled
+                                    oneuiCapsuleColorMode = oneuiCapsuleColorMode
                                 )
                             }
                             item { Spacer(modifier = Modifier.height(16.dp)) }
@@ -171,15 +175,44 @@ fun MiuixCustomSettingsScreen(
                                         }
                                     )
                                     if (RomUtils.getRomType() == "OneUI") {
-                                        SuperSwitch(
-                                            title = stringResource(R.string.settings_oneui_capsule_color),
-                                            summary = stringResource(R.string.settings_oneui_capsule_color_desc),
-                                            checked = oneuiCapsuleColorEnabled,
-                                            onCheckedChange = {
-                                                oneuiCapsuleColorEnabled = it
-                                                prefs.edit().putBoolean("oneui_capsule_color_enabled", it).apply()
-                                            }
+                                        val oneUiColorModes = OneUiCapsuleColorMode.values
+                                        val oneUiColorModeLabels = listOf(
+                                            stringResource(R.string.oneui_capsule_color_mode_black),
+                                            stringResource(R.string.oneui_capsule_color_mode_transparent),
+                                            stringResource(R.string.oneui_capsule_color_mode_translucent_black),
+                                            stringResource(R.string.oneui_capsule_color_mode_album)
                                         )
+                                        val currentModeIndex = oneUiColorModes.indexOf(oneuiCapsuleColorMode).takeIf { it >= 0 } ?: 0
+
+                                        Box {
+                                            SuperArrow(
+                                                title = stringResource(R.string.settings_oneui_capsule_color),
+                                                summary = oneUiColorModeLabels[currentModeIndex],
+                                                onClick = { showOneUiCapsuleColorPopup = true }
+                                            )
+                                            SuperListPopup(
+                                                show = showOneUiCapsuleColorPopup,
+                                                alignment = PopupPositionProvider.Align.TopEnd,
+                                                onDismissRequest = { showOneUiCapsuleColorPopup = false }
+                                            ) {
+                                                ListPopupColumn {
+                                                    oneUiColorModeLabels.forEachIndexed { index, label ->
+                                                        DropdownImpl(
+                                                            text = label,
+                                                            optionSize = oneUiColorModeLabels.size,
+                                                            isSelected = currentModeIndex == index,
+                                                            index = index,
+                                                            onSelectedIndexChange = {
+                                                                val newMode = oneUiColorModes[index]
+                                                                oneuiCapsuleColorMode = newMode
+                                                                OneUiCapsuleColorMode.write(prefs, newMode)
+                                                                showOneUiCapsuleColorPopup = false
+                                                            }
+                                                        )
+                                                    }
+                                                }
+                                            }
+                                        }
                                     }
                                     if (isHyperOs) {
                                         if (isLiveUpdateSupported) {

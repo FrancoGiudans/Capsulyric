@@ -46,7 +46,7 @@ class LyricCapsuleHandler(
     private var cachedUseDynamicIcon = false
     private var cachedIconStyle = "classic"
     private var cachedClickStyle = "default"
-    private var cachedOneuiCapsuleColorEnabled = false
+    private var cachedOneuiCapsuleColorMode = OneUiCapsuleColorMode.BLACK
     
     private val prefChangeListener = SharedPreferences.OnSharedPreferenceChangeListener { prefs, key ->
         when (key) {
@@ -63,7 +63,10 @@ class LyricCapsuleHandler(
                 cachedClickStyle = prefs.getString(key, "default") ?: "default"
                 rebuildCachedIntents()
             }
-            "oneui_capsule_color_enabled" -> cachedOneuiCapsuleColorEnabled = prefs.getBoolean(key, false)
+            "oneui_capsule_color_enabled",
+            OneUiCapsuleColorMode.PREF_KEY -> {
+                cachedOneuiCapsuleColorMode = OneUiCapsuleColorMode.read(prefs)
+            }
         }
     }
     
@@ -74,7 +77,7 @@ class LyricCapsuleHandler(
         cachedIconStyle = prefs.getString("dynamic_icon_style", "disabled") ?: "disabled"
         cachedUseDynamicIcon = cachedIconStyle != "disabled"
         cachedClickStyle = prefs.getString("notification_click_style", "default") ?: "default"
-        cachedOneuiCapsuleColorEnabled = prefs.getBoolean("oneui_capsule_color_enabled", false)
+        cachedOneuiCapsuleColorMode = OneUiCapsuleColorMode.read(prefs)
         prefs.registerOnSharedPreferenceChangeListener(prefChangeListener)
     }
 
@@ -305,7 +308,12 @@ class LyricCapsuleHandler(
             val barColorIndeterminate = if (cachedUseAlbumColor) albumColor else COLOR_TERTIARY
 
             if (RomUtils.getRomType() == "OneUI") {
-                builder.setColor(if (cachedOneuiCapsuleColorEnabled) albumColor else android.graphics.Color.BLACK)
+                builder.setColor(
+                    OneUiCapsuleColorMode.resolveColor(
+                        mode = cachedOneuiCapsuleColorMode,
+                        albumColor = albumColor
+                    )
+                )
             } else {
                 builder.setColor(barColor)
             }

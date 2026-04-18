@@ -96,8 +96,12 @@
     <string name="cancel">取消</string>
 
     <!-- OneUI Capsule Settings -->
-    <string name="settings_oneui_capsule_color">为胶囊背景着色</string>
-    <string name="settings_oneui_capsule_color_desc">胶囊背景随专辑封面变色，关闭时为黑色背景</string>
+    <string name="settings_oneui_capsule_color">One UI 胶囊背景</string>
+    <string name="settings_oneui_capsule_color_desc">选择 One UI 实况胶囊使用的背景颜色模式</string>
+    <string name="oneui_capsule_color_mode_black">黑色</string>
+    <string name="oneui_capsule_color_mode_transparent">透明</string>
+    <string name="oneui_capsule_color_mode_translucent_black">半透明黑色</string>
+    <string name="oneui_capsule_color_mode_album">跟随专辑封面</string>
 
     <!-- 通知解析规则 -->
     <string name="parser_rule_title">解析规则</string>

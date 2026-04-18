@@ -52,9 +52,8 @@ fun MetricCard(
 fun CapsulePreview(
     dynamicIconEnabled: Boolean,
     iconStyle: String,
-    oneuiCapsuleColorEnabled: Boolean = false
+    oneuiCapsuleColorMode: String = OneUiCapsuleColorMode.BLACK
 ) {
-    val context = LocalContext.current
     val repo = remember { LyricRepository.getInstance() }
     val metadata by repo.liveMetadata.observeAsState()
     val lyricInfo by repo.liveLyric.observeAsState()
@@ -86,7 +85,13 @@ fun CapsulePreview(
     
     // Layout Constants simulating the Capsule/Island
     val pillHeight = 56.dp // Standard Island height simulation
-    val pillColor = if (oneuiCapsuleColorEnabled && extractedColor != null) extractedColor!! else Color.Black
+    val previewAlbumColor = extractedColor?.toArgb() ?: Color.Black.toArgb()
+    val pillColor = Color(
+        OneUiCapsuleColorMode.resolveColor(
+            mode = oneuiCapsuleColorMode,
+            albumColor = previewAlbumColor
+        )
+    )
     
     Box(
         modifier = Modifier

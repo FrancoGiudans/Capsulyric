@@ -3,6 +3,7 @@ package com.example.islandlyrics.feature.customsettings.material
 import android.app.Activity
 import com.example.islandlyrics.ui.common.NotificationPreview
 import com.example.islandlyrics.ui.common.CapsulePreview
+import com.example.islandlyrics.ui.common.OneUiCapsuleColorMode
 import com.example.islandlyrics.R
 import com.example.islandlyrics.core.update.UpdateChecker
 import com.example.islandlyrics.core.theme.ThemeHelper
@@ -76,6 +77,7 @@ fun CustomSettingsScreen(
     // Dialog State
     var showLanguageDialog by remember { mutableStateOf(false) }
     var showIconStyleDropdown by remember { mutableStateOf(false) }
+    var showOneUiCapsuleColorDropdown by remember { mutableStateOf(false) }
     var showPrivacyDialog by remember { mutableStateOf(false) }
 
     // Notification Action Style State
@@ -102,7 +104,7 @@ fun CustomSettingsScreen(
     var hideRecentsEnabled by remember { mutableStateOf(prefs.getBoolean("hide_recents_enabled", false)) }
     var recommendMediaAppEnabled by remember { mutableStateOf(prefs.getBoolean("recommend_media_app", true)) }
     var disableScrolling by remember { mutableStateOf(prefs.getBoolean("disable_lyric_scrolling", false)) }
-    var oneuiCapsuleColorEnabled by remember { mutableStateOf(prefs.getBoolean("oneui_capsule_color_enabled", false)) }
+    var oneuiCapsuleColorMode by remember { mutableStateOf(OneUiCapsuleColorMode.read(prefs)) }
 
     var superIslandEnabled by remember { mutableStateOf(prefs.getBoolean("super_island_enabled", false)) }
     var superIslandTextColorEnabled by remember { mutableStateOf(prefs.getBoolean("super_island_text_color_enabled", false)) }
@@ -228,7 +230,7 @@ fun CustomSettingsScreen(
                             CapsulePreview(
                                 dynamicIconEnabled = if (superIslandEnabled) true else iconStyle != "disabled",
                                 iconStyle = previewIconStyle,
-                                oneuiCapsuleColorEnabled = oneuiCapsuleColorEnabled
+                                oneuiCapsuleColorMode = oneuiCapsuleColorMode
                             )
                             Spacer(modifier = Modifier.height(16.dp))
 
@@ -243,15 +245,40 @@ fun CustomSettingsScreen(
                             )
 
                             if (RomUtils.getRomType() == "OneUI") {
-                                SettingsSwitchItem(
-                                    title = stringResource(R.string.settings_oneui_capsule_color),
-                                    subtitle = stringResource(R.string.settings_oneui_capsule_color_desc),
-                                    checked = oneuiCapsuleColorEnabled,
-                                    onCheckedChange = {
-                                        oneuiCapsuleColorEnabled = it
-                                        prefs.edit().putBoolean("oneui_capsule_color_enabled", it).apply()
-                                    }
+                                val oneUiColorModes = OneUiCapsuleColorMode.values
+                                val oneUiColorModeLabels = listOf(
+                                    stringResource(R.string.oneui_capsule_color_mode_black),
+                                    stringResource(R.string.oneui_capsule_color_mode_transparent),
+                                    stringResource(R.string.oneui_capsule_color_mode_translucent_black),
+                                    stringResource(R.string.oneui_capsule_color_mode_album)
                                 )
+                                val oneUiColorModeDisplay = oneUiColorModeLabels[
+                                    oneUiColorModes.indexOf(oneuiCapsuleColorMode).takeIf { it >= 0 } ?: 0
+                                ]
+                                Box(modifier = Modifier.fillMaxWidth()) {
+                                    SettingsTextItem(
+                                        title = stringResource(R.string.settings_oneui_capsule_color),
+                                        value = oneUiColorModeDisplay,
+                                        onClick = { showOneUiCapsuleColorDropdown = true }
+                                    )
+                                    Box(modifier = Modifier.matchParentSize().wrapContentSize(Alignment.Center)) {
+                                        DropdownMenu(
+                                            expanded = showOneUiCapsuleColorDropdown,
+                                            onDismissRequest = { showOneUiCapsuleColorDropdown = false }
+                                        ) {
+                                            oneUiColorModes.zip(oneUiColorModeLabels).forEach { (mode, label) ->
+                                                DropdownMenuItem(
+                                                    text = { Text(label) },
+                                                    onClick = {
+                                                        oneuiCapsuleColorMode = mode
+                                                        OneUiCapsuleColorMode.write(prefs, mode)
+                                                        showOneUiCapsuleColorDropdown = false
+                                                    }
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
                             }
 
                             if (isHyperOs) {

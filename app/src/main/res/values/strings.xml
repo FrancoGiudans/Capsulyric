@@ -97,8 +97,12 @@
     
     <string name="cancel">Cancel</string>
 
-    <string name="settings_oneui_capsule_color">Colorize Capsule Background</string>
-    <string name="settings_oneui_capsule_color_desc">Dynamic capsule background color. Uses black when off.</string>
+    <string name="settings_oneui_capsule_color">One UI Capsule Background</string>
+    <string name="settings_oneui_capsule_color_desc">Choose the background color mode used by the One UI live capsule.</string>
+    <string name="oneui_capsule_color_mode_black">Black</string>
+    <string name="oneui_capsule_color_mode_transparent">Transparent</string>
+    <string name="oneui_capsule_color_mode_translucent_black">Semi-transparent black</string>
+    <string name="oneui_capsule_color_mode_album">Follow album art</string>
 
     <!-- Parser Rule Settings -->
     <string name="parser_rule_title">Rules</string>
