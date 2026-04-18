@@ -239,13 +239,13 @@ class SuperIslandHandler(
             if (cachedActionStyle == "media_controls") {
                 val showPrevButton = effectiveButtonLayout == "three_button"
                 val prevIconBitmap = if (showPrevButton) {
-                    renderButtonIcon(R.drawable.ic_skip_previous, 96, 0.5f, "#333333")
+                    renderButtonIcon(R.drawable.ic_skip_previous, 96, 0.5f, null)
                 } else {
                     null
                 }
                 val playPauseResId = if (isPlaying) R.drawable.ic_pause else R.drawable.ic_play_arrow
                 val playPauseIconBitmap = renderButtonIcon(playPauseResId, 96, 0.42f, null)
-                val nextIconBitmap = renderButtonIcon(R.drawable.ic_skip_next, 96, 0.5f, "#333333")
+                val nextIconBitmap = renderButtonIcon(R.drawable.ic_skip_next, 96, 0.5f, null)
 
                 cachedPrevIcon = prevIconBitmap?.let { Icon.createWithBitmap(it) }
                 cachedPlayPauseIcon = Icon.createWithBitmap(playPauseIconBitmap)
@@ -849,11 +849,25 @@ class SuperIslandHandler(
                     nextIntent,
                     PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
                 )
+                val playPausePending = PendingIntent.getService(
+                    context,
+                    2001,
+                    playPauseServiceIntent,
+                    PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+                )
 
                 val prevAction = Notification.Action.Builder(
                     cachedPrevIcon ?: Icon.createWithResource(context, R.drawable.ic_skip_previous),
                     "",
                     prevPending
+                ).build()
+                val playPauseAction = Notification.Action.Builder(
+                    cachedPlayPauseIcon ?: Icon.createWithResource(
+                        context,
+                        if (state.isPlaying) R.drawable.ic_pause else R.drawable.ic_play_arrow
+                    ),
+                    "",
+                    playPausePending
                 ).build()
                 val nextAction = Notification.Action.Builder(
                     cachedNextIcon ?: Icon.createWithResource(context, R.drawable.ic_skip_next),
@@ -862,27 +876,20 @@ class SuperIslandHandler(
                 ).build()
 
                 val prevActionKey = createAction("miui.focus.action_key_prev", prevAction)
+                val playPauseActionKey = createAction("miui.focus.action_key_play_pause", playPauseAction)
                 val nextActionKey = createAction("miui.focus.action_key_next", nextAction)
 
                 if (showPrevButton) {
                     addActionInfo {
-                        actionIcon = cachedPrevIcon?.let { createPicture("miui.focus.pic_btn_prev", it) }
                         type = 0
                         action = prevActionKey
                     }
                 }
                 addActionInfo {
-                    actionIcon = cachedPlayPauseIcon?.let { createPicture("miui.focus.pic_btn_play_pause", it) }
-                    actionTitle = if (state.isPlaying) "Pause" else "Play"
-                    type = 1
-                    actionIntentType = 3
-                    actionIntent = playPauseServiceUri
-                    clickWithCollapse = false
-                    actionBgColor = "#1A1A1A"
-                    actionBgColorDark = "#1A1A1A"
+                    type = 0
+                    action = playPauseActionKey
                 }
                 addActionInfo {
-                    actionIcon = cachedNextIcon?.let { createPicture("miui.focus.pic_btn_next", it) }
                     type = 0
                     action = nextActionKey
                 }
