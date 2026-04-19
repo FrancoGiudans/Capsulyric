@@ -11,6 +11,7 @@ import android.graphics.Bitmap
 import android.graphics.drawable.Icon
 import android.widget.RemoteViews
 import com.example.islandlyrics.R
+import com.example.islandlyrics.core.platform.XmsfBypassMode
 import com.example.islandlyrics.data.LyricRepository
 import com.example.islandlyrics.service.LyricService
 import com.example.islandlyrics.feature.main.MainActivity
@@ -54,6 +55,7 @@ class SuperIslandHandler(
     private var cachedActionStyle = "disabled"
     private var cachedMediaButtonLayout = "two_button"
     private var cachedSuperIslandNotificationStyle = "standard"
+    private var cachedXmsfBypassMode = XmsfBypassMode.DISABLED
 
     private var cachedContentIntent: PendingIntent? = null
     private var cachedMiPlayIntent: PendingIntent? = null
@@ -64,6 +66,8 @@ class SuperIslandHandler(
     private val networkCutDurationMs = 100L
     private var networkCutSeq = 0L
     private val networkCutMutex = Mutex()
+    private var aggressiveNetworkCutActive = false
+    private var aggressiveTrackKey: String? = null
 
     private val prefs by lazy { context.getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE) }
     private val prefListener = SharedPreferences.OnSharedPreferenceChangeListener { p, key ->
@@ -80,6 +84,12 @@ class SuperIslandHandler(
             "notification_actions_style" -> cachedActionStyle = p.getString(key, "disabled") ?: "disabled"
             "super_island_media_button_layout" -> cachedMediaButtonLayout = p.getString(key, "two_button") ?: "two_button"
             "super_island_notification_style" -> cachedSuperIslandNotificationStyle = p.getString(key, "standard") ?: "standard"
+            "block_xmsf_network_mode", "block_xmsf_network" -> {
+                cachedXmsfBypassMode = XmsfBypassMode.read(p)
+                if (cachedXmsfBypassMode != XmsfBypassMode.AGGRESSIVE && aggressiveNetworkCutActive) {
+                    restoreXmsfNetworkingAsync()
+                }
+            }
         }
     }
 
@@ -94,6 +104,7 @@ class SuperIslandHandler(
         cachedActionStyle = prefs.getString("notification_actions_style", "disabled") ?: "disabled"
         cachedMediaButtonLayout = prefs.getString("super_island_media_button_layout", "two_button") ?: "two_button"
         cachedSuperIslandNotificationStyle = prefs.getString("super_island_notification_style", "standard") ?: "standard"
+        cachedXmsfBypassMode = XmsfBypassMode.read(prefs)
         prefs.registerOnSharedPreferenceChangeListener(prefListener)
     }
 
@@ -153,6 +164,8 @@ class SuperIslandHandler(
         cachedPrevIcon = null
         cachedPlayPauseIcon = null
         cachedNextIcon = null
+        aggressiveNetworkCutActive = false
+        aggressiveTrackKey = null
 
         lastFocusParam = ""
     }
@@ -176,13 +189,13 @@ class SuperIslandHandler(
         cachedPrevIcon = null
         cachedPlayPauseIcon = null
         cachedNextIcon = null
+        aggressiveTrackKey = null
+        aggressiveNetworkCutActive = false
         
         // Ensure network is restored if we were blocking it
         networkCutJob?.cancel()
-        if (prefs.getBoolean("block_xmsf_network", false)) {
-            scope.launch {
-                com.example.islandlyrics.integration.shizuku.XmsfNetworkHelper.setXmsfNetworkingEnabled(context, true)
-            }
+        if (cachedXmsfBypassMode.isEnabled) {
+            restoreXmsfNetworkingAsync()
         }
     }
 
@@ -315,6 +328,15 @@ class SuperIslandHandler(
 
         val metadata = LyricRepository.getInstance().liveMetadata.value
         val albumArt = LyricRepository.getInstance().liveAlbumArt.value
+        val currentTrackKey = buildTrackKey(state)
+
+        if (aggressiveNetworkCutActive) {
+            val songEnded = !state.isPlaying
+            val songChanged = aggressiveTrackKey != null && aggressiveTrackKey != currentTrackKey
+            if (songEnded || songChanged || cachedXmsfBypassMode != XmsfBypassMode.AGGRESSIVE) {
+                restoreXmsfNetworkingAsync()
+            }
+        }
 
         updateIcons(metadata, albumArt, state.isPlaying)
 
@@ -477,15 +499,34 @@ class SuperIslandHandler(
         lastSentArtist = state.artist
         lastNotifyTime = System.currentTimeMillis()
 
-        notifyWithNetworkCut(notification, isFirstNotification)
+        notifyWithNetworkCut(notification, isFirstNotification, currentTrackKey)
         if (isFirstNotification) {
             isFirstNotification = false
         }
     }
 
-    private fun notifyWithNetworkCut(notification: Notification, isFirst: Boolean) {
-        val bypassWhitelist = prefs.getBoolean("block_xmsf_network", false)
-        if (bypassWhitelist) {
+    private fun notifyWithNetworkCut(notification: Notification, isFirst: Boolean, currentTrackKey: String) {
+        when (cachedXmsfBypassMode) {
+            XmsfBypassMode.AGGRESSIVE -> {
+                networkCutJob?.cancel()
+                scope.launch(Dispatchers.IO) {
+                    networkCutMutex.withLock {
+                        if (!aggressiveNetworkCutActive) {
+                            withContext(NonCancellable) {
+                                com.example.islandlyrics.integration.shizuku.XmsfNetworkHelper.setXmsfNetworkingEnabled(context, false)
+                            }
+                            aggressiveNetworkCutActive = true
+                        }
+                        aggressiveTrackKey = currentTrackKey
+                        if (manager != null) {
+                            manager.notify(NOTIFICATION_ID, notification)
+                        } else if (isFirst) {
+                            service.startForeground(NOTIFICATION_ID, notification)
+                        }
+                    }
+                }
+            }
+            XmsfBypassMode.STANDARD -> {
             networkCutJob?.cancel()
             val seq = ++networkCutSeq
             networkCutJob = scope.launch(Dispatchers.IO) {
@@ -516,13 +557,31 @@ class SuperIslandHandler(
                     }
                 }
             }
-        } else {
-            if (isFirst) {
-                service.startForeground(NOTIFICATION_ID, notification)
-            } else {
-                manager?.notify(NOTIFICATION_ID, notification)
+            }
+            XmsfBypassMode.DISABLED -> {
+                if (isFirst) {
+                    service.startForeground(NOTIFICATION_ID, notification)
+                } else {
+                    manager?.notify(NOTIFICATION_ID, notification)
+                }
             }
         }
+    }
+
+    private fun restoreXmsfNetworkingAsync() {
+        aggressiveTrackKey = null
+        aggressiveNetworkCutActive = false
+        scope.launch {
+            withContext(Dispatchers.IO) {
+                withContext(NonCancellable) {
+                    com.example.islandlyrics.integration.shizuku.XmsfNetworkHelper.setXmsfNetworkingEnabled(context, true)
+                }
+            }
+        }
+    }
+
+    private fun buildTrackKey(state: UIState): String {
+        return listOf(state.mediaPackage, state.title, state.artist).joinToString("|")
     }
 
     private fun renderButtonIcon(resourceId: Int, size: Int, iconScale: Float, bgColorHex: String? = null): Bitmap {

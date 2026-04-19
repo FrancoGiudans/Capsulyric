@@ -33,7 +33,9 @@ object OneUiCapsuleColorMode {
     fun resolveColor(mode: String, albumColor: Int): Int {
         return when (mode) {
             TRANSPARENT -> Color.TRANSPARENT
-            TRANSLUCENT_BLACK -> Color.argb(160, 0, 0, 0)
+            // One UI appears to flatten translucent pure black to opaque black.
+            // Keep a very dark tint so translucency remains visible in the capsule.
+            TRANSLUCENT_BLACK -> Color.argb(160, 24, 24, 24)
             ALBUM -> albumColor
             else -> Color.BLACK
         }

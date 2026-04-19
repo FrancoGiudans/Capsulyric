@@ -79,6 +79,13 @@
     <string name="settings_core_services_header">Core Services</string>
     <string name="settings_block_xmsf">Bypass Super Island Whitelist</string>
     <string name="settings_block_xmsf_desc">Temporarily disconnects XMSF network when sending notifications to bypass the system whitelist (Requires Shizuku)</string>
+    <string name="settings_block_xmsf_mode">Bypass Mode</string>
+    <string name="settings_block_xmsf_mode_desc">Choose how long XMSF stays offline when bypassing the Super Island whitelist (Requires Shizuku)</string>
+    <string name="settings_block_xmsf_mode_disabled">Off</string>
+    <string name="settings_block_xmsf_mode_standard">Standard</string>
+    <string name="settings_block_xmsf_mode_aggressive">Aggressive</string>
+    <string name="settings_block_xmsf_mode_standard_desc">Disconnect briefly while posting the notification</string>
+    <string name="settings_block_xmsf_mode_aggressive_desc">Keep XMSF offline until the current track finishes</string>
     <string name="settings_personalization_header">Personalization</string>
     <string name="page_title_personalization">Personalization Settings</string>
     <string name="tab_capsule">Capsule</string>

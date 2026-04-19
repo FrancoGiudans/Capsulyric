@@ -5,6 +5,7 @@ import com.example.islandlyrics.ui.common.NotificationPreview
 import com.example.islandlyrics.ui.common.CapsulePreview
 import com.example.islandlyrics.ui.common.OneUiCapsuleColorMode
 import com.example.islandlyrics.R
+import com.example.islandlyrics.core.platform.XmsfBypassMode
 import com.example.islandlyrics.core.theme.ThemeHelper
 import com.example.islandlyrics.core.platform.RomUtils
 import com.example.islandlyrics.service.LyricService
@@ -86,7 +87,9 @@ fun MiuixCustomSettingsScreen(
     var predictiveBackEnabled by remember { mutableStateOf(prefs.getBoolean("predictive_back_enabled", false)) }
     var monetEnabled by remember { mutableStateOf(prefs.getBoolean("theme_dynamic_color", true)) }
     var cardBlurEnabled by remember { mutableStateOf(prefs.getBoolean("card_blur_enabled", false)) }
-    var blockXmsfEnabled by remember { mutableStateOf(prefs.getBoolean("block_xmsf_network", false)) }
+    var blockXmsfMode by remember { mutableStateOf(XmsfBypassMode.read(prefs)) }
+    var pendingBlockXmsfMode by remember { mutableStateOf<XmsfBypassMode?>(null) }
+    var showBlockXmsfPopup by remember { mutableStateOf(false) }
     val showBlockXmsfDialog = remember { mutableStateOf(false) }
 
     val isLiveUpdateSupported = remember { RomUtils.isLiveUpdateSupported() }
@@ -284,19 +287,52 @@ fun MiuixCustomSettingsScreen(
                                                 )
                                             }
 
-                                            SuperSwitch(
-                                                title = stringResource(R.string.settings_block_xmsf),
-                                                summary = stringResource(R.string.settings_block_xmsf_desc),
-                                                checked = blockXmsfEnabled,
-                                                onCheckedChange = { isChecked ->
-                                                    if (isChecked) {
-                                                        showBlockXmsfDialog.value = true
-                                                    } else {
-                                                        blockXmsfEnabled = false
-                                                        prefs.edit().putBoolean("block_xmsf_network", false).apply()
+                                            val bypassModeLabels = listOf(
+                                                stringResource(R.string.settings_block_xmsf_mode_disabled),
+                                                stringResource(R.string.settings_block_xmsf_mode_standard),
+                                                stringResource(R.string.settings_block_xmsf_mode_aggressive)
+                                            )
+                                            val bypassModes = listOf(
+                                                XmsfBypassMode.DISABLED,
+                                                XmsfBypassMode.STANDARD,
+                                                XmsfBypassMode.AGGRESSIVE
+                                            )
+                                            val currentBypassIndex = bypassModes.indexOf(blockXmsfMode).takeIf { it >= 0 } ?: 0
+
+                                            Box {
+                                                SuperArrow(
+                                                    title = stringResource(R.string.settings_block_xmsf_mode),
+                                                    summary = bypassModeLabels[currentBypassIndex],
+                                                    onClick = { showBlockXmsfPopup = true }
+                                                )
+                                                SuperListPopup(
+                                                    show = showBlockXmsfPopup,
+                                                    alignment = PopupPositionProvider.Align.TopEnd,
+                                                    onDismissRequest = { showBlockXmsfPopup = false }
+                                                ) {
+                                                    ListPopupColumn {
+                                                        bypassModeLabels.forEachIndexed { index, label ->
+                                                            DropdownImpl(
+                                                                text = label,
+                                                                optionSize = bypassModeLabels.size,
+                                                                isSelected = currentBypassIndex == index,
+                                                                index = index,
+                                                                onSelectedIndexChange = {
+                                                                    showBlockXmsfPopup = false
+                                                                    val newMode = bypassModes[index]
+                                                                    if (newMode == XmsfBypassMode.DISABLED) {
+                                                                        blockXmsfMode = newMode
+                                                                        XmsfBypassMode.write(prefs, newMode)
+                                                                    } else {
+                                                                        pendingBlockXmsfMode = newMode
+                                                                        showBlockXmsfDialog.value = true
+                                                                    }
+                                                                }
+                                                            )
+                                                        }
                                                     }
                                                 }
-                                            )
+                                            }
 
                                         }
                                     }
@@ -545,11 +581,11 @@ fun MiuixCustomSettingsScreen(
             onDismissRequest = { showBlockXmsfDialog.value = false }
         ) {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                TextButton(
+                        TextButton(
                     text = stringResource(R.string.dialog_btn_cancel),
                     onClick = {
                         showBlockXmsfDialog.value = false
-                        blockXmsfEnabled = false
+                        pendingBlockXmsfMode = null
                     },
                     modifier = Modifier.weight(1f)
                 )
@@ -560,8 +596,10 @@ fun MiuixCustomSettingsScreen(
                         scope.launch {
                             try {
                                 com.example.islandlyrics.integration.shizuku.requireShizukuPermissionGranted {
-                                    blockXmsfEnabled = true
-                                    prefs.edit().putBoolean("block_xmsf_network", true).apply()
+                                    val newMode = pendingBlockXmsfMode ?: XmsfBypassMode.STANDARD
+                                    blockXmsfMode = newMode
+                                    XmsfBypassMode.write(prefs, newMode)
+                                    pendingBlockXmsfMode = null
                                 }
                             } catch (e: Exception) {
                                 Toast.makeText(context, "Shizuku permission required", Toast.LENGTH_LONG).show()

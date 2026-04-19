@@ -79,6 +79,13 @@
     <string name="settings_core_services_header">核心服务</string>
     <string name="settings_block_xmsf">绕过小米超级岛白名单</string>
     <string name="settings_block_xmsf_desc">发送通知时临时断开 XMSF 网络以绕过系统白名单限制（需要 Shizuku 环境）</string>
+    <string name="settings_block_xmsf_mode">绕过模式</string>
+    <string name="settings_block_xmsf_mode_desc">选择绕过小米超级岛白名单时 XMSF 的断网时长（需要 Shizuku 环境）</string>
+    <string name="settings_block_xmsf_mode_disabled">关闭</string>
+    <string name="settings_block_xmsf_mode_standard">标准模式</string>
+    <string name="settings_block_xmsf_mode_aggressive">加强模式</string>
+    <string name="settings_block_xmsf_mode_standard_desc">发送通知时短暂断网</string>
+    <string name="settings_block_xmsf_mode_aggressive_desc">全程断网，并在当前歌曲播放结束时恢复联网</string>
     <string name="settings_personalization_header">个性化</string>
     <string name="page_title_personalization">个性化设置</string>
     <string name="tab_capsule">胶囊</string>

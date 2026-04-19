@@ -17,6 +17,7 @@ import android.os.Looper
 import androidx.lifecycle.Observer
 import com.example.islandlyrics.BuildConfig
 import com.example.islandlyrics.R
+import com.example.islandlyrics.core.platform.XmsfBypassMode
 import com.example.islandlyrics.core.platform.RomUtils
 import com.example.islandlyrics.core.logging.AppLogger
 import com.example.islandlyrics.core.logging.LogManager
@@ -322,7 +323,7 @@ class LyricService : Service() {
         createNotificationChannel()
 
         val shouldWarmForegroundForXmsfBypass =
-            isSuperIslandMode && prefs.getBoolean("block_xmsf_network", false)
+            isSuperIslandMode && XmsfBypassMode.read(prefs).isEnabled
         if (shouldWarmForegroundForXmsfBypass) {
             val currentInfo = LyricRepository.getInstance().liveLyric.value
             val title = currentInfo?.sourceApp ?: "Island Lyrics"
