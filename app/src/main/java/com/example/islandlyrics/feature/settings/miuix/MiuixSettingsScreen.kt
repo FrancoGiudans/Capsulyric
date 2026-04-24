@@ -258,16 +258,6 @@ fun MiuixSettingsScreen(
                         }
                     )
 
-                    SuperSwitch(
-                        title = stringResource(R.string.settings_full_offline_mode),
-                        summary = stringResource(R.string.settings_full_offline_mode_desc),
-                        checked = offlineModeEnabled,
-                        onCheckedChange = {
-                            offlineModeEnabled = it
-                            OfflineModeManager.setEnabled(context, it)
-                        }
-                    )
-
                     // Recommend Media App
                     var recommendMediaAppEnabled by remember { mutableStateOf(prefs.getBoolean("recommend_media_app", true)) }
                     SuperSwitch(

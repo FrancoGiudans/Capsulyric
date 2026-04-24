@@ -6,6 +6,7 @@ import com.example.islandlyrics.ui.common.CapsulePreview
 import com.example.islandlyrics.ui.common.OneUiCapsuleColorMode
 import com.example.islandlyrics.R
 import com.example.islandlyrics.core.platform.XmsfBypassMode
+import com.example.islandlyrics.core.settings.LabFeatureManager
 import com.example.islandlyrics.core.update.UpdateChecker
 import com.example.islandlyrics.core.theme.ThemeHelper
 import com.example.islandlyrics.core.platform.RomUtils
@@ -83,7 +84,8 @@ fun CustomSettingsScreen(
     // Notification Action Style State
     var actionStyle by remember { mutableStateOf(prefs.getString("notification_actions_style", "disabled") ?: "disabled") }
     var superIslandMediaButtonLayout by remember { mutableStateOf(prefs.getString("super_island_media_button_layout", "two_button") ?: "two_button") }
-    var superIslandNotificationStyle by remember { mutableStateOf(prefs.getString("super_island_notification_style", "standard") ?: "standard") }
+    var superIslandNotificationStyle by remember { mutableStateOf(LabFeatureManager.sanitizeSuperIslandNotificationStyle(context)) }
+    var superIslandAdvancedStyleLabEnabled by remember { mutableStateOf(LabFeatureManager.isSuperIslandAdvancedStyleEnabled(prefs)) }
     var showActionStyleDropdown by remember { mutableStateOf(false) }
     var showSuperIslandMediaButtonLayoutDropdown by remember { mutableStateOf(false) }
     var showSuperIslandNotificationStyleDropdown by remember { mutableStateOf(false) }
@@ -120,6 +122,12 @@ fun CustomSettingsScreen(
     // Check for HyperOS 3.0.300+
     val isLiveUpdateSupported = remember { RomUtils.isLiveUpdateSupported() }
     val isHyperOs = remember { RomUtils.isHyperOs() }
+
+    LaunchedEffect(Unit) {
+        LabFeatureManager.ensureInitialized(prefs)
+        superIslandAdvancedStyleLabEnabled = LabFeatureManager.isSuperIslandAdvancedStyleEnabled(prefs)
+        superIslandNotificationStyle = LabFeatureManager.sanitizeSuperIslandNotificationStyle(context)
+    }
 
     // Logic for permissions status
     fun checkNotificationPermission(): Boolean {
@@ -534,10 +542,12 @@ fun CustomSettingsScreen(
                                             expanded = showSuperIslandNotificationStyleDropdown,
                                             onDismissRequest = { showSuperIslandNotificationStyleDropdown = false }
                                         ) {
-                                            val styleOptions = listOf(
-                                                "standard" to R.string.super_island_notification_style_standard,
-                                                "advanced_beta" to R.string.super_island_notification_style_advanced_beta
-                                            )
+                                        val styleOptions = buildList {
+                                            add(LabFeatureManager.SUPER_ISLAND_STYLE_STANDARD to R.string.super_island_notification_style_standard)
+                                            if (superIslandAdvancedStyleLabEnabled) {
+                                                add(LabFeatureManager.SUPER_ISLAND_STYLE_ADVANCED to R.string.super_island_notification_style_advanced_beta)
+                                            }
+                                        }
                                             styleOptions.forEach { (styleId, nameId) ->
                                                 DropdownMenuItem(
                                                     text = { Text(stringResource(nameId)) },

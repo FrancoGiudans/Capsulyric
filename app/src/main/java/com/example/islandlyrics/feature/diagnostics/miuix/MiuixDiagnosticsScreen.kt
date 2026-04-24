@@ -20,6 +20,7 @@ import com.example.islandlyrics.R
 import com.example.islandlyrics.BuildConfig
 import com.example.islandlyrics.core.platform.RomUtils
 import com.example.islandlyrics.feature.cache.CacheManagementActivity
+import com.example.islandlyrics.feature.lab.LabActivity
 import com.example.islandlyrics.feature.logviewer.LogViewerActivity
 import com.example.islandlyrics.feature.onlinelyricdebug.OnlineLyricDebugActivity
 import androidx.compose.ui.unit.sp
@@ -39,7 +40,6 @@ fun MiuixDiagnosticsScreen(onBack: () -> Unit) {
     val scrollBehavior = MiuixScrollBehavior(rememberTopAppBarState())
     val diagnostics by LyricRepository.getInstance().liveDiagnostics.observeAsState()
     val showDisableDialog = remember { mutableStateOf(false) }
-    val prefs = remember { context.getSharedPreferences("IslandLyricsPrefs", android.content.Context.MODE_PRIVATE) }
 
     MiuixBlurScaffold(
         topBar = {
@@ -98,6 +98,19 @@ fun MiuixDiagnosticsScreen(onBack: () -> Unit) {
                         title = stringResource(R.string.menu_log),
                         summary = stringResource(R.string.summary_view_logs),
                         onClick = { LogViewerActivity.start(context) }
+                    )
+                }
+            }
+
+            item { SmallTitle(text = stringResource(R.string.diag_header_laboratory)) }
+            item {
+                Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
+                    SuperArrow(
+                        title = stringResource(R.string.title_lab),
+                        summary = stringResource(R.string.diag_lab_page_desc),
+                        onClick = {
+                            context.startActivity(android.content.Intent(context, LabActivity::class.java))
+                        }
                     )
                 }
             }
@@ -242,6 +255,7 @@ fun MiuixDiagnosticsScreen(onBack: () -> Unit) {
                 )
             }
         }
+
     }
 }
 

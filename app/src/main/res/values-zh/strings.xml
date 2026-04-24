@@ -11,6 +11,7 @@
     <string name="menu_log">日志</string>
     <string name="menu_settings">设置</string>
     <string name="title_diagnostics">诊断工具</string>
+    <string name="title_lab">实验室</string>
     <string name="summary_diagnostics">查看日志、服务状态和系统信息</string>
     <string name="btn_disable_diagnostics">禁用诊断工具</string>
     <string name="dialog_disable_diagnostics_title">确认禁用诊断工具？</string>
@@ -460,9 +461,16 @@
 
     <!-- 诊断相关字符串 -->
     <string name="diag_header_tools">常用工具</string>
+    <string name="diag_header_laboratory">实验室</string>
+    <string name="diag_lab_page_desc">管理实验性功能与测试开关</string>
     <string name="diag_header_service">服务诊断数据</string>
     <string name="diag_header_system">系统环境信息</string>
     <string name="diag_header_advanced">高级功能查验 (Android 16 / 小米岛)</string>
+    <string name="diag_lab_super_island_advanced_style_title">小米超级岛高级样式</string>
+    <string name="diag_lab_super_island_advanced_style_desc">开启后，个性化设置里的“通知样式”将显示“高级样式（Beta）”选项</string>
+    <string name="diag_lab_super_island_dialog_title">开启高级样式实验功能？</string>
+    <string name="diag_lab_super_island_dialog_message">该样式仍处于实验阶段，部分设备可能需要 Root 环境才能正常显示。开启后，请前往“个性化设置”中的通知页自行切换到“高级样式（Beta）”。</string>
+    <string name="diag_lab_super_island_dialog_confirm">前往个性化设置</string>
     
     <string name="diag_label_connection">连接状态</string>
     <string name="diag_label_controllers">总控制器数</string>

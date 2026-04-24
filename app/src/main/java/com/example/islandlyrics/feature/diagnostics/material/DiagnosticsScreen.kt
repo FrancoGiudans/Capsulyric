@@ -1,6 +1,5 @@
 package com.example.islandlyrics.feature.diagnostics.material
 
-import android.app.Activity
 import android.os.Build
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -27,6 +26,7 @@ import com.example.islandlyrics.R
 import com.example.islandlyrics.BuildConfig
 import com.example.islandlyrics.core.platform.RomUtils
 import com.example.islandlyrics.feature.cache.CacheManagementActivity
+import com.example.islandlyrics.feature.lab.LabActivity
 import com.example.islandlyrics.feature.logviewer.LogViewerActivity
 import com.example.islandlyrics.feature.onlinelyricdebug.OnlineLyricDebugActivity
 import java.text.SimpleDateFormat
@@ -104,6 +104,20 @@ fun DiagnosticsScreen(onBack: () -> Unit) {
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(stringResource(R.string.summary_view_logs))
+                }
+            }
+
+            DiagnosticsCard(
+                title = stringResource(R.string.diag_header_laboratory),
+                icon = Icons.Default.Info
+            ) {
+                Button(
+                    onClick = {
+                        context.startActivity(android.content.Intent(context, LabActivity::class.java))
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(stringResource(R.string.title_lab))
                 }
             }
 

@@ -6,6 +6,7 @@ import com.example.islandlyrics.ui.common.CapsulePreview
 import com.example.islandlyrics.ui.common.OneUiCapsuleColorMode
 import com.example.islandlyrics.R
 import com.example.islandlyrics.core.platform.XmsfBypassMode
+import com.example.islandlyrics.core.settings.LabFeatureManager
 import com.example.islandlyrics.core.theme.ThemeHelper
 import com.example.islandlyrics.core.platform.RomUtils
 import com.example.islandlyrics.service.LyricService
@@ -69,7 +70,8 @@ fun MiuixCustomSettingsScreen(
 
     var actionStyle by remember { mutableStateOf(prefs.getString("notification_actions_style", "disabled") ?: "disabled") }
     var superIslandMediaButtonLayout by remember { mutableStateOf(prefs.getString("super_island_media_button_layout", "two_button") ?: "two_button") }
-    var superIslandNotificationStyle by remember { mutableStateOf(prefs.getString("super_island_notification_style", "standard") ?: "standard") }
+    var superIslandNotificationStyle by remember { mutableStateOf(LabFeatureManager.sanitizeSuperIslandNotificationStyle(context)) }
+    var superIslandAdvancedStyleLabEnabled by remember { mutableStateOf(LabFeatureManager.isSuperIslandAdvancedStyleEnabled(prefs)) }
     var notificationClickStyle by remember { mutableStateOf(prefs.getString("notification_click_style", "default") ?: "default") }
     var dismissDelay by remember { mutableLongStateOf(prefs.getLong("notification_dismiss_delay", 0L)) }
 
@@ -88,10 +90,14 @@ fun MiuixCustomSettingsScreen(
     var monetEnabled by remember { mutableStateOf(prefs.getBoolean("theme_dynamic_color", true)) }
     var cardBlurEnabled by remember { mutableStateOf(prefs.getBoolean("card_blur_enabled", false)) }
     var blockXmsfMode by remember { mutableStateOf(XmsfBypassMode.read(prefs)) }
-    var showBlockXmsfPopup by remember { mutableStateOf(false) }
 
     val isLiveUpdateSupported = remember { RomUtils.isLiveUpdateSupported() }
     val isHyperOs = remember { RomUtils.isHyperOs() }
+    LaunchedEffect(Unit) {
+        LabFeatureManager.ensureInitialized(prefs)
+        superIslandAdvancedStyleLabEnabled = LabFeatureManager.isSuperIslandAdvancedStyleEnabled(prefs)
+        superIslandNotificationStyle = LabFeatureManager.sanitizeSuperIslandNotificationStyle(context)
+    }
     LaunchedEffect(isLiveUpdateSupported) {
         if (!isLiveUpdateSupported) {
             if (iconStyle != "disabled") {
@@ -297,48 +303,29 @@ fun MiuixCustomSettingsScreen(
                                             )
                                             val currentBypassIndex = bypassModes.indexOf(blockXmsfMode).takeIf { it >= 0 } ?: 0
 
-                                            Box {
-                                                SuperArrow(
-                                                    title = stringResource(R.string.settings_block_xmsf_mode),
-                                                    summary = bypassModeLabels[currentBypassIndex],
-                                                    onClick = { showBlockXmsfPopup = true }
-                                                )
-                                                SuperListPopup(
-                                                    show = showBlockXmsfPopup,
-                                                    alignment = PopupPositionProvider.Align.TopEnd,
-                                                    onDismissRequest = { showBlockXmsfPopup = false }
-                                                ) {
-                                                    ListPopupColumn {
-                                                        bypassModeLabels.forEachIndexed { index, label ->
-                                                            DropdownImpl(
-                                                                text = label,
-                                                                optionSize = bypassModeLabels.size,
-                                                                isSelected = currentBypassIndex == index,
-                                                                index = index,
-                                                                onSelectedIndexChange = {
-                                                                    showBlockXmsfPopup = false
-                                                                    val newMode = bypassModes[index]
-                                                                    if (newMode == XmsfBypassMode.DISABLED) {
-                                                                        blockXmsfMode = newMode
-                                                                        XmsfBypassMode.write(prefs, newMode)
-                                                                    } else {
-                                                                        scope.launch {
-                                                                            try {
-                                                                                com.example.islandlyrics.integration.shizuku.requireShizukuPermissionGranted {
-                                                                                    blockXmsfMode = newMode
-                                                                                    XmsfBypassMode.write(prefs, newMode)
-                                                                                }
-                                                                            } catch (e: Exception) {
-                                                                                Toast.makeText(context, "Shizuku permission required", Toast.LENGTH_LONG).show()
-                                                                            }
-                                                                        }
-                                                                    }
+                                            SuperDropdown(
+                                                title = stringResource(R.string.settings_block_xmsf_mode),
+                                                items = bypassModeLabels,
+                                                selectedIndex = currentBypassIndex,
+                                                onSelectedIndexChange = { index ->
+                                                    val newMode = bypassModes[index]
+                                                    if (newMode == XmsfBypassMode.DISABLED) {
+                                                        blockXmsfMode = newMode
+                                                        XmsfBypassMode.write(prefs, newMode)
+                                                    } else {
+                                                        scope.launch {
+                                                            try {
+                                                                com.example.islandlyrics.integration.shizuku.requireShizukuPermissionGranted {
+                                                                    blockXmsfMode = newMode
+                                                                    XmsfBypassMode.write(prefs, newMode)
                                                                 }
-                                                            )
+                                                            } catch (e: Exception) {
+                                                                Toast.makeText(context, "Shizuku permission required", Toast.LENGTH_LONG).show()
+                                                            }
                                                         }
                                                     }
                                                 }
-                                            }
+                                            )
 
                                         }
                                     }
@@ -414,11 +401,18 @@ fun MiuixCustomSettingsScreen(
                                     )
 
                                     if (actionStyle == "media_controls" && (superIslandEnabled || !isLiveUpdateSupported)) {
-                                        val notificationStyles = listOf("standard", "advanced_beta")
-                                        val notificationStyleNames = listOf(
-                                            stringResource(R.string.super_island_notification_style_standard),
-                                            stringResource(R.string.super_island_notification_style_advanced_beta)
-                                        )
+                                        val notificationStyles = buildList {
+                                            add(LabFeatureManager.SUPER_ISLAND_STYLE_STANDARD)
+                                            if (superIslandAdvancedStyleLabEnabled) {
+                                                add(LabFeatureManager.SUPER_ISLAND_STYLE_ADVANCED)
+                                            }
+                                        }
+                                        val notificationStyleNames = notificationStyles.map { style ->
+                                            when (style) {
+                                                LabFeatureManager.SUPER_ISLAND_STYLE_ADVANCED -> stringResource(R.string.super_island_notification_style_advanced_beta)
+                                                else -> stringResource(R.string.super_island_notification_style_standard)
+                                            }
+                                        }
                                         val currentNotificationStyleIndex = notificationStyles.indexOf(superIslandNotificationStyle).takeIf { it >= 0 } ?: 0
 
                                         SuperDropdown(

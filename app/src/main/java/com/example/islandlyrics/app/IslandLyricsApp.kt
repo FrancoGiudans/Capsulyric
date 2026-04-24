@@ -2,6 +2,7 @@ package com.example.islandlyrics.app
 
 import android.app.Application
 import com.example.islandlyrics.core.logging.AppLogger
+import com.example.islandlyrics.core.settings.LabFeatureManager
 import com.example.islandlyrics.core.theme.ThemeHelper
 import com.example.islandlyrics.core.platform.RomUtils
 import com.google.android.material.color.DynamicColors
@@ -18,6 +19,7 @@ class IslandLyricsApp : Application() {
 
         // Apply saved theme preferences (Mode, Language)
         ThemeHelper.applyTheme(this)
+        LabFeatureManager.ensureInitialized(this)
         
         // Debug override
         val prefs = getSharedPreferences("IslandLyricsPrefs", android.content.Context.MODE_PRIVATE)

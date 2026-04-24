@@ -76,6 +76,9 @@
         <activity android:name="com.example.islandlyrics.feature.diagnostics.DiagnosticsActivity"
                   android:label="@string/title_diagnostics"
                   android:parentActivityName="com.example.islandlyrics.feature.settings.SettingsActivity" />
+        <activity android:name="com.example.islandlyrics.feature.lab.LabActivity"
+                  android:label="@string/title_lab"
+                  android:parentActivityName="com.example.islandlyrics.feature.diagnostics.DiagnosticsActivity" />
         <activity android:name="com.example.islandlyrics.feature.onlinelyricdebug.OnlineLyricDebugActivity"
                   android:label="在线歌词调试"
                   android:parentActivityName="com.example.islandlyrics.feature.diagnostics.DiagnosticsActivity" />

@@ -251,16 +251,6 @@ fun SettingsScreen(
                     }
                 }
 
-                SettingsSwitchItem(
-                    title = stringResource(R.string.settings_full_offline_mode),
-                    subtitle = stringResource(R.string.settings_full_offline_mode_desc),
-                    checked = offlineModeEnabled,
-                    onCheckedChange = {
-                        offlineModeEnabled = it
-                        OfflineModeManager.setEnabled(context, it)
-                    }
-                )
-
                 // Suggest Current App
                 var recommendMediaAppEnabled by remember { mutableStateOf(prefs.getBoolean("recommend_media_app", true)) }
                 SettingsSwitchItem(
