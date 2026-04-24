@@ -88,9 +88,7 @@ fun MiuixCustomSettingsScreen(
     var monetEnabled by remember { mutableStateOf(prefs.getBoolean("theme_dynamic_color", true)) }
     var cardBlurEnabled by remember { mutableStateOf(prefs.getBoolean("card_blur_enabled", false)) }
     var blockXmsfMode by remember { mutableStateOf(XmsfBypassMode.read(prefs)) }
-    var pendingBlockXmsfMode by remember { mutableStateOf<XmsfBypassMode?>(null) }
     var showBlockXmsfPopup by remember { mutableStateOf(false) }
-    val showBlockXmsfDialog = remember { mutableStateOf(false) }
 
     val isLiveUpdateSupported = remember { RomUtils.isLiveUpdateSupported() }
     val isHyperOs = remember { RomUtils.isHyperOs() }
@@ -324,8 +322,16 @@ fun MiuixCustomSettingsScreen(
                                                                         blockXmsfMode = newMode
                                                                         XmsfBypassMode.write(prefs, newMode)
                                                                     } else {
-                                                                        pendingBlockXmsfMode = newMode
-                                                                        showBlockXmsfDialog.value = true
+                                                                        scope.launch {
+                                                                            try {
+                                                                                com.example.islandlyrics.integration.shizuku.requireShizukuPermissionGranted {
+                                                                                    blockXmsfMode = newMode
+                                                                                    XmsfBypassMode.write(prefs, newMode)
+                                                                                }
+                                                                            } catch (e: Exception) {
+                                                                                Toast.makeText(context, "Shizuku permission required", Toast.LENGTH_LONG).show()
+                                                                            }
+                                                                        }
                                                                     }
                                                                 }
                                                             )
@@ -570,45 +576,6 @@ fun MiuixCustomSettingsScreen(
                         }
                     }
                 }
-            }
-        }
-
-        // SuperDialog must be inside Scaffold content for MiuixPopupHost
-        MiuixBlurDialog(
-            title = stringResource(R.string.dialog_block_xmsf_title),
-            summary = stringResource(R.string.dialog_block_xmsf_message),
-            show = showBlockXmsfDialog.value,
-            onDismissRequest = { showBlockXmsfDialog.value = false }
-        ) {
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        TextButton(
-                    text = stringResource(R.string.dialog_btn_cancel),
-                    onClick = {
-                        showBlockXmsfDialog.value = false
-                        pendingBlockXmsfMode = null
-                    },
-                    modifier = Modifier.weight(1f)
-                )
-                TextButton(
-                    text = stringResource(R.string.dialog_block_xmsf_confirm),
-                    onClick = {
-                        showBlockXmsfDialog.value = false
-                        scope.launch {
-                            try {
-                                com.example.islandlyrics.integration.shizuku.requireShizukuPermissionGranted {
-                                    val newMode = pendingBlockXmsfMode ?: XmsfBypassMode.STANDARD
-                                    blockXmsfMode = newMode
-                                    XmsfBypassMode.write(prefs, newMode)
-                                    pendingBlockXmsfMode = null
-                                }
-                            } catch (e: Exception) {
-                                Toast.makeText(context, "Shizuku permission required", Toast.LENGTH_LONG).show()
-                            }
-                        }
-                    },
-                    modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.textButtonColorsPrimary()
-                )
             }
         }
     }

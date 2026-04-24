@@ -449,12 +449,7 @@ fun SettingsScreen(
                     HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
                 }
 
-                // ═══════════════════════════════════════
-                // ── 5. Help & About ──
-                // ═══════════════════════════════════════
-                SettingsSectionHeader(text = stringResource(R.string.settings_help_about_header))
-
-                if (!offlineModeEnabled && (!communityFeedLoaded || communityFeed?.hasContent == true)) {
+                if (!communityFeedLoaded || communityFeed?.hasContent == true) {
                     val announcementSectionTitle = stringResource(R.string.community_announcement_title)
                     val pollSectionTitle = stringResource(R.string.community_poll_title)
                     SettingsSectionHeader(
@@ -491,6 +486,11 @@ fun SettingsScreen(
                                 }
                     }
                 }
+
+                // ═══════════════════════════════════════
+                // ── 5. Help & About ──
+                // ═══════════════════════════════════════
+                SettingsSectionHeader(text = stringResource(R.string.settings_help_about_header))
 
                 SettingsActionItem(
                     title = stringResource(R.string.faq_title),

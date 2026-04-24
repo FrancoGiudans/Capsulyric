@@ -17,7 +17,6 @@ import com.example.islandlyrics.feature.settings.material.SettingsTextItem
 import com.example.islandlyrics.feature.main.MainActivity
 import android.content.Context
 import android.content.Intent
-import android.net.Uri
 import android.os.Build
 import android.provider.Settings
 import android.widget.Toast
@@ -149,7 +148,7 @@ fun CustomSettingsScreen(
             }
         }
     }
-    
+
     val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
@@ -310,7 +309,6 @@ fun CustomSettingsScreen(
                                 }
 
                                 if (isLiveUpdateSupported && !superIslandEnabled) {
-                                if (isLiveUpdateSupported && !superIslandEnabled) {
                                     val styleDisplayName = when (iconStyle) {
                                         "advanced" -> stringResource(R.string.icon_style_advanced)
                                         else -> stringResource(R.string.icon_style_classic)
@@ -343,7 +341,6 @@ fun CustomSettingsScreen(
                                             }
                                         }
                                     }
-                                }
                                 }
 
                                 if (superIslandEnabled || !isLiveUpdateSupported) {
@@ -407,88 +404,51 @@ fun CustomSettingsScreen(
                                     }
 
                                     var blockXmsfMode by remember { mutableStateOf(XmsfBypassMode.read(prefs)) }
-                                    var pendingBlockXmsfMode by remember { mutableStateOf(XmsfBypassMode.read(prefs)) }
-                                    var showBlockXmsfDialog by remember { mutableStateOf(false) }
-                                    SettingsTextItem(
-                                        title = stringResource(R.string.settings_block_xmsf_mode),
-                                        value = when (blockXmsfMode) {
-                                            XmsfBypassMode.STANDARD -> stringResource(R.string.settings_block_xmsf_mode_standard)
-                                            XmsfBypassMode.AGGRESSIVE -> stringResource(R.string.settings_block_xmsf_mode_aggressive)
-                                            XmsfBypassMode.DISABLED -> stringResource(R.string.settings_block_xmsf_mode_disabled)
-                                        },
-                                        onClick = {
-                                            pendingBlockXmsfMode = blockXmsfMode
-                                            showBlockXmsfDialog = true
-                                        }
-                                    )
-
-                                    if (showBlockXmsfDialog) {
-                                        AlertDialog(
-                                            onDismissRequest = { showBlockXmsfDialog = false },
-                                            title = { Text(stringResource(R.string.settings_block_xmsf_mode)) },
-                                            text = {
-                                                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                                    Text(stringResource(R.string.settings_block_xmsf_mode_desc))
-                                                    listOf(
-                                                        XmsfBypassMode.DISABLED to stringResource(R.string.settings_block_xmsf_mode_disabled),
-                                                        XmsfBypassMode.STANDARD to stringResource(R.string.settings_block_xmsf_mode_standard),
-                                                        XmsfBypassMode.AGGRESSIVE to stringResource(R.string.settings_block_xmsf_mode_aggressive)
-                                                    ).forEach { (mode, label) ->
-                                                        Row(
-                                                            modifier = Modifier.fillMaxWidth(),
-                                                            horizontalArrangement = Arrangement.SpaceBetween,
-                                                            verticalAlignment = Alignment.CenterVertically
-                                                        ) {
-                                                            Text(label, modifier = Modifier.weight(1f))
-                                                            RadioButton(
-                                                                selected = pendingBlockXmsfMode == mode,
-                                                                onClick = { pendingBlockXmsfMode = mode }
-                                                            )
-                                                        }
-                                                    }
-                                                }
+                                    var showBlockXmsfModeDropdown by remember { mutableStateOf(false) }
+                                    Box(modifier = Modifier.fillMaxWidth()) {
+                                        SettingsTextItem(
+                                            title = stringResource(R.string.settings_block_xmsf_mode),
+                                            value = when (blockXmsfMode) {
+                                                XmsfBypassMode.STANDARD -> stringResource(R.string.settings_block_xmsf_mode_standard)
+                                                XmsfBypassMode.AGGRESSIVE -> stringResource(R.string.settings_block_xmsf_mode_aggressive)
+                                                XmsfBypassMode.DISABLED -> stringResource(R.string.settings_block_xmsf_mode_disabled)
                                             },
-                                            shape = MaterialTheme.shapes.large,
-                                            containerColor = MaterialTheme.colorScheme.surface,
-                                            tonalElevation = 6.dp,
-                                            confirmButton = {
-                                                TextButton(onClick = {
-                                                    val selectedMode = pendingBlockXmsfMode
-                                                    showBlockXmsfDialog = false
-                                                    if (selectedMode == XmsfBypassMode.DISABLED) {
-                                                        blockXmsfMode = XmsfBypassMode.DISABLED
-                                                        XmsfBypassMode.write(prefs, XmsfBypassMode.DISABLED)
-                                                    } else {
-                                                        scope.launch {
-                                                            try {
-                                                                com.example.islandlyrics.integration.shizuku.requireShizukuPermissionGranted {
-                                                                    blockXmsfMode = selectedMode
-                                                                    XmsfBypassMode.write(prefs, selectedMode)
+                                            onClick = { showBlockXmsfModeDropdown = true }
+                                        )
+                                        Box(modifier = Modifier.matchParentSize().wrapContentSize(Alignment.Center)) {
+                                            DropdownMenu(
+                                                expanded = showBlockXmsfModeDropdown,
+                                                onDismissRequest = { showBlockXmsfModeDropdown = false }
+                                            ) {
+                                                listOf(
+                                                    XmsfBypassMode.DISABLED to R.string.settings_block_xmsf_mode_disabled,
+                                                    XmsfBypassMode.STANDARD to R.string.settings_block_xmsf_mode_standard,
+                                                    XmsfBypassMode.AGGRESSIVE to R.string.settings_block_xmsf_mode_aggressive
+                                                ).forEach { (mode, labelRes) ->
+                                                    DropdownMenuItem(
+                                                        text = { Text(stringResource(labelRes)) },
+                                                        onClick = {
+                                                            showBlockXmsfModeDropdown = false
+                                                            if (mode == XmsfBypassMode.DISABLED) {
+                                                                blockXmsfMode = mode
+                                                                XmsfBypassMode.write(prefs, mode)
+                                                            } else {
+                                                                scope.launch {
+                                                                    try {
+                                                                        com.example.islandlyrics.integration.shizuku.requireShizukuPermissionGranted {
+                                                                            blockXmsfMode = mode
+                                                                            XmsfBypassMode.write(prefs, mode)
+                                                                        }
+                                                                    } catch (e: Exception) {
+                                                                        Toast.makeText(context, "Shizuku permission required", Toast.LENGTH_LONG).show()
+                                                                    }
                                                                 }
-                                                            } catch (e: Exception) {
-                                                                Toast.makeText(context, "Shizuku permission required", Toast.LENGTH_LONG).show()
                                                             }
                                                         }
-                                                    }
-                                                }) {
-                                                    Text(
-                                                        stringResource(android.R.string.ok),
-                                                        color = MaterialTheme.colorScheme.primary
-                                                    )
-                                                }
-                                            },
-                                            dismissButton = {
-                                                TextButton(onClick = {
-                                                    showBlockXmsfDialog = false
-                                                    pendingBlockXmsfMode = blockXmsfMode
-                                                }) {
-                                                    Text(
-                                                        stringResource(R.string.dialog_btn_cancel),
-                                                        color = MaterialTheme.colorScheme.onSurfaceVariant
                                                     )
                                                 }
                                             }
-                                        )
+                                        }
                                     }
 
                                 }
@@ -793,6 +753,7 @@ fun CustomSettingsScreen(
                                      prefs.edit().putBoolean("predictive_back_enabled", it).apply()
                                  }
                              )
+
                         }
                         3 -> {
                             FloatingLyricsSettingsSubScreen(prefs)
@@ -829,7 +790,6 @@ fun CustomSettingsScreen(
                     }
                 )
             }
-
 
         }
     }

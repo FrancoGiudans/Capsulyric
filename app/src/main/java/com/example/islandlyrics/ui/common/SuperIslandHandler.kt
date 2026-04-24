@@ -131,8 +131,11 @@ class SuperIslandHandler(
     private var cachedShareIcon: Icon? = null
     private var cachedAppIcon: Icon? = null
     private var cachedPrevIcon: Icon? = null
+    private var cachedPrevIconDark: Icon? = null
     private var cachedPlayPauseIcon: Icon? = null
+    private var cachedPlayPauseIconDark: Icon? = null
     private var cachedNextIcon: Icon? = null
+    private var cachedNextIconDark: Icon? = null
 
     private var lastAppliedAlbumColor = 0
 
@@ -162,8 +165,11 @@ class SuperIslandHandler(
         cachedShareIcon = null
         cachedAppIcon = null
         cachedPrevIcon = null
+        cachedPrevIconDark = null
         cachedPlayPauseIcon = null
+        cachedPlayPauseIconDark = null
         cachedNextIcon = null
+        cachedNextIconDark = null
         aggressiveNetworkCutActive = false
         aggressiveTrackKey = null
 
@@ -187,8 +193,11 @@ class SuperIslandHandler(
         cachedShareIcon = null
         cachedAppIcon = null
         cachedPrevIcon = null
+        cachedPrevIconDark = null
         cachedPlayPauseIcon = null
+        cachedPlayPauseIconDark = null
         cachedNextIcon = null
+        cachedNextIconDark = null
         aggressiveTrackKey = null
         aggressiveNetworkCutActive = false
         
@@ -252,21 +261,34 @@ class SuperIslandHandler(
             if (cachedActionStyle == "media_controls") {
                 val showPrevButton = effectiveButtonLayout == "three_button"
                 val prevIconBitmap = if (showPrevButton) {
-                    renderButtonIcon(R.drawable.ic_skip_previous, 96, 0.5f, null)
+                    renderButtonIcon(R.drawable.ic_skip_previous, 96, 0.5f, null, android.graphics.Color.WHITE)
+                } else {
+                    null
+                }
+                val prevIconBitmapDark = if (showPrevButton) {
+                    renderButtonIcon(R.drawable.ic_skip_previous, 96, 0.5f, null, android.graphics.Color.parseColor("#FF111111"))
                 } else {
                     null
                 }
                 val playPauseResId = if (isPlaying) R.drawable.ic_pause else R.drawable.ic_play_arrow
-                val playPauseIconBitmap = renderButtonIcon(playPauseResId, 96, 0.42f, null)
-                val nextIconBitmap = renderButtonIcon(R.drawable.ic_skip_next, 96, 0.5f, null)
+                val playPauseIconBitmap = renderButtonIcon(playPauseResId, 96, 0.42f, null, android.graphics.Color.WHITE)
+                val playPauseIconBitmapDark = renderButtonIcon(playPauseResId, 96, 0.42f, null, android.graphics.Color.parseColor("#FF111111"))
+                val nextIconBitmap = renderButtonIcon(R.drawable.ic_skip_next, 96, 0.5f, null, android.graphics.Color.WHITE)
+                val nextIconBitmapDark = renderButtonIcon(R.drawable.ic_skip_next, 96, 0.5f, null, android.graphics.Color.parseColor("#FF111111"))
 
                 cachedPrevIcon = prevIconBitmap?.let { Icon.createWithBitmap(it) }
+                cachedPrevIconDark = prevIconBitmapDark?.let { Icon.createWithBitmap(it) }
                 cachedPlayPauseIcon = Icon.createWithBitmap(playPauseIconBitmap)
+                cachedPlayPauseIconDark = Icon.createWithBitmap(playPauseIconBitmapDark)
                 cachedNextIcon = Icon.createWithBitmap(nextIconBitmap)
+                cachedNextIconDark = Icon.createWithBitmap(nextIconBitmapDark)
             } else {
                 cachedPrevIcon = null
+                cachedPrevIconDark = null
                 cachedPlayPauseIcon = null
+                cachedPlayPauseIconDark = null
                 cachedNextIcon = null
+                cachedNextIconDark = null
             }
             lastPicActionsHash = actionsHash
         }
@@ -584,7 +606,13 @@ class SuperIslandHandler(
         return listOf(state.mediaPackage, state.title, state.artist).joinToString("|")
     }
 
-    private fun renderButtonIcon(resourceId: Int, size: Int, iconScale: Float, bgColorHex: String? = null): Bitmap {
+    private fun renderButtonIcon(
+        resourceId: Int,
+        size: Int,
+        iconScale: Float,
+        bgColorHex: String? = null,
+        iconTint: Int = android.graphics.Color.WHITE
+    ): Bitmap {
         val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
         val canvas = android.graphics.Canvas(bitmap)
         val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG)
@@ -595,7 +623,7 @@ class SuperIslandHandler(
         }
 
         val drawable = context.getDrawable(resourceId) ?: return bitmap
-        drawable.mutate().setTint(android.graphics.Color.WHITE)
+        drawable.mutate().setTint(iconTint)
         val iconSize = (size * iconScale).toInt()
         val margin = (size - iconSize) / 2
         drawable.setBounds(margin, margin, margin + iconSize, margin + iconSize)
@@ -886,71 +914,38 @@ class SuperIslandHandler(
             actions {
                 val effectiveButtonLayout = if (cachedSuperIslandNotificationStyle == "advanced_beta") "three_button" else cachedMediaButtonLayout
                 val showPrevButton = effectiveButtonLayout == "three_button"
+                val prevServiceIntent = Intent(context, LyricService::class.java)
+                    .setAction("ACTION_MEDIA_PREV")
                 val playPauseServiceIntent = Intent(context, LyricService::class.java)
                     .setAction("ACTION_MEDIA_PLAY_PAUSE")
-                val playPauseServiceUri = playPauseServiceIntent.toUri(Intent.URI_INTENT_SCHEME)
-                val prevIntent = Intent("com.example.islandlyrics.ACTION_MEDIA_PREV")
-                    .setPackage(context.packageName)
-                    .addFlags(Intent.FLAG_RECEIVER_FOREGROUND)
-                val nextIntent = Intent("com.example.islandlyrics.ACTION_MEDIA_NEXT")
-                    .setPackage(context.packageName)
-                    .addFlags(Intent.FLAG_RECEIVER_FOREGROUND)
-
-                val prevPending = PendingIntent.getBroadcast(
-                    context,
-                    2000,
-                    prevIntent,
-                    PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
-                )
-                val nextPending = PendingIntent.getBroadcast(
-                    context,
-                    2002,
-                    nextIntent,
-                    PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
-                )
-                val playPausePending = PendingIntent.getService(
-                    context,
-                    2001,
-                    playPauseServiceIntent,
-                    PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
-                )
-
-                val prevAction = Notification.Action.Builder(
-                    cachedPrevIcon ?: Icon.createWithResource(context, R.drawable.ic_skip_previous),
-                    "",
-                    prevPending
-                ).build()
-                val playPauseAction = Notification.Action.Builder(
-                    cachedPlayPauseIcon ?: Icon.createWithResource(
-                        context,
-                        if (state.isPlaying) R.drawable.ic_pause else R.drawable.ic_play_arrow
-                    ),
-                    "",
-                    playPausePending
-                ).build()
-                val nextAction = Notification.Action.Builder(
-                    cachedNextIcon ?: Icon.createWithResource(context, R.drawable.ic_skip_next),
-                    "",
-                    nextPending
-                ).build()
-
-                val prevActionKey = createAction("miui.focus.action_key_prev", prevAction)
-                val playPauseActionKey = createAction("miui.focus.action_key_play_pause", playPauseAction)
-                val nextActionKey = createAction("miui.focus.action_key_next", nextAction)
+                val nextServiceIntent = Intent(context, LyricService::class.java)
+                    .setAction("ACTION_MEDIA_NEXT")
 
                 if (showPrevButton) {
                     addActionInfo {
                         type = 0
-                        action = prevActionKey
+                        actionIcon = cachedPrevIcon?.let { createPicture("miui.focus.pic_btn_prev", it) }
+                        actionIconDark = cachedPrevIconDark?.let { createPicture("miui.focus.pic_btn_prev_dark", it) }
+                        actionIntentType = 3
+                        actionIntent = prevServiceIntent.toUri(Intent.URI_INTENT_SCHEME)
+                        clickWithCollapse = false
                     }
                 }
                 addActionInfo {
                     type = 0
-                    action = playPauseActionKey
+                    actionIcon = cachedPlayPauseIcon?.let { createPicture("miui.focus.pic_btn_play_pause", it) }
+                    actionIconDark = cachedPlayPauseIconDark?.let { createPicture("miui.focus.pic_btn_play_pause_dark", it) }
+                    actionIntentType = 3
+                    actionIntent = playPauseServiceIntent.toUri(Intent.URI_INTENT_SCHEME)
+                    clickWithCollapse = false
                 }
                 addActionInfo {
                     type = 0
-                    action = nextActionKey
+                    actionIcon = cachedNextIcon?.let { createPicture("miui.focus.pic_btn_next", it) }
+                    actionIconDark = cachedNextIconDark?.let { createPicture("miui.focus.pic_btn_next_dark", it) }
+                    actionIntentType = 3
+                    actionIntent = nextServiceIntent.toUri(Intent.URI_INTENT_SCHEME)
+                    clickWithCollapse = false
                 }
             }
         } else {

@@ -216,6 +216,7 @@ class LyricService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+        isAlive = true
         
         // Load mode from preferences when Live Update is enabled
         if (RomUtils.isLiveUpdateSupported()) {
@@ -386,6 +387,7 @@ class LyricService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
+        isAlive = false
         AppLogger.getInstance().log(TAG, "Service Destroyed")
         progressSyncController.stop()
         progressSyncController.destroy()
@@ -851,5 +853,6 @@ class LyricService : Service() {
         private const val TAG = "LyricService"
         private const val CHANNEL_ID = "lyric_capsule_channel"
         private const val NOTIFICATION_ID = 1001
+        @Volatile var isAlive: Boolean = false
     }
 }

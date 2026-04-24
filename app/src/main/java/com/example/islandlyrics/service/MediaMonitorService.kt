@@ -79,8 +79,16 @@ class MediaMonitorService : NotificationListenerService() {
                     requestRebind(this@MediaMonitorService)
                 }
             }
-            // Schedule next check - REFACTORED: Removed per user request to reduce overhead
-            // handler.postDelayed(this, 30000)
+            // Keep health checks running in background so we can self-heal listener disconnects.
+            handler.postDelayed(this, HEALTH_CHECK_INTERVAL_MS)
+        }
+    }
+
+    private val rebindRetryRunnable = object : Runnable {
+        override fun run() {
+            if (isConnected) return
+            requestRebind(this@MediaMonitorService)
+            handler.postDelayed(this, REBIND_RETRY_INTERVAL_MS)
         }
     }
 
@@ -123,6 +131,7 @@ class MediaMonitorService : NotificationListenerService() {
     override fun onListenerConnected() {
         super.onListenerConnected()
         isConnected = true
+        handler.removeCallbacks(rebindRetryRunnable)
         AppLogger.getInstance().log(TAG, "onListenerConnected - Service binding initiated")
 
         val fgAt = lastForegroundUptimeMs
@@ -182,6 +191,8 @@ class MediaMonitorService : NotificationListenerService() {
         
         // Stop health check
         handler.removeCallbacks(healthCheckRunnable)
+        handler.removeCallbacks(rebindRetryRunnable)
+        handler.post(rebindRetryRunnable)
         
         mediaSessionManager?.removeOnActiveSessionsChangedListener(sessionsChangedListener)
         
@@ -200,6 +211,9 @@ class MediaMonitorService : NotificationListenerService() {
     override fun onDestroy() {
         super.onDestroy()
         if (instance === this) instance = null
+        handler.removeCallbacks(healthCheckRunnable)
+        handler.removeCallbacks(rebindRetryRunnable)
+        handler.removeCallbacksAndMessages(updateToken)
         prefs?.unregisterOnSharedPreferenceChangeListener(prefListener)
         try {
             unregisterReceiver(refreshReceiver)
@@ -427,8 +441,9 @@ class MediaMonitorService : NotificationListenerService() {
             state == PlaybackState.STATE_REWINDING
         )
 
-        // Only act if the state has genuinely changed to avoid log spam and infinite stop latency
-        if (lastComputedIsPlaying == isPlaying) {
+        val shouldForceStart = isPlaying && !LyricService.isAlive
+        // Only act if the state has genuinely changed, unless LyricService died and needs recovery.
+        if (lastComputedIsPlaying == isPlaying && !shouldForceStart) {
             return
         }
         lastComputedIsPlaying = isPlaying
@@ -831,6 +846,8 @@ class MediaMonitorService : NotificationListenerService() {
         
         private const val PREFS_PARSER_STATE = "MediaParserState"
         private const val PREF_STATE_HISTORY = "state_history"
+        private const val HEALTH_CHECK_INTERVAL_MS = 30_000L
+        private const val REBIND_RETRY_INTERVAL_MS = 5_000L
         
         // --- Dynamic Lyric State Tracking Maps ---
         private val packageLyricMode    = HashMap<String, Boolean>()
