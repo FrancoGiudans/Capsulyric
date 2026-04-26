@@ -46,7 +46,7 @@ import com.example.islandlyrics.ui.theme.material.neutralMaterialTopBarColors
 fun ParserRuleScreen(
     onBack: () -> Unit = {},
     showBackButton: Boolean = true,
-    bottomBar: @Composable () -> Unit = {}
+    extraBottomPadding: androidx.compose.ui.unit.Dp = 0.dp
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val offlineModeEnabled = OfflineModeManager.isEnabled(context)
@@ -103,8 +103,6 @@ fun ParserRuleScreen(
                 colors = neutralMaterialTopBarColors()
             )
         },
-        bottomBar = bottomBar,
-
         floatingActionButton = {
             // Recommendation Logic
             val recommendEnabled = remember { 
@@ -147,6 +145,7 @@ fun ParserRuleScreen(
                 },
                 expanded = showRecommendation,
                 icon = { Icon(painterResource(android.R.drawable.ic_input_add), contentDescription = null) },
+                modifier = Modifier.padding(bottom = extraBottomPadding),
                 text = { 
                     if (showRecommendation) {
                         // Extract app name for display
@@ -172,7 +171,7 @@ fun ParserRuleScreen(
             modifier = Modifier
                 .padding(padding)
                 .fillMaxSize(),
-            contentPadding = PaddingValues(bottom = 80.dp)
+            contentPadding = PaddingValues(bottom = 80.dp + extraBottomPadding)
         ) {
             items(rules) { rule ->
                 ParserRuleItem(

@@ -53,7 +53,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.material3.Scaffold
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -253,24 +252,19 @@ class MainActivity : BaseActivity() {
     private fun MaterialTopLevelPager() {
         val pagerState = rememberPagerState(pageCount = { TopLevelDestination.entries.size })
         val scope = rememberCoroutineScope()
+        var bottomBarVisible by androidx.compose.runtime.remember { mutableStateOf(true) }
 
-        Scaffold(
-            contentWindowInsets = WindowInsets(0, 0, 0, 0),
-            bottomBar = {
-                MaterialTopLevelNavigationBar(
-                    currentDestination = TopLevelDestination.entries[pagerState.currentPage],
-                    onNavigate = { destination ->
-                        scope.launch { pagerState.animateScrollToPage(TopLevelDestination.entries.indexOf(destination)) }
-                    }
-                )
-            }
-        ) { paddingValues ->
+        androidx.compose.runtime.LaunchedEffect(pagerState.currentPage) {
+            bottomBarVisible = true
+        }
+
+        Box(modifier = Modifier.fillMaxSize()) {
             HorizontalPager(
                 state = pagerState,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues)
+                modifier = Modifier.fillMaxSize()
             ) { page ->
+                val homeBottomPadding = if (bottomBarVisible) 104.dp else 24.dp
+                val pageContentBottomPadding = if (bottomBarVisible) 88.dp else 16.dp
                 when (TopLevelDestination.entries[page]) {
                     TopLevelDestination.HOME -> MainScreen(
                         versionText = versionText,
@@ -283,11 +277,13 @@ class MainActivity : BaseActivity() {
                         onStatusCardTap = {
                             MediaMonitorService.requestRebind(this@MainActivity)
                             Toast.makeText(this@MainActivity, "Requesting Rebind...", Toast.LENGTH_SHORT).show()
-                        }
+                        },
+                        contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = homeBottomPadding)
                     )
 
                     TopLevelDestination.PARSER_RULES -> ParserRuleScreen(
-                        showBackButton = false
+                        showBackButton = false,
+                        extraBottomPadding = pageContentBottomPadding
                     )
 
                     TopLevelDestination.SETTINGS -> SettingsScreen(
@@ -299,9 +295,26 @@ class MainActivity : BaseActivity() {
                         onOpenCustomSettings = {
                             startActivity(Intent(this@MainActivity, CustomSettingsActivity::class.java))
                         },
-                        showBackButton = false
+                        showBackButton = false,
+                        extraBottomPadding = pageContentBottomPadding
                     )
                 }
+            }
+
+            AnimatedVisibility(
+                visible = bottomBarVisible,
+                enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
+                exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 18.dp)
+            ) {
+                MaterialTopLevelNavigationBar(
+                    currentDestination = TopLevelDestination.entries[pagerState.currentPage],
+                    onNavigate = { destination ->
+                        scope.launch { pagerState.animateScrollToPage(TopLevelDestination.entries.indexOf(destination)) }
+                    }
+                )
             }
         }
     }

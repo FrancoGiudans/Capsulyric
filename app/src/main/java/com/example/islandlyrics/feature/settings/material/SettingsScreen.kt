@@ -66,7 +66,7 @@ fun SettingsScreen(
     updateBuildText: String,
     onOpenCustomSettings: () -> Unit = {},
     showBackButton: Boolean = true,
-    bottomBar: @Composable () -> Unit = {}
+    extraBottomPadding: androidx.compose.ui.unit.Dp = 0.dp
 ) {
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE) }
@@ -186,14 +186,19 @@ fun SettingsScreen(
                 colors = neutralMaterialTopBarColors()
             )
         },
-        bottomBar = bottomBar,
         containerColor = MaterialTheme.colorScheme.background
     ) { paddingValues ->
         Column(
             modifier = Modifier
-                .padding(paddingValues)
+                .padding(
+                    start = paddingValues.calculateStartPadding(androidx.compose.ui.unit.LayoutDirection.Ltr),
+                    top = paddingValues.calculateTopPadding(),
+                    end = paddingValues.calculateEndPadding(androidx.compose.ui.unit.LayoutDirection.Ltr),
+                    bottom = 0.dp
+                )
                 .fillMaxSize()
                 .verticalScroll(scrollState)
+                .padding(bottom = extraBottomPadding)
         ) {
 
                 // ═══════════════════════════════════════
