@@ -60,7 +60,7 @@ class LyricDisplayManager(private val context: Context) {
     private val maxScrollDelay = 5000L
     
     private val isHeavySkin = RomUtils.isHeavySkin()
-    private val maxDisplayWeight = if (isHeavySkin) 16 else 10
+    private val maxDisplayWeight = if (isHeavySkin) 18 else 10
     
     private val initialPauseDuration = 400L
     private val finalPauseDuration = 300L
@@ -78,17 +78,28 @@ class LyricDisplayManager(private val context: Context) {
     private var useSyllableScrolling = false
     private var useLrcScrolling = false
     private var currentParsedLines: List<OnlineLyricFetcher.LyricLine>? = null
+    private var currentParsedLyricsApiPath: String? = null
     private var lastStableDisplayLyric = ""
     private var lastStableFullLyric = ""
     private var timingGapActive = false
     private var timingGapNextDelayMs = 0L
+
+    // SuperLyric arrival-based timing: the pushed line IS the current line,
+    // so we track when it arrived to drive syllable animation using relative word timestamps.
+    private var superLyricArrivalTime = 0L
     
     // Observers
     private val parsedLyricsObserver = Observer<LyricRepository.ParsedLyricsInfo?> { parsedInfo ->
+        currentParsedLyricsApiPath = parsedInfo?.apiPath
         if (parsedInfo != null && parsedInfo.hasSyllable) {
             useSyllableScrolling = true
             useLrcScrolling = false
             currentParsedLines = parsedInfo.lines
+            // Record arrival time for SuperLyric so we can drive syllable
+            // animation using elapsed time instead of absolute song position.
+            if (parsedInfo.apiPath.equals("SuperLyric", ignoreCase = true)) {
+                superLyricArrivalTime = android.os.SystemClock.elapsedRealtime()
+            }
         } else if (parsedInfo != null && parsedInfo.lines.isNotEmpty()) {
             useSyllableScrolling = false
             useLrcScrolling = true
@@ -264,20 +275,29 @@ class LyricDisplayManager(private val context: Context) {
                 displayLyric = extractByWeight(currentLine.text, 0, maxDisplayWeight)
                 fullLyricForDisplay = currentLine.text
             } else {
-                val gapDisplay = resolveTimingGapDisplay(currentParsedLines, currentPosition, isPlaying)
+                val gapDisplay = resolveTimingGapDisplayIfSupported(currentParsedLines, currentPosition, isPlaying)
                 if (gapDisplay != null) {
                     displayLyric = gapDisplay.displayLyric
                     fullLyricForDisplay = gapDisplay.fullLyric
                     timingGapActive = true
                     timingGapNextDelayMs = gapDisplay.nextDelayMs
                 } else {
-                    displayLyric = extractByWeight(currentLyric, 0, maxDisplayWeight)
+                    displayLyric = resolveNoCurrentLineDisplay(currentLyric)
+                    fullLyricForDisplay = resolveNoCurrentLineFullLyric(currentLyric)
                 }
             }
             scrollState = ScrollState.DONE
             isStatic = true
         } else if (useSyllableScrolling && currentParsedLines != null) {
-            val currentLine = findCurrentLine(currentParsedLines!!, currentPosition)
+            val isSuperLyric = currentParsedLyricsApiPath.equals("SuperLyric", ignoreCase = true)
+            // SuperLyric: the pushed line IS the current line (no position matching needed).
+            // Word timestamps are relative to line start; use elapsed time since push arrival.
+            // Non-SuperLyric: use absolute song position to find the matching line.
+            val currentLine = if (isSuperLyric) {
+                currentParsedLines!!.firstOrNull()
+            } else {
+                findCurrentLine(currentParsedLines!!, currentPosition)
+            }
             if (currentLine != null && !currentLine.syllables.isNullOrEmpty()) {
                 val sungSyllables = currentLine.syllables.filter { it.startTime <= currentPosition }
                 val unsungSyllables = currentLine.syllables.filter { it.startTime > currentPosition }
@@ -292,14 +312,15 @@ class LyricDisplayManager(private val context: Context) {
                 displayLyric = extractByWeight(currentLine.text, 0, maxDisplayWeight)
                 fullLyricForDisplay = currentLine.text
             } else {
-                val gapDisplay = resolveTimingGapDisplay(currentParsedLines, currentPosition, isPlaying)
+                val gapDisplay = resolveTimingGapDisplayIfSupported(currentParsedLines, currentPosition, isPlaying)
                 if (gapDisplay != null) {
                     displayLyric = gapDisplay.displayLyric
                     fullLyricForDisplay = gapDisplay.fullLyric
                     timingGapActive = true
                     timingGapNextDelayMs = gapDisplay.nextDelayMs
                 } else {
-                    displayLyric = extractByWeight(currentLyric, 0, maxDisplayWeight)
+                    displayLyric = resolveNoCurrentLineDisplay(currentLyric)
+                    fullLyricForDisplay = resolveNoCurrentLineFullLyric(currentLyric)
                 }
             }
         } else if (useLrcScrolling && currentParsedLines != null) {
@@ -325,14 +346,15 @@ class LyricDisplayManager(private val context: Context) {
                 }
                 scrollState = ScrollState.SCROLLING
             } else {
-                val gapDisplay = resolveTimingGapDisplay(currentParsedLines, currentPosition, isPlaying)
+                val gapDisplay = resolveTimingGapDisplayIfSupported(currentParsedLines, currentPosition, isPlaying)
                 if (gapDisplay != null) {
                     displayLyric = gapDisplay.displayLyric
                     fullLyricForDisplay = gapDisplay.fullLyric
                     timingGapActive = true
                     timingGapNextDelayMs = gapDisplay.nextDelayMs
                 } else {
-                    displayLyric = extractByWeight(currentLyric, 0, maxDisplayWeight)
+                    displayLyric = resolveNoCurrentLineDisplay(currentLyric)
+                    fullLyricForDisplay = resolveNoCurrentLineFullLyric(currentLyric)
                 }
             }
         } else {
@@ -413,7 +435,7 @@ class LyricDisplayManager(private val context: Context) {
         if (nonWhitespaceChars == 0) return false
         return text.count { !it.isWhitespace() && charWeight(it) == 2 } <= nonWhitespaceChars / 2
     }
-    
+
     private fun extractByWeight(text: String, startWeight: Int, maxWeight: Int): String {
         var currentWeight = 0
         var startIndex = 0
@@ -457,6 +479,40 @@ class LyricDisplayManager(private val context: Context) {
             maxDisplayWeight
         }
         return extractByWeight(fullText, finalOffset, visibleWeight)
+    }
+
+    private fun resolveTimingGapDisplayIfSupported(
+        lines: List<OnlineLyricFetcher.LyricLine>?,
+        position: Long,
+        isPlaying: Boolean
+    ): GapDisplay? {
+        if (!shouldApplyTimingGapDisplay()) return null
+        return resolveTimingGapDisplay(lines, position, isPlaying)
+    }
+
+    private fun shouldApplyTimingGapDisplay(): Boolean {
+        return !currentParsedLyricsApiPath.equals("SuperLyric", ignoreCase = true)
+    }
+
+    private fun resolveNoCurrentLineDisplay(currentLyric: String): String {
+        if (shouldHoldStableDisplayWithoutGapAnimation()) {
+            return lastStableDisplayLyric.ifBlank { extractByWeight(currentLyric, 0, maxDisplayWeight) }
+        }
+        return extractByWeight(currentLyric, 0, maxDisplayWeight)
+    }
+
+    private fun resolveNoCurrentLineFullLyric(currentLyric: String): String {
+        if (shouldHoldStableDisplayWithoutGapAnimation()) {
+            return lastStableFullLyric.ifBlank { currentLyric }
+        }
+        return currentLyric
+    }
+
+    private fun shouldHoldStableDisplayWithoutGapAnimation(): Boolean {
+        // SuperLyric: the pushed line is always used directly (skipping findCurrentLine),
+        // so this fallback is only reached if currentParsedLines is empty (shouldn't happen).
+        // Holding the stable display prevents flicker between line pushes.
+        return currentParsedLyricsApiPath.equals("SuperLyric", ignoreCase = true)
     }
 
     private fun resolveTimingGapDisplay(
@@ -583,7 +639,7 @@ class LyricDisplayManager(private val context: Context) {
             scrollState = ScrollState.DONE
             return text
         }
-        
+
         val now = System.currentTimeMillis()
         when (scrollState) {
             ScrollState.INITIAL_PAUSE -> {

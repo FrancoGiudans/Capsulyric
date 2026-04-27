@@ -15,14 +15,21 @@ import android.media.session.MediaSessionManager
 import android.media.session.PlaybackState
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
+import android.view.ContextThemeWrapper
 import android.widget.Toast
 import androidx.compose.animation.*
 import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -30,6 +37,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -39,8 +48,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.palette.graphics.Palette
+import com.google.android.material.progressindicator.LinearProgressIndicator
+import kotlinx.coroutines.delay
+import kotlin.math.abs
+import kotlin.math.roundToInt
 
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
@@ -258,7 +272,6 @@ fun MediaSessionCard(
     primaryLyric: String?,
     primaryProgress: LyricRepository.PlaybackProgress?
 ) {
-    // Observable state for the controller
     var playbackState by remember(controller) { mutableStateOf(controller.playbackState) }
     var metadata by remember(controller) { mutableStateOf(controller.metadata) }
 
@@ -278,12 +291,9 @@ fun MediaSessionCard(
     }
 
     val pkg = controller.packageName
-    
-    // --- PARSING LOGIC ---
     var title by remember { mutableStateOf(context.getString(R.string.media_control_unknown_title)) }
     var artist by remember { mutableStateOf(context.getString(R.string.media_control_unknown_artist)) }
     var parsedLyricFromTitle by remember { mutableStateOf<String?>(null) }
-    
     val rawTitle = metadata?.getString(MediaMetadata.METADATA_KEY_TITLE)
     val rawArtist = metadata?.getString(MediaMetadata.METADATA_KEY_ARTIST)
 
@@ -291,30 +301,27 @@ fun MediaSessionCard(
         var finalTitle = rawTitle ?: context.getString(R.string.media_control_unknown_title)
         var finalArtist = rawArtist ?: context.getString(R.string.media_control_unknown_artist)
         parsedLyricFromTitle = null
-        
+
         val rule = ParserRuleHelper.getRuleForPackage(context, pkg)
         if (rule != null && rule.enabled) {
-             // Case 1: Title parsing
-             val titleParse = ParserRuleHelper.parseWithRule(rawTitle ?: "", rule)
-             if (titleParse.third) {
-                 finalTitle = titleParse.first
-                 finalArtist = titleParse.second
-             } else {
-                 // Case 2: Artist parsing + Title is Lyric
-                 val artistParse = ParserRuleHelper.parseWithRule(rawArtist ?: "", rule)
-                 if (artistParse.third) {
-                     finalTitle = artistParse.first
-                     finalArtist = artistParse.second
-                     if (!rawTitle.isNullOrEmpty()) {
-                         parsedLyricFromTitle = rawTitle
-                     }
-                 }
-             }
+            val titleParse = ParserRuleHelper.parseWithRule(rawTitle ?: "", rule)
+            if (titleParse.third) {
+                finalTitle = titleParse.first
+                finalArtist = titleParse.second
+            } else {
+                val artistParse = ParserRuleHelper.parseWithRule(rawArtist ?: "", rule)
+                if (artistParse.third) {
+                    finalTitle = artistParse.first
+                    finalArtist = artistParse.second
+                    if (!rawTitle.isNullOrEmpty()) {
+                        parsedLyricFromTitle = rawTitle
+                    }
+                }
+            }
         }
         title = finalTitle
         artist = finalArtist
     }
-    // ---------------------
 
     val albumArtBitmap = metadata?.getBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART) ?: metadata?.getBitmap(MediaMetadata.METADATA_KEY_ART)
     val appName = remember(pkg) { ParserRuleHelper.getAppNameForPackage(context, pkg) }
@@ -322,222 +329,239 @@ fun MediaSessionCard(
         try {
             val pm = context.packageManager
             val drawable = pm.getApplicationIcon(pkg)
-            val bitmap = (drawable as? android.graphics.drawable.BitmapDrawable)?.bitmap ?: run {
+            (drawable as? android.graphics.drawable.BitmapDrawable)?.bitmap ?: run {
                 val bmp = Bitmap.createBitmap(drawable.intrinsicWidth, drawable.intrinsicHeight, Bitmap.Config.ARGB_8888)
                 val canvas = android.graphics.Canvas(bmp)
                 drawable.setBounds(0, 0, canvas.width, canvas.height)
                 drawable.draw(canvas)
                 bmp
             }
-            bitmap
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             null
         }
     }
-
     val isPlaying = playbackState?.state == PlaybackState.STATE_PLAYING || playbackState?.state == PlaybackState.STATE_BUFFERING
     val duration = metadata?.getLong(MediaMetadata.METADATA_KEY_DURATION) ?: 0L
     val position = if (isPrimary) primaryProgress?.position ?: 0L else playbackState?.position ?: 0L
-
-    // Dynamic Color - Same as before ...
-    var cardBackgroundColor by remember { mutableStateOf(Color.Unspecified) }
-    val defaultSurfaceVariant = MaterialTheme.colorScheme.surfaceVariant
+    val sessionStateKey = buildString {
+        append(pkg)
+        append('|')
+        append(title)
+        append('|')
+        append(artist)
+    }
+    var pendingSeekPosition by remember(sessionStateKey) { mutableLongStateOf(-1L) }
+    var pendingSeekStartedAt by remember(sessionStateKey) { mutableLongStateOf(0L) }
+    var seekOriginPosition by remember(sessionStateKey) { mutableLongStateOf(-1L) }
+    var cardBackgroundColor by remember { mutableStateOf(Color.Transparent) }
 
     LaunchedEffect(albumArtBitmap) {
-        if (albumArtBitmap != null) {
-            Palette.from(albumArtBitmap).generate { palette ->
-                val vibrant = palette?.vibrantSwatch?.rgb
-                val dominant = palette?.dominantSwatch?.rgb
-                val colorInt = vibrant ?: dominant
-                if (colorInt != null) {
-                    // Apply alpha to blend with surface, or use as is
-                    // Let's use it as a tint mixed with surface for better readability, or just the color if it's light enough?
-                    // Usually we want a container color.
-                    cardBackgroundColor = Color(colorInt).copy(alpha = 0.3f) // Add transparency
-                }
-            }
+        if (albumArtBitmap == null) {
+            cardBackgroundColor = Color.Transparent
         } else {
-            cardBackgroundColor = Color.Unspecified
+            Palette.from(albumArtBitmap).generate { palette ->
+                val colorInt = palette?.vibrantSwatch?.rgb ?: palette?.dominantSwatch?.rgb
+                cardBackgroundColor = colorInt?.let { Color(it).copy(alpha = 0.22f) } ?: Color.Transparent
+            }
         }
-    }
-    
-    // Fuse extracted color with surface variant default
-    val finalContainerColor = if (cardBackgroundColor != Color.Unspecified) {
-        // Composite over surface to make it opaque-ish
-        // Actually, just using the color with alpha over SurfaceVariant is fine for a tint effect
-         MaterialTheme.colorScheme.surfaceVariant // fallback base
-         // We will apply the tint via a Box or modify CardDefaults?
-         // Let's just use the color directly if available, but ensure it's not too dark/light compared to text
-         // A safe bet is mixing it with Surface.
-    } else {
-        MaterialTheme.colorScheme.surfaceVariant
     }
 
     Card(
         shape = RoundedCornerShape(28.dp),
-        colors = CardDefaults.cardColors(
-             containerColor = if (cardBackgroundColor != Color.Unspecified) 
-                MaterialTheme.colorScheme.surface.copy(alpha = 1f) // Reset to surface then overlay
-             else MaterialTheme.colorScheme.surfaceVariant
-        ),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(0.dp),
         modifier = Modifier.fillMaxWidth()
     ) {
-        // Overlay for tint if we have a dynamic color
-        // Overlay for tint if we have a dynamic color
-        Box(modifier = Modifier.fillMaxWidth().background(
-            if (cardBackgroundColor != Color.Unspecified) cardBackgroundColor else Color.Transparent
-        )) {
+        Box(modifier = Modifier.fillMaxWidth().background(cardBackgroundColor)) {
             Column(modifier = Modifier.padding(20.dp)) {
-                
-                // Top Row: Album Art + Info
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    // Album Art
-                    if (albumArtBitmap != null) {
-                        Image(
-                            bitmap = albumArtBitmap.asImageBitmap(),
-                            contentDescription = "Album Art",
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier
-                                .size(80.dp)
-                                .clip(RoundedCornerShape(16.dp))
-                        )
-                    } else {
-                        Surface(
-                            shape = RoundedCornerShape(16.dp),
-                            color = MaterialTheme.colorScheme.surfaceDim,
-                            modifier = Modifier.size(80.dp)
-                        ) {
-                            Icon(
-                                painter = painterResource(R.drawable.ic_music_note),
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(24.dp)
-                            )
+                val openApp = {
+                    try {
+                        val launchIntent = context.packageManager.getLaunchIntentForPackage(pkg)
+                        if (launchIntent != null) {
+                            context.startActivity(launchIntent)
+                        } else {
+                            Toast.makeText(
+                                context,
+                                context.getString(R.string.media_control_cannot_open, pkg),
+                                Toast.LENGTH_SHORT
+                            ).show()
                         }
+                    } catch (e: Exception) {
+                        Toast.makeText(
+                            context,
+                            context.getString(R.string.media_control_error_prefix, e.message),
+                            Toast.LENGTH_SHORT
+                        ).show()
                     }
-                    
-                    Spacer(modifier = Modifier.width(16.dp))
-                    
-                    // Info
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(text = title, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Text(text = artist, style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Column {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                if (appIcon != null) {
-                                    Image(
-                                        bitmap = appIcon.asImageBitmap(),
-                                        contentDescription = null,
-                                        modifier = Modifier.size(16.dp),
-                                        contentScale = ContentScale.Fit
-                                    )
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                }
-                                Text(
-                                    text = appName, 
-                                    style = MaterialTheme.typography.labelMedium, 
-                                    color = MaterialTheme.colorScheme.primary,
-                                    fontWeight = FontWeight.Bold
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(80.dp)
+                            .clip(RoundedCornerShape(16.dp))
+                            .clickable(onClick = openApp)
+                    ) {
+                        if (albumArtBitmap != null) {
+                            Image(
+                                bitmap = albumArtBitmap.asImageBitmap(),
+                                contentDescription = stringResource(R.string.main_album_art_cd),
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.matchParentSize()
+                            )
+                        } else {
+                            Surface(
+                                shape = RoundedCornerShape(16.dp),
+                                color = MaterialTheme.colorScheme.surfaceDim,
+                                modifier = Modifier.matchParentSize()
+                            ) {
+                                Icon(
+                                    painter = painterResource(R.drawable.ic_music_note),
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(24.dp)
                                 )
                             }
-                            // Package Name on next line
-                            Text(
-                                text = pkg, 
-                                style = MaterialTheme.typography.labelSmall, 
-                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                                fontSize = 10.sp,
-                                modifier = Modifier.padding(start = if (appIcon != null) 22.dp else 0.dp) // Indent to align with text
-                            )
+                        }
+
+                        if (appIcon != null) {
+                            Surface(
+                                shape = CircleShape,
+                                color = MaterialTheme.colorScheme.surface,
+                                tonalElevation = 2.dp,
+                                shadowElevation = 2.dp,
+                                modifier = Modifier
+                                    .align(Alignment.BottomEnd)
+                                    .padding(4.dp)
+                                    .size(24.dp)
+                            ) {
+                                Image(
+                                    bitmap = appIcon.asImageBitmap(),
+                                    contentDescription = appName,
+                                    modifier = Modifier.padding(4.dp),
+                                    contentScale = ContentScale.Fit
+                                )
+                            }
                         }
                     }
-                }
 
-                Spacer(modifier = Modifier.height(20.dp))
-                
-                // Lyrics (primary or parsed from title)
-                val effectiveLyric = if (isPrimary && !primaryLyric.isNullOrBlank()) primaryLyric else parsedLyricFromTitle
+                    Spacer(modifier = Modifier.width(16.dp))
 
-                // Use fixed height to match Homepage card style
-                Column(modifier = Modifier.height(90.dp)) {
-                    if (!effectiveLyric.isNullOrBlank()) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Surface(
+                            shape = CircleShape,
+                            color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.85f)
+                        ) {
+                            Text(
+                                text = appName,
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(10.dp))
                         Text(
-                            text = "Lyric:",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            text = title,
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
-                        Spacer(modifier = Modifier.height(8.dp))
+                        Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = effectiveLyric,
+                            text = artist,
                             style = MaterialTheme.typography.bodyLarge,
-                            minLines = 2,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis,
-                            color = MaterialTheme.colorScheme.onSurface, 
-                            lineHeight = 24.sp
-                        )
-                    } else {
-                         Text(
-                            text = "Lyric:",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = stringResource(R.string.media_control_no_sessions), // placeholder text or empty
-                            style = MaterialTheme.typography.bodyLarge,
-                            fontStyle = FontStyle.Italic,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
                 }
-                
-                // Progress Bar (Interactive Slider)
+
+                Spacer(modifier = Modifier.height(18.dp))
+                val effectiveLyric = if (isPrimary && !primaryLyric.isNullOrBlank()) primaryLyric else parsedLyricFromTitle
+                MaterialLyricPanel(
+                    lyric = effectiveLyric,
+                    emptyText = if (isPrimary) {
+                        stringResource(R.string.main_waiting_for_lyrics)
+                    } else {
+                        stringResource(R.string.main_lyrics_unavailable)
+                    }
+                )
+
+                Spacer(modifier = Modifier.height(18.dp))
                 var isDragging by remember { mutableStateOf(false) }
                 var dragProgress by remember { mutableFloatStateOf(0f) }
+                LaunchedEffect(position, pendingSeekPosition, pendingSeekStartedAt, seekOriginPosition, isPlaying) {
+                    if (pendingSeekPosition < 0L) return@LaunchedEffect
+                    val expectedPendingPosition = if (isPlaying && pendingSeekStartedAt > 0L) {
+                        (pendingSeekPosition + (SystemClock.elapsedRealtime() - pendingSeekStartedAt)).coerceAtMost(duration)
+                    } else {
+                        pendingSeekPosition
+                    }
+                    val hasActuallyMovedFromOrigin = seekOriginPosition < 0L || abs(position - seekOriginPosition) > 250L
+                    val isNearSeekTarget = abs(position - expectedPendingPosition) <= 250L
 
+                    if (hasActuallyMovedFromOrigin && isNearSeekTarget) {
+                        pendingSeekPosition = -1L
+                        pendingSeekStartedAt = 0L
+                        seekOriginPosition = -1L
+                        return@LaunchedEffect
+                    }
+                    if (pendingSeekStartedAt <= 0L) return@LaunchedEffect
+                    val remaining = 4000L - (SystemClock.elapsedRealtime() - pendingSeekStartedAt)
+                    if (remaining > 0L) delay(remaining)
+                    if (pendingSeekPosition >= 0L && !isPlaying) {
+                        pendingSeekPosition = -1L
+                        pendingSeekStartedAt = 0L
+                        seekOriginPosition = -1L
+                    }
+                }
+                val effectivePosition = if (pendingSeekPosition >= 0L) {
+                    if (isPlaying && pendingSeekStartedAt > 0L) {
+                        (pendingSeekPosition + (SystemClock.elapsedRealtime() - pendingSeekStartedAt)).coerceAtMost(duration)
+                    } else {
+                        pendingSeekPosition
+                    }
+                } else {
+                    position
+                }
                 val currentProgress = if (isDragging) {
                     dragProgress
                 } else {
-                    if (duration > 0) (position.toFloat() / duration.toFloat()).coerceIn(0f, 1f) else 0f
+                    if (duration > 0) (effectivePosition.toFloat() / duration.toFloat()).coerceIn(0f, 1f) else 0f
                 }
 
-                Slider(
+                MaterialMediaProgressBar(
                     value = currentProgress,
-                    onValueChange = { 
+                    enabled = duration > 0,
+                    isPlaying = isPlaying,
+                    isDragging = isDragging,
+                    onValueChange = {
                         isDragging = true
                         dragProgress = it
                     },
                     onValueChangeFinished = {
                         if (duration > 0) {
-                             controller.transportControls.seekTo((dragProgress * duration).toLong())
+                            seekOriginPosition = position
+                            pendingSeekPosition = (dragProgress * duration).toLong()
+                            pendingSeekStartedAt = SystemClock.elapsedRealtime()
+                            controller.transportControls.seekTo(pendingSeekPosition)
                         }
                         isDragging = false
                     },
-                    colors = SliderDefaults.colors(
-                        thumbColor = MaterialTheme.colorScheme.primary,
-                        activeTrackColor = MaterialTheme.colorScheme.primary,
-                        inactiveTrackColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f)
-                    ),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(20.dp) 
+                    modifier = Modifier.fillMaxWidth()
                 )
 
-                Spacer(modifier = Modifier.height(20.dp))
-
-                // Playback Controls
+                Spacer(modifier = Modifier.height(14.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceEvenly,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    IconButton(onClick = { controller.transportControls.skipToPrevious() }) {
-                        Icon(painterResource(R.drawable.ic_skip_previous), "Prev", modifier = Modifier.size(32.dp))
+                    MaterialRoundTransportButton(R.drawable.ic_skip_previous, stringResource(R.string.action_previous)) {
+                        controller.transportControls.skipToPrevious()
                     }
-                    
-                    IconButton(
+                    FilledTonalButton(
                         onClick = {
                             if (isPlaying) {
                                 controller.transportControls.pause()
@@ -545,44 +569,190 @@ fun MediaSessionCard(
                                 controller.transportControls.play()
                             }
                         },
-                        modifier = Modifier
-                            .size(56.dp) // Larger play button
-                            .background(MaterialTheme.colorScheme.primaryContainer, CircleShape)
+                        shape = CircleShape,
+                        contentPadding = PaddingValues(18.dp)
                     ) {
-                         Icon(
-                             painterResource(if (isPlaying) R.drawable.ic_pause else R.drawable.ic_play_arrow), 
-                             "Toggle",
-                             tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                             modifier = Modifier.size(32.dp)
+                        Icon(
+                            painter = painterResource(if (isPlaying) R.drawable.ic_pause else R.drawable.ic_play_arrow),
+                            contentDescription = if (isPlaying) {
+                                stringResource(R.string.action_pause)
+                            } else {
+                                stringResource(R.string.action_play)
+                            },
+                            modifier = Modifier.size(24.dp)
                         )
                     }
-                    
-                    IconButton(onClick = { controller.transportControls.skipToNext() }) {
-                        Icon(painterResource(R.drawable.ic_skip_next), "Next", modifier = Modifier.size(28.dp))
+                    MaterialRoundTransportButton(R.drawable.ic_skip_next, stringResource(R.string.action_next)) {
+                        controller.transportControls.skipToNext()
                     }
                 }
-                
-                Spacer(modifier = Modifier.height(12.dp))
-                
-                // Actions
-                Button(
-                    onClick = {
-                        try {
-                            val launchIntent = context.packageManager.getLaunchIntentForPackage(pkg)
-                            if (launchIntent != null) {
-                                context.startActivity(launchIntent)
-                            } else {
-                                Toast.makeText(context, context.getString(R.string.media_control_cannot_open, pkg), Toast.LENGTH_SHORT).show()
-                            }
-                        } catch (e: Exception) {
-                            Toast.makeText(context, context.getString(R.string.media_control_error_prefix, e.message), Toast.LENGTH_SHORT).show()
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(stringResource(R.string.media_control_open_app, appName))
+            }
+        }
+    }
+}
+
+@Composable
+private fun MaterialLyricPanel(
+    lyric: String?,
+    emptyText: String,
+) {
+    val context = LocalContext.current
+
+    Surface(
+        shape = RoundedCornerShape(18.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 118.dp)
+            .clickable(enabled = !lyric.isNullOrBlank()) {
+                lyric?.let {
+                    val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                    cm.setPrimaryClip(android.content.ClipData.newPlainText("Lyric", it))
+                    Toast.makeText(context, context.getString(R.string.toast_copied), Toast.LENGTH_SHORT).show()
                 }
             }
+    ) {
+        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = Icons.Filled.AutoAwesome,
+                    contentDescription = null,
+                    tint = Color(0xFF3D7DFF),
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = stringResource(R.string.main_current_lyric_title),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            if (!lyric.isNullOrBlank()) {
+                Text(
+                    text = lyric,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontSize = 18.sp,
+                    lineHeight = 26.sp,
+                    color = Color(0xFF3D7DFF)
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = stringResource(R.string.tap_to_copy_hint),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            } else {
+                Text(
+                    text = emptyText,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontStyle = FontStyle.Italic,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun MaterialRoundTransportButton(
+    iconRes: Int,
+    contentDescription: String,
+    onClick: () -> Unit,
+) {
+    OutlinedButton(onClick = onClick, shape = CircleShape, contentPadding = PaddingValues(14.dp)) {
+        Icon(painter = painterResource(iconRes), contentDescription = contentDescription, modifier = Modifier.size(20.dp))
+    }
+}
+
+@Composable
+private fun MaterialMediaProgressBar(
+    value: Float,
+    enabled: Boolean,
+    isPlaying: Boolean,
+    isDragging: Boolean,
+    onValueChange: (Float) -> Unit,
+    onValueChangeFinished: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val inactiveTrackColor = MaterialTheme.colorScheme.primaryContainer
+    val activeTrackColor = MaterialTheme.colorScheme.primary
+    val thumbColor = MaterialTheme.colorScheme.primary
+    val showWavyIndicator = enabled && isPlaying && !isDragging
+
+    BoxWithConstraints(
+        modifier = modifier
+            .height(28.dp)
+            .pointerInput(enabled) {
+                if (!enabled) return@pointerInput
+                detectTapGestures { offset ->
+                    val width = size.width.toFloat().coerceAtLeast(1f)
+                    onValueChange((offset.x / width).coerceIn(0f, 1f))
+                    onValueChangeFinished()
+                }
+            }
+            .pointerInput(enabled) {
+                if (!enabled) return@pointerInput
+                detectDragGestures(
+                    onDragStart = { offset ->
+                        val width = size.width.toFloat().coerceAtLeast(1f)
+                        onValueChange((offset.x / width).coerceIn(0f, 1f))
+                    },
+                    onDrag = { change, _ ->
+                        change.consume()
+                        val width = size.width.toFloat().coerceAtLeast(1f)
+                        onValueChange((change.position.x / width).coerceIn(0f, 1f))
+                    },
+                    onDragEnd = onValueChangeFinished,
+                    onDragCancel = onValueChangeFinished
+                )
+            }
+    ) {
+        val clamped = value.coerceIn(0f, 1f)
+        val width = maxWidth
+        val thumbSize = if (isDragging && enabled) 12.dp else 0.dp
+        androidx.compose.runtime.key(showWavyIndicator) {
+            AndroidView(
+                factory = { context ->
+                    val themedContext = ContextThemeWrapper(
+                        context,
+                        if (showWavyIndicator) {
+                            R.style.ThemeOverlay_IslandLyrics_MediaProgress_Wavy
+                        } else {
+                            R.style.ThemeOverlay_IslandLyrics_MediaProgress_Flat
+                        }
+                    )
+                    LinearProgressIndicator(themedContext, null).apply {
+                        max = 10_000
+                        isIndeterminate = false
+                        setTrackStopIndicatorSize(0)
+                        setIndicatorColor(activeTrackColor.toArgb())
+                        trackColor = inactiveTrackColor.toArgb()
+                        setProgressCompat((clamped * max).roundToInt(), false)
+                    }
+                },
+                update = { indicator ->
+                    indicator.setIndicatorColor(activeTrackColor.toArgb())
+                    indicator.trackColor = inactiveTrackColor.toArgb()
+                    indicator.alpha = if (enabled) 1f else 0.38f
+                    indicator.setProgressCompat((clamped * indicator.max).roundToInt(), false)
+                },
+                modifier = Modifier
+                    .align(Alignment.CenterStart)
+                    .fillMaxWidth()
+                    .height(28.dp)
+            )
+        }
+
+        if (thumbSize > 0.dp) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.CenterStart)
+                    .padding(start = (width * clamped - thumbSize / 2).coerceAtLeast(0.dp))
+                    .size(thumbSize)
+                    .clip(CircleShape)
+                    .background(thumbColor)
+            )
         }
     }
 }

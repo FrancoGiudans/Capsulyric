@@ -11,13 +11,17 @@ import android.media.session.MediaSessionManager
 import android.media.session.PlaybackState
 import android.os.SystemClock
 import android.provider.Settings
+import android.view.ContextThemeWrapper
 import android.widget.Toast
-import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Canvas as ComposeCanvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -45,8 +49,6 @@ import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Slider
-import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -67,8 +69,10 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
@@ -78,12 +82,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
 import com.example.islandlyrics.R
 import com.example.islandlyrics.data.LyricRepository
 import com.example.islandlyrics.data.ParserRuleHelper
 import com.example.islandlyrics.service.MediaMonitorService
+import com.google.android.material.progressindicator.LinearProgressIndicator
+import androidx.palette.graphics.Palette
 import kotlinx.coroutines.delay
 import kotlin.math.abs
+import kotlin.math.roundToInt
 
 private val StatusActive = Color(0xFF2E7D32)
 private val StatusInactive = Color(0xFFC62828)
@@ -338,7 +346,7 @@ private fun StatusPill(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.padding(horizontal = 18.dp, vertical = 10.dp)
         ) {
-            Canvas(modifier = Modifier.size(10.dp)) {
+            ComposeCanvas(modifier = Modifier.size(10.dp)) {
                 drawCircle(color = if (isActive) StatusActive else StatusInactive)
             }
             Spacer(modifier = Modifier.width(10.dp))
@@ -481,51 +489,118 @@ private fun MediaSessionCard(
     var pendingSeekPosition by remember(sessionStateKey) { mutableLongStateOf(-1L) }
     var pendingSeekStartedAt by remember(sessionStateKey) { mutableLongStateOf(0L) }
     var seekOriginPosition by remember(sessionStateKey) { mutableLongStateOf(-1L) }
+    var cardBackgroundColor by remember { mutableStateOf(Color.Transparent) }
+
+    LaunchedEffect(albumArt) {
+        if (albumArt == null) {
+            cardBackgroundColor = Color.Transparent
+        } else {
+            Palette.from(albumArt).generate { palette ->
+                val colorInt = palette?.vibrantSwatch?.rgb ?: palette?.dominantSwatch?.rgb
+                cardBackgroundColor = colorInt?.let { Color(it).copy(alpha = 0.22f) } ?: Color.Transparent
+            }
+        }
+    }
 
     Card(
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+        shape = RoundedCornerShape(28.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = minCardHeight)
             .onSizeChanged { onHeightMeasured(it.height) }
     ) {
-        Column(
+        Box(
             modifier = Modifier
-                .background(
-                    Brush.verticalGradient(
-                        listOf(
-                            MaterialTheme.colorScheme.surfaceContainer,
-                            MaterialTheme.colorScheme.surfaceContainerLow
-                        )
-                    )
-                )
-                .padding(20.dp)
+                .fillMaxWidth()
+                .background(cardBackgroundColor)
         ) {
+        Column(modifier = Modifier.padding(20.dp)) {
             val context = LocalContext.current
             val appName = remember(controller.packageName) {
                 ParserRuleHelper.getAppNameForPackage(context, controller.packageName)
             }
+            val appIcon = remember(controller.packageName) {
+                try {
+                    val pm = context.packageManager
+                    val drawable = pm.getApplicationIcon(controller.packageName)
+                    (drawable as? android.graphics.drawable.BitmapDrawable)?.bitmap ?: run {
+                        val bmp = Bitmap.createBitmap(drawable.intrinsicWidth, drawable.intrinsicHeight, Bitmap.Config.ARGB_8888)
+                        val canvas = Canvas(bmp)
+                        drawable.setBounds(0, 0, canvas.width, canvas.height)
+                        drawable.draw(canvas)
+                        bmp
+                    }
+                } catch (_: Exception) {
+                    null
+                }
+            }
+            val openApp = {
+                try {
+                    val launchIntent = context.packageManager.getLaunchIntentForPackage(controller.packageName)
+                    if (launchIntent != null) {
+                        context.startActivity(launchIntent)
+                    } else {
+                        Toast.makeText(
+                            context,
+                            context.getString(R.string.media_control_cannot_open, controller.packageName),
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                } catch (e: Exception) {
+                    Toast.makeText(
+                        context,
+                        context.getString(R.string.media_control_error_prefix, e.message),
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+            }
 
             Row(verticalAlignment = Alignment.CenterVertically) {
-                if (albumArt != null) {
-                    Image(
-                        bitmap = albumArt.asImageBitmap(),
-                        contentDescription = stringResource(R.string.main_album_art_cd),
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.size(84.dp).clip(RoundedCornerShape(18.dp))
-                    )
-                } else {
-                    Surface(
-                        shape = RoundedCornerShape(18.dp),
-                        color = MaterialTheme.colorScheme.primaryContainer,
-                        modifier = Modifier.size(84.dp)
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
+                Box(
+                    modifier = Modifier
+                        .size(80.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .clickable(onClick = openApp)
+                ) {
+                    if (albumArt != null) {
+                        Image(
+                            bitmap = albumArt.asImageBitmap(),
+                            contentDescription = stringResource(R.string.main_album_art_cd),
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.matchParentSize()
+                        )
+                    } else {
+                        Surface(
+                            shape = RoundedCornerShape(16.dp),
+                            color = MaterialTheme.colorScheme.surfaceDim,
+                            modifier = Modifier.matchParentSize()
+                        ) {
                             Icon(
                                 painter = painterResource(R.drawable.ic_music_note),
                                 contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onPrimaryContainer
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(24.dp)
+                            )
+                        }
+                    }
+
+                    if (appIcon != null) {
+                        Surface(
+                            shape = CircleShape,
+                            color = MaterialTheme.colorScheme.surface,
+                            tonalElevation = 2.dp,
+                            shadowElevation = 2.dp,
+                            modifier = Modifier
+                                .align(Alignment.BottomEnd)
+                                .padding(4.dp)
+                                .size(24.dp)
+                        ) {
+                            Image(
+                                bitmap = appIcon.asImageBitmap(),
+                                contentDescription = appName,
+                                modifier = Modifier.padding(4.dp),
+                                contentScale = ContentScale.Fit
                             )
                         }
                     }
@@ -570,7 +645,14 @@ private fun MediaSessionCard(
             }
 
             Spacer(modifier = Modifier.height(18.dp))
-            LyricPanel(lyric = lyric, isPrimary = isPrimary)
+            LyricPanel(
+                lyric = lyric,
+                emptyText = if (isPrimary) {
+                    stringResource(R.string.main_waiting_for_lyrics)
+                } else {
+                    stringResource(R.string.main_lyrics_unavailable)
+                }
+            )
             Spacer(modifier = Modifier.height(18.dp))
 
             var isDragging by remember { mutableStateOf(false) }
@@ -618,8 +700,11 @@ private fun MediaSessionCard(
                 if (duration > 0) (effectivePosition.toFloat() / duration.toFloat()).coerceIn(0f, 1f) else 0f
             }
 
-            Slider(
+            MediaProgressBar(
                 value = currentProgress,
+                enabled = duration > 0,
+                isPlaying = isPlaying,
+                isDragging = isDragging,
                 onValueChange = {
                     isDragging = true
                     dragProgress = it
@@ -633,12 +718,6 @@ private fun MediaSessionCard(
                     }
                     isDragging = false
                 },
-                enabled = duration > 0,
-                colors = SliderDefaults.colors(
-                    thumbColor = LyricAccent,
-                    activeTrackColor = LyricAccent,
-                    inactiveTrackColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.18f)
-                ),
                 modifier = Modifier.fillMaxWidth()
             )
 
@@ -667,13 +746,14 @@ private fun MediaSessionCard(
                 RoundTransportButton(R.drawable.ic_skip_next, stringResource(R.string.action_next)) { controller.transportControls.skipToNext() }
             }
         }
+        }
     }
 }
 
 @Composable
 private fun LyricPanel(
     lyric: String?,
-    isPrimary: Boolean,
+    emptyText: String,
 ) {
     val context = LocalContext.current
 
@@ -682,7 +762,7 @@ private fun LyricPanel(
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
         modifier = Modifier
             .fillMaxWidth()
-            .height(118.dp)
+            .heightIn(min = 118.dp)
             .clickable(enabled = !lyric.isNullOrBlank()) {
                 lyric?.let {
                     val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
@@ -705,24 +785,14 @@ private fun LyricPanel(
                         style = MaterialTheme.typography.titleMedium,
                         fontSize = 18.sp,
                         lineHeight = 26.sp,
-                        color = LyricAccent,
-                        maxLines = 3,
-                        overflow = TextOverflow.Ellipsis
+                        color = LyricAccent
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(text = stringResource(R.string.tap_to_copy_hint), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                isPrimary -> {
-                    Text(
-                        text = stringResource(R.string.main_waiting_for_lyrics),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontStyle = FontStyle.Italic,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
                 else -> {
                     Text(
-                        text = stringResource(R.string.main_lyrics_unavailable),
+                        text = emptyText,
                         style = MaterialTheme.typography.titleMedium,
                         fontStyle = FontStyle.Italic,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -741,6 +811,98 @@ private fun RoundTransportButton(
 ) {
     OutlinedButton(onClick = onClick, shape = CircleShape, contentPadding = PaddingValues(14.dp)) {
         Icon(painter = painterResource(iconRes), contentDescription = contentDescription, modifier = Modifier.size(20.dp))
+    }
+}
+
+@Composable
+private fun MediaProgressBar(
+    value: Float,
+    enabled: Boolean,
+    isPlaying: Boolean,
+    isDragging: Boolean,
+    onValueChange: (Float) -> Unit,
+    onValueChangeFinished: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val inactiveTrackColor = MaterialTheme.colorScheme.primaryContainer
+    val activeTrackColor = MaterialTheme.colorScheme.primary
+    val thumbColor = MaterialTheme.colorScheme.primary
+    val showWavyIndicator = enabled && isPlaying && !isDragging
+
+    BoxWithConstraints(
+        modifier = modifier
+            .height(28.dp)
+            .pointerInput(enabled) {
+                if (!enabled) return@pointerInput
+                detectTapGestures { offset ->
+                    val width = size.width.toFloat().coerceAtLeast(1f)
+                    onValueChange((offset.x / width).coerceIn(0f, 1f))
+                    onValueChangeFinished()
+                }
+            }
+            .pointerInput(enabled) {
+                if (!enabled) return@pointerInput
+                detectDragGestures(
+                    onDragStart = { offset ->
+                        val width = size.width.toFloat().coerceAtLeast(1f)
+                        onValueChange((offset.x / width).coerceIn(0f, 1f))
+                    },
+                    onDrag = { change, _ ->
+                        change.consume()
+                        val width = size.width.toFloat().coerceAtLeast(1f)
+                        onValueChange((change.position.x / width).coerceIn(0f, 1f))
+                    },
+                    onDragEnd = onValueChangeFinished,
+                    onDragCancel = onValueChangeFinished
+                )
+            }
+    ) {
+        val clamped = value.coerceIn(0f, 1f)
+        val width = maxWidth
+        val thumbSize = if (isDragging && enabled) 12.dp else 0.dp
+        androidx.compose.runtime.key(showWavyIndicator) {
+            AndroidView(
+                factory = { context ->
+                    val themedContext = ContextThemeWrapper(
+                        context,
+                        if (showWavyIndicator) {
+                            R.style.ThemeOverlay_IslandLyrics_MediaProgress_Wavy
+                        } else {
+                            R.style.ThemeOverlay_IslandLyrics_MediaProgress_Flat
+                        }
+                    )
+                    LinearProgressIndicator(themedContext, null).apply {
+                        max = 10_000
+                        isIndeterminate = false
+                        setTrackStopIndicatorSize(0)
+                        setIndicatorColor(activeTrackColor.toArgb())
+                        trackColor = inactiveTrackColor.toArgb()
+                        setProgressCompat((clamped * max).roundToInt(), false)
+                    }
+                },
+                update = { indicator ->
+                    indicator.setIndicatorColor(activeTrackColor.toArgb())
+                    indicator.trackColor = inactiveTrackColor.toArgb()
+                    indicator.alpha = if (enabled) 1f else 0.38f
+                    indicator.setProgressCompat((clamped * indicator.max).roundToInt(), false)
+                },
+                modifier = Modifier
+                    .align(Alignment.CenterStart)
+                    .fillMaxWidth()
+                    .height(28.dp)
+            )
+        }
+
+        if (thumbSize > 0.dp) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.CenterStart)
+                    .padding(start = (width * clamped - thumbSize / 2).coerceAtLeast(0.dp))
+                    .size(thumbSize)
+                    .clip(CircleShape)
+                    .background(thumbColor)
+            )
+        }
     }
 }
 

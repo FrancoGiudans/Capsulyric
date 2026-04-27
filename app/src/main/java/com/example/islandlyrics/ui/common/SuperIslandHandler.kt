@@ -110,6 +110,7 @@ class SuperIslandHandler(
 
     // Change detection tracking
     private var lastSentDisplayLyric = ""
+    private var lastSentFullLyric = ""
     private var lastSentProgressPercent = -1
     private var lastSentSubText = ""
     private var lastSentIsPlaying = false
@@ -149,6 +150,7 @@ class SuperIslandHandler(
         loadPreferences()
 
         lastSentDisplayLyric = ""
+        lastSentFullLyric = ""
         lastSentProgressPercent = -1
         lastSentSubText = ""
         lastSentIsPlaying = false
@@ -261,20 +263,20 @@ class SuperIslandHandler(
             if (cachedActionStyle == "media_controls") {
                 val showPrevButton = effectiveButtonLayout == "three_button"
                 val prevIconBitmap = if (showPrevButton) {
-                    renderButtonIcon(R.drawable.ic_skip_previous, 96, 0.5f, null, android.graphics.Color.WHITE)
-                } else {
-                    null
-                }
-                val prevIconBitmapDark = if (showPrevButton) {
                     renderButtonIcon(R.drawable.ic_skip_previous, 96, 0.5f, null, android.graphics.Color.parseColor("#FF111111"))
                 } else {
                     null
                 }
+                val prevIconBitmapDark = if (showPrevButton) {
+                    renderButtonIcon(R.drawable.ic_skip_previous, 96, 0.5f, null, android.graphics.Color.WHITE)
+                } else {
+                    null
+                }
                 val playPauseResId = if (isPlaying) R.drawable.ic_pause else R.drawable.ic_play_arrow
-                val playPauseIconBitmap = renderButtonIcon(playPauseResId, 96, 0.42f, null, android.graphics.Color.WHITE)
-                val playPauseIconBitmapDark = renderButtonIcon(playPauseResId, 96, 0.42f, null, android.graphics.Color.parseColor("#FF111111"))
-                val nextIconBitmap = renderButtonIcon(R.drawable.ic_skip_next, 96, 0.5f, null, android.graphics.Color.WHITE)
-                val nextIconBitmapDark = renderButtonIcon(R.drawable.ic_skip_next, 96, 0.5f, null, android.graphics.Color.parseColor("#FF111111"))
+                val playPauseIconBitmap = renderButtonIcon(playPauseResId, 96, 0.42f, null, android.graphics.Color.parseColor("#FF111111"))
+                val playPauseIconBitmapDark = renderButtonIcon(playPauseResId, 96, 0.42f, null, android.graphics.Color.WHITE)
+                val nextIconBitmap = renderButtonIcon(R.drawable.ic_skip_next, 96, 0.5f, null, android.graphics.Color.parseColor("#FF111111"))
+                val nextIconBitmapDark = renderButtonIcon(R.drawable.ic_skip_next, 96, 0.5f, null, android.graphics.Color.WHITE)
 
                 cachedPrevIcon = prevIconBitmap?.let { Icon.createWithBitmap(it) }
                 cachedPrevIconDark = prevIconBitmapDark?.let { Icon.createWithBitmap(it) }
@@ -323,11 +325,11 @@ class SuperIslandHandler(
         val colorChanged = albumColor != lastAppliedAlbumColor
 
         // 2. LYRIC LINE CHANGE: Force startForeground to clear MIUI rendering frame cache (Issue #22)
-        // When the previous lyric fills the display area (≥8 CJK), the system caches the right-aligned
-        // render state and reuses it for the next lyric, causing it to appear truncated from non-zero offset.
-        // Re-using the startForeground path (same as track switching) forces a full re-layout.
+        // Compare fullLyric (not displayLyric) to detect actual line changes.
+        // displayLyric changes on every syllable scroll tick within the same line,
+        // which would cause excessive startForeground calls and system-level delays.
         val lyricLineChanged = !isFirstNotification && !trackChanged
-                && displayLyric.isNotEmpty() && displayLyric != lastSentDisplayLyric
+                && state.fullLyric.isNotEmpty() && state.fullLyric != lastSentFullLyric
         if (lyricLineChanged) {
             isFirstNotification = true
         }
@@ -514,6 +516,7 @@ class SuperIslandHandler(
         lastFocusParam = focusSignature
 
         lastSentDisplayLyric = displayLyric
+        lastSentFullLyric = state.fullLyric
         lastSentProgressPercent = progressPercent
         lastSentSubText = subText
         lastSentIsPlaying = state.isPlaying
@@ -667,7 +670,7 @@ class SuperIslandHandler(
     private fun createContentIntent(): PendingIntent {
         return if (cachedClickStyle == "media_controls") {
             val intent = Intent(context, MediaControlActivity::class.java).apply {
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
             }
             PendingIntent.getActivity(
                 context, 0, intent,
@@ -682,6 +685,29 @@ class SuperIslandHandler(
                 PendingIntent.FLAG_IMMUTABLE
             )
         }
+    }
+
+    private fun createFocusBroadcastAction(
+        key: String,
+        requestCode: Int,
+        action: String,
+        iconResId: Int,
+        title: String
+    ): String {
+        val pendingIntent = PendingIntent.getBroadcast(
+            context,
+            requestCode,
+            Intent(action)
+                .setPackage(context.packageName)
+                .addFlags(Intent.FLAG_RECEIVER_FOREGROUND),
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
+        val notificationAction = Notification.Action.Builder(
+            Icon.createWithResource(context, iconResId),
+            title,
+            pendingIntent
+        ).build()
+        return createAction(key, notificationAction)
     }
 
     private fun createMiPlayIntent(): PendingIntent? {
@@ -876,6 +902,14 @@ class SuperIslandHandler(
         return bitmap
     }
 
+    private fun createAction(key: String, value: Notification.Action): String {
+        return key.also {
+            standardActionBundle.putParcelable(it, value)
+        }
+    }
+
+    private val standardActionBundle = android.os.Bundle()
+
     private fun buildStandardFocusBundle(
         state: UIState,
         displayLyric: String,
@@ -887,7 +921,9 @@ class SuperIslandHandler(
         progressBarColor: String,
         packageName: String,
         titleWithArtist: String
-    ) = FocusNotification.buildV3 {
+    ): android.os.Bundle {
+        standardActionBundle.clear()
+        val bundle = FocusNotification.buildV3 {
         business = "lyric_display"
         isShowNotification = true
         enableFloat = false
@@ -914,37 +950,53 @@ class SuperIslandHandler(
             actions {
                 val effectiveButtonLayout = if (cachedSuperIslandNotificationStyle == "advanced_beta") "three_button" else cachedMediaButtonLayout
                 val showPrevButton = effectiveButtonLayout == "three_button"
-                val prevServiceIntent = Intent(context, LyricService::class.java)
-                    .setAction("ACTION_MEDIA_PREV")
-                val playPauseServiceIntent = Intent(context, LyricService::class.java)
-                    .setAction("ACTION_MEDIA_PLAY_PAUSE")
-                val nextServiceIntent = Intent(context, LyricService::class.java)
-                    .setAction("ACTION_MEDIA_NEXT")
+                val prevActionKey = if (showPrevButton) {
+                    createFocusBroadcastAction(
+                        key = "miui.focus.action_prev",
+                        requestCode = 3100,
+                        action = "com.example.islandlyrics.ACTION_MEDIA_PREV",
+                        iconResId = R.drawable.ic_skip_previous,
+                        title = "Previous"
+                    )
+                } else {
+                    null
+                }
+                val playPauseActionKey = createFocusBroadcastAction(
+                    key = "miui.focus.action_play_pause",
+                    requestCode = 3101,
+                    action = "com.example.islandlyrics.ACTION_MEDIA_PLAY_PAUSE",
+                    iconResId = if (state.isPlaying) R.drawable.ic_pause else R.drawable.ic_play_arrow,
+                    title = if (state.isPlaying) "Pause" else "Play"
+                )
+                val nextActionKey = createFocusBroadcastAction(
+                    key = "miui.focus.action_next",
+                    requestCode = 3102,
+                    action = "com.example.islandlyrics.ACTION_MEDIA_NEXT",
+                    iconResId = R.drawable.ic_skip_next,
+                    title = "Next"
+                )
 
                 if (showPrevButton) {
                     addActionInfo {
                         type = 0
+                        action = prevActionKey
                         actionIcon = cachedPrevIcon?.let { createPicture("miui.focus.pic_btn_prev", it) }
                         actionIconDark = cachedPrevIconDark?.let { createPicture("miui.focus.pic_btn_prev_dark", it) }
-                        actionIntentType = 3
-                        actionIntent = prevServiceIntent.toUri(Intent.URI_INTENT_SCHEME)
                         clickWithCollapse = false
                     }
                 }
                 addActionInfo {
                     type = 0
+                    action = playPauseActionKey
                     actionIcon = cachedPlayPauseIcon?.let { createPicture("miui.focus.pic_btn_play_pause", it) }
                     actionIconDark = cachedPlayPauseIconDark?.let { createPicture("miui.focus.pic_btn_play_pause_dark", it) }
-                    actionIntentType = 3
-                    actionIntent = playPauseServiceIntent.toUri(Intent.URI_INTENT_SCHEME)
                     clickWithCollapse = false
                 }
                 addActionInfo {
                     type = 0
+                    action = nextActionKey
                     actionIcon = cachedNextIcon?.let { createPicture("miui.focus.pic_btn_next", it) }
                     actionIconDark = cachedNextIconDark?.let { createPicture("miui.focus.pic_btn_next_dark", it) }
-                    actionIntentType = 3
-                    actionIntent = nextServiceIntent.toUri(Intent.URI_INTENT_SCHEME)
                     clickWithCollapse = false
                 }
             }
@@ -1014,6 +1066,11 @@ class SuperIslandHandler(
                 }
             }
         }
+    }
+        if (standardActionBundle.keySet().isNotEmpty()) {
+            bundle.putBundle("miui.focus.actions", android.os.Bundle(standardActionBundle))
+        }
+        return bundle
     }
 
     private fun mergeCustomFocusWithStandardIsland(customExtras: android.os.Bundle, standardExtras: android.os.Bundle): android.os.Bundle {

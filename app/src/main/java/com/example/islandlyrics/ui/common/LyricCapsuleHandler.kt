@@ -89,7 +89,7 @@ class LyricCapsuleHandler(
     private fun rebuildCachedIntents() {
         cachedContentIntent = if (cachedClickStyle == "media_controls") {
             val intent = Intent(context, MediaControlActivity::class.java).apply {
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
             }
             PendingIntent.getActivity(
                 context, 0, intent,

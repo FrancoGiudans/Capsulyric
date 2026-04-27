@@ -1,5 +1,6 @@
 package com.example.islandlyrics.feature.mediacontrol
 
+import android.content.Intent
 import android.os.Bundle
 import com.example.islandlyrics.ui.miuix.isMiuixEnabled
 import com.example.islandlyrics.feature.mediacontrol.miuix.MiuixMediaControlDialog
@@ -12,8 +13,11 @@ import androidx.compose.runtime.SideEffect
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import com.example.islandlyrics.ui.theme.material.AppTheme
+import androidx.compose.runtime.mutableStateOf
 
 class MediaControlActivity : ComponentActivity() {
+    private val showDialog = mutableStateOf(true)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
@@ -22,14 +26,16 @@ class MediaControlActivity : ComponentActivity() {
         
         setContent {
             val useMiuix = isMiuixEnabled(this)
-            val showDialog = androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(true) }
 
             if (useMiuix) {
                 MiuixAppTheme {
                     if (showDialog.value) {
                         MiuixMediaControlDialog(
                             show = showDialog.value,
-                            onDismiss = { finish() }
+                            onDismiss = {
+                                showDialog.value = false
+                                finish()
+                            }
                         )
                     } else {
                         finish()
@@ -41,11 +47,20 @@ class MediaControlActivity : ComponentActivity() {
                     dynamicColor = true
                 ) {
                     MediaControlDialog(
-                        onDismiss = { finish() }
+                        onDismiss = {
+                            showDialog.value = false
+                            finish()
+                        }
                     )
                 }
             }
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        showDialog.value = true
     }
     
     private fun enableEdgeToEdge() {

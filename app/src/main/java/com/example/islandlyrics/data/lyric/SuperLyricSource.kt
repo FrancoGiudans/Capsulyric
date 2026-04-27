@@ -131,32 +131,39 @@ class SuperLyricSource(
             }
             lastLyric = lyric
 
-            // Do NOT call updatePlaybackStatus(true) here.
-            // Lyric arrival does not imply "is playing" — that judgment belongs to
-            // MediaMonitorService which checks the actual MediaSession state and whitelist.
-            LyricRepository.getInstance().updateLyric(lyric, getAppName(pkg), "SuperLyric")
-
-            // ── Phase 3: handle SuperLyricLine / SuperLyricWord (word-level syllable data) ──
+            // ── Phase 3: prepare parsed lyrics if word-level data is available ──
             val words = lyricLine?.words
-            if (!words.isNullOrEmpty()) {
-                val lines = convertLineToParsedLyrics(lyric = lyricLine)
-                LyricRepository.getInstance().updateParsedLyrics(
-                    lines = lines,
-                    hasSyllable = true,
-                    sourceLabel = getAppName(pkg),
-                    apiPath = "SuperLyric"
-                )
-                AppLogger.getInstance().d(
-                    TAG,
-                    "SuperLyric 3.x line converted: ${lines.size} line(s), words=${words.size}, translation=${data.translation != null}, secondary=${data.secondary != null}"
-                )
-                return   // No need to fetch online
-            }
+            val parsedLines = if (!words.isNullOrEmpty()) {
+                convertLineToParsedLyrics(lyric = lyricLine)
+            } else null
 
-            // ── Phase 4: decide whether to trigger online fetch ───────────────
-            if (rule.useOnlineLyrics) {
-                // Only fetch if EnhancedLRC was not provided
-                onlineLyricSource.fetchFor(liveTitle, liveArtist, pkg)
+            val appName = getAppName(pkg)
+            val shouldFetchOnline = parsedLines == null && rule.useOnlineLyrics
+
+            // Dispatch repository writes to main thread so they go through
+            // LiveData.setValue() (synchronous) instead of postValue() (async).
+            // postValue() silently merges consecutive calls, which drops lyrics
+            // when SuperLyric pushes arrive in rapid succession on the Binder pool.
+            mainHandler.post {
+                LyricRepository.getInstance().updateLyric(lyric, appName, "SuperLyric")
+
+                if (parsedLines != null) {
+                    LyricRepository.getInstance().updateParsedLyrics(
+                        lines = parsedLines,
+                        hasSyllable = true,
+                        sourceLabel = appName,
+                        apiPath = "SuperLyric"
+                    )
+                    AppLogger.getInstance().d(
+                        TAG,
+                        "SuperLyric 3.x line converted: ${parsedLines.size} line(s), words=${words?.size}, translation=${data.translation != null}, secondary=${data.secondary != null}"
+                    )
+                }
+
+                // ── Phase 4: decide whether to trigger online fetch ───────────
+                if (shouldFetchOnline) {
+                    onlineLyricSource.fetchFor(liveTitle, liveArtist, pkg)
+                }
             }
         }
 

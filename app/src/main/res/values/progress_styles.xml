@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="ThemeOverlay.IslandLyrics" parent="" />
+    <style name="ThemeOverlay.IslandLyrics.MediaProgress" parent="" />
+
+    <style name="ThemeOverlay.IslandLyrics.MediaProgress.Flat" parent="">
+        <item name="linearProgressIndicatorStyle">@style/Widget.IslandLyrics.MediaProgress.Flat</item>
+    </style>
+
+    <style name="ThemeOverlay.IslandLyrics.MediaProgress.Wavy" parent="">
+        <item name="linearProgressIndicatorStyle">@style/Widget.IslandLyrics.MediaProgress.Wavy</item>
+    </style>
+
+    <style name="Widget.IslandLyrics" parent="Widget.Material3.LinearProgressIndicator" />
+    <style name="Widget.IslandLyrics.MediaProgress" parent="Widget.Material3.LinearProgressIndicator" />
+
+    <style name="Widget.IslandLyrics.MediaProgress.Flat" parent="Widget.IslandLyrics.MediaProgress">
+        <item name="trackThickness">8dp</item>
+        <item name="trackStopIndicatorSize">0dp</item>
+    </style>
+
+    <style name="Widget.IslandLyrics.MediaProgress.Wavy" parent="Widget.IslandLyrics.MediaProgress.Flat">
+        <item name="wavelengthDeterminate">24dp</item>
+        <item name="waveAmplitude">2dp</item>
+        <item name="waveSpeed">18dp</item>
+    </style>
+</resources>
