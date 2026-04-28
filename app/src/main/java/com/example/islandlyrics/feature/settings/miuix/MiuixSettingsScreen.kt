@@ -91,14 +91,12 @@ fun MiuixSettingsScreen(
     val showPrivacyDialog = remember { mutableStateOf(false) }
     val showFeedbackPopup = remember { mutableStateOf(false) }
     val showPrereleaseDialog = remember { mutableStateOf(false) }
-    val showPrereleaseDescDialog = remember { mutableStateOf(false) }
     val showCommunityDialog = remember { mutableStateOf<CommunityDialogState?>(null) }
     var communityFeed by remember { mutableStateOf<CommunityFeed?>(null) }
     var communityFeedLoaded by remember { mutableStateOf(false) }
 
     MiuixBackHandler(enabled = showPrivacyDialog.value) { showPrivacyDialog.value = false }
     MiuixBackHandler(enabled = showFeedbackPopup.value) { showFeedbackPopup.value = false }
-    MiuixBackHandler(enabled = showPrereleaseDescDialog.value) { showPrereleaseDescDialog.value = false }
     MiuixBackHandler(enabled = showPrereleaseDialog.value) {
         showPrereleaseDialog.value = false
     }
@@ -176,7 +174,6 @@ fun MiuixSettingsScreen(
     val popupShowing = showPrivacyDialog.value ||
             showFeedbackPopup.value ||
             showPrereleaseDialog.value ||
-            showPrereleaseDescDialog.value ||
             showCommunityDialog.value != null ||
             updateReleaseInfo != null
 
@@ -371,11 +368,6 @@ fun MiuixSettingsScreen(
                                     currentChannel = channel
                                 }
                             )
-
-                            SuperArrow(
-                                title = stringResource(R.string.settings_prerelease_desc),
-                                onClick = { showPrereleaseDescDialog.value = true }
-                            )
                         }
 
                         SuperArrow(
@@ -530,20 +522,6 @@ fun MiuixSettingsScreen(
         }
 
         // --- Dialogs (must be inside Scaffold content for MiuixPopupHost) ---
-        MiuixBlurDialog(
-            title = stringResource(R.string.dialog_prerelease_desc_title),
-            summary = stringResource(R.string.dialog_prerelease_desc_message),
-            show = showPrereleaseDescDialog.value,
-            onDismissRequest = { showPrereleaseDescDialog.value = false }
-        ) {
-            TextButton(
-                text = stringResource(android.R.string.ok),
-                onClick = { showPrereleaseDescDialog.value = false },
-                modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.textButtonColorsPrimary()
-            )
-        }
-
         MiuixBlurDialog(
             title = stringResource(R.string.dialog_prerelease_warning_title),
             show = showPrereleaseDialog.value,

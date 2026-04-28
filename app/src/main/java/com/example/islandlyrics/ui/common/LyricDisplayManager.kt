@@ -60,7 +60,7 @@ class LyricDisplayManager(private val context: Context) {
     private val maxScrollDelay = 5000L
     
     private val isHeavySkin = RomUtils.isHeavySkin()
-    private val maxDisplayWeight = if (isHeavySkin) 18 else 10
+    private val maxDisplayWeight = if (isHeavySkin) 16 else 10
     
     private val initialPauseDuration = 400L
     private val finalPauseDuration = 300L

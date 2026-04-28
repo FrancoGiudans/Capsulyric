@@ -44,6 +44,7 @@ fun FAQScreen(onBack: () -> Unit) {
                 listOfNotNull(
                     QAItem(context.resources.getText(R.string.faq_q_add_rule), context.resources.getText(R.string.faq_a_add_rule)),
                     QAItem(context.resources.getText(R.string.faq_q_config_online_lyrics), context.resources.getText(R.string.faq_a_config_online_lyrics)),
+                    QAItem(context.resources.getText(R.string.settings_prerelease_desc), context.resources.getText(R.string.dialog_prerelease_desc_message)),
                     if (com.example.islandlyrics.core.platform.RomUtils.isHyperOsVersionAtLeast(3, 0, 0) || android.os.Build.VERSION.SDK_INT >= 36) {
                         QAItem(context.resources.getText(R.string.faq_q_island_modes), context.resources.getText(R.string.faq_a_island_modes))
                     } else null
