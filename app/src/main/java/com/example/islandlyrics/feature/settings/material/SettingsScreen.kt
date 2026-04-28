@@ -3,14 +3,13 @@ package com.example.islandlyrics.feature.settings.material
 import android.app.Activity
 import com.example.islandlyrics.BuildConfig
 import com.example.islandlyrics.R
-import com.example.islandlyrics.core.feed.CommunityFeed
 import com.example.islandlyrics.core.feed.CommunityFeedItem
-import com.example.islandlyrics.core.feed.CommunityFeedRepository
 import com.example.islandlyrics.core.network.OfflineModeManager
 import com.example.islandlyrics.core.update.UpdateChecker
 import com.example.islandlyrics.core.theme.ThemeHelper
 import com.example.islandlyrics.core.platform.RomUtils
 import com.example.islandlyrics.feature.faq.FAQActivity
+import com.example.islandlyrics.feature.settings.AboutActivity
 import com.example.islandlyrics.feature.settings.CommunityDialogState
 import com.example.islandlyrics.feature.settings.CommunityMarkdownBody
 import com.example.islandlyrics.feature.settings.buildCommunityMarkdown
@@ -20,8 +19,6 @@ import android.net.Uri
 import android.os.Build
 import android.provider.Settings
 import android.widget.Toast
-import androidx.compose.runtime.livedata.observeAsState
-import com.example.islandlyrics.data.LyricRepository
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -49,8 +46,6 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.automirrored.filled.Help
-import androidx.compose.material.icons.automirrored.filled.Send
-import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -88,11 +83,6 @@ fun SettingsScreen(
     var showLanguageDropdown by remember { mutableStateOf(false) }
     var showIconStyleDialog by remember { mutableStateOf(false) }
     var showPrivacyDialog by remember { mutableStateOf(false) }
-    var showFeedbackDialog by remember { mutableStateOf(false) }
-    var communityFeed by remember { mutableStateOf<CommunityFeed?>(null) }
-    var communityFeedLoaded by remember { mutableStateOf(false) }
-    var communityDialogState by remember { mutableStateOf<CommunityDialogState?>(null) }
-
     // Notification Action Style State
     var actionStyle by remember { mutableStateOf(prefs.getString("notification_actions_style", "disabled") ?: "disabled") }
     var showActionStyleDialog by remember { mutableStateOf(false) }
@@ -111,16 +101,6 @@ fun SettingsScreen(
 
     // Check for HyperOS 3.0.300+
     val isHyperOsSupported = remember { RomUtils.isHyperOsVersionAtLeast(3, 0, 300) }
-
-    LaunchedEffect(offlineModeEnabled) {
-        if (offlineModeEnabled) {
-            communityFeed = null
-            communityFeedLoaded = true
-        } else {
-            communityFeed = CommunityFeedRepository.fetchFeed(context)
-            communityFeedLoaded = true
-        }
-    }
 
     // Logic for permissions status
     fun checkNotificationPermission(): Boolean {
@@ -424,44 +404,6 @@ fun SettingsScreen(
                     HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
                 }
 
-                if (!communityFeedLoaded || communityFeed?.hasContent == true) {
-                    val announcementSectionTitle = stringResource(R.string.community_announcement_title)
-                    val pollSectionTitle = stringResource(R.string.community_poll_title)
-                    SettingsSectionHeader(
-                        text = stringResource(R.string.settings_community_header),
-                        marginTop = 0.dp
-                    )
-
-                    if (!communityFeedLoaded) {
-                        SettingsActionItem(
-                            title = stringResource(R.string.community_loading_title),
-                            summary = stringResource(R.string.community_loading_desc),
-                            icon = Icons.Filled.Sync,
-                            onClick = {}
-                        )
-                    } else {
-                                communityFeed?.announcements?.forEach { announcement ->
-                                    CommunityActionItem(
-                                        title = announcementSectionTitle,
-                                        item = announcement,
-                                        fallbackSummary = stringResource(R.string.community_open_in_browser),
-                                        icon = Icons.Filled.Info,
-                                        onClick = { communityDialogState = CommunityDialogState(announcementSectionTitle, announcement) }
-                                    )
-                                }
-
-                                communityFeed?.polls?.forEach { poll ->
-                                    CommunityActionItem(
-                                        title = pollSectionTitle,
-                                        item = poll,
-                                        fallbackSummary = stringResource(R.string.community_open_in_browser),
-                                        icon = Icons.Filled.Link,
-                                        onClick = { communityDialogState = CommunityDialogState(pollSectionTitle, poll) }
-                                    )
-                                }
-                    }
-                }
-
                 // ═══════════════════════════════════════
                 // ── 5. Help & About ──
                 // ═══════════════════════════════════════
@@ -475,70 +417,11 @@ fun SettingsScreen(
                     }
                 )
 
-                if (!offlineModeEnabled) {
-                    SettingsActionItem(
-                        title = stringResource(R.string.settings_feedback),
-                        icon = Icons.AutoMirrored.Filled.Send,
-                        onClick = {
-                            showFeedbackDialog = true
-                        }
-                    )
-
-                    SettingsActionItem(
-                        title = stringResource(R.string.settings_about_github),
-                        icon = Icons.Filled.Link,
-                        onClick = {
-                             val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/FrancoGiudans/Capsulyric"))
-                             context.startActivity(browserIntent)
-                        }
-                    )
-                }
-
-                // Version
-                SettingsValueItem(
-                    title = stringResource(R.string.about_version),
-                    value = updateVersionText,
-                    onClick = {
-                        val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                        val copyText = "$updateVersionText（$updateCodenameText，$updateBuildText）"
-                        cm.setPrimaryClip(ClipData.newPlainText("Version", copyText))
-                        Toast.makeText(context, context.getString(R.string.toast_copied), Toast.LENGTH_SHORT).show()
-                    }
+                SettingsActionItem(
+                    title = stringResource(R.string.community_about_title),
+                    icon = Icons.Filled.Info,
+                    onClick = { context.startActivity(Intent(context, AboutActivity::class.java)) }
                 )
-
-                SettingsValueItem(
-                    title = stringResource(R.string.about_codename),
-                    value = updateCodenameText
-                )
-
-                // Build Number (Dev Trigger)
-                var devStepCount by remember { mutableIntStateOf(0) }
-                val devModeEnabled by LyricRepository.getInstance().devModeEnabled.observeAsState(false)
-                val showLogs = BuildConfig.DEBUG || devModeEnabled
-
-                SettingsValueItem(
-                    title = stringResource(R.string.about_commit),
-                    value = updateBuildText,
-                    onClick = {
-                        // Dev mode trigger logic
-                        devStepCount++
-                        if (devStepCount in 3..6) {
-                            Toast.makeText(context, context.getString(R.string.toast_dev_mode_steps, 7 - devStepCount), Toast.LENGTH_SHORT).show()
-                        } else if (devStepCount == 7) {
-                            LyricRepository.getInstance().setDevMode(context, true)
-                            Toast.makeText(context, context.getString(R.string.toast_dev_mode_enabled), Toast.LENGTH_SHORT).show()
-                        }
-                    }
-                )
-
-                if (showLogs) {
-                     SettingsActionItem(
-                         title = stringResource(R.string.title_diagnostics),
-                         summary = stringResource(R.string.summary_diagnostics),
-                         icon = Icons.Filled.Info,
-                         onClick = onShowDiagnostics
-                     )
-                }
 
                 Spacer(modifier = Modifier.height(24.dp))
             }
@@ -613,23 +496,6 @@ fun SettingsScreen(
                 )
             }
 
-            if (showFeedbackDialog) {
-                FeedbackSelectionDialog(onDismiss = { showFeedbackDialog = false })
-            }
-
-            communityDialogState?.let { dialogState ->
-                CommunityDetailsDialog(
-                    state = dialogState,
-                    onDismiss = { communityDialogState = null },
-                    onOpen = {
-                        if (dialogState.item.hasUrl) {
-                            val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse(dialogState.item.url))
-                            context.startActivity(browserIntent)
-                        }
-                        communityDialogState = null
-                    }
-                )
-            }
         }
     }
 @Composable
@@ -1067,7 +933,7 @@ fun SettingsActionItem(
 }
 
 @Composable
-private fun CommunityActionItem(
+fun CommunityActionItem(
     title: String,
     item: CommunityFeedItem,
     fallbackSummary: String,
@@ -1088,7 +954,7 @@ private fun CommunityActionItem(
 }
 
 @Composable
-private fun CommunityDetailsDialog(
+fun CommunityDetailsDialog(
     state: CommunityDialogState,
     onDismiss: () -> Unit,
     onOpen: () -> Unit

@@ -35,6 +35,10 @@
             android:label="@string/title_app_settings"
             android:parentActivityName="com.example.islandlyrics.feature.main.MainActivity" />
         <activity
+            android:name="com.example.islandlyrics.feature.settings.AboutActivity"
+            android:label="@string/community_about_title"
+            android:parentActivityName="com.example.islandlyrics.feature.settings.SettingsActivity" />
+        <activity
             android:name="com.example.islandlyrics.feature.customsettings.CustomSettingsActivity"
             android:label="@string/page_title_personalization"
             android:parentActivityName="com.example.islandlyrics.feature.main.MainActivity" />

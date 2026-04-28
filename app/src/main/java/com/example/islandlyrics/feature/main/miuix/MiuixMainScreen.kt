@@ -9,6 +9,7 @@ import android.media.MediaMetadata
 import android.media.session.MediaController
 import android.media.session.MediaSessionManager
 import android.media.session.PlaybackState
+import android.os.SystemClock
 import android.provider.Settings
 import android.widget.Toast
 import androidx.compose.animation.animateColorAsState
@@ -17,6 +18,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -38,6 +40,9 @@ import androidx.compose.ui.layout.ContentScale
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.content.Intent
+import android.graphics.Canvas
+import android.graphics.drawable.Drawable
 import androidx.palette.graphics.Palette
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -54,13 +59,17 @@ import top.yukonga.miuix.kmp.utils.MiuixPopupUtils.Companion.MiuixPopupHost
 import com.example.islandlyrics.core.update.UpdateChecker
 import com.example.islandlyrics.feature.update.miuix.MiuixUpdateDialog
 import com.example.islandlyrics.ui.miuix.*
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
+import kotlin.math.abs
 
 private val StatusActive = Color(0xFF4CAF50)
 private val StatusInactive = Color(0xFFF44336)
+private const val SeekSyncThresholdMs = 250L
+private const val SeekFallbackTimeoutMs = 4000L
 
 @Composable
 fun MiuixMainScreen(
@@ -170,18 +179,19 @@ fun MiuixMainScreen(
     val hasActiveSession = whitelistedSessions.isNotEmpty()
 
     val statusText = when {
-        !listenerEnabled -> "Permission Required"
+        !listenerEnabled -> stringResource(R.string.main_status_permission_required)
         hasActiveSession -> {
             if (repoPlaying || repoMetadata != null) {
                 val rawPackage = repoLyric?.sourceApp ?: repoMetadata?.packageName ?: whitelistedSessions.firstOrNull()?.packageName
-                val sourceName = if (rawPackage != null) ParserRuleHelper.getAppNameForPackage(context, rawPackage) else "Music"
-                "Active: $sourceName"
+                val sourceName = rawPackage?.let { ParserRuleHelper.getAppNameForPackage(context, it) }
+                    ?: stringResource(R.string.main_music_app_fallback)
+                stringResource(R.string.main_status_connecting_fmt, sourceName)
             } else {
-                "Ready: ${whitelistedSessions.size} Session(s)"
+                stringResource(R.string.main_status_session_count_fmt, whitelistedSessions.size)
             }
         }
-        !serviceConnected -> "Service Disconnected\nTap to Reconnect"
-        else -> "Service Ready (Idle)"
+        !serviceConnected -> stringResource(R.string.main_status_service_disconnected)
+        else -> stringResource(R.string.main_status_service_ready)
     }
     val statusActive = listenerEnabled && serviceConnected
 
@@ -242,6 +252,19 @@ fun MiuixMainScreen(
             item { Spacer(modifier = Modifier.height(16.dp)) }
 
             item {
+                MiuixSectionLabel(
+                    title = stringResource(R.string.main_now_playing_title),
+                    subtitle = if (whitelistedSessions.isEmpty()) {
+                        stringResource(R.string.main_now_playing_subtitle_idle)
+                    } else {
+                        stringResource(R.string.main_now_playing_subtitle_active)
+                    }
+                )
+            }
+
+            item { Spacer(modifier = Modifier.height(12.dp)) }
+
+            item {
                 if (whitelistedSessions.isEmpty()) {
                     MiuixIdleCard()
                 } else {
@@ -275,9 +298,20 @@ fun MiuixMainScreen(
                             Spacer(modifier = Modifier.height(12.dp))
                             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
                                 repeat(whitelistedSessions.size) { iteration ->
-                                    val color = if (pagerState.currentPage == iteration)
-                                        MiuixTheme.colorScheme.primary else MiuixTheme.colorScheme.secondary
-                                    Box(modifier = Modifier.padding(4.dp).size(8.dp).clip(CircleShape).background(color))
+                                    val active = pagerState.currentPage == iteration
+                                    val color = if (active) {
+                                        MiuixTheme.colorScheme.primary
+                                    } else {
+                                        MiuixTheme.colorScheme.secondary
+                                    }
+                                    Box(
+                                        modifier = Modifier
+                                            .padding(horizontal = 4.dp)
+                                            .height(8.dp)
+                                            .width(if (active) 28.dp else 8.dp)
+                                            .clip(CircleShape)
+                                            .background(color)
+                                    )
                                 }
                             }
                         }
@@ -294,6 +328,27 @@ fun MiuixMainScreen(
                 onIgnore = onUpdateIgnore
             )
         }
+    }
+}
+
+@Composable
+private fun MiuixSectionLabel(
+    title: String,
+    subtitle: String,
+) {
+    Column(modifier = Modifier.padding(horizontal = 12.dp)) {
+        Text(
+            text = title,
+            fontSize = 22.sp,
+            fontWeight = FontWeight.Bold,
+            color = MiuixTheme.colorScheme.onBackground
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = subtitle,
+            fontSize = 13.sp,
+            color = MiuixTheme.colorScheme.onSurfaceVariantSummary
+        )
     }
 }
 
@@ -322,16 +377,36 @@ private fun MiuixIdleCard() {
     Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
         Box(
             contentAlignment = Alignment.Center,
-            modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = 160.dp).padding(24.dp)
+            modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = 180.dp).padding(24.dp)
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                androidx.compose.material3.Icon(
-                    painter = painterResource(R.drawable.ic_music_note), contentDescription = null,
-                    tint = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-                    modifier = Modifier.size(48.dp).padding(bottom = 16.dp)
+                Box(
+                    modifier = Modifier
+                        .size(72.dp)
+                        .clip(CircleShape)
+                        .background(MiuixTheme.colorScheme.secondary),
+                    contentAlignment = Alignment.Center
+                ) {
+                    androidx.compose.material3.Icon(
+                        painter = painterResource(R.drawable.ic_music_note),
+                        contentDescription = null,
+                        tint = MiuixTheme.colorScheme.onSecondary,
+                        modifier = Modifier.size(32.dp)
+                    )
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = stringResource(R.string.status_idle_waiting),
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MiuixTheme.colorScheme.onSurface
                 )
-                Text(text = stringResource(R.string.status_idle_waiting), fontSize = 18.sp,
-                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary)
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = stringResource(R.string.main_idle_card_desc),
+                    fontSize = 14.sp,
+                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary
+                )
             }
         }
     }
@@ -373,8 +448,63 @@ private fun MiuixMediaSessionCard(
     val position = if (isPrimary) primaryProgress?.position ?: 0L else localPlaybackState?.position ?: 0L
     val isPlaying = localPlaybackState?.state == PlaybackState.STATE_PLAYING ||
             localPlaybackState?.state == PlaybackState.STATE_BUFFERING
+    val sessionStateKey = buildString {
+        append(controller.packageName)
+        append('|')
+        append(title.orEmpty())
+        append('|')
+        append(artist.orEmpty())
+    }
+    var pendingSeekPosition by remember(sessionStateKey) { mutableLongStateOf(-1L) }
+    var pendingSeekStartedAt by remember(sessionStateKey) { mutableLongStateOf(0L) }
+    var seekOriginPosition by remember(sessionStateKey) { mutableLongStateOf(-1L) }
 
     val context = LocalContext.current
+    val appName = remember(controller.packageName) {
+        ParserRuleHelper.getAppNameForPackage(context, controller.packageName)
+    }
+    val appIcon = remember(controller.packageName) {
+        try {
+            drawableToBitmap(context.packageManager.getApplicationIcon(controller.packageName))
+        } catch (_: Exception) {
+            null
+        }
+    }
+    val openApp = {
+        try {
+            val sessionActivity = controller.sessionActivity
+            val launchIntent = context.packageManager
+                .getLaunchIntentForPackage(controller.packageName)
+                ?.apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                }
+            when {
+                sessionActivity != null -> {
+                    runCatching {
+                        sessionActivity.send()
+                    }.getOrElse {
+                        if (launchIntent != null) {
+                            context.startActivity(launchIntent)
+                        } else {
+                            throw it
+                        }
+                    }
+                }
+                launchIntent != null -> {
+                    context.startActivity(launchIntent)
+                }
+                else -> {
+                    Toast.makeText(
+                        context,
+                        context.getString(R.string.media_control_cannot_open, appName.ifBlank { controller.packageName }),
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+            }
+        } catch (e: Exception) {
+            Toast.makeText(context, context.getString(R.string.media_control_error_prefix, e.message), Toast.LENGTH_SHORT).show()
+        }
+    }
 
     // ── Palette accent from album art ──
     val dominantColor by produceState<Color?>(initialValue = null, key1 = albumArt, key2 = dynamicThemeEnabled) {
@@ -402,22 +532,56 @@ private fun MiuixMediaSessionCard(
 
             // Top Row: Album Art + Song Info
             Row(verticalAlignment = Alignment.CenterVertically) {
-                if (albumArt != null) {
-                    Image(
-                        bitmap = albumArt.asImageBitmap(), contentDescription = "Album Art",
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.size(80.dp).clip(RoundedCornerShape(16.dp))
-                    )
-                } else {
+                Box(
+                    modifier = Modifier
+                        .size(80.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .clickable(onClick = openApp)
+                ) {
+                    if (albumArt != null) {
+                        Image(
+                            bitmap = albumArt.asImageBitmap(), contentDescription = "Album Art",
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    } else {
+                        Box(
+                            modifier = Modifier.fillMaxSize().background(MiuixTheme.colorScheme.secondary),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            androidx.compose.material3.Icon(
+                                painter = painterResource(R.drawable.ic_music_note), contentDescription = null,
+                                tint = MiuixTheme.colorScheme.onSecondary, modifier = Modifier.size(32.dp)
+                            )
+                        }
+                    }
+
                     Box(
-                        modifier = Modifier.size(80.dp).clip(RoundedCornerShape(16.dp))
-                            .background(MiuixTheme.colorScheme.secondary),
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(5.dp)
+                            .size(24.dp)
+                            .clip(CircleShape)
+                            .background(MiuixTheme.colorScheme.surface.copy(alpha = 0.92f)),
                         contentAlignment = Alignment.Center
                     ) {
-                        androidx.compose.material3.Icon(
-                            painter = painterResource(R.drawable.ic_music_note), contentDescription = null,
-                            tint = MiuixTheme.colorScheme.onSecondary, modifier = Modifier.size(32.dp)
-                        )
+                        if (appIcon != null) {
+                            Image(
+                                bitmap = appIcon.asImageBitmap(),
+                                contentDescription = null,
+                                modifier = Modifier
+                                    .size(15.dp)
+                                    .clip(CircleShape),
+                                contentScale = ContentScale.Crop
+                            )
+                        } else {
+                            androidx.compose.material3.Icon(
+                                painter = painterResource(R.drawable.ic_music_note),
+                                contentDescription = null,
+                                tint = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                                modifier = Modifier.size(14.dp)
+                            )
+                        }
                     }
                 }
 
@@ -430,10 +594,6 @@ private fun MiuixMediaSessionCard(
                     Text(text = artist ?: "Unknown Artist", fontSize = 16.sp,
                         color = MiuixTheme.colorScheme.onSurfaceSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     Spacer(modifier = Modifier.height(4.dp))
-                    val appName = remember(controller.packageName) {
-                        ParserRuleHelper.getAppNameForPackage(context, controller.packageName)
-                    }
-                    // App name uses palette accent
                     Text(text = appName, fontSize = 12.sp, color = animatedAccent, maxLines = 1)
                     if (isPrimary && !primaryLyricSource.isNullOrBlank()) {
                         Spacer(modifier = Modifier.height(2.dp))
@@ -484,14 +644,54 @@ private fun MiuixMediaSessionCard(
             // Progress Slider — palette accent
             var isDragging by remember { mutableStateOf(false) }
             var dragProgress by remember { mutableFloatStateOf(0f) }
+            LaunchedEffect(position, pendingSeekPosition, pendingSeekStartedAt, seekOriginPosition, isPlaying) {
+                if (pendingSeekPosition < 0L) return@LaunchedEffect
+                val expectedPendingPosition = if (isPlaying && pendingSeekStartedAt > 0L) {
+                    (pendingSeekPosition + (SystemClock.elapsedRealtime() - pendingSeekStartedAt)).coerceAtMost(duration)
+                } else {
+                    pendingSeekPosition
+                }
+                val hasActuallyMovedFromOrigin = seekOriginPosition < 0L ||
+                    abs(position - seekOriginPosition) > SeekSyncThresholdMs
+                val isNearSeekTarget = abs(position - expectedPendingPosition) <= SeekSyncThresholdMs
+
+                if (hasActuallyMovedFromOrigin && isNearSeekTarget) {
+                    pendingSeekPosition = -1L
+                    pendingSeekStartedAt = 0L
+                    seekOriginPosition = -1L
+                    return@LaunchedEffect
+                }
+                if (pendingSeekStartedAt <= 0L) return@LaunchedEffect
+                val remaining = SeekFallbackTimeoutMs - (SystemClock.elapsedRealtime() - pendingSeekStartedAt)
+                if (remaining > 0L) delay(remaining)
+                if (pendingSeekPosition >= 0L && !isPlaying) {
+                    pendingSeekPosition = -1L
+                    pendingSeekStartedAt = 0L
+                    seekOriginPosition = -1L
+                }
+            }
+            val effectivePosition = if (pendingSeekPosition >= 0L) {
+                if (isPlaying && pendingSeekStartedAt > 0L) {
+                    (pendingSeekPosition + (SystemClock.elapsedRealtime() - pendingSeekStartedAt)).coerceAtMost(duration)
+                } else {
+                    pendingSeekPosition
+                }
+            } else {
+                position
+            }
             val currentProgress = if (isDragging) dragProgress
-                else if (duration > 0) (position.toFloat() / duration.toFloat()).coerceIn(0f, 1f) else 0f
+                else if (duration > 0) (effectivePosition.toFloat() / duration.toFloat()).coerceIn(0f, 1f) else 0f
 
             Slider(
                 value = currentProgress,
                 onValueChange = { isDragging = true; dragProgress = it },
                 onValueChangeFinished = {
-                    if (duration > 0) controller.transportControls.seekTo((dragProgress * duration).toLong())
+                    if (duration > 0) {
+                        seekOriginPosition = position
+                        pendingSeekPosition = (dragProgress * duration).toLong()
+                        pendingSeekStartedAt = SystemClock.elapsedRealtime()
+                        controller.transportControls.seekTo(pendingSeekPosition)
+                    }
                     isDragging = false
                 },
                 modifier = Modifier.fillMaxWidth(),
@@ -545,4 +745,14 @@ private fun formatPrimaryLyricSource(apiPath: String?, sourceLabel: String?): St
         "Online Cache" -> "$label [缓存]"
         else -> null
     }
+}
+
+private fun drawableToBitmap(drawable: Drawable): Bitmap {
+    val width = drawable.intrinsicWidth.takeIf { it > 0 } ?: 128
+    val height = drawable.intrinsicHeight.takeIf { it > 0 } ?: 128
+    val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+    val canvas = Canvas(bitmap)
+    drawable.setBounds(0, 0, canvas.width, canvas.height)
+    drawable.draw(canvas)
+    return bitmap
 }

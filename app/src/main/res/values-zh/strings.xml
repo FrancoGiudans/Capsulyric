@@ -114,6 +114,8 @@
     <string name="settings_recommend_media_app">推荐当前播放应用</string>
     <string name="settings_recommend_media_app_desc">进入解析规则界面时自动推荐当前播放应用</string>
     <string name="settings_help_about_header">帮助与关于</string>
+    <string name="community_about_title">社区动态与关于</string>
+    <string name="settings_about_capsulyric">关于Capsulyric</string>
     <string name="settings_community_header">社区动态</string>
 
     <string name="settings_dynamic_icon_desc">展示歌名-歌手，仅HyperOS 3.0.300+可用</string>
@@ -167,6 +169,7 @@
     <string name="parser_smart_online_fetch_desc">自动对各个歌词源评分，并选择最合适的结果</string>
     <string name="action_move_up">上移</string>
     <string name="action_move_down">下移</string>
+    <string name="parser_online_conflict_disable_notify">关闭媒体通知歌词</string>
     <string name="parser_super_lyric">SuperLyric API</string>
     <string name="parser_super_lyric_desc_short">通过 SuperLyric 广播接收</string>
     <string name="parser_lgetter_lyric">Lyric Getter API</string>
@@ -209,7 +212,7 @@
     <string name="settings_auto_update_desc">启动应用时检查新版本</string>
 
     <!-- Main Activity -->
-    <string name="dialog_prerelease_warning_message">预发布版本可能存在严重问题，不适合日常使用。您确定要接收这些更新吗？</string>
+    <string name="dialog_prerelease_warning_message">预发布版本（Alpha/Beta/Pre/Canary）可能不稳定，不建议日常使用。确定要接收这些更新吗？</string>
     <string name="settings_prerelease_channel">选择预发布频道</string>
     <string name="main_service_status">🔴 服务状态: 未知</string>
     <string name="main_system_api_status">系统与 API 状态 (API 36)</string>
@@ -223,9 +226,9 @@
     <string name="settings_prerelease_update">接收预发布版本</string>
     <string name="settings_prerelease_update_desc">检查 Alpha/Beta/Pre/Canary 频道更新</string>
     <string name="dialog_prerelease_warning_title">确认接收预发布版本？</string>
-    <string name="settings_prerelease_desc">预发布频道说明</string>
-    <string name="dialog_prerelease_desc_title">预发布频道定位</string>
-    <string name="dialog_prerelease_desc_message">• <b>Alpha 频道</b>：处于开发最早期阶段。稳定性较低，可能存在严重故障。包含下一版本的核心功能及实验性变更，可能引入破坏性更新。\n\n• <b>Beta 频道</b>：功能趋于完整。不再加入大型新功能或破坏性变更。侧重于交互细节优化及小幅调整。\n\n• <b>Pre 频道</b>：最稳定的预发布阶段。不再包含功能性变更，专注于提升稳定性与性能表现，为正式版发布做最后准备。\n\n• <b>Canary 频道</b>：由 CI 自动生成的滚动更新版本。<b>[测试专用 &amp; 极度不稳定]</b>标记。包含最新的提交，且该频道下将不再接收任何其他频道（包括正式版、Alpha、Beta、Pre 频道）的更新检查。</string>
+    <string name="settings_prerelease_desc">Q：预发布频道有什么区别？</string>
+    <string name="dialog_prerelease_desc_title">频道说明</string>
+    <string name="dialog_prerelease_desc_message">A：\n\n• <b>Alpha 频道</b>：最早期测试版本。可能非常不稳定，并可能包含破坏性变更。\n\n• <b>Beta 频道</b>：接近功能完整。破坏性变更更少，主要是修复与体验打磨。\n\n• <b>Pre 频道</b>：候选发布阶段。不再加入新功能，专注稳定性与性能，接近正式版。\n\n• <b>Canary 频道</b>：CI 自动构建的滚动版本，包含最新提交。<b>[仅用于测试，极度不稳定]</b>。选择 Canary 后将停止检查其他所有频道（包括正式版、Alpha、Beta、Pre）的更新。\n\n<b>注意：</b>并不是每个开发周期都会提供所有频道。</string>
     
     <!-- 动态图标样式设置 -->
     <string name="settings_icon_style">左侧图标样式</string>
@@ -274,12 +277,7 @@
   • <b>已获取 Root 权限</b>：建议配合 HyperCeiler 等模块解除系统的应用限制。\n
   • <b>未获取 Root 权限</b>：需通过 Shizuku 进行授权，并启用“绕过小米超级岛白名单”功能。（注：该方案由于强制系统重定向通知，可能导致间歇性耗电增加或消息延迟。）</string>
     <string name="faq_q_config_online_lyrics">Q：如何配置在线歌词？</string>
-    <string name="faq_a_config_online_lyrics">A：在线歌词适合在通知歌词不可用、歌词不完整，或者需要更准确时间轴时使用。\n\n
-1. 进入“解析规则”页面，打开当前音乐应用对应的规则。\n\n
-2. 开启<b>“使用在线歌词 API”</b>。\n\n
-3. 如果播放器上报的原始歌名、歌手更准确，可以开启<b>“使用原始播放信息进行在线匹配”</b>。\n\n
-4. 默认建议保持<b>“智能获取”</b>开启，由应用自动选择更合适的结果；如果你想手动控制来源顺序，可关闭“智能获取”后再调整<b>“在线歌词优先级”</b>。\n\n
-5. 如果某一首歌始终匹配不准，可进入<b>“在线歌词调试”</b>，为当前歌曲填写“自定义匹配歌名”或“自定义匹配歌手”，然后执行一次<b>“忽略缓存并强制联网刷新”</b>。</string>
+    <string name="faq_a_config_online_lyrics">A：在线歌词适合在通知歌词不可用、歌词不完整，或者需要更准确时间轴时使用。   1. 进入“解析规则”页面，打开当前音乐应用对应的规则。   2. 开启<b>“使用在线歌词 API”</b>。   3. 如果播放器上报的原始歌名、歌手更准确，可以开启<b>“使用原始播放信息进行在线匹配”</b>。   4. 默认建议保持<b>“智能获取”</b>开启，由应用自动选择更合适的结果；如果你想手动控制来源顺序，可关闭“智能获取”后再调整<b>“在线歌词优先级”</b>。   5. 如果某一首歌始终匹配不准，可进入<b>“在线歌词调试”</b>，为当前歌曲填写“自定义匹配歌名”或“自定义匹配歌手”，然后执行一次<b>“忽略缓存并强制联网刷新”</b>。</string>
     <string name="faq_q_online_match_wrong">Q：为什么在线歌词搜索到的结果不对？</string>
     <string name="faq_a_online_match_wrong">A：在线歌词依赖当前歌曲的匹配信息进行搜索。如果播放器上报的歌名、歌手不完整，或者标题中包含 Live、Remix、翻唱、节目名、括号附加信息，就可能匹配到错误结果。\n\n
 你可以尝试以下方法：\n\n
@@ -453,9 +451,9 @@
     <string name="settings_super_island_share">开启拖拽分享</string>
     <string name="settings_super_island_share_desc">允许长按拖拽超级岛以分享歌词卡片</string>
     <string name="settings_super_island_share_format">拖拽分享文案格式</string>
-    <string name="share_format_1">歌词 \\n 歌名 by 歌手</string>
+    <string name="share_format_1">歌词   歌名 by 歌手</string>
     <string name="share_format_2">歌词 -歌手，歌名</string>
-    <string name="share_format_3">歌词 \\n 歌手，歌名</string>
+    <string name="share_format_3">歌词    歌手，歌名</string>
     <string name="settings_app_ui_style">App 界面风格</string>
     <string name="settings_app_ui_style_desc">在 Material Design 和 Miuix UI 之间切换。应用将会重启。</string>
     <string name="dialog_ui_style_title">选择 App 界面风格</string>
@@ -471,6 +469,7 @@
     <string name="lang_chinese">简体中文</string>
     <string name="toast_dev_mode_steps">再点击 %1$d 后打开诊断入口</string>
     <string name="toast_dev_mode_enabled">诊断与反馈入口已打开</string>
+    <string name="toast_dev_mode_already_enabled">诊断入口已开启</string>
     <string name="toast_copied">已复制到剪切板</string>
     <string name="summary_optimize_battery">优化后台表现</string>
     <string name="summary_check_updates_now">立即检查更新</string>
@@ -487,6 +486,8 @@
     <string name="diag_header_advanced">高级功能查验 (Android 16 / 小米岛)</string>
     <string name="diag_lab_super_island_advanced_style_title">小米超级岛高级样式</string>
     <string name="diag_lab_super_island_advanced_style_desc">开启后，个性化设置里的“通知样式”将显示“高级样式（Beta）”选项</string>
+    <string name="diag_lab_floating_lyrics_title">桌面歌词</string>
+    <string name="diag_lab_floating_lyrics_desc">开启后，个性化设置里将显示桌面歌词入口</string>
     <string name="diag_lab_super_island_dialog_title">开启高级样式实验功能？</string>
     <string name="diag_lab_super_island_dialog_message">该样式仍处于实验阶段，部分设备可能需要 Root 环境才能正常显示。开启后，请前往“个性化设置”中的通知页自行切换到“高级样式（Beta）”。</string>
     <string name="diag_lab_super_island_dialog_confirm">前往个性化设置</string>
@@ -660,4 +661,7 @@
     <string name="community_open_in_browser">在浏览器中打开</string>
     <string name="community_dialog_open">前往链接</string>
     <string name="community_dialog_close">关闭</string>
+    <string name="parser_online_conflict_title">关闭媒体通知歌词以发挥在线歌词的最佳效果</string>
+    <string name="parser_online_conflict_message">如果希望在线歌词是该应用的主要歌词来源，为避免错误检索和重复出发，推荐关闭媒体通知歌词来源与对应应用内的媒体通知歌词。你希望现在就关闭吗？</string>
+    <string name="parser_online_conflict_keep">保持现有设置</string>
 </resources>

@@ -114,6 +114,8 @@
     <string name="settings_recommend_media_app">Recommend current media app</string>
     <string name="settings_recommend_media_app_desc">Automatically recommend the current media app when entering rule settings</string>
     <string name="settings_help_about_header">Help &amp; About</string>
+    <string name="community_about_title">Community &amp; About</string>
+    <string name="settings_about_capsulyric">About Capsulyric</string>
     <string name="settings_community_header">Community</string>
     <string name="settings_dynamic_icon_desc">Show song/artist, only for HyperOS 3.0.300+</string>
 
@@ -215,11 +217,11 @@
     <string name="settings_prerelease_update">Receive Prerelease Updates</string>
     <string name="settings_prerelease_update_desc">Check for Alpha/Beta/Pre/Canary versions</string>
     <string name="dialog_prerelease_warning_title">Enable Prerelease Updates?</string>
-    <string name="dialog_prerelease_warning_message">Prerelease versions (Alpha/Beta) may contain bugs and are not suitable for daily use.  Are you sure you want to receive these updates?</string>
+    <string name="dialog_prerelease_warning_message">Prerelease versions (Alpha/Beta/Pre/Canary) may be unstable and are not recommended for daily use. Do you want to receive these updates?</string>
     <string name="settings_prerelease_channel">Prerelease Channel</string>
-    <string name="settings_prerelease_desc">Prerelease Channel Explanation</string>
-    <string name="dialog_prerelease_desc_title">Prerelease Channels</string>
-    <string name="dialog_prerelease_desc_message">• <b>Alpha Channel</b>: Early development stage. Low stability, may contain severe bugs. Includes experimental features and potential breaking changes.\n\n• <b>Beta Channel</b>: Feature-complete stage. No major new features or breaking changes. Focuses on UI/UX refinements and minor adjustments.\n\n• <b>Pre Channel</b>: Highly stable. No further functional changes. Dedicated to stability improvements and performance tuning for the final release.\n\n• <b>Canary Channel</b>: Rolling release automatically built by CI. Includes the absolute latest commits. <b>[EXTREME UNSTABILITY]</b> Only for testing purposes. Note: Selecting Canary will exclude all other updates (including Release, Alpha, Beta, and Pre).</string>
+    <string name="settings_prerelease_desc">Q: What’s the difference between channels?</string>
+    <string name="dialog_prerelease_desc_title">Channel Guide</string>
+    <string name="dialog_prerelease_desc_message">A:\n\n• <b>Alpha</b>: Earliest testing builds. Can be very unstable and may include breaking changes.\n\n• <b>Beta</b>: Closer to feature-complete. Fewer breaking changes; mostly fixes and refinements.\n\n• <b>Pre</b>: Release-candidate stage. No new features; focused on stability and performance.\n\n• <b>Canary</b>: Auto-built from the latest commits. <b>[Testing only, extremely unstable]</b> Selecting Canary disables update checks for all other channels (including Release/Alpha/Beta/Pre).\n\n<b>Note:</b> Not every development cycle provides every channel.</string>
     
     <!-- Main Activity -->
     <string name="main_service_status">🔴 Service Status: Unknown</string>
@@ -252,9 +254,9 @@
     <string name="settings_super_island_share">Enable Drag-and-Drop Sharing</string>
     <string name="settings_super_island_share_desc">Allow dragging Super Island to share lyrics.</string>
     <string name="settings_super_island_share_format">Share Text Format</string>
-    <string name="share_format_1">Lyric \\n Song by Artist</string>
+    <string name="share_format_1">Lyric    Song by Artist</string>
     <string name="share_format_2">Lyric -Artist, Song</string>
-    <string name="share_format_3">Lyric \\n Artist, Song</string>
+    <string name="share_format_3">Lyric    Artist, Song</string>
 
     <string name="settings_feedback">Feedback</string>
     <string name="dialog_feedback_title">Select Feedback Method</string>
@@ -277,6 +279,7 @@
     <string name="lang_chinese">Chinese</string>
     <string name="toast_dev_mode_steps">Tap %1$d more times to enable diagnostics</string>
     <string name="toast_dev_mode_enabled">Diagnostics &amp; Feedback enabled</string>
+    <string name="toast_dev_mode_already_enabled">Diagnostics already enabled</string>
     <string name="toast_copied">Copied to clipboard</string>
     
     <!-- Miuix Summaries -->
@@ -492,6 +495,8 @@ Within the log interface, select the share/export icon. You can specify a timefr
     <string name="diag_header_advanced">Advanced Features (Android 16 / Xiaomi Island)</string>
     <string name="diag_lab_super_island_advanced_style_title">Xiaomi Super Island Advanced Style</string>
     <string name="diag_lab_super_island_advanced_style_desc">When enabled, the Notification Style setting in Personalization will show the Advanced Style (Beta) option</string>
+    <string name="diag_lab_floating_lyrics_title">Desktop Lyrics</string>
+    <string name="diag_lab_floating_lyrics_desc">When enabled, the Desktop Lyrics entry will appear in Personalization Settings</string>
     <string name="diag_lab_super_island_dialog_title">Enable the advanced style experiment?</string>
     <string name="diag_lab_super_island_dialog_message">This style is still experimental, and some devices may require root to display it properly. After enabling it, go to Personalization Settings and switch the notification style to Advanced Style (Beta) yourself.</string>
     <string name="diag_lab_super_island_dialog_confirm">Open Personalization</string>

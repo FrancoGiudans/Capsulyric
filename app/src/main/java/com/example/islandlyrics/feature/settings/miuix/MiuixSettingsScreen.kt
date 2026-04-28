@@ -4,14 +4,13 @@ import com.example.islandlyrics.ui.miuix.MiuixBackHandler
 import android.app.Activity
 import com.example.islandlyrics.BuildConfig
 import com.example.islandlyrics.R
-import com.example.islandlyrics.core.feed.CommunityFeed
 import com.example.islandlyrics.core.feed.CommunityFeedItem
-import com.example.islandlyrics.core.feed.CommunityFeedRepository
 import com.example.islandlyrics.core.network.OfflineModeManager
 import com.example.islandlyrics.core.update.UpdateChecker
 import com.example.islandlyrics.core.theme.ThemeHelper
 import com.example.islandlyrics.core.platform.RomUtils
 import com.example.islandlyrics.feature.faq.FAQActivity
+import com.example.islandlyrics.feature.settings.AboutActivity
 import com.example.islandlyrics.feature.settings.CommunityDialogState
 import com.example.islandlyrics.feature.settings.CommunityMarkdownBody
 import com.example.islandlyrics.feature.settings.buildCommunityMarkdown
@@ -91,25 +90,11 @@ fun MiuixSettingsScreen(
     val showPrivacyDialog = remember { mutableStateOf(false) }
     val showFeedbackPopup = remember { mutableStateOf(false) }
     val showPrereleaseDialog = remember { mutableStateOf(false) }
-    val showCommunityDialog = remember { mutableStateOf<CommunityDialogState?>(null) }
-    var communityFeed by remember { mutableStateOf<CommunityFeed?>(null) }
-    var communityFeedLoaded by remember { mutableStateOf(false) }
 
     MiuixBackHandler(enabled = showPrivacyDialog.value) { showPrivacyDialog.value = false }
     MiuixBackHandler(enabled = showFeedbackPopup.value) { showFeedbackPopup.value = false }
     MiuixBackHandler(enabled = showPrereleaseDialog.value) {
         showPrereleaseDialog.value = false
-    }
-    MiuixBackHandler(enabled = showCommunityDialog.value != null) { showCommunityDialog.value = null }
-
-    LaunchedEffect(offlineModeEnabled) {
-        if (offlineModeEnabled) {
-            communityFeed = null
-            communityFeedLoaded = true
-        } else {
-            communityFeed = CommunityFeedRepository.fetchFeed(context)
-            communityFeedLoaded = true
-        }
     }
 
     val isHyperOsSupported = remember { RomUtils.isHyperOsVersionAtLeast(3, 0, 300) }
@@ -174,7 +159,6 @@ fun MiuixSettingsScreen(
     val popupShowing = showPrivacyDialog.value ||
             showFeedbackPopup.value ||
             showPrereleaseDialog.value ||
-            showCommunityDialog.value != null ||
             updateReleaseInfo != null
 
     LaunchedEffect(popupShowing) {
@@ -378,40 +362,6 @@ fun MiuixSettingsScreen(
                     }
                 }
 
-                if (!communityFeedLoaded || communityFeed?.hasContent == true) {
-                    item { SmallTitle(text = stringResource(R.string.settings_community_header)) }
-                    item {
-                        val announcementSectionTitle = stringResource(R.string.community_announcement_title)
-                        val pollSectionTitle = stringResource(R.string.community_poll_title)
-                        Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
-                            if (!communityFeedLoaded) {
-                                SuperArrow(
-                                    title = stringResource(R.string.community_loading_title),
-                                    summary = stringResource(R.string.community_loading_desc),
-                                    onClick = {}
-                                )
-                            } else {
-                                communityFeed?.announcements?.forEach { announcement ->
-                                    CommunityArrowItem(
-                                        title = announcementSectionTitle,
-                                        item = announcement,
-                                        fallbackSummary = stringResource(R.string.community_open_in_browser),
-                                        onClick = { showCommunityDialog.value = CommunityDialogState(announcementSectionTitle, announcement) }
-                                    )
-                                }
-
-                                communityFeed?.polls?.forEach { poll ->
-                                    CommunityArrowItem(
-                                        title = pollSectionTitle,
-                                        item = poll,
-                                        fallbackSummary = stringResource(R.string.community_open_in_browser),
-                                        onClick = { showCommunityDialog.value = CommunityDialogState(pollSectionTitle, poll) }
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
             }
 
             // ═══ 5. Help & About ═══
@@ -423,100 +373,11 @@ fun MiuixSettingsScreen(
                         summary = stringResource(R.string.summary_faq),
                         onClick = { context.startActivity(Intent(context, FAQActivity::class.java)) }
                     )
-                    if (!offlineModeEnabled) {
-                        Box {
-                            SuperArrow(
-                                title = stringResource(R.string.settings_feedback),
-                                summary = stringResource(R.string.summary_feedback),
-                                onClick = {
-                                    showFeedbackPopup.value = true
-                                }
-                            )
-                            SuperListPopup(
-                                show = showFeedbackPopup.value,
-                                alignment = PopupPositionProvider.Align.TopEnd,
-                                onDismissRequest = { showFeedbackPopup.value = false }
-                            ) {
-                                ListPopupColumn {
-                                    DropdownImpl(
-                                        text = stringResource(R.string.dialog_feedback_github),
-                                        optionSize = 2,
-                                        isSelected = false,
-                                        index = 0,
-                                        onSelectedIndexChange = {
-                                            showFeedbackPopup.value = false
-                                            val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/FrancoGiudans/Capsulyric/issues/new?template=bug_report.yml"))
-                                            context.startActivity(browserIntent)
-                                        }
-                                    )
-                                    DropdownImpl(
-                                        text = stringResource(R.string.dialog_feedback_wps),
-                                        optionSize = 2,
-                                        isSelected = false,
-                                        index = 1,
-                                        onSelectedIndexChange = {
-                                            showFeedbackPopup.value = false
-                                            val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://f.wps.cn/g/qACKW9I3/"))
-                                            context.startActivity(browserIntent)
-                                        }
-                                    )
-                                }
-                            }
-                        }
-                        SuperArrow(
-                            title = stringResource(R.string.settings_about_github),
-                            summary = stringResource(R.string.summary_github),
-                            onClick = {
-                                val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/FrancoGiudans/Capsulyric"))
-                                context.startActivity(browserIntent)
-                            }
-                        )
-                    }
-
-                    // Version
-                    BasicComponent(
-                        title = stringResource(R.string.about_version),
-                        summary = updateVersionText,
-                        onClick = {
-                            val cm = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as ClipboardManager
-                            val copyText = "$updateVersionText（$updateCodenameText，$updateBuildText）"
-                            cm.setPrimaryClip(ClipData.newPlainText("Version", copyText))
-                            Toast.makeText(context, context.getString(R.string.toast_copied), Toast.LENGTH_SHORT).show()
-                        }
+                    SuperArrow(
+                        title = stringResource(R.string.community_about_title),
+                        summary = stringResource(R.string.settings_about_capsulyric),
+                        onClick = { context.startActivity(Intent(context, AboutActivity::class.java)) }
                     )
-
-                    BasicComponent(
-                        title = stringResource(R.string.about_codename),
-                        summary = updateCodenameText
-                    )
-
-                    // Build Number (Dev Trigger)
-                    var devStepCount by remember { mutableIntStateOf(0) }
-                    val devModeEnabled by LyricRepository.getInstance().devModeEnabled.observeAsState(false)
-                    val showLogs = BuildConfig.DEBUG || devModeEnabled
-
-                    BasicComponent(
-                        title = stringResource(R.string.about_commit),
-                        summary = updateBuildText,
-                        onClick = {
-                            // Dev mode trigger logic
-                            devStepCount++
-                            if (devStepCount in 3..6) {
-                                Toast.makeText(context, context.getString(R.string.toast_dev_mode_steps, 7 - devStepCount), Toast.LENGTH_SHORT).show()
-                            } else if (devStepCount == 7) {
-                                LyricRepository.getInstance().setDevMode(context, true)
-                                Toast.makeText(context, context.getString(R.string.toast_dev_mode_enabled), Toast.LENGTH_SHORT).show()
-                            }
-                        }
-                    )
-
-                    if (showLogs) {
-                        SuperArrow(
-                            title = stringResource(R.string.title_diagnostics),
-                            summary = stringResource(R.string.summary_diagnostics),
-                            onClick = onShowDiagnostics
-                        )
-                    }
                 }
             }
         }
@@ -603,20 +464,6 @@ fun MiuixSettingsScreen(
             }
         }
 
-        showCommunityDialog.value?.let { dialogState ->
-            CommunityDetailsDialog(
-                state = dialogState,
-                onDismiss = { showCommunityDialog.value = null },
-                onOpen = {
-                    if (dialogState.item.hasUrl) {
-                        val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse(dialogState.item.url))
-                        context.startActivity(browserIntent)
-                    }
-                    showCommunityDialog.value = null
-                }
-            )
-        }
-
         if (updateReleaseInfo != null) {
             MiuixUpdateDialog(
                 show = true,
@@ -629,7 +476,7 @@ fun MiuixSettingsScreen(
 }
 
 @Composable
-private fun CommunityArrowItem(
+fun CommunityArrowItem(
     title: String,
     item: CommunityFeedItem,
     fallbackSummary: String,
@@ -648,7 +495,7 @@ private fun CommunityArrowItem(
 }
 
 @Composable
-private fun CommunityDetailsDialog(
+fun CommunityDetailsDialog(
     state: CommunityDialogState,
     onDismiss: () -> Unit,
     onOpen: () -> Unit

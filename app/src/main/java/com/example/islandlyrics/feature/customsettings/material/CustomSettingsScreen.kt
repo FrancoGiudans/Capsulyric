@@ -52,16 +52,18 @@ fun CustomSettingsScreen(
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE) }
     val scope = rememberCoroutineScope()
+    var floatingLyricsLabEnabled by remember { mutableStateOf(LabFeatureManager.isFloatingLyricsEnabled(prefs)) }
     
-    // Pager State
-    // Pager State
-    val pagerState = rememberPagerState(pageCount = { 4 })
-    val tabs = listOf(
-        stringResource(R.string.tab_capsule),
-        stringResource(R.string.tab_notification),
-        stringResource(R.string.tab_app_ui),
-        stringResource(R.string.settings_floating_lyrics)
-    )
+    val tabs = buildList {
+        add(stringResource(R.string.tab_capsule))
+        add(stringResource(R.string.tab_notification))
+        add(stringResource(R.string.tab_app_ui))
+        if (floatingLyricsLabEnabled) {
+            add(stringResource(R.string.settings_floating_lyrics))
+        }
+    }
+    val pagerState = rememberPagerState(pageCount = { tabs.size })
+    val floatingLyricsPageIndex = if (floatingLyricsLabEnabled) tabs.lastIndex else -1
 
     // --- State Duplication ---
 
@@ -126,6 +128,7 @@ fun CustomSettingsScreen(
     LaunchedEffect(Unit) {
         LabFeatureManager.ensureInitialized(prefs)
         superIslandAdvancedStyleLabEnabled = LabFeatureManager.isSuperIslandAdvancedStyleEnabled(prefs)
+        floatingLyricsLabEnabled = LabFeatureManager.isFloatingLyricsEnabled(prefs)
         superIslandNotificationStyle = LabFeatureManager.sanitizeSuperIslandNotificationStyle(context)
     }
 
@@ -765,7 +768,7 @@ fun CustomSettingsScreen(
                              )
 
                         }
-                        3 -> {
+                        floatingLyricsPageIndex -> {
                             FloatingLyricsSettingsSubScreen(prefs)
                         }
                     }

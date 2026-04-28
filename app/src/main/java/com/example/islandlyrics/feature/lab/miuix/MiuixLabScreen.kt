@@ -45,6 +45,9 @@ fun MiuixLabScreen(onBack: () -> Unit) {
     var superIslandAdvancedStyleEnabled by remember {
         mutableStateOf(LabFeatureManager.isSuperIslandAdvancedStyleEnabled(context))
     }
+    var floatingLyricsLabEnabled by remember {
+        mutableStateOf(LabFeatureManager.isFloatingLyricsEnabled(context))
+    }
     val showAdvancedStyleDialog = remember { mutableStateOf(false) }
 
     MiuixBackHandler(enabled = showAdvancedStyleDialog.value) {
@@ -108,6 +111,16 @@ fun MiuixLabScreen(onBack: () -> Unit) {
                             }
                         )
                     }
+
+                    SuperSwitch(
+                        title = stringResource(R.string.diag_lab_floating_lyrics_title),
+                        summary = stringResource(R.string.diag_lab_floating_lyrics_desc),
+                        checked = floatingLyricsLabEnabled,
+                        onCheckedChange = {
+                            floatingLyricsLabEnabled = it
+                            LabFeatureManager.setFloatingLyricsEnabled(context, it)
+                        }
+                    )
                 }
             }
         }
