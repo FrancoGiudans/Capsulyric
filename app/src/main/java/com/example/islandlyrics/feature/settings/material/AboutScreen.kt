@@ -7,11 +7,7 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -19,13 +15,8 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Link
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MediumTopAppBar
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material.icons.filled.Sync
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -34,6 +25,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.livedata.observeAsState
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -44,6 +36,7 @@ import com.example.islandlyrics.R
 import com.example.islandlyrics.core.feed.CommunityFeed
 import com.example.islandlyrics.core.feed.CommunityFeedRepository
 import com.example.islandlyrics.core.network.OfflineModeManager
+import com.example.islandlyrics.core.update.UpdateChecker
 import com.example.islandlyrics.data.LyricRepository
 import com.example.islandlyrics.feature.settings.CommunityDialogState
 import com.example.islandlyrics.ui.theme.material.neutralMaterialTopBarColors
@@ -55,6 +48,7 @@ fun AboutScreen(
     updateCodenameText: String,
     updateBuildText: String,
     onShowDiagnostics: () -> Unit,
+    onCheckUpdate: () -> Unit,
 ) {
     val context = LocalContext.current
     val scrollState = rememberScrollState()
@@ -64,6 +58,11 @@ fun AboutScreen(
     val showDiagnostics = BuildConfig.DEBUG || devModeEnabled
     var showFeedbackDialog by remember { mutableStateOf(false) }
     val offlineModeEnabled = remember { OfflineModeManager.isEnabled(context) }
+    var autoUpdateEnabled by remember { mutableStateOf(UpdateChecker.isAutoUpdateEnabled(context)) }
+    var prereleaseEnabled by remember { mutableStateOf(UpdateChecker.isPrereleaseEnabled(context)) }
+    var showPrereleaseDialog by remember { mutableStateOf(false) }
+    var showChannelDropdown by remember { mutableStateOf(false) }
+    var currentChannel by remember { mutableStateOf(UpdateChecker.getPrereleaseChannel(context)) }
     var communityFeed by remember { mutableStateOf<CommunityFeed?>(null) }
     var communityFeedLoaded by remember { mutableStateOf(false) }
     var communityDialogState by remember { mutableStateOf<CommunityDialogState?>(null) }
@@ -131,6 +130,69 @@ fun AboutScreen(
                         onClick = { communityDialogState = CommunityDialogState(pollSectionTitle, poll) }
                     )
                 }
+            }
+
+            if (!offlineModeEnabled) {
+                SettingsSectionHeader(text = stringResource(R.string.update_check_title))
+
+                SettingsSwitchItem(
+                    title = stringResource(R.string.settings_auto_update),
+                    subtitle = stringResource(R.string.settings_auto_update_desc),
+                    checked = autoUpdateEnabled,
+                    onCheckedChange = {
+                        autoUpdateEnabled = it
+                        UpdateChecker.setAutoUpdateEnabled(context, it)
+                    }
+                )
+
+                SettingsSwitchItem(
+                    title = stringResource(R.string.settings_prerelease_update),
+                    subtitle = stringResource(R.string.settings_prerelease_update_desc),
+                    checked = prereleaseEnabled,
+                    onCheckedChange = { checked ->
+                        if (checked) {
+                            showPrereleaseDialog = true
+                        } else {
+                            prereleaseEnabled = false
+                            UpdateChecker.setPrereleaseEnabled(context, false)
+                        }
+                    }
+                )
+
+                if (prereleaseEnabled) {
+                    Box(modifier = Modifier.fillMaxWidth()) {
+                        SettingsTextItem(
+                            title = stringResource(R.string.settings_prerelease_channel),
+                            value = currentChannel,
+                            onClick = { showChannelDropdown = true }
+                        )
+                        Box(modifier = Modifier.matchParentSize().wrapContentSize(Alignment.CenterEnd)) {
+                            DropdownMenu(
+                                expanded = showChannelDropdown,
+                                onDismissRequest = { showChannelDropdown = false }
+                            ) {
+                                val channels = listOf("Alpha", "Beta", "Pre", "Canary")
+                                channels.forEach { channel ->
+                                    DropdownMenuItem(
+                                        text = { Text(channel) },
+                                        onClick = {
+                                            currentChannel = channel
+                                            UpdateChecker.setPrereleaseChannel(context, channel)
+                                            showChannelDropdown = false
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                SettingsActionItem(
+                    title = stringResource(R.string.update_check_title),
+                    summary = stringResource(R.string.summary_check_updates_now),
+                    icon = Icons.Filled.Sync,
+                    onClick = onCheckUpdate
+                )
             }
 
             SettingsSectionHeader(text = stringResource(R.string.about_title))
@@ -204,6 +266,28 @@ fun AboutScreen(
 
             if (showFeedbackDialog) {
                 FeedbackSelectionDialog(onDismiss = { showFeedbackDialog = false })
+            }
+
+            if (showPrereleaseDialog) {
+                AlertDialog(
+                    onDismissRequest = { showPrereleaseDialog = false },
+                    title = { Text(stringResource(R.string.dialog_prerelease_warning_title)) },
+                    text = { Text(stringResource(R.string.dialog_prerelease_warning_message)) },
+                    confirmButton = {
+                        TextButton(onClick = {
+                            prereleaseEnabled = true
+                            UpdateChecker.setPrereleaseEnabled(context, true)
+                            showPrereleaseDialog = false
+                        }) {
+                            Text(stringResource(android.R.string.ok))
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { showPrereleaseDialog = false }) {
+                            Text(stringResource(android.R.string.cancel))
+                        }
+                    }
+                )
             }
 
             communityDialogState?.let { dialogState ->

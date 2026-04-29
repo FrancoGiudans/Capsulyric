@@ -80,8 +80,6 @@ fun MiuixSettingsScreen(
     var offlineModeEnabled by remember { mutableStateOf(OfflineModeManager.isEnabled(context)) }
 
     // State
-    var autoUpdateEnabled by remember { mutableStateOf(UpdateChecker.isAutoUpdateEnabled(context)) }
-    var prereleaseEnabled by remember { mutableStateOf(UpdateChecker.isPrereleaseEnabled(context)) }
     var followSystem by remember { mutableStateOf(prefs.getBoolean("theme_follow_system", true)) }
     var darkMode by remember { mutableStateOf(prefs.getBoolean("theme_dark_mode", false)) }
     var pureBlack by remember { mutableStateOf(prefs.getBoolean("theme_pure_black", false)) }
@@ -89,13 +87,9 @@ fun MiuixSettingsScreen(
 
     val showPrivacyDialog = remember { mutableStateOf(false) }
     val showFeedbackPopup = remember { mutableStateOf(false) }
-    val showPrereleaseDialog = remember { mutableStateOf(false) }
 
     MiuixBackHandler(enabled = showPrivacyDialog.value) { showPrivacyDialog.value = false }
     MiuixBackHandler(enabled = showFeedbackPopup.value) { showFeedbackPopup.value = false }
-    MiuixBackHandler(enabled = showPrereleaseDialog.value) {
-        showPrereleaseDialog.value = false
-    }
 
     val isHyperOsSupported = remember { RomUtils.isHyperOsVersionAtLeast(3, 0, 300) }
 
@@ -158,7 +152,6 @@ fun MiuixSettingsScreen(
 
     val popupShowing = showPrivacyDialog.value ||
             showFeedbackPopup.value ||
-            showPrereleaseDialog.value ||
             updateReleaseInfo != null
 
     LaunchedEffect(popupShowing) {
@@ -306,64 +299,6 @@ fun MiuixSettingsScreen(
                 }
             }
 
-            // ═══ 4. Updates ═══
-            if (!offlineModeEnabled) {
-                item { SmallTitle(text = stringResource(R.string.update_check_title)) }
-                item {
-                    Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
-                        SuperSwitch(
-                            title = stringResource(R.string.settings_auto_update),
-                            summary = stringResource(R.string.settings_auto_update_desc),
-                            checked = autoUpdateEnabled,
-                            onCheckedChange = {
-                                autoUpdateEnabled = it
-                                UpdateChecker.setAutoUpdateEnabled(context, it)
-                            }
-                        )
-
-                        SuperSwitch(
-                            title = stringResource(R.string.settings_prerelease_update),
-                            summary = stringResource(R.string.settings_prerelease_update_desc),
-                            checked = prereleaseEnabled,
-                            onCheckedChange = { checked ->
-                                if (checked) {
-                                    showPrereleaseDialog.value = true
-                                } else {
-                                    prereleaseEnabled = false
-                                    UpdateChecker.setPrereleaseEnabled(context, false)
-                                }
-                            }
-                        )
-
-                        if (prereleaseEnabled) {
-                            val channelOptions = listOf("Alpha", "Beta", "Pre", "Canary")
-                            val channelNames = listOf("Alpha", "Beta", "Pre", "Canary")
-
-                            var currentChannel by remember { mutableStateOf(UpdateChecker.getPrereleaseChannel(context)) }
-                            val channelIndex = channelOptions.indexOf(currentChannel).takeIf { it >= 0 } ?: 0
-
-                            SuperDropdown(
-                                title = stringResource(R.string.settings_prerelease_channel),
-                                items = channelNames,
-                                selectedIndex = channelIndex,
-                                onSelectedIndexChange = { index ->
-                                    val channel = channelOptions[index]
-                                    UpdateChecker.setPrereleaseChannel(context, channel)
-                                    currentChannel = channel
-                                }
-                            )
-                        }
-
-                        SuperArrow(
-                            title = stringResource(R.string.update_check_title),
-                            summary = stringResource(R.string.summary_check_updates_now),
-                            onClick = onCheckUpdate
-                        )
-                    }
-                }
-
-            }
-
             // ═══ 5. Help & About ═══
             item { SmallTitle(text = stringResource(R.string.settings_help_about_header)) }
             item {
@@ -383,51 +318,6 @@ fun MiuixSettingsScreen(
         }
 
         // --- Dialogs (must be inside Scaffold content for MiuixPopupHost) ---
-        MiuixBlurDialog(
-            title = stringResource(R.string.dialog_prerelease_warning_title),
-            show = showPrereleaseDialog.value,
-            onDismissRequest = {
-                prereleaseEnabled = false
-                UpdateChecker.setPrereleaseEnabled(context, false)
-                showPrereleaseDialog.value = false
-            }
-        ) {
-            androidx.compose.material3.Text(
-                text = stringResource(R.string.dialog_prerelease_warning_message),
-                color = MiuixTheme.colorScheme.onSurface,
-                fontSize = MiuixTheme.textStyles.body2.fontSize,
-                modifier = Modifier.padding(bottom = 24.dp)
-            )
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                TextButton(
-                    text = stringResource(android.R.string.cancel),
-                    onClick = {
-                        prereleaseEnabled = false
-                        UpdateChecker.setPrereleaseEnabled(context, false)
-                        showPrereleaseDialog.value = false
-                    },
-                    modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.textButtonColors(
-                        textColor = MiuixTheme.colorScheme.onSurfaceVariantActions
-                    )
-                )
-                Spacer(modifier = Modifier.width(12.dp))
-                TextButton(
-                    text = stringResource(android.R.string.ok),
-                    onClick = {
-                        prereleaseEnabled = true
-                        UpdateChecker.setPrereleaseEnabled(context, true)
-                        showPrereleaseDialog.value = false
-                    },
-                    modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.textButtonColorsPrimary()
-                )
-            }
-        }
-
         MiuixBlurDialog(
             title = stringResource(R.string.dialog_privacy_title),
             show = showPrivacyDialog.value,
