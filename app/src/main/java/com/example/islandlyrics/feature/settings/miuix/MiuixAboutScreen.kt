@@ -26,6 +26,7 @@ import com.example.islandlyrics.core.settings.LabFeatureManager
 import com.example.islandlyrics.core.update.UpdateChecker
 import com.example.islandlyrics.data.LyricRepository
 import com.example.islandlyrics.feature.settings.CommunityDialogState
+import com.example.islandlyrics.feature.update.miuix.MiuixUpdateDialog
 import com.example.islandlyrics.ui.miuix.*
 import top.yukonga.miuix.kmp.basic.*
 import top.yukonga.miuix.kmp.overlay.OverlayListPopup as SuperListPopup
@@ -41,6 +42,9 @@ fun MiuixAboutScreen(
     updateBuildText: String,
     onShowDiagnostics: () -> Unit,
     onCheckUpdate: () -> Unit,
+    updateReleaseInfo: UpdateChecker.ReleaseInfo? = null,
+    onUpdateDismiss: () -> Unit = {},
+    onUpdateIgnore: (String) -> Unit = {}
 ) {
     val context = LocalContext.current
     val listState = rememberLazyListState()
@@ -291,6 +295,15 @@ fun MiuixAboutScreen(
                     }
                     showCommunityDialog.value = null
                 }
+            )
+        }
+
+        if (updateReleaseInfo != null) {
+            MiuixUpdateDialog(
+                show = true,
+                releaseInfo = updateReleaseInfo,
+                onDismiss = onUpdateDismiss,
+                onIgnore = onUpdateIgnore
             )
         }
     }

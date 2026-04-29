@@ -15,7 +15,21 @@ static def getGitCommitHash() {
     }
 }
 
-static def getGitCommitCount() {
+static def getGitCommitCount(project = null) {
+    def overrideValue = project?.findProperty('commitCountOverride')
+    if (overrideValue == null || overrideValue.toString().trim().isEmpty()) {
+        overrideValue = System.getProperty('org.gradle.project.commitCountOverride')
+    }
+    if (overrideValue == null || overrideValue.toString().trim().isEmpty()) {
+        overrideValue = System.getenv('APP_COMMIT_COUNT_OVERRIDE')
+    }
+    overrideValue = overrideValue?.toString()?.trim()
+    if (overrideValue) {
+        try {
+            return overrideValue.toInteger()
+        } catch (Exception ignored) {
+        }
+    }
     try {
         return 'git rev-list --count HEAD'.execute().text.trim().toInteger()
     } catch (Exception ignored) {
@@ -97,7 +111,7 @@ android {
     }
 
     defaultConfig {
-        versionCode = getGitCommitCount()
+        versionCode = getGitCommitCount(project)
         applicationId = "com.franco.capsulyric"
         minSdk = 35
         targetSdk = 36
@@ -108,7 +122,7 @@ android {
         def baseVersion = getBuildMetadata(project, "versionName", "APP_VERSION_NAME", defaultBaseVersion)
         def appCodename = getBuildMetadata(project, "appCodename", "APP_CODENAME", "Unassigned")
         def communityFeedBaseUrl = getBuildMetadata(project, "appCommunityFeedBaseUrl", "APP_COMMUNITY_FEED_BASE_URL", "https://raw.githubusercontent.com/FrancoGiudans/CapsulyricFeed/main/data")
-        versionName = "${baseVersion}_C${getGitCommitCount()}"
+        versionName = "${baseVersion}_C${getGitCommitCount(project)}"
 
         buildConfigField "String", "GIT_COMMIT_HASH", "\"${getGitCommitHash()}\""
         buildConfigField "String", "VERSION_CODENAME", "\"${escapeForBuildConfig(appCodename)}\""
@@ -167,6 +181,20 @@ tasks.configureEach { task ->
     if (task.name == 'checkDebugClasspath' || task.name == 'checkDebugAndroidTestClasspath') {
         task.enabled = false
     }
+}
+
+tasks.register('buildLowCommitStable', GradleBuild) {
+    group = 'build'
+    description = 'Build the release variant with commit count forced to 1 for update-flow testing.'
+    tasks = ['clean', 'assembleRelease']
+    startParameter.projectProperties = ['commitCountOverride': '1']
+}
+
+tasks.register('buildLowCommitPreview', GradleBuild) {
+    group = 'build'
+    description = 'Build the prerelease variant with commit count forced to 1 for update-flow testing.'
+    tasks = ['clean', 'assemblePrerelease']
+    startParameter.projectProperties = ['commitCountOverride': '1']
 }
 
 dependencies {

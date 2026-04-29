@@ -40,6 +40,7 @@ import com.example.islandlyrics.core.settings.LabFeatureManager
 import com.example.islandlyrics.core.update.UpdateChecker
 import com.example.islandlyrics.data.LyricRepository
 import com.example.islandlyrics.feature.settings.CommunityDialogState
+import com.example.islandlyrics.feature.update.material.UpdateDialog
 import com.example.islandlyrics.ui.theme.material.neutralMaterialTopBarColors
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -50,6 +51,9 @@ fun AboutScreen(
     updateBuildText: String,
     onShowDiagnostics: () -> Unit,
     onCheckUpdate: () -> Unit,
+    updateReleaseInfo: UpdateChecker.ReleaseInfo? = null,
+    onUpdateDismiss: () -> Unit = {},
+    onUpdateIgnore: (String) -> Unit = {}
 ) {
     val context = LocalContext.current
     val scrollState = rememberScrollState()
@@ -268,6 +272,14 @@ fun AboutScreen(
                         }
                         communityDialogState = null
                     }
+                )
+            }
+
+            if (updateReleaseInfo != null) {
+                UpdateDialog(
+                    releaseInfo = updateReleaseInfo,
+                    onDismiss = onUpdateDismiss,
+                    onIgnore = onUpdateIgnore
                 )
             }
         }

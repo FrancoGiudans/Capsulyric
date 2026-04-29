@@ -11,8 +11,6 @@ import com.example.islandlyrics.core.update.UpdateChecker
 import com.example.islandlyrics.feature.diagnostics.DiagnosticsActivity
 import com.example.islandlyrics.feature.settings.material.AboutScreen
 import com.example.islandlyrics.feature.settings.miuix.MiuixAboutScreen
-import com.example.islandlyrics.feature.update.material.UpdateDialog
-import com.example.islandlyrics.feature.update.miuix.MiuixUpdateDialog
 import com.example.islandlyrics.ui.common.BaseActivity
 import com.example.islandlyrics.ui.miuix.MiuixAppTheme
 import com.example.islandlyrics.ui.miuix.isMiuixEnabled
@@ -50,20 +48,14 @@ class AboutActivity : BaseActivity() {
                         updateCodenameText = codename,
                         updateBuildText = build,
                         onShowDiagnostics = { showDiagnostics() },
-                        onCheckUpdate = { performUpdateCheck() }
+                        onCheckUpdate = { performUpdateCheck() },
+                        updateReleaseInfo = updateReleaseInfo,
+                        onUpdateDismiss = { updateReleaseInfo = null },
+                        onUpdateIgnore = { tag ->
+                            UpdateChecker.setIgnoredVersion(this@AboutActivity, tag)
+                            AppLogger.getInstance().log("Update", "Ignored version: $tag")
+                        }
                     )
-
-                    if (updateReleaseInfo != null) {
-                        MiuixUpdateDialog(
-                            show = true,
-                            releaseInfo = updateReleaseInfo!!,
-                            onDismiss = { updateReleaseInfo = null },
-                            onIgnore = { tag ->
-                                UpdateChecker.setIgnoredVersion(this@AboutActivity, tag)
-                                AppLogger.getInstance().log("Update", "Ignored version: $tag")
-                            }
-                        )
-                    }
                 }
             } else {
                 AppTheme {
@@ -72,19 +64,14 @@ class AboutActivity : BaseActivity() {
                         updateCodenameText = codename,
                         updateBuildText = build,
                         onShowDiagnostics = { showDiagnostics() },
-                        onCheckUpdate = { performUpdateCheck() }
+                        onCheckUpdate = { performUpdateCheck() },
+                        updateReleaseInfo = updateReleaseInfo,
+                        onUpdateDismiss = { updateReleaseInfo = null },
+                        onUpdateIgnore = { tag ->
+                            UpdateChecker.setIgnoredVersion(this@AboutActivity, tag)
+                            AppLogger.getInstance().log("Update", "Ignored version: $tag")
+                        }
                     )
-
-                    if (updateReleaseInfo != null) {
-                        UpdateDialog(
-                            releaseInfo = updateReleaseInfo!!,
-                            onDismiss = { updateReleaseInfo = null },
-                            onIgnore = { tag ->
-                                UpdateChecker.setIgnoredVersion(this@AboutActivity, tag)
-                                AppLogger.getInstance().log("Update", "Ignored version: $tag")
-                            }
-                        )
-                    }
                 }
             }
         }
