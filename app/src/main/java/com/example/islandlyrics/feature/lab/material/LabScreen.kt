@@ -46,6 +46,9 @@ fun LabScreen(onBack: () -> Unit) {
     var floatingLyricsLabEnabled by remember {
         mutableStateOf(LabFeatureManager.isFloatingLyricsEnabled(context))
     }
+    var experimentUpdatesEnabled by remember {
+        mutableStateOf(LabFeatureManager.isExperimentUpdatesEnabled(context))
+    }
     var showAdvancedStyleDialog by remember { mutableStateOf(false) }
 
     Scaffold(
@@ -97,6 +100,16 @@ fun LabScreen(onBack: () -> Unit) {
                         }
                     )
                 }
+
+                SettingsSwitchItem(
+                    title = stringResource(R.string.diag_lab_experiment_updates_title),
+                    subtitle = stringResource(R.string.diag_lab_experiment_updates_desc),
+                    checked = experimentUpdatesEnabled,
+                    onCheckedChange = {
+                        experimentUpdatesEnabled = it
+                        LabFeatureManager.setExperimentUpdatesEnabled(context, it)
+                    }
+                )
 
                 SettingsSwitchItem(
                     title = stringResource(R.string.diag_lab_floating_lyrics_title),

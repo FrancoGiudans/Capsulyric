@@ -36,6 +36,7 @@ import com.example.islandlyrics.R
 import com.example.islandlyrics.core.feed.CommunityFeed
 import com.example.islandlyrics.core.feed.CommunityFeedRepository
 import com.example.islandlyrics.core.network.OfflineModeManager
+import com.example.islandlyrics.core.settings.LabFeatureManager
 import com.example.islandlyrics.core.update.UpdateChecker
 import com.example.islandlyrics.data.LyricRepository
 import com.example.islandlyrics.feature.settings.CommunityDialogState
@@ -59,10 +60,9 @@ fun AboutScreen(
     var showFeedbackDialog by remember { mutableStateOf(false) }
     val offlineModeEnabled = remember { OfflineModeManager.isEnabled(context) }
     var autoUpdateEnabled by remember { mutableStateOf(UpdateChecker.isAutoUpdateEnabled(context)) }
-    var prereleaseEnabled by remember { mutableStateOf(UpdateChecker.isPrereleaseEnabled(context)) }
-    var showPrereleaseDialog by remember { mutableStateOf(false) }
     var showChannelDropdown by remember { mutableStateOf(false) }
-    var currentChannel by remember { mutableStateOf(UpdateChecker.getPrereleaseChannel(context)) }
+    var currentChannel by remember { mutableStateOf(UpdateChecker.getUpdateChannel(context)) }
+    var experimentUpdatesEnabled by remember { mutableStateOf(LabFeatureManager.isExperimentUpdatesEnabled(context)) }
     var communityFeed by remember { mutableStateOf<CommunityFeed?>(null) }
     var communityFeedLoaded by remember { mutableStateOf(false) }
     var communityDialogState by remember { mutableStateOf<CommunityDialogState?>(null) }
@@ -145,44 +145,33 @@ fun AboutScreen(
                     }
                 )
 
-                SettingsSwitchItem(
+                SettingsTextItem(
                     title = stringResource(R.string.settings_prerelease_update),
-                    subtitle = stringResource(R.string.settings_prerelease_update_desc),
-                    checked = prereleaseEnabled,
-                    onCheckedChange = { checked ->
-                        if (checked) {
-                            showPrereleaseDialog = true
-                        } else {
-                            prereleaseEnabled = false
-                            UpdateChecker.setPrereleaseEnabled(context, false)
-                        }
-                    }
+                    value = currentChannel,
+                    onClick = { showChannelDropdown = true }
                 )
-
-                if (prereleaseEnabled) {
-                    Box(modifier = Modifier.fillMaxWidth()) {
-                        SettingsTextItem(
-                            title = stringResource(R.string.settings_prerelease_channel),
-                            value = currentChannel,
-                            onClick = { showChannelDropdown = true }
-                        )
-                        Box(modifier = Modifier.matchParentSize().wrapContentSize(Alignment.CenterEnd)) {
-                            DropdownMenu(
-                                expanded = showChannelDropdown,
-                                onDismissRequest = { showChannelDropdown = false }
-                            ) {
-                                val channels = listOf("Alpha", "Beta", "Pre", "Canary")
-                                channels.forEach { channel ->
-                                    DropdownMenuItem(
-                                        text = { Text(channel) },
-                                        onClick = {
-                                            currentChannel = channel
-                                            UpdateChecker.setPrereleaseChannel(context, channel)
-                                            showChannelDropdown = false
-                                        }
-                                    )
-                                }
+                Box(modifier = Modifier.fillMaxWidth().wrapContentSize(Alignment.CenterEnd)) {
+                    DropdownMenu(
+                        expanded = showChannelDropdown,
+                        onDismissRequest = { showChannelDropdown = false }
+                    ) {
+                        val channels = buildList {
+                            add(UpdateChecker.CHANNEL_STABLE)
+                            add(UpdateChecker.CHANNEL_PREVIEW)
+                            if (experimentUpdatesEnabled) {
+                                add(UpdateChecker.CHANNEL_EXPERIMENT)
                             }
+                        }
+                        channels.forEach { channel ->
+                            DropdownMenuItem(
+                                text = { Text(channel) },
+                                onClick = {
+                                    currentChannel = channel
+                                    UpdateChecker.setUpdateChannel(context, channel)
+                                    experimentUpdatesEnabled = LabFeatureManager.isExperimentUpdatesEnabled(context)
+                                    showChannelDropdown = false
+                                }
+                            )
                         }
                     }
                 }
@@ -266,28 +255,6 @@ fun AboutScreen(
 
             if (showFeedbackDialog) {
                 FeedbackSelectionDialog(onDismiss = { showFeedbackDialog = false })
-            }
-
-            if (showPrereleaseDialog) {
-                AlertDialog(
-                    onDismissRequest = { showPrereleaseDialog = false },
-                    title = { Text(stringResource(R.string.dialog_prerelease_warning_title)) },
-                    text = { Text(stringResource(R.string.dialog_prerelease_warning_message)) },
-                    confirmButton = {
-                        TextButton(onClick = {
-                            prereleaseEnabled = true
-                            UpdateChecker.setPrereleaseEnabled(context, true)
-                            showPrereleaseDialog = false
-                        }) {
-                            Text(stringResource(android.R.string.ok))
-                        }
-                    },
-                    dismissButton = {
-                        TextButton(onClick = { showPrereleaseDialog = false }) {
-                            Text(stringResource(android.R.string.cancel))
-                        }
-                    }
-                )
             }
 
             communityDialogState?.let { dialogState ->

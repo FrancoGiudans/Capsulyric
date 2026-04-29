@@ -2,6 +2,7 @@ package com.example.islandlyrics.core.settings
 
 import android.content.Context
 import android.content.SharedPreferences
+import com.example.islandlyrics.core.update.UpdateChecker
 
 object LabFeatureManager {
     private const val PREFS_NAME = "IslandLyricsPrefs"
@@ -9,6 +10,8 @@ object LabFeatureManager {
     private const val KEY_SUPER_ISLAND_ADVANCED_STYLE_MIGRATED = "lab_super_island_advanced_style_migrated"
     private const val KEY_FLOATING_LYRICS_ENABLED = "lab_floating_lyrics_enabled"
     private const val KEY_FLOATING_LYRICS_MIGRATED = "lab_floating_lyrics_migrated"
+    private const val KEY_EXPERIMENT_UPDATES_ENABLED = "lab_experiment_updates_enabled"
+    private const val KEY_EXPERIMENT_UPDATES_MIGRATED = "lab_experiment_updates_migrated"
 
     const val SUPER_ISLAND_STYLE_STANDARD = "standard"
     const val SUPER_ISLAND_STYLE_ADVANCED = "advanced_beta"
@@ -33,6 +36,20 @@ object LabFeatureManager {
             val floatingLyricsEnabled = prefs.getBoolean("floating_lyrics_enabled", false)
             editor.putBoolean(KEY_FLOATING_LYRICS_ENABLED, floatingLyricsEnabled)
             editor.putBoolean(KEY_FLOATING_LYRICS_MIGRATED, true)
+            changed = true
+        }
+
+        if (!prefs.getBoolean(KEY_EXPERIMENT_UPDATES_MIGRATED, false)) {
+            val legacyPrereleaseEnabled = prefs.getBoolean("allow_prerelease_updates", false)
+            val legacyChannel = prefs.getString("prerelease_channel", "Alpha")
+            val migratedEnabled = when {
+                prefs.contains("update_channel") ->
+                    prefs.getString("update_channel", UpdateChecker.CHANNEL_STABLE) == UpdateChecker.CHANNEL_EXPERIMENT
+                legacyPrereleaseEnabled && legacyChannel == "Canary" -> true
+                else -> false
+            }
+            editor.putBoolean(KEY_EXPERIMENT_UPDATES_ENABLED, migratedEnabled)
+            editor.putBoolean(KEY_EXPERIMENT_UPDATES_MIGRATED, true)
             changed = true
         }
 
@@ -105,6 +122,34 @@ object LabFeatureManager {
             .putBoolean(KEY_FLOATING_LYRICS_ENABLED, enabled)
             .putBoolean(KEY_FLOATING_LYRICS_MIGRATED, true)
             .apply()
+    }
+
+    fun isExperimentUpdatesEnabled(context: Context): Boolean {
+        val prefs = context.prefs()
+        ensureInitialized(prefs)
+        return prefs.getBoolean(KEY_EXPERIMENT_UPDATES_ENABLED, false)
+    }
+
+    fun isExperimentUpdatesEnabled(prefs: SharedPreferences): Boolean {
+        ensureInitialized(prefs)
+        return prefs.getBoolean(KEY_EXPERIMENT_UPDATES_ENABLED, false)
+    }
+
+    fun setExperimentUpdatesEnabled(context: Context, enabled: Boolean) {
+        val prefs = context.prefs()
+        ensureInitialized(prefs)
+
+        prefs.edit()
+            .putBoolean(KEY_EXPERIMENT_UPDATES_ENABLED, enabled)
+            .putBoolean(KEY_EXPERIMENT_UPDATES_MIGRATED, true)
+            .apply()
+
+        val currentChannel = UpdateChecker.getUpdateChannel(context)
+        when {
+            enabled -> UpdateChecker.setUpdateChannel(context, UpdateChecker.CHANNEL_EXPERIMENT)
+            currentChannel == UpdateChecker.CHANNEL_EXPERIMENT ->
+                UpdateChecker.setUpdateChannel(context, UpdateChecker.CHANNEL_PREVIEW)
+        }
     }
 
     private fun Context.prefs(): SharedPreferences =

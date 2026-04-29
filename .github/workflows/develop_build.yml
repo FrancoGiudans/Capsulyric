@@ -1,4 +1,4 @@
-name: Canary Build (Prerelease)
+name: Experiment Build (Canary Tag)
 
 on:
   push:
@@ -35,7 +35,8 @@ jobs:
     needs: pre_job
     if: |
       needs.pre_job.outputs.should_skip != 'true' &&
-      !contains(github.event.head_commit.message, '[skip canary]')
+      !contains(github.event.head_commit.message, '[skip canary]') &&
+      !contains(github.event.head_commit.message, '[skip experiment]')
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -73,10 +74,10 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      - name: Build Prerelease Variant
-        run: ./gradlew assemblePrerelease -PversionPrefix="${{ steps.build_meta.outputs.version_prefix }}" -PappCodename="${{ steps.build_meta.outputs.codename }}"
+      - name: Build Experiment Package
+        run: ./gradlew assemblePrerelease -PversionPrefix="${{ steps.build_meta.outputs.version_prefix }}" -PversionChannel=Experiment -PappCodename="${{ steps.build_meta.outputs.codename }}"
 
-      - name: Sign Prerelease APKs
+      - name: Sign Experiment APKs
         env:
           SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
@@ -85,7 +86,7 @@ jobs:
         run: |
           echo "$SIGNING_KEY" | base64 --decode > release.keystore
           
-          # Sign Standard Prerelease
+          # Sign experiment package generated from the prerelease build type.
           STD_APK=$(find app/build/outputs/apk/prerelease -name "*.apk" ! -name "*-signed.apk" | head -n 1)
           ${ANDROID_HOME}/build-tools/34.0.0/apksigner sign \
             --ks release.keystore \
@@ -105,12 +106,12 @@ jobs:
       - name: Upload Standard Signed Artifact
         uses: actions/upload-artifact@v6
         with:
-          name: Capsulyric-Standard-Prerelease-Signed
+          name: Capsulyric-Experiment-Signed
           path: |
             app/build/outputs/apk/prerelease/app-prerelease-signed.apk
             app/build/outputs/apk/prerelease/app-prerelease-signed.apk.md5
 
-      - name: Generate Canary Metadata
+      - name: Generate Experiment Metadata
         if: |
           github.event_name == 'push' &&
           github.ref == 'refs/heads/develop' &&
@@ -133,7 +134,7 @@ jobs:
           fi
           
           # Base name of the release
-          REL_NAME="Canary Build ${DISPLAY_VERSION}"
+          REL_NAME="Experiment Build ${DISPLAY_VERSION}"
           TAG_NAME="Canary.Version_C${COUNT}"
           echo "rel_name=$REL_NAME" >> $GITHUB_OUTPUT
           echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
@@ -142,11 +143,11 @@ jobs:
           echo "> [!WARNING]" > canary_body.md
           echo "> **实验性版本 (Experimental Build)**" >> canary_body.md
           echo ">" >> canary_body.md
-          echo "> 这是从 \`develop\` 分支自动生成的 Canary 滚动构建。可能包含不稳定的代码或破坏性变更。请谨慎使用。" >> canary_body.md
+          echo "> 这是从 \`develop\` 分支自动生成的 Experiment 滚动构建（沿用 Canary Tag 兼容旧版本）。可能包含不稳定的代码或破坏性变更。请谨慎使用。" >> canary_body.md
           echo ">" >> canary_body.md
-          echo "> This is a rolling Canary release generated automatically from the \`develop\` branch. It may contain unstable code or breaking changes. Use with caution." >> canary_body.md
+          echo "> This is a rolling Experiment release generated automatically from the \`develop\` branch, while keeping the Canary tag for backward compatibility. It may contain unstable code or breaking changes. Use with caution." >> canary_body.md
           echo "" >> canary_body.md
-          echo "## Canary Build (Rolling)" >> canary_body.md
+          echo "## Experiment Build (Rolling Canary Tag)" >> canary_body.md
           echo "- **Codename:** \`${CODENAME}\`" >> canary_body.md
           echo "- **Version:** \`${DISPLAY_VERSION}\`" >> canary_body.md
           echo "- **Tag:** \`${TAG_NAME}\`" >> canary_body.md
@@ -154,10 +155,10 @@ jobs:
           echo "- **Latest Commit:** \`${SHORT_SHA}\`" >> canary_body.md
           echo "- **Branch:** \`develop\`" >> canary_body.md
           echo "" >> canary_body.md
-          echo "### Changes since last Canary release" >> canary_body.md
+          echo "### Changes since last Experiment / Canary release" >> canary_body.md
           
           if [ -z "$PREV_SHA" ]; then
-            echo "First Canary build recorded." >> canary_body.md
+            echo "First Experiment build recorded." >> canary_body.md
           elif [ "$PREV_SHA" == "$(git rev-parse HEAD)" ]; then
             echo "No new commits (Re-run or manual trigger)." >> canary_body.md
           else
@@ -195,7 +196,7 @@ jobs:
             echo "No existing Canary tags to delete."
           fi
 
-      - name: Rolling Canary Release
+      - name: Rolling Experiment Release
         if: |
           github.event_name == 'push' &&
           github.ref == 'refs/heads/develop' &&

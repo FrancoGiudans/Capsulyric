@@ -37,6 +37,33 @@ static def getDefaultVersionPrefix() {
     return now.format(DateTimeFormatter.ofPattern("'Version.'yy.M"))
 }
 
+static def normalizeVersionChannel(String value) {
+    def normalized = value?.toString()?.trim()?.toLowerCase()
+    switch (normalized) {
+        case "stable":
+            return "Stable"
+        case "preview":
+            return "Preview"
+        case "experiment":
+            return "Experiment"
+        default:
+            return ""
+    }
+}
+
+static def getDefaultBaseVersion(String versionPrefix, String versionChannel) {
+    switch (normalizeVersionChannel(versionChannel)) {
+        case "Stable":
+            return "${versionPrefix}.Stable"
+        case "Preview":
+            return "${versionPrefix}.Preview"
+        case "Experiment":
+            return "${versionPrefix}.Canary"
+        default:
+            return "${versionPrefix}.Preview"
+    }
+}
+
 static def escapeForBuildConfig(String value) {
     return value.replace("\\", "\\\\").replace("\"", "\\\"")
 }
@@ -76,7 +103,9 @@ android {
         targetSdk = 36
 
         def versionPrefix = getBuildMetadata(project, "versionPrefix", "APP_VERSION_PREFIX", getDefaultVersionPrefix())
-        def baseVersion = getBuildMetadata(project, "versionName", "APP_VERSION_NAME", "${versionPrefix}.Canary")
+        def versionChannel = getBuildMetadata(project, "versionChannel", "APP_VERSION_CHANNEL", "")
+        def defaultBaseVersion = getDefaultBaseVersion(versionPrefix, versionChannel)
+        def baseVersion = getBuildMetadata(project, "versionName", "APP_VERSION_NAME", defaultBaseVersion)
         def appCodename = getBuildMetadata(project, "appCodename", "APP_CODENAME", "Unassigned")
         def communityFeedBaseUrl = getBuildMetadata(project, "appCommunityFeedBaseUrl", "APP_COMMUNITY_FEED_BASE_URL", "https://raw.githubusercontent.com/FrancoGiudans/CapsulyricFeed/main/data")
         versionName = "${baseVersion}_C${getGitCommitCount()}"

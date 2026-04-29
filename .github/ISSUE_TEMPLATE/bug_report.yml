@@ -25,11 +25,11 @@ body:
     attributes:
       label: App Version / 软件版本
       description: |
-        Please provide the version name (e.g. `Version.26.4.Beta4_C338`). 
+        Please provide the version name (e.g. `Version.26.4_C338` or `Version.26.4.Preview_C338`). 
         **Tip: Click the version number in the app Settings to copy.**
-        请提供版本号（例如 `Version.26.4.Beta4_C338`）。
+        请提供版本号（例如 `Version.26.4_C338` 或 `Version.26.4.Preview_C338`）。
         **提示：在应用设置中点击版本号即可复制。**
-      placeholder: e.g. Version.26.4.Canary_C341
+      placeholder: e.g. Version.26.4.Preview_C338 or Version.26.4.Canary_C341
     validations:
       required: true
   - type: dropdown
@@ -66,10 +66,10 @@ body:
       description: |
         How to get logs / 如何获取日志:
         - **Debug Version**: Has a built-in Log Console to view full logs directly.
-        - **Release / Pre-release Version**: Tap the version number or Commit hash in the app multiple times to open the Log Console.
+        - **Stable / Preview / Experiment Version**: Tap the version number or Commit hash in the app multiple times to open the Log Console.
         
         - **Debug 版本**: 自带 Log Console（日志控制台），可直接查看输出的完整日志。
-        - **Release / Pre-release 版本**: 在应用内找到版本号或 Commit 号，连续点击即可唤出 Log Console。
+        - **Stable / Preview / Experiment 版本**: 在应用内找到版本号或 Commit 号，连续点击即可唤出 Log Console。
       placeholder: Paste your logs here or share a link...
   - type: checkboxes
     id: checks

@@ -155,15 +155,27 @@ object CommunityFeedRepository {
         val channels = item.optJSONArray("channels") ?: return true
         if (channels.length() == 0) return true
 
-        val currentChannel = if (UpdateChecker.isPrereleaseEnabled(context)) {
-            UpdateChecker.getPrereleaseChannel(context)
-        } else {
-            "Release"
-        }
+        val currentChannel = UpdateChecker.getUpdateChannel(context)
 
         for (index in 0 until channels.length()) {
             val value = channels.optString(index)
             if (value.equals("All", ignoreCase = true) || value.equals(currentChannel, ignoreCase = true)) {
+                return true
+            }
+            if (currentChannel == UpdateChecker.CHANNEL_STABLE && value.equals("Release", ignoreCase = true)) {
+                return true
+            }
+            if (currentChannel == UpdateChecker.CHANNEL_PREVIEW && (
+                value.equals("Preview", ignoreCase = true) ||
+                    value.equals("Alpha", ignoreCase = true) ||
+                    value.equals("Beta", ignoreCase = true) ||
+                    value.equals("Pre", ignoreCase = true) ||
+                    value.equals("Release", ignoreCase = true)
+                )
+            ) {
+                return true
+            }
+            if (currentChannel == UpdateChecker.CHANNEL_EXPERIMENT && value.equals("Canary", ignoreCase = true)) {
                 return true
             }
         }

@@ -212,8 +212,8 @@
     <string name="settings_auto_update_desc">启动应用时检查新版本</string>
 
     <!-- Main Activity -->
-    <string name="dialog_prerelease_warning_message">预发布版本（Alpha/Beta/Pre/Canary）可能不稳定，不建议日常使用。确定要接收这些更新吗？</string>
-    <string name="settings_prerelease_channel">选择预发布频道</string>
+    <string name="dialog_prerelease_warning_message">Preview 和 Experiment 更新可能包含尚未完善的改动。</string>
+    <string name="settings_prerelease_channel">更新通道</string>
     <string name="main_service_status">🔴 服务状态: 未知</string>
     <string name="main_system_api_status">系统与 API 状态 (API 36)</string>
     <string name="main_permission_check">权限检查: 检测中...</string>
@@ -223,12 +223,12 @@
     <string name="main_whitelist_title">已添加应用</string>
     <string name="main_add_package">添加应用包名</string>
 
-    <string name="settings_prerelease_update">接收预发布版本</string>
-    <string name="settings_prerelease_update_desc">检查 Alpha/Beta/Pre/Canary 频道更新</string>
-    <string name="dialog_prerelease_warning_title">确认接收预发布版本？</string>
-    <string name="settings_prerelease_desc">Q：预发布频道有什么区别？</string>
+    <string name="settings_prerelease_update">更新通道</string>
+    <string name="settings_prerelease_update_desc">选择你希望接收的更新类型。</string>
+    <string name="dialog_prerelease_warning_title">更新通道</string>
+    <string name="settings_prerelease_desc">Q: 不同更新通道有什么区别？</string>
     <string name="dialog_prerelease_desc_title">频道说明</string>
-    <string name="dialog_prerelease_desc_message">A：\n\n• <b>Alpha 频道</b>：最早期测试版本。可能非常不稳定，并可能包含破坏性变更。\n\n• <b>Beta 频道</b>：接近功能完整。破坏性变更更少，主要是修复与体验打磨。\n\n• <b>Pre 频道</b>：候选发布阶段。不再加入新功能，专注稳定性与性能，接近正式版。\n\n• <b>Canary 频道</b>：CI 自动构建的滚动版本，包含最新提交。<b>[仅用于测试，极度不稳定]</b>。选择 Canary 后将停止检查其他所有频道（包括正式版、Alpha、Beta、Pre）的更新。\n\n<b>注意：</b>并不是每个开发周期都会提供所有频道。</string>
+    <string name="dialog_prerelease_desc_message">A：\n\n• <b>Stable</b>：仅接收正式版，适合日常使用。\n\n• <b>Preview</b>：接收常规预览版，并会继续收到后续 Stable 正式版；适合希望提前体验但不进入实验轨道的用户。\n\n• <b>Experiment</b>：仅接收测试分支的 Canary 滚动构建。<b>[仅用于测试，极度不稳定]</b>。该通道不会接收 Stable 或 Preview 更新。</string>
     
     <!-- 动态图标样式设置 -->
     <string name="settings_icon_style">左侧图标样式</string>
@@ -486,6 +486,8 @@
     <string name="diag_header_advanced">高级功能查验 (Android 16 / 小米岛)</string>
     <string name="diag_lab_super_island_advanced_style_title">小米超级岛高级样式</string>
     <string name="diag_lab_super_island_advanced_style_desc">开启后，个性化设置里的“通知样式”将显示“高级样式（Beta）”选项</string>
+    <string name="diag_lab_experiment_updates_title">接收测试版本</string>
+    <string name="diag_lab_experiment_updates_desc">显示 Experiment 通道，并接收来自测试分支的实验版本。</string>
     <string name="diag_lab_floating_lyrics_title">桌面歌词</string>
     <string name="diag_lab_floating_lyrics_desc">开启后，个性化设置里将显示桌面歌词入口</string>
     <string name="diag_lab_super_island_dialog_title">开启高级样式实验功能？</string>

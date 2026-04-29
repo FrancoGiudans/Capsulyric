@@ -23,8 +23,18 @@ object UpdateChecker {
     private const val KEY_AUTO_UPDATE = "auto_check_updates"
     private const val KEY_LAST_CHECK = "last_update_check_time"
     private const val KEY_PRERELEASE_UPDATES = "allow_prerelease_updates"
-    private const val KEY_PRERELEASE_CHANNEL = "prerelease_channel" // Alpha, Beta, Pre, Canary
+    private const val KEY_PRERELEASE_CHANNEL = "prerelease_channel" // Legacy: Alpha, Beta, Pre, Canary
+    private const val KEY_UPDATE_CHANNEL = "update_channel" // Stable, Preview, Experiment
     private val VERSION_IN_TITLE_REGEX = Regex("""Version\.\d{2}\.\d+(?:\.[A-Za-z0-9]+)?_C\d+""")
+
+    const val CHANNEL_STABLE = "Stable"
+    const val CHANNEL_PREVIEW = "Preview"
+    const val CHANNEL_EXPERIMENT = "Experiment"
+
+    private const val LEGACY_CHANNEL_ALPHA = "Alpha"
+    private const val LEGACY_CHANNEL_BETA = "Beta"
+    private const val LEGACY_CHANNEL_PRE = "Pre"
+    private const val LEGACY_CHANNEL_CANARY = "Canary"
 
     data class ReleaseInfo(
         val tagName: String,        // e.g., "v1.0_C25"
@@ -46,23 +56,70 @@ object UpdateChecker {
     }
 
     fun isPrereleaseEnabled(context: Context): Boolean {
-        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        return prefs.getBoolean(KEY_PRERELEASE_UPDATES, false)
+        return getUpdateChannel(context) != CHANNEL_STABLE
     }
 
     fun setPrereleaseEnabled(context: Context, enabled: Boolean) {
-        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        prefs.edit().putBoolean(KEY_PRERELEASE_UPDATES, enabled).apply()
+        val currentChannel = getUpdateChannel(context)
+        val nextChannel = when {
+            enabled && currentChannel == CHANNEL_STABLE -> CHANNEL_PREVIEW
+            enabled -> currentChannel
+            else -> CHANNEL_STABLE
+        }
+        setUpdateChannel(context, nextChannel)
     }
 
     fun getPrereleaseChannel(context: Context): String {
-        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        return prefs.getString(KEY_PRERELEASE_CHANNEL, "Alpha") ?: "Alpha"
+        return when (getUpdateChannel(context)) {
+            CHANNEL_EXPERIMENT -> LEGACY_CHANNEL_CANARY
+            CHANNEL_PREVIEW -> LEGACY_CHANNEL_PRE
+            else -> LEGACY_CHANNEL_PRE
+        }
     }
 
     fun setPrereleaseChannel(context: Context, channel: String) {
+        val mappedChannel = when (channel) {
+            LEGACY_CHANNEL_CANARY -> CHANNEL_EXPERIMENT
+            LEGACY_CHANNEL_ALPHA, LEGACY_CHANNEL_BETA, LEGACY_CHANNEL_PRE -> CHANNEL_PREVIEW
+            CHANNEL_STABLE, CHANNEL_PREVIEW, CHANNEL_EXPERIMENT -> channel
+            else -> CHANNEL_PREVIEW
+        }
+        setUpdateChannel(context, mappedChannel)
+    }
+
+    fun getUpdateChannel(context: Context): String {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        prefs.edit().putString(KEY_PRERELEASE_CHANNEL, channel).apply()
+        val newChannel = prefs.getString(KEY_UPDATE_CHANNEL, null)
+        if (!newChannel.isNullOrBlank()) {
+            return normalizeChannel(newChannel)
+        }
+
+        val prereleaseEnabled = prefs.getBoolean(KEY_PRERELEASE_UPDATES, false)
+        val legacyChannel = prefs.getString(KEY_PRERELEASE_CHANNEL, LEGACY_CHANNEL_ALPHA).orEmpty()
+        return if (!prereleaseEnabled) {
+            CHANNEL_STABLE
+        } else {
+            when (legacyChannel) {
+                LEGACY_CHANNEL_CANARY -> CHANNEL_EXPERIMENT
+                LEGACY_CHANNEL_ALPHA, LEGACY_CHANNEL_BETA, LEGACY_CHANNEL_PRE -> CHANNEL_PREVIEW
+                else -> CHANNEL_PREVIEW
+            }
+        }
+    }
+
+    fun setUpdateChannel(context: Context, channel: String) {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val normalizedChannel = normalizeChannel(channel)
+        val legacyChannel = when (normalizedChannel) {
+            CHANNEL_EXPERIMENT -> LEGACY_CHANNEL_CANARY
+            CHANNEL_PREVIEW -> LEGACY_CHANNEL_PRE
+            else -> LEGACY_CHANNEL_PRE
+        }
+        prefs.edit()
+            .putString(KEY_UPDATE_CHANNEL, normalizedChannel)
+            .putBoolean(KEY_PRERELEASE_UPDATES, normalizedChannel != CHANNEL_STABLE)
+            .putString(KEY_PRERELEASE_CHANNEL, legacyChannel)
+            .apply()
     }
 
     fun getIgnoredVersion(context: Context): String? {
@@ -115,8 +172,7 @@ object UpdateChecker {
             if (connection.responseCode == 200) {
                 val response = connection.inputStream.bufferedReader().use { it.readText() }
                 val jsonArray = org.json.JSONArray(response)
-                val includePrerelease = isPrereleaseEnabled(context)
-                val userChannel = if (includePrerelease) getPrereleaseChannel(context) else "Release"
+                val userChannel = getUpdateChannel(context)
 
                 for (i in 0 until jsonArray.length()) {
                     val json = jsonArray.getJSONObject(i)
@@ -143,8 +199,8 @@ object UpdateChecker {
         }
         try {
             updateLastCheckTime(context)
-            val includePrerelease = isPrereleaseEnabled(context)
-            val apiUrl = if (includePrerelease) "https://api.github.com/repos/FrancoGiudans/Capsulyric/releases" else GITHUB_API_URL
+            val userChannel = getUpdateChannel(context)
+            val apiUrl = if (userChannel == CHANNEL_STABLE) GITHUB_API_URL else "https://api.github.com/repos/FrancoGiudans/Capsulyric/releases"
             val url = URL(apiUrl)
             val connection = url.openConnection() as HttpURLConnection
             connection.requestMethod = "GET"
@@ -155,7 +211,7 @@ object UpdateChecker {
             if (connection.responseCode == 200) {
                 val response = connection.inputStream.bufferedReader().use { it.readText() }
                 val allReleases = mutableListOf<ReleaseInfo>()
-                if (includePrerelease) {
+                if (userChannel != CHANNEL_STABLE) {
                     val jsonArray = org.json.JSONArray(response)
                     for (i in 0 until jsonArray.length()) {
                         allReleases.add(parseRelease(jsonArray.getJSONObject(i)))
@@ -165,7 +221,6 @@ object UpdateChecker {
                 }
 
                 val currentVersion = currentVersionOverride ?: BuildConfig.VERSION_NAME
-                val userChannel = if (includePrerelease) getPrereleaseChannel(context) else "Release"
                 val newerReleases = mutableListOf<ReleaseInfo>()
 
                 for (release in allReleases) {
@@ -324,32 +379,36 @@ object UpdateChecker {
         return tag.startsWith("Canary.Version") || tag.contains(".Canary")
     }
 
+    private fun isPreviewTag(tag: String): Boolean {
+        return tag.contains(".Preview") ||
+            tag.contains(".Alpha") ||
+            tag.contains(".Beta") ||
+            tag.contains(".Pre")
+    }
+
+    private fun normalizeChannel(channel: String): String {
+        return when (channel) {
+            CHANNEL_PREVIEW -> CHANNEL_PREVIEW
+            CHANNEL_EXPERIMENT -> CHANNEL_EXPERIMENT
+            else -> CHANNEL_STABLE
+        }
+    }
+
     private fun isUpdateAllowedForChannel(release: ReleaseInfo, userChannel: String): Boolean {
-        // Rule 1: Everyone receives stable releases
-        if (!release.prerelease) return true
-
-        // Rule 2: Release channel receives NO prereleases
-        if (userChannel == "Release") return false
-
         val tag = release.tagName
-        
-        // Rule 3: Canary channel ONLY receives Canary updates
-        if (userChannel == "Canary") {
+
+        // Experiment is an isolated canary-only rail.
+        if (userChannel == CHANNEL_EXPERIMENT) {
             return isCanaryTag(tag)
         }
 
-        // Rule 4: Tagged prerelease channels (Alpha, Beta, Pre) never receive Canary
+        // Stable and Preview never receive experiment releases.
         if (isCanaryTag(tag)) return false
 
-        // Rule 5: Traditional pre-release hierarchy
-        val isAlpha = tag.contains(".Alpha")
-        val isBeta = tag.contains(".Beta")
-        val isPre = tag.contains(".Pre")
+        if (!release.prerelease) return true
 
         return when (userChannel) {
-            "Pre" -> isPre
-            "Beta" -> isBeta || isPre
-            "Alpha" -> isAlpha || isBeta || isPre
+            CHANNEL_PREVIEW -> isPreviewTag(tag)
             else -> false
         }
     }

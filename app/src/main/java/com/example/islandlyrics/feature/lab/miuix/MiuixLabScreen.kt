@@ -48,6 +48,9 @@ fun MiuixLabScreen(onBack: () -> Unit) {
     var floatingLyricsLabEnabled by remember {
         mutableStateOf(LabFeatureManager.isFloatingLyricsEnabled(context))
     }
+    var experimentUpdatesEnabled by remember {
+        mutableStateOf(LabFeatureManager.isExperimentUpdatesEnabled(context))
+    }
     val showAdvancedStyleDialog = remember { mutableStateOf(false) }
 
     MiuixBackHandler(enabled = showAdvancedStyleDialog.value) {
@@ -111,6 +114,16 @@ fun MiuixLabScreen(onBack: () -> Unit) {
                             }
                         )
                     }
+
+                    SuperSwitch(
+                        title = stringResource(R.string.diag_lab_experiment_updates_title),
+                        summary = stringResource(R.string.diag_lab_experiment_updates_desc),
+                        checked = experimentUpdatesEnabled,
+                        onCheckedChange = {
+                            experimentUpdatesEnabled = it
+                            LabFeatureManager.setExperimentUpdatesEnabled(context, it)
+                        }
+                    )
 
                     SuperSwitch(
                         title = stringResource(R.string.diag_lab_floating_lyrics_title),
