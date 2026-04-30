@@ -1,6 +1,7 @@
 package com.example.islandlyrics.feature.logviewer.material
 
 import android.content.Context
+import com.example.islandlyrics.core.logging.AppLogger
 import com.example.islandlyrics.core.logging.LogManager
 import android.content.Intent
 import android.widget.Toast
@@ -42,7 +43,22 @@ fun LogViewerScreen(
     var filterLevel by remember { mutableStateOf("ALL") } // ALL, E, W, D
     var logs by remember { mutableStateOf<List<LogManager.LogEntry>>(emptyList()) }
     var originalLogs by remember { mutableStateOf<List<LogManager.LogEntry>>(emptyList()) }
+    var showRecordLevelMenu by remember { mutableStateOf(false) }
+    var recordLevel by remember {
+        mutableStateOf(
+            AppLogger.LogLevel.fromPreference(
+                context.getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE)
+                    .getString(AppLogger.PREF_LOG_RECORD_LEVEL, null)
+            )
+        )
+    }
     val listState = rememberLazyListState()
+    val recordLevelOptions = listOf(
+        AppLogger.LogLevel.ERROR to "Error",
+        AppLogger.LogLevel.WARN to "Warn+",
+        AppLogger.LogLevel.INFO to "Info+",
+        AppLogger.LogLevel.DEBUG to "Debug+"
+    )
 
     // Load logs
     LaunchedEffect(Unit) {
@@ -173,6 +189,36 @@ fun LogViewerScreen(
                         onClick = { filterLevel = "D" },
                         label = { Text("Debug") }
                     )
+                }
+                Box(modifier = Modifier.padding(top = 8.dp)) {
+                    AssistChip(
+                        onClick = { showRecordLevelMenu = true },
+                        label = {
+                            Text("Record: ${recordLevelOptions.first { it.first == recordLevel }.second}")
+                        },
+                        trailingIcon = {
+                            Icon(Icons.Default.KeyboardArrowDown, contentDescription = null)
+                        }
+                    )
+                    DropdownMenu(
+                        expanded = showRecordLevelMenu,
+                        onDismissRequest = { showRecordLevelMenu = false }
+                    ) {
+                        recordLevelOptions.forEach { (level, label) ->
+                            DropdownMenuItem(
+                                text = { Text(label) },
+                                onClick = {
+                                    recordLevel = level
+                                    context.getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE)
+                                        .edit()
+                                        .putString(AppLogger.PREF_LOG_RECORD_LEVEL, level.preferenceValue)
+                                        .apply()
+                                    AppLogger.getInstance().setMinimumLevel(level)
+                                    showRecordLevelMenu = false
+                                }
+                            )
+                        }
+                    }
                 }
             }
 

@@ -41,6 +41,7 @@ class MediaMonitorService : NotificationListenerService() {
     // Deduplication: Track last metadata hash to avoid processing duplicates
     private var lastMetadataHash: Int = 0
     private var lastComputedIsPlaying: Boolean? = null
+    private var lastAlbumArtTrackKey: String? = null
     
     // Debounce Token
     private val updateToken = Any()
@@ -231,7 +232,9 @@ class MediaMonitorService : NotificationListenerService() {
             val artBitmap = controller.metadata
                 ?.getBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART)
                 ?: controller.metadata?.getBitmap(MediaMetadata.METADATA_KEY_ART)
-            LyricRepository.getInstance().updateAlbumArt(artBitmap)
+            val scaledArt = scaleDownBitmap(artBitmap, MAX_ALBUM_ART_SIZE)
+            LyricRepository.getInstance().updateAlbumArt(scaledArt)
+            lastAlbumArtTrackKey = null
             AppLogger.getInstance().d(TAG, "Album art refreshed for $packageName (active session)")
         }
     }
@@ -411,6 +414,7 @@ class MediaMonitorService : NotificationListenerService() {
     private fun resetSessionTracking(clearControllers: Boolean) {
         lastMetadataHash = 0
         lastComputedIsPlaying = null
+        lastAlbumArtTrackKey = null
         lastControllerSignatures = ""
         if (!clearControllers) return
 
@@ -733,8 +737,22 @@ class MediaMonitorService : NotificationListenerService() {
         // --- Save state for persistence ---
         saveParserState(pkg, finalTitle, finalArtist, isDynamicLyricMode, duration)
 
-        // Use already extracted artBitmap
-        LyricRepository.getInstance().updateAlbumArt(artBitmap)
+        updateAlbumArtIfTrackChanged(pkg, finalTitle, finalArtist, duration, artBitmap)
+    }
+
+    private fun updateAlbumArtIfTrackChanged(
+        pkg: String,
+        title: String?,
+        artist: String?,
+        duration: Long,
+        artBitmap: android.graphics.Bitmap?
+    ) {
+        val trackKey = listOf(pkg, title.orEmpty(), artist.orEmpty(), duration).joinToString("|")
+        if (trackKey == lastAlbumArtTrackKey) return
+
+        lastAlbumArtTrackKey = trackKey
+        val scaledArt = scaleDownBitmap(artBitmap, MAX_ALBUM_ART_SIZE)
+        LyricRepository.getInstance().updateAlbumArt(scaledArt)
     }
 
     private fun saveParserState(pkg: String, title: String?, artist: String?, lyricMode: Boolean, duration: Long) {
@@ -832,6 +850,26 @@ class MediaMonitorService : NotificationListenerService() {
         }
     }
 
+    /**
+     * Keep album art small and detached from MediaSession-owned bitmaps.
+     * Even already-small source images are copied so the app does not retain
+     * mutable framework/player bitmap instances longer than needed.
+     */
+    private fun scaleDownBitmap(src: android.graphics.Bitmap?, maxSize: Int): android.graphics.Bitmap? {
+        if (src == null) return null
+        if (src.isRecycled) return null
+        val w = src.width
+        val h = src.height
+        val config = src.config ?: android.graphics.Bitmap.Config.ARGB_8888
+        if (w <= maxSize && h <= maxSize) {
+            return src.copy(config, false)
+        }
+        val scale = maxSize.toFloat() / maxOf(w, h)
+        val newW = (w * scale).toInt().coerceAtLeast(1)
+        val newH = (h * scale).toInt().coerceAtLeast(1)
+        return android.graphics.Bitmap.createScaledBitmap(src, newW, newH, true)
+    }
+
     companion object {
         private data class PersistedParserState(
             val title: String?,
@@ -848,6 +886,8 @@ class MediaMonitorService : NotificationListenerService() {
         private const val PREF_STATE_HISTORY = "state_history"
         private const val HEALTH_CHECK_INTERVAL_MS = 30_000L
         private const val REBIND_RETRY_INTERVAL_MS = 5_000L
+        /** Max dimension for stored album art; notification renderers downscale further. */
+        private const val MAX_ALBUM_ART_SIZE = 320
         
         // --- Dynamic Lyric State Tracking Maps ---
         private val packageLyricMode    = HashMap<String, Boolean>()

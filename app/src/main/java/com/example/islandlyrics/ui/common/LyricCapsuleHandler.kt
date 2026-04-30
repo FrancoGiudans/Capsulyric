@@ -37,7 +37,10 @@ class LyricCapsuleHandler(
     
     // Content tracking to prevent flicker
     private var lastNotifiedLyric = ""
+    private var lastNotifiedFullLyric = ""
+    private var lastNotifiedTitle = ""
     private var lastNotifiedProgress = -1
+    private var lastNotifyTime = 0L
     private var isFirstNotification = true
     
     // Cached preferences
@@ -58,6 +61,7 @@ class LyricCapsuleHandler(
             "dynamic_icon_style" -> {
                 cachedIconStyle = prefs.getString(key, "disabled") ?: "disabled"
                 cachedUseDynamicIcon = cachedIconStyle != "disabled"
+                releaseCachedIconBitmap()
             }
             "notification_click_style" -> {
                 cachedClickStyle = prefs.getString(key, "default") ?: "default"
@@ -143,7 +147,12 @@ class LyricCapsuleHandler(
         loadPreferences()
         rebuildCachedIntents()
         lastNotifiedLyric = ""
+        lastNotifiedFullLyric = ""
+        lastNotifiedTitle = ""
+        lastNotifiedProgress = -1
+        lastNotifyTime = 0L
         isFirstNotification = true
+        releaseCachedIconBitmap()
     }
 
     fun stop() {
@@ -151,6 +160,7 @@ class LyricCapsuleHandler(
         isRunning = false
         unloadPreferences()
         manager?.cancel(1001)
+        releaseCachedIconBitmap()
     }
 
     fun isRunning() = isRunning
@@ -174,6 +184,19 @@ class LyricCapsuleHandler(
     private var lastNotifiedIconText = ""
     private var cachedIconKey = ""
     private var cachedIconBitmap: Bitmap? = null
+
+    private fun replaceCachedIconBitmap(key: String, bitmap: Bitmap?) {
+        val old = cachedIconBitmap
+        cachedIconBitmap = bitmap
+        cachedIconKey = key
+        if (old != null && old !== bitmap && !old.isRecycled) {
+            old.recycle()
+        }
+    }
+
+    private fun releaseCachedIconBitmap() {
+        replaceCachedIconBitmap("", null)
+    }
 
     private fun textToBitmap(text: String, forceFontSize: Float? = null): Bitmap? {
         try {
@@ -230,20 +253,31 @@ class LyricCapsuleHandler(
         val displayLyric = state.displayLyric
         val currentProgress = state.progressCurrent
         val iconFrame = calculateDynamicIconFrame(state.title, state.artist)
+        val displayTitle = if (state.artist.isNotBlank()) "${state.title} - ${state.artist}" else state.title
 
-        if (displayLyric == lastNotifiedLyric && 
-            currentProgress == lastNotifiedProgress &&
-            iconFrame.text == lastNotifiedIconText) {
+        val lyricChanged = displayLyric != lastNotifiedLyric
+        val fullLyricChanged = state.fullLyric != lastNotifiedFullLyric
+        val titleChanged = displayTitle != lastNotifiedTitle
+        val iconChanged = iconFrame.text != lastNotifiedIconText
+        val progressChangedEnough = kotlin.math.abs(currentProgress - lastNotifiedProgress) >= PROGRESS_NOTIFY_STEP_PERCENT
+        val now = android.os.SystemClock.elapsedRealtime()
+        if (!isFirstNotification && !lyricChanged && !fullLyricChanged && !titleChanged && !iconChanged &&
+            (!progressChangedEnough || now - lastNotifyTime < PROGRESS_NOTIFY_INTERVAL_MS)) {
+            return
+        }
+        if (!isFirstNotification && (lyricChanged || fullLyricChanged || titleChanged || iconChanged) &&
+            now - lastNotifyTime < CONTENT_NOTIFY_DEBOUNCE_MS) {
             return
         }
         
         lastNotifiedLyric = displayLyric
+        lastNotifiedFullLyric = state.fullLyric
+        lastNotifiedTitle = displayTitle
         lastNotifiedProgress = currentProgress
         lastNotifiedIconText = iconFrame.text
+        lastNotifyTime = now
 
         try {
-            val displayTitle = if (state.artist.isNotBlank()) "${state.title} - ${state.artist}" else state.title
-
             val notification = buildNotification(
                 displayLyric, 
                 state.fullLyric, 
@@ -367,8 +401,10 @@ class LyricCapsuleHandler(
                         val cacheKey = "advanced|$realTitle|$realArtist|${albumArt?.hashCode()}"
                         if (cachedIconKey != cacheKey) {
                             val parsedTitle = TitleParser.parse(realTitle)
-                            cachedIconBitmap = AdvancedIconRenderer.render(albumArt, parsedTitle, realArtist, context)
-                            cachedIconKey = cacheKey
+                            replaceCachedIconBitmap(
+                                cacheKey,
+                                AdvancedIconRenderer.render(albumArt, parsedTitle, realArtist, context)
+                            )
                         }
                         cachedIconBitmap
                     }
@@ -378,14 +414,14 @@ class LyricCapsuleHandler(
                         
                         val cacheKey = "classic|$iconText|$forceSize"
                         if (cachedIconKey != cacheKey) {
-                            cachedIconBitmap = textToBitmap(iconText, forceSize)
-                            cachedIconKey = cacheKey
+                            replaceCachedIconBitmap(cacheKey, textToBitmap(iconText, forceSize))
                         }
                         cachedIconBitmap
                     }
                 }
                 
                 bitmap?.let { bmp ->
+                    if (bmp.isRecycled) return@let
                     try {
                         val icon = android.graphics.drawable.Icon.createWithBitmap(bmp)
                         val field = android.app.Notification::class.java.getDeclaredField("mSmallIcon")
@@ -405,5 +441,8 @@ class LyricCapsuleHandler(
         const val SCROLL_STEP_DELAY = 1200L
         const val COLOR_PRIMARY = 0xFF757575.toInt()
         private const val COLOR_TERTIARY = 0xFFBDBDBD.toInt()
+        private const val PROGRESS_NOTIFY_STEP_PERCENT = 2
+        private const val PROGRESS_NOTIFY_INTERVAL_MS = 2_000L
+        private const val CONTENT_NOTIFY_DEBOUNCE_MS = 120L
     }
 }

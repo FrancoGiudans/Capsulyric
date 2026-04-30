@@ -17,5 +17,6 @@ autobuild.sh
 .kotlin/
 .codex/
 tools/
+perf-artifacts/
 autobuild_cli.sh
 autobuild.bat

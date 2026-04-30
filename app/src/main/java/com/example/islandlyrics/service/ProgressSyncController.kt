@@ -6,6 +6,7 @@ import android.media.session.MediaController
 import android.media.session.MediaSessionManager
 import android.media.session.PlaybackState
 import android.os.Handler
+import android.os.HandlerThread
 import android.os.SystemClock
 import android.util.Log
 import com.example.islandlyrics.core.logging.AppLogger
@@ -13,7 +14,6 @@ import com.example.islandlyrics.data.LyricRepository
 import com.example.islandlyrics.data.lyric.OnlineLyricFetcher
 
 class ProgressSyncController(
-    private val handler: Handler,
     private val repo: LyricRepository,
     private val appNameProvider: (String) -> String,
     private val mediaSessionManagerProvider: () -> MediaSessionManager?,
@@ -26,6 +26,14 @@ class ProgressSyncController(
     private var consecutiveResolveMisses = 0
     private var lastResolvedControllerKey: String? = null
     private var lastRecheckRequestAtMs = 0L
+    private var lastControllerPollAtMs = 0L
+    private var lastPlaybackState: PlaybackState? = null
+    private var lastProgressDispatchPosition = -1L
+    private var lastProgressDispatchDuration = -1L
+
+    // Dedicated background thread for progress polling to avoid main thread IPC blocking
+    private val handlerThread = HandlerThread("ProgressSync").apply { start() }
+    private val handler = Handler(handlerThread.looper)
 
     private val updateTask = object : Runnable {
         private var logCounter = 0
@@ -42,7 +50,7 @@ class ProgressSyncController(
                 AppLogger.getInstance().log(TAG, "🔄 updateTask running...")
             }
 
-            updateProgressFromController(shouldLog)
+            updateProgress(shouldLog)
 
             val parsedLines = repo.liveParsedLyrics.value?.lines
             if (!parsedLines.isNullOrEmpty()) {
@@ -71,6 +79,7 @@ class ProgressSyncController(
 
     fun destroy() {
         stop()
+        handlerThread.quitSafely()
     }
 
     fun setDurationIfValid(value: Long) {
@@ -86,6 +95,9 @@ class ProgressSyncController(
         currentPosition = 0L
         consecutiveResolveMisses = 0
         lastResolvedControllerKey = null
+        lastPlaybackState = null
+        lastControllerPollAtMs = 0L
+        resetProgressDispatchWindow()
         repo.updateProgress(0L, duration)
     }
 
@@ -125,12 +137,27 @@ class ProgressSyncController(
         }
     }
 
+    private fun updateProgress(shouldLog: Boolean = true) {
+        val now = SystemClock.elapsedRealtime()
+        val state = lastPlaybackState
+        val shouldPollController = state == null ||
+                now - lastControllerPollAtMs >= CONTROLLER_POLL_INTERVAL_MS ||
+                lastResolvedControllerKey == null
+
+        if (shouldPollController) {
+            updateProgressFromController(shouldLog)
+        } else {
+            updateProgressFromCachedState(state, now)
+        }
+    }
+
     private fun updateProgressFromController(shouldLog: Boolean = true) {
         if (shouldLog) {
             AppLogger.getInstance().log(TAG, "⚙️ updateProgressFromController() called")
         }
 
         try {
+            lastControllerPollAtMs = SystemClock.elapsedRealtime()
             val mm = mediaSessionManagerProvider() ?: return
             val component = mediaComponentProvider() ?: return
             val controllers = mm.getActiveSessions(component)
@@ -146,20 +173,8 @@ class ProgressSyncController(
                 if (durationLong > 0) duration = durationLong
 
                 if (state != null) {
-                    val lastPosition = state.position
-                    val lastUpdateTimeVal = state.lastPositionUpdateTime
-                    val speed = state.playbackSpeed
-
-                    var currentPos = lastPosition
-                    if (state.state == PlaybackState.STATE_PLAYING) {
-                        val timeDelta = android.os.SystemClock.elapsedRealtime() - lastUpdateTimeVal
-                        currentPos += (timeDelta * speed).toLong()
-                    }
-
-                    if (duration > 0 && currentPos > duration) currentPos = duration
-                    if (currentPos < 0) currentPos = 0
-
-                    currentPosition = currentPos
+                    lastPlaybackState = state
+                    val currentPos = computeCurrentPosition(state, SystemClock.elapsedRealtime())
 
                     if (shouldLog) {
                         AppLogger.getInstance().log(
@@ -167,10 +182,11 @@ class ProgressSyncController(
                             "📍 Progress [${activeController.packageName}]: ${currentPos}ms / ${duration}ms"
                         )
                     }
-                    repo.updateProgress(currentPos, duration)
+                    dispatchProgressIfNeeded(currentPos, force = true)
                 }
             } else {
                 consecutiveResolveMisses++
+                lastPlaybackState = null
                 maybeTriggerSessionRecheck(currentMetadata?.packageName, shouldLog)
                 if (shouldLog) {
                     AppLogger.getInstance().log(TAG, "⚠️ No matching active MediaController found")
@@ -179,6 +195,40 @@ class ProgressSyncController(
         } catch (e: Exception) {
             Log.e(TAG, "Progress Update Error: ${e.message}")
         }
+    }
+
+    private fun updateProgressFromCachedState(state: PlaybackState, now: Long) {
+        val currentPos = computeCurrentPosition(state, now)
+        dispatchProgressIfNeeded(currentPos, force = false)
+    }
+
+    private fun computeCurrentPosition(state: PlaybackState, now: Long): Long {
+        var currentPos = state.position
+        if (state.state == PlaybackState.STATE_PLAYING) {
+            val timeDelta = now - state.lastPositionUpdateTime
+            currentPos += (timeDelta * state.playbackSpeed).toLong()
+        }
+
+        if (duration > 0 && currentPos > duration) currentPos = duration
+        if (currentPos < 0) currentPos = 0
+        currentPosition = currentPos
+        return currentPos
+    }
+
+    private fun dispatchProgressIfNeeded(position: Long, force: Boolean) {
+        val durationChanged = duration != lastProgressDispatchDuration
+        if (!force && !durationChanged && kotlin.math.abs(position - lastProgressDispatchPosition) < PROGRESS_DISPATCH_STEP_MS) {
+            return
+        }
+
+        lastProgressDispatchPosition = position
+        lastProgressDispatchDuration = duration
+        repo.updateProgress(position, duration)
+    }
+
+    private fun resetProgressDispatchWindow() {
+        lastProgressDispatchPosition = -1L
+        lastProgressDispatchDuration = -1L
     }
 
     private fun resolveActiveController(
@@ -253,5 +303,7 @@ class ProgressSyncController(
         private const val TAG = "ProgressSyncController"
         private const val RECHECK_THRESHOLD = 5
         private const val RECHECK_COOLDOWN_MS = 1_500L
+        private const val CONTROLLER_POLL_INTERVAL_MS = 1_000L
+        private const val PROGRESS_DISPATCH_STEP_MS = 250L
     }
 }

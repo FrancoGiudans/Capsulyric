@@ -26,6 +26,7 @@ class LyricDisplayManager(private val context: Context) {
     private val mainHandler = Handler(Looper.getMainLooper())
     private var isRunning = false
     private var pendingImmediateUpdate = false
+    private var immediateUpdateQueued = false
     
     // Core state
     private var currentAlbumColor = LyricCapsuleHandler.COLOR_PRIMARY
@@ -156,6 +157,7 @@ class LyricDisplayManager(private val context: Context) {
     private val visualizerLoop = object : Runnable {
         override fun run() {
             if (!isRunning) return
+            immediateUpdateQueued = false
             try {
                 processTick()
 
@@ -209,6 +211,8 @@ class LyricDisplayManager(private val context: Context) {
     fun forceUpdate() {
         // Run tick immediately without waiting for timer
         if (isRunning) {
+            if (immediateUpdateQueued) return
+            immediateUpdateQueued = true
             mainHandler.removeCallbacks(visualizerLoop)
             mainHandler.post(visualizerLoop)
         } else {

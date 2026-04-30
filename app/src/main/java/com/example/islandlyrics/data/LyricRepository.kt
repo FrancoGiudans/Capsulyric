@@ -114,6 +114,9 @@ class LyricRepository private constructor() {
     }
 
     fun updateAlbumArt(bitmap: Bitmap?) {
+        val old = liveAlbumArt.value
+        // Skip if same reference (e.g. duplicate metadata callback)
+        if (old === bitmap) return
         liveAlbumArt.postValue(bitmap)
     }
     
@@ -146,7 +149,7 @@ class LyricRepository private constructor() {
         } else {
             prefs.edit().remove("dev_mode_enabled").apply()
         }
-        com.example.islandlyrics.core.logging.AppLogger.getInstance().enableLogging(enabled)
+        com.example.islandlyrics.core.logging.AppLogger.getInstance().init(context)
         com.example.islandlyrics.integration.shizuku.ShizukuUserServiceRecycler.setLogCallbackEnabled(enabled)
         postOrSet(liveDevMode, enabled)
     }

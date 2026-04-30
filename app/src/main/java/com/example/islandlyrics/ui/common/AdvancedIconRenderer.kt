@@ -70,7 +70,7 @@ object AdvancedIconRenderer {
                 isDither = true
             }
             
-            if (albumArt != null) {
+            if (albumArt != null && !albumArt.isRecycled) {
                 // Resize bitmap to fit height to maintain aspect ratio
                 // We will center-crop this image into the narrower rect
                 val scaledArt = Bitmap.createScaledBitmap(albumArt, albumArtHeight, albumArtHeight, true)

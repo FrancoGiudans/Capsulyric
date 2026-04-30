@@ -254,7 +254,6 @@ class LyricService : Service() {
         cachedMediaSessionManager = getSystemService(Context.MEDIA_SESSION_SERVICE) as android.media.session.MediaSessionManager
         cachedMediaComponent = android.content.ComponentName(this, MediaMonitorService::class.java)
         progressSyncController = ProgressSyncController(
-            handler = handler,
             repo = LyricRepository.getInstance(),
             appNameProvider = { pkg -> getAppName(pkg) },
             mediaSessionManagerProvider = { cachedMediaSessionManager },

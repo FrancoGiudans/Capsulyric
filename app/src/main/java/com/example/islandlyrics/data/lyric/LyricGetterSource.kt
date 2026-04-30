@@ -29,6 +29,7 @@ class LyricGetterSource(
 ) {
     // Deduplicate consecutive identical lyric lines
     private var lastLyric = ""
+    private var isRegistered = false
 
     // Cache app-display-names to avoid repeated PackageManager IPC
     private val appNameCache = HashMap<String, String>()
@@ -107,12 +108,20 @@ class LyricGetterSource(
     // ── Public lifecycle ──────────────────────────────────────────────────────
 
     fun start() {
+        if (isRegistered) return
+        if (!hasEnabledLyricGetterRule()) {
+            AppLogger.getInstance().log(TAG, "LyricGetterSource skipped — no enabled parser rule uses Lyric Getter")
+            return
+        }
         Tools.registerLyricListener(context, API.API_VERSION, receiver)
+        isRegistered = true
         AppLogger.getInstance().log(TAG, "LyricGetterSource started — receiver registered")
     }
 
     fun stop() {
+        if (!isRegistered) return
         Tools.unregisterLyricListener(context, receiver)
+        isRegistered = false
         lastLyric = ""
         AppLogger.getInstance().log(TAG, "LyricGetterSource stopped — receiver unregistered")
     }
@@ -129,6 +138,12 @@ class LyricGetterSource(
             if (name.isNotEmpty()) appNameCache[pkg] = name
             name
         } catch (_: Exception) { pkg }
+    }
+
+    private fun hasEnabledLyricGetterRule(): Boolean {
+        return ParserRuleHelper.loadRules(context).any { rule ->
+            rule.enabled && rule.useLyricGetterApi
+        }
     }
 
     companion object {

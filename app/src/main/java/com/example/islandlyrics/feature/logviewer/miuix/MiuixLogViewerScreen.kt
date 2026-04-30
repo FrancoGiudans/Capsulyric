@@ -1,6 +1,8 @@
 package com.example.islandlyrics.feature.logviewer.miuix
 
 import com.example.islandlyrics.ui.miuix.MiuixBackHandler
+import android.content.Context
+import com.example.islandlyrics.core.logging.AppLogger
 import android.content.Intent
 import com.example.islandlyrics.core.logging.LogManager
 import android.widget.Toast
@@ -55,10 +57,24 @@ fun MiuixLogViewerScreen(
 
     var searchQuery by remember { mutableStateOf("") }
     var filterLevel by remember { mutableStateOf("ALL") } // ALL, E, W, D
+    var recordLevel by remember {
+        mutableStateOf(
+            AppLogger.LogLevel.fromPreference(
+                context.getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE)
+                    .getString(AppLogger.PREF_LOG_RECORD_LEVEL, null)
+            )
+        )
+    }
     var originalLogs by remember { mutableStateOf<List<LogManager.LogEntry>>(emptyList()) }
     var currentAction by remember { mutableStateOf(LogAction.SHARE) }
     val showExportDialog = remember { mutableStateOf(false) }
     val showClearDialog = remember { mutableStateOf(false) }
+    val recordLevelOptions = listOf(
+        AppLogger.LogLevel.ERROR to "Error",
+        AppLogger.LogLevel.WARN to "Warn+",
+        AppLogger.LogLevel.INFO to "Info+",
+        AppLogger.LogLevel.DEBUG to "Debug+"
+    )
 
     MiuixBackHandler(enabled = showExportDialog.value) { showExportDialog.value = false }
     MiuixBackHandler(enabled = showClearDialog.value) { showClearDialog.value = false }
@@ -194,6 +210,22 @@ fun MiuixLogViewerScreen(
                             )
                         }
                     }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    SuperDropdown(
+                        title = "Record Level",
+                        summary = "Default is Error to reduce background overhead",
+                        items = recordLevelOptions.map { it.second },
+                        selectedIndex = recordLevelOptions.indexOfFirst { it.first == recordLevel }.coerceAtLeast(0),
+                        onSelectedIndexChange = { index ->
+                            val level = recordLevelOptions[index].first
+                            recordLevel = level
+                            context.getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE)
+                                .edit()
+                                .putString(AppLogger.PREF_LOG_RECORD_LEVEL, level.preferenceValue)
+                                .apply()
+                            AppLogger.getInstance().setMinimumLevel(level)
+                        }
+                    )
                 }
             }
 

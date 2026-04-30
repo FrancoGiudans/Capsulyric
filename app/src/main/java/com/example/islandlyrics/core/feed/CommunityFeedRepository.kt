@@ -40,27 +40,47 @@ object CommunityFeedRepository {
     private const val POLLS_PATH = "polls.json"
     private const val PRIMARY_BASE_URL = "https://raw.githubusercontent.com/FrancoGiudans/CapsulyricFeed/main/data"
     private const val LEGACY_BASE_URL = "https://raw.githubusercontent.com/FrancoGiudans/Caps-feed/main/data"
+    private const val CACHE_MAX_AGE_MS = 6 * 60 * 60 * 1000L // 6 hours
 
     suspend fun fetchFeed(context: Context): CommunityFeed = withContext(Dispatchers.IO) {
         if (OfflineModeManager.isEnabled(context)) {
             AppLogger.getInstance().i(TAG, "Offline mode enabled, skipping community feed")
             return@withContext CommunityFeed()
         }
-        val announcements = fetchItems(context, ANNOUNCEMENTS_PATH)
-        val polls = fetchItems(context, POLLS_PATH)
+        val announcements = fetchItemsCached(context, ANNOUNCEMENTS_PATH)
+        val polls = fetchItemsCached(context, POLLS_PATH)
         CommunityFeed(
             announcements = announcements,
             polls = polls
         )
     }
 
-    private fun fetchItems(context: Context, relativePath: String): List<CommunityFeedItem> {
+    private fun fetchItemsCached(context: Context, relativePath: String): List<CommunityFeedItem> {
+        // Try local cache first
+        val cacheFile = java.io.File(context.cacheDir, "feed_${relativePath.replace('/', '_')}")
+        if (cacheFile.exists() && System.currentTimeMillis() - cacheFile.lastModified() < CACHE_MAX_AGE_MS) {
+            try {
+                val cached = cacheFile.readText()
+                if (cached.isNotBlank()) {
+                    return parseItems(cached, context)
+                }
+            } catch (_: Exception) { /* fall through to network */ }
+        }
+
         val response = buildBaseUrls()
             .asSequence()
             .map { baseUrl -> baseUrl to fetchText("$baseUrl/$relativePath") }
             .firstOrNull { (_, response) -> response != null }
             ?.second
-            ?: return emptyList()
+            ?: return if (cacheFile.exists()) {
+                // Network failed — serve stale cache as fallback
+                try { parseItems(cacheFile.readText(), context) } catch (_: Exception) { emptyList() }
+            } else {
+                emptyList()
+            }
+
+        // Save to cache
+        try { cacheFile.writeText(response) } catch (_: Exception) { }
         return parseItems(response, context)
     }
 
@@ -77,8 +97,8 @@ object CommunityFeedRepository {
             val connection = URL(urlString).openConnection() as HttpURLConnection
             connection.requestMethod = "GET"
             connection.setRequestProperty("Accept", "application/json")
-            connection.connectTimeout = 10_000
-            connection.readTimeout = 10_000
+            connection.connectTimeout = 5_000
+            connection.readTimeout = 5_000
 
             if (connection.responseCode == 200) {
                 connection.inputStream.bufferedReader().use { it.readText() }

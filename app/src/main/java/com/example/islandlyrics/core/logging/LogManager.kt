@@ -21,6 +21,12 @@ class LogManager private constructor() {
     private var logFile: File? = null
     private val isDebug = BuildConfig.DEBUG
 
+    // Persistent writer to avoid open/close per log line
+    @Volatile
+    private var bufferedWriter: java.io.BufferedWriter? = null
+    private val writerLock = Any()
+    private val FLUSH_INTERVAL_MS = 5000L
+
     class LogEntry(val timestamp: String, val level: String, val tag: String, val message: String)
 
     private fun init(context: Context) {
@@ -32,10 +38,51 @@ class LogManager private constructor() {
             thread.start()
             logHandler = android.os.Handler(thread.looper)
             
+            // Open persistent writer
+            logHandler?.post {
+                openWriter()
+            }
+            
+            // Schedule periodic flush
+            logHandler?.post(object : Runnable {
+                override fun run() {
+                    flushWriter()
+                    logHandler?.postDelayed(this, FLUSH_INTERVAL_MS)
+                }
+            })
+            
             // cleanup on background thread
             logHandler?.post {
                 cleanOldLogs(context)
             }
+        }
+    }
+
+    private fun openWriter() {
+        synchronized(writerLock) {
+            try {
+                bufferedWriter = java.io.BufferedWriter(FileWriter(logFile, true), 8192)
+            } catch (e: Exception) {
+                Log.e("LogManager", "Failed to open log writer: ${e.message}")
+            }
+        }
+    }
+
+    private fun flushWriter() {
+        synchronized(writerLock) {
+            try {
+                bufferedWriter?.flush()
+            } catch (_: Exception) { }
+        }
+    }
+
+    private fun closeWriter() {
+        synchronized(writerLock) {
+            try {
+                bufferedWriter?.flush()
+                bufferedWriter?.close()
+            } catch (_: Exception) { }
+            bufferedWriter = null
         }
     }
 
@@ -54,6 +101,9 @@ class LogManager private constructor() {
             prefs.edit().putLong("last_log_cleanup_time", now).apply()
 
             if (logFile == null || !logFile!!.exists()) return
+
+            // Close writer before file manipulation
+            closeWriter()
 
             val cutoffTime = now - 48 * 60 * 60 * 1000 // 48 hours ago
             val tempFile = File(context.filesDir, "app_log.tmp")
@@ -105,10 +155,15 @@ class LogManager private constructor() {
                 tempFile.delete()
             }
             
+            // Reopen writer after cleanup
+            openWriter()
+            
             Log.d("LogManager", "Log cleanup completed. Retained logs < 48h.")
 
         } catch (e: Exception) {
             Log.e("LogManager", "Failed to clean logs: ${e.message}")
+            // Reopen writer in case it was closed
+            openWriter()
         }
     }
 
@@ -159,14 +214,23 @@ class LogManager private constructor() {
     }
 
     private fun appendToFile(line: String) {
-        if (logFile == null) return
-        try {
-            // This now runs on the background thread
-            FileWriter(logFile, true).use { fw ->
-                fw.append(line).append("\n")
+        synchronized(writerLock) {
+            try {
+                val w = bufferedWriter ?: return
+                w.append(line)
+                w.newLine()
+            } catch (e: Exception) {
+                Log.e("LogManager", "Failed to write log: ${e.message}")
+                // Writer may have been invalidated; try to reopen
+                try {
+                    bufferedWriter?.close()
+                } catch (_: Exception) { }
+                try {
+                    bufferedWriter = java.io.BufferedWriter(FileWriter(logFile, true), 8192)
+                } catch (_: Exception) {
+                    bufferedWriter = null
+                }
             }
-        } catch (e: Exception) {
-            Log.e("LogManager", "Failed to write log: ${e.message}")
         }
     }
 
@@ -186,6 +250,8 @@ class LogManager private constructor() {
     @Synchronized
     fun getLogEntries(context: Context): List<LogEntry> {
         init(context)
+        // Flush pending writes before reading
+        flushWriter()
         val entries = ArrayList<LogEntry>()
         if (logFile?.exists() == true) {
             try {
@@ -210,6 +276,7 @@ class LogManager private constructor() {
     @Synchronized
     fun clearLog(context: Context) {
         init(context)
+        closeWriter()
         if (logFile?.exists() == true) {
             logFile?.delete()
         }
@@ -218,6 +285,7 @@ class LogManager private constructor() {
         } catch (e: Exception) {
             // Ignore
         }
+        openWriter()
     }
 
     fun exportLog(context: Context) {

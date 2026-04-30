@@ -137,6 +137,8 @@ class SuperIslandHandler(
     private var cachedPlayPauseIconDark: Icon? = null
     private var cachedNextIcon: Icon? = null
     private var cachedNextIconDark: Icon? = null
+    private val scaledBitmapCache = LinkedHashMap<String, Bitmap>(8, 0.75f, true)
+    private val progressBitmapCache = LinkedHashMap<String, Bitmap>(12, 0.75f, true)
 
     private var lastAppliedAlbumColor = 0
 
@@ -172,6 +174,7 @@ class SuperIslandHandler(
         cachedPlayPauseIconDark = null
         cachedNextIcon = null
         cachedNextIconDark = null
+        clearBitmapCaches()
         aggressiveNetworkCutActive = false
         aggressiveTrackKey = null
 
@@ -200,6 +203,7 @@ class SuperIslandHandler(
         cachedPlayPauseIconDark = null
         cachedNextIcon = null
         cachedNextIconDark = null
+        clearBitmapCaches()
         aggressiveTrackKey = null
         aggressiveNetworkCutActive = false
         
@@ -340,7 +344,8 @@ class SuperIslandHandler(
         
         if (!isFirstNotification && !colorChanged && !contentChanged) {
             // Only progress changed. Apply 1000ms throttle for Android 15 stability.
-            if (now - lastNotifyTime < throttleIntervalMs) {
+            val progressChangedEnough = kotlin.math.abs(progressPercent - lastSentProgressPercent) >= PROGRESS_NOTIFY_STEP_PERCENT
+            if (!progressChangedEnough || now - lastNotifyTime < throttleIntervalMs) {
                 return
             }
         }
@@ -636,7 +641,14 @@ class SuperIslandHandler(
     }
 
     private fun scaleBitmap(src: Bitmap, targetSize: Int): Bitmap {
-        val scaled = if (src.width == targetSize && src.height == targetSize) src 
+        if (src.isRecycled) {
+            return Bitmap.createBitmap(targetSize, targetSize, Bitmap.Config.ARGB_8888)
+        }
+        val cacheKey = "${System.identityHashCode(src)}:${src.width}x${src.height}:$targetSize"
+        scaledBitmapCache[cacheKey]?.let { return it }
+
+        val needsScale = src.width != targetSize || src.height != targetSize
+        val scaled = if (!needsScale) src 
                      else Bitmap.createScaledBitmap(src, targetSize, targetSize, true)
                      
         val output = Bitmap.createBitmap(targetSize, targetSize, Bitmap.Config.ARGB_8888)
@@ -650,6 +662,12 @@ class SuperIslandHandler(
         paint.xfermode = android.graphics.PorterDuffXfermode(android.graphics.PorterDuff.Mode.SRC_IN)
         canvas.drawBitmap(scaled, 0f, 0f, paint)
         
+        // Recycle the intermediate scaled bitmap to prevent Native Heap fragmentation
+        if (needsScale) {
+            scaled.recycle()
+        }
+        
+        putBitmapCacheEntry(scaledBitmapCache, cacheKey, output, maxEntries = 8)
         return output
     }
 
@@ -805,6 +823,9 @@ class SuperIslandHandler(
         progressColor: String,
         darkMode: Boolean
     ): Bitmap {
+        val cacheKey = "wide:$progressPercent:$progressColor:$darkMode"
+        progressBitmapCache[cacheKey]?.let { return it }
+
         val width = dpToPx(240)
         val height = dpToPx(6)
         val radius = height / 2f
@@ -829,6 +850,7 @@ class SuperIslandHandler(
             )
         }
 
+        putBitmapCacheEntry(progressBitmapCache, cacheKey, bitmap, maxEntries = 12)
         return bitmap
     }
 
@@ -875,6 +897,9 @@ class SuperIslandHandler(
         progressColor: String,
         darkMode: Boolean
     ): Bitmap {
+        val cacheKey = "tiny:$progressPercent:$progressColor:$darkMode"
+        progressBitmapCache[cacheKey]?.let { return it }
+
         val width = dpToPx(44)
         val height = dpToPx(4)
         val radius = height / 2f
@@ -899,7 +924,35 @@ class SuperIslandHandler(
             )
         }
 
+        putBitmapCacheEntry(progressBitmapCache, cacheKey, bitmap, maxEntries = 12)
         return bitmap
+    }
+
+    private fun putBitmapCacheEntry(
+        cache: LinkedHashMap<String, Bitmap>,
+        key: String,
+        bitmap: Bitmap,
+        maxEntries: Int
+    ) {
+        cache.put(key, bitmap)?.let { old ->
+            if (old !== bitmap) recycleBitmap(old)
+        }
+        while (cache.size > maxEntries) {
+            cache.remove(cache.entries.first().key)?.let { recycleBitmap(it) }
+        }
+    }
+
+    private fun clearBitmapCaches() {
+        scaledBitmapCache.values.forEach { recycleBitmap(it) }
+        progressBitmapCache.values.forEach { recycleBitmap(it) }
+        scaledBitmapCache.clear()
+        progressBitmapCache.clear()
+    }
+
+    private fun recycleBitmap(bitmap: Bitmap?) {
+        if (bitmap != null && !bitmap.isRecycled) {
+            bitmap.recycle()
+        }
     }
 
     private fun createAction(key: String, value: Notification.Action): String {
@@ -1094,5 +1147,6 @@ class SuperIslandHandler(
     companion object {
         private const val CHANNEL_ID = "lyric_capsule_channel"
         private const val NOTIFICATION_ID = 1001
+        private const val PROGRESS_NOTIFY_STEP_PERCENT = 2
     }
 }
