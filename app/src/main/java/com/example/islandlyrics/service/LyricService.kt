@@ -211,6 +211,8 @@ class LyricService : Service() {
         } else if (key == OfflineModeManager.KEY_FULLY_OFFLINE_MODE && p.getBoolean(key, false)) {
             AppLogger.getInstance().log(TAG, "Offline mode enabled -> cancelling online lyric requests")
             onlineLyricSource.cancel()
+        } else if (key == "parser_rules_json") {
+            syncPushLyricSources()
         }
     }
 
@@ -266,11 +268,8 @@ class LyricService : Service() {
             context = this,
             onlineLyricSource = onlineLyricSource
         )
-        superLyricSource.start()
-        AppLogger.getInstance().d(TAG, "SuperLyricSource started")
         lyricGetterSource = LyricGetterSource(this, onlineLyricSource)
-        lyricGetterSource.start()
-        AppLogger.getInstance().d(TAG, "LyricGetterSource started")
+        syncPushLyricSources()
 
         val filter = IntentFilter().apply {
             addAction("com.example.islandlyrics.ACTION_MEDIA_PLAY_PAUSE")
@@ -302,6 +301,14 @@ class LyricService : Service() {
         } else if (!enabled && floatingLyricsRenderer!!.isRunning) {
             floatingLyricsRenderer?.stop()
         }
+    }
+
+    private fun syncPushLyricSources() {
+        if (!::superLyricSource.isInitialized || !::lyricGetterSource.isInitialized) return
+        superLyricSource.stop()
+        lyricGetterSource.stop()
+        superLyricSource.start()
+        lyricGetterSource.start()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {

@@ -40,7 +40,7 @@ object ParserRuleHelper {
         
         // Require superlyricapi or other methods (car protocol disabled by default)
         ParserRule("com.kugou.android", customName="KuGou Music", enabled=true, usesCarProtocol=true, separatorPattern="-", fieldOrder=FieldOrder.TITLE_ARTIST, onlineLyricProviderOrder = OnlineLyricProvider.defaultIds(), useSuperLyricApi=false, useLyricGetterApi=false),
-        ParserRule("com.apple.android.music", customName="Apple Music", enabled=true, usesCarProtocol=false, separatorPattern=" - ", fieldOrder=FieldOrder.TITLE_ARTIST, onlineLyricProviderOrder = OnlineLyricProvider.defaultIds(), useSuperLyricApi=true, useLyricGetterApi=false)
+        ParserRule("com.apple.android.music", customName="Apple Music", enabled=true, usesCarProtocol=false, separatorPattern=" - ", fieldOrder=FieldOrder.TITLE_ARTIST, onlineLyricProviderOrder = OnlineLyricProvider.defaultIds(), useSuperLyricApi=false, useLyricGetterApi=false)
     )
 
     /**
@@ -183,6 +183,12 @@ object ParserRuleHelper {
             .filter { it.value != null }
             .map { it.key }
             .toSet()
+    }
+
+    fun hasEnabledSuperLyricRule(context: Context): Boolean {
+        return loadRules(context).any { rule ->
+            rule.enabled && rule.useSuperLyricApi
+        }
     }
     
     /**

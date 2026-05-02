@@ -33,6 +33,9 @@ class SuperLyricSource(
     private val mainHandler = Handler(Looper.getMainLooper())
     private var started = false
     private var receiverRegistered = false
+    private var currentRetryDelayMs = REGISTER_RETRY_INITIAL_DELAY_MS
+    private var unavailableWarningLogged = false
+    private var registerAttemptCount = 0
 
     // Deduplicate consecutive identical lyric lines
     private var lastLyric = ""
@@ -45,15 +48,40 @@ class SuperLyricSource(
             if (!started || receiverRegistered) return
 
             try {
+                registerAttemptCount += 1
                 SuperLyricHelper.registerReceiver(stub)
                 receiverRegistered = true
+                currentRetryDelayMs = REGISTER_RETRY_INITIAL_DELAY_MS
+                unavailableWarningLogged = false
+                registerAttemptCount = 0
                 AppLogger.getInstance().log(TAG, "SuperLyricSource started — receiver registered")
             } catch (t: IllegalStateException) {
-                AppLogger.getInstance().w(
-                    TAG,
-                    "SuperLyric service unavailable, retrying in ${REGISTER_RETRY_DELAY_MS}ms: ${t.message}"
-                )
-                mainHandler.postDelayed(this, REGISTER_RETRY_DELAY_MS)
+                if (!ParserRuleHelper.hasEnabledSuperLyricRule(context)) {
+                    AppLogger.getInstance().log(TAG, "SuperLyricSource stopped retrying — no enabled parser rule uses SuperLyric")
+                    started = false
+                    return
+                }
+
+                if (registerAttemptCount >= REGISTER_RETRY_MAX_ATTEMPTS) {
+                    AppLogger.getInstance().w(
+                        TAG,
+                        "SuperLyric service unavailable; stopping retries until rules/service restart: ${t.message}"
+                    )
+                    started = false
+                    currentRetryDelayMs = REGISTER_RETRY_INITIAL_DELAY_MS
+                    registerAttemptCount = 0
+                    return
+                }
+
+                val message = "SuperLyric service unavailable, retrying once in ${currentRetryDelayMs}ms: ${t.message}"
+                if (!unavailableWarningLogged) {
+                    AppLogger.getInstance().w(TAG, message)
+                    unavailableWarningLogged = true
+                } else {
+                    AppLogger.getInstance().d(TAG, message)
+                }
+                mainHandler.postDelayed(this, currentRetryDelayMs)
+                currentRetryDelayMs = (currentRetryDelayMs * 2).coerceAtMost(REGISTER_RETRY_MAX_DELAY_MS)
             } catch (t: Throwable) {
                 AppLogger.getInstance().e(TAG, "Failed to register SuperLyric receiver", t)
             }
@@ -185,7 +213,15 @@ class SuperLyricSource(
     // ── Public lifecycle ──────────────────────────────────────────────────────
 
     fun start() {
+        if (started || receiverRegistered) return
+        if (!ParserRuleHelper.hasEnabledSuperLyricRule(context)) {
+            AppLogger.getInstance().log(TAG, "SuperLyricSource skipped — no enabled parser rule uses SuperLyric")
+            return
+        }
         started = true
+        currentRetryDelayMs = REGISTER_RETRY_INITIAL_DELAY_MS
+        unavailableWarningLogged = false
+        registerAttemptCount = 0
         mainHandler.removeCallbacks(registerReceiverRunnable)
         mainHandler.post {
             registerReceiverRunnable.run()
@@ -193,6 +229,7 @@ class SuperLyricSource(
     }
 
     fun stop() {
+        if (!started && !receiverRegistered) return
         started = false
         mainHandler.removeCallbacks(registerReceiverRunnable)
         mainHandler.post {
@@ -206,6 +243,9 @@ class SuperLyricSource(
                 }
             }
             receiverRegistered = false
+            currentRetryDelayMs = REGISTER_RETRY_INITIAL_DELAY_MS
+            unavailableWarningLogged = false
+            registerAttemptCount = 0
             reset()
             AppLogger.getInstance().log(TAG, "SuperLyricSource stopped")
         }
@@ -271,6 +311,8 @@ class SuperLyricSource(
 
     companion object {
         private const val TAG = "SuperLyricSource"
-        private const val REGISTER_RETRY_DELAY_MS = 5_000L
+        private const val REGISTER_RETRY_INITIAL_DELAY_MS = 5_000L
+        private const val REGISTER_RETRY_MAX_DELAY_MS = 5 * 60_000L
+        private const val REGISTER_RETRY_MAX_ATTEMPTS = 2
     }
 }

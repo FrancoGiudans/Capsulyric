@@ -42,6 +42,7 @@ class MediaMonitorService : NotificationListenerService() {
     private var lastMetadataHash: Int = 0
     private var lastComputedIsPlaying: Boolean? = null
     private var lastAlbumArtTrackKey: String? = null
+    private var lastAlbumArtHadImage: Boolean = false
     
     // Debounce Token
     private val updateToken = Any()
@@ -415,6 +416,7 @@ class MediaMonitorService : NotificationListenerService() {
         lastMetadataHash = 0
         lastComputedIsPlaying = null
         lastAlbumArtTrackKey = null
+        lastAlbumArtHadImage = false
         lastControllerSignatures = ""
         if (!clearControllers) return
 
@@ -748,9 +750,15 @@ class MediaMonitorService : NotificationListenerService() {
         artBitmap: android.graphics.Bitmap?
     ) {
         val trackKey = listOf(pkg, title.orEmpty(), artist.orEmpty(), duration).joinToString("|")
-        if (trackKey == lastAlbumArtTrackKey) return
+        val hasImage = artBitmap != null && !artBitmap.isRecycled
+        if (trackKey == lastAlbumArtTrackKey) {
+            // Some players publish the new track metadata before album art is ready.
+            // Do not let that first no-art callback block the later art-bearing update.
+            if (lastAlbumArtHadImage || !hasImage) return
+        }
 
         lastAlbumArtTrackKey = trackKey
+        lastAlbumArtHadImage = hasImage
         val scaledArt = scaleDownBitmap(artBitmap, MAX_ALBUM_ART_SIZE)
         LyricRepository.getInstance().updateAlbumArt(scaledArt)
     }
