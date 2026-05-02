@@ -33,10 +33,8 @@ import androidx.core.content.ContextCompat
 import androidx.compose.ui.Alignment
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.basic.*
-import top.yukonga.miuix.kmp.preference.ArrowPreference as SuperArrow
 import top.yukonga.miuix.kmp.preference.OverlayDropdownPreference as SuperDropdown
 import top.yukonga.miuix.kmp.preference.SwitchPreference as SuperSwitch
-import top.yukonga.miuix.kmp.overlay.OverlayListPopup as SuperListPopup
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.MiuixPopupUtils.Companion.MiuixPopupHost
 import com.example.islandlyrics.ui.miuix.*
@@ -81,9 +79,10 @@ fun MiuixCustomSettingsScreen(
     var progressColorEnabled by remember { mutableStateOf(prefs.getBoolean("progress_bar_color_enabled", false)) }
     var disableScrolling by remember { mutableStateOf(prefs.getBoolean("disable_lyric_scrolling", false)) }
     var oneuiCapsuleColorMode by remember { mutableStateOf(OneUiCapsuleColorMode.read(prefs)) }
-    var showOneUiCapsuleColorPopup by remember { mutableStateOf(false) }
 
     var superIslandEnabled by remember { mutableStateOf(prefs.getBoolean("super_island_enabled", false)) }
+    var superIslandLyricMode by remember { mutableStateOf(prefs.getString("super_island_lyric_mode", "standard") ?: "standard") }
+    var superIslandFullLyricShowLeftCover by remember { mutableStateOf(prefs.getBoolean("super_island_full_lyric_show_left_cover", true)) }
     var superIslandTextColorEnabled by remember { mutableStateOf(prefs.getBoolean("super_island_text_color_enabled", false)) }
 
     var superIslandShareEnabled by remember { mutableStateOf(prefs.getBoolean("super_island_share_enabled", true)) }
@@ -96,11 +95,37 @@ fun MiuixCustomSettingsScreen(
 
     val isLiveUpdateSupported = remember { RomUtils.isLiveUpdateSupported() }
     val isHyperOs = remember { RomUtils.isHyperOs() }
+    fun setSuperIslandMode(enabled: Boolean) {
+        if (superIslandEnabled == enabled) return
+
+        superIslandEnabled = enabled
+        prefs.edit().putBoolean("super_island_enabled", enabled).apply()
+
+        if (enabled && actionStyle == "miplay") {
+            actionStyle = "disabled"
+            prefs.edit().putString("notification_actions_style", "disabled").apply()
+        }
+
+        val action = if (enabled) {
+            "ACTION_ENABLE_SUPER_ISLAND"
+        } else {
+            "ACTION_DISABLE_SUPER_ISLAND"
+        }
+        val intent = Intent(context, LyricService::class.java).setAction(action)
+        context.startService(intent)
+    }
+
     LaunchedEffect(Unit) {
         LabFeatureManager.ensureInitialized(prefs)
         superIslandAdvancedStyleLabEnabled = LabFeatureManager.isSuperIslandAdvancedStyleEnabled(prefs)
         floatingLyricsLabEnabled = LabFeatureManager.isFloatingLyricsEnabled(prefs)
         superIslandNotificationStyle = LabFeatureManager.sanitizeSuperIslandNotificationStyle(context)
+    }
+    LaunchedEffect(superIslandLyricMode) {
+        if (superIslandLyricMode == "full" && !disableScrolling) {
+            disableScrolling = true
+            prefs.edit().putBoolean("disable_lyric_scrolling", true).apply()
+        }
     }
     LaunchedEffect(isLiveUpdateSupported) {
         if (!isLiveUpdateSupported) {
@@ -179,7 +204,8 @@ fun MiuixCustomSettingsScreen(
                                     SuperSwitch(
                                         title = stringResource(R.string.settings_disable_scrolling),
                                         summary = stringResource(R.string.settings_disable_scrolling_desc),
-                                        checked = disableScrolling,
+                                        checked = disableScrolling || superIslandLyricMode == "full",
+                                        enabled = superIslandLyricMode != "full",
                                         onCheckedChange = {
                                             disableScrolling = it
                                             prefs.edit().putBoolean("disable_lyric_scrolling", it).apply()
@@ -195,63 +221,72 @@ fun MiuixCustomSettingsScreen(
                                         )
                                         val currentModeIndex = oneUiColorModes.indexOf(oneuiCapsuleColorMode).takeIf { it >= 0 } ?: 0
 
-                                        Box {
-                                            SuperArrow(
-                                                title = stringResource(R.string.settings_oneui_capsule_color),
-                                                summary = oneUiColorModeLabels[currentModeIndex],
-                                                onClick = { showOneUiCapsuleColorPopup = true }
-                                            )
-                                            SuperListPopup(
-                                                show = showOneUiCapsuleColorPopup,
-                                                alignment = PopupPositionProvider.Align.TopEnd,
-                                                onDismissRequest = { showOneUiCapsuleColorPopup = false }
-                                            ) {
-                                                ListPopupColumn {
-                                                    oneUiColorModeLabels.forEachIndexed { index, label ->
-                                                        DropdownImpl(
-                                                            text = label,
-                                                            optionSize = oneUiColorModeLabels.size,
-                                                            isSelected = currentModeIndex == index,
-                                                            index = index,
-                                                            onSelectedIndexChange = {
-                                                                val newMode = oneUiColorModes[index]
-                                                                oneuiCapsuleColorMode = newMode
-                                                                OneUiCapsuleColorMode.write(prefs, newMode)
-                                                                showOneUiCapsuleColorPopup = false
-                                                            }
-                                                        )
-                                                    }
-                                                }
+                                        SuperDropdown(
+                                            title = stringResource(R.string.settings_oneui_capsule_color),
+                                            items = oneUiColorModeLabels,
+                                            selectedIndex = currentModeIndex,
+                                            onSelectedIndexChange = { index ->
+                                                val newMode = oneUiColorModes[index]
+                                                oneuiCapsuleColorMode = newMode
+                                                OneUiCapsuleColorMode.write(prefs, newMode)
                                             }
-                                        }
+                                        )
                                     }
                                     if (isHyperOs) {
                                         if (isLiveUpdateSupported) {
-                                            SuperSwitch(
-                                                title = stringResource(R.string.settings_super_island),
-                                                summary = stringResource(R.string.settings_super_island_desc),
-                                                checked = superIslandEnabled,
-                                                onCheckedChange = { enabled ->
-                                                    superIslandEnabled = enabled
-                                                    prefs.edit().putBoolean("super_island_enabled", enabled).apply()
+                                            val capsuleModes = listOf(false, true)
+                                            val capsuleModeLabels = listOf(
+                                                stringResource(R.string.capsule_mode_live_update),
+                                                stringResource(R.string.capsule_mode_super_island)
+                                            )
+                                            val currentCapsuleModeIndex = capsuleModes.indexOf(superIslandEnabled).takeIf { it >= 0 } ?: 0
 
-                                                    // ⚡ Logic: If MiPlay is selected when enabling Super Island, switch to Off
-                                                    if (enabled && actionStyle == "miplay") {
-                                                        actionStyle = "disabled"
-                                                        prefs.edit().putString("notification_actions_style", "disabled").apply()
-                                                    }
-
-                                                    val action = if (enabled) {
-                                                        "ACTION_ENABLE_SUPER_ISLAND"
-                                                    } else {
-                                                        "ACTION_DISABLE_SUPER_ISLAND"
-                                                    }
-                                                    val intent = Intent(context, LyricService::class.java).setAction(action)
-                                                    context.startService(intent)
+                                            SuperDropdown(
+                                                title = stringResource(R.string.settings_capsule_mode),
+                                                items = capsuleModeLabels,
+                                                selectedIndex = currentCapsuleModeIndex,
+                                                onSelectedIndexChange = { index ->
+                                                    setSuperIslandMode(capsuleModes[index])
                                                 }
                                             )
                                         }
                                         if (superIslandEnabled || !isLiveUpdateSupported) {
+                                            val lyricModes = listOf("standard", "full")
+                                            val lyricModeLabels = listOf(
+                                                stringResource(R.string.super_island_lyric_mode_standard),
+                                                stringResource(R.string.super_island_lyric_mode_full)
+                                            )
+                                            val currentLyricModeIndex = lyricModes.indexOf(superIslandLyricMode).takeIf { it >= 0 } ?: 0
+
+                                            SuperDropdown(
+                                                title = stringResource(R.string.settings_super_island_lyric_mode),
+                                                items = lyricModeLabels,
+                                                selectedIndex = currentLyricModeIndex,
+                                                onSelectedIndexChange = { index ->
+                                                    val newMode = lyricModes[index]
+                                                    superIslandLyricMode = newMode
+                                                    prefs.edit()
+                                                        .putString("super_island_lyric_mode", newMode)
+                                                        .apply()
+                                                    if (newMode == "full" && !disableScrolling) {
+                                                        disableScrolling = true
+                                                        prefs.edit().putBoolean("disable_lyric_scrolling", true).apply()
+                                                    }
+                                                }
+                                            )
+
+                                            if (superIslandLyricMode == "full") {
+                                                SuperSwitch(
+                                                    title = stringResource(R.string.settings_super_island_full_lyric_show_left_cover),
+                                                    summary = stringResource(R.string.settings_super_island_full_lyric_show_left_cover_desc),
+                                                    checked = superIslandFullLyricShowLeftCover,
+                                                    onCheckedChange = {
+                                                        superIslandFullLyricShowLeftCover = it
+                                                        prefs.edit().putBoolean("super_island_full_lyric_show_left_cover", it).apply()
+                                                    }
+                                                )
+                                            }
+
                                             SuperSwitch(
                                                 title = stringResource(R.string.settings_super_island_colorize),
                                                 summary = stringResource(R.string.settings_super_island_colorize_desc),

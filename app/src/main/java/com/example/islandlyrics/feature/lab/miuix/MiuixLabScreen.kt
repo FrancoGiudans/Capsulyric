@@ -32,6 +32,7 @@ import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.SmallTitle
 import top.yukonga.miuix.kmp.basic.TextButton
 import top.yukonga.miuix.kmp.basic.rememberTopAppBarState
+import top.yukonga.miuix.kmp.preference.OverlayDropdownPreference as SuperDropdown
 import top.yukonga.miuix.kmp.preference.SwitchPreference as SuperSwitch
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.MiuixPopupUtils.Companion.MiuixPopupHost
@@ -50,6 +51,9 @@ fun MiuixLabScreen(onBack: () -> Unit) {
     }
     var experimentUpdatesEnabled by remember {
         mutableStateOf(LabFeatureManager.isExperimentUpdatesEnabled(context))
+    }
+    var feedSourcePriority by remember {
+        mutableStateOf(LabFeatureManager.getFeedSourcePriority(context))
     }
     val showAdvancedStyleDialog = remember { mutableStateOf(false) }
 
@@ -132,6 +136,26 @@ fun MiuixLabScreen(onBack: () -> Unit) {
                         onCheckedChange = {
                             floatingLyricsLabEnabled = it
                             LabFeatureManager.setFloatingLyricsEnabled(context, it)
+                        }
+                    )
+
+                    val feedSourceOptions = listOf(
+                        LabFeatureManager.FEED_SOURCE_GITHUB,
+                        LabFeatureManager.FEED_SOURCE_GITEE
+                    )
+                    val feedSourceIndex = feedSourceOptions.indexOf(feedSourcePriority).takeIf { it >= 0 } ?: 0
+                    SuperDropdown(
+                        title = stringResource(R.string.diag_lab_feed_source_title),
+                        summary = stringResource(R.string.diag_lab_feed_source_desc),
+                        items = listOf(
+                            stringResource(R.string.diag_lab_feed_source_github),
+                            stringResource(R.string.diag_lab_feed_source_gitee)
+                        ),
+                        selectedIndex = feedSourceIndex,
+                        onSelectedIndexChange = { index ->
+                            val source = feedSourceOptions[index]
+                            feedSourcePriority = source
+                            LabFeatureManager.setFeedSourcePriority(context, source)
                         }
                     )
                 }

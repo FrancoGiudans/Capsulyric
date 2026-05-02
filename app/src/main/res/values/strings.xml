@@ -243,6 +243,14 @@
     <string name="settings_disable_scrolling">Disable Lyric Scrolling</string>
     <string name="settings_super_island">Send Xiaomi Super Island Notification</string>
     <string name="settings_super_island_desc">Replaces Live Update with Xiaomi Super Island template for lyric notification.</string>
+    <string name="settings_capsule_mode">Capsule Mode</string>
+    <string name="capsule_mode_live_update">Live Update</string>
+    <string name="capsule_mode_super_island">Xiaomi Super Island</string>
+    <string name="settings_super_island_lyric_mode">Super Island Lyric Style</string>
+    <string name="super_island_lyric_mode_standard">Standard</string>
+    <string name="super_island_lyric_mode_full">Full Lyrics</string>
+    <string name="settings_super_island_full_lyric_show_left_cover">Show Album Cover on Left</string>
+    <string name="settings_super_island_full_lyric_show_left_cover_desc">Keep the album cover in the left island area in Full Lyrics mode.</string>
     <string name="settings_app_ui_style">App UI Style</string>
     <string name="settings_app_ui_style_desc">Switch between Material Design and Miuix UI. App will restart.</string>
     <string name="dialog_ui_style_title">Select App UI Style</string>
@@ -477,6 +485,9 @@ Within the log interface, select the share/export icon. You can specify a timefr
     <string name="media_control_open_app">Open %1$s</string>
     <string name="media_control_miplay_failed">Mi Play Failed: %1$s</string>
     <string name="media_control_cannot_open">Cannot open %1$s</string>
+    <string name="media_control_cannot_open_no_entry">Cannot open %1$s. This media session does not provide an app entry, and no launcher activity was found.</string>
+    <string name="media_control_cannot_open_session_failed_fallback">Could not open %1$s from the media session. Opened the app home instead.</string>
+    <string name="media_control_cannot_open_launch_failed">Cannot open %1$s. The app entry exists, but launch failed: %2$s</string>
 
     <!-- Notification Click Settings -->
     <string name="settings_click_action_title">Notification Click Action</string>
@@ -499,6 +510,10 @@ Within the log interface, select the share/export icon. You can specify a timefr
     <string name="diag_lab_experiment_updates_desc">Show the Experiment channel and receive experimental builds from the testing branch.</string>
     <string name="diag_lab_floating_lyrics_title">Desktop Lyrics</string>
     <string name="diag_lab_floating_lyrics_desc">When enabled, the Desktop Lyrics entry will appear in Personalization Settings</string>
+    <string name="diag_lab_feed_source_title">Announcement Source</string>
+    <string name="diag_lab_feed_source_desc">Choose the preferred community feed source. If it fails, the app automatically falls back to the other source.</string>
+    <string name="diag_lab_feed_source_github">GitHub</string>
+    <string name="diag_lab_feed_source_gitee">Gitee</string>
     <string name="diag_lab_super_island_dialog_title">Enable the advanced style experiment?</string>
     <string name="diag_lab_super_island_dialog_message">This style is still experimental, and some devices may require root to display it properly. After enabling it, go to Personalization Settings and switch the notification style to Advanced Style (Beta) yourself.</string>
     <string name="diag_lab_super_island_dialog_confirm">Open Personalization</string>

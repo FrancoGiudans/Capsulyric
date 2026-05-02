@@ -125,7 +125,7 @@ jobs:
           CODENAME="${{ steps.build_meta.outputs.codename }}"
           BRANCH_NAME="${GITHUB_REF_NAME}"
           BRANCH_SLUG=$(echo "$BRANCH_NAME" | sed 's#[^A-Za-z0-9._-]#-#g')
-          DISPLAY_VERSION="${VERSION_PREFIX}.Canary_C${COUNT}"
+          DISPLAY_VERSION="${VERSION_PREFIX}.Experiment_C${COUNT}"
           echo "count=$COUNT" >> $GITHUB_OUTPUT
           echo "short_sha=$SHORT_SHA" >> $GITHUB_OUTPUT
           echo "branch_name=$BRANCH_NAME" >> $GITHUB_OUTPUT
@@ -148,9 +148,9 @@ jobs:
           echo "> [!WARNING]" > canary_body.md
           echo "> **实验性版本 (Experimental Build)**" >> canary_body.md
           echo ">" >> canary_body.md
-          echo "> 这是从 \`${BRANCH_NAME}\` 分支自动生成的 Experiment 滚动构建（沿用 Canary Tag 兼容旧版本）。可能包含不稳定的代码或破坏性变更。请谨慎使用。" >> canary_body.md
+          echo "> 这是从 \`${BRANCH_NAME}\` 分支自动生成的 Experiment 滚动构建。可能包含不稳定的代码或破坏性变更。请谨慎使用。" >> canary_body.md
           echo ">" >> canary_body.md
-          echo "> This is a rolling Experiment release generated automatically from the \`${BRANCH_NAME}\` branch, while keeping the Canary tag for backward compatibility. It may contain unstable code or breaking changes. Use with caution." >> canary_body.md
+          echo "> This is a rolling Experiment release generated automatically from the \`${BRANCH_NAME}\` branch. It may contain unstable code or breaking changes. Use with caution." >> canary_body.md
           echo "" >> canary_body.md
           echo "## Experiment Build (Rolling Canary Tag)" >> canary_body.md
           echo "- **Codename:** \`${CODENAME}\`" >> canary_body.md

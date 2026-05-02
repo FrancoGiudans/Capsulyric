@@ -4,6 +4,7 @@ import android.content.Context
 import com.example.islandlyrics.BuildConfig
 import com.example.islandlyrics.core.logging.AppLogger
 import com.example.islandlyrics.core.network.OfflineModeManager
+import com.example.islandlyrics.core.settings.LabFeatureManager
 import com.example.islandlyrics.core.update.UpdateChecker
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -40,6 +41,7 @@ object CommunityFeedRepository {
     private const val POLLS_PATH = "polls.json"
     private const val PRIMARY_BASE_URL = "https://raw.githubusercontent.com/FrancoGiudans/CapsulyricFeed/main/data"
     private const val LEGACY_BASE_URL = "https://raw.githubusercontent.com/FrancoGiudans/Caps-feed/main/data"
+    private const val GITEE_BASE_URL = "https://gitee.com/franklinsmithson/caps-feed/raw/main/data"
     private const val CACHE_MAX_AGE_MS = 6 * 60 * 60 * 1000L // 6 hours
 
     suspend fun fetchFeed(context: Context): CommunityFeed = withContext(Dispatchers.IO) {
@@ -67,7 +69,7 @@ object CommunityFeedRepository {
             } catch (_: Exception) { /* fall through to network */ }
         }
 
-        val response = buildBaseUrls()
+        val response = buildBaseUrls(context)
             .asSequence()
             .map { baseUrl -> baseUrl to fetchText("$baseUrl/$relativePath") }
             .firstOrNull { (_, response) -> response != null }
@@ -84,12 +86,19 @@ object CommunityFeedRepository {
         return parseItems(response, context)
     }
 
-    private fun buildBaseUrls(): List<String> {
-        return linkedSetOf(
+    private fun buildBaseUrls(context: Context): List<String> {
+        val githubUrls = listOf(
             BuildConfig.COMMUNITY_FEED_BASE_URL.trimEnd('/'),
             PRIMARY_BASE_URL,
             LEGACY_BASE_URL
         ).filter { it.isNotBlank() }
+        val giteeUrls = listOf(GITEE_BASE_URL)
+
+        val ordered = when (LabFeatureManager.getFeedSourcePriority(context)) {
+            LabFeatureManager.FEED_SOURCE_GITEE -> giteeUrls + githubUrls
+            else -> githubUrls + giteeUrls
+        }
+        return ordered.distinct()
     }
 
     private fun fetchText(urlString: String): String? {

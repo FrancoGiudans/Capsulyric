@@ -26,6 +26,7 @@ object UpdateChecker {
     private const val KEY_PRERELEASE_CHANNEL = "prerelease_channel" // Legacy: Alpha, Beta, Pre, Canary
     private const val KEY_UPDATE_CHANNEL = "update_channel" // Stable, Preview, Experiment
     private val VERSION_IN_TITLE_REGEX = Regex("""Version\.\d{2}\.\d+(?:\.[A-Za-z0-9]+)?_C\d+""")
+    private val VERSION_IN_BODY_REGEX = Regex("""(?im)^\s*[-*]\s*\*\*Version:\*\*\s*`(Version\.\d{2}\.\d+(?:\.[A-Za-z0-9]+)?_C\d+)`""")
 
     const val CHANNEL_STABLE = "Stable"
     const val CHANNEL_PREVIEW = "Preview"
@@ -348,7 +349,9 @@ object UpdateChecker {
         if (!isCanaryTag(release.tagName)) {
             return normalizedTag
         }
-        return extractVersionFromTitle(release.name) ?: normalizedTag
+        return extractVersionFromBody(release.body)
+            ?: extractVersionFromTitle(release.name)
+            ?: normalizedTag
     }
 
     /**
@@ -373,6 +376,10 @@ object UpdateChecker {
 
     private fun extractVersionFromTitle(title: String): String? {
         return VERSION_IN_TITLE_REGEX.find(title)?.value
+    }
+
+    private fun extractVersionFromBody(body: String): String? {
+        return VERSION_IN_BODY_REGEX.find(body)?.groupValues?.getOrNull(1)
     }
 
     private fun isCanaryTag(tag: String): Boolean {

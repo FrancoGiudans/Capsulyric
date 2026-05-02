@@ -438,6 +438,9 @@
     <string name="media_control_open_app">打开 %1$s</string>
     <string name="media_control_miplay_failed">启动小米妙播失败：%1$s</string>
     <string name="media_control_cannot_open">无法启动应用：</string>
+    <string name="media_control_cannot_open_no_entry">无法打开 %1$s：当前媒体会话没有提供可跳转入口，且系统也找不到可启动的桌面入口。</string>
+    <string name="media_control_cannot_open_session_failed_fallback">无法通过媒体会话直接打开 %1$s，已改为尝试进入应用首页。</string>
+    <string name="media_control_cannot_open_launch_failed">无法打开 %1$s：已找到应用入口，但启动失败：%2$s</string>
     <string name="settings_click_action_title">通知点击动作</string>
     <string name="settings_click_action_default">打开本应用（默认）</string>
     <string name="settings_click_action_default_desc">在前台打开本应用</string>
@@ -446,6 +449,14 @@
     <string name="settings_disable_scrolling">禁用歌词滚动</string>
     <string name="settings_super_island">发送小米超级岛通知</string>
     <string name="settings_super_island_desc">替代 Live Update，使用小米超级岛模版发送歌词通知</string>
+    <string name="settings_capsule_mode">胶囊模式</string>
+    <string name="capsule_mode_live_update">Live Update</string>
+    <string name="capsule_mode_super_island">小米超级岛</string>
+    <string name="settings_super_island_lyric_mode">小米超级岛歌词样式</string>
+    <string name="super_island_lyric_mode_standard">标准</string>
+    <string name="super_island_lyric_mode_full">全歌词</string>
+    <string name="settings_super_island_full_lyric_show_left_cover">左侧显示专辑封面</string>
+    <string name="settings_super_island_full_lyric_show_left_cover_desc">全歌词模式下保留左侧岛区域的专辑封面。</string>
     <string name="settings_super_island_colorize">为播放信息着色</string>
     <string name="settings_super_island_colorize_desc">使超级岛中的内容（歌词、歌单、胶囊边缘及进度条）随专辑封面变色</string>
     <string name="settings_super_island_share">开启拖拽分享</string>
@@ -490,6 +501,10 @@
     <string name="diag_lab_experiment_updates_desc">显示 Experiment 通道，并接收来自测试分支的实验版本。</string>
     <string name="diag_lab_floating_lyrics_title">桌面歌词</string>
     <string name="diag_lab_floating_lyrics_desc">开启后，个性化设置里将显示桌面歌词入口</string>
+    <string name="diag_lab_feed_source_title">公告源</string>
+    <string name="diag_lab_feed_source_desc">选择优先使用的社区 feed 源；如果失败，应用会自动回退到另一个源。</string>
+    <string name="diag_lab_feed_source_github">GitHub</string>
+    <string name="diag_lab_feed_source_gitee">Gitee</string>
     <string name="diag_lab_super_island_dialog_title">开启高级样式实验功能？</string>
     <string name="diag_lab_super_island_dialog_message">该样式仍处于实验阶段，部分设备可能需要 Root 环境才能正常显示。开启后，请前往“个性化设置”中的通知页自行切换到“高级样式（Beta）”。</string>
     <string name="diag_lab_super_island_dialog_confirm">前往个性化设置</string>

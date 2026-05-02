@@ -12,9 +12,12 @@ object LabFeatureManager {
     private const val KEY_FLOATING_LYRICS_MIGRATED = "lab_floating_lyrics_migrated"
     private const val KEY_EXPERIMENT_UPDATES_ENABLED = "lab_experiment_updates_enabled"
     private const val KEY_EXPERIMENT_UPDATES_MIGRATED = "lab_experiment_updates_migrated"
+    private const val KEY_FEED_SOURCE_PRIORITY = "lab_feed_source_priority"
 
     const val SUPER_ISLAND_STYLE_STANDARD = "standard"
     const val SUPER_ISLAND_STYLE_ADVANCED = "advanced_beta"
+    const val FEED_SOURCE_GITHUB = "github"
+    const val FEED_SOURCE_GITEE = "gitee"
 
     fun ensureInitialized(context: Context) {
         ensureInitialized(context.prefs())
@@ -149,6 +152,27 @@ object LabFeatureManager {
             enabled -> UpdateChecker.setUpdateChannel(context, UpdateChecker.CHANNEL_EXPERIMENT)
             currentChannel == UpdateChecker.CHANNEL_EXPERIMENT ->
                 UpdateChecker.setUpdateChannel(context, UpdateChecker.CHANNEL_PREVIEW)
+        }
+    }
+
+    fun getFeedSourcePriority(context: Context): String {
+        val prefs = context.prefs()
+        ensureInitialized(prefs)
+        return normalizeFeedSourcePriority(prefs.getString(KEY_FEED_SOURCE_PRIORITY, FEED_SOURCE_GITHUB))
+    }
+
+    fun setFeedSourcePriority(context: Context, priority: String) {
+        val prefs = context.prefs()
+        ensureInitialized(prefs)
+        prefs.edit()
+            .putString(KEY_FEED_SOURCE_PRIORITY, normalizeFeedSourcePriority(priority))
+            .apply()
+    }
+
+    private fun normalizeFeedSourcePriority(priority: String?): String {
+        return when (priority?.trim()?.lowercase()) {
+            FEED_SOURCE_GITEE -> FEED_SOURCE_GITEE
+            else -> FEED_SOURCE_GITHUB
         }
     }
 

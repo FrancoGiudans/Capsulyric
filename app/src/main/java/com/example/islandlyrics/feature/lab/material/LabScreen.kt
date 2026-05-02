@@ -2,14 +2,19 @@ package com.example.islandlyrics.feature.lab.material
 
 import android.content.Intent
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Science
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -22,6 +27,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -32,6 +38,7 @@ import com.example.islandlyrics.core.platform.RomUtils
 import com.example.islandlyrics.core.settings.LabFeatureManager
 import com.example.islandlyrics.feature.customsettings.CustomSettingsActivity
 import com.example.islandlyrics.feature.diagnostics.material.DiagnosticsCard
+import com.example.islandlyrics.feature.settings.material.SettingsTextItem
 import com.example.islandlyrics.feature.settings.material.SettingsSwitchItem
 import com.example.islandlyrics.ui.theme.material.neutralMaterialTopBarColors
 
@@ -49,7 +56,11 @@ fun LabScreen(onBack: () -> Unit) {
     var experimentUpdatesEnabled by remember {
         mutableStateOf(LabFeatureManager.isExperimentUpdatesEnabled(context))
     }
+    var feedSourcePriority by remember {
+        mutableStateOf(LabFeatureManager.getFeedSourcePriority(context))
+    }
     var showAdvancedStyleDialog by remember { mutableStateOf(false) }
+    var showFeedSourceDropdown by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -120,6 +131,40 @@ fun LabScreen(onBack: () -> Unit) {
                         LabFeatureManager.setFloatingLyricsEnabled(context, it)
                     }
                 )
+
+                SettingsTextItem(
+                    title = stringResource(R.string.diag_lab_feed_source_title),
+                    value = if (feedSourcePriority == LabFeatureManager.FEED_SOURCE_GITEE) {
+                        stringResource(R.string.diag_lab_feed_source_gitee)
+                    } else {
+                        stringResource(R.string.diag_lab_feed_source_github)
+                    },
+                    onClick = { showFeedSourceDropdown = true }
+                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .wrapContentSize(Alignment.CenterEnd)
+                ) {
+                    DropdownMenu(
+                        expanded = showFeedSourceDropdown,
+                        onDismissRequest = { showFeedSourceDropdown = false }
+                    ) {
+                        listOf(
+                            LabFeatureManager.FEED_SOURCE_GITHUB to stringResource(R.string.diag_lab_feed_source_github),
+                            LabFeatureManager.FEED_SOURCE_GITEE to stringResource(R.string.diag_lab_feed_source_gitee)
+                        ).forEach { (sourceKey, sourceLabel) ->
+                            DropdownMenuItem(
+                                text = { Text(sourceLabel) },
+                                onClick = {
+                                    feedSourcePriority = sourceKey
+                                    LabFeatureManager.setFeedSourcePriority(context, sourceKey)
+                                    showFeedSourceDropdown = false
+                                }
+                            )
+                        }
+                    }
+                }
             }
         }
     }

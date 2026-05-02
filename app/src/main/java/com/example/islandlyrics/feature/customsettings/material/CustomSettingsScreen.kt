@@ -81,6 +81,8 @@ fun CustomSettingsScreen(
     var showLanguageDialog by remember { mutableStateOf(false) }
     var showIconStyleDropdown by remember { mutableStateOf(false) }
     var showOneUiCapsuleColorDropdown by remember { mutableStateOf(false) }
+    var showCapsuleModeDropdown by remember { mutableStateOf(false) }
+    var showSuperIslandLyricModeDropdown by remember { mutableStateOf(false) }
     var showPrivacyDialog by remember { mutableStateOf(false) }
 
     // Notification Action Style State
@@ -111,6 +113,8 @@ fun CustomSettingsScreen(
     var oneuiCapsuleColorMode by remember { mutableStateOf(OneUiCapsuleColorMode.read(prefs)) }
 
     var superIslandEnabled by remember { mutableStateOf(prefs.getBoolean("super_island_enabled", false)) }
+    var superIslandLyricMode by remember { mutableStateOf(prefs.getString("super_island_lyric_mode", "standard") ?: "standard") }
+    var superIslandFullLyricShowLeftCover by remember { mutableStateOf(prefs.getBoolean("super_island_full_lyric_show_left_cover", true)) }
     var superIslandTextColorEnabled by remember { mutableStateOf(prefs.getBoolean("super_island_text_color_enabled", false)) }
 
     var superIslandShareEnabled by remember { mutableStateOf(prefs.getBoolean("super_island_share_enabled", true)) }
@@ -125,11 +129,37 @@ fun CustomSettingsScreen(
     val isLiveUpdateSupported = remember { RomUtils.isLiveUpdateSupported() }
     val isHyperOs = remember { RomUtils.isHyperOs() }
 
+    fun setSuperIslandMode(enabled: Boolean) {
+        if (superIslandEnabled == enabled) return
+
+        superIslandEnabled = enabled
+        prefs.edit().putBoolean("super_island_enabled", enabled).apply()
+
+        if (enabled && actionStyle == "miplay") {
+            actionStyle = "disabled"
+            prefs.edit().putString("notification_actions_style", "disabled").apply()
+        }
+
+        val action = if (enabled) {
+            "ACTION_ENABLE_SUPER_ISLAND"
+        } else {
+            "ACTION_DISABLE_SUPER_ISLAND"
+        }
+        val intent = Intent(context, LyricService::class.java).setAction(action)
+        context.startService(intent)
+    }
+
     LaunchedEffect(Unit) {
         LabFeatureManager.ensureInitialized(prefs)
         superIslandAdvancedStyleLabEnabled = LabFeatureManager.isSuperIslandAdvancedStyleEnabled(prefs)
         floatingLyricsLabEnabled = LabFeatureManager.isFloatingLyricsEnabled(prefs)
         superIslandNotificationStyle = LabFeatureManager.sanitizeSuperIslandNotificationStyle(context)
+    }
+    LaunchedEffect(superIslandLyricMode) {
+        if (superIslandLyricMode == "full" && !disableScrolling) {
+            disableScrolling = true
+            prefs.edit().putBoolean("disable_lyric_scrolling", true).apply()
+        }
     }
 
     // Logic for permissions status
@@ -248,7 +278,8 @@ fun CustomSettingsScreen(
                             SettingsSwitchItem(
                                 title = stringResource(R.string.settings_disable_scrolling),
                                 subtitle = stringResource(R.string.settings_disable_scrolling_desc),
-                                checked = disableScrolling,
+                                checked = disableScrolling || superIslandLyricMode == "full",
+                                enabled = superIslandLyricMode != "full",
                                 onCheckedChange = {
                                     disableScrolling = it
                                     prefs.edit().putBoolean("disable_lyric_scrolling", it).apply()
@@ -294,29 +325,36 @@ fun CustomSettingsScreen(
 
                             if (isHyperOs) {
                                 if (isLiveUpdateSupported) {
-                                    SettingsSwitchItem(
-                                        title = stringResource(R.string.settings_super_island),
-                                        subtitle = stringResource(R.string.settings_super_island_desc),
-                                        checked = superIslandEnabled,
-                                        onCheckedChange = { enabled ->
-                                            superIslandEnabled = enabled
-                                            prefs.edit().putBoolean("super_island_enabled", enabled).apply()
-
-                                            //  Logic: If MiPlay is selected when enabling Super Island, switch to Off
-                                            if (enabled && actionStyle == "miplay") {
-                                                actionStyle = "disabled"
-                                                prefs.edit().putString("notification_actions_style", "disabled").apply()
-                                            }
-
-                                            val action = if (enabled) {
-                                                "ACTION_ENABLE_SUPER_ISLAND"
-                                            } else {
-                                                "ACTION_DISABLE_SUPER_ISLAND"
-                                            }
-                                            val intent = Intent(context, LyricService::class.java).setAction(action)
-                                            context.startService(intent)
-                                        }
+                                    val capsuleModes = listOf(false, true)
+                                    val capsuleModeLabels = listOf(
+                                        stringResource(R.string.capsule_mode_live_update),
+                                        stringResource(R.string.capsule_mode_super_island)
                                     )
+                                    val currentCapsuleModeIndex = capsuleModes.indexOf(superIslandEnabled).takeIf { it >= 0 } ?: 0
+
+                                    Box(modifier = Modifier.fillMaxWidth()) {
+                                        SettingsTextItem(
+                                            title = stringResource(R.string.settings_capsule_mode),
+                                            value = capsuleModeLabels[currentCapsuleModeIndex],
+                                            onClick = { showCapsuleModeDropdown = true }
+                                        )
+                                        Box(modifier = Modifier.matchParentSize().wrapContentSize(Alignment.Center)) {
+                                            DropdownMenu(
+                                                expanded = showCapsuleModeDropdown,
+                                                onDismissRequest = { showCapsuleModeDropdown = false }
+                                            ) {
+                                                capsuleModeLabels.forEachIndexed { index, label ->
+                                                    DropdownMenuItem(
+                                                        text = { Text(label) },
+                                                        onClick = {
+                                                            setSuperIslandMode(capsuleModes[index])
+                                                            showCapsuleModeDropdown = false
+                                                        }
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
                                 }
 
                                 if (isLiveUpdateSupported && !superIslandEnabled) {
@@ -355,6 +393,57 @@ fun CustomSettingsScreen(
                                 }
 
                                 if (superIslandEnabled || !isLiveUpdateSupported) {
+                                    val lyricModes = listOf("standard", "full")
+                                    val lyricModeLabels = listOf(
+                                        stringResource(R.string.super_island_lyric_mode_standard),
+                                        stringResource(R.string.super_island_lyric_mode_full)
+                                    )
+                                    val currentLyricModeIndex = lyricModes.indexOf(superIslandLyricMode).takeIf { it >= 0 } ?: 0
+
+                                    Box(modifier = Modifier.fillMaxWidth()) {
+                                        SettingsTextItem(
+                                            title = stringResource(R.string.settings_super_island_lyric_mode),
+                                            value = lyricModeLabels[currentLyricModeIndex],
+                                            onClick = { showSuperIslandLyricModeDropdown = true }
+                                        )
+                                        Box(modifier = Modifier.matchParentSize().wrapContentSize(Alignment.Center)) {
+                                            DropdownMenu(
+                                                expanded = showSuperIslandLyricModeDropdown,
+                                                onDismissRequest = { showSuperIslandLyricModeDropdown = false }
+                                            ) {
+                                                lyricModeLabels.forEachIndexed { index, label ->
+                                                    DropdownMenuItem(
+                                                        text = { Text(label) },
+                                                        onClick = {
+                                                            val newMode = lyricModes[index]
+                                                            superIslandLyricMode = newMode
+                                                            prefs.edit()
+                                                                .putString("super_island_lyric_mode", newMode)
+                                                                .apply()
+                                                            if (newMode == "full" && !disableScrolling) {
+                                                                disableScrolling = true
+                                                                prefs.edit().putBoolean("disable_lyric_scrolling", true).apply()
+                                                            }
+                                                            showSuperIslandLyricModeDropdown = false
+                                                        }
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    if (superIslandLyricMode == "full") {
+                                        SettingsSwitchItem(
+                                            title = stringResource(R.string.settings_super_island_full_lyric_show_left_cover),
+                                            subtitle = stringResource(R.string.settings_super_island_full_lyric_show_left_cover_desc),
+                                            checked = superIslandFullLyricShowLeftCover,
+                                            onCheckedChange = {
+                                                superIslandFullLyricShowLeftCover = it
+                                                prefs.edit().putBoolean("super_island_full_lyric_show_left_cover", it).apply()
+                                            }
+                                        )
+                                    }
+
                                     SettingsSwitchItem(
                                         title = stringResource(R.string.settings_super_island_colorize),
                                         subtitle = stringResource(R.string.settings_super_island_colorize_desc),

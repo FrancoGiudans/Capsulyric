@@ -72,7 +72,7 @@ static def getDefaultBaseVersion(String versionPrefix, String versionChannel) {
         case "Preview":
             return "${versionPrefix}.Preview"
         case "Experiment":
-            return "${versionPrefix}.Canary"
+            return "${versionPrefix}.Experiment"
         default:
             return "${versionPrefix}.Preview"
     }

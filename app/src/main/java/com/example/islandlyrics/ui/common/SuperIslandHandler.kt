@@ -55,6 +55,8 @@ class SuperIslandHandler(
     private var cachedActionStyle = "disabled"
     private var cachedMediaButtonLayout = "two_button"
     private var cachedSuperIslandNotificationStyle = "standard"
+    private var cachedSuperIslandLyricMode = "standard"
+    private var cachedSuperIslandFullLyricShowLeftCover = true
     private var cachedXmsfBypassMode = XmsfBypassMode.DISABLED
 
     private var cachedContentIntent: PendingIntent? = null
@@ -84,6 +86,8 @@ class SuperIslandHandler(
             "notification_actions_style" -> cachedActionStyle = p.getString(key, "disabled") ?: "disabled"
             "super_island_media_button_layout" -> cachedMediaButtonLayout = p.getString(key, "two_button") ?: "two_button"
             "super_island_notification_style" -> cachedSuperIslandNotificationStyle = p.getString(key, "standard") ?: "standard"
+            "super_island_lyric_mode" -> cachedSuperIslandLyricMode = p.getString(key, "standard") ?: "standard"
+            "super_island_full_lyric_show_left_cover" -> cachedSuperIslandFullLyricShowLeftCover = p.getBoolean(key, true)
             "block_xmsf_network_mode", "block_xmsf_network" -> {
                 cachedXmsfBypassMode = XmsfBypassMode.read(p)
                 if (cachedXmsfBypassMode != XmsfBypassMode.AGGRESSIVE && aggressiveNetworkCutActive) {
@@ -104,6 +108,8 @@ class SuperIslandHandler(
         cachedActionStyle = prefs.getString("notification_actions_style", "disabled") ?: "disabled"
         cachedMediaButtonLayout = prefs.getString("super_island_media_button_layout", "two_button") ?: "two_button"
         cachedSuperIslandNotificationStyle = prefs.getString("super_island_notification_style", "standard") ?: "standard"
+        cachedSuperIslandLyricMode = prefs.getString("super_island_lyric_mode", "standard") ?: "standard"
+        cachedSuperIslandFullLyricShowLeftCover = prefs.getBoolean("super_island_full_lyric_show_left_cover", true)
         cachedXmsfBypassMode = XmsfBypassMode.read(prefs)
         prefs.registerOnSharedPreferenceChangeListener(prefListener)
     }
@@ -443,26 +449,15 @@ class SuperIslandHandler(
                         highlightColor = hexColor
                     }
 
-                    bigIslandArea {
-                        imageTextInfoLeft {
-                            type = 1
-                            if (islandKey != null) {
-                                picInfo {
-                                    type = 1
-                                    pic = islandKey
-                                }
-                            }
-                            textInfo {
-                                title = titleWithArtist.ifEmpty { "♪" }
-                                this.showHighlightColor = showHighlightColor
-                            }
-                        }
-                        this.textInfo = com.xzakota.hyper.notification.island.model.TextInfo().apply {
-                            title = displayLyric.ifEmpty { "♪" }
-                            this.showHighlightColor = showHighlightColor
-                            narrowFont = false
-                        }
-                    }
+            bigIslandArea {
+                applyBigIslandLyrics(
+                    fullLyric = state.fullLyric,
+                    displayLyric = displayLyric,
+                    titleWithArtist = titleWithArtist,
+                    islandKey = islandKey,
+                    showHighlightColor = showHighlightColor
+                )
+            }
 
                     if (cachedSuperIslandShareEnabled) {
                         shareData {
@@ -963,6 +958,179 @@ class SuperIslandHandler(
 
     private val standardActionBundle = android.os.Bundle()
 
+    private fun com.xzakota.hyper.notification.island.model.BigIslandArea.applyBigIslandLyrics(
+        fullLyric: String,
+        displayLyric: String,
+        titleWithArtist: String,
+        islandKey: String?,
+        showHighlightColor: Boolean
+    ) {
+        if (cachedSuperIslandLyricMode == "full") {
+            val lyric = fullLyric.ifBlank { displayLyric }.ifBlank { "♪" }
+            val showLeftCover = cachedSuperIslandFullLyricShowLeftCover && islandKey != null
+            val split = splitBalancedByWeight(
+                text = lyric,
+                leftMaxWeight = if (showLeftCover) FULL_LYRIC_LEFT_WITH_COVER_WEIGHT else FULL_LYRIC_LEFT_NO_COVER_WEIGHT,
+                rightMaxWeight = FULL_LYRIC_RIGHT_WEIGHT,
+                leftVisualNumerator = FULL_LYRIC_LEFT_VISUAL_NUMERATOR,
+                leftVisualDenominator = FULL_LYRIC_LEFT_VISUAL_DENOMINATOR
+            )
+
+            imageTextInfoLeft {
+                type = 1
+                if (showLeftCover) {
+                    picInfo {
+                        type = 1
+                        pic = islandKey
+                    }
+                }
+                textInfo {
+                    title = split.left.ifEmpty { "♪" }
+                    this.showHighlightColor = showHighlightColor
+                    narrowFont = false
+                }
+            }
+            this.textInfo = com.xzakota.hyper.notification.island.model.TextInfo().apply {
+                title = split.right.ifEmpty { "♪" }
+                this.showHighlightColor = showHighlightColor
+                narrowFont = false
+            }
+            return
+        }
+
+        imageTextInfoLeft {
+            type = 1
+            if (islandKey != null) {
+                picInfo {
+                    type = 1
+                    pic = islandKey
+                }
+            }
+            textInfo {
+                title = titleWithArtist.ifEmpty { "♪" }
+                this.showHighlightColor = showHighlightColor
+            }
+        }
+        this.textInfo = com.xzakota.hyper.notification.island.model.TextInfo().apply {
+            title = displayLyric.ifEmpty { "♪" }
+            this.showHighlightColor = showHighlightColor
+            narrowFont = false
+        }
+    }
+
+    private data class IslandLyricSplit(val left: String, val right: String)
+
+    private fun splitBalancedByWeight(
+        text: String,
+        leftMaxWeight: Int,
+        rightMaxWeight: Int,
+        leftVisualNumerator: Int,
+        leftVisualDenominator: Int
+    ): IslandLyricSplit {
+        val normalized = text.trim()
+        if (normalized.isEmpty()) return IslandLyricSplit("", "")
+
+        val chars = normalized.toList()
+        var bestSplit = 1
+        var bestScore = Int.MAX_VALUE
+
+        for (splitIndex in 1..chars.size) {
+            val left = chars.subList(0, splitIndex).joinToString("").trim()
+            val right = chars.subList(splitIndex, chars.size).joinToString("").trim()
+            val leftWeight = calculateTextWeight(left)
+            val rightWeight = calculateTextWeight(right)
+
+            if (leftWeight > leftMaxWeight || rightWeight > rightMaxWeight) continue
+
+            val leftVisualWeight = scaleLeftVisualWeight(
+                leftWeight = leftWeight,
+                numerator = leftVisualNumerator,
+                denominator = leftVisualDenominator
+            )
+            if (leftVisualWeight < rightWeight) continue
+
+            val usedWeight = leftWeight + rightWeight
+            val balancePenalty = kotlin.math.abs(leftVisualWeight - rightWeight) * 4
+            val unusedPenalty = (leftMaxWeight + rightMaxWeight - usedWeight) * 2
+            val edgePenalty = if (left.isEmpty() || right.isEmpty()) 20 else 0
+            val score = balancePenalty + unusedPenalty + edgePenalty
+
+            if (score < bestScore) {
+                bestScore = score
+                bestSplit = splitIndex
+            }
+        }
+
+        if (bestScore == Int.MAX_VALUE) {
+            val totalWeight = calculateTextWeight(normalized)
+            val leftTarget = minOf(
+                leftMaxWeight,
+                maxOf(
+                    1,
+                    (totalWeight * leftVisualDenominator + leftVisualNumerator + leftVisualDenominator - 1) /
+                        (leftVisualNumerator + leftVisualDenominator)
+                )
+            )
+            val left = extractTextByWeight(normalized, 0, leftTarget)
+            val rightStart = left.length
+            val right = extractTextByWeight(normalized.drop(rightStart).trimStart(), 0, rightMaxWeight)
+            return IslandLyricSplit(left, right)
+        }
+
+        return IslandLyricSplit(
+            left = chars.subList(0, bestSplit).joinToString("").trim(),
+            right = chars.subList(bestSplit, chars.size).joinToString("").trim()
+        )
+    }
+
+    private fun scaleLeftVisualWeight(
+        leftWeight: Int,
+        numerator: Int,
+        denominator: Int
+    ): Int {
+        return (leftWeight * numerator) / denominator
+    }
+
+    private fun calculateTextWeight(text: String): Int = text.sumOf { charWeight(it) }
+
+    private fun charWeight(c: Char): Int {
+        if (c.isWhitespace()) return 0
+        return when (Character.UnicodeBlock.of(c)) {
+            Character.UnicodeBlock.CJK_UNIFIED_IDEOGRAPHS,
+            Character.UnicodeBlock.CJK_UNIFIED_IDEOGRAPHS_EXTENSION_A,
+            Character.UnicodeBlock.CJK_UNIFIED_IDEOGRAPHS_EXTENSION_B,
+            Character.UnicodeBlock.CJK_COMPATIBILITY_IDEOGRAPHS,
+            Character.UnicodeBlock.HIRAGANA,
+            Character.UnicodeBlock.KATAKANA,
+            Character.UnicodeBlock.HANGUL_SYLLABLES -> 2
+            else -> 1
+        }
+    }
+
+    private fun extractTextByWeight(text: String, startWeight: Int, maxWeight: Int): String {
+        var currentWeight = 0
+        var startIndex = 0
+        var endIndex = 0
+        for (i in text.indices) {
+            if (currentWeight >= startWeight) {
+                startIndex = i
+                break
+            }
+            currentWeight += charWeight(text[i])
+        }
+        while (startIndex < text.length && text[startIndex].isWhitespace()) {
+            startIndex++
+        }
+        currentWeight = 0
+        for (i in startIndex until text.length) {
+            currentWeight += charWeight(text[i])
+            if (currentWeight > maxWeight) break
+            endIndex = i + 1
+        }
+        if (endIndex <= startIndex) return ""
+        return text.substring(startIndex, endIndex).trim()
+    }
+
     private fun buildStandardFocusBundle(
         state: UIState,
         displayLyric: String,
@@ -1068,24 +1236,13 @@ class SuperIslandHandler(
             }
 
             bigIslandArea {
-                imageTextInfoLeft {
-                    type = 1
-                    if (islandKey != null) {
-                        picInfo {
-                            type = 1
-                            pic = islandKey
-                        }
-                    }
-                    textInfo {
-                        title = titleWithArtist.ifEmpty { "♪" }
-                        this.showHighlightColor = showHighlightColor
-                    }
-                }
-                this.textInfo = com.xzakota.hyper.notification.island.model.TextInfo().apply {
-                    title = displayLyric.ifEmpty { "♪" }
-                    this.showHighlightColor = showHighlightColor
-                    narrowFont = false
-                }
+                applyBigIslandLyrics(
+                    fullLyric = state.fullLyric,
+                    displayLyric = displayLyric,
+                    titleWithArtist = titleWithArtist,
+                    islandKey = islandKey,
+                    showHighlightColor = showHighlightColor
+                )
             }
 
             if (cachedSuperIslandShareEnabled) {
@@ -1148,5 +1305,10 @@ class SuperIslandHandler(
         private const val CHANNEL_ID = "lyric_capsule_channel"
         private const val NOTIFICATION_ID = 1001
         private const val PROGRESS_NOTIFY_STEP_PERCENT = 2
+        private const val FULL_LYRIC_LEFT_WITH_COVER_WEIGHT = 13
+        private const val FULL_LYRIC_LEFT_NO_COVER_WEIGHT = 16
+        private const val FULL_LYRIC_RIGHT_WEIGHT = 14
+        private const val FULL_LYRIC_LEFT_VISUAL_NUMERATOR = 5
+        private const val FULL_LYRIC_LEFT_VISUAL_DENOMINATOR = 6
     }
 }

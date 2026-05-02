@@ -435,26 +435,64 @@ fun MiuixMediaSessionLayout(
     )
 
     val openApp = {
-        try {
-            val launchIntent = context.packageManager.getLaunchIntentForPackage(pkg)
-            val sessionActivity = controller.sessionActivity
-            when {
-                launchIntent != null -> {
-                    context.startActivity(launchIntent)
+        val displayName = appName.ifBlank { pkg }
+        val launchIntent = context.packageManager
+            .getLaunchIntentForPackage(pkg)
+            ?.apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+            }
+        val sessionActivity = controller.sessionActivity
+
+        when {
+            sessionActivity != null -> {
+                val sessionLaunchResult = runCatching { sessionActivity.send() }
+                if (sessionLaunchResult.isFailure) {
+                    if (launchIntent != null) {
+                        val fallbackResult = runCatching { context.startActivity(launchIntent) }
+                        if (fallbackResult.isSuccess) {
+                            Toast.makeText(
+                                context,
+                                context.getString(R.string.media_control_cannot_open_session_failed_fallback, displayName),
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        } else {
+                            val reason = fallbackResult.exceptionOrNull()?.localizedMessage
+                                ?: sessionLaunchResult.exceptionOrNull()?.localizedMessage
+                                ?: "unknown"
+                            Toast.makeText(
+                                context,
+                                context.getString(R.string.media_control_cannot_open_launch_failed, displayName, reason),
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                    } else {
+                        val reason = sessionLaunchResult.exceptionOrNull()?.localizedMessage ?: "unknown"
+                        Toast.makeText(
+                            context,
+                            context.getString(R.string.media_control_cannot_open_launch_failed, displayName, reason),
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
                 }
-                sessionActivity != null -> {
-                    sessionActivity.send()
-                }
-                else -> {
+            }
+            launchIntent != null -> {
+                val launchResult = runCatching { context.startActivity(launchIntent) }
+                if (launchResult.isFailure) {
+                    val reason = launchResult.exceptionOrNull()?.localizedMessage ?: "unknown"
                     Toast.makeText(
                         context,
-                        context.getString(R.string.media_control_cannot_open, appName.ifBlank { pkg }),
+                        context.getString(R.string.media_control_cannot_open_launch_failed, displayName, reason),
                         Toast.LENGTH_SHORT
                     ).show()
                 }
             }
-        } catch (e: Exception) {
-            Toast.makeText(context, context.getString(R.string.media_control_error_prefix, e.message), Toast.LENGTH_SHORT).show()
+            else -> {
+                Toast.makeText(
+                    context,
+                    context.getString(R.string.media_control_cannot_open_no_entry, displayName),
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
         }
         onOpenApp?.invoke()
         Unit
