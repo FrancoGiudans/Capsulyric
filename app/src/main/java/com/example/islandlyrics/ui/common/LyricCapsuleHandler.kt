@@ -42,7 +42,6 @@ class LyricCapsuleHandler(
     private var lastNotifiedProgress = -1
     private var lastNotifyTime = 0L
     private var isFirstNotification = true
-    private var lastPostedNotification: Notification? = null
     
     // Cached preferences
     private var cachedActionStyle = "disabled"
@@ -57,7 +56,6 @@ class LyricCapsuleHandler(
             "notification_actions_style" -> {
                 cachedActionStyle = prefs.getString(key, "disabled") ?: "disabled"
                 rebuildCachedIntents()
-                lastPostedNotification = null
             }
             "progress_bar_color_enabled" -> cachedUseAlbumColor = prefs.getBoolean(key, false)
             "dynamic_icon_style" -> {
@@ -68,7 +66,6 @@ class LyricCapsuleHandler(
             "notification_click_style" -> {
                 cachedClickStyle = prefs.getString(key, "default") ?: "default"
                 rebuildCachedIntents()
-                lastPostedNotification = null
             }
             "oneui_capsule_color_enabled",
             OneUiCapsuleColorMode.PREF_KEY -> {
@@ -155,7 +152,6 @@ class LyricCapsuleHandler(
         lastNotifiedProgress = -1
         lastNotifyTime = 0L
         isFirstNotification = true
-        lastPostedNotification = null
         releaseCachedIconBitmap()
     }
 
@@ -164,7 +160,6 @@ class LyricCapsuleHandler(
         isRunning = false
         unloadPreferences()
         manager?.cancel(1001)
-        lastPostedNotification = null
         releaseCachedIconBitmap()
     }
 
@@ -299,7 +294,6 @@ class LyricCapsuleHandler(
             } else {
                 manager?.notify(1001, notification)
             }
-            lastPostedNotification = notification
         } catch (e: Exception) {
             LogManager.getInstance().e(context, TAG, "Update Failed: $e")
         }
@@ -314,18 +308,6 @@ class LyricCapsuleHandler(
         iconFrame: IconFrame,
         albumColor: Int
     ): Notification {
-        if (Build.VERSION.SDK_INT >= 36) {
-            return buildPlatformNotification(
-                displayLyric = displayLyric,
-                fullLyric = fullLyric,
-                title = title,
-                sourceApp = sourceApp,
-                progressPercent = progressPercent,
-                iconFrame = iconFrame,
-                albumColor = albumColor
-            )
-        }
-
         val builder = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_music_note)
             .setOngoing(true)
@@ -438,124 +420,6 @@ class LyricCapsuleHandler(
                     }
                 }
                 
-                bitmap?.let { bmp ->
-                    if (bmp.isRecycled) return@let
-                    try {
-                        val icon = android.graphics.drawable.Icon.createWithBitmap(bmp)
-                        val field = android.app.Notification::class.java.getDeclaredField("mSmallIcon")
-                        field.isAccessible = true
-                        field.set(this, icon)
-                    } catch (e: Exception) {
-                        LogManager.getInstance().e(context, TAG, "Failed to inject Dynamic Icon: $e")
-                    }
-                }
-            }
-        }
-    }
-
-    private fun buildPlatformNotification(
-        displayLyric: String,
-        fullLyric: String,
-        title: String,
-        sourceApp: String,
-        progressPercent: Int,
-        iconFrame: IconFrame,
-        albumColor: Int
-    ): Notification {
-        val builder = lastPostedNotification?.let {
-            Notification.Builder.recoverBuilder(context, it)
-        } ?: Notification.Builder(context, CHANNEL_ID)
-
-        builder
-            .setSmallIcon(R.drawable.ic_music_note)
-            .setContentTitle(title)
-            .setContentText(fullLyric.ifEmpty { "Waiting for lyrics..." })
-            .setSubText(sourceApp)
-            .setOngoing(true)
-            .setOnlyAlertOnce(true)
-            .setVisibility(Notification.VISIBILITY_PUBLIC)
-            .setContentIntent(cachedContentIntent)
-            .setShortcutId(null)
-
-        builder.extras.putBoolean("android.app.extra.REQUEST_PROMOTED_ONGOING", true)
-        builder.setShortCriticalText(displayLyric.ifEmpty { fullLyric.ifEmpty { "Waiting for lyrics..." } })
-
-        if (lastPostedNotification == null) {
-            when (cachedActionStyle) {
-                "media_controls" -> {
-                    builder.addAction(0, context.getString(R.string.action_pause), cachedPauseIntent)
-                    builder.addAction(0, context.getString(R.string.action_next), cachedNextIntent)
-                }
-                "miplay" -> {
-                    builder.addAction(0, context.getString(R.string.action_miplay), cachedMiplayIntent)
-                }
-            }
-        }
-
-        try {
-            val barColor = if (cachedUseAlbumColor) albumColor else COLOR_PRIMARY
-            val barColorIndeterminate = if (cachedUseAlbumColor) albumColor else COLOR_TERTIARY
-
-            if (RomUtils.getRomType() == "OneUI") {
-                builder.setColor(
-                    OneUiCapsuleColorMode.resolveColor(
-                        mode = cachedOneuiCapsuleColorMode,
-                        albumColor = albumColor
-                    )
-                )
-            } else {
-                builder.setColor(barColor)
-            }
-
-            val style = Notification.ProgressStyle().setStyledByProgress(true)
-            if (progressPercent >= 0) {
-                val segment = Notification.ProgressStyle.Segment(100)
-                segment.setColor(barColor)
-                style.setProgressSegments(listOf(segment))
-                style.setProgress(progressPercent.coerceIn(0, 100))
-            } else {
-                val segment = Notification.ProgressStyle.Segment(100)
-                segment.setColor(barColorIndeterminate)
-                style.setProgressSegments(listOf(segment))
-                style.setProgressIndeterminate(true)
-            }
-            builder.setStyle(style)
-        } catch (e: Exception) {
-            LogManager.getInstance().e(context, TAG, "Platform ProgressStyle failed: $e")
-        }
-
-        return builder.build().apply {
-            if (cachedUseDynamicIcon) {
-                val bitmap = when (cachedIconStyle) {
-                    "advanced" -> {
-                        val metadata = LyricRepository.getInstance().liveMetadata.value
-                        val albumArt = LyricRepository.getInstance().liveAlbumArt.value
-
-                        val realTitle = metadata?.title ?: ""
-                        val realArtist = metadata?.artist ?: ""
-
-                        val cacheKey = "advanced|$realTitle|$realArtist|${albumArt?.hashCode()}"
-                        if (cachedIconKey != cacheKey) {
-                            val parsedTitle = TitleParser.parse(realTitle)
-                            replaceCachedIconBitmap(
-                                cacheKey,
-                                AdvancedIconRenderer.render(albumArt, parsedTitle, realArtist, context)
-                            )
-                        }
-                        cachedIconBitmap
-                    }
-                    else -> {
-                        val iconText = iconFrame.text
-                        val forceSize = iconFrame.fontSize
-
-                        val cacheKey = "classic|$iconText|$forceSize"
-                        if (cachedIconKey != cacheKey) {
-                            replaceCachedIconBitmap(cacheKey, textToBitmap(iconText, forceSize))
-                        }
-                        cachedIconBitmap
-                    }
-                }
-
                 bitmap?.let { bmp ->
                     if (bmp.isRecycled) return@let
                     try {

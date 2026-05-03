@@ -95,6 +95,36 @@ fun MiuixCustomSettingsScreen(
 
     val isLiveUpdateSupported = remember { RomUtils.isLiveUpdateSupported() }
     val isHyperOs = remember { RomUtils.isHyperOs() }
+    val forceDisableScrollingForFullSuperIsland =
+        isHyperOs && (superIslandEnabled || !isLiveUpdateSupported) && superIslandLyricMode == "full"
+
+    fun applyFullSuperIslandScrollForce(force: Boolean, restoreLegacyState: Boolean = false) {
+        val forcedKey = "full_super_island_forced_disable_scrolling"
+        val backupKey = "disable_lyric_scrolling_before_full_super_island"
+        val wasForced = prefs.getBoolean(forcedKey, false)
+        val editor = prefs.edit()
+
+        if (force) {
+            if (!wasForced) {
+                editor.putBoolean(backupKey, disableScrolling)
+                editor.putBoolean(forcedKey, true)
+            }
+            disableScrolling = true
+            editor.putBoolean("disable_lyric_scrolling", true)
+        } else if (wasForced) {
+            val restoredValue = prefs.getBoolean(backupKey, false)
+            disableScrolling = restoredValue
+            editor.putBoolean("disable_lyric_scrolling", restoredValue)
+            editor.remove(backupKey)
+            editor.remove(forcedKey)
+        } else if (restoreLegacyState && disableScrolling) {
+            disableScrolling = false
+            editor.putBoolean("disable_lyric_scrolling", false)
+        }
+
+        editor.apply()
+    }
+
     fun setSuperIslandMode(enabled: Boolean) {
         if (superIslandEnabled == enabled) return
 
@@ -121,11 +151,8 @@ fun MiuixCustomSettingsScreen(
         floatingLyricsLabEnabled = LabFeatureManager.isFloatingLyricsEnabled(prefs)
         superIslandNotificationStyle = LabFeatureManager.sanitizeSuperIslandNotificationStyle(context)
     }
-    LaunchedEffect(superIslandLyricMode) {
-        if (superIslandLyricMode == "full" && !disableScrolling) {
-            disableScrolling = true
-            prefs.edit().putBoolean("disable_lyric_scrolling", true).apply()
-        }
+    LaunchedEffect(forceDisableScrollingForFullSuperIsland) {
+        applyFullSuperIslandScrollForce(forceDisableScrollingForFullSuperIsland)
     }
     LaunchedEffect(isLiveUpdateSupported) {
         if (!isLiveUpdateSupported) {
@@ -204,8 +231,8 @@ fun MiuixCustomSettingsScreen(
                                     SuperSwitch(
                                         title = stringResource(R.string.settings_disable_scrolling),
                                         summary = stringResource(R.string.settings_disable_scrolling_desc),
-                                        checked = disableScrolling || superIslandLyricMode == "full",
-                                        enabled = superIslandLyricMode != "full",
+                                        checked = disableScrolling || forceDisableScrollingForFullSuperIsland,
+                                        enabled = !forceDisableScrollingForFullSuperIsland,
                                         onCheckedChange = {
                                             disableScrolling = it
                                             prefs.edit().putBoolean("disable_lyric_scrolling", it).apply()
@@ -268,9 +295,8 @@ fun MiuixCustomSettingsScreen(
                                                     prefs.edit()
                                                         .putString("super_island_lyric_mode", newMode)
                                                         .apply()
-                                                    if (newMode == "full" && !disableScrolling) {
-                                                        disableScrolling = true
-                                                        prefs.edit().putBoolean("disable_lyric_scrolling", true).apply()
+                                                    if (newMode == "standard") {
+                                                        applyFullSuperIslandScrollForce(force = false, restoreLegacyState = true)
                                                     }
                                                 }
                                             )

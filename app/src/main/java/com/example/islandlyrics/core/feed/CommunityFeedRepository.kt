@@ -42,7 +42,6 @@ object CommunityFeedRepository {
     private const val PRIMARY_BASE_URL = "https://raw.githubusercontent.com/FrancoGiudans/CapsulyricFeed/main/data"
     private const val LEGACY_BASE_URL = "https://raw.githubusercontent.com/FrancoGiudans/Caps-feed/main/data"
     private const val GITEE_BASE_URL = "https://gitee.com/franklinsmithson/caps-feed/raw/main/data"
-    private const val CACHE_MAX_AGE_MS = 6 * 60 * 60 * 1000L // 6 hours
 
     suspend fun fetchFeed(context: Context): CommunityFeed = withContext(Dispatchers.IO) {
         if (OfflineModeManager.isEnabled(context)) {
@@ -58,20 +57,11 @@ object CommunityFeedRepository {
     }
 
     private fun fetchItemsCached(context: Context, relativePath: String): List<CommunityFeedItem> {
-        // Try local cache first
         val cacheFile = java.io.File(context.cacheDir, "feed_${relativePath.replace('/', '_')}")
-        if (cacheFile.exists() && System.currentTimeMillis() - cacheFile.lastModified() < CACHE_MAX_AGE_MS) {
-            try {
-                val cached = cacheFile.readText()
-                if (cached.isNotBlank()) {
-                    return parseItems(cached, context)
-                }
-            } catch (_: Exception) { /* fall through to network */ }
-        }
 
         val response = buildBaseUrls(context)
             .asSequence()
-            .map { baseUrl -> baseUrl to fetchText("$baseUrl/$relativePath") }
+            .map { baseUrl -> baseUrl to fetchText(buildFeedUrl(baseUrl, relativePath)) }
             .firstOrNull { (_, response) -> response != null }
             ?.second
             ?: return if (cacheFile.exists()) {
@@ -84,6 +74,11 @@ object CommunityFeedRepository {
         // Save to cache
         try { cacheFile.writeText(response) } catch (_: Exception) { }
         return parseItems(response, context)
+    }
+
+    private fun buildFeedUrl(baseUrl: String, relativePath: String): String {
+        val separator = if (baseUrl.contains("?")) "&" else "?"
+        return "$baseUrl/$relativePath${separator}t=${System.currentTimeMillis() / 60_000L}"
     }
 
     private fun buildBaseUrls(context: Context): List<String> {
