@@ -70,6 +70,7 @@ class SuperIslandHandler(
     private val networkCutMutex = Mutex()
     private var aggressiveNetworkCutActive = false
     private var aggressiveTrackKey: String? = null
+    private var aggressiveCutGeneration = 0L
 
     private val prefs by lazy { context.getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE) }
     private val prefListener = SharedPreferences.OnSharedPreferenceChangeListener { p, key ->
@@ -368,8 +369,14 @@ class SuperIslandHandler(
         if (aggressiveNetworkCutActive) {
             val songEnded = !state.isPlaying
             val songChanged = aggressiveTrackKey != null && aggressiveTrackKey != currentTrackKey
-            if (songEnded || songChanged || cachedXmsfBypassMode != XmsfBypassMode.AGGRESSIVE) {
-                restoreXmsfNetworkingAsync()
+            if (songEnded || cachedXmsfBypassMode != XmsfBypassMode.AGGRESSIVE) {
+                restoreXmsfNetworkingAsync(expectedGeneration = aggressiveCutGeneration)
+            } else if (songChanged) {
+                // Auto-advance can deliver the next track while playback remains active.
+                // Keep the aggressive bypass window open instead of briefly restoring XMSF,
+                // otherwise HyperOS may remove the freshly posted focus notification.
+                aggressiveTrackKey = currentTrackKey
+                aggressiveCutGeneration++
             }
         }
 
@@ -524,18 +531,37 @@ class SuperIslandHandler(
         lastSentArtist = state.artist
         lastNotifyTime = System.currentTimeMillis()
 
-        notifyWithNetworkCut(notification, isFirstNotification, currentTrackKey)
+        notifyWithNetworkCut(notification, isFirstNotification, currentTrackKey, state.isPlaying)
         if (isFirstNotification) {
             isFirstNotification = false
         }
     }
 
-    private fun notifyWithNetworkCut(notification: Notification, isFirst: Boolean, currentTrackKey: String) {
+    private fun notifyWithNetworkCut(
+        notification: Notification,
+        isFirst: Boolean,
+        currentTrackKey: String,
+        isPlaying: Boolean
+    ) {
         when (cachedXmsfBypassMode) {
             XmsfBypassMode.AGGRESSIVE -> {
                 networkCutJob?.cancel()
-                scope.launch(Dispatchers.IO) {
+                if (!isPlaying) {
+                    restoreXmsfNetworkingAsync(expectedGeneration = aggressiveCutGeneration)
+                    if (isFirst) {
+                        service.startForeground(NOTIFICATION_ID, notification)
+                    } else {
+                        manager?.notify(NOTIFICATION_ID, notification)
+                    }
+                    return
+                }
+
+                val cutGeneration = ++aggressiveCutGeneration
+                networkCutJob = scope.launch(Dispatchers.IO) {
                     networkCutMutex.withLock {
+                        if (cutGeneration != aggressiveCutGeneration) {
+                            return@withLock
+                        }
                         if (!aggressiveNetworkCutActive) {
                             withContext(NonCancellable) {
                                 com.example.islandlyrics.integration.shizuku.XmsfNetworkHelper.setXmsfNetworkingEnabled(context, false)
@@ -594,12 +620,21 @@ class SuperIslandHandler(
     }
 
     private fun restoreXmsfNetworkingAsync() {
-        aggressiveTrackKey = null
-        aggressiveNetworkCutActive = false
+        restoreXmsfNetworkingAsync(expectedGeneration = null)
+    }
+
+    private fun restoreXmsfNetworkingAsync(expectedGeneration: Long?) {
         scope.launch {
             withContext(Dispatchers.IO) {
-                withContext(NonCancellable) {
-                    com.example.islandlyrics.integration.shizuku.XmsfNetworkHelper.setXmsfNetworkingEnabled(context, true)
+                networkCutMutex.withLock {
+                    if (expectedGeneration != null && expectedGeneration != aggressiveCutGeneration) {
+                        return@withLock
+                    }
+                    aggressiveTrackKey = null
+                    aggressiveNetworkCutActive = false
+                    withContext(NonCancellable) {
+                        com.example.islandlyrics.integration.shizuku.XmsfNetworkHelper.setXmsfNetworkingEnabled(context, true)
+                    }
                 }
             }
         }

@@ -736,6 +736,11 @@ class MediaMonitorService : NotificationListenerService() {
             LyricRepository.getInstance().updateLyric(finalLyric, getAppName(pkg), "Notification")
         }
 
+        // Some players auto-advance by publishing new metadata before sending a fresh
+        // playback-state callback. Re-evaluate now so a delayed stop from the previous
+        // track cannot dismiss the new focus notification.
+        checkServiceState()
+
         // --- Save state for persistence ---
         saveParserState(pkg, finalTitle, finalArtist, isDynamicLyricMode, duration)
 
