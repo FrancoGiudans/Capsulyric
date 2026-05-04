@@ -297,7 +297,10 @@ fun CustomSettingsScreen(
                             CapsulePreview(
                                 dynamicIconEnabled = if (superIslandEnabled) true else iconStyle != "disabled",
                                 iconStyle = previewIconStyle,
-                                oneuiCapsuleColorMode = oneuiCapsuleColorMode
+                                oneuiCapsuleColorMode = oneuiCapsuleColorMode,
+                                superIslandEnabled = superIslandEnabled || (isHyperOs && !isLiveUpdateSupported),
+                                superIslandLyricMode = superIslandLyricMode,
+                                superIslandFullLyricShowLeftCover = superIslandFullLyricShowLeftCover
                             )
                             Spacer(modifier = Modifier.height(16.dp))
 
@@ -587,7 +590,9 @@ fun CustomSettingsScreen(
                                  superIslandEnabled = superIslandEnabled,
                                  superIslandTextColorEnabled = superIslandTextColorEnabled,
                                  superIslandMediaButtonLayout = superIslandMediaButtonLayout,
-                                 superIslandNotificationStyle = superIslandNotificationStyle
+                                 superIslandNotificationStyle = superIslandNotificationStyle,
+                                 superIslandLyricMode = superIslandLyricMode,
+                                 superIslandFullLyricShowLeftCover = superIslandFullLyricShowLeftCover
                              )
                              Spacer(modifier = Modifier.height(16.dp))
 

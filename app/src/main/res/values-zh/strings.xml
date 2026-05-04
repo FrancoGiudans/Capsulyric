@@ -226,7 +226,7 @@
     <string name="settings_prerelease_update">更新通道</string>
     <string name="settings_prerelease_update_desc">选择你希望接收的更新类型。</string>
     <string name="dialog_prerelease_warning_title">更新通道</string>
-    <string name="settings_prerelease_desc">Q: 不同更新通道有什么区别？</string>
+    <string name="settings_prerelease_desc">Q：不同更新通道有什么区别？</string>
     <string name="dialog_prerelease_desc_title">频道说明</string>
     <string name="dialog_prerelease_desc_message">A：\n\n• <b>Stable</b>：仅接收正式版，适合日常使用。\n\n• <b>Preview</b>：接收常规预览版，并会继续收到后续 Stable 正式版；适合希望提前体验但不进入实验轨道的用户。\n\n• <b>Experiment</b>：仅接收测试分支的 Canary 滚动构建。<b>[仅用于测试，极度不稳定]</b>。该通道不会接收 Stable 或 Preview 更新。</string>
     

@@ -219,7 +219,7 @@
     <string name="dialog_prerelease_warning_title">Update Channel</string>
     <string name="dialog_prerelease_warning_message">Preview and Experiment updates may include unfinished changes and are not recommended if you prefer maximum stability.</string>
     <string name="settings_prerelease_channel">Update Channel</string>
-    <string name="settings_prerelease_desc">What’s the difference between update channels?</string>
+    <string name="settings_prerelease_desc">Q: What’s the difference between update channels?</string>
     <string name="dialog_prerelease_desc_title">Channel Guide</string>
     <string name="dialog_prerelease_desc_message">• <b>Stable</b>: Receives official releases only. Best for everyday use.\n\n• <b>Preview</b>: Receives preview releases first, and later moves on to the matching Stable release. Best when you want new features earlier with lower risk.\n\n• <b>Experiment</b>: Receives experimental builds from the testing branch only. Updates arrive earlier, but changes may be incomplete or unstable. This option appears after enabling <b>Receive Test Builds</b> in Laboratory.</string>
     

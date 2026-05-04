@@ -52,7 +52,10 @@ fun MetricCard(
 fun CapsulePreview(
     dynamicIconEnabled: Boolean,
     iconStyle: String,
-    oneuiCapsuleColorMode: String = OneUiCapsuleColorMode.BLACK
+    oneuiCapsuleColorMode: String = OneUiCapsuleColorMode.BLACK,
+    superIslandEnabled: Boolean = false,
+    superIslandLyricMode: String = "standard",
+    superIslandFullLyricShowLeftCover: Boolean = true
 ) {
     val repo = remember { LyricRepository.getInstance() }
     val metadata by repo.liveMetadata.observeAsState()
@@ -62,6 +65,7 @@ fun CapsulePreview(
     val title = metadata?.title ?: "Song Title"
     val artist = metadata?.artist ?: "Artist Name"
     val currentLyric = lyricInfo?.lyric ?: "Lyrics waiting..."
+    val titleWithArtist = if (artist.isNotBlank()) "$title - $artist" else title
     
     // Extract Color for OneUI
     var extractedColor by remember { mutableStateOf<Color?>(null) }
@@ -83,7 +87,6 @@ fun CapsulePreview(
         }
     }
     
-    // Layout Constants simulating the Capsule/Island
     val pillHeight = 56.dp // Standard Island height simulation
     val previewAlbumColor = extractedColor?.toArgb() ?: Color.Black.toArgb()
     val pillColor = Color(
@@ -93,88 +96,162 @@ fun CapsulePreview(
         )
     )
     
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 8.dp)
-            .height(pillHeight + 16.dp) // Container padding
-            .background(Color.Transparent), // Let root background show
-        contentAlignment = Alignment.Center
-    ) {
-        // The Capsule Itself
+    if (superIslandEnabled) {
+        val showLeftCover = albumArt != null && (superIslandLyricMode != "full" || superIslandFullLyricShowLeftCover)
+        val split = SuperIslandLyricLayout.splitFullLyric(currentLyric, showLeftCover)
+        val leftText = if (superIslandLyricMode == "full") {
+            split.left.ifEmpty { "♪" }
+        } else {
+            SuperIslandLyricLayout.takeByWeight(
+                titleWithArtist.ifBlank { "♪" },
+                if (showLeftCover) 13 else 16
+            ).ifEmpty { "♪" }
+        }
+        val rightText = if (superIslandLyricMode == "full") {
+            split.right.ifEmpty { "♪" }
+        } else {
+            SuperIslandLyricLayout.takeByWeight(currentLyric.ifBlank { "♪" }, 14).ifEmpty { "♪" }
+        }
+
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(pillHeight)
-                .clip(CircleShape) // Pill shape
-                .background(pillColor)
-                .padding(horizontal = 12.dp, vertical = 8.dp),
+                .padding(horizontal = 8.dp)
+                .height(pillHeight + 16.dp)
+                .padding(horizontal = 18.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Start
+            horizontalArrangement = Arrangement.Center
         ) {
-            // --- LEFT AREA (ICON) ---
-            if (dynamicIconEnabled) {
-                // Advanced: [Art] [Title/Artist]
-                // Album Art
-                if (albumArt != null) {
-                    Image(
-                        bitmap = albumArt!!.asImageBitmap(),
-                        contentDescription = null,
-                        modifier = Modifier
-                            .size(40.dp) // 40dp fits safely in 56dp height
-                            .clip(RoundedCornerShape(8.dp)),
-                        contentScale = ContentScale.Crop
-                    )
-                } else {
-                    Box(
-                        modifier = Modifier
-                            .size(40.dp)
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(Color.DarkGray)
-                    )
-                }
-                
-                Spacer(modifier = Modifier.width(8.dp))
-                
-                // Text Info
-                Column(
-                    verticalArrangement = Arrangement.Center,
-                    modifier = Modifier.widthIn(max = 120.dp)
-                ) {
-                    Text(
-                        text = title,
-                        color = Color.White,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 14.sp,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-            } else {
-                 // Disabled: App Icon (Music Note) - NO BACKGROUND
-                 Icon(
-                    painter = painterResource(R.drawable.ic_music_note),
-                    contentDescription = null,
-                    tint = Color.White,
-                    modifier = Modifier
-                        .size(24.dp) // Standard icon size
-                        // No background, no circle
+            Box(modifier = Modifier.weight(if (showLeftCover) 1.12f else 1.22f)) {
+                SuperIslandPreviewPill(
+                    text = leftText,
+                    albumArt = if (showLeftCover) albumArt else null,
+                    modifier = Modifier.fillMaxWidth()
                 )
             }
-            
-            Spacer(modifier = Modifier.weight(1f))
-            
-            // --- RIGHT AREA (LYRICS) ---
-            Text(
-                text = currentLyric,
-                color = Color.White,
-                fontWeight = FontWeight.Bold,
-                fontSize = 14.sp, // Large lyric text
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(start = 8.dp)
-            )
+            Spacer(modifier = Modifier.width(16.dp))
+            Box(
+                modifier = Modifier.weight(1f),
+                contentAlignment = Alignment.CenterEnd
+            ) {
+                SuperIslandPreviewPill(
+                    text = rightText,
+                    albumArt = null,
+                    modifier = Modifier.fillMaxWidth(0.92f)
+                )
+            }
         }
+    } else {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp)
+                .height(pillHeight + 16.dp)
+                .background(Color.Transparent),
+            contentAlignment = Alignment.Center
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(pillHeight)
+                    .clip(CircleShape)
+                    .background(pillColor)
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Start
+            ) {
+                if (dynamicIconEnabled) {
+                    if (albumArt != null) {
+                        Image(
+                            bitmap = albumArt!!.asImageBitmap(),
+                            contentDescription = null,
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(RoundedCornerShape(8.dp)),
+                            contentScale = ContentScale.Crop
+                        )
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(Color.DarkGray)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    Column(
+                        verticalArrangement = Arrangement.Center,
+                        modifier = Modifier.widthIn(max = 120.dp)
+                    ) {
+                        Text(
+                            text = title,
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                } else {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_music_note),
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.weight(1f))
+
+                Text(
+                    text = currentLyric,
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 14.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(start = 8.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SuperIslandPreviewPill(
+    text: String,
+    albumArt: Bitmap?,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier
+            .height(46.dp)
+            .clip(CircleShape)
+            .background(Color.Black)
+            .padding(horizontal = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        if (albumArt != null) {
+            Image(
+                bitmap = albumArt.asImageBitmap(),
+                contentDescription = null,
+                modifier = Modifier
+                    .size(32.dp)
+                    .clip(RoundedCornerShape(8.dp)),
+                contentScale = ContentScale.Crop
+            )
+            Spacer(modifier = Modifier.width(6.dp))
+        }
+        Text(
+            text = text,
+            color = Color.White,
+            fontWeight = FontWeight.Bold,
+            fontSize = 14.sp,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
     }
 }
 
@@ -185,7 +262,9 @@ fun NotificationPreview(
     superIslandEnabled: Boolean = false,
     superIslandTextColorEnabled: Boolean = false,
     superIslandMediaButtonLayout: String = "two_button",
-    superIslandNotificationStyle: String = "standard"
+    superIslandNotificationStyle: String = "standard",
+    superIslandLyricMode: String = "standard",
+    superIslandFullLyricShowLeftCover: Boolean = true
 ) {
     val context = LocalContext.current
     val repo = remember { LyricRepository.getInstance() }
@@ -198,6 +277,14 @@ fun NotificationPreview(
     val artist = metadata?.artist ?: "Artist Name"
     val currentLyric = lyricInfo?.lyric ?: "Lyrics will appear here..."
     val sourceApp = lyricInfo?.sourceApp ?: "Source App"
+    val effectiveButtonLayout = if (superIslandNotificationStyle == "advanced_beta") "three_button" else superIslandMediaButtonLayout
+    val notificationLyric = when {
+        superIslandEnabled && actionStyle == "media_controls" && effectiveButtonLayout == "three_button" ->
+            SuperIslandLyricLayout.takeByWeight(currentLyric, 10).ifEmpty { currentLyric }
+        superIslandEnabled && actionStyle == "media_controls" && effectiveButtonLayout == "two_button" ->
+            SuperIslandLyricLayout.takeByWeight(currentLyric, 14).ifEmpty { currentLyric }
+        else -> currentLyric
+    }
     
     val position = progressInfo?.position ?: 0L
     val duration = progressInfo?.duration ?: 100L
@@ -296,7 +383,7 @@ fun NotificationPreview(
                     // Middle: Text Info
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = currentLyric,
+                            text = notificationLyric,
                             color = Color.White, // Always white as per user request
                             fontWeight = FontWeight.SemiBold,
                             fontSize = 16.sp,
@@ -439,7 +526,15 @@ fun NotificationPreview(
                         // Middle: Metadata
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = currentLyric,
+                                text = if (superIslandLyricMode == "full") {
+                                    val split = SuperIslandLyricLayout.splitFullLyric(
+                                        currentLyric,
+                                        albumArt != null && superIslandFullLyricShowLeftCover
+                                    )
+                                    "${split.left} ${split.right}".trim().ifEmpty { currentLyric }
+                                } else {
+                                    currentLyric
+                                },
                                 color = textColor,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 18.sp,
