@@ -283,6 +283,8 @@ fun ParserRuleItem(
                 StatusBadge(active = rule.useSuperLyricApi, label = "SuperLyric")
                 Spacer(modifier = Modifier.width(8.dp))
                 StatusBadge(active = rule.useLyricGetterApi, label = "LyricGetter")
+                Spacer(modifier = Modifier.width(8.dp))
+                StatusBadge(active = rule.useLyriconApi, label = "Lyricon")
             }
         }
         

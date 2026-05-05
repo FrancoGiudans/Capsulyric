@@ -288,6 +288,12 @@ fun ParserRuleEditorScreen(
                 checked = state.useLyricGetterApi,
                 onCheckedChange = { state = state.copy(useLyricGetterApi = it) }
             )
+            SwitchRow(
+                title = stringResource(R.string.parser_lyricon_lyric),
+                subtitle = stringResource(R.string.parser_lyricon_lyric_desc_short),
+                checked = state.useLyriconApi,
+                onCheckedChange = { state = state.copy(useLyriconApi = it) }
+            )
 
             Spacer(modifier = Modifier.height(16.dp))
             Button(

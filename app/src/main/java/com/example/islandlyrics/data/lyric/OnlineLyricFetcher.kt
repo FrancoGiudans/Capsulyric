@@ -33,7 +33,9 @@ class OnlineLyricFetcher {
         val startTime: Long,  // 毫秒
         val endTime: Long,    // 毫秒
         val text: String,
-        val syllables: List<SyllableInfo>? = null  // 逐字信息
+        val syllables: List<SyllableInfo>? = null,  // 逐字信息
+        val translation: String? = null,
+        val roma: String? = null
     )
     
     // 逐字信息数据类

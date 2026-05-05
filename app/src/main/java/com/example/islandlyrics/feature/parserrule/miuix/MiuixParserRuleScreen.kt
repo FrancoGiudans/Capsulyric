@@ -353,6 +353,8 @@ fun MiuixParserRuleItem(
                 MiuixStatusBadge(active = rule.useSuperLyricApi, label = "Super")
                 Spacer(modifier = Modifier.width(8.dp))
                 MiuixStatusBadge(active = rule.useLyricGetterApi, label = "LGetter")
+                Spacer(modifier = Modifier.width(8.dp))
+                MiuixStatusBadge(active = rule.useLyriconApi, label = "Lyricon")
             }
         }
         Switch(

@@ -256,6 +256,12 @@ fun MiuixParserRuleEditorScreen(
                     checked = state.useLyricGetterApi,
                     onCheckedChange = { state = state.copy(useLyricGetterApi = it) }
                 )
+                SuperSwitch(
+                    title = stringResource(R.string.parser_lyricon_lyric),
+                    summary = stringResource(R.string.parser_lyricon_lyric_desc_short),
+                    checked = state.useLyriconApi,
+                    onCheckedChange = { state = state.copy(useLyriconApi = it) }
+                )
             }
 
             Spacer(modifier = Modifier.height(16.dp))

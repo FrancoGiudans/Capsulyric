@@ -201,6 +201,7 @@ dependencies {
     compileOnly project(':hidden-api')
     implementation libs.super.lyric.api
     implementation libs.lyric.getter.api
+    implementation libs.lyricon.subscriber
     implementation libs.focus.api
     implementation libs.core.ktx  // Upgraded for Android 16 NotificationCompat support
     implementation libs.media

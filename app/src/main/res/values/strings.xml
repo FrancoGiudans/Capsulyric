@@ -186,6 +186,8 @@
     <string name="parser_super_lyric_desc_short">Receive via broadcast</string>
     <string name="parser_lgetter_lyric">Lyric Getter API</string>
     <string name="parser_lgetter_lyric_desc_short">Receive via Lyric Getter broadcast</string>
+    <string name="parser_lyricon_lyric">Lyricon API</string>
+    <string name="parser_lyricon_lyric_desc_short">Subscribe to Lyricon active-player lyrics</string>
     <string name="parser_save">Save</string>
     <string name="parser_save_rule">Save Rule</string>
     <string name="parser_add_app_fmt">Add %s</string>

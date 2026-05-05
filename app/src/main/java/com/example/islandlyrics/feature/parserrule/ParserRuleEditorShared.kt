@@ -15,7 +15,8 @@ data class ParserRuleEditorState(
     val useRawMetadataForOnlineMatching: Boolean,
     val onlineLyricProviderOrder: List<OnlineLyricProvider>,
     val useSuperLyricApi: Boolean,
-    val useLyricGetterApi: Boolean
+    val useLyricGetterApi: Boolean,
+    val useLyriconApi: Boolean
 )
 
 fun ParserRule.toEditorState(): ParserRuleEditorState = ParserRuleEditorState(
@@ -29,7 +30,8 @@ fun ParserRule.toEditorState(): ParserRuleEditorState = ParserRuleEditorState(
     useRawMetadataForOnlineMatching = useRawMetadataForOnlineMatching,
     onlineLyricProviderOrder = OnlineLyricProvider.normalizeOrder(onlineLyricProviderOrder),
     useSuperLyricApi = useSuperLyricApi,
-    useLyricGetterApi = useLyricGetterApi
+    useLyricGetterApi = useLyricGetterApi,
+    useLyriconApi = useLyriconApi
 )
 
 fun ParserRuleEditorState.toRule(previousRule: ParserRule?, isNewRule: Boolean): ParserRule = ParserRule(
@@ -44,5 +46,6 @@ fun ParserRuleEditorState.toRule(previousRule: ParserRule?, isNewRule: Boolean):
     useRawMetadataForOnlineMatching = useRawMetadataForOnlineMatching,
     onlineLyricProviderOrder = onlineLyricProviderOrder.map { it.id },
     useSuperLyricApi = useSuperLyricApi,
-    useLyricGetterApi = useLyricGetterApi
+    useLyricGetterApi = useLyricGetterApi,
+    useLyriconApi = useLyriconApi
 )

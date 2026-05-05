@@ -7,6 +7,7 @@ media = "1.7.1"
 material = "1.13.0"
 superLyricApi = "3.4"
 lyricGetterApi = "6.0.0"
+lyriconSubscriber = "0.1.70"
 activityCompose = "1.13.0"
 composeBom = "2026.04.01"
 markwon = "4.6.2"
@@ -28,6 +29,7 @@ media = { group = "androidx.media", name = "media", version.ref = "media" }
 material = { group = "com.google.android.material", name = "material", version.ref = "material" }
 super-lyric-api = { group = "com.github.HChenX", name = "SuperLyricApi", version.ref = "superLyricApi" }
 lyric-getter-api = { group = "com.github.xiaowine", name = "Lyric-Getter-Api", version.ref = "lyricGetterApi" }
+lyricon-subscriber = { group = "io.github.proify.lyricon", name = "subscriber", version.ref = "lyriconSubscriber" }
 kotlin-bom = { group = "org.jetbrains.kotlin", name = "kotlin-bom", version.ref = "kotlin" }
 kotlin-stdlib = { group = "org.jetbrains.kotlin", name = "kotlin-stdlib", version.ref = "kotlin" }
 

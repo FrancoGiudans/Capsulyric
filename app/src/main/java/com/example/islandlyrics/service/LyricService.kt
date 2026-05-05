@@ -25,6 +25,7 @@ import com.example.islandlyrics.core.network.OfflineModeManager
 import com.example.islandlyrics.data.LyricRepository
 import com.example.islandlyrics.data.ParserRuleHelper
 import com.example.islandlyrics.data.lyric.LyricGetterSource
+import com.example.islandlyrics.data.lyric.LyriconSource
 import com.example.islandlyrics.data.lyric.OnlineLyricSource
 import com.example.islandlyrics.data.lyric.SuperLyricSource
 import com.example.islandlyrics.feature.main.MainActivity
@@ -42,6 +43,7 @@ class LyricService : Service() {
     private lateinit var onlineLyricSource: OnlineLyricSource
     private lateinit var superLyricSource: SuperLyricSource
     private lateinit var lyricGetterSource: LyricGetterSource
+    private lateinit var lyriconSource: LyriconSource
 
     private lateinit var progressSyncController: ProgressSyncController
     private var renderModeCoordinator: RenderModeCoordinator? = null
@@ -269,6 +271,7 @@ class LyricService : Service() {
             onlineLyricSource = onlineLyricSource
         )
         lyricGetterSource = LyricGetterSource(this, onlineLyricSource)
+        lyriconSource = LyriconSource(this)
         syncPushLyricSources()
 
         val filter = IntentFilter().apply {
@@ -304,11 +307,13 @@ class LyricService : Service() {
     }
 
     private fun syncPushLyricSources() {
-        if (!::superLyricSource.isInitialized || !::lyricGetterSource.isInitialized) return
+        if (!::superLyricSource.isInitialized || !::lyricGetterSource.isInitialized || !::lyriconSource.isInitialized) return
         superLyricSource.stop()
         lyricGetterSource.stop()
+        lyriconSource.stop()
         superLyricSource.start()
         lyricGetterSource.start()
+        lyriconSource.start()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -407,6 +412,7 @@ class LyricService : Service() {
         
         superLyricSource.stop()
         lyricGetterSource.stop()
+        lyriconSource.stop()
         onlineLyricSource.cancel()
         
         getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE).unregisterOnSharedPreferenceChangeListener(prefsListener)

@@ -24,7 +24,8 @@ data class ParserRule(
     val useRawMetadataForOnlineMatching: Boolean = false,
     val onlineLyricProviderOrder: List<String> = emptyList(),
     val useSuperLyricApi: Boolean = false,     // Whether to use SuperLyric API callbacks
-    val useLyricGetterApi: Boolean = false     // Whether to use Lyric Getter API broadcasts
+    val useLyricGetterApi: Boolean = false,    // Whether to use Lyric Getter API broadcasts
+    val useLyriconApi: Boolean = false         // Whether to subscribe to Lyricon active-player lyrics
 ) : Comparable<ParserRule> {
     override fun compareTo(other: ParserRule): Int {
         return packageName.compareTo(other.packageName)

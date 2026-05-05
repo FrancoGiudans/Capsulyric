@@ -22,6 +22,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -112,32 +113,56 @@ fun CapsulePreview(
         } else {
             SuperIslandLyricLayout.takeByWeight(currentLyric.ifBlank { "♪" }, 14).ifEmpty { "♪" }
         }
+        val leftAlbumArt = if (showLeftCover) albumArt else null
 
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 8.dp)
                 .height(pillHeight + 16.dp)
-                .padding(horizontal = 18.dp),
+                .padding(horizontal = 24.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Center
         ) {
-            Box(modifier = Modifier.weight(if (showLeftCover) 1.12f else 1.22f)) {
-                SuperIslandPreviewPill(
-                    text = leftText,
-                    albumArt = if (showLeftCover) albumArt else null,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-            Spacer(modifier = Modifier.width(16.dp))
-            Box(
-                modifier = Modifier.weight(1f),
-                contentAlignment = Alignment.CenterEnd
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(46.dp)
+                    .clip(CircleShape)
+                    .background(Color.Black)
+                    .padding(horizontal = 10.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                SuperIslandPreviewPill(
+                if (leftAlbumArt != null) {
+                    Image(
+                        bitmap = leftAlbumArt.asImageBitmap(),
+                        contentDescription = null,
+                        modifier = Modifier
+                            .size(32.dp)
+                            .clip(RoundedCornerShape(8.dp)),
+                        contentScale = ContentScale.Crop
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                }
+                Text(
+                    text = leftText,
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 14.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(if (showLeftCover) 1.12f else 1.22f)
+                )
+                Spacer(modifier = Modifier.width(14.dp))
+                Text(
                     text = rightText,
-                    albumArt = null,
-                    modifier = Modifier.fillMaxWidth(0.92f)
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 14.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    textAlign = TextAlign.End,
+                    modifier = Modifier.weight(1f)
                 )
             }
         }

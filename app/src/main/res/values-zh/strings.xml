@@ -174,6 +174,8 @@
     <string name="parser_super_lyric_desc_short">通过 SuperLyric 广播接收</string>
     <string name="parser_lgetter_lyric">Lyric Getter API</string>
     <string name="parser_lgetter_lyric_desc_short">通过 Lyric Getter 广播接收</string>
+    <string name="parser_lyricon_lyric">词幕 (Lyricon) API</string>
+    <string name="parser_lyricon_lyric_desc_short">订阅 Lyricon 活跃播放器歌词</string>
     <string name="parser_save">保存</string>
     <string name="parser_save_rule">保存规则</string>
     <string name="parser_add_app_fmt">添加 %s</string>
