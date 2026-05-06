@@ -188,6 +188,14 @@
     <string name="parser_lgetter_lyric_desc_short">Receive via Lyric Getter broadcast</string>
     <string name="parser_lyricon_lyric">Lyricon API</string>
     <string name="parser_lyricon_lyric_desc_short">Subscribe to Lyricon active-player lyrics</string>
+    <string name="parser_lyric_source_config">Lyric Source Config</string>
+    <string name="parser_no_source_enabled">No source enabled</string>
+    <string name="parser_receive_translation">Receive translation</string>
+    <string name="parser_receive_romanization">Receive romanization</string>
+    <string name="parser_online_translation_desc">Only QQ Music and NetEase online lyrics currently expose translation data.</string>
+    <string name="parser_online_romanization_desc">Only QQ Music and NetEase online lyrics currently expose romanization data.</string>
+    <string name="parser_lyricon_translation_desc">Receive translation fields when the active Lyricon provider sends them.</string>
+    <string name="parser_lyricon_romanization_desc">Receive romanization or secondary lyric fields when the active Lyricon provider sends them.</string>
     <string name="parser_save">Save</string>
     <string name="parser_save_rule">Save Rule</string>
     <string name="parser_add_app_fmt">Add %s</string>
@@ -243,6 +251,11 @@
     <string name="icon_style_advanced_desc">Dual-line layout with album art</string>
     <string name="dialog_icon_style_title">Select Icon Style</string>
     <string name="settings_disable_scrolling">Disable Lyric Scrolling</string>
+    <string name="settings_lyric_text_display_mode">Preferred lyric text</string>
+    <string name="settings_lyric_text_display_mode_desc">Translation and romanization only apply when the selected lyric source receives them; otherwise lyrics are shown.</string>
+    <string name="lyric_text_display_mode_lyric">Lyrics</string>
+    <string name="lyric_text_display_mode_translation">Translation</string>
+    <string name="lyric_text_display_mode_romanization">Romanization</string>
     <string name="settings_super_island">Send Xiaomi Super Island Notification</string>
     <string name="settings_super_island_desc">Replaces Live Update with Xiaomi Super Island template for lyric notification.</string>
     <string name="settings_capsule_mode">Capsule Mode</string>
@@ -558,8 +571,8 @@ Within the log interface, select the share/export icon. You can specify a timefr
     <string name="diag_btn_refresh">Refresh APIs</string>
     <string name="diag_online_lyric_debug_title">Online Lyrics Debug</string>
     <string name="diag_online_lyric_debug_desc">Inspect the final result from each online lyric API</string>
-    <string name="diag_qq_roman_debug_title">QQ Romanization Fetch</string>
-    <string name="diag_qq_roman_debug_desc">Fetch and fully dump QQ Music\'s contentroma</string>
+    <string name="diag_qq_roman_debug_title">Romanization / Translation Debug</string>
+    <string name="diag_qq_roman_debug_desc">Fetch and fully dump QQ Music and Netease lyric extras</string>
 
     <!-- Online lyric debug -->
     <string name="online_lyric_debug_back">Back</string>
@@ -652,6 +665,10 @@ Within the log interface, select the share/export icon. You can specify a timefr
     <string name="cache_management_delete">Delete</string>
     <string name="cache_management_query_info">Query</string>
     <string name="cache_management_provider">Source</string>
+    <string name="cache_management_sidecars">Extras</string>
+    <string name="cache_management_sidecars_fmt">Translation: %1$s / Romanization: %2$s</string>
+    <string name="cache_management_yes">Yes</string>
+    <string name="cache_management_no">No</string>
     <string name="cache_management_updated_at">Updated At</string>
     <string name="cache_management_unknown">Unknown</string>
     <string name="cache_management_has_custom_match">Contains custom match info</string>

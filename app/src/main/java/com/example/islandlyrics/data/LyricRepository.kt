@@ -28,7 +28,9 @@ class LyricRepository private constructor() {
     data class LyricInfo(
         val lyric: String,
         val sourceApp: String,     // E.g. "QQ音乐" or package name
-        val apiPath: String = "Unknown" // E.g. "SuperLyric", "Lyric Getter", "Online", "Notification"
+        val apiPath: String = "Unknown", // E.g. "SuperLyric", "Lyric Getter", "Online", "Notification"
+        val translation: String? = null,
+        val roma: String? = null
     )
 
     // Playback Progress Container
@@ -37,11 +39,32 @@ class LyricRepository private constructor() {
         val duration: Long   // in milliseconds
     )
 
+    data class SuperLyricDebugInfo(
+        val publisher: String?,
+        val packageName: String,
+        val lyric: String,
+        val translation: String?,
+        val roma: String?,
+        val hasLyric: Boolean,
+        val hasTranslation: Boolean,
+        val hasSecondary: Boolean,
+        val lyricLineRaw: String?,
+        val translationLineRaw: String?,
+        val secondaryLineRaw: String?,
+        val lyricWordsPreview: String,
+        val translationWordsPreview: String,
+        val secondaryWordsPreview: String,
+        val extraKeys: List<String>,
+        val skipReason: String? = null,
+        val timestamp: Long = System.currentTimeMillis()
+    )
+
     // Modern atomic LiveData (single source of truth)
     val liveMetadata = MutableLiveData<MediaInfo?>()
     val liveLyric = MutableLiveData<LyricInfo?>()
     val liveProgress = MutableLiveData<PlaybackProgress?>()
     val liveAlbumArt = MutableLiveData<Bitmap?>()
+    val liveSuperLyricDebug = MutableLiveData<SuperLyricDebugInfo?>()
     
     // Parsed lyrics from online sources (for syllable-based scrolling)
     data class ParsedLyricsInfo(
@@ -58,6 +81,13 @@ class LyricRepository private constructor() {
     // Track previous song to detect changes
     private var lastTrackId: String? = null
 
+    private data class LyricSidecar(
+        val translation: String? = null,
+        val roma: String? = null
+    )
+
+    private val sidecars = LinkedHashMap<String, LyricSidecar>()
+
     // Update methods
     fun updatePlaybackStatus(playing: Boolean) {
         if (isPlaying.value != playing) {
@@ -65,13 +95,52 @@ class LyricRepository private constructor() {
         }
     }
 
-    fun updateLyric(lyric: String?, app: String?, apiPath: String = "Unknown") {
+    fun updateLyric(
+        lyric: String?,
+        app: String?,
+        apiPath: String = "Unknown",
+        translation: String? = null,
+        roma: String? = null
+    ) {
         if (lyric == null || app == null) return
-        
-        val newInfo = LyricInfo(lyric, app, apiPath)
+
+        val normalizedTranslation = translation?.takeIf { it.isNotBlank() }
+        val normalizedRoma = roma?.takeIf { it.isNotBlank() }
+        if (lyric.isNotBlank() && (normalizedTranslation != null || normalizedRoma != null)) {
+            putSidecar(apiPath, lyric, normalizedTranslation, normalizedRoma)
+        }
+        val sidecar = if (lyric.isNotBlank()) sidecars[sidecarKey(apiPath, lyric)] else null
+
+        val newInfo = LyricInfo(
+            lyric = lyric,
+            sourceApp = app,
+            apiPath = apiPath,
+            translation = normalizedTranslation ?: sidecar?.translation,
+            roma = normalizedRoma ?: sidecar?.roma
+        )
         if (liveLyric.value == newInfo) return
         
         postOrSet(liveLyric, newInfo)
+    }
+
+    fun updateLyricSidecars(
+        apiPath: String,
+        entries: Map<String, Pair<String?, String?>>
+    ) {
+        entries.forEach { (lyric, values) ->
+            if (lyric.isNotBlank()) {
+                putSidecar(
+                    apiPath = apiPath,
+                    lyric = lyric,
+                    translation = values.first?.takeIf { it.isNotBlank() },
+                    roma = values.second?.takeIf { it.isNotBlank() }
+                )
+            }
+        }
+    }
+
+    fun updateSuperLyricDebug(info: SuperLyricDebugInfo) {
+        postOrSet(liveSuperLyricDebug, info)
     }
 
     fun updateMediaMetadata(
@@ -185,8 +254,29 @@ class LyricRepository private constructor() {
         }
     }
 
+    private fun putSidecar(
+        apiPath: String,
+        lyric: String,
+        translation: String?,
+        roma: String?
+    ) {
+        val key = sidecarKey(apiPath, lyric)
+        val old = sidecars[key]
+        sidecars[key] = LyricSidecar(
+            translation = translation ?: old?.translation,
+            roma = roma ?: old?.roma
+        )
+        while (sidecars.size > MAX_SIDECAR_CACHE_SIZE) {
+            val firstKey = sidecars.keys.firstOrNull() ?: break
+            sidecars.remove(firstKey)
+        }
+    }
+
+    private fun sidecarKey(apiPath: String, lyric: String): String = "$apiPath\u0000$lyric"
+
     companion object {
         const val ACTION_REFRESH_DIAGNOSTICS = "com.example.islandlyrics.ACTION_REFRESH_DIAGNOSTICS"
+        private const val MAX_SIDECAR_CACHE_SIZE = 300
         private var instance: LyricRepository? = null
 
         @Synchronized

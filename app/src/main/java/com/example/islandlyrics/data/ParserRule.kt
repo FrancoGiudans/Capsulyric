@@ -22,10 +22,14 @@ data class ParserRule(
     val useOnlineLyrics: Boolean = false,      // Whether to fetch lyrics from online APIs
     val useSmartOnlineLyricSelection: Boolean = true,
     val useRawMetadataForOnlineMatching: Boolean = false,
+    val receiveOnlineTranslation: Boolean = false,
+    val receiveOnlineRomanization: Boolean = false,
     val onlineLyricProviderOrder: List<String> = emptyList(),
     val useSuperLyricApi: Boolean = false,     // Whether to use SuperLyric API callbacks
     val useLyricGetterApi: Boolean = false,    // Whether to use Lyric Getter API broadcasts
-    val useLyriconApi: Boolean = false         // Whether to subscribe to Lyricon active-player lyrics
+    val useLyriconApi: Boolean = false,        // Whether to subscribe to Lyricon active-player lyrics
+    val receiveLyriconTranslation: Boolean = false,
+    val receiveLyriconRomanization: Boolean = false
 ) : Comparable<ParserRule> {
     override fun compareTo(other: ParserRule): Int {
         return packageName.compareTo(other.packageName)

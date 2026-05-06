@@ -1,6 +1,7 @@
 package com.example.islandlyrics.data.lyric
 
 import android.util.Base64
+import android.text.Html
 import com.example.islandlyrics.core.logging.AppLogger
 import kotlinx.coroutines.*
 import okhttp3.*
@@ -10,8 +11,12 @@ import org.json.JSONObject
 import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.net.URLEncoder
+import java.security.MessageDigest
 import java.util.concurrent.TimeUnit
 import java.util.zip.Inflater
+import java.util.zip.InflaterInputStream
+import javax.crypto.Cipher
+import javax.crypto.spec.SecretKeySpec
 import javax.net.ssl.HostnameVerifier
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
@@ -55,6 +60,8 @@ class OnlineLyricFetcher {
         val provider: OnlineLyricProvider,
         val matchedTitle: String? = null,    // 匹配到的标题
         val matchedArtist: String? = null,   // 匹配到的艺术家
+        val translationLyrics: String? = null,
+        val romanLyrics: String? = null,
         val error: String? = null            // 错误信息
     )
 
@@ -230,6 +237,7 @@ class OnlineLyricFetcher {
             if (songs == null || songs.length() == 0) return@withContext null
 
             val firstSong = songs.getJSONObject(0)
+            val songId = firstSong.optString("id", "")
             val songMid = firstSong.optString("mid", "")
             val matchedTitle = firstSong.optString("title", firstSong.optString("name", ""))
             val matchedArtist = firstSong.optJSONArray("singer")
@@ -282,7 +290,11 @@ class OnlineLyricFetcher {
             val lyricJsonText = unwrapJsonp(callback, lyricResponse) ?: return@withContext null
             val lyricJson = JSONObject(lyricJsonText)
             val lyricContent = decodeBase64Text(lyricJson.optString("lyric", ""))
-            val transContent = decodeBase64Text(lyricJson.optString("trans", ""))
+            val downloadExtras = fetchQQLyricExtras(songId)
+            val transContent = downloadExtras.translation.ifBlank {
+                decodeBase64Text(lyricJson.optString("trans", ""))
+            }
+            val romanContent = downloadExtras.romanization
             val mergedContent = lyricContent.ifBlank { transContent }
 
             if (mergedContent.isBlank()) {
@@ -306,12 +318,46 @@ class OnlineLyricFetcher {
                 hasSyllable = false,
                 provider = OnlineLyricProvider.QQMusic,
                 matchedTitle = matchedTitle,
-                matchedArtist = matchedArtist
+                matchedArtist = matchedArtist,
+                translationLyrics = transContent.takeIf { it.isNotBlank() },
+                romanLyrics = romanContent.takeIf { it.isNotBlank() }
             )
         } catch (e: Exception) {
             AppLogger.getInstance().log("OnlineLyric", "QQMusic API错误: ${e.message}")
             null
         }
+    }
+
+    private data class QqLyricExtras(
+        val translation: String = "",
+        val romanization: String = ""
+    )
+
+    private suspend fun fetchQQLyricExtras(songId: String): QqLyricExtras {
+        if (songId.isBlank()) return QqLyricExtras()
+        return runCatching {
+            val response = postForm(
+                url = "https://c.y.qq.com/qqmusic/fcgi-bin/lyric_download.fcg",
+                form = linkedMapOf(
+                    "version" to "15",
+                    "miniversion" to "82",
+                    "lrctype" to "4",
+                    "musicid" to songId
+                ),
+                headers = qqHeaders("https://c.y.qq.com/")
+            ).orEmpty()
+                .replace("<!--", "")
+                .replace("-->", "")
+                .trim()
+            val rawTranslationPayload = extractTagContent(response, "contentts").orEmpty()
+            val rawRomanPayload = extractTagContent(response, "contentroma").orEmpty()
+            QqLyricExtras(
+                translation = decodeQqDownloadLyricPayload(rawTranslationPayload),
+                romanization = decodeQqDownloadLyricPayload(rawRomanPayload)
+            )
+        }.onFailure {
+            AppLogger.getInstance().d("OnlineLyric", "QQ lyric extras fetch skipped: ${it.message}")
+        }.getOrDefault(QqLyricExtras())
     }
 
     // ========== 酷狗API ==========
@@ -613,37 +659,61 @@ class OnlineLyricFetcher {
                 return@withContext null
             }
             
-            val lyricUrl = "https://music.163.com/api/song/lyric?id=$songId&lv=-1&tv=-1"
-            val lyricResponse = suspendCancellableCoroutine<String?> { continuation ->
-                val request = Request.Builder().url(lyricUrl).build()
-                client.newCall(request).enqueue(object : Callback {
-                    override fun onFailure(call: Call, e: IOException) {
-                        continuation.resume(null)
-                    }
-                    override fun onResponse(call: Call, response: Response) {
-                        continuation.resume(response.body.string())
-                    }
-                })
-            }
+            val lyricResponse = fetchNeteaseLyricV1(songId)
+                ?: executeRequest(
+                    url = "https://music.163.com/api/song/lyric?id=$songId&lv=-1&tv=-1&rv=-1&kv=-1&yv=-1",
+                    headers = neteaseHeaders()
+                )
             
             if (lyricResponse == null) {
                 return@withContext null
             }
             
             val lyricJson = JSONObject(lyricResponse)
-            val lrc = lyricJson.optJSONObject("lrc")
-            val lyricContent = lrc?.optString("lyric", "") ?: ""
+            val lyricContent = lyricJson.optLyricText("lrc")
+            val translationContent = lyricJson.optLyricText("tlyric")
+                .ifBlank { lyricJson.optLyricText("ytlrc") }
+            val romanContent = lyricJson.optLyricText("romalrc")
+                .ifBlank { lyricJson.optLyricText("yromalrc") }
             
             if (lyricContent.isEmpty()) {
                 return@withContext null
             }
             
             val parsedLines = parseLrcLyrics(lyricContent)
-            LyricResult("Netease", lyricContent, parsedLines, false, provider = OnlineLyricProvider.Netease, matchedTitle = matchedTitle, matchedArtist = matchedArtist)
+            LyricResult(
+                "Netease",
+                lyricContent,
+                parsedLines,
+                false,
+                provider = OnlineLyricProvider.Netease,
+                matchedTitle = matchedTitle,
+                matchedArtist = matchedArtist,
+                translationLyrics = translationContent.takeIf { it.isNotBlank() },
+                romanLyrics = romanContent.takeIf { it.isNotBlank() }
+            )
         } catch (e: Exception) {
             AppLogger.getInstance().log("OnlineLyric", "Netease API错误: ${e.message}")
             null
         }
+    }
+
+    private fun fetchNeteaseLyricV1(songId: Long): String? {
+        return executeNeteaseEapi(
+            url = "https://interface3.music.163.com/eapi/song/lyric/v1",
+            data = linkedMapOf(
+                "id" to songId.toString(),
+                "cp" to "false",
+                "lv" to "0",
+                "kv" to "0",
+                "tv" to "0",
+                "rv" to "0",
+                "yv" to "0",
+                "ytv" to "0",
+                "yrv" to "0",
+                "csrf_token" to ""
+            )
+        )
     }
     
     // ========== LrcApi ==========
@@ -1140,6 +1210,69 @@ class OnlineLyricFetcher {
         "Cookie" to "os=pc;osver=Microsoft-Windows-10-Professional-build-16299.125-64bit;appver=2.0.3.131777;channel=netease;__remember_me=true"
     )
 
+    private fun neteaseHeaders(): Map<String, String> = mapOf(
+        "User-Agent" to NETEASE_USER_AGENT,
+        "Referer" to "https://music.163.com/"
+    )
+
+    private fun executeNeteaseEapi(url: String, data: LinkedHashMap<String, String>): String? {
+        val header = linkedMapOf(
+            "__csrf" to "",
+            "appver" to "8.0.0",
+            "buildver" to (System.currentTimeMillis() / 1000L).toString(),
+            "channel" to "",
+            "deviceId" to "",
+            "mobilename" to "",
+            "resolution" to "1920x1080",
+            "os" to "android",
+            "osver" to "",
+            "requestId" to "${System.currentTimeMillis()}_${(0..999).random().toString().padStart(4, '0')}",
+            "versioncode" to "140",
+            "MUSIC_U" to ""
+        )
+        val payload = LinkedHashMap(data)
+        payload["header"] = JSONObject(header as Map<*, *>).toString()
+
+        val requestBody = FormBody.Builder()
+            .add("params", buildNeteaseEapiParams(url, JSONObject(payload as Map<*, *>).toString()))
+            .build()
+        val request = Request.Builder()
+            .url(url)
+            .post(requestBody)
+            .header("Referer", "https://music.163.com/")
+            .header("User-Agent", NETEASE_EAPI_USER_AGENT)
+            .header("Cookie", header.entries.joinToString("; ") { "${it.key}=${it.value}" })
+            .build()
+
+        return runCatching {
+            client.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) null else response.body.string()
+            }
+        }.onFailure {
+            AppLogger.getInstance().d("OnlineLyric", "Netease eapi failed: ${it.message}")
+        }.getOrNull()
+    }
+
+    private fun buildNeteaseEapiParams(url: String, payloadJson: String): String {
+        val path = url
+            .replace("https://interface3.music.163.com/e", "/")
+            .replace("https://interface.music.163.com/e", "/")
+        val digest = md5Hex("nobody${path}use${payloadJson}md5forencrypt")
+        val data = "${path}-36cd479b6b5-${payloadJson}-36cd479b6b5-${digest}"
+        return aesEcbEncryptHex(data)
+    }
+
+    private fun aesEcbEncryptHex(value: String): String {
+        val cipher = Cipher.getInstance("AES/ECB/PKCS5Padding")
+        cipher.init(Cipher.ENCRYPT_MODE, SecretKeySpec(NETEASE_EAPI_KEY.toByteArray(Charsets.US_ASCII), "AES"))
+        return cipher.doFinal(value.toByteArray(Charsets.UTF_8)).joinToString("") { "%02X".format(it) }
+    }
+
+    private fun md5Hex(value: String): String {
+        val digest = MessageDigest.getInstance("MD5").digest(value.toByteArray(Charsets.UTF_8))
+        return digest.joinToString("") { "%02x".format(it) }
+    }
+
     private fun sodaHeaders(): Map<String, String> = mapOf(
         "User-Agent" to "LunaPC/2.6.5(197449790)",
         "Referer" to "https://api.qishui.com/"
@@ -1154,10 +1287,119 @@ class OnlineLyricFetcher {
         }
     }
 
+    private fun JSONObject.optLyricText(key: String): String {
+        return optJSONObject(key)?.optString("lyric", "").orEmpty()
+    }
+
     private fun unwrapJsonp(callback: String, raw: String): String? {
         val prefix = "$callback("
         if (!raw.startsWith(prefix) || !raw.endsWith(")")) return null
         return raw.removePrefix(prefix).dropLast(1)
+    }
+
+    private fun decodeQqDownloadLyricPayload(payload: String): String {
+        if (payload.isBlank()) return ""
+        val decoded = runCatching {
+            decryptQqQrcPayload(payload)
+        }.getOrElse {
+            if (payload.isLikelyLrc()) payload else return ""
+        }
+        return normalizeQqDownloadLyricPayload(decoded)
+    }
+
+    private fun String.isLikelyLrc(): Boolean {
+        return Regex("""(?m)^\[\d{1,2}:\d{2}(?:\.\d{1,3})?]""").containsMatchIn(this)
+    }
+
+    private fun normalizeQqDownloadLyricPayload(payload: String): String {
+        val trimmed = payload.trim()
+        if (!trimmed.startsWith("<?xml")) {
+            return trimmed
+        }
+
+        val attrMatch = Regex("""LyricContent="([^"]*)"""").find(trimmed)
+        if (attrMatch != null) {
+            return Html.fromHtml(attrMatch.groupValues[1], Html.FROM_HTML_MODE_LEGACY).toString()
+        }
+
+        val lyricMatch = extractTagContent(trimmed, "Lyric_1")
+            ?: extractTagContent(trimmed, "lyric")
+        if (!lyricMatch.isNullOrBlank()) {
+            return Html.fromHtml(lyricMatch, Html.FROM_HTML_MODE_LEGACY).toString()
+        }
+
+        return trimmed
+    }
+
+    private fun decryptQqQrcPayload(encryptedLyrics: String): String {
+        val decrypted = QqQrcDecrypter.decryptToCompressedBytes(encryptedLyrics)
+        val inflated = inflateQqQrcPayload(decrypted)
+        val utf8Bom = byteArrayOf(0xEF.toByte(), 0xBB.toByte(), 0xBF.toByte())
+        val content = if (inflated.size >= utf8Bom.size && inflated.copyOfRange(0, utf8Bom.size).contentEquals(utf8Bom)) {
+            inflated.copyOfRange(utf8Bom.size, inflated.size)
+        } else {
+            inflated
+        }
+        return String(content, Charsets.UTF_8)
+    }
+
+    private fun inflateQqQrcPayload(decrypted: ByteArray): ByteArray {
+        val zlibOffset = findLikelyZlibOffset(decrypted)
+        val candidates = buildList {
+            add(decrypted)
+            if (zlibOffset > 0) add(decrypted.copyOfRange(zlibOffset, decrypted.size))
+        }.distinctBy { it.contentHashCode() }
+
+        for (candidate in candidates) {
+            runCatching {
+                return InflaterInputStream(candidate.inputStream()).use { it.readBytes() }
+            }
+            runCatching {
+                return inflateRawDeflate(candidate)
+            }
+        }
+        error("QQ QRC inflate failed")
+    }
+
+    private fun findLikelyZlibOffset(bytes: ByteArray): Int {
+        for (index in 0 until bytes.size - 1) {
+            val first = bytes[index].toInt() and 0xFF
+            val second = bytes[index + 1].toInt() and 0xFF
+            if (first == 0x78 && second in listOf(0x01, 0x5E, 0x9C, 0xDA)) {
+                return index
+            }
+        }
+        return 0
+    }
+
+    private fun inflateRawDeflate(bytes: ByteArray): ByteArray {
+        val inflater = Inflater(true)
+        val output = ByteArrayOutputStream()
+        val buffer = ByteArray(4096)
+        inflater.setInput(bytes)
+        try {
+            while (!inflater.finished()) {
+                val count = inflater.inflate(buffer)
+                if (count > 0) {
+                    output.write(buffer, 0, count)
+                } else if (inflater.needsInput() || inflater.needsDictionary()) {
+                    break
+                }
+            }
+        } finally {
+            inflater.end()
+        }
+        val result = output.toByteArray()
+        if (result.isEmpty()) error("empty output")
+        return result
+    }
+
+    private fun extractTagContent(content: String, tagName: String): String? {
+        val cdataRegex = Regex("""<$tagName[^>]*><!\[CDATA\[(.*?)]]></$tagName>""", setOf(DOT_MATCHES_ALL, RegexOption.IGNORE_CASE))
+        cdataRegex.find(content)?.let { return it.groupValues[1] }
+
+        val textRegex = Regex("""<$tagName[^>]*>(.*?)</$tagName>""", setOf(DOT_MATCHES_ALL, RegexOption.IGNORE_CASE))
+        return textRegex.find(content)?.groupValues?.getOrNull(1)
     }
 
     private fun escapeJson(input: String): String {
@@ -1227,6 +1469,14 @@ class OnlineLyricFetcher {
                 continuation.resume(response.body.string())
             }
         })
+    }
+
+    private companion object {
+        private const val NETEASE_USER_AGENT =
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36"
+        private const val NETEASE_EAPI_USER_AGENT =
+            "Mozilla/5.0 (Linux; Android 9; PCT-AL10) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.64 HuaweiBrowser/10.0.3.311 Mobile Safari/537.36"
+        private const val NETEASE_EAPI_KEY = "e82ckenh8dichen8"
     }
 
 }

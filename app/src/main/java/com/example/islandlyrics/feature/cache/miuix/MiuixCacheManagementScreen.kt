@@ -169,6 +169,7 @@ fun MiuixCacheManagementScreen(
                             Spacer(modifier = Modifier.height(8.dp))
                             MiuixStatRow(stringResource(R.string.cache_management_query_info), "${entry.queryTitle} / ${entry.queryArtist}")
                             MiuixStatRow(stringResource(R.string.cache_management_provider), entry.providerLabel.ifBlank { stringResource(R.string.cache_management_unknown) })
+                            MiuixStatRow(stringResource(R.string.cache_management_sidecars), formatSidecarFlags(entry.hasTranslation, entry.hasRomanization))
                             MiuixStatRow(stringResource(R.string.cache_management_total_size), formatBytes(entry.sizeBytes))
                             MiuixStatRow(stringResource(R.string.cache_management_updated_at), formatTimestamp(stringResource(R.string.cache_management_none), entry.updatedAt))
                             if (entry.hasCustomMatch) {
@@ -203,6 +204,17 @@ private fun formatBytes(bytes: Long): String {
         bytes >= kb -> String.format(Locale.getDefault(), "%.2f KB", bytes / kb)
         else -> "$bytes B"
     }
+}
+
+@Composable
+private fun formatSidecarFlags(hasTranslation: Boolean, hasRomanization: Boolean): String {
+    val yes = stringResource(R.string.cache_management_yes)
+    val no = stringResource(R.string.cache_management_no)
+    return stringResource(
+        R.string.cache_management_sidecars_fmt,
+        if (hasTranslation) yes else no,
+        if (hasRomanization) yes else no
+    )
 }
 
 private fun formatTimestamp(emptyValue: String, timestamp: Long?): String {

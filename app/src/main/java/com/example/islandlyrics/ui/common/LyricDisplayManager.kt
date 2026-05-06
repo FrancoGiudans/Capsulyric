@@ -49,6 +49,7 @@ class LyricDisplayManager(private val context: Context) {
     
     // Config / Preferences
     private var disableScrolling = false
+    private var lyricTextDisplayMode = LyricTextDisplayMode.LYRIC
     
     // Adaptive scroll metrics
     private var lastLyricChangeTime: Long = 0
@@ -149,8 +150,14 @@ class LyricDisplayManager(private val context: Context) {
     }
 
     private val prefChangeListener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { prefs, key ->
-        if (key == "disable_lyric_scrolling") {
-            disableScrolling = prefs.getBoolean(key, false)
+        when (key) {
+            "disable_lyric_scrolling" -> {
+                disableScrolling = prefs.getBoolean(key, false)
+            }
+            LyricTextDisplayMode.PREF_KEY -> {
+                lyricTextDisplayMode = LyricTextDisplayMode.read(prefs)
+                forceUpdate()
+            }
         }
     }
 
@@ -174,6 +181,7 @@ class LyricDisplayManager(private val context: Context) {
         
         val prefs = context.getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE)
         disableScrolling = prefs.getBoolean("disable_lyric_scrolling", false)
+        lyricTextDisplayMode = LyricTextDisplayMode.read(prefs)
         prefs.registerOnSharedPreferenceChangeListener(prefChangeListener)
         
         LyricRepository.getInstance().liveParsedLyrics.observeForever(parsedLyricsObserver)
@@ -263,6 +271,7 @@ class LyricDisplayManager(private val context: Context) {
         
         val isPlaying = repo.isPlaying.value == true
         val currentLyric = lyricInfo?.lyric ?: ""
+        val preferredPlainLyric = LyricTextDisplayMode.resolve(lyricTextDisplayMode, lyricInfo, currentLyric)
         val sourceApp = lyricInfo?.sourceApp ?: ""
         val currentPosition = progressInfo?.position ?: 0L
         val duration = progressInfo?.duration ?: metaInfo?.duration ?: 0L
@@ -276,8 +285,9 @@ class LyricDisplayManager(private val context: Context) {
         if (disableScrolling) {
             val currentLine = if (currentParsedLines != null) findCurrentLine(currentParsedLines!!, currentPosition) else null
             if (currentLine != null) {
-                displayLyric = extractByWeight(currentLine.text, 0, maxDisplayWeight)
-                fullLyricForDisplay = currentLine.text
+                val text = resolvePreferredLineText(currentLine.text, lyricInfo, currentLine)
+                displayLyric = extractByWeight(text, 0, maxDisplayWeight)
+                fullLyricForDisplay = text
             } else {
                 val gapDisplay = resolveTimingGapDisplayIfSupported(currentParsedLines, currentPosition, isPlaying)
                 if (gapDisplay != null) {
@@ -286,8 +296,8 @@ class LyricDisplayManager(private val context: Context) {
                     timingGapActive = true
                     timingGapNextDelayMs = gapDisplay.nextDelayMs
                 } else {
-                    displayLyric = resolveNoCurrentLineDisplay(currentLyric)
-                    fullLyricForDisplay = resolveNoCurrentLineFullLyric(currentLyric)
+                    displayLyric = resolveNoCurrentLineDisplay(preferredPlainLyric)
+                    fullLyricForDisplay = resolveNoCurrentLineFullLyric(preferredPlainLyric)
                 }
             }
             scrollState = ScrollState.DONE
@@ -303,18 +313,24 @@ class LyricDisplayManager(private val context: Context) {
                 findCurrentLine(currentParsedLines!!, currentPosition)
             }
             if (currentLine != null && !currentLine.syllables.isNullOrEmpty()) {
-                val sungSyllables = currentLine.syllables.filter { it.startTime <= currentPosition }
-                val unsungSyllables = currentLine.syllables.filter { it.startTime > currentPosition }
-                displayLyric = calculateSyllableWindow(
-                    fullText = currentLine.text,
-                    sungText = sungSyllables.joinToString("") { it.text },
-                    unsungText = unsungSyllables.joinToString("") { it.text }
-                )
-                fullLyricForDisplay = currentLine.text
+                val text = resolvePreferredLineText(currentLine.text, lyricInfo, currentLine)
+                displayLyric = if (text == currentLine.text) {
+                    val sungSyllables = currentLine.syllables.filter { it.startTime <= currentPosition }
+                    val unsungSyllables = currentLine.syllables.filter { it.startTime > currentPosition }
+                    calculateSyllableWindow(
+                        fullText = currentLine.text,
+                        sungText = sungSyllables.joinToString("") { it.text },
+                        unsungText = unsungSyllables.joinToString("") { it.text }
+                    )
+                } else {
+                    extractByWeight(text, 0, maxDisplayWeight)
+                }
+                fullLyricForDisplay = text
                 scrollState = ScrollState.SCROLLING
             } else if (currentLine != null) {
-                displayLyric = extractByWeight(currentLine.text, 0, maxDisplayWeight)
-                fullLyricForDisplay = currentLine.text
+                val text = resolvePreferredLineText(currentLine.text, lyricInfo, currentLine)
+                displayLyric = extractByWeight(text, 0, maxDisplayWeight)
+                fullLyricForDisplay = text
             } else {
                 val gapDisplay = resolveTimingGapDisplayIfSupported(currentParsedLines, currentPosition, isPlaying)
                 if (gapDisplay != null) {
@@ -323,30 +339,31 @@ class LyricDisplayManager(private val context: Context) {
                     timingGapActive = true
                     timingGapNextDelayMs = gapDisplay.nextDelayMs
                 } else {
-                    displayLyric = resolveNoCurrentLineDisplay(currentLyric)
-                    fullLyricForDisplay = resolveNoCurrentLineFullLyric(currentLyric)
+                    displayLyric = resolveNoCurrentLineDisplay(preferredPlainLyric)
+                    fullLyricForDisplay = resolveNoCurrentLineFullLyric(preferredPlainLyric)
                 }
             }
         } else if (useLrcScrolling && currentParsedLines != null) {
             val foundLine = findCurrentLine(currentParsedLines!!, currentPosition)
             if (foundLine != null) {
-                fullLyricForDisplay = foundLine.text
+                val preferredLineText = resolvePreferredLineText(foundLine.text, lyricInfo, foundLine)
+                fullLyricForDisplay = preferredLineText
                 val lineDuration = foundLine.endTime - foundLine.startTime
                 val lineProgress = if (lineDuration > 0) {
                     ((currentPosition - foundLine.startTime).toFloat() / lineDuration.toFloat()).coerceIn(0f, 1f)
                 } else 0f
-                val currentLineWeight = calculateWeight(foundLine.text)
+                val currentLineWeight = calculateWeight(preferredLineText)
                 
                 if (currentLineWeight <= maxDisplayWeight) {
-                    displayLyric = foundLine.text
+                    displayLyric = preferredLineText
                 } else {
                     val currentProgressWeight = (lineProgress * currentLineWeight).toInt()
-                    val scrollStartThreshold = if (isMostlyWestern(foundLine.text)) 4 else 8
+                    val scrollStartThreshold = if (isMostlyWestern(preferredLineText)) 4 else 8
                     val targetWeightOffset = if (currentProgressWeight < scrollStartThreshold) 0 else currentProgressWeight - scrollStartThreshold
                     val minVisibleWeight = 14
                     val maxAllowedScroll = maxOf(0, currentLineWeight - minVisibleWeight)
                     val finalOffset = minOf(targetWeightOffset, maxAllowedScroll)
-                    displayLyric = extractByWeight(foundLine.text, finalOffset, maxDisplayWeight)
+                    displayLyric = extractByWeight(preferredLineText, finalOffset, maxDisplayWeight)
                 }
                 scrollState = ScrollState.SCROLLING
             } else {
@@ -357,13 +374,14 @@ class LyricDisplayManager(private val context: Context) {
                     timingGapActive = true
                     timingGapNextDelayMs = gapDisplay.nextDelayMs
                 } else {
-                    displayLyric = resolveNoCurrentLineDisplay(currentLyric)
-                    fullLyricForDisplay = resolveNoCurrentLineFullLyric(currentLyric)
+                    displayLyric = resolveNoCurrentLineDisplay(preferredPlainLyric)
+                    fullLyricForDisplay = resolveNoCurrentLineFullLyric(preferredPlainLyric)
                 }
             }
         } else {
-            val totalWeight = calculateWeight(currentLyric)
-            displayLyric = calculateAdaptiveScroll(currentLyric, totalWeight)
+            val totalWeight = calculateWeight(preferredPlainLyric)
+            displayLyric = calculateAdaptiveScroll(preferredPlainLyric, totalWeight)
+            fullLyricForDisplay = preferredPlainLyric
         }
 
         val shouldPersistStableDisplay = !timingGapActive && displayLyric.isNotBlank()
@@ -416,6 +434,21 @@ class LyricDisplayManager(private val context: Context) {
             if (position >= line.startTime && position < line.endTime) return line
         }
         return null
+    }
+
+    private fun resolvePreferredLineText(
+        mainText: String,
+        lyricInfo: LyricRepository.LyricInfo?,
+        line: OnlineLyricFetcher.LyricLine? = null
+    ): String {
+        val preferred = when (lyricTextDisplayMode) {
+            LyricTextDisplayMode.TRANSLATION -> line?.translation
+            LyricTextDisplayMode.ROMANIZATION -> line?.roma
+            else -> null
+        }?.takeIf { it.isNotBlank() }
+        if (preferred != null) return preferred
+
+        return LyricTextDisplayMode.resolve(lyricTextDisplayMode, lyricInfo, mainText)
     }
 
     private fun charWeight(c: Char): Int {

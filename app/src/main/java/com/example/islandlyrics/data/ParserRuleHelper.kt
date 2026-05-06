@@ -88,10 +88,14 @@ object ParserRuleHelper {
                             useOnlineLyrics = obj.optBoolean("useOnlineLyrics", false),
                             useSmartOnlineLyricSelection = obj.optBoolean("useSmartOnlineLyricSelection", true),
                             useRawMetadataForOnlineMatching = obj.optBoolean("useRawMetadataForOnlineMatching", false),
+                            receiveOnlineTranslation = obj.optBoolean("receiveOnlineTranslation", false),
+                            receiveOnlineRomanization = obj.optBoolean("receiveOnlineRomanization", false),
                             onlineLyricProviderOrder = OnlineLyricProvider.normalizeOrder(providerOrder).map { it.id },
                             useSuperLyricApi = obj.optBoolean("useSuperLyricApi", false),
                             useLyricGetterApi = obj.optBoolean("useLyricGetterApi", false),
-                            useLyriconApi = obj.optBoolean("useLyriconApi", false)
+                            useLyriconApi = obj.optBoolean("useLyriconApi", false),
+                            receiveLyriconTranslation = obj.optBoolean("receiveLyriconTranslation", false),
+                            receiveLyriconRomanization = obj.optBoolean("receiveLyriconRomanization", false)
                         )
                     )
                 }
@@ -137,10 +141,14 @@ object ParserRuleHelper {
                 obj.put("useOnlineLyrics", rule.useOnlineLyrics)
                 obj.put("useSmartOnlineLyricSelection", rule.useSmartOnlineLyricSelection)
                 obj.put("useRawMetadataForOnlineMatching", rule.useRawMetadataForOnlineMatching)
+                obj.put("receiveOnlineTranslation", rule.receiveOnlineTranslation)
+                obj.put("receiveOnlineRomanization", rule.receiveOnlineRomanization)
                 obj.put("onlineLyricProviderOrder", JSONArray(OnlineLyricProvider.normalizeOrder(rule.onlineLyricProviderOrder).map { it.id }))
                 obj.put("useSuperLyricApi", rule.useSuperLyricApi)
                 obj.put("useLyricGetterApi", rule.useLyricGetterApi)
                 obj.put("useLyriconApi", rule.useLyriconApi)
+                obj.put("receiveLyriconTranslation", rule.receiveLyriconTranslation)
+                obj.put("receiveLyriconRomanization", rule.receiveLyriconRomanization)
                 array.put(obj)
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -214,10 +222,14 @@ object ParserRuleHelper {
             useOnlineLyrics = false, // DISABLED BY DEFAULT
             useSmartOnlineLyricSelection = true,
             useRawMetadataForOnlineMatching = false,
+            receiveOnlineTranslation = false,
+            receiveOnlineRomanization = false,
             onlineLyricProviderOrder = OnlineLyricProvider.defaultIds(),
             useSuperLyricApi = false, // DISABLED BY DEFAULT
             useLyricGetterApi = false, // DISABLED BY DEFAULT
-            useLyriconApi = false // DISABLED BY DEFAULT
+            useLyriconApi = false, // DISABLED BY DEFAULT
+            receiveLyriconTranslation = false,
+            receiveLyriconRomanization = false
         )
     }
     /**

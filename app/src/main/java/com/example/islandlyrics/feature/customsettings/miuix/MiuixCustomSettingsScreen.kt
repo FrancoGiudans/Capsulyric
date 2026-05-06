@@ -3,6 +3,7 @@ package com.example.islandlyrics.feature.customsettings.miuix
 import android.app.Activity
 import com.example.islandlyrics.ui.common.NotificationPreview
 import com.example.islandlyrics.ui.common.CapsulePreview
+import com.example.islandlyrics.ui.common.LyricTextDisplayMode
 import com.example.islandlyrics.ui.common.OneUiCapsuleColorMode
 import com.example.islandlyrics.R
 import com.example.islandlyrics.core.platform.XmsfBypassMode
@@ -78,6 +79,7 @@ fun MiuixCustomSettingsScreen(
 
     var progressColorEnabled by remember { mutableStateOf(prefs.getBoolean("progress_bar_color_enabled", false)) }
     var disableScrolling by remember { mutableStateOf(prefs.getBoolean("disable_lyric_scrolling", false)) }
+    var lyricTextDisplayMode by remember { mutableStateOf(LyricTextDisplayMode.read(prefs)) }
     var oneuiCapsuleColorMode by remember { mutableStateOf(OneUiCapsuleColorMode.read(prefs)) }
 
     var superIslandEnabled by remember { mutableStateOf(prefs.getBoolean("super_island_enabled", false)) }
@@ -239,6 +241,24 @@ fun MiuixCustomSettingsScreen(
                                         onCheckedChange = {
                                             disableScrolling = it
                                             prefs.edit().putBoolean("disable_lyric_scrolling", it).apply()
+                                        }
+                                    )
+                                    val lyricTextModes = LyricTextDisplayMode.values
+                                    val lyricTextModeLabels = listOf(
+                                        stringResource(R.string.lyric_text_display_mode_lyric),
+                                        stringResource(R.string.lyric_text_display_mode_translation),
+                                        stringResource(R.string.lyric_text_display_mode_romanization)
+                                    )
+                                    val currentLyricTextModeIndex = lyricTextModes.indexOf(lyricTextDisplayMode).takeIf { it >= 0 } ?: 0
+
+                                    SuperDropdown(
+                                        title = stringResource(R.string.settings_lyric_text_display_mode),
+                                        summary = stringResource(R.string.settings_lyric_text_display_mode_desc),
+                                        items = lyricTextModeLabels,
+                                        selectedIndex = currentLyricTextModeIndex,
+                                        onSelectedIndexChange = { index ->
+                                            lyricTextDisplayMode = lyricTextModes[index]
+                                            LyricTextDisplayMode.write(prefs, lyricTextDisplayMode)
                                         }
                                     )
                                     if (RomUtils.getRomType() == "OneUI") {

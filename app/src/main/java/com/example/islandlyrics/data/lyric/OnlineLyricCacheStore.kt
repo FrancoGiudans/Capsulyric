@@ -33,6 +33,8 @@ class OnlineLyricCacheStore(context: Context) {
         val queryArtist: String,
         val providerLabel: String,
         val hasCustomMatch: Boolean,
+        val hasTranslation: Boolean,
+        val hasRomanization: Boolean,
         val cachedAt: Long,
         val updatedAt: Long,
         val sizeBytes: Long
@@ -78,6 +80,10 @@ class OnlineLyricCacheStore(context: Context) {
         val hasSyllable: Boolean = false,
         val matchedTitle: String? = null,
         val matchedArtist: String? = null,
+        val translationLyrics: String? = null,
+        val romanLyrics: String? = null,
+        val hasTranslation: Boolean = false,
+        val hasRomanization: Boolean = false,
         val parsedLines: List<OnlineLyricFetcher.LyricLine> = emptyList(),
         val cachedAt: Long? = null,
         val updatedAt: Long = System.currentTimeMillis()
@@ -104,7 +110,7 @@ class OnlineLyricCacheStore(context: Context) {
         useRawMetadata: Boolean
     ): CurrentSongCacheState {
         val entry = synchronized(lock) {
-            readEntries().firstOrNull { it.id == buildEntryId(mediaInfo) }
+            readEntries().firstMatching(mediaInfo)
         }
         val matchOverride = entry?.overrideTitle
             ?.let {
@@ -160,7 +166,7 @@ class OnlineLyricCacheStore(context: Context) {
         queryArtist: String
     ): CachedLyricHit? = synchronized(lock) {
         val entries = readEntries()
-        val entry = entries.firstOrNull { it.id == buildEntryId(mediaInfo) } ?: return null
+        val entry = entries.firstMatching(mediaInfo) ?: return null
         if (entry.queryTitle != queryTitle || entry.queryArtist != queryArtist) return null
         if (entry.lyrics.isNullOrBlank() || entry.parsedLines.isEmpty()) return null
 
@@ -176,7 +182,9 @@ class OnlineLyricCacheStore(context: Context) {
                 hasSyllable = entry.hasSyllable,
                 provider = OnlineLyricProvider.fromId(entry.providerId) ?: OnlineLyricProvider.LrcApi,
                 matchedTitle = entry.matchedTitle,
-                matchedArtist = entry.matchedArtist
+                matchedArtist = entry.matchedArtist,
+                translationLyrics = entry.translationLyrics,
+                romanLyrics = entry.romanLyrics
             ),
             cachedAt = entry.cachedAt ?: now,
             updatedAt = now,
@@ -194,7 +202,7 @@ class OnlineLyricCacheStore(context: Context) {
     ) = synchronized(lock) {
         val entries = readEntries().toMutableList()
         val id = buildEntryId(mediaInfo)
-        val existing = entries.firstOrNull { it.id == id }
+        val existing = entries.firstMatching(mediaInfo)
         val now = System.currentTimeMillis()
         val merged = CacheEntry(
             id = id,
@@ -215,6 +223,10 @@ class OnlineLyricCacheStore(context: Context) {
             hasSyllable = result.hasSyllable,
             matchedTitle = result.matchedTitle,
             matchedArtist = result.matchedArtist,
+            translationLyrics = result.translationLyrics,
+            romanLyrics = result.romanLyrics,
+            hasTranslation = !result.translationLyrics.isNullOrBlank(),
+            hasRomanization = !result.romanLyrics.isNullOrBlank(),
             parsedLines = result.parsedLines.orEmpty(),
             cachedAt = now,
             updatedAt = now
@@ -227,7 +239,7 @@ class OnlineLyricCacheStore(context: Context) {
         val sanitizedArtist = artist.trim()
         val entries = readEntries().toMutableList()
         val id = buildEntryId(mediaInfo)
-        val existing = entries.firstOrNull { it.id == id }
+        val existing = entries.firstMatching(mediaInfo)
         val now = System.currentTimeMillis()
         val merged = CacheEntry(
             id = id,
@@ -249,7 +261,7 @@ class OnlineLyricCacheStore(context: Context) {
         synchronized(lock) {
             val entries = readEntries().toMutableList()
             val id = buildEntryId(mediaInfo)
-            val existing = entries.firstOrNull { it.id == id } ?: return
+            val existing = entries.firstMatching(mediaInfo) ?: return
             val cleared = existing.copy(
                 overrideTitle = null,
                 overrideArtist = null,
@@ -262,6 +274,10 @@ class OnlineLyricCacheStore(context: Context) {
                 hasSyllable = false,
                 matchedTitle = null,
                 matchedArtist = null,
+                translationLyrics = null,
+                romanLyrics = null,
+                hasTranslation = false,
+                hasRomanization = false,
                 parsedLines = emptyList(),
                 cachedAt = null,
                 updatedAt = System.currentTimeMillis()
@@ -287,6 +303,8 @@ class OnlineLyricCacheStore(context: Context) {
                     queryArtist = entry.queryArtist.orEmpty(),
                     providerLabel = entry.api.orEmpty(),
                     hasCustomMatch = !entry.overrideTitle.isNullOrBlank() || !entry.overrideArtist.isNullOrBlank(),
+                    hasTranslation = entry.hasTranslation,
+                    hasRomanization = entry.hasRomanization,
                     cachedAt = entry.cachedAt ?: entry.updatedAt,
                     updatedAt = entry.updatedAt,
                     sizeBytes = estimateEntrySize(entry)
@@ -322,6 +340,10 @@ class OnlineLyricCacheStore(context: Context) {
                     hasSyllable = false,
                     matchedTitle = null,
                     matchedArtist = null,
+                    translationLyrics = null,
+                    romanLyrics = null,
+                    hasTranslation = false,
+                    hasRomanization = false,
                     parsedLines = emptyList(),
                     cachedAt = null,
                     updatedAt = System.currentTimeMillis()
@@ -337,10 +359,27 @@ class OnlineLyricCacheStore(context: Context) {
         val payload = listOf(
             mediaInfo.packageName.trim().lowercase(),
             normalizeKey(rawTitle),
+            normalizeKey(rawArtist)
+        ).joinToString("|")
+        return sha256(payload)
+    }
+
+    private fun buildLegacyEntryId(mediaInfo: LyricRepository.MediaInfo): String {
+        val rawTitle = mediaInfo.rawTitle.ifBlank { mediaInfo.title }
+        val rawArtist = mediaInfo.rawArtist.ifBlank { mediaInfo.artist }
+        val payload = listOf(
+            mediaInfo.packageName.trim().lowercase(),
+            normalizeKey(rawTitle),
             normalizeKey(rawArtist),
             mediaInfo.duration.toString()
         ).joinToString("|")
         return sha256(payload)
+    }
+
+    private fun List<CacheEntry>.firstMatching(mediaInfo: LyricRepository.MediaInfo): CacheEntry? {
+        val id = buildEntryId(mediaInfo)
+        val legacyId = buildLegacyEntryId(mediaInfo)
+        return firstOrNull { it.id == id } ?: firstOrNull { it.id == legacyId }
     }
 
     private fun estimateEntrySize(entry: CacheEntry): Long {
@@ -394,6 +433,10 @@ class OnlineLyricCacheStore(context: Context) {
         put("hasSyllable", hasSyllable)
         put("matchedTitle", matchedTitle)
         put("matchedArtist", matchedArtist)
+        put("translationLyrics", translationLyrics)
+        put("romanLyrics", romanLyrics)
+        put("hasTranslation", hasTranslation)
+        put("hasRomanization", hasRomanization)
         put("cachedAt", cachedAt)
         put("updatedAt", updatedAt)
         put(
@@ -403,6 +446,8 @@ class OnlineLyricCacheStore(context: Context) {
                     put("startTime", line.startTime)
                     put("endTime", line.endTime)
                     put("text", line.text)
+                    put("translation", line.translation)
+                    put("roma", line.roma)
                     put(
                         "syllables",
                         JSONArray(line.syllables.orEmpty().map { syllable ->
@@ -441,11 +486,16 @@ class OnlineLyricCacheStore(context: Context) {
                         startTime = line.optLong("startTime"),
                         endTime = line.optLong("endTime"),
                         text = line.optString("text"),
-                        syllables = syllables.ifEmpty { null }
+                        syllables = syllables.ifEmpty { null },
+                        translation = line.optNullableString("translation"),
+                        roma = line.optNullableString("roma")
                     )
                 )
             }
         }
+
+        val translationLyrics = optNullableString("translationLyrics")
+        val romanLyrics = optNullableString("romanLyrics")
 
         return CacheEntry(
             id = optString("id"),
@@ -466,6 +516,10 @@ class OnlineLyricCacheStore(context: Context) {
             hasSyllable = optBoolean("hasSyllable", false),
             matchedTitle = optNullableString("matchedTitle"),
             matchedArtist = optNullableString("matchedArtist"),
+            translationLyrics = translationLyrics,
+            romanLyrics = romanLyrics,
+            hasTranslation = optBoolean("hasTranslation", !translationLyrics.isNullOrBlank()),
+            hasRomanization = optBoolean("hasRomanization", !romanLyrics.isNullOrBlank()),
             parsedLines = parsedLines,
             cachedAt = optNullableLong("cachedAt"),
             updatedAt = optLong("updatedAt", System.currentTimeMillis())

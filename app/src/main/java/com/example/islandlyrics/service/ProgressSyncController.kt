@@ -23,6 +23,7 @@ class ProgressSyncController(
     private var currentPosition = 0L
     private var duration = 0L
     private var lastLineIndex = -1
+    private var lastLineSnapshot: OnlineLyricFetcher.LyricLine? = null
     private var consecutiveResolveMisses = 0
     private var lastResolvedControllerKey: String? = null
     private var lastRecheckRequestAtMs = 0L
@@ -88,6 +89,7 @@ class ProgressSyncController(
 
     fun resetLineIndex() {
         lastLineIndex = -1
+        lastLineSnapshot = null
     }
 
     fun resetProgressForTrackChange(newDuration: Long) {
@@ -119,20 +121,28 @@ class ProgressSyncController(
         if (activeIndex == -1) {
             if (lastLineIndex != -1 || repo.liveCurrentLine.value != null) {
                 lastLineIndex = -1
+                lastLineSnapshot = null
                 repo.updateCurrentLine(null)
             }
             return
         }
 
-        if (activeIndex != lastLineIndex) {
+        val line = lines[activeIndex]
+        if (activeIndex != lastLineIndex || line != lastLineSnapshot) {
             lastLineIndex = activeIndex
-            val line = lines[activeIndex]
+            lastLineSnapshot = line
 
             val metadata = repo.liveMetadata.value
             val source = metadata?.packageName?.let { appNameProvider(it) } ?: "Online Lyrics"
             val parsedInfo = repo.liveParsedLyrics.value
             val apiPath = parsedInfo?.apiPath ?: "Online API"
-            repo.updateLyric(line.text, source, apiPath)
+            repo.updateLyric(
+                lyric = line.text,
+                app = source,
+                apiPath = apiPath,
+                translation = line.translation,
+                roma = line.roma
+            )
             repo.updateCurrentLine(line)
         }
     }

@@ -8,11 +8,11 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
 import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
 import java.net.URLEncoder
 import java.util.concurrent.TimeUnit
+import java.util.zip.Inflater
 import java.util.zip.InflaterInputStream
-import javax.crypto.Cipher
-import javax.crypto.spec.SecretKeySpec
 
 class QqRomanFetcher {
     data class Result(
@@ -26,6 +26,7 @@ class QqRomanFetcher {
         val rawRomanPayloadPreview: String,
         val rawRomanPayloadLength: Int,
         val decryptedRomanPayload: String,
+        val decryptedRomanPayloadHexPreview: String = "",
         val decryptError: String? = null
     )
 
@@ -95,7 +96,8 @@ class QqRomanFetcher {
             if (decryptError != null) {
                 AppLogger.getInstance().e("QqRomanFetcher", "Failed to decrypt QQ roman payload: $decryptError")
             }
-            val decryptedRomanPayload = decryptAttempt.getOrNull().orEmpty()
+            val decryptedRomanPayload = decryptAttempt.getOrNull()?.content.orEmpty()
+            val decryptedRomanPayloadHexPreview = decryptAttempt.getOrNull()?.decryptedHexPreview.orEmpty()
             val romanLyrics = decryptedRomanPayload.takeIf { it.isNotBlank() }?.let(::normalizeRomanPayload).orEmpty()
 
             Result(
@@ -109,6 +111,7 @@ class QqRomanFetcher {
                 rawRomanPayloadPreview = buildPreview(rawRomanPayload),
                 rawRomanPayloadLength = rawRomanPayload.length,
                 decryptedRomanPayload = buildPreview(decryptedRomanPayload),
+                decryptedRomanPayloadHexPreview = decryptedRomanPayloadHexPreview,
                 decryptError = decryptError
             )
         } catch (t: Throwable) {
@@ -163,20 +166,79 @@ class QqRomanFetcher {
         return client.newCall(request).execute().use { response -> response.bodyStringOrNull() }
     }
 
-    private fun decryptQrcPayload(encryptedLyrics: String): String {
-        val encryptedBytes = hexToBytes(encryptedLyrics)
-        val cipher = Cipher.getInstance("DESede/ECB/NoPadding")
-        val secretKey = SecretKeySpec(QQ_QRC_KEY.toByteArray(Charsets.US_ASCII), "DESede")
-        cipher.init(Cipher.DECRYPT_MODE, secretKey)
-        val decrypted = cipher.doFinal(encryptedBytes)
-        val inflated = InflaterInputStream(ByteArrayInputStream(decrypted)).use { it.readBytes() }
+    private data class DecryptResult(
+        val content: String,
+        val decryptedHexPreview: String
+    )
+
+    private fun decryptQrcPayload(encryptedLyrics: String): DecryptResult {
+        val decrypted = QqQrcDecrypter.decryptToCompressedBytes(encryptedLyrics)
+        val inflated = inflateQrcPayload(decrypted)
         val utf8Bom = byteArrayOf(0xEF.toByte(), 0xBB.toByte(), 0xBF.toByte())
         val content = if (inflated.size >= utf8Bom.size && inflated.copyOfRange(0, utf8Bom.size).contentEquals(utf8Bom)) {
             inflated.copyOfRange(utf8Bom.size, inflated.size)
         } else {
             inflated
         }
-        return String(content, Charsets.UTF_8)
+        return DecryptResult(
+            content = String(content, Charsets.UTF_8),
+            decryptedHexPreview = decrypted.take(64).joinToString(" ") { "%02X".format(it) }
+        )
+    }
+
+    private fun inflateQrcPayload(decrypted: ByteArray): ByteArray {
+        val zlibOffset = findLikelyZlibOffset(decrypted)
+        val candidates = buildList {
+            add(decrypted)
+            if (zlibOffset > 0) add(decrypted.copyOfRange(zlibOffset, decrypted.size))
+        }.distinctBy { it.contentHashCode() }
+
+        val errors = mutableListOf<String>()
+        for (candidate in candidates) {
+            runCatching {
+                return InflaterInputStream(ByteArrayInputStream(candidate)).use { it.readBytes() }
+            }.onFailure { errors += "zlib: ${it.message}" }
+
+            runCatching {
+                return inflateRawDeflate(candidate)
+            }.onFailure { errors += "raw: ${it.message}" }
+        }
+
+        val head = decrypted.take(32).joinToString(" ") { "%02X".format(it) }
+        error("QRC inflate failed; decrypted head=$head; ${errors.joinToString(" | ")}")
+    }
+
+    private fun findLikelyZlibOffset(bytes: ByteArray): Int {
+        for (index in 0 until bytes.size - 1) {
+            val first = bytes[index].toInt() and 0xFF
+            val second = bytes[index + 1].toInt() and 0xFF
+            if (first == 0x78 && second in listOf(0x01, 0x5E, 0x9C, 0xDA)) {
+                return index
+            }
+        }
+        return 0
+    }
+
+    private fun inflateRawDeflate(bytes: ByteArray): ByteArray {
+        val inflater = Inflater(true)
+        val output = ByteArrayOutputStream()
+        val buffer = ByteArray(4096)
+        inflater.setInput(bytes)
+        try {
+            while (!inflater.finished()) {
+                val count = inflater.inflate(buffer)
+                if (count > 0) {
+                    output.write(buffer, 0, count)
+                } else if (inflater.needsInput() || inflater.needsDictionary()) {
+                    break
+                }
+            }
+        } finally {
+            inflater.end()
+        }
+        val result = output.toByteArray()
+        if (result.isEmpty()) error("empty output")
+        return result
     }
 
     private fun extractTagContent(content: String, tagName: String): String? {
@@ -198,13 +260,6 @@ class QqRomanFetcher {
             .replace("\t", "\\t")
     }
 
-    private fun hexToBytes(value: String): ByteArray {
-        require(value.length % 2 == 0) { "Invalid QQ QRC hex payload length." }
-        return ByteArray(value.length / 2) { index ->
-            value.substring(index * 2, index * 2 + 2).toInt(16).toByte()
-        }
-    }
-
     private fun buildPreview(value: String): String {
         val trimmed = value.trim()
         if (trimmed.isBlank()) return ""
@@ -223,7 +278,6 @@ class QqRomanFetcher {
     companion object {
         private const val QQ_USER_AGENT =
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36"
-        private const val QQ_QRC_KEY = "!@#)(*$%123ZXC!@!@#)(NHL"
         private const val MAX_PREVIEW_CHARS = 12000
     }
 }

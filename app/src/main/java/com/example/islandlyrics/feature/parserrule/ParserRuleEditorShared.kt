@@ -13,10 +13,14 @@ data class ParserRuleEditorState(
     val useOnlineLyrics: Boolean,
     val useSmartOnlineLyricSelection: Boolean,
     val useRawMetadataForOnlineMatching: Boolean,
+    val receiveOnlineTranslation: Boolean,
+    val receiveOnlineRomanization: Boolean,
     val onlineLyricProviderOrder: List<OnlineLyricProvider>,
     val useSuperLyricApi: Boolean,
     val useLyricGetterApi: Boolean,
-    val useLyriconApi: Boolean
+    val useLyriconApi: Boolean,
+    val receiveLyriconTranslation: Boolean,
+    val receiveLyriconRomanization: Boolean
 )
 
 fun ParserRule.toEditorState(): ParserRuleEditorState = ParserRuleEditorState(
@@ -28,10 +32,14 @@ fun ParserRule.toEditorState(): ParserRuleEditorState = ParserRuleEditorState(
     useOnlineLyrics = useOnlineLyrics,
     useSmartOnlineLyricSelection = useSmartOnlineLyricSelection,
     useRawMetadataForOnlineMatching = useRawMetadataForOnlineMatching,
+    receiveOnlineTranslation = receiveOnlineTranslation,
+    receiveOnlineRomanization = receiveOnlineRomanization,
     onlineLyricProviderOrder = OnlineLyricProvider.normalizeOrder(onlineLyricProviderOrder),
     useSuperLyricApi = useSuperLyricApi,
     useLyricGetterApi = useLyricGetterApi,
-    useLyriconApi = useLyriconApi
+    useLyriconApi = useLyriconApi,
+    receiveLyriconTranslation = receiveLyriconTranslation,
+    receiveLyriconRomanization = receiveLyriconRomanization
 )
 
 fun ParserRuleEditorState.toRule(previousRule: ParserRule?, isNewRule: Boolean): ParserRule = ParserRule(
@@ -44,8 +52,12 @@ fun ParserRuleEditorState.toRule(previousRule: ParserRule?, isNewRule: Boolean):
     useOnlineLyrics = useOnlineLyrics,
     useSmartOnlineLyricSelection = useSmartOnlineLyricSelection,
     useRawMetadataForOnlineMatching = useRawMetadataForOnlineMatching,
+    receiveOnlineTranslation = receiveOnlineTranslation,
+    receiveOnlineRomanization = receiveOnlineRomanization,
     onlineLyricProviderOrder = onlineLyricProviderOrder.map { it.id },
     useSuperLyricApi = useSuperLyricApi,
     useLyricGetterApi = useLyricGetterApi,
-    useLyriconApi = useLyriconApi
+    useLyriconApi = useLyriconApi,
+    receiveLyriconTranslation = receiveLyriconTranslation,
+    receiveLyriconRomanization = receiveLyriconRomanization
 )

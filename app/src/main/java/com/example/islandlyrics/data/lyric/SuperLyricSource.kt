@@ -38,7 +38,7 @@ class SuperLyricSource(
     private var registerAttemptCount = 0
 
     // Deduplicate consecutive identical lyric lines
-    private var lastLyric = ""
+    private var lastLyricKey = ""
 
     // Cache app-display-names to avoid repeated PackageManager IPC
     private val appNameCache = HashMap<String, String>()
@@ -101,6 +101,7 @@ class SuperLyricSource(
             val liveMeta = LyricRepository.getInstance().liveMetadata.value
             val pkg = publisher?.takeIf { it.isNotBlank() } ?: liveMeta?.packageName.orEmpty()
             if (pkg.isBlank()) {
+                updateDebugSnapshot(publisher, "", data, null, null, null, "publisher missing and no active session")
                 AppLogger.getInstance().d(TAG, "onLyric: publisher missing and no active session — ignored")
                 return
             }
@@ -109,6 +110,7 @@ class SuperLyricSource(
                        ?: ParserRuleHelper.createDefaultRule(pkg)
 
             if (!rule.useSuperLyricApi) {
+                updateDebugSnapshot(publisher, pkg, data, null, null, null, "disabled by rule")
                 AppLogger.getInstance().d(TAG, "[$pkg] SuperLyric disabled by rule — skipped")
                 return
             }
@@ -132,14 +134,36 @@ class SuperLyricSource(
             }
 
             if (!isMatch) {
+                updateDebugSnapshot(publisher, pkg, data, null, null, null, "mismatch with current session")
                 AppLogger.getInstance().d(TAG, "[$pkg] Lyric ignored. Mismatch w/ current session (${liveMeta?.title} - ${liveMeta?.artist}) vs ($providedTitle - $providedArtist)")
                 return
             }
 
-            // ── Phase 2: handle lyric text ────────────────────────────────────
             val lyricLine = data.lyric
-            val lyric = lyricLine?.text.orEmpty()
+            val lyric = lyricLine?.asText().orEmpty()
+            val translationText = data.translation?.asText()
+            val romaText = data.secondary?.asText()
+            updateDebugSnapshot(publisher, pkg, data, lyric, translationText, romaText, null)
+
+            // Some publishers send secondary/translation as a companion update without repeating
+            // the primary lyric line. Keep it attached to the current SuperLyric line instead of
+            // dropping the update as an empty lyric.
             if (lyric.isBlank()) {
+                val currentLyric = LyricRepository.getInstance().liveLyric.value
+                    ?.takeIf { it.apiPath == "SuperLyric" && it.lyric.isNotBlank() }
+                    ?.lyric
+                if (currentLyric != null && (translationText != null || romaText != null)) {
+                    LyricRepository.getInstance().updateLyric(
+                        lyric = currentLyric,
+                        app = getAppName(pkg),
+                        apiPath = "SuperLyric",
+                        translation = translationText,
+                        roma = romaText
+                    )
+                    return
+                }
+
+                updateDebugSnapshot(publisher, pkg, data, lyric, translationText, romaText, "empty lyric line")
                 AppLogger.getInstance().d(TAG, "[$pkg] Empty lyric line — ignored")
                 return
             }
@@ -149,15 +173,23 @@ class SuperLyricSource(
                 AppLogger.getInstance().d(TAG, "Instrumental marker detected")
                 // Do NOT clear it to "", otherwise the UI shows "Waiting for lyrics..." indefinitely.
                 // Just pass it through so the user sees "纯音乐".
-                LyricRepository.getInstance().updateLyric(lyric, getAppName(pkg), "SuperLyric")
+                LyricRepository.getInstance().updateLyric(
+                    lyric = lyric,
+                    app = getAppName(pkg),
+                    apiPath = "SuperLyric",
+                    translation = data.translation?.asText(),
+                    roma = data.secondary?.asText()
+                )
                 return
             }
 
-            if (lyric == lastLyric) {
+            val lyricKey = buildLyricKey(lyric, translationText, romaText)
+            if (lyricKey == lastLyricKey) {
+                updateDebugSnapshot(publisher, pkg, data, lyric, translationText, romaText, "duplicate lyric")
                 AppLogger.getInstance().d(TAG, "Duplicate lyric — skipped")
                 return
             }
-            lastLyric = lyric
+            lastLyricKey = lyricKey
 
             // ── Phase 3: prepare parsed lyrics if word-level data is available ──
             val words = lyricLine?.words
@@ -173,7 +205,13 @@ class SuperLyricSource(
             // postValue() silently merges consecutive calls, which drops lyrics
             // when SuperLyric pushes arrive in rapid succession on the Binder pool.
             mainHandler.post {
-                LyricRepository.getInstance().updateLyric(lyric, appName, "SuperLyric")
+                LyricRepository.getInstance().updateLyric(
+                    lyric = lyric,
+                    app = appName,
+                    apiPath = "SuperLyric",
+                    translation = translationText,
+                    roma = romaText
+                )
 
                 if (parsedLines != null) {
                     LyricRepository.getInstance().updateParsedLyrics(
@@ -184,7 +222,7 @@ class SuperLyricSource(
                     )
                     AppLogger.getInstance().d(
                         TAG,
-                        "SuperLyric 3.x line converted: ${parsedLines.size} line(s), words=${words?.size}, translation=${data.translation != null}, secondary=${data.secondary != null}"
+                        "SuperLyric 3.x line converted: ${parsedLines.size} line(s), words=${words?.size}, translation=${data.translation != null}, roma=${data.secondary != null}"
                     )
                 }
 
@@ -206,7 +244,7 @@ class SuperLyricSource(
                 AppLogger.getInstance().d(TAG, "onStop: MediaSession already stopped, no-op")
             }
             // Regardless, reset the dedup cache so the next lyric push is never suppressed.
-            lastLyric = ""
+            lastLyricKey = ""
         }
     }
 
@@ -252,7 +290,7 @@ class SuperLyricSource(
     }
 
     private fun reset() {
-        lastLyric  = ""
+        lastLyricKey = ""
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
@@ -307,6 +345,63 @@ class SuperLyricSource(
             if (name.isNotEmpty()) appNameCache[pkg] = name
             name
         } catch (_: Exception) { pkg }
+    }
+
+    private fun SuperLyricLine.asText(): String? {
+        return text.ifBlank {
+            words.orEmpty().joinToString("") { it.word }
+        }.takeIf { it.isNotBlank() }
+    }
+
+    private fun updateDebugSnapshot(
+        publisher: String?,
+        pkg: String,
+        data: SuperLyricData,
+        lyric: String?,
+        translation: String?,
+        roma: String?,
+        skipReason: String?
+    ) {
+        LyricRepository.getInstance().updateSuperLyricDebug(
+            LyricRepository.SuperLyricDebugInfo(
+                publisher = publisher,
+                packageName = pkg,
+                lyric = lyric ?: data.lyric?.asText().orEmpty(),
+                translation = translation ?: data.translation?.asText(),
+                roma = roma ?: data.secondary?.asText(),
+                hasLyric = data.hasLyric(),
+                hasTranslation = data.hasTranslation(),
+                hasSecondary = data.hasSecondary(),
+                lyricLineRaw = data.lyric?.toString(),
+                translationLineRaw = data.translation?.toString(),
+                secondaryLineRaw = data.secondary?.toString(),
+                lyricWordsPreview = data.lyric.wordsPreview(),
+                translationWordsPreview = data.translation.wordsPreview(),
+                secondaryWordsPreview = data.secondary.wordsPreview(),
+                extraKeys = data.extra?.keySet()?.toList().orEmpty(),
+                skipReason = skipReason
+            )
+        )
+    }
+
+    private fun SuperLyricLine?.wordsPreview(): String {
+        val words = this?.words
+        if (words.isNullOrEmpty()) return "(空)"
+        return words.take(8).joinToString(separator = " | ") { word ->
+            "${word.word}@${word.startTime}-${word.endTime}"
+        }
+    }
+
+    private fun buildLyricKey(
+        lyric: String,
+        translation: String?,
+        roma: String?
+    ): String = buildString {
+        append(lyric)
+        append('\u0000')
+        append(translation.orEmpty())
+        append('\u0000')
+        append(roma.orEmpty())
     }
 
     companion object {

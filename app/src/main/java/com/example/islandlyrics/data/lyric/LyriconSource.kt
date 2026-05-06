@@ -17,9 +17,8 @@ import io.github.proify.lyricon.subscriber.ProviderInfo
 /**
  * Receives lyric data from Lyricon's active-player subscriber bridge.
  *
- * This source only imports lyric-related fields: plain text, timed lines,
- * word timing, translation, and romanization. Translation/roma are carried in
- * the parsed model for later use but are not rendered yet.
+ * This source imports plain text, timed lines, word timing, translation, and
+ * romanization from Lyricon's active player feed.
  */
 class LyriconSource(private val context: Context) {
 
@@ -70,7 +69,7 @@ class LyriconSource(private val context: Context) {
                 return
             }
 
-            val pkg = resolvePackageName() ?: run {
+            val pkg = resolvePackageName() ?: resolveFallbackPackageName() ?: run {
                 AppLogger.getInstance().d(TAG, "onSongChanged: no active player package — skipped")
                 return
             }
@@ -88,14 +87,38 @@ class LyriconSource(private val context: Context) {
                 return
             }
 
+            val sidecars = buildSidecars(
+                song = song,
+                receiveTranslation = rule.receiveLyriconTranslation,
+                receiveRomanization = rule.receiveLyriconRomanization
+            )
+            val linesWithSidecars = if (sidecars.isEmpty()) {
+                parsedLines
+            } else {
+                parsedLines.map { line ->
+                    val values = sidecars[line.text]
+                    line.copy(
+                        translation = values?.first ?: line.translation,
+                        roma = values?.second ?: line.roma
+                    )
+                }
+            }
+
             val firstLine = parsedLines.firstOrNull { it.text.isNotBlank() } ?: return
+            val firstSidecar = sidecars[firstLine.text]
             val appName = getAppName(pkg)
             val hasSyllable = parsedLines.any { !it.syllables.isNullOrEmpty() }
 
             mainHandler.post {
-                LyricRepository.getInstance().updateLyric(firstLine.text, appName, "Lyricon")
+                LyricRepository.getInstance().updateLyric(
+                    lyric = firstLine.text,
+                    app = appName,
+                    apiPath = "Lyricon",
+                    translation = firstSidecar?.first,
+                    roma = firstSidecar?.second
+                )
                 LyricRepository.getInstance().updateParsedLyrics(
-                    lines = parsedLines,
+                    lines = linesWithSidecars,
                     hasSyllable = hasSyllable,
                     sourceLabel = appName,
                     apiPath = "Lyricon"
@@ -112,6 +135,7 @@ class LyriconSource(private val context: Context) {
             if (lyric.isBlank() || lyric == lastLyric) return
 
             val pkg = resolvePackageName()
+                ?: resolveFallbackPackageName()
                 ?: LyricRepository.getInstance().liveMetadata.value?.packageName
                 ?: run {
                     AppLogger.getInstance().d(TAG, "onReceiveText: no package — skipped")
@@ -241,10 +265,44 @@ class LyriconSource(private val context: Context) {
             startTime = start,
             endTime = maxOf(end, start + 1L),
             text = text,
-            syllables = syllables,
-            translation = line.translation?.takeIf { it.isNotBlank() },
-            roma = line.roma?.takeIf { it.isNotBlank() }
+            syllables = syllables
         )
+    }
+
+    private fun buildSidecars(
+        song: Song,
+        receiveTranslation: Boolean,
+        receiveRomanization: Boolean
+    ): Map<String, Pair<String?, String?>> {
+        if (!receiveTranslation && !receiveRomanization) return emptyMap()
+        return song.lyrics.orEmpty()
+            .mapNotNull { line ->
+                val text = richText(line).takeIf { it.isNotBlank() } ?: return@mapNotNull null
+                val translation = if (receiveTranslation) {
+                    line.translation.orEmpty().ifBlank {
+                        line.translationWords.orEmpty().joinToString("") { it.text.orEmpty() }
+                    }.takeIf { it.isNotBlank() }
+                } else {
+                    null
+                }
+                val roma = if (receiveRomanization) {
+                    line.roma.orEmpty().ifBlank {
+                        line.secondary.orEmpty().ifBlank {
+                            line.secondaryWords.orEmpty().joinToString("") { it.text.orEmpty() }
+                        }
+                    }.takeIf { it.isNotBlank() }
+                } else {
+                    null
+                }
+                if (translation == null && roma == null) null else text to (translation to roma)
+            }
+            .toMap()
+    }
+
+    private fun richText(line: RichLyricLine): String {
+        return line.text.orEmpty().ifBlank {
+            line.words.orEmpty().joinToString("") { it.text.orEmpty() }
+        }.trim()
     }
 
     private fun matchesCurrentSession(pkg: String, song: Song): Boolean {
@@ -278,8 +336,25 @@ class LyriconSource(private val context: Context) {
     }
 
     private fun resolvePackageName(): String? {
-        return activeProviderInfo?.playerPackageName?.takeIf { it.isNotBlank() }
-            ?: activeProviderInfo?.providerPackageName?.takeIf { it.isNotBlank() }
+        val livePkg = LyricRepository.getInstance().liveMetadata.value?.packageName
+        val candidates = listOf(
+            activeProviderInfo?.playerPackageName,
+            activeProviderInfo?.providerPackageName,
+            livePkg
+        ).filterNotNull().filter { it.isNotBlank() }.distinct()
+
+        return candidates.firstOrNull { pkg ->
+            ParserRuleHelper.getRuleForPackage(context, pkg)?.useLyriconApi == true
+        } ?: candidates.firstOrNull()
+    }
+
+    private fun resolveFallbackPackageName(): String? {
+        val livePkg = LyricRepository.getInstance().liveMetadata.value?.packageName
+        if (!livePkg.isNullOrBlank()) return livePkg
+
+        return ParserRuleHelper.loadRules(context)
+            .firstOrNull { it.enabled && it.useLyriconApi }
+            ?.packageName
     }
 
     private fun updateProgress(position: Long) {

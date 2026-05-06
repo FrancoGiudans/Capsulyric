@@ -3,6 +3,7 @@ package com.example.islandlyrics.feature.customsettings.material
 import android.app.Activity
 import com.example.islandlyrics.ui.common.NotificationPreview
 import com.example.islandlyrics.ui.common.CapsulePreview
+import com.example.islandlyrics.ui.common.LyricTextDisplayMode
 import com.example.islandlyrics.ui.common.OneUiCapsuleColorMode
 import com.example.islandlyrics.R
 import com.example.islandlyrics.core.platform.XmsfBypassMode
@@ -82,6 +83,7 @@ fun CustomSettingsScreen(
     var showIconStyleDropdown by remember { mutableStateOf(false) }
     var showOneUiCapsuleColorDropdown by remember { mutableStateOf(false) }
     var showCapsuleModeDropdown by remember { mutableStateOf(false) }
+    var showLyricTextDisplayModeDropdown by remember { mutableStateOf(false) }
     var showSuperIslandLyricModeDropdown by remember { mutableStateOf(false) }
     var showPrivacyDialog by remember { mutableStateOf(false) }
 
@@ -110,6 +112,7 @@ fun CustomSettingsScreen(
     var hideRecentsEnabled by remember { mutableStateOf(prefs.getBoolean("hide_recents_enabled", false)) }
     var recommendMediaAppEnabled by remember { mutableStateOf(prefs.getBoolean("recommend_media_app", true)) }
     var disableScrolling by remember { mutableStateOf(prefs.getBoolean("disable_lyric_scrolling", false)) }
+    var lyricTextDisplayMode by remember { mutableStateOf(LyricTextDisplayMode.read(prefs)) }
     var oneuiCapsuleColorMode by remember { mutableStateOf(OneUiCapsuleColorMode.read(prefs)) }
 
     var superIslandEnabled by remember { mutableStateOf(prefs.getBoolean("super_island_enabled", false)) }
@@ -314,6 +317,47 @@ fun CustomSettingsScreen(
                                     prefs.edit().putBoolean("disable_lyric_scrolling", it).apply()
                                 }
                             )
+
+                            val lyricTextModes = LyricTextDisplayMode.values
+                            val lyricTextModeLabels = listOf(
+                                stringResource(R.string.lyric_text_display_mode_lyric),
+                                stringResource(R.string.lyric_text_display_mode_translation),
+                                stringResource(R.string.lyric_text_display_mode_romanization)
+                            )
+                            val currentLyricTextModeIndex = lyricTextModes.indexOf(lyricTextDisplayMode).takeIf { it >= 0 } ?: 0
+
+                            Column(modifier = Modifier.fillMaxWidth()) {
+                                Box(modifier = Modifier.fillMaxWidth()) {
+                                    SettingsTextItem(
+                                        title = stringResource(R.string.settings_lyric_text_display_mode),
+                                        value = lyricTextModeLabels[currentLyricTextModeIndex],
+                                        onClick = { showLyricTextDisplayModeDropdown = true }
+                                    )
+                                    Box(modifier = Modifier.matchParentSize().wrapContentSize(Alignment.Center)) {
+                                        DropdownMenu(
+                                            expanded = showLyricTextDisplayModeDropdown,
+                                            onDismissRequest = { showLyricTextDisplayModeDropdown = false }
+                                        ) {
+                                            lyricTextModeLabels.forEachIndexed { index, label ->
+                                                DropdownMenuItem(
+                                                    text = { Text(label) },
+                                                    onClick = {
+                                                        lyricTextDisplayMode = lyricTextModes[index]
+                                                        LyricTextDisplayMode.write(prefs, lyricTextDisplayMode)
+                                                        showLyricTextDisplayModeDropdown = false
+                                                    }
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                                Text(
+                                    text = stringResource(R.string.settings_lyric_text_display_mode_desc),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(horizontal = 24.dp).padding(bottom = 8.dp)
+                                )
+                            }
 
                             if (RomUtils.getRomType() == "OneUI") {
                                 val oneUiColorModes = OneUiCapsuleColorMode.values

@@ -176,6 +176,14 @@
     <string name="parser_lgetter_lyric_desc_short">通过 Lyric Getter 广播接收</string>
     <string name="parser_lyricon_lyric">词幕 (Lyricon) API</string>
     <string name="parser_lyricon_lyric_desc_short">订阅 Lyricon 活跃播放器歌词</string>
+    <string name="parser_lyric_source_config">歌词源配置</string>
+    <string name="parser_no_source_enabled">未启用来源</string>
+    <string name="parser_receive_translation">接收翻译</string>
+    <string name="parser_receive_romanization">接收罗马音</string>
+    <string name="parser_online_translation_desc">目前只有 QQ 音乐和网易云在线歌词提供翻译数据。</string>
+    <string name="parser_online_romanization_desc">目前只有 QQ 音乐和网易云在线歌词提供罗马音数据。</string>
+    <string name="parser_lyricon_translation_desc">当当前 Lyricon 提供方上报翻译字段时接收。</string>
+    <string name="parser_lyricon_romanization_desc">当当前 Lyricon 提供方上报罗马音或 secondary 字段时接收。</string>
     <string name="parser_save">保存</string>
     <string name="parser_save_rule">保存规则</string>
     <string name="parser_add_app_fmt">添加 %s</string>
@@ -449,6 +457,11 @@
     <string name="settings_click_action_media">打开媒体控制弹窗</string>
     <string name="settings_click_action_media_desc">在不打开本应用的情况下展示媒体控制弹窗</string>
     <string name="settings_disable_scrolling">禁用歌词滚动</string>
+    <string name="settings_lyric_text_display_mode">优先显示内容</string>
+    <string name="settings_lyric_text_display_mode_desc">翻译/罗马音仅在对应歌词源已接收且当前歌曲提供数据时生效；否则显示原歌词。</string>
+    <string name="lyric_text_display_mode_lyric">歌词</string>
+    <string name="lyric_text_display_mode_translation">翻译</string>
+    <string name="lyric_text_display_mode_romanization">罗马音</string>
     <string name="settings_super_island">发送小米超级岛通知</string>
     <string name="settings_super_island_desc">替代 Live Update，使用小米超级岛模版发送歌词通知</string>
     <string name="settings_capsule_mode">胶囊模式</string>
@@ -549,8 +562,8 @@
     <string name="diag_btn_refresh">刷新 API</string>
     <string name="diag_online_lyric_debug_title">在线歌词调试</string>
     <string name="diag_online_lyric_debug_desc">查看每个在线歌词 API 的最终结果</string>
-    <string name="diag_qq_roman_debug_title">QQ 罗马音抓取</string>
-    <string name="diag_qq_roman_debug_desc">直接抓取并完整输出 QQ 的 contentroma</string>
+    <string name="diag_qq_roman_debug_title">罗马音/翻译调试</string>
+    <string name="diag_qq_roman_debug_desc">直接抓取并完整输出 QQ 音乐和网易云的歌词扩展字段</string>
 
     <!-- 在线歌词调试 -->
     <string name="online_lyric_debug_back">返回</string>
@@ -643,6 +656,10 @@
     <string name="cache_management_delete">删除</string>
     <string name="cache_management_query_info">查询信息</string>
     <string name="cache_management_provider">来源</string>
+    <string name="cache_management_sidecars">额外内容</string>
+    <string name="cache_management_sidecars_fmt">翻译: %1$s / 罗马音: %2$s</string>
+    <string name="cache_management_yes">有</string>
+    <string name="cache_management_no">无</string>
     <string name="cache_management_updated_at">更新时间</string>
     <string name="cache_management_unknown">未知</string>
     <string name="cache_management_has_custom_match">包含自定义匹配信息</string>

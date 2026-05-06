@@ -22,6 +22,9 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.islandlyrics.data.LyricRepository
+import com.example.islandlyrics.data.lyric.NeteaseRomanFetcher
+import com.example.islandlyrics.data.lyric.QqRomanFetcher
 import com.example.islandlyrics.feature.qqroman.QqRomanDebugViewModel
 import com.example.islandlyrics.ui.miuix.MiuixBlurScaffold
 import com.example.islandlyrics.ui.miuix.MiuixBlurTopAppBar
@@ -43,6 +46,8 @@ fun MiuixQqRomanDebugScreen(
 ) {
     val uiState by viewModel.uiState.observeAsState(QqRomanDebugViewModel.UiState())
     val currentSong by viewModel.liveMetadata.observeAsState()
+    val liveLyric by viewModel.liveLyric.observeAsState()
+    val superLyricDebug by viewModel.superLyricDebug.observeAsState()
     val scrollBehavior = MiuixScrollBehavior(rememberTopAppBarState())
 
     LaunchedEffect(currentSong?.packageName, currentSong?.title, currentSong?.artist) {
@@ -54,7 +59,7 @@ fun MiuixQqRomanDebugScreen(
     MiuixBlurScaffold(
         topBar = {
             MiuixBlurTopAppBar(
-                title = "QQ 罗马音抓取",
+                title = "罗马音/翻译调试",
                 scrollBehavior = scrollBehavior,
                 navigationIcon = {
                     IconButton(onClick = onBack, modifier = Modifier.padding(start = 12.dp)) {
@@ -93,10 +98,40 @@ fun MiuixQqRomanDebugScreen(
                     }
                 }
             }
+            item { SmallTitle(text = "SuperLyric 实时翻译/罗马音") }
+            item {
+                RealtimeSourceCard(
+                    sourceName = "SuperLyric",
+                    liveLyric = liveLyric
+                )
+            }
+            item { SmallTitle(text = "SuperLyric 原始回调") }
+            item { SuperLyricRawCard(superLyricDebug) }
+            item { SmallTitle(text = "Lyricon 实时翻译/罗马音") }
+            item {
+                RealtimeSourceCard(
+                    sourceName = "Lyricon",
+                    liveLyric = liveLyric
+                )
+            }
             item { SmallTitle(text = "查询条件") }
             item {
                 Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
                     Column(modifier = Modifier.padding(16.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            QqRomanDebugViewModel.DebugSource.entries.forEach { source ->
+                                Button(
+                                    onClick = { viewModel.updateSource(source) },
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Text(if (uiState.selectedSource == source) "✓ ${source.displayName}" else source.displayName)
+                                }
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(12.dp))
                         TextField(
                             value = uiState.queryTitle,
                             onValueChange = viewModel::updateTitle,
@@ -126,7 +161,27 @@ fun MiuixQqRomanDebugScreen(
                                 modifier = Modifier.weight(1f),
                                 enabled = !uiState.loading
                             ) {
-                                Text(if (uiState.loading) "抓取中..." else "抓取罗马音")
+                                Text(if (uiState.loading) "抓取中..." else "抓取当前源")
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Button(
+                                onClick = { viewModel.fetchAll() },
+                                modifier = Modifier.weight(1f),
+                                enabled = !uiState.loading
+                            ) {
+                                Text("同时抓 QQ / 网易云")
+                            }
+                            Button(
+                                onClick = { viewModel.clearResults() },
+                                modifier = Modifier.weight(1f),
+                                enabled = !uiState.loading && (uiState.qqResult != null || uiState.neteaseResult != null)
+                            ) {
+                                Text("清空结果")
                             }
                         }
                         uiState.error?.let {
@@ -136,70 +191,171 @@ fun MiuixQqRomanDebugScreen(
                     }
                 }
             }
-            uiState.result?.let { result ->
+            uiState.qqResult?.let { result ->
                 item { SmallTitle(text = "QQ 命中结果") }
-                item {
-                    Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
-                        Column(modifier = Modifier.padding(16.dp)) {
-                            Text("查询: ${result.queryTitle} / ${result.queryArtist.ifBlank { "—" }}")
-                            Text("命中歌曲: ${result.matchedTitle}")
-                            Text("命中歌手: ${result.matchedArtist.ifBlank { "—" }}")
-                            Text("songId: ${result.songId}", fontSize = 12.sp)
-                            Text("songMid: ${result.songMid}", fontSize = 12.sp)
-                            result.decryptError?.let {
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Text("解密失败: $it", color = MiuixTheme.colorScheme.error)
-                                Text(
-                                    "contentroma 长度: ${result.rawRomanPayloadLength}",
-                                    color = MiuixTheme.colorScheme.onSurfaceSecondary,
-                                    fontSize = 12.sp
-                                )
-                            }
-                        }
-                    }
-                }
-                item { SmallTitle(text = "完整罗马音") }
-                item {
-                    Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
-                        Text(
-                            text = result.romanLyrics.ifBlank { "(空)" },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .heightIn(min = 120.dp)
-                                .padding(16.dp),
-                            fontSize = 12.sp
-                        )
-                    }
-                }
-                item { SmallTitle(text = "解密后原始内容") }
-                item {
-                    Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
-                        Text(
-                            text = result.decryptedRomanPayload.ifBlank { "(空)" },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .heightIn(min = 120.dp)
-                                .padding(16.dp),
-                            fontSize = 12.sp
-                        )
-                    }
-                }
+                item { QqResultCard(result) }
+                item { SmallTitle(text = "QQ 完整罗马音") }
+                item { TextDumpCard(result.romanLyrics.ifBlank { "(空)" }) }
+                item { SmallTitle(text = "QQ 解密后原始内容") }
+                item { TextDumpCard(result.decryptedRomanPayload.ifBlank { "(空)" }) }
                 if (result.decryptError != null) {
-                    item { SmallTitle(text = "原始 contentroma 预览") }
-                    item {
-                        Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
-                            Text(
-                                text = result.rawRomanPayloadPreview.ifBlank { "(空)" },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .heightIn(min = 120.dp)
-                                    .padding(16.dp),
-                                fontSize = 12.sp
-                            )
-                        }
-                    }
+                    item { SmallTitle(text = "QQ 原始 contentroma 预览") }
+                    item { TextDumpCard(result.rawRomanPayloadPreview.ifBlank { "(空)" }) }
+                }
+            }
+            uiState.neteaseResult?.let { result ->
+                item { SmallTitle(text = "网易云命中结果") }
+                item { NeteaseResultCard(result) }
+                item { SmallTitle(text = "网易云 Lrc 原文") }
+                item { TextDumpCard(result.lyrics.ifBlank { "(空)" }) }
+                item { SmallTitle(text = "网易云 Tlyric 翻译") }
+                item { TextDumpCard(result.translatedLyrics.ifBlank { "(空)" }) }
+                item { SmallTitle(text = "网易云 Romalrc 罗马音") }
+                item { TextDumpCard(result.romanLyrics.ifBlank { "(空)" }) }
+                item { SmallTitle(text = "网易云 Yrc 逐字") }
+                item { TextDumpCard(result.yrcLyrics.ifBlank { "(空)" }) }
+                item { SmallTitle(text = "网易云 Ytlrc 逐字翻译") }
+                item { TextDumpCard(result.yTranslatedLyrics.ifBlank { "(空)" }) }
+                item { SmallTitle(text = "网易云 Yromalrc 逐字罗马音") }
+                item { TextDumpCard(result.yRomanLyrics.ifBlank { "(空)" }) }
+                item { SmallTitle(text = "网易云原始响应预览") }
+                item { TextDumpCard(result.rawLyricResponsePreview.ifBlank { "(空)" }) }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SuperLyricRawCard(info: LyricRepository.SuperLyricDebugInfo?) {
+    Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            if (info == null) {
+                Text("尚未收到 SuperLyric 回调")
+                return@Column
+            }
+
+            Text("publisher: ${info.publisher ?: "(null)"}")
+            Text("package: ${info.packageName.ifBlank { "(空)" }}", fontSize = 12.sp)
+            Text("hasLyric=${info.hasLyric}, hasTranslation=${info.hasTranslation}, hasSecondary=${info.hasSecondary}")
+            Text("skip: ${info.skipReason ?: "(未跳过)"}")
+            Text("extraKeys: ${info.extraKeys.joinToString().ifBlank { "(空)" }}")
+            Spacer(modifier = Modifier.height(12.dp))
+            Text("raw lyric line")
+            TextDumpInner(info.lyricLineRaw ?: "(null)")
+            Spacer(modifier = Modifier.height(12.dp))
+            Text("raw translation line")
+            TextDumpInner(info.translationLineRaw ?: "(null)")
+            Spacer(modifier = Modifier.height(12.dp))
+            Text("raw secondary line")
+            TextDumpInner(info.secondaryLineRaw ?: "(null)")
+            Spacer(modifier = Modifier.height(12.dp))
+            Text("words preview")
+            TextDumpInner(
+                "lyric: ${info.lyricWordsPreview}\n" +
+                    "translation: ${info.translationWordsPreview}\n" +
+                    "secondary: ${info.secondaryWordsPreview}"
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            Text("原始主歌词")
+            TextDumpInner(info.lyric.ifBlank { "(空)" })
+            Spacer(modifier = Modifier.height(12.dp))
+            Text("原始翻译")
+            TextDumpInner(info.translation?.ifBlank { "(空)" } ?: "(空)")
+            Spacer(modifier = Modifier.height(12.dp))
+            Text("原始罗马音/副歌词")
+            TextDumpInner(info.roma?.ifBlank { "(空)" } ?: "(空)")
+        }
+    }
+}
+
+@Composable
+private fun RealtimeSourceCard(
+    sourceName: String,
+    liveLyric: com.example.islandlyrics.data.LyricRepository.LyricInfo?
+) {
+    Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            val matched = liveLyric?.apiPath.equals(sourceName, ignoreCase = true)
+            if (!matched) {
+                Text("当前没有 $sourceName 实时数据")
+                Text(
+                    "当前来源: ${liveLyric?.apiPath ?: "无"}",
+                    color = MiuixTheme.colorScheme.onSurfaceSecondary,
+                    fontSize = 12.sp
+                )
+                return@Column
+            }
+
+            Text("当前歌词")
+            TextDumpInner(liveLyric?.lyric?.ifBlank { "(空)" } ?: "(空)")
+            Spacer(modifier = Modifier.height(12.dp))
+            Text("翻译")
+            TextDumpInner(liveLyric?.translation?.ifBlank { "(空)" } ?: "(空)")
+            Spacer(modifier = Modifier.height(12.dp))
+            Text("罗马音")
+            TextDumpInner(liveLyric?.roma?.ifBlank { "(空)" } ?: "(空)")
+        }
+    }
+}
+
+@Composable
+private fun QqResultCard(result: QqRomanFetcher.Result) {
+    Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text("查询: ${result.queryTitle} / ${result.queryArtist.ifBlank { "—" }}")
+            Text("命中歌曲: ${result.matchedTitle}")
+            Text("命中歌手: ${result.matchedArtist.ifBlank { "—" }}")
+            Text("songId: ${result.songId}", fontSize = 12.sp)
+            Text("songMid: ${result.songMid}", fontSize = 12.sp)
+            result.decryptError?.let {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text("解密失败: $it", color = MiuixTheme.colorScheme.error)
+                Text(
+                    "contentroma 长度: ${result.rawRomanPayloadLength}",
+                    color = MiuixTheme.colorScheme.onSurfaceSecondary,
+                    fontSize = 12.sp
+                )
+                if (result.decryptedRomanPayloadHexPreview.isNotBlank()) {
+                    Text(
+                        "解密后头部: ${result.decryptedRomanPayloadHexPreview}",
+                        color = MiuixTheme.colorScheme.onSurfaceSecondary,
+                        fontSize = 12.sp
+                    )
                 }
             }
         }
     }
+}
+
+@Composable
+private fun NeteaseResultCard(result: NeteaseRomanFetcher.Result) {
+    Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text("查询: ${result.queryTitle} / ${result.queryArtist.ifBlank { "—" }}")
+            Text("命中歌曲: ${result.matchedTitle}")
+            Text("命中歌手: ${result.matchedArtist.ifBlank { "—" }}")
+            Text("songId: ${result.songId}", fontSize = 12.sp)
+            Text("endpoint: ${result.lyricEndpoint}", fontSize = 12.sp)
+            Text("raw length: ${result.rawLyricResponseLength}", fontSize = 12.sp)
+        }
+    }
+}
+
+@Composable
+private fun TextDumpCard(text: String) {
+    Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
+        TextDumpInner(text)
+    }
+}
+
+@Composable
+private fun TextDumpInner(text: String) {
+    Text(
+        text = text,
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 120.dp)
+            .padding(16.dp),
+        fontSize = 12.sp
+    )
 }

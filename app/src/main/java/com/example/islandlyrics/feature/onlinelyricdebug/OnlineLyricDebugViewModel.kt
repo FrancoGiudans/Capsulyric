@@ -7,6 +7,7 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
 import com.example.islandlyrics.core.logging.AppLogger
 import com.example.islandlyrics.data.LyricRepository
+import com.example.islandlyrics.data.ParserRule
 import com.example.islandlyrics.data.ParserRuleHelper
 import com.example.islandlyrics.data.lyric.OnlineLyricFetcher
 import com.example.islandlyrics.data.lyric.OnlineLyricCacheStore
@@ -87,7 +88,9 @@ class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(app
         result: OnlineLyricFetcher.LyricResult,
         apiPath: String = "Online API"
     ) {
-        val lines = result.parsedLines.orEmpty()
+        val rule = ParserRuleHelper.getRuleForPackage(getApplication(), mediaInfo.packageName)
+            ?: ParserRuleHelper.createDefaultRule(mediaInfo.packageName)
+        val lines = result.withSidecars(rule)
         repo.updateParsedLyrics(
             lines = lines,
             hasSyllable = result.hasSyllable,
@@ -99,7 +102,68 @@ class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(app
         val position = liveProgress.value?.position ?: 0L
         val currentLine = findCurrentLine(lines, position)
         repo.updateCurrentLine(currentLine)
-        repo.updateLyric((currentLine ?: findFallbackLine(lines, position))?.text.orEmpty(), appLabel, apiPath)
+        val displayLine = currentLine ?: findFallbackLine(lines, position)
+        repo.updateLyric(
+            lyric = displayLine?.text.orEmpty(),
+            app = appLabel,
+            apiPath = apiPath,
+            translation = displayLine?.translation,
+            roma = displayLine?.roma
+        )
+        AppLogger.getInstance().d(
+            "OnlineLyricDebug",
+            "Applied ${result.api}: lines=${lines.size}, translation=${displayLine?.translation != null}, roma=${displayLine?.roma != null}"
+        )
+    }
+
+    private fun OnlineLyricFetcher.LyricResult.withSidecars(rule: ParserRule): List<OnlineLyricFetcher.LyricLine> {
+        val lines = parsedLines.orEmpty()
+        if (lines.isEmpty()) return emptyList()
+        val translationByTime = if (rule.receiveOnlineTranslation) {
+            translationLyrics?.let { parseSidecarLrc(it) }.orEmpty()
+        } else {
+            emptyMap()
+        }
+        val romanByTime = if (rule.receiveOnlineRomanization) {
+            romanLyrics?.let { parseSidecarLrc(it) }.orEmpty()
+        } else {
+            emptyMap()
+        }
+        if (translationByTime.isEmpty() && romanByTime.isEmpty()) return lines
+
+        return lines.map { line ->
+            line.copy(
+                translation = translationByTime[line.startTime] ?: line.translation,
+                roma = romanByTime[line.startTime] ?: line.roma
+            )
+        }
+    }
+
+    private fun parseSidecarLrc(content: String): Map<Long, String> {
+        val timestampRegex = Regex("""\[(\d{1,2}):(\d{2})(?:\.(\d{1,3}))?]""")
+        return content.lineSequence()
+            .mapNotNull { rawLine ->
+                val matches = timestampRegex.findAll(rawLine).toList()
+                if (matches.isEmpty()) return@mapNotNull null
+                val text = rawLine.replace(timestampRegex, "").trim()
+                if (text.isBlank()) return@mapNotNull null
+                matches.map { match -> match.toMillis() to text }
+            }
+            .flatten()
+            .toMap()
+    }
+
+    private fun MatchResult.toMillis(): Long {
+        val minutes = groupValues[1].toLongOrNull() ?: 0L
+        val seconds = groupValues[2].toLongOrNull() ?: 0L
+        val fraction = groupValues.getOrNull(3).orEmpty()
+        val millis = when (fraction.length) {
+            0 -> 0L
+            1 -> fraction.toLongOrNull()?.times(100L) ?: 0L
+            2 -> fraction.toLongOrNull()?.times(10L) ?: 0L
+            else -> fraction.take(3).toLongOrNull() ?: 0L
+        }
+        return minutes * 60_000L + seconds * 1000L + millis
     }
 
     private suspend fun persistAndApplyResult(
@@ -266,7 +330,7 @@ class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(app
                     }
                     if (cacheHit != null) {
                         _selectedResult.value = cacheHit.result
-                        _parsedLyrics.value = cacheHit.result.parsedLines ?: emptyList()
+                        _parsedLyrics.value = cacheHit.result.withSidecars(rule)
                         _attempts.value = emptyList()
                         _cacheStatus.value = s(R.string.online_lyric_debug_cache_hit)
                         applyResultToRepository(mediaInfo, cacheHit.result, apiPath = "Online Cache")
@@ -287,7 +351,7 @@ class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(app
                 _attempts.value = outcome.attempts
                 _usedCleanTitleFallback.value = outcome.usedCleanTitleFallback
                 _selectedResult.value = outcome.bestResult
-                _parsedLyrics.value = outcome.bestResult?.parsedLines ?: emptyList()
+                _parsedLyrics.value = outcome.bestResult?.withSidecars(rule) ?: emptyList()
                 if (outcome.bestResult == null) {
                     _error.value = s(R.string.online_lyric_debug_all_apis_failed)
                 } else {
