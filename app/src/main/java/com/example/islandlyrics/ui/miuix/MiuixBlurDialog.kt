@@ -1,5 +1,6 @@
 package com.example.islandlyrics.ui.miuix
 
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -9,7 +10,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import top.yukonga.miuix.kmp.basic.Text
@@ -36,6 +39,11 @@ fun MiuixBlurDialog(
     val blurEnabled = LocalMiuixBlurEnabled.current
     val shouldUseBlur = blurEnabled && backdrop != null
     val panelColor = MiuixTheme.colorScheme.surface
+    val borderColor = if (panelColor.luminance() > 0.5f) {
+        Color.White
+    } else {
+        MiuixTheme.colorScheme.onSurface
+    }.copy(alpha = MiuixBlurStyleDefaults.DialogBorderAlpha)
 
     OverlayDialog(
         show = show,
@@ -53,12 +61,17 @@ fun MiuixBlurDialog(
     ) {
         val panelModifier = Modifier
             .fillMaxWidth()
+            .clip(BlurDialogShape)
             .miuixSurfaceBlur(
                 enabled = shouldUseBlur,
                 backdrop = backdrop,
                 shape = BlurDialogShape,
-                fallbackColor = panelColor
+                fallbackColor = panelColor,
+                blurRadius = MiuixBlurStyleDefaults.DialogBlurRadius,
+                noiseCoefficient = MiuixBlurStyleDefaults.DialogNoiseCoefficient,
+                colors = miuixDialogBlurColors(surfaceColor = panelColor)
             )
+            .border(1.dp, borderColor, BlurDialogShape)
             .padding(horizontal = 24.dp, vertical = 22.dp)
 
         Box(modifier = panelModifier) {

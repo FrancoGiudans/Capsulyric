@@ -6,6 +6,8 @@ object SuperIslandLyricLayout {
     private const val FULL_LYRIC_RIGHT_WEIGHT = 14
     private const val FULL_LYRIC_LEFT_VISUAL_NUMERATOR = 5
     private const val FULL_LYRIC_LEFT_VISUAL_DENOMINATOR = 6
+    private const val VISUAL_BALANCE_TOLERANCE_WEIGHT = 2
+    private const val MAX_RIGHT_PADDING_SPACES = 4
 
     data class Split(val left: String, val right: String)
 
@@ -36,33 +38,24 @@ object SuperIslandLyricLayout {
         if (normalized.isEmpty()) return Split("", "")
 
         val chars = normalized.toList()
-        var bestSplit = 1
-        var bestScore = Int.MAX_VALUE
+        val fullFit = findBestSplit(
+            chars = chars,
+            endIndices = chars.size..chars.size,
+            leftMaxWeight = leftMaxWeight,
+            rightMaxWeight = rightMaxWeight,
+            leftVisualNumerator = leftVisualNumerator,
+            leftVisualDenominator = leftVisualDenominator
+        )
+        val best = fullFit ?: findBestSplit(
+            chars = chars,
+            endIndices = 2..chars.size,
+            leftMaxWeight = leftMaxWeight,
+            rightMaxWeight = rightMaxWeight,
+            leftVisualNumerator = leftVisualNumerator,
+            leftVisualDenominator = leftVisualDenominator
+        )
 
-        for (splitIndex in 1..chars.size) {
-            val left = chars.subList(0, splitIndex).joinToString("").trim()
-            val right = chars.subList(splitIndex, chars.size).joinToString("").trim()
-            val leftWeight = calculateWeight(left)
-            val rightWeight = calculateWeight(right)
-
-            if (leftWeight > leftMaxWeight || rightWeight > rightMaxWeight) continue
-
-            val leftVisualWeight = (leftWeight * leftVisualNumerator) / leftVisualDenominator
-            if (leftVisualWeight < rightWeight) continue
-
-            val usedWeight = leftWeight + rightWeight
-            val balancePenalty = kotlin.math.abs(leftVisualWeight - rightWeight) * 4
-            val unusedPenalty = (leftMaxWeight + rightMaxWeight - usedWeight) * 2
-            val edgePenalty = if (left.isEmpty() || right.isEmpty()) 20 else 0
-            val score = balancePenalty + unusedPenalty + edgePenalty
-
-            if (score < bestScore) {
-                bestScore = score
-                bestSplit = splitIndex
-            }
-        }
-
-        if (bestScore == Int.MAX_VALUE) {
+        if (best == null) {
             val totalWeight = calculateWeight(normalized)
             val leftTarget = minOf(
                 leftMaxWeight,
@@ -74,13 +67,84 @@ object SuperIslandLyricLayout {
             )
             val left = extractTextByWeight(normalized, 0, leftTarget)
             val right = extractTextByWeight(normalized.drop(left.length).trimStart(), 0, rightMaxWeight)
-            return Split(left, right)
+            return balanceWithRightPadding(left, right, leftVisualNumerator, leftVisualDenominator)
         }
 
-        return Split(
-            left = chars.subList(0, bestSplit).joinToString("").trim(),
-            right = chars.subList(bestSplit, chars.size).joinToString("").trim()
+        return balanceWithRightPadding(
+            left = chars.subList(0, best.splitIndex).joinToString("").trim(),
+            right = chars.subList(best.splitIndex, best.endIndex).joinToString("").trim(),
+            leftVisualNumerator = leftVisualNumerator,
+            leftVisualDenominator = leftVisualDenominator
         )
+    }
+
+    private data class Candidate(val splitIndex: Int, val endIndex: Int, val score: Int)
+
+    private fun findBestSplit(
+        chars: List<Char>,
+        endIndices: IntRange,
+        leftMaxWeight: Int,
+        rightMaxWeight: Int,
+        leftVisualNumerator: Int,
+        leftVisualDenominator: Int
+    ): Candidate? {
+        var best: Candidate? = null
+
+        for (endIndex in endIndices) {
+            for (splitIndex in 1 until endIndex) {
+                val left = chars.subList(0, splitIndex).joinToString("").trim()
+                val right = chars.subList(splitIndex, endIndex).joinToString("").trim()
+                val leftWeight = calculateWeight(left)
+                val rightWeight = calculateWeight(right)
+
+                if (leftWeight > leftMaxWeight || rightWeight > rightMaxWeight) continue
+
+                val leftVisualWeight = scaleVisualWeight(leftWeight, leftVisualNumerator, leftVisualDenominator)
+
+                val paddingSpaces = rightPaddingSpaces(leftVisualWeight, rightWeight)
+                val paddedRightVisualWeight = rightWeight + paddingSpaces
+                val overBalance = (leftVisualWeight - paddedRightVisualWeight - VISUAL_BALANCE_TOLERANCE_WEIGHT).coerceAtLeast(0)
+                val underBalance = (paddedRightVisualWeight - leftVisualWeight - VISUAL_BALANCE_TOLERANCE_WEIGHT).coerceAtLeast(0)
+                val usedWeight = leftWeight + rightWeight
+                val balancePenalty = kotlin.math.abs(leftVisualWeight - paddedRightVisualWeight) * 10 +
+                    overBalance * 80 +
+                    underBalance * 20
+                val unusedPenalty = (leftMaxWeight + rightMaxWeight - usedWeight)
+                val edgePenalty = if (left.isEmpty() || right.isEmpty()) 20 else 0
+                val score = balancePenalty + unusedPenalty + edgePenalty
+
+                if (best == null || score < best.score) {
+                    best = Candidate(splitIndex, endIndex, score)
+                }
+            }
+        }
+        return best
+    }
+
+    private fun scaleVisualWeight(weight: Int, numerator: Int, denominator: Int): Int {
+        return (weight * numerator + denominator / 2) / denominator
+    }
+
+    private fun balanceWithRightPadding(
+        left: String,
+        right: String,
+        leftVisualNumerator: Int,
+        leftVisualDenominator: Int
+    ): Split {
+        if (left.isEmpty() || right.isEmpty()) return Split(left, right)
+
+        val leftVisualWeight = scaleVisualWeight(
+            calculateWeight(left),
+            leftVisualNumerator,
+            leftVisualDenominator
+        )
+        val rightWeight = calculateWeight(right)
+        val paddingSpaces = rightPaddingSpaces(leftVisualWeight, rightWeight)
+        return Split(left, right + " ".repeat(paddingSpaces))
+    }
+
+    private fun rightPaddingSpaces(leftVisualWeight: Int, rightWeight: Int): Int {
+        return (leftVisualWeight - rightWeight).coerceIn(0, MAX_RIGHT_PADDING_SPACES)
     }
 
     private fun charWeight(c: Char): Int {
