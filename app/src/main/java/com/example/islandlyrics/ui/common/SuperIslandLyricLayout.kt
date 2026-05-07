@@ -4,8 +4,10 @@ object SuperIslandLyricLayout {
     private const val FULL_LYRIC_LEFT_WITH_COVER_WEIGHT = 13
     private const val FULL_LYRIC_LEFT_NO_COVER_WEIGHT = 16
     private const val FULL_LYRIC_RIGHT_WEIGHT = 14
-    private const val FULL_LYRIC_LEFT_VISUAL_NUMERATOR = 5
-    private const val FULL_LYRIC_LEFT_VISUAL_DENOMINATOR = 6
+    private const val FULL_LYRIC_LEFT_NO_COVER_VISUAL_NUMERATOR = 5
+    private const val FULL_LYRIC_LEFT_NO_COVER_VISUAL_DENOMINATOR = 6
+    private const val FULL_LYRIC_LEFT_WITH_COVER_VISUAL_NUMERATOR = 6
+    private const val FULL_LYRIC_LEFT_WITH_COVER_VISUAL_DENOMINATOR = 5
     private const val VISUAL_BALANCE_TOLERANCE_WEIGHT = 2
     private const val MAX_RIGHT_PADDING_SPACES = 4
 
@@ -16,8 +18,16 @@ object SuperIslandLyricLayout {
             text = text,
             leftMaxWeight = if (showLeftCover) FULL_LYRIC_LEFT_WITH_COVER_WEIGHT else FULL_LYRIC_LEFT_NO_COVER_WEIGHT,
             rightMaxWeight = FULL_LYRIC_RIGHT_WEIGHT,
-            leftVisualNumerator = FULL_LYRIC_LEFT_VISUAL_NUMERATOR,
-            leftVisualDenominator = FULL_LYRIC_LEFT_VISUAL_DENOMINATOR
+            leftVisualNumerator = if (showLeftCover) {
+                FULL_LYRIC_LEFT_WITH_COVER_VISUAL_NUMERATOR
+            } else {
+                FULL_LYRIC_LEFT_NO_COVER_VISUAL_NUMERATOR
+            },
+            leftVisualDenominator = if (showLeftCover) {
+                FULL_LYRIC_LEFT_WITH_COVER_VISUAL_DENOMINATOR
+            } else {
+                FULL_LYRIC_LEFT_NO_COVER_VISUAL_DENOMINATOR
+            }
         )
     }
 

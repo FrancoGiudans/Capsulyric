@@ -169,6 +169,8 @@
     <string name="parser_smart_online_fetch_desc">自动对各个歌词源评分，并选择最合适的结果</string>
     <string name="action_move_up">上移</string>
     <string name="action_move_down">下移</string>
+    <string name="action_drag_sort">拖拽排序</string>
+    <string name="parser_source_config_title">歌词源设置</string>
     <string name="parser_online_conflict_disable_notify">关闭媒体通知歌词</string>
     <string name="parser_super_lyric">SuperLyric API</string>
     <string name="parser_super_lyric_desc_short">通过 SuperLyric 广播接收</string>

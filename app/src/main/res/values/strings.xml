@@ -170,6 +170,8 @@
     <string name="parser_smart_online_fetch_desc">Automatically score all providers and choose the best match</string>
     <string name="action_move_up">Move Up</string>
     <string name="action_move_down">Move Down</string>
+    <string name="action_drag_sort">Drag to sort</string>
+    <string name="parser_source_config_title">Lyric source settings</string>
     <string name="parser_use_raw_metadata_for_online_match">Use original playback info for online matching</string>
     <string name="parser_use_raw_metadata_for_online_match_desc">Skip title parsing and use raw title/artist from the player when searching online lyrics</string>
     <string name="provider_qq_music">QQ Music</string>

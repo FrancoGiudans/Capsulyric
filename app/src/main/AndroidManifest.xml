@@ -58,6 +58,10 @@
             android:name="com.example.islandlyrics.feature.parserrule.ParserRuleEditorActivity"
             android:label="@string/parser_edit"
             android:parentActivityName="com.example.islandlyrics.feature.parserrule.ParserRuleActivity" />
+        <activity
+            android:name="com.example.islandlyrics.feature.parserrule.ParserRuleSourceConfigActivity"
+            android:label="@string/parser_source_config_title"
+            android:parentActivityName="com.example.islandlyrics.feature.parserrule.ParserRuleEditorActivity" />
 
         <service 
             android:name=".service.LyricService"

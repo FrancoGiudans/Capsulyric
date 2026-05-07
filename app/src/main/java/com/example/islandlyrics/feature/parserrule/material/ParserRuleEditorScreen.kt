@@ -1,8 +1,15 @@
 package com.example.islandlyrics.feature.parserrule.material
 
+import android.content.Intent
 import android.widget.Toast
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
@@ -10,7 +17,9 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -18,8 +27,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Check
@@ -40,32 +48,41 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import com.example.islandlyrics.R
 import com.example.islandlyrics.core.network.OfflineModeManager
 import com.example.islandlyrics.data.FieldOrder
 import com.example.islandlyrics.data.ParserRule
+import com.example.islandlyrics.data.ParserRuleHelper
 import com.example.islandlyrics.data.lyric.OnlineLyricProvider
 import com.example.islandlyrics.feature.parserrule.ParserRuleEditorState
+import com.example.islandlyrics.feature.parserrule.ParserRuleSourceConfigActivity
+import com.example.islandlyrics.feature.parserrule.ParserRuleSourceConfigType
 import com.example.islandlyrics.feature.parserrule.toEditorState
 import com.example.islandlyrics.feature.parserrule.toRule
+import com.example.islandlyrics.feature.parserrule.withSourceSettingsFrom
 import com.example.islandlyrics.feature.settings.material.SettingsSectionHeader
 import com.example.islandlyrics.ui.theme.material.neutralMaterialTopBarColors
-
-private enum class MaterialSourceConfigPage {
-    NOTIFICATION,
-    ONLINE,
-    LYRICON
-}
+import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -79,9 +96,61 @@ fun ParserRuleEditorScreen(
     val context = LocalContext.current
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     var state by remember(initialRule) { mutableStateOf(initialRule.toEditorState()) }
-    var sourceConfigPage by remember { mutableStateOf<MaterialSourceConfigPage?>(null) }
     var showOnlineSuggestionDialog by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
+    val canPersistSourceSettings = !isNewRule && state.packageName.isNotBlank()
+
+    DisposableEffect(canPersistSourceSettings, state.packageName) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME && canPersistSourceSettings) {
+                val latest = ParserRuleHelper.getRuleForPackage(context, state.packageName)
+                    ?: ParserRuleHelper.loadRules(context).firstOrNull { it.packageName == state.packageName }
+                if (latest != null) {
+                    state = state.withSourceSettingsFrom(latest.toEditorState())
+                }
+            }
+        }
+        val lifecycle = (context as? androidx.lifecycle.LifecycleOwner)?.lifecycle
+        lifecycle?.addObserver(observer)
+        onDispose { lifecycle?.removeObserver(observer) }
+    }
+
+    fun updateSourceState(next: ParserRuleEditorState) {
+        state = next
+        if (canPersistSourceSettings) {
+            ParserRuleHelper.updateRule(context, state.packageName) { current ->
+                current.copy(
+                    usesCarProtocol = next.usesCarProtocol,
+                    separatorPattern = next.separator,
+                    fieldOrder = next.fieldOrder,
+                    useOnlineLyrics = next.useOnlineLyrics,
+                    useSmartOnlineLyricSelection = next.useSmartOnlineLyricSelection,
+                    useRawMetadataForOnlineMatching = next.useRawMetadataForOnlineMatching,
+                    receiveOnlineTranslation = next.receiveOnlineTranslation,
+                    receiveOnlineRomanization = next.receiveOnlineRomanization,
+                    onlineLyricProviderOrder = next.onlineLyricProviderOrder.map { it.id },
+                    useSuperLyricApi = next.useSuperLyricApi,
+                    useLyricGetterApi = next.useLyricGetterApi,
+                    useLyriconApi = next.useLyriconApi,
+                    receiveLyriconTranslation = next.receiveLyriconTranslation,
+                    receiveLyriconRomanization = next.receiveLyriconRomanization
+                )
+            }
+        }
+    }
+
+    fun openSourceConfig(type: ParserRuleSourceConfigType) {
+        if (state.packageName.isBlank()) {
+            Toast.makeText(context, context.getString(R.string.dialog_enter_pkg), Toast.LENGTH_SHORT).show()
+            return
+        }
+        context.startActivity(
+            Intent(context, ParserRuleSourceConfigActivity::class.java).apply {
+                putExtra(ParserRuleSourceConfigActivity.EXTRA_PACKAGE_NAME, state.packageName)
+                putExtra(ParserRuleSourceConfigActivity.EXTRA_CONFIG_TYPE, type.name)
+            }
+        )
+    }
 
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
@@ -89,23 +158,12 @@ fun ParserRuleEditorScreen(
             MediumTopAppBar(
                 title = {
                     Text(
-                        when (sourceConfigPage) {
-                            MaterialSourceConfigPage.NOTIFICATION -> stringResource(R.string.parser_car_protocol)
-                            MaterialSourceConfigPage.ONLINE -> stringResource(R.string.settings_use_online_lyrics)
-                            MaterialSourceConfigPage.LYRICON -> stringResource(R.string.parser_lyricon_lyric)
-                            null -> if (isNewRule) stringResource(R.string.parser_add_rule) else stringResource(R.string.parser_edit)
-                        }
+                        if (isNewRule) stringResource(R.string.parser_add_rule) else stringResource(R.string.parser_edit)
                     )
                 },
                 navigationIcon = {
                     IconButton(onClick = {
-                        sourceConfigPage = when (sourceConfigPage) {
-                            null -> {
-                                onBack()
-                                null
-                            }
-                            else -> null
-                        }
+                        onBack()
                     }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
@@ -136,34 +194,6 @@ fun ParserRuleEditorScreen(
             )
         }
     ) { padding ->
-        if (sourceConfigPage != null) {
-            val sourceModifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .padding(horizontal = 16.dp)
-                .verticalScroll(rememberScrollState())
-            when (sourceConfigPage) {
-                MaterialSourceConfigPage.NOTIFICATION -> MaterialNotificationSourceConfigPage(
-                    state = state,
-                    onStateChange = { state = it },
-                    modifier = sourceModifier
-                )
-                MaterialSourceConfigPage.ONLINE -> MaterialOnlineSourceConfigPage(
-                    state = state,
-                    onStateChange = { state = it },
-                    onShowOnlineSuggestion = { showOnlineSuggestionDialog = true },
-                    modifier = sourceModifier
-                )
-                MaterialSourceConfigPage.LYRICON -> MaterialLyriconSourceConfigPage(
-                    state = state,
-                    onStateChange = { state = it },
-                    modifier = sourceModifier
-                )
-                null -> Unit
-            }
-            return@Scaffold
-        }
-
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -195,8 +225,8 @@ fun ParserRuleEditorScreen(
             SourceCard {
                 MaterialSourceRows(
                     state = state,
-                    onStateChange = { state = it },
-                    onNavigate = { sourceConfigPage = it },
+                    onStateChange = ::updateSourceState,
+                    onNavigate = ::openSourceConfig,
                     onShowOnlineSuggestion = { showOnlineSuggestionDialog = true }
                 )
             }
@@ -224,7 +254,7 @@ fun ParserRuleEditorScreen(
             text = { Text(stringResource(R.string.parser_online_conflict_message)) },
             confirmButton = {
                 TextButton(onClick = {
-                    state = state.copy(usesCarProtocol = false)
+                    updateSourceState(state.copy(usesCarProtocol = false))
                     showOnlineSuggestionDialog = false
                 }) {
                     Text(stringResource(R.string.parser_online_conflict_disable_notify))
@@ -264,7 +294,7 @@ fun ParserRuleEditorScreen(
 private fun MaterialSourceRows(
     state: ParserRuleEditorState,
     onStateChange: (ParserRuleEditorState) -> Unit,
-    onNavigate: (MaterialSourceConfigPage) -> Unit,
+    onNavigate: (ParserRuleSourceConfigType) -> Unit,
     onShowOnlineSuggestion: () -> Unit
 ) {
     val context = LocalContext.current
@@ -274,7 +304,7 @@ private fun MaterialSourceRows(
         subtitle = stringResource(R.string.parser_notify_lyric_desc),
         checked = state.usesCarProtocol,
         onCheckedChange = { onStateChange(state.copy(usesCarProtocol = it)) },
-        onArrowClick = { onNavigate(MaterialSourceConfigPage.NOTIFICATION) }
+        onArrowClick = { onNavigate(ParserRuleSourceConfigType.NOTIFICATION) }
     )
     SwitchArrowRow(
         title = stringResource(R.string.settings_use_online_lyrics),
@@ -290,7 +320,7 @@ private fun MaterialSourceRows(
             )
             if (it && state.usesCarProtocol) onShowOnlineSuggestion()
         },
-        onArrowClick = { onNavigate(MaterialSourceConfigPage.ONLINE) }
+        onArrowClick = { onNavigate(ParserRuleSourceConfigType.ONLINE) }
     )
     SwitchRow(
         title = stringResource(R.string.parser_super_lyric),
@@ -309,12 +339,63 @@ private fun MaterialSourceRows(
         subtitle = stringResource(R.string.parser_lyricon_lyric_desc_short),
         checked = state.useLyriconApi,
         onCheckedChange = { onStateChange(state.copy(useLyriconApi = it)) },
-        onArrowClick = { onNavigate(MaterialSourceConfigPage.LYRICON) }
+        onArrowClick = { onNavigate(ParserRuleSourceConfigType.LYRICON) }
     )
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun MaterialNotificationSourceConfigPage(
+fun ParserRuleSourceConfigScreen(
+    configType: ParserRuleSourceConfigType,
+    initialRule: ParserRule,
+    onBack: () -> Unit,
+    onStateChange: (ParserRuleEditorState) -> Unit
+) {
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+    var state by remember(initialRule) { mutableStateOf(initialRule.toEditorState()) }
+    fun updateState(next: ParserRuleEditorState) {
+        state = next
+        onStateChange(next)
+    }
+
+    Scaffold(
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+        topBar = {
+            MediumTopAppBar(
+                title = {
+                    Text(
+                        when (configType) {
+                            ParserRuleSourceConfigType.NOTIFICATION -> stringResource(R.string.parser_car_protocol)
+                            ParserRuleSourceConfigType.ONLINE -> stringResource(R.string.settings_use_online_lyrics)
+                            ParserRuleSourceConfigType.LYRICON -> stringResource(R.string.parser_lyricon_lyric)
+                        }
+                    )
+                },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                scrollBehavior = scrollBehavior,
+                colors = neutralMaterialTopBarColors()
+            )
+        }
+    ) { padding ->
+        val modifier = Modifier
+            .fillMaxSize()
+            .padding(padding)
+            .padding(horizontal = 16.dp)
+            .verticalScroll(rememberScrollState())
+        when (configType) {
+            ParserRuleSourceConfigType.NOTIFICATION -> MaterialNotificationSourceConfigPage(state, ::updateState, modifier)
+            ParserRuleSourceConfigType.ONLINE -> MaterialOnlineSourceConfigPage(state, ::updateState, modifier)
+            ParserRuleSourceConfigType.LYRICON -> MaterialLyriconSourceConfigPage(state, ::updateState, modifier)
+        }
+    }
+}
+
+@Composable
+fun MaterialNotificationSourceConfigPage(
     state: ParserRuleEditorState,
     onStateChange: (ParserRuleEditorState) -> Unit,
     modifier: Modifier = Modifier
@@ -364,10 +445,9 @@ private fun MaterialNotificationSourceConfigPage(
 }
 
 @Composable
-private fun MaterialOnlineSourceConfigPage(
+fun MaterialOnlineSourceConfigPage(
     state: ParserRuleEditorState,
     onStateChange: (ParserRuleEditorState) -> Unit,
-    onShowOnlineSuggestion: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier) {
@@ -404,7 +484,7 @@ private fun MaterialOnlineSourceConfigPage(
 }
 
 @Composable
-private fun MaterialLyriconSourceConfigPage(
+fun MaterialLyriconSourceConfigPage(
     state: ParserRuleEditorState,
     onStateChange: (ParserRuleEditorState) -> Unit,
     modifier: Modifier = Modifier
@@ -486,44 +566,142 @@ private fun OnlineProviderOrderEditor(
     Spacer(modifier = Modifier.height(8.dp))
     Text(stringResource(R.string.parser_online_priority), color = MaterialTheme.colorScheme.primary)
     Spacer(modifier = Modifier.height(8.dp))
-    state.onlineLyricProviderOrder.forEachIndexed { index, provider ->
-        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Text("${index + 1}. ${provider.displayName(context)}", modifier = Modifier.weight(1f))
-            IconButton(
-                onClick = {
-                    onStateChange(
-                        state.copy(
-                            onlineLyricProviderOrder = state.onlineLyricProviderOrder.toMutableList().apply {
-                                removeAt(index)
-                                add(index - 1, provider)
-                            }
-                        )
-                    )
-                },
-                enabled = index > 0
-            ) {
-                Icon(Icons.Default.KeyboardArrowUp, contentDescription = stringResource(R.string.action_move_up))
-            }
-            IconButton(
-                onClick = {
-                    onStateChange(
-                        state.copy(
-                            onlineLyricProviderOrder = state.onlineLyricProviderOrder.toMutableList().apply {
-                                removeAt(index)
-                                add(index + 1, provider)
-                            }
-                        )
-                    )
-                },
-                enabled = index < state.onlineLyricProviderOrder.lastIndex
-            ) {
-                Icon(Icons.Default.KeyboardArrowDown, contentDescription = stringResource(R.string.action_move_down))
+    var order by remember { mutableStateOf(state.onlineLyricProviderOrder) }
+    var draggingProvider by remember { mutableStateOf<OnlineLyricProvider?>(null) }
+    LaunchedEffect(state.onlineLyricProviderOrder) {
+        if (draggingProvider == null && order != state.onlineLyricProviderOrder) {
+            order = state.onlineLyricProviderOrder
+        }
+    }
+    val rowHeight = 52.dp
+    Box(modifier = Modifier.fillMaxWidth().height(rowHeight * order.size)) {
+        order.forEachIndexed { index, provider ->
+            key(provider.id) {
+                DraggableProviderRow(
+                    label = provider.displayName(context),
+                    index = index,
+                    rowHeight = rowHeight,
+                    itemCount = order.size,
+                    isDragging = draggingProvider == provider,
+                    onDragStart = {
+                        draggingProvider = provider
+                    },
+                    onDragMove = { from, to -> order = order.moveItem(from, to) },
+                    onDragCancel = {
+                        order = state.onlineLyricProviderOrder
+                        draggingProvider = null
+                    },
+                    onDragEnd = {
+                        val nextOrder = order
+                        draggingProvider = null
+                        if (nextOrder != state.onlineLyricProviderOrder) {
+                            onStateChange(state.copy(onlineLyricProviderOrder = nextOrder))
+                        }
+                    }
+                )
             }
         }
     }
-    TextButton(onClick = { onStateChange(state.copy(onlineLyricProviderOrder = OnlineLyricProvider.defaultOrder())) }) {
+    TextButton(onClick = { onStateChange(state.copy(onlineLyricProviderOrder = OnlineLyricProvider.defaultOrderForPackage(state.packageName))) }) {
         Icon(Icons.Default.Refresh, contentDescription = null)
         Spacer(modifier = Modifier.width(8.dp))
         Text(stringResource(R.string.parser_reset_online_priority))
+    }
+}
+
+@Composable
+private fun DraggableProviderRow(
+    label: String,
+    index: Int,
+    rowHeight: Dp,
+    itemCount: Int,
+    isDragging: Boolean,
+    onDragStart: () -> Unit,
+    onDragMove: (Int, Int) -> Unit,
+    onDragCancel: () -> Unit,
+    onDragEnd: () -> Unit
+) {
+    var dragOffset by remember { mutableStateOf(0f) }
+    val currentIndex by rememberUpdatedState(index)
+    val rowHeightPx = with(LocalDensity.current) { rowHeight.toPx() }
+    val animatedY by animateDpAsState(
+        targetValue = rowHeight * index,
+        animationSpec = spring(stiffness = 650f, dampingRatio = 0.85f),
+        label = "providerReorderY"
+    )
+    val baseY = if (isDragging) rowHeight * index else animatedY
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(rowHeight)
+            .offset {
+                IntOffset(
+                    x = 0,
+                    y = baseY.roundToPx() + if (isDragging) dragOffset.roundToInt() else 0
+                )
+            }
+            .zIndex(if (isDragging) 1f else 0f)
+            .graphicsLayer {
+                alpha = if (isDragging) 0.92f else 1f
+                scaleX = if (isDragging) 1.01f else 1f
+                scaleY = if (isDragging) 1.01f else 1f
+            }
+            .then(
+                if (isDragging) {
+                    Modifier
+                        .background(
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.92f),
+                            shape = RoundedCornerShape(8.dp)
+                        )
+                        .padding(horizontal = 12.dp)
+                } else {
+                    Modifier
+                }
+            ),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(label, modifier = Modifier.weight(1f))
+        Icon(
+            Icons.Default.DragHandle,
+            contentDescription = stringResource(R.string.action_drag_sort),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier
+                .size(40.dp)
+                .padding(8.dp)
+                .pointerInput(itemCount) {
+                    detectDragGestures(
+                        onDragStart = {
+                            dragOffset = 0f
+                            onDragStart()
+                        },
+                        onDragEnd = {
+                            dragOffset = 0f
+                            onDragEnd()
+                        },
+                        onDragCancel = {
+                            dragOffset = 0f
+                            onDragCancel()
+                        },
+                        onDrag = { change, dragAmount ->
+                            change.consume()
+                            dragOffset += dragAmount.y
+                                    val from = currentIndex
+                                    val target = (from + (dragOffset / rowHeightPx).roundToInt()).coerceIn(0, itemCount - 1)
+                                    if (target != from) {
+                                        dragOffset -= (target - from) * rowHeightPx
+                                        onDragMove(from, target)
+                                    }
+                        }
+                    )
+                }
+        )
+    }
+}
+
+private fun <T> List<T>.moveItem(from: Int, to: Int): List<T> {
+    if (from == to || from !in indices || to !in indices) return this
+    return toMutableList().apply {
+        val item = removeAt(from)
+        add(to, item)
     }
 }

@@ -34,13 +34,13 @@ object ParserRuleHelper {
      */
     private val DEFAULTS = listOf(
         // Native notification lyric support (car/bluetooth protocol)
-        ParserRule("com.tencent.qqmusic", customName="QQ Music", enabled=true, usesCarProtocol=true, separatorPattern="-", fieldOrder=FieldOrder.TITLE_ARTIST, onlineLyricProviderOrder = OnlineLyricProvider.defaultIds(), useSuperLyricApi=false, useLyricGetterApi=false, useLyriconApi=false),
-        ParserRule("com.netease.cloudmusic", customName="NetEase Cloud Music", enabled=true, usesCarProtocol=true, separatorPattern=" - ", fieldOrder=FieldOrder.TITLE_ARTIST, onlineLyricProviderOrder = OnlineLyricProvider.defaultIds(), useSuperLyricApi=false, useLyricGetterApi=false, useLyriconApi=false),
-        ParserRule("com.miui.player", customName="Mi Music", enabled=true, usesCarProtocol=true, separatorPattern="-", fieldOrder=FieldOrder.TITLE_ARTIST, onlineLyricProviderOrder = OnlineLyricProvider.defaultIds(), useSuperLyricApi=false, useLyricGetterApi=false, useLyriconApi=false),
+        ParserRule("com.tencent.qqmusic", customName="QQ Music", enabled=true, usesCarProtocol=true, separatorPattern="-", fieldOrder=FieldOrder.TITLE_ARTIST, onlineLyricProviderOrder = OnlineLyricProvider.defaultIdsForPackage("com.tencent.qqmusic"), useSuperLyricApi=false, useLyricGetterApi=false, useLyriconApi=false),
+        ParserRule("com.netease.cloudmusic", customName="NetEase Cloud Music", enabled=true, usesCarProtocol=true, separatorPattern=" - ", fieldOrder=FieldOrder.TITLE_ARTIST, onlineLyricProviderOrder = OnlineLyricProvider.defaultIdsForPackage("com.netease.cloudmusic"), useSuperLyricApi=false, useLyricGetterApi=false, useLyriconApi=false),
+        ParserRule("com.miui.player", customName="Mi Music", enabled=true, usesCarProtocol=true, separatorPattern="-", fieldOrder=FieldOrder.TITLE_ARTIST, onlineLyricProviderOrder = OnlineLyricProvider.defaultIdsForPackage("com.miui.player"), useSuperLyricApi=false, useLyricGetterApi=false, useLyriconApi=false),
         
         // Require superlyricapi or other methods (car protocol disabled by default)
-        ParserRule("com.kugou.android", customName="KuGou Music", enabled=true, usesCarProtocol=true, separatorPattern="-", fieldOrder=FieldOrder.TITLE_ARTIST, onlineLyricProviderOrder = OnlineLyricProvider.defaultIds(), useSuperLyricApi=false, useLyricGetterApi=false, useLyriconApi=false),
-        ParserRule("com.apple.android.music", customName="Apple Music", enabled=true, usesCarProtocol=false, separatorPattern=" - ", fieldOrder=FieldOrder.TITLE_ARTIST, onlineLyricProviderOrder = OnlineLyricProvider.defaultIds(), useSuperLyricApi=false, useLyricGetterApi=false, useLyriconApi=false)
+        ParserRule("com.kugou.android", customName="KuGou Music", enabled=true, usesCarProtocol=true, separatorPattern="-", fieldOrder=FieldOrder.TITLE_ARTIST, onlineLyricProviderOrder = OnlineLyricProvider.defaultIdsForPackage("com.kugou.android"), useSuperLyricApi=false, useLyricGetterApi=false, useLyriconApi=false),
+        ParserRule("com.apple.android.music", customName="Apple Music", enabled=true, usesCarProtocol=false, separatorPattern=" - ", fieldOrder=FieldOrder.TITLE_ARTIST, onlineLyricProviderOrder = OnlineLyricProvider.defaultIdsForPackage("com.apple.android.music"), useSuperLyricApi=false, useLyricGetterApi=false, useLyriconApi=false)
     )
 
     /**
@@ -58,6 +58,7 @@ object ParserRuleHelper {
                 val array = JSONArray(json)
                 for (i in 0 until array.length()) {
                     val obj = array.getJSONObject(i)
+                    val pkg = obj.getString("pkg")
                     // Backward compatibility: "name" might not exist, defaults to null (which is fine)
                     val name = if (obj.has("name")) obj.getString("name") else null
                     
@@ -71,15 +72,15 @@ object ParserRuleHelper {
                                     }
                                 }
                             } else {
-                                OnlineLyricProvider.defaultIds()
+                                OnlineLyricProvider.defaultIdsForPackage(pkg)
                             }
                         }
-                        else -> OnlineLyricProvider.defaultIds()
+                        else -> OnlineLyricProvider.defaultIdsForPackage(pkg)
                     }
 
                     rules.add(
                         ParserRule(
-                            packageName = obj.getString("pkg"),
+                            packageName = pkg,
                             customName = name,
                             enabled = obj.optBoolean("enabled", true),
                             usesCarProtocol = obj.optBoolean("usesCarProtocol", true),
@@ -160,6 +161,22 @@ object ParserRuleHelper {
         invalidateCache()
     }
 
+    fun updateRule(context: Context, packageName: String, transform: (ParserRule) -> ParserRule): ParserRule? {
+        if (packageName.isBlank()) return null
+        val rules = loadRules(context).toMutableList()
+        val index = rules.indexOfFirst { it.packageName == packageName }
+        val current = if (index >= 0) rules[index] else createDefaultRule(packageName)
+        val updated = transform(current).copy(packageName = packageName)
+        if (index >= 0) {
+            rules[index] = updated
+        } else {
+            rules.add(updated)
+        }
+        rules.sort()
+        saveRules(context, rules)
+        return updated
+    }
+
     /**
      * Get parser rule for a specific package.
      * Returns null if no rule exists or rule is disabled.
@@ -224,7 +241,7 @@ object ParserRuleHelper {
             useRawMetadataForOnlineMatching = false,
             receiveOnlineTranslation = false,
             receiveOnlineRomanization = false,
-            onlineLyricProviderOrder = OnlineLyricProvider.defaultIds(),
+            onlineLyricProviderOrder = OnlineLyricProvider.defaultIdsForPackage(packageName),
             useSuperLyricApi = false, // DISABLED BY DEFAULT
             useLyricGetterApi = false, // DISABLED BY DEFAULT
             useLyriconApi = false, // DISABLED BY DEFAULT

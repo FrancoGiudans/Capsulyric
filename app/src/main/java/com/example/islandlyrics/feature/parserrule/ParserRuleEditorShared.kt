@@ -4,6 +4,12 @@ import com.example.islandlyrics.data.FieldOrder
 import com.example.islandlyrics.data.ParserRule
 import com.example.islandlyrics.data.lyric.OnlineLyricProvider
 
+enum class ParserRuleSourceConfigType {
+    NOTIFICATION,
+    ONLINE,
+    LYRICON
+}
+
 data class ParserRuleEditorState(
     val packageName: String,
     val customName: String,
@@ -40,6 +46,23 @@ fun ParserRule.toEditorState(): ParserRuleEditorState = ParserRuleEditorState(
     useLyriconApi = useLyriconApi,
     receiveLyriconTranslation = receiveLyriconTranslation,
     receiveLyriconRomanization = receiveLyriconRomanization
+)
+
+fun ParserRuleEditorState.withSourceSettingsFrom(source: ParserRuleEditorState): ParserRuleEditorState = copy(
+    usesCarProtocol = source.usesCarProtocol,
+    separator = source.separator,
+    fieldOrder = source.fieldOrder,
+    useOnlineLyrics = source.useOnlineLyrics,
+    useSmartOnlineLyricSelection = source.useSmartOnlineLyricSelection,
+    useRawMetadataForOnlineMatching = source.useRawMetadataForOnlineMatching,
+    receiveOnlineTranslation = source.receiveOnlineTranslation,
+    receiveOnlineRomanization = source.receiveOnlineRomanization,
+    onlineLyricProviderOrder = source.onlineLyricProviderOrder,
+    useSuperLyricApi = source.useSuperLyricApi,
+    useLyricGetterApi = source.useLyricGetterApi,
+    useLyriconApi = source.useLyriconApi,
+    receiveLyriconTranslation = source.receiveLyriconTranslation,
+    receiveLyriconRomanization = source.receiveLyriconRomanization
 )
 
 fun ParserRuleEditorState.toRule(previousRule: ParserRule?, isNewRule: Boolean): ParserRule = ParserRule(

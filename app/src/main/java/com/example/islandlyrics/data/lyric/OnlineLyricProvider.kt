@@ -21,6 +21,21 @@ enum class OnlineLyricProvider(
 
         fun defaultIds(): List<String> = defaultOrder().map { it.id }
 
+        fun defaultOrderForPackage(packageName: String?): List<OnlineLyricProvider> {
+            val preferred = when (packageName) {
+                "com.tencent.qqmusic" -> QQMusic
+                "com.netease.cloudmusic" -> Netease
+                "com.kugou.android" -> Kugou
+                else -> null
+            }
+            return preferred?.let { provider ->
+                listOf(provider) + defaultOrder().filterNot { it == provider }
+            } ?: defaultOrder()
+        }
+
+        fun defaultIdsForPackage(packageName: String?): List<String> =
+            defaultOrderForPackage(packageName).map { it.id }
+
         fun normalizeOrder(ids: List<String>?): List<OnlineLyricProvider> {
             val resolved = ids.orEmpty()
                 .mapNotNull(::fromId)
