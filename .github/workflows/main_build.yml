@@ -1,0 +1,92 @@
+name: Stable Build
+
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - '**.md'
+      - '.gitignore'
+      - 'screenshots/**'
+      - 'LICENSE'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  build-stable:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Resolve Build Metadata
+        id: build_meta
+        shell: bash
+        run: |
+          CODENAME=$(sed -n 's/^[[:space:]]*appCodename[[:space:]]*=[[:space:]]*//p' gradle.properties | tail -n 1 | tr -d '\r')
+          if [ -z "$CODENAME" ]; then
+            CODENAME="Unassigned"
+          fi
+          VERSION_PREFIX="Version.$(TZ=Asia/Shanghai date +'%y').$(TZ=Asia/Shanghai date +'%-m')"
+          echo "codename=$CODENAME" >> $GITHUB_OUTPUT
+          echo "version_prefix=$VERSION_PREFIX" >> $GITHUB_OUTPUT
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v5
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-read-only: false
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Build Stable Package
+        run: ./gradlew assembleRelease -PversionPrefix="${{ steps.build_meta.outputs.version_prefix }}" -PversionChannel=Stable -PappCodename="${{ steps.build_meta.outputs.codename }}"
+
+      - name: Sign Release APK
+        env:
+          SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_STORE_PASSWORD: ${{ secrets.KEY_STORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          echo "$SIGNING_KEY" | base64 --decode > release.keystore
+
+          STD_APK=$(find app/build/outputs/apk/release -name "*.apk" ! -name "*-signed.apk" | head -n 1)
+          ${ANDROID_HOME}/build-tools/34.0.0/apksigner sign \
+            --ks release.keystore \
+            --ks-key-alias "$KEY_ALIAS" \
+            --ks-pass env:KEY_STORE_PASSWORD \
+            --key-pass env:KEY_PASSWORD \
+            --out app/build/outputs/apk/release/app-release-signed.apk \
+            "$STD_APK"
+
+          rm release.keystore
+
+      - name: Generate MD5 Checksum
+        run: |
+          (cd app/build/outputs/apk/release/ && md5sum app-release-signed.apk > app-release-signed.apk.md5)
+
+      - name: Upload Stable Signed Artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: Capsulyric-Stable-Signed
+          path: |
+            app/build/outputs/apk/release/app-release-signed.apk
+            app/build/outputs/apk/release/app-release-signed.apk.md5

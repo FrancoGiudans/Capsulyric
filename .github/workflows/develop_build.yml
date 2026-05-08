@@ -1,4 +1,4 @@
-name: Experiment Build (Canary Tag)
+name: Experiment / Preview Build
 
 on:
   push:
@@ -13,6 +13,15 @@ on:
       - 'LICENSE'
       - '.github/**'
   workflow_dispatch:
+    inputs:
+      channel:
+        description: Build channel
+        required: false
+        default: Experiment
+        type: choice
+        options:
+          - Experiment
+          - Preview
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -22,7 +31,31 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
+  resolve_mode:
+    runs-on: ubuntu-latest
+    outputs:
+      channel: ${{ steps.mode.outputs.channel }}
+      is_preview: ${{ steps.mode.outputs.is_preview }}
+    steps:
+      - id: mode
+        shell: bash
+        run: |
+          CHANNEL="Experiment"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "${{ inputs.channel }}" ]; then
+            CHANNEL="${{ inputs.channel }}"
+          elif [ "${{ github.ref_name }}" = "develop" ] && [[ "${{ github.event.head_commit.message }}" == *"[preview]"* ]]; then
+            CHANNEL="Preview"
+          fi
+          if [ "$CHANNEL" = "Preview" ]; then
+            echo "is_preview=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "is_preview=false" >> "$GITHUB_OUTPUT"
+          fi
+          echo "channel=$CHANNEL" >> "$GITHUB_OUTPUT"
+
   pre_job:
+    needs: resolve_mode
+    if: needs.resolve_mode.outputs.is_preview != 'true'
     runs-on: ubuntu-latest
     outputs:
       should_skip: ${{ steps.skip_check.outputs.should_skip }}
@@ -34,11 +67,14 @@ jobs:
           concurrent_skipping: 'same_content'
 
   build-all:
-    needs: pre_job
+    needs:
+      - resolve_mode
+      - pre_job
     if: |
-      needs.pre_job.outputs.should_skip != 'true' &&
+      (needs.resolve_mode.outputs.is_preview == 'true' || needs.pre_job.outputs.should_skip != 'true') &&
       !contains(github.event.head_commit.message, '[skip canary]') &&
-      !contains(github.event.head_commit.message, '[skip experiment]')
+      !contains(github.event.head_commit.message, '[skip experiment]') &&
+      !contains(github.event.head_commit.message, '[skip preview]')
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -76,10 +112,10 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      - name: Build Experiment Package
-        run: ./gradlew assemblePrerelease -PversionPrefix="${{ steps.build_meta.outputs.version_prefix }}" -PversionChannel=Experiment -PappCodename="${{ steps.build_meta.outputs.codename }}"
+      - name: Build Package
+        run: ./gradlew assemblePrerelease -PversionPrefix="${{ steps.build_meta.outputs.version_prefix }}" -PversionChannel="${{ needs.resolve_mode.outputs.channel }}" -PappCodename="${{ steps.build_meta.outputs.codename }}"
 
-      - name: Sign Experiment APKs
+      - name: Sign APKs
         env:
           SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
@@ -88,7 +124,7 @@ jobs:
         run: |
           echo "$SIGNING_KEY" | base64 --decode > release.keystore
           
-          # Sign experiment package generated from the prerelease build type.
+          # Sign package generated from the prerelease build type.
           STD_APK=$(find app/build/outputs/apk/prerelease -name "*.apk" ! -name "*-signed.apk" | head -n 1)
           ${ANDROID_HOME}/build-tools/34.0.0/apksigner sign \
             --ks release.keystore \
@@ -105,10 +141,10 @@ jobs:
           (cd app/build/outputs/apk/prerelease/ && md5sum app-prerelease-signed.apk > app-prerelease-signed.apk.md5)
 
 
-      - name: Upload Standard Signed Artifact
+      - name: Upload Signed Artifact
         uses: actions/upload-artifact@v6
         with:
-          name: Capsulyric-Experiment-Signed
+          name: Capsulyric-${{ needs.resolve_mode.outputs.channel }}-Signed
           path: |
             app/build/outputs/apk/prerelease/app-prerelease-signed.apk
             app/build/outputs/apk/prerelease/app-prerelease-signed.apk.md5
@@ -116,6 +152,7 @@ jobs:
       - name: Generate Experiment Metadata
         if: |
           github.event_name == 'push' &&
+          needs.resolve_mode.outputs.is_preview != 'true' &&
           !contains(github.event.head_commit.message, '[assemble only]')
         id: meta
         run: |
@@ -183,6 +220,7 @@ jobs:
       - name: Delete old Canary releases and tags
         if: |
           github.event_name == 'push' &&
+          needs.resolve_mode.outputs.is_preview != 'true' &&
           !contains(github.event.head_commit.message, '[assemble only]')
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -202,6 +240,7 @@ jobs:
       - name: Rolling Experiment Release
         if: |
           github.event_name == 'push' &&
+          needs.resolve_mode.outputs.is_preview != 'true' &&
           !contains(github.event.head_commit.message, '[assemble only]')
         uses: softprops/action-gh-release@v3
         with:
