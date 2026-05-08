@@ -55,16 +55,31 @@ jobs:
 
   pre_job:
     needs: resolve_mode
-    if: needs.resolve_mode.outputs.is_preview != 'true'
     runs-on: ubuntu-latest
     outputs:
-      should_skip: ${{ steps.skip_check.outputs.should_skip }}
+      should_skip: ${{ steps.skip_result.outputs.should_skip }}
     steps:
+      - id: skip_bypass
+        if: needs.resolve_mode.outputs.is_preview == 'true'
+        shell: bash
+        run: |
+          echo "should_skip=false" >> "$GITHUB_OUTPUT"
+
       - id: skip_check
+        if: needs.resolve_mode.outputs.is_preview != 'true'
         uses: fkirc/skip-duplicate-actions@v5
         with:
           skip_after_successful_duplicate: 'true'
           concurrent_skipping: 'same_content'
+
+      - id: skip_result
+        shell: bash
+        run: |
+          if [ "${{ needs.resolve_mode.outputs.is_preview }}" = "true" ]; then
+            echo "should_skip=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "should_skip=${{ steps.skip_check.outputs.should_skip }}" >> "$GITHUB_OUTPUT"
+          fi
 
   build-all:
     needs:
