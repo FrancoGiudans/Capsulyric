@@ -268,6 +268,8 @@
     <string name="super_island_lyric_mode_full">Full Lyrics</string>
     <string name="settings_super_island_full_lyric_show_left_cover">Show Album Cover on Left</string>
     <string name="settings_super_island_full_lyric_show_left_cover_desc">Keep the album cover in the left island area in Full Lyrics mode.</string>
+    <string name="settings_super_island_right_text_limit">Right-side lyric limit</string>
+    <string name="settings_super_island_left_text_limit">Left-side lyric limit</string>
     <string name="settings_app_ui_style">App UI Style</string>
     <string name="settings_app_ui_style_desc">Switch between Material Design and Miuix UI. App will restart.</string>
     <string name="dialog_ui_style_title">Select App UI Style</string>
@@ -523,6 +525,8 @@ Within the log interface, select the share/export icon. You can specify a timefr
     <string name="diag_header_advanced">Advanced Features (Android 16 / Xiaomi Island)</string>
     <string name="diag_lab_super_island_advanced_style_title">Xiaomi Super Island Advanced Style</string>
     <string name="diag_lab_super_island_advanced_style_desc">When enabled, the Notification Style setting in Personalization will show the Advanced Style (Beta) option</string>
+    <string name="diag_lab_super_island_text_limits_title">Super Island Text Limits</string>
+    <string name="diag_lab_super_island_text_limits_desc">Show controls for tuning the left and right Super Island text limits in Personalization.</string>
     <string name="diag_lab_experiment_updates_title">Receive Test Builds</string>
     <string name="diag_lab_experiment_updates_desc">Show the Experiment channel and receive experimental builds from the testing branch.</string>
     <string name="diag_lab_floating_lyrics_title">Desktop Lyrics</string>
@@ -663,7 +667,9 @@ Within the log interface, select the share/export icon. You can specify a timefr
     <string name="cache_management_clear_all_desc">This will delete both lyric cache and image cache. This cannot be undone.</string>
     <string name="cache_management_clear_all">Clear All Cache</string>
     <string name="cache_management_entries_title">Lyric Cache Entries</string>
+    <string name="cache_management_search_entries">Search cache entries</string>
     <string name="cache_management_no_entries">No lyric cache entries are currently available</string>
+    <string name="cache_management_no_search_results">No matching cache entries</string>
     <string name="cache_management_delete">Delete</string>
     <string name="cache_management_query_info">Query</string>
     <string name="cache_management_provider">Source</string>
@@ -679,6 +685,37 @@ Within the log interface, select the share/export icon. You can specify a timefr
     <string name="cache_management_status_lyrics_cleared">Cleared lyric cache</string>
     <string name="cache_management_status_images_cleared">Cleared image cache</string>
     <string name="cache_management_status_all_cleared">Cleared all caches</string>
+
+    <!-- Log viewer -->
+    <string name="log_viewer_title">Log Console</string>
+    <string name="log_viewer_back">Back</string>
+    <string name="log_viewer_export">Export</string>
+    <string name="log_viewer_save">Save</string>
+    <string name="log_viewer_clear">Clear</string>
+    <string name="log_viewer_cancel">Cancel</string>
+    <string name="log_viewer_scroll_bottom">Scroll to bottom</string>
+    <string name="log_viewer_search">Search Logs</string>
+    <string name="log_viewer_record_level">Record Level</string>
+    <string name="log_viewer_record_level_summary">Default is Error to reduce background overhead</string>
+    <string name="log_viewer_record_prefix">Record: %1$s</string>
+    <string name="log_viewer_level_all">All</string>
+    <string name="log_viewer_level_error">Error</string>
+    <string name="log_viewer_level_warn">Warn</string>
+    <string name="log_viewer_level_info">Info</string>
+    <string name="log_viewer_level_debug">Debug</string>
+    <string name="log_viewer_level_warn_plus">Warn+</string>
+    <string name="log_viewer_level_info_plus">Info+</string>
+    <string name="log_viewer_level_debug_plus">Debug+</string>
+    <string name="log_viewer_no_match_title">No logs match</string>
+    <string name="log_viewer_no_match_summary">Try changing filters</string>
+    <string name="log_viewer_export_title">Export Logs</string>
+    <string name="log_viewer_time_range">Time Range</string>
+    <string name="log_viewer_time_last_1h">Last 1 Hour</string>
+    <string name="log_viewer_time_last_24h">Last 24 Hours</string>
+    <string name="log_viewer_time_all">All Time</string>
+    <string name="log_viewer_clear_title">Clear Logs</string>
+    <string name="log_viewer_clear_message">This will permanently delete all logs.</string>
+    <string name="log_viewer_cleared">Logs cleared</string>
 
     <!-- Floating Lyrics -->
     <string name="floating_lyrics_title">Desktop Lyrics</string>

@@ -21,11 +21,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.islandlyrics.R
 import com.example.islandlyrics.ui.theme.material.neutralMaterialTopBarColors
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -53,11 +54,15 @@ fun LogViewerScreen(
         )
     }
     val listState = rememberLazyListState()
+    val levelError = stringResource(R.string.log_viewer_level_error)
+    val levelWarnPlus = stringResource(R.string.log_viewer_level_warn_plus)
+    val levelInfoPlus = stringResource(R.string.log_viewer_level_info_plus)
+    val levelDebugPlus = stringResource(R.string.log_viewer_level_debug_plus)
     val recordLevelOptions = listOf(
-        AppLogger.LogLevel.ERROR to "Error",
-        AppLogger.LogLevel.WARN to "Warn+",
-        AppLogger.LogLevel.INFO to "Info+",
-        AppLogger.LogLevel.DEBUG to "Debug+"
+        AppLogger.LogLevel.ERROR to levelError,
+        AppLogger.LogLevel.WARN to levelWarnPlus,
+        AppLogger.LogLevel.INFO to levelInfoPlus,
+        AppLogger.LogLevel.DEBUG to levelDebugPlus
     )
 
     // Load logs
@@ -88,19 +93,23 @@ fun LogViewerScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Log Console") },
+                title = { Text(stringResource(R.string.log_viewer_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.log_viewer_back))
                     }
                 },
                 actions = {
+                    val exportOptions = arrayOf(
+                        stringResource(R.string.log_viewer_time_last_1h),
+                        stringResource(R.string.log_viewer_time_last_24h),
+                        stringResource(R.string.log_viewer_time_all)
+                    )
                     // Export
                     IconButton(onClick = {
-                        val options = arrayOf("Last 1 Hour", "Last 24 Hours", "All Time")
                         com.google.android.material.dialog.MaterialAlertDialogBuilder(context)
-                            .setTitle("Export Logs")
-                            .setItems(options) { _, which ->
+                            .setTitle(context.getString(R.string.log_viewer_export_title))
+                            .setItems(exportOptions) { _, which ->
                                 val timeRange = when (which) {
                                     0 -> 60 * 60 * 1000L
                                     1 -> 24 * 60 * 60 * 1000L
@@ -110,14 +119,13 @@ fun LogViewerScreen(
                             }
                             .show()
                     }) {
-                        Icon(Icons.Default.Share, contentDescription = "Export")
+                        Icon(Icons.Default.Share, contentDescription = stringResource(R.string.log_viewer_export))
                     }
                     // Save
                     IconButton(onClick = {
-                        val options = arrayOf("Last 1 Hour", "Last 24 Hours", "All Time")
                         com.google.android.material.dialog.MaterialAlertDialogBuilder(context)
-                            .setTitle("Export Logs")
-                            .setItems(options) { _, which ->
+                            .setTitle(context.getString(R.string.log_viewer_export_title))
+                            .setItems(exportOptions) { _, which ->
                                 val timeRange = when (which) {
                                     0 -> 60 * 60 * 1000L
                                     1 -> 24 * 60 * 60 * 1000L
@@ -127,7 +135,7 @@ fun LogViewerScreen(
                             }
                             .show()
                     }) {
-                        Icon(Icons.Default.Download, contentDescription = "Save")
+                        Icon(Icons.Default.Download, contentDescription = stringResource(R.string.log_viewer_save))
                     }
                 },
                 colors = neutralMaterialTopBarColors()
@@ -143,7 +151,7 @@ fun LogViewerScreen(
                     }
                 }
             ) {
-                Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Scroll Down")
+                Icon(Icons.Default.KeyboardArrowDown, contentDescription = stringResource(R.string.log_viewer_scroll_bottom))
             }
         }
     ) { padding ->
@@ -157,7 +165,7 @@ fun LogViewerScreen(
                 OutlinedTextField(
                     value = searchQuery,
                     onValueChange = { searchQuery = it },
-                    label = { Text("Search Logs") },
+                    label = { Text(stringResource(R.string.log_viewer_search)) },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true
                 )
@@ -170,31 +178,31 @@ fun LogViewerScreen(
                     FilterChip(
                         selected = filterLevel == "ALL",
                         onClick = { filterLevel = "ALL" },
-                        label = { Text("ALL") }
+                        label = { Text(stringResource(R.string.log_viewer_level_all)) }
                     )
                     FilterChip(
                         selected = filterLevel == "E",
                         onClick = { filterLevel = "E" },
-                        label = { Text("Error") },
+                        label = { Text(stringResource(R.string.log_viewer_level_error)) },
                         colors = FilterChipDefaults.filterChipColors(selectedContainerColor = MaterialTheme.colorScheme.errorContainer)
                     )
                     FilterChip(
                         selected = filterLevel == "W",
                         onClick = { filterLevel = "W" },
-                        label = { Text("Warn") },
+                        label = { Text(stringResource(R.string.log_viewer_level_warn)) },
                         colors = FilterChipDefaults.filterChipColors(selectedContainerColor = MaterialTheme.colorScheme.tertiaryContainer)
                     )
                     FilterChip(
                         selected = filterLevel == "D",
                         onClick = { filterLevel = "D" },
-                        label = { Text("Debug") }
+                        label = { Text(stringResource(R.string.log_viewer_level_debug)) }
                     )
                 }
                 Box(modifier = Modifier.padding(top = 8.dp)) {
                     AssistChip(
                         onClick = { showRecordLevelMenu = true },
                         label = {
-                            Text("Record: ${recordLevelOptions.first { it.first == recordLevel }.second}")
+                            Text(stringResource(R.string.log_viewer_record_prefix, recordLevelOptions.first { it.first == recordLevel }.second))
                         },
                         trailingIcon = {
                             Icon(Icons.Default.KeyboardArrowDown, contentDescription = null)

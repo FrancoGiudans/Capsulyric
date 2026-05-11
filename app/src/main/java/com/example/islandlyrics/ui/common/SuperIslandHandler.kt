@@ -57,6 +57,9 @@ class SuperIslandHandler(
     private var cachedSuperIslandNotificationStyle = "standard"
     private var cachedSuperIslandLyricMode = "standard"
     private var cachedSuperIslandFullLyricShowLeftCover = true
+    private var cachedSuperIslandRightTextWeight = SuperIslandLyricLayout.calculateWeight("七七七七七七七")
+    private var cachedSuperIslandLeftWithCoverTextWeight = SuperIslandLyricLayout.calculateWeight("六六六六六六")
+    private var cachedSuperIslandLeftNoCoverTextWeight = SuperIslandLyricLayout.calculateWeight("八八八八八八八八")
     private var cachedXmsfBypassMode = XmsfBypassMode.DISABLED
 
     private var cachedContentIntent: PendingIntent? = null
@@ -89,6 +92,9 @@ class SuperIslandHandler(
             "super_island_notification_style" -> cachedSuperIslandNotificationStyle = p.getString(key, "standard") ?: "standard"
             "super_island_lyric_mode" -> cachedSuperIslandLyricMode = p.getString(key, "standard") ?: "standard"
             "super_island_full_lyric_show_left_cover" -> cachedSuperIslandFullLyricShowLeftCover = p.getBoolean(key, true)
+            SuperIslandTextLimitConfig.KEY_RIGHT_CHARS,
+            SuperIslandTextLimitConfig.KEY_LEFT_WITH_COVER_CHARS,
+            SuperIslandTextLimitConfig.KEY_LEFT_NO_COVER_CHARS -> loadSuperIslandTextLimits(p)
             "block_xmsf_network_mode", "block_xmsf_network" -> {
                 cachedXmsfBypassMode = XmsfBypassMode.read(p)
                 if (cachedXmsfBypassMode != XmsfBypassMode.AGGRESSIVE && aggressiveNetworkCutActive) {
@@ -111,8 +117,21 @@ class SuperIslandHandler(
         cachedSuperIslandNotificationStyle = prefs.getString("super_island_notification_style", "standard") ?: "standard"
         cachedSuperIslandLyricMode = prefs.getString("super_island_lyric_mode", "standard") ?: "standard"
         cachedSuperIslandFullLyricShowLeftCover = prefs.getBoolean("super_island_full_lyric_show_left_cover", true)
+        loadSuperIslandTextLimits(prefs)
         cachedXmsfBypassMode = XmsfBypassMode.read(prefs)
         prefs.registerOnSharedPreferenceChangeListener(prefListener)
+    }
+
+    private fun loadSuperIslandTextLimits(prefs: SharedPreferences) {
+        cachedSuperIslandRightTextWeight = SuperIslandTextLimitConfig.weightForChars(
+            SuperIslandTextLimitConfig.rightChars(prefs)
+        )
+        cachedSuperIslandLeftWithCoverTextWeight = SuperIslandTextLimitConfig.weightForChars(
+            SuperIslandTextLimitConfig.leftChars(prefs, showLeftCover = true)
+        )
+        cachedSuperIslandLeftNoCoverTextWeight = SuperIslandTextLimitConfig.weightForChars(
+            SuperIslandTextLimitConfig.leftChars(prefs, showLeftCover = false)
+        )
     }
 
     // Change detection tracking
@@ -1003,7 +1022,16 @@ class SuperIslandHandler(
         if (cachedSuperIslandLyricMode == "full") {
             val lyric = fullLyric.ifBlank { displayLyric }.ifBlank { "♪" }
             val showLeftCover = cachedSuperIslandFullLyricShowLeftCover && islandKey != null
-            val split = SuperIslandLyricLayout.splitFullLyric(lyric, showLeftCover)
+            val split = SuperIslandLyricLayout.splitFullLyric(
+                text = lyric,
+                showLeftCover = showLeftCover,
+                leftMaxWeight = if (showLeftCover) {
+                    cachedSuperIslandLeftWithCoverTextWeight
+                } else {
+                    cachedSuperIslandLeftNoCoverTextWeight
+                },
+                rightMaxWeight = cachedSuperIslandRightTextWeight
+            )
 
             imageTextInfoLeft {
                 type = 1
@@ -1030,11 +1058,11 @@ class SuperIslandHandler(
         val showLeftCover = islandKey != null
         val leftTitle = SuperIslandLyricLayout.takeByWeight(
             titleWithArtist.ifBlank { "♪" },
-            if (showLeftCover) 13 else 16
+            if (showLeftCover) cachedSuperIslandLeftWithCoverTextWeight else cachedSuperIslandLeftNoCoverTextWeight
         ).ifEmpty { "♪" }
         val rightLyric = SuperIslandLyricLayout.takeByWeight(
             displayLyric.ifBlank { "♪" },
-            14
+            cachedSuperIslandRightTextWeight
         ).ifEmpty { "♪" }
 
         imageTextInfoLeft {

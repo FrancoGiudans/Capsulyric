@@ -46,6 +46,9 @@ fun MiuixLabScreen(onBack: () -> Unit) {
     var superIslandAdvancedStyleEnabled by remember {
         mutableStateOf(LabFeatureManager.isSuperIslandAdvancedStyleEnabled(context))
     }
+    var superIslandTextLimitsEnabled by remember {
+        mutableStateOf(LabFeatureManager.isSuperIslandTextLimitsEnabled(context))
+    }
     var floatingLyricsLabEnabled by remember {
         mutableStateOf(LabFeatureManager.isFloatingLyricsEnabled(context))
     }
@@ -115,6 +118,16 @@ fun MiuixLabScreen(onBack: () -> Unit) {
                                     LabFeatureManager.setSuperIslandAdvancedStyleEnabled(context, false)
                                     superIslandAdvancedStyleEnabled = false
                                 }
+                            }
+                        )
+
+                        SuperSwitch(
+                            title = stringResource(R.string.diag_lab_super_island_text_limits_title),
+                            summary = stringResource(R.string.diag_lab_super_island_text_limits_desc),
+                            checked = superIslandTextLimitsEnabled,
+                            onCheckedChange = {
+                                superIslandTextLimitsEnabled = it
+                                LabFeatureManager.setSuperIslandTextLimitsEnabled(context, it)
                             }
                         )
                     }

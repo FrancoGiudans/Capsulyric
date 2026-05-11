@@ -13,11 +13,16 @@ object SuperIslandLyricLayout {
 
     data class Split(val left: String, val right: String)
 
-    fun splitFullLyric(text: String, showLeftCover: Boolean): Split {
+    fun splitFullLyric(
+        text: String,
+        showLeftCover: Boolean,
+        leftMaxWeight: Int = if (showLeftCover) FULL_LYRIC_LEFT_WITH_COVER_WEIGHT else FULL_LYRIC_LEFT_NO_COVER_WEIGHT,
+        rightMaxWeight: Int = FULL_LYRIC_RIGHT_WEIGHT
+    ): Split {
         return splitBalancedByWeight(
             text = text,
-            leftMaxWeight = if (showLeftCover) FULL_LYRIC_LEFT_WITH_COVER_WEIGHT else FULL_LYRIC_LEFT_NO_COVER_WEIGHT,
-            rightMaxWeight = FULL_LYRIC_RIGHT_WEIGHT,
+            leftMaxWeight = leftMaxWeight,
+            rightMaxWeight = rightMaxWeight,
             leftVisualNumerator = if (showLeftCover) {
                 FULL_LYRIC_LEFT_WITH_COVER_VISUAL_NUMERATOR
             } else {

@@ -8,6 +8,7 @@ object LabFeatureManager {
     private const val PREFS_NAME = "IslandLyricsPrefs"
     private const val KEY_SUPER_ISLAND_ADVANCED_STYLE_ENABLED = "lab_super_island_advanced_style_enabled"
     private const val KEY_SUPER_ISLAND_ADVANCED_STYLE_MIGRATED = "lab_super_island_advanced_style_migrated"
+    private const val KEY_SUPER_ISLAND_TEXT_LIMITS_ENABLED = "lab_super_island_text_limits_enabled"
     private const val KEY_FLOATING_LYRICS_ENABLED = "lab_floating_lyrics_enabled"
     private const val KEY_FLOATING_LYRICS_MIGRATED = "lab_floating_lyrics_migrated"
     private const val KEY_EXPERIMENT_UPDATES_ENABLED = "lab_experiment_updates_enabled"
@@ -105,6 +106,25 @@ object LabFeatureManager {
             return SUPER_ISLAND_STYLE_STANDARD
         }
         return currentStyle
+    }
+
+    fun isSuperIslandTextLimitsEnabled(context: Context): Boolean {
+        val prefs = context.prefs()
+        ensureInitialized(prefs)
+        return prefs.getBoolean(KEY_SUPER_ISLAND_TEXT_LIMITS_ENABLED, false)
+    }
+
+    fun isSuperIslandTextLimitsEnabled(prefs: SharedPreferences): Boolean {
+        ensureInitialized(prefs)
+        return prefs.getBoolean(KEY_SUPER_ISLAND_TEXT_LIMITS_ENABLED, false)
+    }
+
+    fun setSuperIslandTextLimitsEnabled(context: Context, enabled: Boolean) {
+        val prefs = context.prefs()
+        ensureInitialized(prefs)
+        prefs.edit()
+            .putBoolean(KEY_SUPER_ISLAND_TEXT_LIMITS_ENABLED, enabled)
+            .apply()
     }
 
     fun isFloatingLyricsEnabled(context: Context): Boolean {

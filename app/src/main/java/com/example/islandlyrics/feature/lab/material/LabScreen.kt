@@ -50,6 +50,9 @@ fun LabScreen(onBack: () -> Unit) {
     var superIslandAdvancedStyleEnabled by remember {
         mutableStateOf(LabFeatureManager.isSuperIslandAdvancedStyleEnabled(context))
     }
+    var superIslandTextLimitsEnabled by remember {
+        mutableStateOf(LabFeatureManager.isSuperIslandTextLimitsEnabled(context))
+    }
     var floatingLyricsLabEnabled by remember {
         mutableStateOf(LabFeatureManager.isFloatingLyricsEnabled(context))
     }
@@ -96,9 +99,9 @@ fun LabScreen(onBack: () -> Unit) {
                     }
                 )
 
-                if (RomUtils.isXiaomi()) {
-                    SettingsSwitchItem(
-                        title = stringResource(R.string.diag_lab_super_island_advanced_style_title),
+                    if (RomUtils.isXiaomi()) {
+                        SettingsSwitchItem(
+                            title = stringResource(R.string.diag_lab_super_island_advanced_style_title),
                         subtitle = stringResource(R.string.diag_lab_super_island_advanced_style_desc),
                         checked = superIslandAdvancedStyleEnabled,
                         onCheckedChange = { enabled ->
@@ -108,9 +111,19 @@ fun LabScreen(onBack: () -> Unit) {
                                 LabFeatureManager.setSuperIslandAdvancedStyleEnabled(context, false)
                                 superIslandAdvancedStyleEnabled = false
                             }
-                        }
-                    )
-                }
+                            }
+                        )
+
+                        SettingsSwitchItem(
+                            title = stringResource(R.string.diag_lab_super_island_text_limits_title),
+                            subtitle = stringResource(R.string.diag_lab_super_island_text_limits_desc),
+                            checked = superIslandTextLimitsEnabled,
+                            onCheckedChange = {
+                                superIslandTextLimitsEnabled = it
+                                LabFeatureManager.setSuperIslandTextLimitsEnabled(context, it)
+                            }
+                        )
+                    }
 
                 SettingsSwitchItem(
                     title = stringResource(R.string.diag_lab_experiment_updates_title),

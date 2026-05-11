@@ -19,6 +19,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -30,11 +33,14 @@ import com.example.islandlyrics.R
 import com.example.islandlyrics.core.cache.AppImageCacheManager
 import com.example.islandlyrics.data.lyric.OnlineLyricCacheStore
 import com.example.islandlyrics.feature.cache.CacheManagementViewModel
+import com.example.islandlyrics.feature.cache.filterByCacheQuery
 import com.example.islandlyrics.ui.miuix.MiuixBlurScaffold
 import com.example.islandlyrics.ui.miuix.MiuixBlurTopAppBar
 import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.IconButton
+import top.yukonga.miuix.kmp.basic.InputField
+import top.yukonga.miuix.kmp.basic.SearchBar
 import top.yukonga.miuix.kmp.basic.SmallTitle
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TextButton
@@ -57,6 +63,11 @@ fun MiuixCacheManagementScreen(
     val imageStats by viewModel.imageStats.observeAsState(AppImageCacheManager.ImageCacheStats())
     val busy by viewModel.busy.observeAsState(false)
     val statusMessage by viewModel.statusMessage.observeAsState()
+    var searchQuery by remember { mutableStateOf("") }
+    var searchExpanded by remember { mutableStateOf(false) }
+    val filteredLyricEntries = remember(lyricEntries, searchQuery) {
+        lyricEntries.filterByCacheQuery(searchQuery)
+    }
 
     LaunchedEffect(statusMessage) {
         if (statusMessage != null) {
@@ -140,6 +151,24 @@ fun MiuixCacheManagementScreen(
                 }
             }
             item { SmallTitle(text = stringResource(R.string.cache_management_entries_title)) }
+            item {
+                SearchBar(
+                    modifier = Modifier.padding(horizontal = 12.dp),
+                    inputField = {
+                        InputField(
+                            query = searchQuery,
+                            onQueryChange = { searchQuery = it },
+                            onSearch = { searchExpanded = true },
+                            expanded = searchExpanded,
+                            onExpandedChange = { searchExpanded = it },
+                            label = stringResource(R.string.cache_management_search_entries)
+                        )
+                    },
+                    insideMargin = androidx.compose.ui.unit.DpSize(0.dp, 0.dp),
+                    expanded = searchExpanded,
+                    onExpandedChange = { searchExpanded = it }
+                ) {}
+            }
             if (lyricEntries.isEmpty()) {
                 item {
                     Text(
@@ -148,8 +177,16 @@ fun MiuixCacheManagementScreen(
                         color = MiuixTheme.colorScheme.onSurfaceSecondary
                     )
                 }
+            } else if (filteredLyricEntries.isEmpty()) {
+                item {
+                    Text(
+                        text = stringResource(R.string.cache_management_no_search_results),
+                        modifier = Modifier.padding(horizontal = 16.dp),
+                        color = MiuixTheme.colorScheme.onSurfaceSecondary
+                    )
+                }
             } else {
-                items(lyricEntries, key = { it.id }) { entry ->
+                items(filteredLyricEntries, key = { it.id }) { entry ->
                     Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp)) {
                         Column(modifier = Modifier.padding(16.dp)) {
                             Row(

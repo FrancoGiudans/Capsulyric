@@ -50,6 +50,11 @@ class LyricDisplayManager(private val context: Context) {
     // Config / Preferences
     private var disableScrolling = false
     private var lyricTextDisplayMode = LyricTextDisplayMode.LYRIC
+    private var superIslandEnabled = false
+    private var superIslandLyricMode = "standard"
+    private var superIslandRightTextWeight = SuperIslandTextLimitConfig.weightForChars(
+        SuperIslandTextLimitConfig.RIGHT_DEFAULT_CHARS
+    )
     
     // Adaptive scroll metrics
     private var lastLyricChangeTime: Long = 0
@@ -62,7 +67,7 @@ class LyricDisplayManager(private val context: Context) {
     private val maxScrollDelay = 5000L
     
     private val isHeavySkin = RomUtils.isHeavySkin()
-    private val maxDisplayWeight = if (isHeavySkin) 16 else 10
+    private val baseMaxDisplayWeight = if (isHeavySkin) 16 else 10
     
     private val initialPauseDuration = 400L
     private val finalPauseDuration = 300L
@@ -158,6 +163,10 @@ class LyricDisplayManager(private val context: Context) {
                 lyricTextDisplayMode = LyricTextDisplayMode.read(prefs)
                 forceUpdate()
             }
+            "super_island_enabled", "super_island_lyric_mode", SuperIslandTextLimitConfig.KEY_RIGHT_CHARS -> {
+                loadSuperIslandTextPreferences(prefs)
+                forceUpdate()
+            }
         }
     }
 
@@ -182,6 +191,7 @@ class LyricDisplayManager(private val context: Context) {
         val prefs = context.getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE)
         disableScrolling = prefs.getBoolean("disable_lyric_scrolling", false)
         lyricTextDisplayMode = LyricTextDisplayMode.read(prefs)
+        loadSuperIslandTextPreferences(prefs)
         prefs.registerOnSharedPreferenceChangeListener(prefChangeListener)
         
         LyricRepository.getInstance().liveParsedLyrics.observeForever(parsedLyricsObserver)
@@ -197,7 +207,7 @@ class LyricDisplayManager(private val context: Context) {
         }
         
         LogManager.getInstance().i(context, "LyricDisplayManager", 
-            "Initialized. ROM: ${RomUtils.getRomType()}, HeavySkin: $isHeavySkin, MaxWeight: $maxDisplayWeight")
+            "Initialized. ROM: ${RomUtils.getRomType()}, HeavySkin: $isHeavySkin, MaxWeight: ${currentMaxDisplayWeight()}")
         
         pendingImmediateUpdate = false
         mainHandler.post(visualizerLoop)
@@ -281,6 +291,7 @@ class LyricDisplayManager(private val context: Context) {
         var isStatic = false
         timingGapActive = false
         timingGapNextDelayMs = 0L
+        val maxDisplayWeight = currentMaxDisplayWeight()
         
         if (disableScrolling) {
             val currentLine = if (currentParsedLines != null) findCurrentLine(currentParsedLines!!, currentPosition) else null
@@ -358,7 +369,7 @@ class LyricDisplayManager(private val context: Context) {
                     displayLyric = preferredLineText
                 } else {
                     val currentProgressWeight = (lineProgress * currentLineWeight).toInt()
-                    val scrollStartThreshold = if (isMostlyWestern(preferredLineText)) 4 else 8
+                    val scrollStartThreshold = scrollStartThreshold(preferredLineText, maxDisplayWeight)
                     val targetWeightOffset = if (currentProgressWeight < scrollStartThreshold) 0 else currentProgressWeight - scrollStartThreshold
                     val minVisibleWeight = 14
                     val maxAllowedScroll = maxOf(0, currentLineWeight - minVisibleWeight)
@@ -473,6 +484,31 @@ class LyricDisplayManager(private val context: Context) {
         return text.count { !it.isWhitespace() && charWeight(it) == 2 } <= nonWhitespaceChars / 2
     }
 
+    private fun loadSuperIslandTextPreferences(prefs: android.content.SharedPreferences) {
+        superIslandEnabled = prefs.getBoolean("super_island_enabled", false)
+        superIslandLyricMode = prefs.getString("super_island_lyric_mode", "standard") ?: "standard"
+        superIslandRightTextWeight = SuperIslandTextLimitConfig.weightForChars(
+            SuperIslandTextLimitConfig.rightChars(prefs)
+        )
+    }
+
+    private fun currentMaxDisplayWeight(): Int {
+        val isSuperIslandActive = RomUtils.isHyperOs() && (superIslandEnabled || !RomUtils.isLiveUpdateSupported())
+        return if (isSuperIslandActive && superIslandLyricMode == "standard") {
+            superIslandRightTextWeight
+        } else {
+            baseMaxDisplayWeight
+        }
+    }
+
+    private fun scrollStartThreshold(text: String, maxDisplayWeight: Int): Int {
+        return if (isMostlyWestern(text)) {
+            (maxDisplayWeight / 2).coerceAtLeast(4)
+        } else {
+            maxDisplayWeight
+        }
+    }
+
     private fun extractByWeight(text: String, startWeight: Int, maxWeight: Int): String {
         var currentWeight = 0
         var startIndex = 0
@@ -499,13 +535,14 @@ class LyricDisplayManager(private val context: Context) {
     
     private fun calculateSyllableWindow(fullText: String, sungText: String, unsungText: String): String {
         val fullWeight = calculateWeight(fullText)
+        val maxDisplayWeight = currentMaxDisplayWeight()
         if (fullWeight <= maxDisplayWeight) {
             return fullText
         }
 
         val sungWeight = calculateWeight(sungText)
         val unsungWeight = calculateWeight(unsungText)
-        val scrollStartThreshold = if (isMostlyWestern(fullText)) 4 else maxDisplayWeight / 2
+        val scrollStartThreshold = scrollStartThreshold(fullText, maxDisplayWeight)
         val minTailVisibleWeight = maxOf(maxDisplayWeight - 2, maxDisplayWeight / 2)
         val maxOffset = maxOf(0, fullWeight - minTailVisibleWeight)
         val targetOffset = maxOf(0, sungWeight - scrollStartThreshold)
@@ -532,6 +569,7 @@ class LyricDisplayManager(private val context: Context) {
     }
 
     private fun resolveNoCurrentLineDisplay(currentLyric: String): String {
+        val maxDisplayWeight = currentMaxDisplayWeight()
         if (shouldHoldStableDisplayWithoutGapAnimation()) {
             return lastStableDisplayLyric.ifBlank { extractByWeight(currentLyric, 0, maxDisplayWeight) }
         }
@@ -629,7 +667,7 @@ class LyricDisplayManager(private val context: Context) {
         remainingUntilNext: Long
     ): GapDisplay {
         val display = lastStableDisplayLyric.ifBlank {
-            extractByWeight(previousLine.text, 0, maxDisplayWeight)
+            extractByWeight(previousLine.text, 0, currentMaxDisplayWeight())
         }
         val full = lastStableFullLyric.ifBlank { previousLine.text }
         return GapDisplay(display, full, false, remainingUntilNext.coerceAtLeast(1L))
@@ -672,6 +710,7 @@ class LyricDisplayManager(private val context: Context) {
     private var scrollOffset = 0
     
     private fun calculateAdaptiveScroll(text: String, totalWeight: Int): String {
+        val maxDisplayWeight = currentMaxDisplayWeight()
         if (totalWeight <= maxDisplayWeight) {
             scrollState = ScrollState.DONE
             return text

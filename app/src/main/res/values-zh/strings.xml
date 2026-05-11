@@ -474,6 +474,8 @@
     <string name="super_island_lyric_mode_full">全歌词</string>
     <string name="settings_super_island_full_lyric_show_left_cover">左侧显示专辑封面</string>
     <string name="settings_super_island_full_lyric_show_left_cover_desc">全歌词模式下保留左侧岛区域的专辑封面。</string>
+    <string name="settings_super_island_right_text_limit">右侧歌词字数上限</string>
+    <string name="settings_super_island_left_text_limit">左侧歌词字数上限</string>
     <string name="settings_super_island_colorize">为播放信息着色</string>
     <string name="settings_super_island_colorize_desc">使超级岛中的内容（歌词、歌单、胶囊边缘及进度条）随专辑封面变色</string>
     <string name="settings_super_island_share">开启拖拽分享</string>
@@ -514,6 +516,8 @@
     <string name="diag_header_advanced">高级功能查验 (Android 16 / 小米岛)</string>
     <string name="diag_lab_super_island_advanced_style_title">小米超级岛高级样式</string>
     <string name="diag_lab_super_island_advanced_style_desc">开启后，个性化设置里的“通知样式”将显示“高级样式（Beta）”选项</string>
+    <string name="diag_lab_super_island_text_limits_title">超级岛字数上限调节</string>
+    <string name="diag_lab_super_island_text_limits_desc">开启后，个性化设置的胶囊页会显示左右两侧字数上限调节。</string>
     <string name="diag_lab_experiment_updates_title">接收测试版本</string>
     <string name="diag_lab_experiment_updates_desc">显示 Experiment 通道，并接收来自测试分支的实验版本。</string>
     <string name="diag_lab_floating_lyrics_title">桌面歌词</string>
@@ -654,7 +658,9 @@
     <string name="cache_management_clear_all_desc">将同时删除歌词缓存和图片缓存，无法撤销。</string>
     <string name="cache_management_clear_all">清空全部缓存</string>
     <string name="cache_management_entries_title">歌词缓存条目</string>
+    <string name="cache_management_search_entries">搜索缓存条目</string>
     <string name="cache_management_no_entries">当前没有可管理的歌词缓存</string>
+    <string name="cache_management_no_search_results">没有匹配的缓存条目</string>
     <string name="cache_management_delete">删除</string>
     <string name="cache_management_query_info">查询信息</string>
     <string name="cache_management_provider">来源</string>
@@ -670,6 +676,37 @@
     <string name="cache_management_status_lyrics_cleared">已清空歌词缓存</string>
     <string name="cache_management_status_images_cleared">已清空图片缓存</string>
     <string name="cache_management_status_all_cleared">已清空全部缓存</string>
+
+    <!-- 日志控制台 -->
+    <string name="log_viewer_title">日志控制台</string>
+    <string name="log_viewer_back">返回</string>
+    <string name="log_viewer_export">导出</string>
+    <string name="log_viewer_save">保存</string>
+    <string name="log_viewer_clear">清空</string>
+    <string name="log_viewer_cancel">取消</string>
+    <string name="log_viewer_scroll_bottom">滚动到底部</string>
+    <string name="log_viewer_search">搜索日志</string>
+    <string name="log_viewer_record_level">日志记录级别</string>
+    <string name="log_viewer_record_level_summary">默认仅记录错误，以减少后台开销</string>
+    <string name="log_viewer_record_prefix">记录级别: %1$s</string>
+    <string name="log_viewer_level_all">全部</string>
+    <string name="log_viewer_level_error">错误</string>
+    <string name="log_viewer_level_warn">警告</string>
+    <string name="log_viewer_level_info">信息</string>
+    <string name="log_viewer_level_debug">调试</string>
+    <string name="log_viewer_level_warn_plus">警告+</string>
+    <string name="log_viewer_level_info_plus">信息+</string>
+    <string name="log_viewer_level_debug_plus">调试+</string>
+    <string name="log_viewer_no_match_title">没有匹配的日志</string>
+    <string name="log_viewer_no_match_summary">可尝试调整筛选条件</string>
+    <string name="log_viewer_export_title">导出日志</string>
+    <string name="log_viewer_time_range">导出时间</string>
+    <string name="log_viewer_time_last_1h">最近 1 小时</string>
+    <string name="log_viewer_time_last_24h">最近 24 小时</string>
+    <string name="log_viewer_time_all">全部时间</string>
+    <string name="log_viewer_clear_title">清空日志</string>
+    <string name="log_viewer_clear_message">这将永久删除所有日志。</string>
+    <string name="log_viewer_cleared">日志已清空</string>
 
     <!-- 悬浮窗歌词 -->
     <string name="floating_lyrics_title">桌面歌词</string>

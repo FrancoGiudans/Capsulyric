@@ -5,6 +5,7 @@ import com.example.islandlyrics.ui.common.NotificationPreview
 import com.example.islandlyrics.ui.common.CapsulePreview
 import com.example.islandlyrics.ui.common.LyricTextDisplayMode
 import com.example.islandlyrics.ui.common.OneUiCapsuleColorMode
+import com.example.islandlyrics.ui.common.SuperIslandTextLimitConfig
 import com.example.islandlyrics.R
 import com.example.islandlyrics.core.platform.XmsfBypassMode
 import com.example.islandlyrics.core.settings.LabFeatureManager
@@ -92,6 +93,7 @@ fun CustomSettingsScreen(
     var superIslandMediaButtonLayout by remember { mutableStateOf(prefs.getString("super_island_media_button_layout", "two_button") ?: "two_button") }
     var superIslandNotificationStyle by remember { mutableStateOf(LabFeatureManager.sanitizeSuperIslandNotificationStyle(context)) }
     var superIslandAdvancedStyleLabEnabled by remember { mutableStateOf(LabFeatureManager.isSuperIslandAdvancedStyleEnabled(prefs)) }
+    var superIslandTextLimitsLabEnabled by remember { mutableStateOf(LabFeatureManager.isSuperIslandTextLimitsEnabled(prefs)) }
     var showActionStyleDropdown by remember { mutableStateOf(false) }
     var showSuperIslandMediaButtonLayoutDropdown by remember { mutableStateOf(false) }
     var showSuperIslandNotificationStyleDropdown by remember { mutableStateOf(false) }
@@ -119,6 +121,13 @@ fun CustomSettingsScreen(
     var superIslandLyricMode by remember { mutableStateOf(prefs.getString("super_island_lyric_mode", "standard") ?: "standard") }
     var superIslandFullLyricShowLeftCover by remember { mutableStateOf(prefs.getBoolean("super_island_full_lyric_show_left_cover", true)) }
     var superIslandTextColorEnabled by remember { mutableStateOf(prefs.getBoolean("super_island_text_color_enabled", false)) }
+    var superIslandRightTextChars by remember { mutableStateOf(SuperIslandTextLimitConfig.rightChars(prefs)) }
+    var superIslandLeftWithCoverTextChars by remember {
+        mutableStateOf(SuperIslandTextLimitConfig.leftChars(prefs, showLeftCover = true))
+    }
+    var superIslandLeftNoCoverTextChars by remember {
+        mutableStateOf(SuperIslandTextLimitConfig.leftChars(prefs, showLeftCover = false))
+    }
 
     var superIslandShareEnabled by remember { mutableStateOf(prefs.getBoolean("super_island_share_enabled", true)) }
     var superIslandShareFormat by remember { mutableStateOf(prefs.getString("super_island_share_format", "format_1") ?: "format_1") }
@@ -184,6 +193,7 @@ fun CustomSettingsScreen(
     LaunchedEffect(Unit) {
         LabFeatureManager.ensureInitialized(prefs)
         superIslandAdvancedStyleLabEnabled = LabFeatureManager.isSuperIslandAdvancedStyleEnabled(prefs)
+        superIslandTextLimitsLabEnabled = LabFeatureManager.isSuperIslandTextLimitsEnabled(prefs)
         floatingLyricsLabEnabled = LabFeatureManager.isFloatingLyricsEnabled(prefs)
         superIslandNotificationStyle = LabFeatureManager.sanitizeSuperIslandNotificationStyle(context)
     }
@@ -514,6 +524,51 @@ fun CustomSettingsScreen(
                                                 prefs.edit().putBoolean("super_island_full_lyric_show_left_cover", it).apply()
                                             }
                                         )
+                                    }
+
+                                    if (superIslandTextLimitsLabEnabled) {
+                                        MaterialSuperIslandTextLimitSlider(
+                                            title = stringResource(R.string.settings_super_island_right_text_limit),
+                                            value = superIslandRightTextChars,
+                                            valueRange = SuperIslandTextLimitConfig.RIGHT_MIN_CHARS..SuperIslandTextLimitConfig.RIGHT_MAX_CHARS,
+                                            onValueChange = { value ->
+                                                superIslandRightTextChars = value
+                                                prefs.edit()
+                                                    .putFloat(SuperIslandTextLimitConfig.KEY_RIGHT_CHARS, value)
+                                                    .apply()
+                                            }
+                                        )
+
+                                        if (superIslandLyricMode == "full") {
+                                            val leftValue = if (superIslandFullLyricShowLeftCover) {
+                                                superIslandLeftWithCoverTextChars
+                                            } else {
+                                                superIslandLeftNoCoverTextChars
+                                            }
+                                            val leftRange = if (superIslandFullLyricShowLeftCover) {
+                                                SuperIslandTextLimitConfig.LEFT_WITH_COVER_MIN_CHARS..SuperIslandTextLimitConfig.LEFT_WITH_COVER_MAX_CHARS
+                                            } else {
+                                                SuperIslandTextLimitConfig.LEFT_NO_COVER_MIN_CHARS..SuperIslandTextLimitConfig.LEFT_NO_COVER_MAX_CHARS
+                                            }
+                                            val leftKey = if (superIslandFullLyricShowLeftCover) {
+                                                SuperIslandTextLimitConfig.KEY_LEFT_WITH_COVER_CHARS
+                                            } else {
+                                                SuperIslandTextLimitConfig.KEY_LEFT_NO_COVER_CHARS
+                                            }
+                                            MaterialSuperIslandTextLimitSlider(
+                                                title = stringResource(R.string.settings_super_island_left_text_limit),
+                                                value = leftValue.coerceIn(leftRange),
+                                                valueRange = leftRange,
+                                                onValueChange = { value ->
+                                                    if (superIslandFullLyricShowLeftCover) {
+                                                        superIslandLeftWithCoverTextChars = value
+                                                    } else {
+                                                        superIslandLeftNoCoverTextChars = value
+                                                    }
+                                                    prefs.edit().putFloat(leftKey, value).apply()
+                                                }
+                                            )
+                                        }
                                     }
 
                                     SettingsSwitchItem(
@@ -968,5 +1023,38 @@ fun CustomSettingsScreen(
             }
 
         }
+    }
+}
+
+@Composable
+private fun MaterialSuperIslandTextLimitSlider(
+    title: String,
+    value: Float,
+    valueRange: ClosedFloatingPointRange<Float>,
+    onValueChange: (Float) -> Unit
+) {
+    val clampedValue = value.coerceIn(valueRange)
+    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 10.dp)) {
+        Text(
+            text = "$title: ${formatSuperIslandTextLimit(clampedValue)}",
+            style = MaterialTheme.typography.bodyLarge
+        )
+        Slider(
+            value = clampedValue,
+            onValueChange = { raw ->
+                val stepped = (kotlin.math.round(raw * 2f) / 2f).coerceIn(valueRange)
+                onValueChange(stepped)
+            },
+            valueRange = valueRange,
+            steps = ((valueRange.endInclusive - valueRange.start) / 0.5f).toInt() - 1
+        )
+    }
+}
+
+private fun formatSuperIslandTextLimit(value: Float): String {
+    return if (value % 1f == 0f) {
+        value.toInt().toString()
+    } else {
+        "%.1f".format(java.util.Locale.US, value)
     }
 }

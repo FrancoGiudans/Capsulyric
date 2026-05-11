@@ -23,6 +23,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -32,7 +33,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -44,6 +47,7 @@ import com.example.islandlyrics.R
 import com.example.islandlyrics.core.cache.AppImageCacheManager
 import com.example.islandlyrics.data.lyric.OnlineLyricCacheStore
 import com.example.islandlyrics.feature.cache.CacheManagementViewModel
+import com.example.islandlyrics.feature.cache.filterByCacheQuery
 import com.example.islandlyrics.ui.theme.material.neutralMaterialTopBarColors
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -62,6 +66,10 @@ fun CacheManagementScreen(
     val busy by viewModel.busy.observeAsState(false)
     val statusMessage by viewModel.statusMessage.observeAsState()
     val snackbarHostState = remember { SnackbarHostState() }
+    var searchQuery by remember { mutableStateOf("") }
+    val filteredLyricEntries = remember(lyricEntries, searchQuery) {
+        lyricEntries.filterByCacheQuery(searchQuery)
+    }
 
     LaunchedEffect(statusMessage) {
         statusMessage?.let {
@@ -152,15 +160,25 @@ fun CacheManagementScreen(
             }
 
             item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(stringResource(R.string.cache_management_entries_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                    if (busy) {
-                        CircularProgressIndicator(modifier = Modifier.height(18.dp))
+                Column {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(stringResource(R.string.cache_management_entries_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        if (busy) {
+                            CircularProgressIndicator(modifier = Modifier.height(18.dp))
+                        }
                     }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = searchQuery,
+                        onValueChange = { searchQuery = it },
+                        label = { Text(stringResource(R.string.cache_management_search_entries)) },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
                 }
             }
 
@@ -171,8 +189,15 @@ fun CacheManagementScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
+            } else if (filteredLyricEntries.isEmpty()) {
+                item {
+                    Text(
+                        text = stringResource(R.string.cache_management_no_search_results),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             } else {
-                items(lyricEntries, key = { it.id }) { entry ->
+                items(filteredLyricEntries, key = { it.id }) { entry ->
                     Card(
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
                     ) {

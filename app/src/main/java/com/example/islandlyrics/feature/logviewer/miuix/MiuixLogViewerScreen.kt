@@ -28,11 +28,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.islandlyrics.R
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -69,11 +71,15 @@ fun MiuixLogViewerScreen(
     var currentAction by remember { mutableStateOf(LogAction.SHARE) }
     val showExportDialog = remember { mutableStateOf(false) }
     val showClearDialog = remember { mutableStateOf(false) }
+    val levelError = stringResource(R.string.log_viewer_level_error)
+    val levelWarnPlus = stringResource(R.string.log_viewer_level_warn_plus)
+    val levelInfoPlus = stringResource(R.string.log_viewer_level_info_plus)
+    val levelDebugPlus = stringResource(R.string.log_viewer_level_debug_plus)
     val recordLevelOptions = listOf(
-        AppLogger.LogLevel.ERROR to "Error",
-        AppLogger.LogLevel.WARN to "Warn+",
-        AppLogger.LogLevel.INFO to "Info+",
-        AppLogger.LogLevel.DEBUG to "Debug+"
+        AppLogger.LogLevel.ERROR to levelError,
+        AppLogger.LogLevel.WARN to levelWarnPlus,
+        AppLogger.LogLevel.INFO to levelInfoPlus,
+        AppLogger.LogLevel.DEBUG to levelDebugPlus
     )
 
     MiuixBackHandler(enabled = showExportDialog.value) { showExportDialog.value = false }
@@ -106,13 +112,13 @@ fun MiuixLogViewerScreen(
     MiuixBlurScaffold(
         topBar = {
             MiuixBlurTopAppBar(
-                title = "Log Console",
+                title = stringResource(R.string.log_viewer_title),
                 scrollBehavior = scrollBehavior,
                 navigationIcon = {
                     IconButton(onClick = onBack, modifier = Modifier.padding(start = 12.dp)) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
+                            contentDescription = stringResource(R.string.log_viewer_back),
                             tint = MiuixTheme.colorScheme.onBackground
                         )
                     }
@@ -128,7 +134,7 @@ fun MiuixLogViewerScreen(
                     ) {
                         Icon(
                             imageVector = Icons.Filled.Share,
-                            contentDescription = "ExportDialog",
+                            contentDescription = stringResource(R.string.log_viewer_export),
                             tint = MiuixTheme.colorScheme.onBackground
                         )
                     }
@@ -142,7 +148,7 @@ fun MiuixLogViewerScreen(
                     ) {
                         Icon(
                             imageVector = Icons.Filled.Download,
-                            contentDescription = "Save",
+                            contentDescription = stringResource(R.string.log_viewer_save),
                             tint = MiuixTheme.colorScheme.onBackground
                         )
                     }
@@ -153,7 +159,7 @@ fun MiuixLogViewerScreen(
                     ) {
                         Icon(
                             imageVector = Icons.Filled.Delete,
-                            contentDescription = "Clear",
+                            contentDescription = stringResource(R.string.log_viewer_clear),
                             tint = MiuixTheme.colorScheme.onBackground
                         )
                     }
@@ -173,7 +179,7 @@ fun MiuixLogViewerScreen(
             ) {
                 Icon(
                     imageVector = Icons.Default.KeyboardArrowDown, 
-                    contentDescription = "Bottom",
+                    contentDescription = stringResource(R.string.log_viewer_scroll_bottom),
                     tint = MiuixTheme.colorScheme.onPrimary
                 )
             }
@@ -187,7 +193,7 @@ fun MiuixLogViewerScreen(
                     TextField(
                         value = searchQuery,
                         onValueChange = { searchQuery = it },
-                        label = "Search Logs",
+                        label = stringResource(R.string.log_viewer_search),
                         modifier = Modifier.fillMaxWidth()
                     )
                     Spacer(modifier = Modifier.height(8.dp))
@@ -195,10 +201,15 @@ fun MiuixLogViewerScreen(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        val levels = listOf("ALL", "E", "W", "D")
-                        levels.forEach { level ->
+                        val levels = listOf(
+                            "ALL" to stringResource(R.string.log_viewer_level_all),
+                            "E" to stringResource(R.string.log_viewer_level_error),
+                            "W" to stringResource(R.string.log_viewer_level_warn),
+                            "D" to stringResource(R.string.log_viewer_level_debug)
+                        )
+                        levels.forEach { (level, label) ->
                             MiuixFilterPill(
-                                label = level,
+                                label = label,
                                 selected = filterLevel == level,
                                 onClick = { filterLevel = level },
                                 color = when (level) {
@@ -212,8 +223,8 @@ fun MiuixLogViewerScreen(
                     }
                     Spacer(modifier = Modifier.height(8.dp))
                     SuperDropdown(
-                        title = "Record Level",
-                        summary = "Default is Error to reduce background overhead",
+                        title = stringResource(R.string.log_viewer_record_level),
+                        summary = stringResource(R.string.log_viewer_record_level_summary),
                         items = recordLevelOptions.map { it.second },
                         selectedIndex = recordLevelOptions.indexOfFirst { it.first == recordLevel }.coerceAtLeast(0),
                         onSelectedIndexChange = { index ->
@@ -239,8 +250,8 @@ fun MiuixLogViewerScreen(
                     item {
                         Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
                             BasicComponent(
-                                title = "No logs match",
-                                summary = "Try changing filters"
+                                title = stringResource(R.string.log_viewer_no_match_title),
+                                summary = stringResource(R.string.log_viewer_no_match_summary)
                             )
                         }
                     }
@@ -254,16 +265,21 @@ fun MiuixLogViewerScreen(
 
         // Export Dialog — must be inside Scaffold lambda for MiuixPopupHost
         var selectedIndex by remember { mutableStateOf(1) }
-        val exportOptions = listOf("Last 1 Hour", "Last 24 Hours", "All Time")
+        val exportOptions = listOf(
+            stringResource(R.string.log_viewer_time_last_1h),
+            stringResource(R.string.log_viewer_time_last_24h),
+            stringResource(R.string.log_viewer_time_all)
+        )
 
         MiuixBlurDialog(
-            title = "Export Logs",
+            title = stringResource(R.string.log_viewer_export_title),
             show = showExportDialog.value,
+            renderInRootScaffold = false,
             onDismissRequest = { showExportDialog.value = false }
         ) {
             Column {
                 SuperDropdown(
-                    title = "Time Range",
+                    title = stringResource(R.string.log_viewer_time_range),
                     items = exportOptions,
                     selectedIndex = selectedIndex,
                     onSelectedIndexChange = { selectedIndex = it }
@@ -271,12 +287,12 @@ fun MiuixLogViewerScreen(
                 Spacer(modifier = Modifier.height(16.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     TextButton(
-                        text = "Cancel",
+                        text = stringResource(R.string.log_viewer_cancel),
                         onClick = { showExportDialog.value = false },
                         modifier = Modifier.weight(1f)
                     )
                     TextButton(
-                        text = if (currentAction == LogAction.SHARE) "Export" else "Save",
+                        text = if (currentAction == LogAction.SHARE) stringResource(R.string.log_viewer_export) else stringResource(R.string.log_viewer_save),
                         onClick = {
                             val timeRange = when (selectedIndex) {
                                 0 -> 60 * 60 * 1000L
@@ -299,25 +315,27 @@ fun MiuixLogViewerScreen(
 
         // Clear Confirmation Dialog
         MiuixBlurDialog(
-            title = "Clear Logs",
-            summary = "This will permanently delete all logs.",
+            title = stringResource(R.string.log_viewer_clear_title),
+            summary = stringResource(R.string.log_viewer_clear_message),
             show = showClearDialog.value,
+            renderInRootScaffold = false,
             onDismissRequest = { showClearDialog.value = false }
         ) {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 TextButton(
-                    text = "Cancel",
+                    text = stringResource(R.string.log_viewer_cancel),
                     onClick = { showClearDialog.value = false },
                     modifier = Modifier.weight(1f)
                 )
+                val logsClearedMessage = stringResource(R.string.log_viewer_cleared)
                 TextButton(
-                    text = "Clear",
+                    text = stringResource(R.string.log_viewer_clear),
                     onClick = {
                         scope.launch(Dispatchers.IO) {
                             LogManager.getInstance().clearLog(context)
                             withContext(Dispatchers.Main) {
                                 originalLogs = emptyList()
-                                Toast.makeText(context, "Logs cleared", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, logsClearedMessage, Toast.LENGTH_SHORT).show()
                                 showClearDialog.value = false
                             }
                         }

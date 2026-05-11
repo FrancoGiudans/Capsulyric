@@ -160,15 +160,14 @@ fun MiuixDiagnosticsScreen(onBack: () -> Unit) {
 
             if (isAndroid16 || isXiaomi) {
                 item {
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Box(modifier = Modifier.weight(1f)) {
-                            SmallTitle(text = stringResource(R.string.diag_header_advanced))
-                        }
-                        IconButton(onClick = { LyricRepository.getInstance().refreshAdvancedDiagnostics(context) }) {
+                    Box(modifier = Modifier.fillMaxWidth()) {
+                        SmallTitle(text = stringResource(R.string.diag_header_advanced))
+                        IconButton(
+                            onClick = { LyricRepository.getInstance().refreshAdvancedDiagnostics(context) },
+                            modifier = Modifier
+                                .align(Alignment.CenterEnd)
+                                .padding(end = 12.dp)
+                        ) {
                             androidx.compose.material3.Icon(
                                 imageVector = androidx.compose.material.icons.Icons.Default.Refresh,
                                 contentDescription = stringResource(R.string.diag_btn_refresh),

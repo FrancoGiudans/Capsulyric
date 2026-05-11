@@ -5,6 +5,7 @@ import com.example.islandlyrics.ui.common.NotificationPreview
 import com.example.islandlyrics.ui.common.CapsulePreview
 import com.example.islandlyrics.ui.common.LyricTextDisplayMode
 import com.example.islandlyrics.ui.common.OneUiCapsuleColorMode
+import com.example.islandlyrics.ui.common.SuperIslandTextLimitConfig
 import com.example.islandlyrics.R
 import com.example.islandlyrics.core.platform.XmsfBypassMode
 import com.example.islandlyrics.core.settings.LabFeatureManager
@@ -29,6 +30,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.compose.ui.Alignment
@@ -74,6 +76,7 @@ fun MiuixCustomSettingsScreen(
     var superIslandMediaButtonLayout by remember { mutableStateOf(prefs.getString("super_island_media_button_layout", "two_button") ?: "two_button") }
     var superIslandNotificationStyle by remember { mutableStateOf(LabFeatureManager.sanitizeSuperIslandNotificationStyle(context)) }
     var superIslandAdvancedStyleLabEnabled by remember { mutableStateOf(LabFeatureManager.isSuperIslandAdvancedStyleEnabled(prefs)) }
+    var superIslandTextLimitsLabEnabled by remember { mutableStateOf(LabFeatureManager.isSuperIslandTextLimitsEnabled(prefs)) }
     var notificationClickStyle by remember { mutableStateOf(prefs.getString("notification_click_style", "default") ?: "default") }
     var dismissDelay by remember { mutableLongStateOf(prefs.getLong("notification_dismiss_delay", 0L)) }
 
@@ -86,6 +89,13 @@ fun MiuixCustomSettingsScreen(
     var superIslandLyricMode by remember { mutableStateOf(prefs.getString("super_island_lyric_mode", "standard") ?: "standard") }
     var superIslandFullLyricShowLeftCover by remember { mutableStateOf(prefs.getBoolean("super_island_full_lyric_show_left_cover", true)) }
     var superIslandTextColorEnabled by remember { mutableStateOf(prefs.getBoolean("super_island_text_color_enabled", false)) }
+    var superIslandRightTextChars by remember { mutableStateOf(SuperIslandTextLimitConfig.rightChars(prefs)) }
+    var superIslandLeftWithCoverTextChars by remember {
+        mutableStateOf(SuperIslandTextLimitConfig.leftChars(prefs, showLeftCover = true))
+    }
+    var superIslandLeftNoCoverTextChars by remember {
+        mutableStateOf(SuperIslandTextLimitConfig.leftChars(prefs, showLeftCover = false))
+    }
 
     var superIslandShareEnabled by remember { mutableStateOf(prefs.getBoolean("super_island_share_enabled", true)) }
     var superIslandShareFormat by remember { mutableStateOf(prefs.getString("super_island_share_format", "format_1") ?: "format_1") }
@@ -150,6 +160,7 @@ fun MiuixCustomSettingsScreen(
     LaunchedEffect(Unit) {
         LabFeatureManager.ensureInitialized(prefs)
         superIslandAdvancedStyleLabEnabled = LabFeatureManager.isSuperIslandAdvancedStyleEnabled(prefs)
+        superIslandTextLimitsLabEnabled = LabFeatureManager.isSuperIslandTextLimitsEnabled(prefs)
         floatingLyricsLabEnabled = LabFeatureManager.isFloatingLyricsEnabled(prefs)
         superIslandNotificationStyle = LabFeatureManager.sanitizeSuperIslandNotificationStyle(context)
     }
@@ -182,33 +193,35 @@ fun MiuixCustomSettingsScreen(
                             tint = MiuixTheme.colorScheme.onBackground
                         )
                     }
+                },
+                bottomContent = {
+                    Column {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        TabRowWithContour(
+                            tabs = tabs,
+                            selectedTabIndex = pagerState.currentPage,
+                            onTabSelected = { index ->
+                                scope.launch { pagerState.animateScrollToPage(index) }
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 12.dp),
+                            colors = TabRowDefaults.tabRowColors(
+                                backgroundColor = MiuixTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f),
+                                contentColor = MiuixTheme.colorScheme.onSurfaceVariantActions,
+                                selectedBackgroundColor = MiuixTheme.colorScheme.onBackground.copy(alpha = 0.12f),
+                                selectedContentColor = MiuixTheme.colorScheme.onBackground
+                            ),
+                            maxWidth = 96.dp
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
                 }
             )
         },
     ) { padding ->
         // Tab Row + Pager
         Column(modifier = Modifier.padding(padding).fillMaxSize()) {
-            Spacer(modifier = Modifier.height(12.dp))
-            TabRowWithContour(
-                tabs = tabs,
-                selectedTabIndex = pagerState.currentPage,
-                onTabSelected = { index ->
-                    scope.launch { pagerState.animateScrollToPage(index) }
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 12.dp),
-                colors = TabRowDefaults.tabRowColors(
-                    backgroundColor = MiuixTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f),
-                    contentColor = MiuixTheme.colorScheme.onSurfaceVariantActions,
-                    selectedBackgroundColor = MiuixTheme.colorScheme.onBackground.copy(alpha = 0.12f),
-                    selectedContentColor = MiuixTheme.colorScheme.onBackground
-                ),
-                maxWidth = 96.dp
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
             HorizontalPager(
                 state = pagerState,
                 modifier = Modifier.fillMaxSize()
@@ -334,6 +347,51 @@ fun MiuixCustomSettingsScreen(
                                                         prefs.edit().putBoolean("super_island_full_lyric_show_left_cover", it).apply()
                                                     }
                                                 )
+                                            }
+
+                                            if (superIslandTextLimitsLabEnabled) {
+                                                MiuixSuperIslandTextLimitSlider(
+                                                    title = stringResource(R.string.settings_super_island_right_text_limit),
+                                                    value = superIslandRightTextChars,
+                                                    valueRange = SuperIslandTextLimitConfig.RIGHT_MIN_CHARS..SuperIslandTextLimitConfig.RIGHT_MAX_CHARS,
+                                                    onValueChange = { value ->
+                                                        superIslandRightTextChars = value
+                                                        prefs.edit()
+                                                            .putFloat(SuperIslandTextLimitConfig.KEY_RIGHT_CHARS, value)
+                                                            .apply()
+                                                    }
+                                                )
+
+                                                if (superIslandLyricMode == "full") {
+                                                    val leftValue = if (superIslandFullLyricShowLeftCover) {
+                                                        superIslandLeftWithCoverTextChars
+                                                    } else {
+                                                        superIslandLeftNoCoverTextChars
+                                                    }
+                                                    val leftRange = if (superIslandFullLyricShowLeftCover) {
+                                                        SuperIslandTextLimitConfig.LEFT_WITH_COVER_MIN_CHARS..SuperIslandTextLimitConfig.LEFT_WITH_COVER_MAX_CHARS
+                                                    } else {
+                                                        SuperIslandTextLimitConfig.LEFT_NO_COVER_MIN_CHARS..SuperIslandTextLimitConfig.LEFT_NO_COVER_MAX_CHARS
+                                                    }
+                                                    val leftKey = if (superIslandFullLyricShowLeftCover) {
+                                                        SuperIslandTextLimitConfig.KEY_LEFT_WITH_COVER_CHARS
+                                                    } else {
+                                                        SuperIslandTextLimitConfig.KEY_LEFT_NO_COVER_CHARS
+                                                    }
+                                                    MiuixSuperIslandTextLimitSlider(
+                                                        title = stringResource(R.string.settings_super_island_left_text_limit),
+                                                        value = leftValue.coerceIn(leftRange),
+                                                        valueRange = leftRange,
+                                                        onValueChange = { value ->
+                                                            if (superIslandFullLyricShowLeftCover) {
+                                                                superIslandLeftWithCoverTextChars = value
+                                                            } else {
+                                                                superIslandLeftNoCoverTextChars = value
+                                                            }
+                                                            prefs.edit().putFloat(leftKey, value).apply()
+                                                        }
+                                                    )
+                                                }
                                             }
 
                                             SuperSwitch(
@@ -662,5 +720,42 @@ fun MiuixCustomSettingsScreen(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun MiuixSuperIslandTextLimitSlider(
+    title: String,
+    value: Float,
+    valueRange: ClosedFloatingPointRange<Float>,
+    onValueChange: (Float) -> Unit
+) {
+    val clampedValue = value.coerceIn(valueRange)
+    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp)) {
+        Text(
+            text = "$title: ${formatSuperIslandTextLimit(clampedValue)}",
+            color = MiuixTheme.colorScheme.onSurface,
+            fontSize = 15.dp.value.sp
+        )
+        Spacer(modifier = Modifier.height(10.dp))
+        Slider(
+            value = clampedValue,
+            onValueChange = { raw ->
+                val stepped = (kotlin.math.round(raw * 2f) / 2f).coerceIn(valueRange)
+                onValueChange(stepped)
+            },
+            valueRange = valueRange,
+            steps = ((valueRange.endInclusive - valueRange.start) / 0.5f).toInt() - 1,
+            hapticEffect = SliderDefaults.SliderHapticEffect.Step,
+            showKeyPoints = true
+        )
+    }
+}
+
+private fun formatSuperIslandTextLimit(value: Float): String {
+    return if (value % 1f == 0f) {
+        value.toInt().toString()
+    } else {
+        "%.1f".format(java.util.Locale.US, value)
     }
 }
