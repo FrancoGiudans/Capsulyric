@@ -128,6 +128,18 @@ fun MiuixDebugCenterScreen(
                             context.startActivity(Intent(context, CustomSettingsActivity::class.java))
                         }
                     )
+                    SuperArrow(
+                        title = "Test Update Snackbar",
+                        summary = "Open MainActivity and trigger the automatic update snackbar",
+                        onClick = {
+                            val intent = Intent(context, MainActivity::class.java).apply {
+                                addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                                putExtra(MainActivity.EXTRA_SHOW_DEBUG_UPDATE_SNACKBAR, true)
+                                putExtra(MainActivity.EXTRA_DEBUG_UPDATE_TAG, "Debug.Version_C999")
+                            }
+                            context.startActivity(intent)
+                        }
+                    )
                     var versionOverride by remember { mutableStateOf("") }
                     
                     Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {

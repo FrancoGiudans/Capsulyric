@@ -221,6 +221,8 @@
     <string name="update_current_version">Current: %s</string>
     <string name="update_changelog">What\'s New</string>
     <string name="update_download">Download Update</string>
+    <string name="update_view">View</string>
+    <string name="update_available_snackbar">New version available: %s</string>
     <string name="update_ignore">Ignore This Version</string>
     <string name="update_no_update">You\'re up to date!</string>
     <string name="update_check_failed">Failed to check for updates</string>

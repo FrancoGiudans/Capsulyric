@@ -89,6 +89,19 @@ fun DebugCenterScreen(
                 }
             )
 
+            DebugMenuButton(
+                text = "Test Update Snackbar",
+                description = "Open MainActivity and trigger the automatic update snackbar",
+                onClick = {
+                    val intent = Intent(context, MainActivity::class.java).apply {
+                        addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                        putExtra(MainActivity.EXTRA_SHOW_DEBUG_UPDATE_SNACKBAR, true)
+                        putExtra(MainActivity.EXTRA_DEBUG_UPDATE_TAG, "Debug.Version_C999")
+                    }
+                    context.startActivity(intent)
+                }
+            )
+
             // ── Test Update Dialog ──
             var versionOverride by remember { mutableStateOf("") }
             

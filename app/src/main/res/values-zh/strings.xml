@@ -217,6 +217,8 @@
     <string name="update_current_version">当前版本: %s</string>
     <string name="update_changelog">更新内容</string>
     <string name="update_download">下载更新</string>
+    <string name="update_view">查看</string>
+    <string name="update_available_snackbar">发现新版本: %s</string>
     <string name="update_ignore">忽略该版本</string>
     <string name="update_no_update">已是最新版本！</string>
     <string name="update_check_failed">检查更新失败</string>

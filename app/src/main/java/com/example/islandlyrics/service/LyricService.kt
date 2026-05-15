@@ -334,6 +334,11 @@ class LyricService : Service() {
         // [Fix Task 1] Immediate Foreground Promotion
         createNotificationChannel()
 
+        // Occupy the foreground notification slot immediately with a plain
+        // notification. The rich lyric notification reuses NOTIFICATION_ID and
+        // replaces this as soon as the first UI state is rendered.
+        warmForegroundSlot()
+
         val shouldWarmForegroundForXmsfBypass =
             isSuperIslandMode && XmsfBypassMode.read(prefs).isEnabled
         if (shouldWarmForegroundForXmsfBypass) {
@@ -456,6 +461,32 @@ class LyricService : Service() {
 
     private fun buildNotification(title: String, text: String, subText: String): Notification {
         return buildModernNotification(title, text, subText)
+    }
+
+    private fun warmForegroundSlot() {
+        try {
+            startForeground(NOTIFICATION_ID, buildPlainWarmNotification())
+        } catch (e: Exception) {
+            AppLogger.getInstance().e(TAG, "Failed to warm foreground slot: ${e.message}")
+        }
+    }
+
+    private fun buildPlainWarmNotification(): Notification {
+        return Notification.Builder(this, currentChannelId)
+            .setSmallIcon(R.drawable.ic_music_note)
+            .setContentTitle("")
+            .setContentText("")
+            .setOngoing(true)
+            .setOnlyAlertOnce(true)
+            .setVisibility(Notification.VISIBILITY_PUBLIC)
+            .setContentIntent(
+                PendingIntent.getActivity(
+                    this, 0,
+                    Intent(this, MainActivity::class.java).setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP),
+                    PendingIntent.FLAG_IMMUTABLE
+                )
+            )
+            .build()
     }
 
     private fun buildModernNotification(title: String, text: String, subText: String): Notification {

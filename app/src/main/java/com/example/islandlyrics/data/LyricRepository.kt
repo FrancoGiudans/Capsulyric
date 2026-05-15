@@ -91,7 +91,7 @@ class LyricRepository private constructor() {
     // Update methods
     fun updatePlaybackStatus(playing: Boolean) {
         if (isPlaying.value != playing) {
-            isPlaying.postValue(playing)
+            postOrSet(isPlaying, playing)
         }
     }
 
