@@ -33,6 +33,8 @@ import com.example.islandlyrics.DebugLyricViewModel
 import com.example.islandlyrics.data.ParserRuleHelper
 import com.example.islandlyrics.data.lyric.OnlineLyricFetcher
 import com.example.islandlyrics.data.lyric.OnlineLyricProvider
+import com.example.islandlyrics.ui.theme.material.MaterialPrimaryLight
+import com.example.islandlyrics.ui.theme.material.materialPageContainerColor
 import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -76,7 +78,8 @@ fun DebugLyricScreen(
                     }
                 }
             )
-        }
+        },
+        containerColor = materialPageContainerColor()
     ) { padding ->
         Column(
             modifier = Modifier
@@ -343,7 +346,7 @@ fun SyllablePreview(
                             val isSung = currentPosition >= syllable.startTime
                             withStyle(
                                 style = SpanStyle(
-                                    color = if (isSung) Color(0xFF9162D1) else Color.Gray, // Highlight color vs Unsung color
+                                    color = if (isSung) MaterialPrimaryLight else Color.Gray,
                                     fontWeight = if (isSung) FontWeight.Bold else FontWeight.Normal
                                 )
                             ) {

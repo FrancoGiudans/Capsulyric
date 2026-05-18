@@ -15,7 +15,6 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -24,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.islandlyrics.ui.miuix.MiuixBlurScaffold
 import com.example.islandlyrics.ui.miuix.MiuixBlurTopAppBar
+import com.example.islandlyrics.ui.miuix.miuixPageScroll
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
@@ -104,9 +104,9 @@ fun MiuixFAQScreen(onBack: () -> Unit) {
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .nestedScroll(scrollBehavior.nestedScrollConnection),
+                .miuixPageScroll(scrollBehavior),
             contentPadding = PaddingValues(
-                top = padding.calculateTopPadding() + 12.dp,
+                top = padding.calculateTopPadding(),
                 bottom = padding.calculateBottomPadding() + 24.dp
             )
         ) {

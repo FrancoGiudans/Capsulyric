@@ -27,6 +27,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.islandlyrics.R
+import com.example.islandlyrics.ui.theme.material.materialPageContainerColor
 import com.example.islandlyrics.ui.theme.material.neutralMaterialTopBarColors
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -153,7 +154,8 @@ fun LogViewerScreen(
             ) {
                 Icon(Icons.Default.KeyboardArrowDown, contentDescription = stringResource(R.string.log_viewer_scroll_bottom))
             }
-        }
+        },
+        containerColor = materialPageContainerColor()
     ) { padding ->
         Column(
             modifier = Modifier

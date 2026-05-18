@@ -12,7 +12,6 @@ import com.example.islandlyrics.data.LyricRepository
 import com.example.islandlyrics.data.ServiceDiagnostics
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -31,6 +30,7 @@ import top.yukonga.miuix.kmp.utils.MiuixPopupUtils.Companion.MiuixPopupHost
 import com.example.islandlyrics.ui.miuix.MiuixBlurDialog
 import com.example.islandlyrics.ui.miuix.MiuixBlurScaffold
 import com.example.islandlyrics.ui.miuix.MiuixBlurTopAppBar
+import com.example.islandlyrics.ui.miuix.miuixPageScroll
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -62,13 +62,13 @@ fun MiuixDiagnosticsScreen(onBack: () -> Unit) {
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .nestedScroll(scrollBehavior.nestedScrollConnection),
+                .miuixPageScroll(scrollBehavior),
             contentPadding = PaddingValues(
-                top = padding.calculateTopPadding() + 12.dp,
+                top = padding.calculateTopPadding(),
                 bottom = padding.calculateBottomPadding() + 24.dp + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
             )
         ) {
-            item { SmallTitle(text = stringResource(R.string.diag_header_tools)) }
+            item { SmallTitle(text = stringResource(R.string.diag_header_debug_tools)) }
             item {
                 Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
                     SuperArrow(
@@ -87,6 +87,17 @@ fun MiuixDiagnosticsScreen(onBack: () -> Unit) {
                             }
                         )
                     }
+                }
+            }
+
+            item { SmallTitle(text = stringResource(R.string.diag_header_maintenance_tools)) }
+            item {
+                Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
+                    SuperArrow(
+                        title = stringResource(R.string.menu_log),
+                        summary = stringResource(R.string.summary_view_logs),
+                        onClick = { LogViewerActivity.start(context) }
+                    )
                     SuperArrow(
                         title = stringResource(R.string.title_cache_management),
                         summary = stringResource(R.string.settings_cache_management_desc),
@@ -94,15 +105,10 @@ fun MiuixDiagnosticsScreen(onBack: () -> Unit) {
                             context.startActivity(android.content.Intent(context, CacheManagementActivity::class.java))
                         }
                     )
-                    SuperArrow(
-                        title = stringResource(R.string.menu_log),
-                        summary = stringResource(R.string.summary_view_logs),
-                        onClick = { LogViewerActivity.start(context) }
-                    )
                 }
             }
 
-            item { SmallTitle(text = stringResource(R.string.diag_header_laboratory)) }
+            item { SmallTitle(text = stringResource(R.string.diag_header_feature_controls)) }
             item {
                 Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
                     SuperArrow(

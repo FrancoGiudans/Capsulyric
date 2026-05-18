@@ -68,7 +68,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
@@ -96,10 +95,6 @@ import kotlin.math.roundToInt
 private val StatusActive = Color(0xFF2E7D32)
 private val StatusInactive = Color(0xFFC62828)
 private val LyricAccent = Color(0xFF3D7DFF)
-private val LightBackgroundTop = Color(0xFFF7F8FC)
-private val LightBackgroundBottom = Color(0xFFEDEFF6)
-private val DarkBackgroundTop = Color(0xFF101114)
-private val DarkBackgroundBottom = Color(0xFF17191E)
 private const val SeekSyncThresholdMs = 250L
 private const val SeekFallbackTimeoutMs = 4000L
 
@@ -162,8 +157,6 @@ fun MainScreen(
         listeners?.contains(context.packageName) == true
     }
     val serviceConnected = MediaMonitorService.isConnected
-    val colorScheme = MaterialTheme.colorScheme
-    val isDarkTheme = colorScheme.background.luminance() < 0.5f
     val statusText = when {
         !listenerEnabled -> stringResource(R.string.main_status_permission_required)
         whitelistedSessions.isNotEmpty() -> {
@@ -180,17 +173,10 @@ fun MainScreen(
         else -> stringResource(R.string.main_status_service_ready)
     }
 
-        Column(
-            modifier = Modifier
+    Column(
+        modifier = Modifier
             .fillMaxSize()
-            .background(
-                Brush.verticalGradient(
-                    listOf(
-                        if (isDarkTheme) DarkBackgroundTop else LightBackgroundTop,
-                        if (isDarkTheme) DarkBackgroundBottom else LightBackgroundBottom
-                    )
-                )
-            )
+            .background(MaterialTheme.colorScheme.background)
             .padding(contentPadding)
             .statusBarsPadding()
             .verticalScroll(rememberScrollState())

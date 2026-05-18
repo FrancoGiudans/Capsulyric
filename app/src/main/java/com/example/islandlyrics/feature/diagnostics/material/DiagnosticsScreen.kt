@@ -31,6 +31,7 @@ import com.example.islandlyrics.feature.logviewer.LogViewerActivity
 import com.example.islandlyrics.feature.onlinelyricdebug.OnlineLyricDebugActivity
 import java.text.SimpleDateFormat
 import java.util.*
+import com.example.islandlyrics.ui.theme.material.materialPageContainerColor
 import com.example.islandlyrics.ui.theme.material.neutralMaterialTopBarColors
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -55,7 +56,8 @@ fun DiagnosticsScreen(onBack: () -> Unit) {
                 scrollBehavior = scrollBehavior,
                 colors = neutralMaterialTopBarColors()
             )
-        }
+        },
+        containerColor = materialPageContainerColor()
     ) { padding ->
         Column(
             modifier = Modifier
@@ -65,9 +67,8 @@ fun DiagnosticsScreen(onBack: () -> Unit) {
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Log Viewer Section
             DiagnosticsCard(
-                title = stringResource(R.string.menu_log),
+                title = stringResource(R.string.diag_header_debug_tools),
                 icon = Icons.Default.Terminal
             ) {
                 Button(
@@ -89,6 +90,18 @@ fun DiagnosticsScreen(onBack: () -> Unit) {
                         Text(stringResource(R.string.diag_qq_roman_debug_title))
                     }
                 }
+            }
+
+            DiagnosticsCard(
+                title = stringResource(R.string.diag_header_maintenance_tools),
+                icon = Icons.Default.Info
+            ) {
+                Button(
+                    onClick = { LogViewerActivity.start(context) },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(stringResource(R.string.summary_view_logs))
+                }
                 Spacer(modifier = Modifier.height(8.dp))
                 Button(
                     onClick = {
@@ -98,17 +111,10 @@ fun DiagnosticsScreen(onBack: () -> Unit) {
                 ) {
                     Text(stringResource(R.string.title_cache_management))
                 }
-                Spacer(modifier = Modifier.height(8.dp))
-                Button(
-                    onClick = { LogViewerActivity.start(context) },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(stringResource(R.string.summary_view_logs))
-                }
             }
 
             DiagnosticsCard(
-                title = stringResource(R.string.diag_header_laboratory),
+                title = stringResource(R.string.diag_header_feature_controls),
                 icon = Icons.Default.Info
             ) {
                 Button(
@@ -121,7 +127,6 @@ fun DiagnosticsScreen(onBack: () -> Unit) {
                 }
             }
 
-            // Service Diagnostics Section
             DiagnosticsCard(
                 title = stringResource(R.string.diag_header_service),
                 icon = Icons.Default.MonitorHeart
@@ -142,7 +147,6 @@ fun DiagnosticsScreen(onBack: () -> Unit) {
                 }
             }
 
-            // System Info Section
             DiagnosticsCard(
                 title = stringResource(R.string.diag_header_system),
                 icon = Icons.Default.Info

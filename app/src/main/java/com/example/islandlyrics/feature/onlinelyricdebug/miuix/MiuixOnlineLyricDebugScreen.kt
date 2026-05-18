@@ -27,7 +27,6 @@ import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -40,6 +39,7 @@ import com.example.islandlyrics.feature.onlinelyricdebug.OnlineLyricDebugViewMod
 import com.example.islandlyrics.ui.miuix.MiuixBlurDialog
 import com.example.islandlyrics.ui.miuix.MiuixBlurScaffold
 import com.example.islandlyrics.ui.miuix.MiuixBlurTopAppBar
+import com.example.islandlyrics.ui.miuix.miuixPageScroll
 import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.IconButton
@@ -107,8 +107,10 @@ fun MiuixOnlineLyricDebugScreen(
         popupHost = { MiuixPopupHost() }
     ) { padding ->
         LazyColumn(
-            modifier = Modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection),
-            contentPadding = PaddingValues(top = padding.calculateTopPadding() + 12.dp, bottom = padding.calculateBottomPadding() + 24.dp)
+            modifier = Modifier
+                .fillMaxSize()
+                .miuixPageScroll(scrollBehavior),
+            contentPadding = PaddingValues(top = padding.calculateTopPadding(), bottom = padding.calculateBottomPadding() + 24.dp)
         ) {
             item { SmallTitle(text = stringResource(R.string.online_lyric_debug_now_playing)) }
             item {

@@ -54,6 +54,9 @@
     <string name="settings_theme_pure_black_desc">Use true black background in dark mode</string>
     <string name="settings_theme_dynamic_color">Dynamic Colors</string>
     <string name="settings_theme_dynamic_color_desc">Use wallpaper colors (Material You)</string>
+    <string name="settings_theme_custom_color">Custom Theme Color</string>
+    <string name="settings_theme_custom_color_global_tint">Global Tint</string>
+    <string name="settings_theme_custom_color_global_tint_desc">Use Monet-based color generation to tint the whole app.</string>
 
     <!-- Dialogs -->
     <string name="dialog_add_whitelist">Add Whitelist</string>
@@ -278,8 +281,13 @@
     <string name="ui_style_material">Material Design</string>
     <string name="ui_style_miuix">Miuix</string>
     <string name="settings_disable_scrolling_desc">Displays static text only. Prevents ALL scrolling, regardless of lyric type.</string>
-    <string name="settings_super_island_colorize">Colorize Playback Info</string>
-    <string name="settings_super_island_colorize_desc">Use album cover color for lyrics, song title, capsule edge, and progress bar in Super Island.</string>
+    <string name="settings_super_island_colorize">Colorize Capsule Content</string>
+    <string name="settings_super_island_colorize_desc">Apply color to Super Island lyrics, playback info, capsule edge, and progress bar.</string>
+    <string name="settings_super_island_color_source">Color Source</string>
+    <string name="settings_super_island_color_source_desc">Choose whether capsule colors come from album art or a custom color.</string>
+    <string name="settings_super_island_color_source_album_art">Album Art Color</string>
+    <string name="settings_super_island_color_source_custom">Custom Color</string>
+    <string name="settings_super_island_custom_color">Capsule Custom Color</string>
     <string name="settings_super_island_share">Enable Drag-and-Drop Sharing</string>
     <string name="settings_super_island_share_desc">Allow dragging Super Island to share lyrics.</string>
     <string name="settings_super_island_share_format">Share Text Format</string>
@@ -472,7 +480,7 @@ Within the log interface, select the share/export icon. You can specify a timefr
     <string name="oobe_step_finish">All Set!</string>
     <string name="oobe_finish_title">Ready to Go</string>
     <string name="oobe_finish_subtitle">Starting "Island Lyrics" service...</string>
-    <string name="oobe_finish_start">Get Started</string>
+    <string name="oobe_finish_start">Start Using</string>
     <string name="oobe_btn_settings">Customize Settings</string>
 
     <string name="oobe_next">Next</string>
@@ -520,17 +528,25 @@ Within the log interface, select the share/export icon. You can specify a timefr
 
     <!-- Diagnostics Strings -->
     <string name="diag_header_tools">Common Tools</string>
+    <string name="diag_header_debug_tools">Debug Tools</string>
+    <string name="diag_header_maintenance_tools">Maintenance Tools</string>
+    <string name="diag_header_feature_controls">Feature Controls</string>
     <string name="diag_header_laboratory">Laboratory</string>
-    <string name="diag_lab_page_desc">Manage experimental features and test toggles</string>
-    <string name="diag_header_service">Service Diagnostics</string>
-    <string name="diag_header_system">System Information</string>
-    <string name="diag_header_advanced">Advanced Features (Android 16 / Xiaomi Island)</string>
+    <string name="diag_lab_page_desc">Experimental features may still be changing. Enable only the items you want to try, and turn them off if they affect daily use.</string>
+    <string name="diag_lab_category_general">General Experiments</string>
+    <string name="diag_lab_category_interface">Interface Experiments</string>
+    <string name="diag_lab_category_updates">Updates</string>
+    <string name="diag_header_service">Runtime Status</string>
+    <string name="diag_header_system">Device Environment</string>
+    <string name="diag_header_advanced">Compatibility Checks</string>
     <string name="diag_lab_super_island_advanced_style_title">Xiaomi Super Island Advanced Style</string>
     <string name="diag_lab_super_island_advanced_style_desc">When enabled, the Notification Style setting in Personalization will show the Advanced Style (Beta) option</string>
     <string name="diag_lab_super_island_text_limits_title">Super Island Text Limits</string>
     <string name="diag_lab_super_island_text_limits_desc">Show controls for tuning the left and right Super Island text limits in Personalization.</string>
     <string name="diag_lab_experiment_updates_title">Receive Test Builds</string>
     <string name="diag_lab_experiment_updates_desc">Show the Experiment channel and receive experimental builds from the testing branch.</string>
+    <string name="diag_lab_scroll_end_haptic_title">Scroll End Haptic</string>
+    <string name="diag_lab_scroll_end_haptic_desc">Use the same end-of-list haptic feedback as the miuix demo when scrolling reaches an edge.</string>
     <string name="diag_lab_floating_lyrics_title">Desktop Lyrics</string>
     <string name="diag_lab_floating_lyrics_desc">When enabled, the Desktop Lyrics entry will appear in Personalization Settings</string>
     <string name="diag_lab_feed_source_title">Announcement Source</string>

@@ -34,7 +34,6 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import android.content.ClipData
 import android.content.ClipboardManager
 import androidx.compose.ui.platform.LocalContext
@@ -189,9 +188,9 @@ fun MiuixSettingsScreen(
             state = listState,
             modifier = Modifier
                 .fillMaxSize()
-                .nestedScroll(scrollBehavior.nestedScrollConnection),
+                .miuixPageScroll(scrollBehavior),
             contentPadding = PaddingValues(
-                top = padding.calculateTopPadding() + 12.dp,
+                top = padding.calculateTopPadding(),
                 bottom = padding.calculateBottomPadding() + 116.dp
             )
         ) {

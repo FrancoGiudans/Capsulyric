@@ -17,3 +17,6 @@ fun neutralMaterialTopBarColors(): TopAppBarColors {
         actionIconContentColor = contentColor
     )
 }
+
+@Composable
+fun materialPageContainerColor() = MaterialTheme.colorScheme.background

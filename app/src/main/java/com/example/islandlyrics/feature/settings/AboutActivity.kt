@@ -51,9 +51,9 @@ class AboutActivity : BaseActivity() {
                         onCheckUpdate = { performUpdateCheck() },
                         updateReleaseInfo = updateReleaseInfo,
                         onUpdateDismiss = { updateReleaseInfo = null },
-                        onUpdateIgnore = { tag ->
-                            UpdateChecker.setIgnoredVersion(this@AboutActivity, tag)
-                            AppLogger.getInstance().log("Update", "Ignored version: $tag")
+                        onUpdateIgnore = { version ->
+                            UpdateChecker.setIgnoredVersion(this@AboutActivity, version)
+                            AppLogger.getInstance().log("Update", "Ignored version: $version")
                         }
                     )
                 }
@@ -67,9 +67,9 @@ class AboutActivity : BaseActivity() {
                         onCheckUpdate = { performUpdateCheck() },
                         updateReleaseInfo = updateReleaseInfo,
                         onUpdateDismiss = { updateReleaseInfo = null },
-                        onUpdateIgnore = { tag ->
-                            UpdateChecker.setIgnoredVersion(this@AboutActivity, tag)
-                            AppLogger.getInstance().log("Update", "Ignored version: $tag")
+                        onUpdateIgnore = { version ->
+                            UpdateChecker.setIgnoredVersion(this@AboutActivity, version)
+                            AppLogger.getInstance().log("Update", "Ignored version: $version")
                         }
                     )
                 }
@@ -89,7 +89,7 @@ class AboutActivity : BaseActivity() {
                 val release = UpdateChecker.checkForUpdate(this@AboutActivity)
                 if (release != null) {
                     updateReleaseInfo = release
-                    AppLogger.getInstance().log("About", "Update found: ${release.tagName}")
+                    AppLogger.getInstance().log("About", "Update found: ${UpdateChecker.getComparableVersion(release)}")
                 } else {
                     Toast.makeText(
                         this@AboutActivity,

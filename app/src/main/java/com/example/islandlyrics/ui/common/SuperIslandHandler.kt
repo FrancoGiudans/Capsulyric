@@ -57,6 +57,8 @@ class SuperIslandHandler(
     private var cachedSuperIslandNotificationStyle = "standard"
     private var cachedSuperIslandLyricMode = "standard"
     private var cachedSuperIslandFullLyricShowLeftCover = true
+    private var cachedSuperIslandColorSource = SuperIslandColorSource.ALBUM_ART
+    private var cachedSuperIslandCustomColor = 0xFF3482FF.toInt()
     private var cachedSuperIslandRightTextWeight = SuperIslandLyricLayout.calculateWeight("七七七七七七七")
     private var cachedSuperIslandLeftWithCoverTextWeight = SuperIslandLyricLayout.calculateWeight("六六六六六六")
     private var cachedSuperIslandLeftNoCoverTextWeight = SuperIslandLyricLayout.calculateWeight("八八八八八八八八")
@@ -84,6 +86,8 @@ class SuperIslandHandler(
                 cachedMiPlayIntent = createMiPlayIntent()
             }
             "super_island_text_color_enabled" -> cachedSuperIslandTextColorEnabled = p.getBoolean(key, false)
+            SuperIslandColorSource.PREF_KEY -> cachedSuperIslandColorSource = SuperIslandColorSource.read(p)
+            SuperIslandColorSource.CUSTOM_COLOR_PREF_KEY -> cachedSuperIslandCustomColor = SuperIslandColorSource.readCustomColor(p)
             "super_island_share_enabled" -> cachedSuperIslandShareEnabled = p.getBoolean(key, true)
             "super_island_share_format" -> cachedSuperIslandShareFormat = p.getString(key, "format_1") ?: "format_1"
             "progress_bar_color_enabled" -> cachedProgressBarColorEnabled = p.getBoolean(key, false)
@@ -109,6 +113,8 @@ class SuperIslandHandler(
         cachedContentIntent = createContentIntent()
         cachedMiPlayIntent = createMiPlayIntent()
         cachedSuperIslandTextColorEnabled = prefs.getBoolean("super_island_text_color_enabled", false)
+        cachedSuperIslandColorSource = SuperIslandColorSource.read(prefs)
+        cachedSuperIslandCustomColor = SuperIslandColorSource.readCustomColor(prefs)
         cachedSuperIslandShareEnabled = prefs.getBoolean("super_island_share_enabled", true)
         cachedSuperIslandShareFormat = prefs.getString("super_island_share_format", "format_1") ?: "format_1"
         cachedProgressBarColorEnabled = prefs.getBoolean("progress_bar_color_enabled", false)
@@ -342,6 +348,11 @@ class SuperIslandHandler(
         val subText = if (state.artist.isNotBlank()) "${state.title} - ${state.artist}" else state.title
         val progressPercent = state.progressCurrent
         val albumColor = state.albumColor
+        val accentColor = SuperIslandColorSource.resolveColor(
+            source = cachedSuperIslandColorSource,
+            albumColor = albumColor,
+            customColor = cachedSuperIslandCustomColor
+        )
 
         // 1. TRACK SWITCH DETECTION: Clear builder cache to prevent "stuck" metadata on Android 15
         val trackChanged = state.title != lastSentTitle || state.artist != lastSentArtist
@@ -352,7 +363,7 @@ class SuperIslandHandler(
         }
 
         // Color changed?
-        val colorChanged = albumColor != lastAppliedAlbumColor
+        val colorChanged = accentColor != lastAppliedAlbumColor
 
         // 2. LYRIC LINE CHANGE: Force startForeground to clear MIUI rendering frame cache (Issue #22)
         // Compare fullLyric (not displayLyric) to detect actual line changes.
@@ -401,7 +412,7 @@ class SuperIslandHandler(
 
         updateIcons(metadata, albumArt, state.isPlaying)
 
-        val hexColor = String.format("#FF%06X", 0xFFFFFF and albumColor)
+        val hexColor = String.format("#FF%06X", 0xFFFFFF and accentColor)
         val showHighlightColor = cachedSuperIslandTextColorEnabled 
         val ringColor = if (showHighlightColor) hexColor else "#757575"
         val progressBarColor = if (cachedProgressBarColorEnabled) hexColor else "#757575"
@@ -531,14 +542,14 @@ class SuperIslandHandler(
             .setContentTitle(notificationTitle)
             .setContentText(notificationText)
             .setSubText(if (state.mediaPackage.isNotBlank()) state.mediaPackage else null)
-            .setColor(if (cachedActionStyle == "media_controls") 0xFF757575.toInt() else albumColor)
+            .setColor(if (cachedActionStyle == "media_controls") 0xFF757575.toInt() else accentColor)
             .addExtras(extras)
         if (customExpandEnabled) {
             notificationBuilder.setStyle(Notification.DecoratedCustomViewStyle())
         }
         val notification = notificationBuilder.build()
 
-        lastAppliedAlbumColor = albumColor
+        lastAppliedAlbumColor = accentColor
         lastFocusParam = focusSignature
 
         lastSentDisplayLyric = displayLyric

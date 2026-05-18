@@ -9,41 +9,41 @@
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
         <!-- Primary Brand Colors -->
-        <item name="colorPrimary">#424242</item>
+        <item name="colorPrimary">#3482FF</item>
         <item name="colorOnPrimary">#FFFFFF</item>
-        <item name="colorPrimaryContainer">#E0E0E0</item>
-        <item name="colorOnPrimaryContainer">#121212</item>
+        <item name="colorPrimaryContainer">#5D9BFF</item>
+        <item name="colorOnPrimaryContainer">#FFFFFF</item>
 
         <!-- Secondary (Accents) -->
-        <item name="colorSecondary">#616161</item>
+        <item name="colorSecondary">#E6E6E6</item>
         <item name="colorOnSecondary">#FFFFFF</item>
-        <item name="colorSecondaryContainer">#EEEEEE</item>
-        <item name="colorOnSecondaryContainer">#121212</item>
+        <item name="colorSecondaryContainer">#F0F0F0</item>
+        <item name="colorOnSecondaryContainer">#303030</item>
 
         <!-- Tertiary -->
-        <item name="colorTertiary">#757575</item>
+        <item name="colorTertiary">#3482FF</item>
         <item name="colorOnTertiary">#FFFFFF</item>
-        <item name="colorTertiaryContainer">#F5F5F5</item>
-        <item name="colorOnTertiaryContainer">#121212</item>
+        <item name="colorTertiaryContainer">#EAF2FF</item>
+        <item name="colorOnTertiaryContainer">#3482FF</item>
 
         <!-- Surface & Background -->
         <item name="colorSurface">#FFFFFF</item>
-        <item name="colorOnSurface">#121212</item>
-        <item name="colorSurfaceVariant">#EEEEEE</item>
-        <item name="colorOnSurfaceVariant">#616161</item>
-        <item name="colorSurfaceContainer">#F5F5F5</item>
-        <item name="colorSurfaceContainerLow">#EFEFEF</item>
+        <item name="colorOnSurface">#000000</item>
+        <item name="colorSurfaceVariant">#FFFFFF</item>
+        <item name="colorOnSurfaceVariant">#99000000</item>
+        <item name="colorSurfaceContainer">#FFFFFF</item>
+        <item name="colorSurfaceContainerLow">#F0F0F0</item>
         <item name="colorSurfaceContainerLowest">#FAFAFA</item>
-        <item name="android:colorBackground">#FFFFFF</item>
+        <item name="android:colorBackground">#F7F7F7</item>
 
         <!-- Outline -->
-        <item name="colorOutline">#757575</item>
+        <item name="colorOutline">#D9D9D9</item>
         <item name="colorOutlineVariant">#E0E0E0</item>
 
         <!-- Inverse -->
-        <item name="colorSurfaceInverse">#121212</item>
+        <item name="colorSurfaceInverse">#000000</item>
         <item name="colorOnSurfaceInverse">#FFFFFF</item>
-        <item name="colorPrimaryInverse">#E0E0E0</item>
+        <item name="colorPrimaryInverse">#277AF7</item>
 
     </style>
 

@@ -48,6 +48,7 @@ import com.example.islandlyrics.core.cache.AppImageCacheManager
 import com.example.islandlyrics.data.lyric.OnlineLyricCacheStore
 import com.example.islandlyrics.feature.cache.CacheManagementViewModel
 import com.example.islandlyrics.feature.cache.filterByCacheQuery
+import com.example.islandlyrics.ui.theme.material.materialPageContainerColor
 import com.example.islandlyrics.ui.theme.material.neutralMaterialTopBarColors
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -97,7 +98,8 @@ fun CacheManagementScreen(
                 scrollBehavior = scrollBehavior
             )
         },
-        snackbarHost = { SnackbarHost(snackbarHostState) }
+        snackbarHost = { SnackbarHost(snackbarHostState) },
+        containerColor = materialPageContainerColor()
     ) { padding ->
         LazyColumn(
             modifier = Modifier

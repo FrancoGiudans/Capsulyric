@@ -56,7 +56,7 @@ fun MiuixDebugCenterScreen(
 
     // Miuix UI toggle state
     var miuixEnabled by remember {
-        mutableStateOf(prefs.getBoolean("ui_use_miuix", false))
+        mutableStateOf(prefs.getBoolean("ui_use_miuix", true))
     }
 
     // Floating Lyrics toggle state
@@ -100,7 +100,7 @@ fun MiuixDebugCenterScreen(
                 .fillMaxSize()
                 .nestedScroll(scrollBehavior.nestedScrollConnection),
             contentPadding = PaddingValues(
-                top = padding.calculateTopPadding() + 12.dp,
+                top = padding.calculateTopPadding(),
                 bottom = padding.calculateBottomPadding() + 24.dp
             )
         ) {

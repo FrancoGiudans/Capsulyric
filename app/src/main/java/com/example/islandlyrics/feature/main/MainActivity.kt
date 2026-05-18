@@ -42,6 +42,7 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -63,6 +64,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.lifecycleScope
@@ -110,7 +112,7 @@ class MainActivity : BaseActivity() {
                     val release = UpdateChecker.checkForUpdate(this@MainActivity)
                     if (release != null) {
                         pendingUpdateSnackbarReleaseInfo = release
-                        AppLogger.getInstance().log("MainActivity", "Auto-update found: ${release.tagName}")
+                        AppLogger.getInstance().log("MainActivity", "Auto-update found: ${UpdateChecker.getComparableVersion(release)}")
                     }
                 } catch (e: Exception) {
                     AppLogger.getInstance().log("MainActivity", "Auto-update check failed: ${e.message}")
@@ -238,7 +240,7 @@ class MainActivity : BaseActivity() {
         var followSystem by remember { mutableStateOf(prefs.getBoolean("theme_follow_system", true)) }
         var darkMode by remember { mutableStateOf(prefs.getBoolean("theme_dark_mode", false)) }
         var pureBlack by remember { mutableStateOf(prefs.getBoolean("theme_pure_black", false)) }
-        var dynamicColor by remember { mutableStateOf(prefs.getBoolean("theme_dynamic_color", true)) }
+        var dynamicColor by remember { mutableStateOf(prefs.getBoolean("theme_dynamic_color", false)) }
 
         DisposableEffect(prefs) {
             val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
@@ -246,7 +248,7 @@ class MainActivity : BaseActivity() {
                     "theme_follow_system" -> followSystem = prefs.getBoolean("theme_follow_system", true)
                     "theme_dark_mode" -> darkMode = prefs.getBoolean("theme_dark_mode", false)
                     "theme_pure_black" -> pureBlack = prefs.getBoolean("theme_pure_black", false)
-                    "theme_dynamic_color" -> dynamicColor = prefs.getBoolean("theme_dynamic_color", true)
+                    "theme_dynamic_color" -> dynamicColor = prefs.getBoolean("theme_dynamic_color", false)
                 }
             }
             prefs.registerOnSharedPreferenceChangeListener(listener)
@@ -265,9 +267,10 @@ class MainActivity : BaseActivity() {
             val pendingRelease = pendingUpdateSnackbarReleaseInfo
             LaunchedEffect(pendingRelease) {
                 if (pendingRelease != null) {
+                    val comparableVersion = UpdateChecker.getComparableVersion(pendingRelease)
                     val result = withTimeoutOrNull(UPDATE_SNACKBAR_DURATION_MS) {
                         snackbarHostState.showSnackbar(
-                            message = getString(R.string.update_available_snackbar, pendingRelease.tagName),
+                            message = getString(R.string.update_available_snackbar, comparableVersion),
                             actionLabel = getString(R.string.update_view),
                             withDismissAction = true,
                             duration = SnackbarDuration.Indefinite
@@ -308,9 +311,9 @@ class MainActivity : BaseActivity() {
                 UpdateDialog(
                     releaseInfo = updateReleaseInfo!!,
                     onDismiss = { updateReleaseInfo = null },
-                    onIgnore = { tag ->
-                        UpdateChecker.setIgnoredVersion(this@MainActivity, tag)
-                        AppLogger.getInstance().log("Update", "Ignored version: $tag")
+                    onIgnore = { version ->
+                        UpdateChecker.setIgnoredVersion(this@MainActivity, version)
+                        AppLogger.getInstance().log("Update", "Ignored version: $version")
                     }
                 )
             }
@@ -327,7 +330,12 @@ class MainActivity : BaseActivity() {
             bottomBarVisible = true
         }
 
-        Box(modifier = Modifier.fillMaxSize()) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background)
+                .clipToBounds()
+        ) {
             HorizontalPager(
                 state = pagerState,
                 modifier = Modifier.fillMaxSize()
@@ -418,8 +426,9 @@ class MainActivity : BaseActivity() {
         val pendingRelease = pendingUpdateSnackbarReleaseInfo
         LaunchedEffect(pendingRelease) {
             if (pendingRelease != null) {
+                val comparableVersion = UpdateChecker.getComparableVersion(pendingRelease)
                 val result = snackbarHostState.showSnackbar(
-                    message = getString(R.string.update_available_snackbar, pendingRelease.tagName),
+                    message = getString(R.string.update_available_snackbar, comparableVersion),
                     actionLabel = getString(R.string.update_view),
                     withDismissAction = true,
                     duration = MiuixSnackbarDuration.Custom(UPDATE_SNACKBAR_DURATION_MS)
@@ -445,6 +454,8 @@ class MainActivity : BaseActivity() {
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
+                            .clipToBounds()
+                            .background(MiuixTheme.colorScheme.surface)
                             .then(if (blurEnabled) Modifier.layerBackdrop(backdrop) else Modifier)
                     ) {
                         HorizontalPager(
@@ -494,7 +505,7 @@ class MainActivity : BaseActivity() {
                         exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
                         modifier = Modifier
                             .align(Alignment.BottomCenter)
-                            .padding(horizontal = 8.dp)
+                            .padding(horizontal = 4.dp)
                     ) {
                         MiuixTopLevelFloatingNavigationBar(
                             currentDestination = TopLevelDestination.entries[pagerState.currentPage],
@@ -517,9 +528,9 @@ class MainActivity : BaseActivity() {
                             show = true,
                             releaseInfo = updateReleaseInfo!!,
                             onDismiss = { updateReleaseInfo = null },
-                            onIgnore = { tag ->
-                                UpdateChecker.setIgnoredVersion(this@MainActivity, tag)
-                                AppLogger.getInstance().log("Update", "Ignored version: $tag")
+                            onIgnore = { version ->
+                                UpdateChecker.setIgnoredVersion(this@MainActivity, version)
+                                AppLogger.getInstance().log("Update", "Ignored version: $version")
                             }
                         )
                     }
@@ -579,7 +590,7 @@ class MainActivity : BaseActivity() {
                 val release = UpdateChecker.checkForUpdate(this@MainActivity)
                 if (release != null) {
                     updateReleaseInfo = release
-                    AppLogger.getInstance().log("MainActivity", "Update found from settings page: ${release.tagName}")
+                    AppLogger.getInstance().log("MainActivity", "Update found from settings page: ${UpdateChecker.getComparableVersion(release)}")
                 } else {
                     Toast.makeText(this@MainActivity, R.string.update_no_update, Toast.LENGTH_SHORT).show()
                 }

@@ -56,6 +56,7 @@ import com.example.islandlyrics.R
 import com.example.islandlyrics.data.ParserRuleHelper
 import com.example.islandlyrics.data.lyric.OnlineLyricProvider
 import com.example.islandlyrics.feature.onlinelyricdebug.OnlineLyricDebugViewModel
+import com.example.islandlyrics.ui.theme.material.materialPageContainerColor
 import com.example.islandlyrics.ui.theme.material.neutralMaterialTopBarColors
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -111,7 +112,8 @@ fun OnlineLyricDebugScreen(
                 },
                 colors = neutralMaterialTopBarColors()
             )
-        }
+        },
+        containerColor = materialPageContainerColor()
     ) { padding ->
         Column(
             modifier = Modifier

@@ -54,6 +54,9 @@
     <string name="settings_theme_pure_black_desc">在深色模式下使用纯黑背景</string>
     <string name="settings_theme_dynamic_color">动态取色</string>
     <string name="settings_theme_dynamic_color_desc">使用壁纸颜色 (Material You)</string>
+    <string name="settings_theme_custom_color">自选主题色</string>
+    <string name="settings_theme_custom_color_global_tint">全局着色</string>
+    <string name="settings_theme_custom_color_global_tint_desc">基于莫奈取色，为应用整体着色。</string>
 
     <!-- Dialogs -->
     <string name="dialog_add_whitelist">添加白名单</string>
@@ -417,7 +420,7 @@
     <string name="oobe_step_finish">进入应用</string>
     <string name="oobe_finish_title">一切准备就绪</string>
     <string name="oobe_finish_subtitle">欢迎使用 Capsulyric</string>
-    <string name="oobe_finish_start">开启旅程</string>
+    <string name="oobe_finish_start">开始使用</string>
     <string name="oobe_btn_settings">自定义设置</string>
     <string name="oobe_btn_start">下一步</string>
 
@@ -478,8 +481,13 @@
     <string name="settings_super_island_full_lyric_show_left_cover_desc">全歌词模式下保留左侧岛区域的专辑封面。</string>
     <string name="settings_super_island_right_text_limit">右侧歌词字数上限</string>
     <string name="settings_super_island_left_text_limit">左侧歌词字数上限</string>
-    <string name="settings_super_island_colorize">为播放信息着色</string>
-    <string name="settings_super_island_colorize_desc">使超级岛中的内容（歌词、歌单、胶囊边缘及进度条）随专辑封面变色</string>
+    <string name="settings_super_island_colorize">为胶囊内容着色</string>
+    <string name="settings_super_island_colorize_desc">为超级岛中的歌词、播放信息、胶囊边缘和进度条着色。</string>
+    <string name="settings_super_island_color_source">取色来源</string>
+    <string name="settings_super_island_color_source_desc">选择胶囊颜色使用专辑封面取色还是自定义取色。</string>
+    <string name="settings_super_island_color_source_album_art">专辑封面取色</string>
+    <string name="settings_super_island_color_source_custom">自定义取色</string>
+    <string name="settings_super_island_custom_color">胶囊自定义颜色</string>
     <string name="settings_super_island_share">开启拖拽分享</string>
     <string name="settings_super_island_share_desc">允许长按拖拽超级岛以分享歌词卡片</string>
     <string name="settings_super_island_share_format">拖拽分享文案格式</string>
@@ -511,17 +519,25 @@
 
     <!-- 诊断相关字符串 -->
     <string name="diag_header_tools">常用工具</string>
+    <string name="diag_header_debug_tools">调试工具</string>
+    <string name="diag_header_maintenance_tools">维护工具</string>
+    <string name="diag_header_feature_controls">功能开关</string>
     <string name="diag_header_laboratory">实验室</string>
-    <string name="diag_lab_page_desc">管理实验性功能与测试开关</string>
-    <string name="diag_header_service">服务诊断数据</string>
-    <string name="diag_header_system">系统环境信息</string>
-    <string name="diag_header_advanced">高级功能查验 (Android 16 / 小米岛)</string>
+    <string name="diag_lab_page_desc">这里收纳仍在验证中的功能。只开启你想尝试的项目；如果影响日常使用，可以随时关闭。</string>
+    <string name="diag_lab_category_general">通用实验</string>
+    <string name="diag_lab_category_interface">界面实验</string>
+    <string name="diag_lab_category_updates">更新</string>
+    <string name="diag_header_service">运行状态</string>
+    <string name="diag_header_system">设备环境</string>
+    <string name="diag_header_advanced">兼容性检查</string>
     <string name="diag_lab_super_island_advanced_style_title">小米超级岛高级样式</string>
     <string name="diag_lab_super_island_advanced_style_desc">开启后，个性化设置里的“通知样式”将显示“高级样式（Beta）”选项</string>
     <string name="diag_lab_super_island_text_limits_title">超级岛字数上限调节</string>
     <string name="diag_lab_super_island_text_limits_desc">开启后，个性化设置的胶囊页会显示左右两侧字数上限调节。</string>
     <string name="diag_lab_experiment_updates_title">接收测试版本</string>
     <string name="diag_lab_experiment_updates_desc">显示 Experiment 通道，并接收来自测试分支的实验版本。</string>
+    <string name="diag_lab_scroll_end_haptic_title">边缘滚动触感反馈</string>
+    <string name="diag_lab_scroll_end_haptic_desc">滚动到列表边缘时，获得触感反馈。</string>
     <string name="diag_lab_floating_lyrics_title">桌面歌词</string>
     <string name="diag_lab_floating_lyrics_desc">开启后，个性化设置里将显示桌面歌词入口</string>
     <string name="diag_lab_feed_source_title">公告源</string>

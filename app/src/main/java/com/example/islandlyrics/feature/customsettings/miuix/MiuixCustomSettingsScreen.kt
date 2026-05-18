@@ -5,6 +5,7 @@ import com.example.islandlyrics.ui.common.NotificationPreview
 import com.example.islandlyrics.ui.common.CapsulePreview
 import com.example.islandlyrics.ui.common.LyricTextDisplayMode
 import com.example.islandlyrics.ui.common.OneUiCapsuleColorMode
+import com.example.islandlyrics.ui.common.SuperIslandColorSource
 import com.example.islandlyrics.ui.common.SuperIslandTextLimitConfig
 import com.example.islandlyrics.R
 import com.example.islandlyrics.core.platform.XmsfBypassMode
@@ -27,6 +28,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -71,6 +74,7 @@ fun MiuixCustomSettingsScreen(
     var followSystem by remember { mutableStateOf(prefs.getBoolean("theme_follow_system", true)) }
     var darkMode by remember { mutableStateOf(prefs.getBoolean("theme_dark_mode", false)) }
     var iconStyle by remember { mutableStateOf(prefs.getString("dynamic_icon_style", "disabled") ?: "disabled") }
+    var customThemeColor by remember { mutableStateOf(Color(prefs.getInt("theme_custom_color", 0xFF3482FF.toInt()))) }
 
     var actionStyle by remember { mutableStateOf(prefs.getString("notification_actions_style", "disabled") ?: "disabled") }
     var superIslandMediaButtonLayout by remember { mutableStateOf(prefs.getString("super_island_media_button_layout", "two_button") ?: "two_button") }
@@ -89,6 +93,8 @@ fun MiuixCustomSettingsScreen(
     var superIslandLyricMode by remember { mutableStateOf(prefs.getString("super_island_lyric_mode", "standard") ?: "standard") }
     var superIslandFullLyricShowLeftCover by remember { mutableStateOf(prefs.getBoolean("super_island_full_lyric_show_left_cover", true)) }
     var superIslandTextColorEnabled by remember { mutableStateOf(prefs.getBoolean("super_island_text_color_enabled", false)) }
+    var superIslandColorSource by remember { mutableStateOf(SuperIslandColorSource.read(prefs)) }
+    var superIslandCustomColor by remember { mutableStateOf(Color(SuperIslandColorSource.readCustomColor(prefs))) }
     var superIslandRightTextChars by remember { mutableStateOf(SuperIslandTextLimitConfig.rightChars(prefs)) }
     var superIslandLeftWithCoverTextChars by remember {
         mutableStateOf(SuperIslandTextLimitConfig.leftChars(prefs, showLeftCover = true))
@@ -99,9 +105,12 @@ fun MiuixCustomSettingsScreen(
 
     var superIslandShareEnabled by remember { mutableStateOf(prefs.getBoolean("super_island_share_enabled", true)) }
     var superIslandShareFormat by remember { mutableStateOf(prefs.getString("super_island_share_format", "format_1") ?: "format_1") }
-    var miuixEnabled by remember { mutableStateOf(prefs.getBoolean("ui_use_miuix", false)) }
+    var miuixEnabled by remember { mutableStateOf(prefs.getBoolean("ui_use_miuix", true)) }
     var predictiveBackEnabled by remember { mutableStateOf(prefs.getBoolean("predictive_back_enabled", false)) }
     var monetEnabled by remember { mutableStateOf(prefs.getBoolean("theme_dynamic_color", true)) }
+    var customThemeGlobalTintEnabled by remember {
+        mutableStateOf(prefs.getBoolean("theme_custom_color_global_tint", false))
+    }
     var cardBlurEnabled by remember { mutableStateOf(prefs.getBoolean("card_blur_enabled", false)) }
     var blockXmsfMode by remember { mutableStateOf(XmsfBypassMode.read(prefs)) }
 
@@ -182,8 +191,9 @@ fun MiuixCustomSettingsScreen(
 
     MiuixBlurScaffold(
         topBar = {
-            MiuixBlurSmallTopAppBar(
+            MiuixBlurTopAppBar(
                 title = stringResource(R.string.page_title_personalization),
+                largeTitle = stringResource(R.string.page_title_personalization),
                 scrollBehavior = scrollBehavior,
                 navigationIcon = {
                     IconButton(onClick = onBack, modifier = Modifier.padding(start = 12.dp)) {
@@ -220,17 +230,20 @@ fun MiuixCustomSettingsScreen(
             )
         },
     ) { padding ->
-        // Tab Row + Pager
-        Column(modifier = Modifier.padding(padding).fillMaxSize()) {
-            HorizontalPager(
-                state = pagerState,
-                modifier = Modifier.fillMaxSize()
-            ) { page ->
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(top = 12.dp, bottom = 24.dp)
-                ) {
-                    when (page) {
+        HorizontalPager(
+            state = pagerState,
+            modifier = Modifier.fillMaxSize()
+        ) { page ->
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .miuixPageScroll(scrollBehavior),
+                contentPadding = PaddingValues(
+                    top = padding.calculateTopPadding() + 12.dp,
+                    bottom = padding.calculateBottomPadding() + 24.dp
+                )
+            ) {
+                when (page) {
                         0 -> { // Capsule
                             item {
                                 val previewIconStyle = if (superIslandEnabled) "advanced" else iconStyle
@@ -240,7 +253,10 @@ fun MiuixCustomSettingsScreen(
                                     oneuiCapsuleColorMode = oneuiCapsuleColorMode,
                                     superIslandEnabled = superIslandEnabled || (isHyperOs && !isLiveUpdateSupported),
                                     superIslandLyricMode = superIslandLyricMode,
-                                    superIslandFullLyricShowLeftCover = superIslandFullLyricShowLeftCover
+                                    superIslandFullLyricShowLeftCover = superIslandFullLyricShowLeftCover,
+                                    superIslandTextColorEnabled = superIslandTextColorEnabled,
+                                    superIslandColorSource = superIslandColorSource,
+                                    superIslandCustomColor = superIslandCustomColor
                                 )
                             }
                             item { Spacer(modifier = Modifier.height(16.dp)) }
@@ -405,6 +421,50 @@ fun MiuixCustomSettingsScreen(
                                                     prefs.edit().putBoolean("progress_bar_color_enabled", it).apply()
                                                 }
                                             )
+
+                                            if (superIslandTextColorEnabled) {
+                                                val colorSources = SuperIslandColorSource.values
+                                                val colorSourceLabels = listOf(
+                                                    stringResource(R.string.settings_super_island_color_source_album_art),
+                                                    stringResource(R.string.settings_super_island_color_source_custom)
+                                                )
+                                                val currentColorSourceIndex =
+                                                    colorSources.indexOf(superIslandColorSource).takeIf { it >= 0 } ?: 0
+
+                                                SuperDropdown(
+                                                    title = stringResource(R.string.settings_super_island_color_source),
+                                                    summary = stringResource(R.string.settings_super_island_color_source_desc),
+                                                    items = colorSourceLabels,
+                                                    selectedIndex = currentColorSourceIndex,
+                                                    onSelectedIndexChange = { index ->
+                                                        val newSource = colorSources[index]
+                                                        superIslandColorSource = newSource
+                                                        SuperIslandColorSource.write(prefs, newSource)
+                                                    }
+                                                )
+
+                                                if (superIslandColorSource == SuperIslandColorSource.CUSTOM) {
+                                                    Column(
+                                                        modifier = Modifier
+                                                            .fillMaxWidth()
+                                                            .padding(horizontal = 16.dp, vertical = 10.dp)
+                                                    ) {
+                                                        Text(
+                                                            text = stringResource(R.string.settings_super_island_custom_color),
+                                                            color = MiuixTheme.colorScheme.onSurface,
+                                                            fontSize = 15.dp.value.sp
+                                                        )
+                                                        Spacer(modifier = Modifier.height(12.dp))
+                                                        ColorPalette(
+                                                            color = superIslandCustomColor,
+                                                            onColorChanged = { color ->
+                                                                superIslandCustomColor = color
+                                                                SuperIslandColorSource.writeCustomColor(prefs, color.toArgb())
+                                                            }
+                                                        )
+                                                    }
+                                                }
+                                            }
 
                                             SuperSwitch(
                                                 title = stringResource(R.string.settings_super_island_share),
@@ -699,6 +759,36 @@ fun MiuixCustomSettingsScreen(
                                             (context as? Activity)?.finish()
                                         }
                                     )
+                                    if (!monetEnabled) {
+                                        Column(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(horizontal = 16.dp, vertical = 10.dp)
+                                        ) {
+                                            Text(
+                                                text = stringResource(R.string.settings_theme_custom_color),
+                                                color = MiuixTheme.colorScheme.onSurface,
+                                                fontSize = 15.dp.value.sp
+                                            )
+                                            Spacer(modifier = Modifier.height(12.dp))
+                                            ColorPalette(
+                                                color = customThemeColor,
+                                                onColorChanged = { color ->
+                                                    customThemeColor = color
+                                                    prefs.edit().putInt("theme_custom_color", color.toArgb()).apply()
+                                                }
+                                            )
+                                        }
+                                        SuperSwitch(
+                                            title = stringResource(R.string.settings_theme_custom_color_global_tint),
+                                            summary = stringResource(R.string.settings_theme_custom_color_global_tint_desc),
+                                            checked = customThemeGlobalTintEnabled,
+                                            onCheckedChange = { enabled ->
+                                                customThemeGlobalTintEnabled = enabled
+                                                prefs.edit().putBoolean("theme_custom_color_global_tint", enabled).apply()
+                                            }
+                                        )
+                                    }
                                     SuperSwitch(
                                         title = stringResource(R.string.settings_card_blur),
                                         summary = stringResource(R.string.settings_card_blur_desc),
@@ -711,10 +801,9 @@ fun MiuixCustomSettingsScreen(
                                 }
                             }
                         }
-                        floatingLyricsPageIndex -> { // Desktop Lyrics
-                            item {
-                                MiuixFloatingLyricsSettingsSubScreen(prefs, scope)
-                            }
+                    floatingLyricsPageIndex -> { // Desktop Lyrics
+                        item {
+                            MiuixFloatingLyricsSettingsSubScreen(prefs, scope)
                         }
                     }
                 }

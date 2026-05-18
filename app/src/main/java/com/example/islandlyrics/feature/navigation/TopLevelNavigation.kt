@@ -16,11 +16,13 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -33,11 +35,13 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -48,10 +52,12 @@ import com.example.islandlyrics.feature.parserrule.ParserRuleActivity
 import com.example.islandlyrics.feature.settings.SettingsActivity
 import com.example.islandlyrics.ui.miuix.LocalMiuixBlurBackdrop
 import com.example.islandlyrics.ui.miuix.LocalMiuixBlurEnabled
-import com.example.islandlyrics.ui.miuix.miuixSurfaceBlur
 import top.yukonga.miuix.kmp.basic.FloatingNavigationBar
-import top.yukonga.miuix.kmp.basic.FloatingNavigationBarDisplayMode
 import top.yukonga.miuix.kmp.basic.FloatingNavigationBarItem
+import top.yukonga.miuix.kmp.blur.BlendColorEntry
+import top.yukonga.miuix.kmp.blur.BlurColors
+import top.yukonga.miuix.kmp.blur.highlight.Highlight
+import top.yukonga.miuix.kmp.blur.textureBlur
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 enum class TopLevelDestination(
@@ -179,28 +185,49 @@ fun MiuixTopLevelFloatingNavigationBar(
     val blurEnabled = LocalMiuixBlurEnabled.current
     val shouldUseBlur = blurEnabled && backdrop != null
     val navShape = RoundedCornerShape(28.dp)
-    val navColor = MiuixTheme.colorScheme.surface
-    val navModifier = Modifier.miuixSurfaceBlur(
-        enabled = shouldUseBlur,
-        backdrop = backdrop,
-        shape = navShape,
-        fallbackColor = navColor
-    )
+    val navColor = MiuixTheme.colorScheme.surfaceContainer
+    val isDark = navColor.luminance() < 0.5f
+    val floatingHighlight = remember(isDark) {
+        if (isDark) Highlight.GlassStrokeMiddleDark else Highlight.GlassStrokeMiddleLight
+    }
+    val navModifier = if (shouldUseBlur && backdrop != null) {
+        Modifier.textureBlur(
+            backdrop = backdrop,
+            shape = navShape,
+            blurRadius = 25f,
+            colors = BlurColors(
+                blendColors = listOf(
+                    BlendColorEntry(color = navColor.copy(alpha = 0.6f))
+                )
+            ),
+            highlight = floatingHighlight
+        )
+    } else {
+        Modifier
+    }
 
-    FloatingNavigationBar(
-        modifier = navModifier,
-        color = if (shouldUseBlur) Color.Transparent else navColor,
-        cornerRadius = 28.dp,
-        horizontalOutSidePadding = 24.dp,
-        mode = FloatingNavigationBarDisplayMode.IconOnly
-    ) {
-        TopLevelDestination.entries.forEach { destination ->
-            FloatingNavigationBarItem(
-                selected = currentDestination == destination,
-                onClick = { onNavigate(destination) },
-                icon = destination.icon,
-                label = stringResource(destination.labelRes)
-            )
+    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+        val barWidth = maxWidth * 0.69f
+        val totalHorizontalPadding = 24.dp
+        val totalItemSpacing = 24.dp
+        val itemWidth = (barWidth - totalHorizontalPadding - totalItemSpacing) / TopLevelDestination.entries.size
+
+        FloatingNavigationBar(
+            modifier = navModifier.width(barWidth),
+            color = if (shouldUseBlur) Color.Transparent else navColor,
+            cornerRadius = 28.dp,
+            horizontalOutSidePadding = 24.dp,
+            shadowElevation = 0.dp
+        ) {
+            TopLevelDestination.entries.forEach { destination ->
+                FloatingNavigationBarItem(
+                    selected = currentDestination == destination,
+                    onClick = { onNavigate(destination) },
+                    icon = destination.icon,
+                    label = stringResource(destination.labelRes),
+                    modifier = Modifier.width(itemWidth)
+                )
+            }
         }
     }
 }

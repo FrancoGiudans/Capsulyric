@@ -34,6 +34,7 @@ import android.media.session.PlaybackState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.livedata.observeAsState
+import com.example.islandlyrics.ui.theme.material.materialPageContainerColor
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -59,7 +60,8 @@ fun DebugCenterScreen(
                     }
                 }
             )
-        }
+        },
+        containerColor = materialPageContainerColor()
     ) { paddingValues ->
         Column(
             modifier = Modifier
@@ -313,7 +315,7 @@ fun DebugCenterScreen(
 
             // ── Miuix UI Toggle ──
             var miuixEnabled by remember {
-                mutableStateOf(prefs.getBoolean("ui_use_miuix", false))
+                mutableStateOf(prefs.getBoolean("ui_use_miuix", true))
             }
 
             OutlinedCard(

@@ -1,13 +1,12 @@
 package com.example.islandlyrics.feature.oobe
 
 import android.content.Context
-import com.example.islandlyrics.feature.oobe.material.OobeScreen
 import android.os.Bundle
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.isSystemInDarkTheme
-import com.example.islandlyrics.ui.theme.material.AppTheme
 import com.example.islandlyrics.ui.common.BaseActivity
 import com.example.islandlyrics.feature.main.MainActivity
+import com.example.islandlyrics.feature.oobe.miuix.MiuixOobeScreen
+import com.example.islandlyrics.ui.miuix.MiuixAppTheme
 
 import android.content.Intent
 
@@ -27,19 +26,12 @@ class OobeActivity : BaseActivity() {
                 finish()
             }
 
-            val followSystem = prefs.getBoolean("theme_follow_system", true)
-            val darkMode = prefs.getBoolean("theme_dark_mode", false)
-            val pureBlack = prefs.getBoolean("theme_pure_black", false)
-            val dynamicColor = prefs.getBoolean("theme_dynamic_color", true)
-            val isSystemDark = isSystemInDarkTheme()
-            val useDarkTheme = if (followSystem) isSystemDark else darkMode
+            if (!prefs.contains("ui_use_miuix")) {
+                prefs.edit().putBoolean("ui_use_miuix", true).apply()
+            }
 
-            AppTheme(
-                darkTheme = useDarkTheme,
-                dynamicColor = dynamicColor,
-                pureBlack = pureBlack && useDarkTheme
-            ) {
-                OobeScreen(onFinish = onFinish)
+            MiuixAppTheme {
+                MiuixOobeScreen(onFinish = onFinish)
             }
         }
     }

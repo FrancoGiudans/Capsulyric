@@ -81,6 +81,7 @@ import com.example.islandlyrics.feature.parserrule.toEditorState
 import com.example.islandlyrics.feature.parserrule.toRule
 import com.example.islandlyrics.feature.parserrule.withSourceSettingsFrom
 import com.example.islandlyrics.feature.settings.material.SettingsSectionHeader
+import com.example.islandlyrics.ui.theme.material.materialPageContainerColor
 import com.example.islandlyrics.ui.theme.material.neutralMaterialTopBarColors
 import kotlin.math.roundToInt
 
@@ -192,7 +193,8 @@ fun ParserRuleEditorScreen(
                 scrollBehavior = scrollBehavior,
                 colors = neutralMaterialTopBarColors()
             )
-        }
+        },
+        containerColor = materialPageContainerColor()
     ) { padding ->
         Column(
             modifier = Modifier
@@ -379,7 +381,8 @@ fun ParserRuleSourceConfigScreen(
                 scrollBehavior = scrollBehavior,
                 colors = neutralMaterialTopBarColors()
             )
-        }
+        },
+        containerColor = materialPageContainerColor()
     ) { padding ->
         val modifier = Modifier
             .fillMaxSize()

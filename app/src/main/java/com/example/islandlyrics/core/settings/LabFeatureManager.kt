@@ -14,6 +14,7 @@ object LabFeatureManager {
     private const val KEY_EXPERIMENT_UPDATES_ENABLED = "lab_experiment_updates_enabled"
     private const val KEY_EXPERIMENT_UPDATES_MIGRATED = "lab_experiment_updates_migrated"
     private const val KEY_FEED_SOURCE_PRIORITY = "lab_feed_source_priority"
+    const val KEY_SCROLL_END_HAPTIC_ENABLED = "lab_scroll_end_haptic_enabled"
 
     const val SUPER_ISLAND_STYLE_STANDARD = "standard"
     const val SUPER_ISLAND_STYLE_ADVANCED = "advanced_beta"
@@ -173,6 +174,25 @@ object LabFeatureManager {
             currentChannel == UpdateChecker.CHANNEL_EXPERIMENT ->
                 UpdateChecker.setUpdateChannel(context, UpdateChecker.CHANNEL_PREVIEW)
         }
+    }
+
+    fun isScrollEndHapticEnabled(context: Context): Boolean {
+        val prefs = context.prefs()
+        ensureInitialized(prefs)
+        return prefs.getBoolean(KEY_SCROLL_END_HAPTIC_ENABLED, true)
+    }
+
+    fun isScrollEndHapticEnabled(prefs: SharedPreferences): Boolean {
+        ensureInitialized(prefs)
+        return prefs.getBoolean(KEY_SCROLL_END_HAPTIC_ENABLED, true)
+    }
+
+    fun setScrollEndHapticEnabled(context: Context, enabled: Boolean) {
+        val prefs = context.prefs()
+        ensureInitialized(prefs)
+        prefs.edit()
+            .putBoolean(KEY_SCROLL_END_HAPTIC_ENABLED, enabled)
+            .apply()
     }
 
     fun getFeedSourcePriority(context: Context): String {

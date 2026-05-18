@@ -43,7 +43,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -68,6 +67,7 @@ import com.example.islandlyrics.ui.miuix.MiuixBlurDialog
 import com.example.islandlyrics.ui.miuix.MiuixBlurScaffold
 import com.example.islandlyrics.ui.miuix.MiuixBlurSmallTopAppBar
 import com.example.islandlyrics.ui.miuix.MiuixBlurTopAppBar
+import com.example.islandlyrics.ui.miuix.miuixPageScroll
 import top.yukonga.miuix.kmp.basic.BasicComponent
 import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.basic.Card
@@ -198,7 +198,7 @@ fun MiuixParserRuleEditorScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .nestedScroll(scrollBehavior.nestedScrollConnection)
+                .miuixPageScroll(scrollBehavior)
                 .padding(top = padding.calculateTopPadding(), bottom = padding.calculateBottomPadding())
                 .verticalScroll(rememberScrollState())
         ) {
@@ -398,7 +398,7 @@ fun MiuixParserRuleSourceConfigScreen(
     ) { padding ->
         val modifier = Modifier
             .fillMaxSize()
-            .nestedScroll(scrollBehavior.nestedScrollConnection)
+            .miuixPageScroll(scrollBehavior)
         LazyColumn(
             modifier = modifier,
             contentPadding = PaddingValues(

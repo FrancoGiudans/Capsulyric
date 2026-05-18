@@ -35,7 +35,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import android.content.ClipData
 import android.content.ClipboardManager
@@ -197,8 +196,9 @@ fun MiuixMainScreen(
 
     MiuixBlurScaffold(
         topBar = {
-            MiuixBlurSmallTopAppBar(
+            MiuixBlurTopAppBar(
                 title = stringResource(R.string.app_name),
+                largeTitle = stringResource(R.string.app_name),
                 scrollBehavior = scrollBehavior,
                 navigationIcon = {
                     val appIconBitmap = remember {
@@ -235,7 +235,7 @@ fun MiuixMainScreen(
             state = listState,
             modifier = Modifier
                 .fillMaxSize()
-                .nestedScroll(scrollBehavior.nestedScrollConnection),
+                .miuixPageScroll(scrollBehavior),
             contentPadding = PaddingValues(
                 top = padding.calculateTopPadding() + 12.dp,
                 bottom = padding.calculateBottomPadding() + 116.dp

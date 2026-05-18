@@ -16,5 +16,5 @@
     <color name="apple_red">#FC3C44</color>
     
     <!-- Lyric Highlight Color -->
-    <color name="lyric_highlight">#6750A4</color> <!-- Material 3 Primary Purple -->
+    <color name="lyric_highlight">#3482FF</color>
 </resources>

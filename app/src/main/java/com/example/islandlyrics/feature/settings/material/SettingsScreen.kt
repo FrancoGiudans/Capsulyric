@@ -49,6 +49,7 @@ import androidx.compose.material.icons.automirrored.filled.Help
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.ui.graphics.vector.ImageVector
+import com.example.islandlyrics.ui.theme.material.materialPageContainerColor
 import com.example.islandlyrics.ui.theme.material.neutralMaterialTopBarColors
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -162,7 +163,7 @@ fun SettingsScreen(
                 colors = neutralMaterialTopBarColors()
             )
         },
-        containerColor = MaterialTheme.colorScheme.background
+        containerColor = materialPageContainerColor()
     ) { paddingValues ->
         Column(
             modifier = Modifier
@@ -214,8 +215,8 @@ fun SettingsScreen(
                             onDismissRequest = { showLanguageDropdown = false }
                         ) {
                             val languages = listOf(
-                                stringResource(R.string.lang_sys_default) to "", 
-                                stringResource(R.string.lang_english) to "en", 
+                                stringResource(R.string.lang_sys_default) to "",
+                                stringResource(R.string.lang_english) to "en",
                                 stringResource(R.string.lang_chinese) to "zh-CN"
                             )
                             languages.forEach { (label, code) ->
@@ -232,7 +233,6 @@ fun SettingsScreen(
                     }
                 }
 
-                // Suggest Current App
                 var recommendMediaAppEnabled by remember { mutableStateOf(prefs.getBoolean("recommend_media_app", true)) }
                 SettingsSwitchItem(
                     title = stringResource(R.string.settings_recommend_media_app),
@@ -244,7 +244,6 @@ fun SettingsScreen(
                     }
                 )
 
-                // Hide Recents
                 var hideRecentsEnabled by remember { mutableStateOf(prefs.getBoolean("hide_recents_enabled", false)) }
                 SettingsSwitchItem(
                     title = stringResource(R.string.settings_hide_recents),
@@ -263,7 +262,6 @@ fun SettingsScreen(
                 // ═══════════════════════════════════════
                 SettingsSectionHeader(text = stringResource(R.string.settings_core_services_header))
 
-                // Permissions
                 SettingsSwitchItem(
                     title = stringResource(R.string.perm_read_notif),
                     subtitle = stringResource(R.string.perm_read_notif_desc),
@@ -292,8 +290,6 @@ fun SettingsScreen(
                     onCheckedChange = {}
                 )
 
-
-                // Battery
                 SettingsActionItem(
                     title = stringResource(R.string.settings_general_battery),
                     icon = Icons.Filled.MusicNote,
@@ -757,12 +753,6 @@ fun SettingsSwitchItem(
     enabled: Boolean = true,
     onClick: (() -> Unit)? = null
 ) {
-    // If onClick is provided, the Row handles click.
-    // If enabled is false, Row click is disabled, but Switch is also disabled.
-    // We want: visible as enabled (not alpha 0.5), but switch might look different?
-    // User wants permissions NOT grayed out.
-    // So we pass enabled=true. The caller handles logic.
-    
     Row(
         modifier = Modifier
             .fillMaxWidth()

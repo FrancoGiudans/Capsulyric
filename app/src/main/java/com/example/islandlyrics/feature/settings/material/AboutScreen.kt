@@ -41,6 +41,7 @@ import com.example.islandlyrics.core.update.UpdateChecker
 import com.example.islandlyrics.data.LyricRepository
 import com.example.islandlyrics.feature.settings.CommunityDialogState
 import com.example.islandlyrics.feature.update.material.UpdateDialog
+import com.example.islandlyrics.ui.theme.material.materialPageContainerColor
 import com.example.islandlyrics.ui.theme.material.neutralMaterialTopBarColors
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -67,11 +68,14 @@ fun AboutScreen(
     var showChannelDropdown by remember { mutableStateOf(false) }
     var currentChannel by remember { mutableStateOf(UpdateChecker.getUpdateChannel(context)) }
     var experimentUpdatesEnabled by remember { mutableStateOf(LabFeatureManager.isExperimentUpdatesEnabled(context)) }
+    var feedSourcePriority by remember { mutableStateOf(LabFeatureManager.getFeedSourcePriority(context)) }
+    var showFeedSourceDropdown by remember { mutableStateOf(false) }
     var communityFeed by remember { mutableStateOf<CommunityFeed?>(null) }
     var communityFeedLoaded by remember { mutableStateOf(false) }
     var communityDialogState by remember { mutableStateOf<CommunityDialogState?>(null) }
 
-    LaunchedEffect(offlineModeEnabled) {
+    LaunchedEffect(offlineModeEnabled, feedSourcePriority) {
+        communityFeedLoaded = false
         if (offlineModeEnabled) {
             communityFeed = null
             communityFeedLoaded = true
@@ -95,6 +99,7 @@ fun AboutScreen(
                 colors = neutralMaterialTopBarColors()
             )
         },
+        containerColor = materialPageContainerColor()
     ) { paddingValues ->
         Column(
             modifier = Modifier
@@ -106,6 +111,38 @@ fun AboutScreen(
             val pollSectionTitle = stringResource(R.string.community_poll_title)
 
             SettingsSectionHeader(text = stringResource(R.string.settings_community_header), marginTop = 0.dp)
+
+            if (!offlineModeEnabled) {
+                SettingsTextItem(
+                    title = stringResource(R.string.diag_lab_feed_source_title),
+                    value = if (feedSourcePriority == LabFeatureManager.FEED_SOURCE_GITEE) {
+                        stringResource(R.string.diag_lab_feed_source_gitee)
+                    } else {
+                        stringResource(R.string.diag_lab_feed_source_github)
+                    },
+                    onClick = { showFeedSourceDropdown = true }
+                )
+                Box(modifier = Modifier.fillMaxWidth().wrapContentSize(Alignment.CenterEnd)) {
+                    DropdownMenu(
+                        expanded = showFeedSourceDropdown,
+                        onDismissRequest = { showFeedSourceDropdown = false }
+                    ) {
+                        listOf(
+                            LabFeatureManager.FEED_SOURCE_GITHUB to stringResource(R.string.diag_lab_feed_source_github),
+                            LabFeatureManager.FEED_SOURCE_GITEE to stringResource(R.string.diag_lab_feed_source_gitee)
+                        ).forEach { (sourceKey, sourceLabel) ->
+                            DropdownMenuItem(
+                                text = { Text(sourceLabel) },
+                                onClick = {
+                                    feedSourcePriority = sourceKey
+                                    LabFeatureManager.setFeedSourcePriority(context, sourceKey)
+                                    showFeedSourceDropdown = false
+                                }
+                            )
+                        }
+                    }
+                }
+            }
 
             if (!communityFeedLoaded) {
                 SettingsActionItem(

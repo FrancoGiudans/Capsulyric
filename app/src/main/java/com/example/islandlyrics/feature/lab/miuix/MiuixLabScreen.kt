@@ -3,6 +3,7 @@ package com.example.islandlyrics.feature.lab.miuix
 import android.content.Intent
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material3.Text
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
@@ -25,6 +26,7 @@ import com.example.islandlyrics.ui.miuix.MiuixBackHandler
 import com.example.islandlyrics.ui.miuix.MiuixBlurDialog
 import com.example.islandlyrics.ui.miuix.MiuixBlurScaffold
 import com.example.islandlyrics.ui.miuix.MiuixBlurTopAppBar
+import com.example.islandlyrics.ui.miuix.miuixPageScroll
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
 import top.yukonga.miuix.kmp.basic.ButtonDefaults
 import top.yukonga.miuix.kmp.basic.Card
@@ -32,7 +34,6 @@ import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.SmallTitle
 import top.yukonga.miuix.kmp.basic.TextButton
 import top.yukonga.miuix.kmp.basic.rememberTopAppBarState
-import top.yukonga.miuix.kmp.preference.OverlayDropdownPreference as SuperDropdown
 import top.yukonga.miuix.kmp.preference.SwitchPreference as SuperSwitch
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.MiuixPopupUtils.Companion.MiuixPopupHost
@@ -55,8 +56,8 @@ fun MiuixLabScreen(onBack: () -> Unit) {
     var experimentUpdatesEnabled by remember {
         mutableStateOf(LabFeatureManager.isExperimentUpdatesEnabled(context))
     }
-    var feedSourcePriority by remember {
-        mutableStateOf(LabFeatureManager.getFeedSourcePriority(context))
+    var scrollEndHapticEnabled by remember {
+        mutableStateOf(LabFeatureManager.isScrollEndHapticEnabled(context))
     }
     val showAdvancedStyleDialog = remember { mutableStateOf(false) }
 
@@ -87,13 +88,21 @@ fun MiuixLabScreen(onBack: () -> Unit) {
             state = listState,
             modifier = Modifier
                 .fillMaxSize()
-                .nestedScroll(scrollBehavior.nestedScrollConnection),
+                .miuixPageScroll(scrollBehavior),
             contentPadding = PaddingValues(
-                top = padding.calculateTopPadding() + 12.dp,
+                top = padding.calculateTopPadding(),
                 bottom = padding.calculateBottomPadding() + 24.dp + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
             )
         ) {
-            item { SmallTitle(text = stringResource(R.string.diag_header_laboratory)) }
+            item {
+                Text(
+                    text = stringResource(R.string.diag_lab_page_desc),
+                    color = MiuixTheme.colorScheme.onSurfaceSecondary,
+                    modifier = Modifier.padding(horizontal = 28.dp, vertical = 8.dp)
+                )
+            }
+
+            item { SmallTitle(text = stringResource(R.string.diag_lab_category_general)) }
             item {
                 Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
                     SuperSwitch(
@@ -105,7 +114,21 @@ fun MiuixLabScreen(onBack: () -> Unit) {
                             OfflineModeManager.setEnabled(context, it)
                         }
                     )
+                    SuperSwitch(
+                        title = stringResource(R.string.diag_lab_scroll_end_haptic_title),
+                        summary = stringResource(R.string.diag_lab_scroll_end_haptic_desc),
+                        checked = scrollEndHapticEnabled,
+                        onCheckedChange = {
+                            scrollEndHapticEnabled = it
+                            LabFeatureManager.setScrollEndHapticEnabled(context, it)
+                        }
+                    )
+                }
+            }
 
+            item { SmallTitle(text = stringResource(R.string.diag_lab_category_interface)) }
+            item {
+                Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
                     if (RomUtils.isXiaomi()) {
                         SuperSwitch(
                             title = stringResource(R.string.diag_lab_super_island_advanced_style_title),
@@ -133,6 +156,21 @@ fun MiuixLabScreen(onBack: () -> Unit) {
                     }
 
                     SuperSwitch(
+                        title = stringResource(R.string.diag_lab_floating_lyrics_title),
+                        summary = stringResource(R.string.diag_lab_floating_lyrics_desc),
+                        checked = floatingLyricsLabEnabled,
+                        onCheckedChange = {
+                            floatingLyricsLabEnabled = it
+                            LabFeatureManager.setFloatingLyricsEnabled(context, it)
+                        }
+                    )
+                }
+            }
+
+            item { SmallTitle(text = stringResource(R.string.diag_lab_category_updates)) }
+            item {
+                Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
+                    SuperSwitch(
                         title = stringResource(R.string.diag_lab_experiment_updates_title),
                         summary = stringResource(R.string.diag_lab_experiment_updates_desc),
                         checked = experimentUpdatesEnabled,
@@ -142,35 +180,6 @@ fun MiuixLabScreen(onBack: () -> Unit) {
                         }
                     )
 
-                    SuperSwitch(
-                        title = stringResource(R.string.diag_lab_floating_lyrics_title),
-                        summary = stringResource(R.string.diag_lab_floating_lyrics_desc),
-                        checked = floatingLyricsLabEnabled,
-                        onCheckedChange = {
-                            floatingLyricsLabEnabled = it
-                            LabFeatureManager.setFloatingLyricsEnabled(context, it)
-                        }
-                    )
-
-                    val feedSourceOptions = listOf(
-                        LabFeatureManager.FEED_SOURCE_GITHUB,
-                        LabFeatureManager.FEED_SOURCE_GITEE
-                    )
-                    val feedSourceIndex = feedSourceOptions.indexOf(feedSourcePriority).takeIf { it >= 0 } ?: 0
-                    SuperDropdown(
-                        title = stringResource(R.string.diag_lab_feed_source_title),
-                        summary = stringResource(R.string.diag_lab_feed_source_desc),
-                        items = listOf(
-                            stringResource(R.string.diag_lab_feed_source_github),
-                            stringResource(R.string.diag_lab_feed_source_gitee)
-                        ),
-                        selectedIndex = feedSourceIndex,
-                        onSelectedIndexChange = { index ->
-                            val source = feedSourceOptions[index]
-                            feedSourcePriority = source
-                            LabFeatureManager.setFeedSourcePriority(context, source)
-                        }
-                    )
                 }
             }
         }

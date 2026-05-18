@@ -34,6 +34,7 @@ fun UpdateDialog(
     onIgnore: (String) -> Unit
 ) {
     val context = LocalContext.current
+    val comparableVersion = remember(releaseInfo) { UpdateChecker.getComparableVersion(releaseInfo) }
     
     val isChinese = context.resources.configuration.locales[0].language == "zh"
     val changelog = UpdateParser.parseChangelog(releaseInfo.body, isChinese)
@@ -46,7 +47,7 @@ fun UpdateDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
-                text = stringResource(R.string.update_available_title, releaseInfo.tagName),
+                text = stringResource(R.string.update_available_title, comparableVersion),
                 style = MaterialTheme.typography.headlineSmall
             )
         },
@@ -93,7 +94,7 @@ fun UpdateDialog(
         },
         dismissButton = {
             TextButton(onClick = {
-                onIgnore(releaseInfo.tagName)
+                onIgnore(comparableVersion)
                 onDismiss()
             }) {
                 Text(stringResource(R.string.update_ignore))

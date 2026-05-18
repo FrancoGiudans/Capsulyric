@@ -56,7 +56,10 @@ fun CapsulePreview(
     oneuiCapsuleColorMode: String = OneUiCapsuleColorMode.BLACK,
     superIslandEnabled: Boolean = false,
     superIslandLyricMode: String = "standard",
-    superIslandFullLyricShowLeftCover: Boolean = true
+    superIslandFullLyricShowLeftCover: Boolean = true,
+    superIslandTextColorEnabled: Boolean = false,
+    superIslandColorSource: String = SuperIslandColorSource.ALBUM_ART,
+    superIslandCustomColor: Color = Color(0xFF3482FF)
 ) {
     val repo = remember { LyricRepository.getInstance() }
     val metadata by repo.liveMetadata.observeAsState()
@@ -97,6 +100,12 @@ fun CapsulePreview(
         )
     )
     
+    val superIslandAccentColor = if (superIslandColorSource == SuperIslandColorSource.CUSTOM) {
+        superIslandCustomColor
+    } else {
+        extractedColor ?: Color(0xFF3482FF)
+    }
+
     if (superIslandEnabled) {
         val showLeftCover = albumArt != null && (superIslandLyricMode != "full" || superIslandFullLyricShowLeftCover)
         val split = SuperIslandLyricLayout.splitFullLyric(currentLyric, showLeftCover)
@@ -146,7 +155,7 @@ fun CapsulePreview(
                 }
                 Text(
                     text = leftText,
-                    color = Color.White,
+                    color = if (superIslandTextColorEnabled) superIslandAccentColor else Color.White,
                     fontWeight = FontWeight.Bold,
                     fontSize = 14.sp,
                     maxLines = 1,
@@ -156,7 +165,7 @@ fun CapsulePreview(
                 Spacer(modifier = Modifier.width(14.dp))
                 Text(
                     text = rightText,
-                    color = Color.White,
+                    color = if (superIslandTextColorEnabled) superIslandAccentColor else Color.White,
                     fontWeight = FontWeight.Bold,
                     fontSize = 14.sp,
                     maxLines = 1,

@@ -34,6 +34,7 @@ fun MiuixUpdateDialog(
     onIgnore: (String) -> Unit
 ) {
     val context = LocalContext.current
+    val comparableVersion = remember(releaseInfo) { UpdateChecker.getComparableVersion(releaseInfo) }
     
     MiuixBackHandler(enabled = show) {
         onDismiss()
@@ -47,7 +48,7 @@ fun MiuixUpdateDialog(
     val textColor = MiuixTheme.colorScheme.onSurface.toArgb()
 
     MiuixBlurDialog(
-        title = stringResource(R.string.update_available_title, releaseInfo.tagName),
+        title = stringResource(R.string.update_available_title, comparableVersion),
         show = show,
         onDismissRequest = onDismiss
     ) {
@@ -93,7 +94,7 @@ fun MiuixUpdateDialog(
                 TextButton(
                     text = stringResource(R.string.update_ignore),
                     onClick = {
-                        onIgnore(releaseInfo.tagName)
+                        onIgnore(comparableVersion)
                         onDismiss()
                     },
                     colors = ButtonDefaults.textButtonColors(

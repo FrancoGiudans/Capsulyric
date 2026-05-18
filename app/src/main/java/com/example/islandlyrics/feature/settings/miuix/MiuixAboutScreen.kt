@@ -13,7 +13,6 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -57,11 +56,13 @@ fun MiuixAboutScreen(
     var autoUpdateEnabled by remember { mutableStateOf(UpdateChecker.isAutoUpdateEnabled(context)) }
     var currentChannel by remember { mutableStateOf(UpdateChecker.getUpdateChannel(context)) }
     var experimentUpdatesEnabled by remember { mutableStateOf(LabFeatureManager.isExperimentUpdatesEnabled(context)) }
+    var feedSourcePriority by remember { mutableStateOf(LabFeatureManager.getFeedSourcePriority(context)) }
     var communityFeed by remember { mutableStateOf<CommunityFeed?>(null) }
     var communityFeedLoaded by remember { mutableStateOf(false) }
     val showCommunityDialog = remember { mutableStateOf<CommunityDialogState?>(null) }
 
-    LaunchedEffect(offlineModeEnabled) {
+    LaunchedEffect(offlineModeEnabled, feedSourcePriority) {
+        communityFeedLoaded = false
         if (offlineModeEnabled) {
             communityFeed = null
             communityFeedLoaded = true
@@ -97,9 +98,9 @@ fun MiuixAboutScreen(
             state = listState,
             modifier = Modifier
                 .fillMaxSize()
-                .nestedScroll(scrollBehavior.nestedScrollConnection),
+                .miuixPageScroll(scrollBehavior),
             contentPadding = PaddingValues(
-                top = padding.calculateTopPadding() + 12.dp,
+                top = padding.calculateTopPadding(),
                 bottom = padding.calculateBottomPadding() + 24.dp
             )
         ) {
@@ -108,6 +109,29 @@ fun MiuixAboutScreen(
                 Card(modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp)) {
                     val announcementSectionTitle = stringResource(R.string.community_announcement_title)
                     val pollSectionTitle = stringResource(R.string.community_poll_title)
+
+                    if (!offlineModeEnabled) {
+                        val feedSourceOptions = listOf(
+                            LabFeatureManager.FEED_SOURCE_GITHUB,
+                            LabFeatureManager.FEED_SOURCE_GITEE
+                        )
+                        val feedSourceIndex = feedSourceOptions.indexOf(feedSourcePriority).takeIf { it >= 0 } ?: 0
+
+                        SuperDropdown(
+                            title = stringResource(R.string.diag_lab_feed_source_title),
+                            summary = stringResource(R.string.diag_lab_feed_source_desc),
+                            items = listOf(
+                                stringResource(R.string.diag_lab_feed_source_github),
+                                stringResource(R.string.diag_lab_feed_source_gitee)
+                            ),
+                            selectedIndex = feedSourceIndex,
+                            onSelectedIndexChange = { index ->
+                                val source = feedSourceOptions[index]
+                                feedSourcePriority = source
+                                LabFeatureManager.setFeedSourcePriority(context, source)
+                            }
+                        )
+                    }
 
                     if (!communityFeedLoaded) {
                         SuperArrow(

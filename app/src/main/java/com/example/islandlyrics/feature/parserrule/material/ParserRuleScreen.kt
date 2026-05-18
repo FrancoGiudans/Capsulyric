@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.example.islandlyrics.feature.parserrule.ParserRuleEditorActivity
+import com.example.islandlyrics.ui.theme.material.materialPageContainerColor
 import com.example.islandlyrics.ui.theme.material.neutralMaterialTopBarColors
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -165,7 +166,7 @@ fun ParserRuleScreen(
                 }
             )
         },
-        containerColor = MaterialTheme.colorScheme.background
+        containerColor = materialPageContainerColor()
     ) { padding ->
         LazyColumn(
             modifier = Modifier
@@ -259,7 +260,7 @@ fun ParserRuleItem(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            
+
             Spacer(modifier = Modifier.height(4.dp))
             if (!offlineModeEnabled && rule.useOnlineLyrics && !rule.useSmartOnlineLyricSelection) {
                 val onlineOrderSummary = OnlineLyricProvider.normalizeOrder(rule.onlineLyricProviderOrder)
@@ -271,8 +272,7 @@ fun ParserRuleItem(
                 )
                 Spacer(modifier = Modifier.height(4.dp))
             }
-            
-            // Status Badges
+
             Row(verticalAlignment = Alignment.CenterVertically) {
                 StatusBadge(active = rule.usesCarProtocol, label = "Notify Lyric")
                 if (!offlineModeEnabled) {
@@ -287,7 +287,7 @@ fun ParserRuleItem(
                 StatusBadge(active = rule.useLyriconApi, label = "Lyricon")
             }
         }
-        
+
         Switch(
             checked = rule.enabled,
             onCheckedChange = onToggleEnabled

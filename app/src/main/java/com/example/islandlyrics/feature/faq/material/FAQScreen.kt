@@ -27,6 +27,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import com.example.islandlyrics.ui.theme.material.materialPageContainerColor
 import com.example.islandlyrics.ui.theme.material.neutralMaterialTopBarColors
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -95,7 +96,7 @@ fun FAQScreen(onBack: () -> Unit) {
                 colors = neutralMaterialTopBarColors()
             )
         },
-        containerColor = MaterialTheme.colorScheme.background
+        containerColor = materialPageContainerColor()
     ) { paddingValues ->
         LazyColumn(
             modifier = Modifier

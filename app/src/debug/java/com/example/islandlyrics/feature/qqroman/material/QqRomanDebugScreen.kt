@@ -43,6 +43,7 @@ import com.example.islandlyrics.data.LyricRepository
 import com.example.islandlyrics.data.lyric.NeteaseRomanFetcher
 import com.example.islandlyrics.data.lyric.QqRomanFetcher
 import com.example.islandlyrics.feature.qqroman.QqRomanDebugViewModel
+import com.example.islandlyrics.ui.theme.material.materialPageContainerColor
 import com.example.islandlyrics.ui.theme.material.neutralMaterialTopBarColors
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -74,7 +75,8 @@ fun QqRomanDebugScreen(
                 },
                 colors = neutralMaterialTopBarColors()
             )
-        }
+        },
+        containerColor = materialPageContainerColor()
     ) { padding ->
         Column(
             modifier = Modifier

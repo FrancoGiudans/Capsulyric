@@ -55,9 +55,9 @@ class SettingsActivity : BaseActivity() {
                         },
                         updateReleaseInfo = updateReleaseInfo,
                         onUpdateDismiss = { updateReleaseInfo = null },
-                        onUpdateIgnore = { tag ->
-                            UpdateChecker.setIgnoredVersion(this@SettingsActivity, tag)
-                            AppLogger.getInstance().log("Update", "Ignored version: $tag")
+                        onUpdateIgnore = { version ->
+                            UpdateChecker.setIgnoredVersion(this@SettingsActivity, version)
+                            AppLogger.getInstance().log("Update", "Ignored version: $version")
                         }
                     )
                 }
@@ -78,9 +78,9 @@ class SettingsActivity : BaseActivity() {
                         UpdateDialog(
                             releaseInfo = updateReleaseInfo!!,
                             onDismiss = { updateReleaseInfo = null },
-                            onIgnore = { tag ->
-                                UpdateChecker.setIgnoredVersion(this@SettingsActivity, tag)
-                                AppLogger.getInstance().log("Update", "Ignored version: $tag")
+                            onIgnore = { version ->
+                                UpdateChecker.setIgnoredVersion(this@SettingsActivity, version)
+                                AppLogger.getInstance().log("Update", "Ignored version: $version")
                             }
                         )
                     }
@@ -104,7 +104,7 @@ class SettingsActivity : BaseActivity() {
                     // Show update dialog
                     updateReleaseInfo = release
                     
-                    AppLogger.getInstance().log("Settings", "Update found: ${release.tagName}")
+                    AppLogger.getInstance().log("Settings", "Update found: ${UpdateChecker.getComparableVersion(release)}")
                 } else {
                     // No update available
                     Toast.makeText(

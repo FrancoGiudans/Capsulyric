@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.luminance
 import top.yukonga.miuix.kmp.blur.Backdrop
 import top.yukonga.miuix.kmp.blur.BlendColorEntry
 import top.yukonga.miuix.kmp.blur.BlurBlendMode
@@ -15,17 +16,16 @@ import top.yukonga.miuix.kmp.blur.textureBlur
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 internal object MiuixBlurStyleDefaults {
-    const val BlurRadius = 52f
-    const val Contrast = 1.04f
-    const val Saturation = 1.08f
-    const val SurfaceAlpha = 0.72f
-    const val SurfaceVariantAlpha = 0.22f
-    const val DialogBlurRadius = 52f
+    const val BlurRadius = 100f
+    const val Contrast = 1f
+    const val Saturation = 1f
+    const val NoiseCoefficient = 0.0044f
+    const val DialogBlurRadius = 72f
     const val DialogBrightness = 0f
-    const val DialogContrast = 1.04f
-    const val DialogSaturation = 1.08f
-    const val DialogSurfaceAlpha = 0.72f
-    const val DialogSurfaceVariantAlpha = 0.22f
+    const val DialogContrast = 1.06f
+    const val DialogSaturation = 1.1f
+    const val DialogSurfaceAlpha = 0.6f
+    const val DialogSurfaceVariantAlpha = 0.16f
     const val DialogNoiseCoefficient = 0.0045f
     const val DialogBorderAlpha = 0.06f
 }
@@ -35,10 +35,19 @@ internal fun miuixBlurColors(
     surfaceColor: Color,
     surfaceVariantColor: Color = MiuixTheme.colorScheme.surfaceVariant,
 ): BlurColors = BlurColors(
-    blendColors = listOf(
-        BlendColorEntry(surfaceColor.copy(alpha = MiuixBlurStyleDefaults.SurfaceAlpha)),
-        BlendColorEntry(surfaceVariantColor.copy(alpha = MiuixBlurStyleDefaults.SurfaceVariantAlpha))
-    ),
+    blendColors = if (surfaceColor.luminance() > 0.5f) {
+        listOf(
+            BlendColorEntry(Color(0xE6BDBDBD), BlurBlendMode.Overlay),
+            BlendColorEntry(Color(0x992B2B2B), BlurBlendMode.ColorDodge),
+            BlendColorEntry(Color(0x339C9C9C), BlurBlendMode.SrcOver)
+        )
+    } else {
+        listOf(
+            BlendColorEntry(Color(0x667A7A7A), BlurBlendMode.ColorBurn),
+            BlendColorEntry(Color(0x33747474), BlurBlendMode.Overlay),
+            BlendColorEntry(Color(0x322B2B2B), BlurBlendMode.SrcOver)
+        )
+    },
     contrast = MiuixBlurStyleDefaults.Contrast,
     saturation = MiuixBlurStyleDefaults.Saturation
 )
@@ -72,7 +81,7 @@ internal fun Modifier.miuixSurfaceBlur(
     shape: Shape,
     fallbackColor: Color,
     blurRadius: Float = MiuixBlurStyleDefaults.BlurRadius,
-    noiseCoefficient: Float = BlurDefaults.NoiseCoefficient,
+    noiseCoefficient: Float = MiuixBlurStyleDefaults.NoiseCoefficient,
     surfaceVariantColor: Color = MiuixTheme.colorScheme.surfaceVariant,
     colors: BlurColors = miuixBlurColors(
         surfaceColor = fallbackColor,

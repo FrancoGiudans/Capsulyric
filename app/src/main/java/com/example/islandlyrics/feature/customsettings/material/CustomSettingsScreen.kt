@@ -14,6 +14,7 @@ import com.example.islandlyrics.core.theme.ThemeHelper
 import com.example.islandlyrics.core.platform.RomUtils
 import com.example.islandlyrics.service.LyricService
 import com.example.islandlyrics.ui.theme.material.AppTheme
+import com.example.islandlyrics.ui.theme.material.materialPageContainerColor
 import com.example.islandlyrics.feature.settings.material.LanguageSelectionDialog
 import com.example.islandlyrics.feature.settings.material.SettingsSwitchItem
 import com.example.islandlyrics.feature.settings.material.SettingsTextItem
@@ -131,7 +132,7 @@ fun CustomSettingsScreen(
 
     var superIslandShareEnabled by remember { mutableStateOf(prefs.getBoolean("super_island_share_enabled", true)) }
     var superIslandShareFormat by remember { mutableStateOf(prefs.getString("super_island_share_format", "format_1") ?: "format_1") }
-    var miuixEnabled by remember { mutableStateOf(prefs.getBoolean("ui_use_miuix", false)) }
+    var miuixEnabled by remember { mutableStateOf(prefs.getBoolean("ui_use_miuix", true)) }
     var predictiveBackEnabled by remember { mutableStateOf(prefs.getBoolean("predictive_back_enabled", false)) }
 
     // Dialog State for UI Style
@@ -293,7 +294,8 @@ fun CustomSettingsScreen(
                         }
                     }
                 }
-            }
+            },
+            containerColor = materialPageContainerColor()
         ) { paddingValues ->
             HorizontalPager(
                 state = pagerState,
@@ -682,7 +684,6 @@ fun CustomSettingsScreen(
                             }
                         }
                         1 -> { // Notification (Moved from 2)
-                             // Preview
                              NotificationPreview(
                                  progressColorEnabled = progressColorEnabled,
                                  actionStyle = actionStyle,
@@ -694,7 +695,6 @@ fun CustomSettingsScreen(
                                  superIslandFullLyricShowLeftCover = superIslandFullLyricShowLeftCover
                              )
                              Spacer(modifier = Modifier.height(16.dp))
-
 
                             if (actionStyle == "disabled" || (actionStyle == "media_controls" && superIslandNotificationStyle == "advanced_beta")) {
                                  SettingsSwitchItem(
