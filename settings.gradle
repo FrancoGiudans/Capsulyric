@@ -45,5 +45,13 @@ dependencyResolutionManagement {
 rootProject.name = "Capsulyric"
 include ':app'
 include ':hidden-api'
-include ':autobuild'
-include ':autobuild-ui'
+
+def includeIfPresent = { String modulePath ->
+    def moduleDir = modulePath.startsWith(':') ? modulePath.substring(1) : modulePath
+    if (file(moduleDir).isDirectory()) {
+        include modulePath
+    }
+}
+
+includeIfPresent(':autobuild')
+includeIfPresent(':autobuild-ui')
