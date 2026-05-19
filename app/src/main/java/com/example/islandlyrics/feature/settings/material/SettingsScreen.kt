@@ -76,10 +76,10 @@ fun SettingsScreen(
     var autoUpdateEnabled by remember { mutableStateOf(UpdateChecker.isAutoUpdateEnabled(context)) }
     
     // Theme State
-    var followSystem by remember { mutableStateOf(prefs.getBoolean("theme_follow_system", true)) }
-    var darkMode by remember { mutableStateOf(prefs.getBoolean("theme_dark_mode", false)) }
-    var pureBlack by remember { mutableStateOf(prefs.getBoolean("theme_pure_black", false)) }
-    var dynamicColor by remember { mutableStateOf(prefs.getBoolean("theme_dynamic_color", false)) }
+    var followSystem by remember { mutableStateOf(ThemeHelper.getFollowSystem(context)) }
+    var darkMode by remember { mutableStateOf(ThemeHelper.getDarkMode(context)) }
+    var pureBlack by remember { mutableStateOf(ThemeHelper.getMaterialPureBlack(context)) }
+    var dynamicColor by remember { mutableStateOf(ThemeHelper.getMaterialDynamicColor(context)) }
     var dynamicIconEnabled by remember { mutableStateOf(prefs.getBoolean("dynamic_icon_enabled", false)) }
     var iconStyle by remember { mutableStateOf(prefs.getString("dynamic_icon_style", "classic") ?: "classic") }
     

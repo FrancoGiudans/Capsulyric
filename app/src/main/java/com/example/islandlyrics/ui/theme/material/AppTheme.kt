@@ -2,6 +2,7 @@ package com.example.islandlyrics.ui.theme.material
 
 import android.app.Activity
 import android.content.Context
+import com.example.islandlyrics.core.theme.ThemeHelper
 import com.example.islandlyrics.ui.common.BaseActivity
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -15,6 +16,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
@@ -23,6 +25,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.view.WindowCompat
+import kotlin.math.roundToInt
 
 // Monet-derived palette from seed #3482FF (H≈220°, C≈80 in HCT).
 // Primary palette: H=220, C=40 — toned down from the vivid Miuix blue.
@@ -42,8 +45,13 @@ fun AppTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     dynamicColor: Boolean = false,
     pureBlack: Boolean = false,
+    customThemeColorArgb: Int = 0xFF3482FF.toInt(),
+    customThemeGlobalTintEnabled: Boolean = false,
     content: @Composable () -> Unit
 ) {
+    val customThemeColor = remember(customThemeColorArgb) {
+        Color(customThemeColorArgb).copy(alpha = 1f)
+    }
     val colorScheme = when {
         // Fix: Respect Pure Black even in Dynamic Color mode (Dark Theme only)
         dynamicColor -> {
@@ -55,6 +63,11 @@ fun AppTheme(
                 dynamicLightColorScheme(context)
             }
         }
+        customThemeGlobalTintEnabled -> buildCustomMaterialColorScheme(
+            seed = customThemeColor,
+            darkTheme = darkTheme,
+            pureBlack = pureBlack
+        )
         darkTheme -> if (pureBlack) PureBlackColorScheme else DarkColorScheme
         else -> LightColorScheme
     }
@@ -83,18 +96,26 @@ fun AppTheme(
 fun IslandLyricsMaterialTheme(content: @Composable () -> Unit) {
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE) }
-    var followSystem by remember { mutableStateOf(prefs.getBoolean("theme_follow_system", true)) }
-    var darkMode by remember { mutableStateOf(prefs.getBoolean("theme_dark_mode", false)) }
-    var pureBlack by remember { mutableStateOf(prefs.getBoolean("theme_pure_black", false)) }
-    var dynamicColor by remember { mutableStateOf(prefs.getBoolean("theme_dynamic_color", false)) }
+    var followSystem by remember { mutableStateOf(ThemeHelper.getFollowSystem(context)) }
+    var darkMode by remember { mutableStateOf(ThemeHelper.getDarkMode(context)) }
+    var pureBlack by remember { mutableStateOf(ThemeHelper.getMaterialPureBlack(context)) }
+    var dynamicColor by remember { mutableStateOf(ThemeHelper.getMaterialDynamicColor(context)) }
+    var customThemeColorArgb by remember { mutableStateOf(ThemeHelper.getMaterialCustomColor(context)) }
+    var customThemeGlobalTintEnabled by remember {
+        mutableStateOf(ThemeHelper.isMaterialCustomColorGlobalTintEnabled(context))
+    }
 
     DisposableEffect(prefs) {
         val listener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
             when (key) {
-                "theme_follow_system" -> followSystem = prefs.getBoolean("theme_follow_system", true)
-                "theme_dark_mode" -> darkMode = prefs.getBoolean("theme_dark_mode", false)
-                "theme_pure_black" -> pureBlack = prefs.getBoolean("theme_pure_black", false)
-                "theme_dynamic_color" -> dynamicColor = prefs.getBoolean("theme_dynamic_color", false)
+                "material_theme_follow_system" -> followSystem = ThemeHelper.getFollowSystem(context)
+                "material_theme_dark_mode" -> darkMode = ThemeHelper.getDarkMode(context)
+                "material_theme_pure_black" -> pureBlack = ThemeHelper.getMaterialPureBlack(context)
+                "material_theme_dynamic_color" -> dynamicColor = ThemeHelper.getMaterialDynamicColor(context)
+                "material_theme_custom_color" -> customThemeColorArgb = ThemeHelper.getMaterialCustomColor(context)
+                "material_theme_custom_color_global_tint" -> {
+                    customThemeGlobalTintEnabled = ThemeHelper.isMaterialCustomColorGlobalTintEnabled(context)
+                }
             }
         }
         prefs.registerOnSharedPreferenceChangeListener(listener)
@@ -108,6 +129,8 @@ fun IslandLyricsMaterialTheme(content: @Composable () -> Unit) {
         darkTheme = useDarkTheme,
         dynamicColor = dynamicColor,
         pureBlack = pureBlack && useDarkTheme,
+        customThemeColorArgb = customThemeColorArgb,
+        customThemeGlobalTintEnabled = customThemeGlobalTintEnabled,
         content = content
     )
 }
@@ -249,3 +272,195 @@ private val PureBlackColorScheme = darkColorScheme(
     surfaceContainerHigh    = Color(0xFF242424),
     surfaceContainerHighest = Color(0xFF2D2D2D),
 )
+
+private fun buildCustomMaterialColorScheme(
+    seed: Color,
+    darkTheme: Boolean,
+    pureBlack: Boolean
+): ColorScheme {
+    return when {
+        darkTheme && pureBlack -> buildCustomPureBlackColorScheme(seed)
+        darkTheme -> buildCustomDarkColorScheme(seed)
+        else -> buildCustomLightColorScheme(seed)
+    }
+}
+
+private fun buildCustomLightColorScheme(seed: Color): ColorScheme {
+    val hsv = seed.toOpaqueHsv()
+    val hue = hsv[0]
+    val saturation = hsv[1].coerceIn(0.28f, 1f)
+    val primary = hsvColor(hue, (saturation * 0.82f).coerceIn(0.38f, 0.82f), 0.68f)
+    val primaryContainer = hsvColor(hue, (saturation * 0.18f).coerceIn(0.10f, 0.24f), 0.98f)
+    val secondary = hsvColor(hue, (saturation * 0.28f).coerceIn(0.14f, 0.34f), 0.56f)
+    val secondaryContainer = hsvColor(hue, (saturation * 0.14f).coerceIn(0.08f, 0.18f), 0.96f)
+    val tertiaryHue = shiftHue(hue, 38f)
+    val tertiary = hsvColor(tertiaryHue, (saturation * 0.34f).coerceIn(0.18f, 0.42f), 0.58f)
+    val tertiaryContainer = hsvColor(tertiaryHue, (saturation * 0.16f).coerceIn(0.08f, 0.20f), 0.96f)
+    val background = hsvColor(hue, 0.03f, 0.985f)
+    val surfaceVariant = hsvColor(hue, 0.06f, 0.92f)
+    val outline = hsvColor(hue, 0.10f, 0.52f)
+
+    return lightColorScheme(
+        primary = primary,
+        onPrimary = readableOn(primary),
+        primaryContainer = primaryContainer,
+        onPrimaryContainer = readableOn(primaryContainer),
+        secondary = secondary,
+        onSecondary = readableOn(secondary),
+        secondaryContainer = secondaryContainer,
+        onSecondaryContainer = readableOn(secondaryContainer),
+        tertiary = tertiary,
+        onTertiary = readableOn(tertiary),
+        tertiaryContainer = tertiaryContainer,
+        onTertiaryContainer = readableOn(tertiaryContainer),
+        error = LightColorScheme.error,
+        onError = LightColorScheme.onError,
+        errorContainer = LightColorScheme.errorContainer,
+        onErrorContainer = LightColorScheme.onErrorContainer,
+        background = background,
+        onBackground = readableOn(background),
+        surface = background,
+        onSurface = readableOn(background),
+        surfaceVariant = surfaceVariant,
+        onSurfaceVariant = readableOn(surfaceVariant).copy(alpha = 0.82f),
+        outline = outline,
+        outlineVariant = surfaceVariant,
+        scrim = Color(0xFF000000),
+        inverseSurface = hsvColor(hue, 0.06f, 0.18f),
+        inverseOnSurface = Color(0xFFF8F9FF),
+        inversePrimary = hsvColor(hue, (saturation * 0.34f).coerceIn(0.20f, 0.42f), 0.92f),
+        surfaceDim = hsvColor(hue, 0.03f, 0.90f),
+        surfaceBright = background,
+        surfaceContainerLowest = Color.White,
+        surfaceContainerLow = hsvColor(hue, 0.03f, 0.97f),
+        surfaceContainer = hsvColor(hue, 0.04f, 0.95f),
+        surfaceContainerHigh = hsvColor(hue, 0.05f, 0.93f),
+        surfaceContainerHighest = hsvColor(hue, 0.06f, 0.90f)
+    )
+}
+
+private fun buildCustomDarkColorScheme(seed: Color): ColorScheme {
+    val hsv = seed.toOpaqueHsv()
+    val hue = hsv[0]
+    val saturation = hsv[1].coerceIn(0.24f, 1f)
+    val primary = hsvColor(hue, (saturation * 0.38f).coerceIn(0.22f, 0.50f), 0.98f)
+    val primaryContainer = hsvColor(hue, (saturation * 0.62f).coerceIn(0.28f, 0.70f), 0.50f)
+    val secondary = hsvColor(hue, (saturation * 0.18f).coerceIn(0.10f, 0.24f), 0.82f)
+    val secondaryContainer = hsvColor(hue, (saturation * 0.26f).coerceIn(0.14f, 0.32f), 0.34f)
+    val tertiaryHue = shiftHue(hue, 36f)
+    val tertiary = hsvColor(tertiaryHue, (saturation * 0.24f).coerceIn(0.12f, 0.30f), 0.84f)
+    val tertiaryContainer = hsvColor(tertiaryHue, (saturation * 0.34f).coerceIn(0.16f, 0.40f), 0.34f)
+    val background = hsvColor(hue, 0.10f, 0.10f)
+    val surfaceVariant = hsvColor(hue, 0.12f, 0.30f)
+    val outline = hsvColor(hue, 0.10f, 0.58f)
+
+    return darkColorScheme(
+        primary = primary,
+        onPrimary = readableOn(primary),
+        primaryContainer = primaryContainer,
+        onPrimaryContainer = readableOn(primaryContainer),
+        secondary = secondary,
+        onSecondary = readableOn(secondary),
+        secondaryContainer = secondaryContainer,
+        onSecondaryContainer = readableOn(secondaryContainer),
+        tertiary = tertiary,
+        onTertiary = readableOn(tertiary),
+        tertiaryContainer = tertiaryContainer,
+        onTertiaryContainer = readableOn(tertiaryContainer),
+        error = DarkColorScheme.error,
+        onError = DarkColorScheme.onError,
+        errorContainer = DarkColorScheme.errorContainer,
+        onErrorContainer = DarkColorScheme.onErrorContainer,
+        background = background,
+        onBackground = Color(0xFFE8EAF1),
+        surface = background,
+        onSurface = Color(0xFFE8EAF1),
+        surfaceVariant = surfaceVariant,
+        onSurfaceVariant = Color(0xFFC7CBD5),
+        outline = outline,
+        outlineVariant = surfaceVariant,
+        scrim = Color(0xFF000000),
+        inverseSurface = Color(0xFFE8EAF1),
+        inverseOnSurface = hsvColor(hue, 0.10f, 0.12f),
+        inversePrimary = hsvColor(hue, (saturation * 0.72f).coerceIn(0.32f, 0.76f), 0.68f),
+        surfaceDim = hsvColor(hue, 0.10f, 0.08f),
+        surfaceBright = hsvColor(hue, 0.10f, 0.22f),
+        surfaceContainerLowest = hsvColor(hue, 0.10f, 0.06f),
+        surfaceContainerLow = hsvColor(hue, 0.10f, 0.10f),
+        surfaceContainer = hsvColor(hue, 0.11f, 0.13f),
+        surfaceContainerHigh = hsvColor(hue, 0.12f, 0.18f),
+        surfaceContainerHighest = hsvColor(hue, 0.12f, 0.22f)
+    )
+}
+
+private fun buildCustomPureBlackColorScheme(seed: Color): ColorScheme {
+    val hsv = seed.toOpaqueHsv()
+    val hue = hsv[0]
+    val saturation = hsv[1].coerceIn(0.24f, 1f)
+    val primary = hsvColor(hue, (saturation * 0.38f).coerceIn(0.22f, 0.50f), 0.98f)
+    val primaryContainer = hsvColor(hue, (saturation * 0.58f).coerceIn(0.26f, 0.66f), 0.42f)
+    val secondary = hsvColor(hue, (saturation * 0.16f).coerceIn(0.10f, 0.22f), 0.78f)
+    val secondaryContainer = hsvColor(hue, (saturation * 0.22f).coerceIn(0.12f, 0.28f), 0.26f)
+    val tertiaryHue = shiftHue(hue, 36f)
+    val tertiary = hsvColor(tertiaryHue, (saturation * 0.22f).coerceIn(0.12f, 0.28f), 0.82f)
+    val tertiaryContainer = hsvColor(tertiaryHue, (saturation * 0.26f).coerceIn(0.12f, 0.32f), 0.28f)
+
+    return darkColorScheme(
+        primary = primary,
+        onPrimary = readableOn(primary),
+        primaryContainer = primaryContainer,
+        onPrimaryContainer = Color.White,
+        secondary = secondary,
+        onSecondary = readableOn(secondary),
+        secondaryContainer = secondaryContainer,
+        onSecondaryContainer = Color.White,
+        tertiary = tertiary,
+        onTertiary = readableOn(tertiary),
+        tertiaryContainer = tertiaryContainer,
+        onTertiaryContainer = Color.White,
+        error = PureBlackColorScheme.error,
+        onError = PureBlackColorScheme.onError,
+        errorContainer = PureBlackColorScheme.errorContainer,
+        onErrorContainer = PureBlackColorScheme.onErrorContainer,
+        background = Color.Black,
+        onBackground = Color.White,
+        surface = Color.Black,
+        onSurface = Color(0xFFE8EAF1),
+        surfaceVariant = hsvColor(hue, 0.12f, 0.16f),
+        onSurfaceVariant = Color(0xCCFFFFFF),
+        outline = hsvColor(hue, 0.08f, 0.26f),
+        outlineVariant = hsvColor(hue, 0.08f, 0.18f),
+        scrim = Color.Black,
+        inverseSurface = Color(0xFFE8EAF1),
+        inverseOnSurface = Color(0xFF191C20),
+        inversePrimary = hsvColor(hue, (saturation * 0.72f).coerceIn(0.32f, 0.76f), 0.68f),
+        surfaceDim = Color.Black,
+        surfaceBright = hsvColor(hue, 0.08f, 0.18f),
+        surfaceContainerLowest = Color.Black,
+        surfaceContainerLow = hsvColor(hue, 0.08f, 0.10f),
+        surfaceContainer = hsvColor(hue, 0.08f, 0.14f),
+        surfaceContainerHigh = hsvColor(hue, 0.08f, 0.18f),
+        surfaceContainerHighest = hsvColor(hue, 0.08f, 0.22f)
+    )
+}
+
+private fun Color.toOpaqueHsv(): FloatArray {
+    val hsv = FloatArray(3)
+    android.graphics.Color.colorToHSV(copy(alpha = 1f).toArgb(), hsv)
+    return hsv
+}
+
+private fun hsvColor(hue: Float, saturation: Float, value: Float, alpha: Float = 1f): Color {
+    val hsv = floatArrayOf(
+        ((hue % 360f) + 360f) % 360f,
+        saturation.coerceIn(0f, 1f),
+        value.coerceIn(0f, 1f)
+    )
+    return Color(android.graphics.Color.HSVToColor((alpha.coerceIn(0f, 1f) * 255f).roundToInt(), hsv))
+}
+
+private fun shiftHue(hue: Float, delta: Float): Float = ((hue + delta) % 360f + 360f) % 360f
+
+private fun readableOn(color: Color): Color {
+    return if (color.luminance() > 0.38f) Color(0xFF111318) else Color.White
+}
