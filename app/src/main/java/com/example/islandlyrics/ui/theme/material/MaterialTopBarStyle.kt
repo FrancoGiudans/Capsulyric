@@ -5,18 +5,13 @@ import androidx.compose.material3.TopAppBarColors
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 
+// TopAppBar blends with the page background when the large title is expanded.
+// When collapsed (scrolled), it picks up surfaceContainer for a subtle floating tint.
 @Composable
-fun neutralMaterialTopBarColors(): TopAppBarColors {
-    val containerColor = MaterialTheme.colorScheme.background
-    val contentColor = MaterialTheme.colorScheme.onBackground
-    return TopAppBarDefaults.topAppBarColors(
-        containerColor = containerColor,
-        scrolledContainerColor = containerColor,
-        titleContentColor = contentColor,
-        navigationIconContentColor = contentColor,
-        actionIconContentColor = contentColor
-    )
-}
+fun neutralMaterialTopBarColors(): TopAppBarColors = TopAppBarDefaults.topAppBarColors(
+    containerColor = MaterialTheme.colorScheme.background,
+    scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer,
+)
 
 @Composable
 fun materialPageContainerColor() = MaterialTheme.colorScheme.background

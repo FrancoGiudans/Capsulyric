@@ -18,6 +18,8 @@ import com.example.islandlyrics.ui.theme.material.materialPageContainerColor
 import com.example.islandlyrics.feature.settings.material.LanguageSelectionDialog
 import com.example.islandlyrics.feature.settings.material.SettingsSwitchItem
 import com.example.islandlyrics.feature.settings.material.SettingsTextItem
+import com.example.islandlyrics.feature.settings.material.SettingsCard
+import com.example.islandlyrics.feature.settings.material.SettingsCardDivider
 import com.example.islandlyrics.feature.main.MainActivity
 import android.content.Context
 import android.content.Intent
@@ -77,7 +79,7 @@ fun CustomSettingsScreen(
     var followSystem by remember { mutableStateOf(prefs.getBoolean("theme_follow_system", true)) }
     var darkMode by remember { mutableStateOf(prefs.getBoolean("theme_dark_mode", false)) }
     var pureBlack by remember { mutableStateOf(prefs.getBoolean("theme_pure_black", false)) }
-    var dynamicColor by remember { mutableStateOf(prefs.getBoolean("theme_dynamic_color", true)) }
+    var dynamicColor by remember { mutableStateOf(prefs.getBoolean("theme_dynamic_color", false)) }
     var iconStyle by remember { mutableStateOf(prefs.getString("dynamic_icon_style", "disabled") ?: "disabled") }
     
     // Dialog State
@@ -284,13 +286,34 @@ fun CustomSettingsScreen(
                         },
                         colors = neutralMaterialTopBarColors()
                     )
-                    PrimaryTabRow(selectedTabIndex = pagerState.currentPage) {
+                    // Tab switcher matching LogViewer FilterChip corner radius
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
                         tabs.forEachIndexed { index, title ->
-                            Tab(
-                                selected = pagerState.currentPage == index,
-                                onClick = { scope.launch { pagerState.animateScrollToPage(index) } },
-                                text = { Text(title) }
-                            )
+                            val selected = pagerState.currentPage == index
+                            if (selected) {
+                                Button(
+                                    onClick = { scope.launch { pagerState.animateScrollToPage(index) } },
+                                    modifier = Modifier.weight(1f),
+                                    shape = MaterialTheme.shapes.small,
+                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 10.dp)
+                                ) {
+                                    Text(title, style = MaterialTheme.typography.labelLarge, maxLines = 1)
+                                }
+                            } else {
+                                OutlinedButton(
+                                    onClick = { scope.launch { pagerState.animateScrollToPage(index) } },
+                                    modifier = Modifier.weight(1f),
+                                    shape = MaterialTheme.shapes.small,
+                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 10.dp)
+                                ) {
+                                    Text(title, style = MaterialTheme.typography.labelLarge, maxLines = 1)
+                                }
+                            }
                         }
                     }
                 }
@@ -319,6 +342,7 @@ fun CustomSettingsScreen(
                             )
                             Spacer(modifier = Modifier.height(16.dp))
 
+                            SettingsCard {
                             SettingsSwitchItem(
                                 title = stringResource(R.string.settings_disable_scrolling),
                                 subtitle = stringResource(R.string.settings_disable_scrolling_desc),
@@ -338,10 +362,12 @@ fun CustomSettingsScreen(
                             )
                             val currentLyricTextModeIndex = lyricTextModes.indexOf(lyricTextDisplayMode).takeIf { it >= 0 } ?: 0
 
+                            SettingsCardDivider()
                             Column(modifier = Modifier.fillMaxWidth()) {
                                 Box(modifier = Modifier.fillMaxWidth()) {
                                     SettingsTextItem(
                                         title = stringResource(R.string.settings_lyric_text_display_mode),
+                                        subtitle = stringResource(R.string.settings_lyric_text_display_mode_desc),
                                         value = lyricTextModeLabels[currentLyricTextModeIndex],
                                         onClick = { showLyricTextDisplayModeDropdown = true }
                                     )
@@ -363,13 +389,8 @@ fun CustomSettingsScreen(
                                         }
                                     }
                                 }
-                                Text(
-                                    text = stringResource(R.string.settings_lyric_text_display_mode_desc),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.padding(horizontal = 24.dp).padding(bottom = 8.dp)
-                                )
                             }
+                            } // end SettingsCard (basic capsule settings)
 
                             if (RomUtils.getRomType() == "OneUI") {
                                 val oneUiColorModes = OneUiCapsuleColorMode.values
@@ -382,6 +403,8 @@ fun CustomSettingsScreen(
                                 val oneUiColorModeDisplay = oneUiColorModeLabels[
                                     oneUiColorModes.indexOf(oneuiCapsuleColorMode).takeIf { it >= 0 } ?: 0
                                 ]
+                                Spacer(modifier = Modifier.height(8.dp))
+                                SettingsCard {
                                 Box(modifier = Modifier.fillMaxWidth()) {
                                     SettingsTextItem(
                                         title = stringResource(R.string.settings_oneui_capsule_color),
@@ -406,9 +429,12 @@ fun CustomSettingsScreen(
                                         }
                                     }
                                 }
+                                } // end SettingsCard (OneUI)
                             }
 
                             if (isHyperOs) {
+                                Spacer(modifier = Modifier.height(8.dp))
+                                SettingsCard {
                                 if (isLiveUpdateSupported) {
                                     val capsuleModes = listOf(false, true)
                                     val capsuleModeLabels = listOf(
@@ -447,6 +473,7 @@ fun CustomSettingsScreen(
                                         "advanced" -> stringResource(R.string.icon_style_advanced)
                                         else -> stringResource(R.string.icon_style_classic)
                                     }
+                                    SettingsCardDivider()
                                     Box(modifier = Modifier.fillMaxWidth()) {
                                         SettingsTextItem(
                                             title = stringResource(R.string.settings_icon_style),
@@ -485,6 +512,7 @@ fun CustomSettingsScreen(
                                     )
                                     val currentLyricModeIndex = lyricModes.indexOf(superIslandLyricMode).takeIf { it >= 0 } ?: 0
 
+                                    SettingsCardDivider()
                                     Box(modifier = Modifier.fillMaxWidth()) {
                                         SettingsTextItem(
                                             title = stringResource(R.string.settings_super_island_lyric_mode),
@@ -517,6 +545,7 @@ fun CustomSettingsScreen(
                                     }
 
                                     if (superIslandLyricMode == "full") {
+                                        SettingsCardDivider()
                                         SettingsSwitchItem(
                                             title = stringResource(R.string.settings_super_island_full_lyric_show_left_cover),
                                             subtitle = stringResource(R.string.settings_super_island_full_lyric_show_left_cover_desc),
@@ -573,6 +602,7 @@ fun CustomSettingsScreen(
                                         }
                                     }
 
+                                    SettingsCardDivider()
                                     SettingsSwitchItem(
                                         title = stringResource(R.string.settings_super_island_colorize),
                                         subtitle = stringResource(R.string.settings_super_island_colorize_desc),
@@ -585,6 +615,7 @@ fun CustomSettingsScreen(
                                         }
                                     )
 
+                                    SettingsCardDivider()
                                     SettingsSwitchItem(
                                         title = stringResource(R.string.settings_super_island_share),
                                         subtitle = stringResource(R.string.settings_super_island_share_desc),
@@ -601,6 +632,7 @@ fun CustomSettingsScreen(
                                             "format_3" -> stringResource(R.string.share_format_3)
                                             else -> stringResource(R.string.share_format_1)
                                         }
+                                        SettingsCardDivider()
                                         Box(modifier = Modifier.fillMaxWidth()) {
                                             SettingsTextItem(
                                                 title = stringResource(R.string.settings_super_island_share_format),
@@ -634,6 +666,7 @@ fun CustomSettingsScreen(
 
                                     var blockXmsfMode by remember { mutableStateOf(XmsfBypassMode.read(prefs)) }
                                     var showBlockXmsfModeDropdown by remember { mutableStateOf(false) }
+                                    SettingsCardDivider()
                                     Box(modifier = Modifier.fillMaxWidth()) {
                                         SettingsTextItem(
                                             title = stringResource(R.string.settings_block_xmsf_mode),
@@ -681,9 +714,10 @@ fun CustomSettingsScreen(
                                     }
 
                                 }
+                                } // end SettingsCard (HyperOS)
                             }
                         }
-                        1 -> { // Notification (Moved from 2)
+                        1 -> { // Notification
                              NotificationPreview(
                                  progressColorEnabled = progressColorEnabled,
                                  actionStyle = actionStyle,
@@ -696,6 +730,7 @@ fun CustomSettingsScreen(
                              )
                              Spacer(modifier = Modifier.height(16.dp))
 
+                            SettingsCard {
                             if (actionStyle == "disabled" || (actionStyle == "media_controls" && superIslandNotificationStyle == "advanced_beta")) {
                                  SettingsSwitchItem(
                                     title = stringResource(R.string.settings_progress_color),
@@ -706,9 +741,9 @@ fun CustomSettingsScreen(
                                         prefs.edit().putBoolean("progress_bar_color_enabled", it).apply()
                                     }
                                 )
+                                SettingsCardDivider()
                             }
-                            
-                             // Notification Action Style
+
                             val actionStyleDisplay = when (actionStyle) {
                                 "media_controls" -> stringResource(R.string.settings_action_style_media)
                                 "miplay" -> stringResource(R.string.settings_action_style_miplay)
@@ -752,6 +787,7 @@ fun CustomSettingsScreen(
                                     "advanced_beta" -> stringResource(R.string.super_island_notification_style_advanced_beta)
                                     else -> stringResource(R.string.super_island_notification_style_standard)
                                 }
+                                SettingsCardDivider()
                                 Box(modifier = Modifier.fillMaxWidth()) {
                                     SettingsTextItem(
                                         title = stringResource(R.string.settings_super_island_notification_style),
@@ -788,6 +824,7 @@ fun CustomSettingsScreen(
                                         "three_button" -> stringResource(R.string.super_island_media_button_layout_three)
                                         else -> stringResource(R.string.super_island_media_button_layout_two)
                                     }
+                                    SettingsCardDivider()
                                     Box(modifier = Modifier.fillMaxWidth()) {
                                         SettingsTextItem(
                                             title = stringResource(R.string.settings_super_island_media_button_layout),
@@ -818,8 +855,8 @@ fun CustomSettingsScreen(
                                     }
                                 }
                             }
-            
-                            // Notification Click Action
+
+                            SettingsCardDivider()
                             val clickStyleDisplay = when (notificationClickStyle) {
                                 "media_controls" -> stringResource(R.string.settings_click_action_media)
                                 else -> stringResource(R.string.settings_click_action_default)
@@ -852,8 +889,8 @@ fun CustomSettingsScreen(
                                     }
                                 }
                             }
-                            
-                             // Dismiss Delay
+
+                            SettingsCardDivider()
                             val dismissDelayText = when (dismissDelay) {
                                 0L -> stringResource(R.string.dismiss_delay_immediate)
                                 1000L -> stringResource(R.string.dismiss_delay_1s)
@@ -891,100 +928,108 @@ fun CustomSettingsScreen(
                                     }
                                 }
                             }
+                            } // end SettingsCard (notification)
                         }
-                        2 -> { // App UI (Moved from 0)
-                             val uiStyleDisplay = when (miuixEnabled) {
-                                 true -> stringResource(R.string.ui_style_miuix)
-                                 else -> stringResource(R.string.ui_style_material)
-                             }
-                             Box(modifier = Modifier.fillMaxWidth()) {
-                                 SettingsTextItem(
-                                     title = stringResource(R.string.settings_app_ui_style),
-                                     value = uiStyleDisplay,
-                                     onClick = { showUiStyleDropdown = true }
-                                 )
-                                 Box(modifier = Modifier.matchParentSize().wrapContentSize(Alignment.Center)) {
-                                     DropdownMenu(
-                                         expanded = showUiStyleDropdown,
-                                         onDismissRequest = { showUiStyleDropdown = false }
-                                     ) {
-                                         DropdownMenuItem(
-                                             text = { Text(stringResource(R.string.ui_style_material)) },
-                                             onClick = {
-                                                 showUiStyleDropdown = false
-                                                 if (miuixEnabled) {
-                                                     miuixEnabled = false
-                                                     prefs.edit().putBoolean("ui_use_miuix", false).apply()
-                                                     val restartIntent = Intent(context, MainActivity::class.java)
-                                                     restartIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
-                                                     context.startActivity(restartIntent)
-                                                     (context as? Activity)?.finish()
-                                                 }
-                                             }
-                                         )
-                                         DropdownMenuItem(
-                                             text = { Text(stringResource(R.string.ui_style_miuix)) },
-                                             onClick = {
-                                                 showUiStyleDropdown = false
-                                                 if (!miuixEnabled) {
-                                                     miuixEnabled = true
-                                                     prefs.edit().putBoolean("ui_use_miuix", true).apply()
-                                                     val restartIntent = Intent(context, MainActivity::class.java)
-                                                     restartIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
-                                                     context.startActivity(restartIntent)
-                                                     (context as? Activity)?.finish()
-                                                 }
-                                             }
-                                         )
-                                     }
-                                 }
-                             }
-                             SettingsSwitchItem(
-                                title = stringResource(R.string.settings_theme_follow_system),
-                                checked = followSystem,
-                                onCheckedChange = {
-                                    followSystem = it
-                                    ThemeHelper.setFollowSystem(context, it)
+                        2 -> { // App UI
+                            Spacer(modifier = Modifier.height(8.dp))
+                            SettingsCard {
+                                Box(modifier = Modifier.fillMaxWidth()) {
+                                    val uiStyleDisplay = when (miuixEnabled) {
+                                        true -> stringResource(R.string.ui_style_miuix)
+                                        else -> stringResource(R.string.ui_style_material)
+                                    }
+                                    SettingsTextItem(
+                                        title = stringResource(R.string.settings_app_ui_style),
+                                        value = uiStyleDisplay,
+                                        onClick = { showUiStyleDropdown = true }
+                                    )
+                                    Box(modifier = Modifier.matchParentSize().wrapContentSize(Alignment.Center)) {
+                                        DropdownMenu(
+                                            expanded = showUiStyleDropdown,
+                                            onDismissRequest = { showUiStyleDropdown = false }
+                                        ) {
+                                            DropdownMenuItem(
+                                                text = { Text(stringResource(R.string.ui_style_material)) },
+                                                onClick = {
+                                                    showUiStyleDropdown = false
+                                                    if (miuixEnabled) {
+                                                        miuixEnabled = false
+                                                        prefs.edit().putBoolean("ui_use_miuix", false).apply()
+                                                        val restartIntent = Intent(context, MainActivity::class.java)
+                                                        restartIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                                                        context.startActivity(restartIntent)
+                                                        (context as? Activity)?.finish()
+                                                    }
+                                                }
+                                            )
+                                            DropdownMenuItem(
+                                                text = { Text(stringResource(R.string.ui_style_miuix)) },
+                                                onClick = {
+                                                    showUiStyleDropdown = false
+                                                    if (!miuixEnabled) {
+                                                        miuixEnabled = true
+                                                        prefs.edit().putBoolean("ui_use_miuix", true).apply()
+                                                        val restartIntent = Intent(context, MainActivity::class.java)
+                                                        restartIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                                                        context.startActivity(restartIntent)
+                                                        (context as? Activity)?.finish()
+                                                    }
+                                                }
+                                            )
+                                        }
+                                    }
                                 }
-                            )
-                            SettingsSwitchItem(
-                                title = stringResource(R.string.settings_theme_dark_mode),
-                                checked = darkMode,
-                                enabled = !followSystem,
-                                onCheckedChange = {
-                                    darkMode = it
-                                    ThemeHelper.setDarkMode(context, it)
-                                }
-                            )
-                            SettingsSwitchItem(
-                                title = stringResource(R.string.settings_theme_pure_black),
-                                subtitle = stringResource(R.string.settings_theme_pure_black_desc),
-                                checked = pureBlack,
-                                enabled = useDarkTheme,
-                                onCheckedChange = {
-                                    pureBlack = it
-                                    ThemeHelper.setPureBlack(context, it)
-                                }
-                            )
-                            SettingsSwitchItem(
-                                 title = stringResource(R.string.settings_theme_dynamic_color),
-                                 subtitle = stringResource(R.string.settings_theme_dynamic_color_desc),
-                                 checked = dynamicColor,
-                                 onCheckedChange = {
-                                     dynamicColor = it
-                                     ThemeHelper.setDynamicColor(context, it)
-                                 }
-                             )
-                             SettingsSwitchItem(
-                                 title = stringResource(R.string.settings_predictive_back),
-                                 subtitle = stringResource(R.string.settings_predictive_back_desc),
-                                 checked = predictiveBackEnabled,
-                                 onCheckedChange = {
-                                     predictiveBackEnabled = it
-                                     prefs.edit().putBoolean("predictive_back_enabled", it).apply()
-                                 }
-                             )
-
+                                SettingsCardDivider()
+                                SettingsSwitchItem(
+                                    title = stringResource(R.string.settings_theme_follow_system),
+                                    checked = followSystem,
+                                    onCheckedChange = {
+                                        followSystem = it
+                                        ThemeHelper.setFollowSystem(context, it)
+                                    }
+                                )
+                                SettingsCardDivider()
+                                SettingsSwitchItem(
+                                    title = stringResource(R.string.settings_theme_dark_mode),
+                                    checked = darkMode,
+                                    enabled = !followSystem,
+                                    onCheckedChange = {
+                                        darkMode = it
+                                        ThemeHelper.setDarkMode(context, it)
+                                    }
+                                )
+                                SettingsCardDivider()
+                                SettingsSwitchItem(
+                                    title = stringResource(R.string.settings_theme_pure_black),
+                                    subtitle = stringResource(R.string.settings_theme_pure_black_desc),
+                                    checked = pureBlack,
+                                    enabled = useDarkTheme,
+                                    onCheckedChange = {
+                                        pureBlack = it
+                                        ThemeHelper.setPureBlack(context, it)
+                                    }
+                                )
+                                SettingsCardDivider()
+                                SettingsSwitchItem(
+                                    title = stringResource(R.string.settings_theme_dynamic_color),
+                                    subtitle = stringResource(R.string.settings_theme_dynamic_color_desc),
+                                    checked = dynamicColor,
+                                    onCheckedChange = {
+                                        dynamicColor = it
+                                        ThemeHelper.setDynamicColor(context, it)
+                                    }
+                                )
+                                SettingsCardDivider()
+                                SettingsSwitchItem(
+                                    title = stringResource(R.string.settings_predictive_back),
+                                    subtitle = stringResource(R.string.settings_predictive_back_desc),
+                                    checked = predictiveBackEnabled,
+                                    onCheckedChange = {
+                                        predictiveBackEnabled = it
+                                        prefs.edit().putBoolean("predictive_back_enabled", it).apply()
+                                    }
+                                )
+                            }
                         }
                         floatingLyricsPageIndex -> {
                             FloatingLyricsSettingsSubScreen(prefs)

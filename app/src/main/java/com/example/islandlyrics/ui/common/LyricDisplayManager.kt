@@ -41,6 +41,7 @@ class LyricDisplayManager(private val context: Context) {
     private data class GapDisplay(
         val displayLyric: String,
         val fullLyric: String,
+        val preferMetadataLayout: Boolean,
         val isAnimated: Boolean,
         val nextDelayMs: Long
     )
@@ -288,6 +289,7 @@ class LyricDisplayManager(private val context: Context) {
         
         var displayLyric = ""
         var fullLyricForDisplay = currentLyric
+        var preferMetadataLayout = false
         var isStatic = false
         timingGapActive = false
         timingGapNextDelayMs = 0L
@@ -304,6 +306,7 @@ class LyricDisplayManager(private val context: Context) {
                 if (gapDisplay != null) {
                     displayLyric = gapDisplay.displayLyric
                     fullLyricForDisplay = gapDisplay.fullLyric
+                    preferMetadataLayout = gapDisplay.preferMetadataLayout
                     timingGapActive = true
                     timingGapNextDelayMs = gapDisplay.nextDelayMs
                 } else {
@@ -347,6 +350,7 @@ class LyricDisplayManager(private val context: Context) {
                 if (gapDisplay != null) {
                     displayLyric = gapDisplay.displayLyric
                     fullLyricForDisplay = gapDisplay.fullLyric
+                    preferMetadataLayout = gapDisplay.preferMetadataLayout
                     timingGapActive = true
                     timingGapNextDelayMs = gapDisplay.nextDelayMs
                 } else {
@@ -382,6 +386,7 @@ class LyricDisplayManager(private val context: Context) {
                 if (gapDisplay != null) {
                     displayLyric = gapDisplay.displayLyric
                     fullLyricForDisplay = gapDisplay.fullLyric
+                    preferMetadataLayout = gapDisplay.preferMetadataLayout
                     timingGapActive = true
                     timingGapNextDelayMs = gapDisplay.nextDelayMs
                 } else {
@@ -409,6 +414,7 @@ class LyricDisplayManager(private val context: Context) {
             artist = metaInfo?.artist ?: "",
             displayLyric = displayLyric,
             fullLyric = fullLyricForDisplay,
+            preferMetadataLayout = preferMetadataLayout,
             isStatic = isStatic,
             progressMax = 100,
             progressCurrent = progressPercent,
@@ -600,6 +606,7 @@ class LyricDisplayManager(private val context: Context) {
         val firstLine = lines.first()
         if (position < firstLine.startTime) {
             val remainingUntilFirst = firstLine.startTime - position
+            val shouldPreferMetadataLayout = remainingUntilFirst > timingGapFullSequenceMs
             return if (firstLine.startTime >= timingGapFullSequenceMs &&
                 remainingUntilFirst <= timingGapAnimationTotalMs) {
                 buildCountdownGapDisplay(remainingUntilFirst)
@@ -607,6 +614,7 @@ class LyricDisplayManager(private val context: Context) {
                 GapDisplay(
                     displayLyric = timingPlaceholder,
                     fullLyric = timingPlaceholder,
+                    preferMetadataLayout = shouldPreferMetadataLayout,
                     isAnimated = false,
                     nextDelayMs = computeGapPlaceholderDelay(
                         remainingMs = remainingUntilFirst,
@@ -618,7 +626,7 @@ class LyricDisplayManager(private val context: Context) {
 
         val lastLine = lines.last()
         if (position >= lastLine.endTime) {
-            return GapDisplay(timingPlaceholder, timingPlaceholder, false, 1000L)
+            return GapDisplay(timingPlaceholder, timingPlaceholder, false, false, 1000L)
         }
 
         for (index in 0 until lines.lastIndex) {
@@ -639,6 +647,7 @@ class LyricDisplayManager(private val context: Context) {
                     GapDisplay(
                         displayLyric = timingPlaceholder,
                         fullLyric = timingPlaceholder,
+                        preferMetadataLayout = false,
                         isAnimated = false,
                         nextDelayMs = computeGapPlaceholderDelay(
                             remainingMs = remainingUntilNext,
@@ -650,6 +659,7 @@ class LyricDisplayManager(private val context: Context) {
                 GapDisplay(
                     displayLyric = timingPlaceholder,
                     fullLyric = timingPlaceholder,
+                    preferMetadataLayout = false,
                     isAnimated = false,
                     nextDelayMs = computeGapPlaceholderDelay(
                         remainingMs = remainingUntilNext,
@@ -670,7 +680,7 @@ class LyricDisplayManager(private val context: Context) {
             extractByWeight(previousLine.text, 0, currentMaxDisplayWeight())
         }
         val full = lastStableFullLyric.ifBlank { previousLine.text }
-        return GapDisplay(display, full, false, remainingUntilNext.coerceAtLeast(1L))
+        return GapDisplay(display, full, false, false, remainingUntilNext.coerceAtLeast(1L))
     }
 
     private fun buildCountdownGapDisplay(remainingUntilNext: Long): GapDisplay {
@@ -691,7 +701,7 @@ class LyricDisplayManager(private val context: Context) {
                 nextDelayMs = remainingUntilNext
             }
         }
-        return GapDisplay(indicator, indicator, true, nextDelayMs.coerceAtLeast(1L))
+        return GapDisplay(indicator, indicator, false, true, nextDelayMs.coerceAtLeast(1L))
     }
 
     private fun computeGapPlaceholderDelay(remainingMs: Long, supportsCountdown: Boolean): Long {

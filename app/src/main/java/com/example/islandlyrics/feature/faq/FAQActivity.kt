@@ -1,15 +1,13 @@
 package com.example.islandlyrics.feature.faq
 
 import com.example.islandlyrics.ui.common.BaseActivity
-import android.content.Context
 import com.example.islandlyrics.ui.miuix.isMiuixEnabled
 import com.example.islandlyrics.feature.faq.miuix.MiuixFAQScreen
 import com.example.islandlyrics.ui.miuix.MiuixAppTheme
 import com.example.islandlyrics.feature.faq.material.FAQScreen
-import com.example.islandlyrics.ui.theme.material.AppTheme
+import com.example.islandlyrics.ui.theme.material.IslandLyricsMaterialTheme
 import android.os.Bundle
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.isSystemInDarkTheme
 
 class FAQActivity : BaseActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -21,19 +19,7 @@ class FAQActivity : BaseActivity() {
                     MiuixFAQScreen(onBack = { finish() })
                 }
             } else {
-                val prefs = getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE)
-                val followSystem = prefs.getBoolean("theme_follow_system", true)
-                val darkMode = prefs.getBoolean("theme_dark_mode", false)
-                val pureBlack = prefs.getBoolean("theme_pure_black", false)
-                val dynamicColor = prefs.getBoolean("theme_dynamic_color", true)
-                val isSystemDark = isSystemInDarkTheme()
-                val useDarkTheme = if (followSystem) isSystemDark else darkMode
-
-                AppTheme(
-                    darkTheme = useDarkTheme,
-                    dynamicColor = dynamicColor,
-                    pureBlack = pureBlack && useDarkTheme
-                ) {
+                IslandLyricsMaterialTheme {
                     FAQScreen(onBack = { finish() })
                 }
             }

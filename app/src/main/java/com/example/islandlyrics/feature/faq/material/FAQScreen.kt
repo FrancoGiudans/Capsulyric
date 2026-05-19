@@ -10,22 +10,19 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.graphics.vector.path
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.example.islandlyrics.ui.theme.material.materialPageContainerColor
 import com.example.islandlyrics.ui.theme.material.neutralMaterialTopBarColors
@@ -87,7 +84,7 @@ fun FAQScreen(onBack: () -> Unit) {
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
-                            imageVector = FAQLocalIcons.ArrowBack,
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back"
                         )
                     }
@@ -140,15 +137,15 @@ fun FAQItem(question: CharSequence, answer: CharSequence) {
         ) {
             Text(
                 text = question.toString(),
-                fontSize = 18.sp,
+                style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.weight(1f)
             )
-            
+
             Spacer(modifier = Modifier.width(8.dp))
-            
+
             Icon(
-                imageVector = FAQLocalIcons.KeyboardArrowDown,
+                imageVector = Icons.Filled.KeyboardArrowDown,
                 contentDescription = "Expand",
                 modifier = Modifier.rotate(rotationState),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant
@@ -177,7 +174,7 @@ fun FormattedText(
 ) {
     val linkColor = MaterialTheme.colorScheme.primary.toArgb()
     val textColor = color.toArgb()
-    
+
     AndroidView(
         modifier = modifier,
         factory = { ctx ->
@@ -195,57 +192,4 @@ fun FormattedText(
             textView.setLinkTextColor(linkColor)
         }
     )
-}
-
-private object FAQLocalIcons {
-    val ArrowBack: ImageVector
-        get() {
-            if (_arrowBack != null) return _arrowBack!!
-            _arrowBack = ImageVector.Builder(
-                name = "ArrowBack",
-                defaultWidth = 24.dp,
-                defaultHeight = 24.dp,
-                viewportWidth = 24f,
-                viewportHeight = 24f
-            ).apply {
-                path(fill = SolidColor(Color.Black)) {
-                    moveTo(20f, 11f)
-                    horizontalLineTo(7.83f)
-                    lineTo(13.42f, 5.41f)
-                    lineTo(12f, 4f)
-                    lineTo(4f, 12f)
-                    lineTo(12f, 20f)
-                    lineTo(13.41f, 18.59f)
-                    lineTo(7.83f, 13f)
-                    horizontalLineTo(20f)
-                    close()
-                }
-            }.build()
-            return _arrowBack!!
-        }
-    private var _arrowBack: ImageVector? = null
-
-    val KeyboardArrowDown: ImageVector
-        get() {
-            if (_keyboardArrowDown != null) return _keyboardArrowDown!!
-            _keyboardArrowDown = ImageVector.Builder(
-                name = "KeyboardArrowDown",
-                defaultWidth = 24.dp,
-                defaultHeight = 24.dp,
-                viewportWidth = 24f,
-                viewportHeight = 24f
-            ).apply {
-                path(fill = SolidColor(Color.Black)) {
-                    moveTo(7.41f, 8.59f)
-                    lineTo(12f, 13.17f)
-                    lineTo(16.59f, 8.59f)
-                    lineTo(18f, 10f)
-                    lineTo(12f, 16f)
-                    lineTo(6f, 10f)
-                    close()
-                }
-            }.build()
-            return _keyboardArrowDown!!
-        }
-    private var _keyboardArrowDown: ImageVector? = null
 }

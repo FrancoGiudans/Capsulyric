@@ -1,16 +1,10 @@
 package com.example.islandlyrics.feature.lab.material
 
 import android.content.Intent
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Science
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -34,7 +28,9 @@ import com.example.islandlyrics.core.network.OfflineModeManager
 import com.example.islandlyrics.core.platform.RomUtils
 import com.example.islandlyrics.core.settings.LabFeatureManager
 import com.example.islandlyrics.feature.customsettings.CustomSettingsActivity
-import com.example.islandlyrics.feature.diagnostics.material.DiagnosticsCard
+import com.example.islandlyrics.feature.settings.material.SettingsCard
+import com.example.islandlyrics.feature.settings.material.SettingsCardDivider
+import com.example.islandlyrics.feature.settings.material.SettingsSectionHeader
 import com.example.islandlyrics.feature.settings.material.SettingsSwitchItem
 import com.example.islandlyrics.ui.theme.material.materialPageContainerColor
 import com.example.islandlyrics.ui.theme.material.neutralMaterialTopBarColors
@@ -72,58 +68,53 @@ fun LabScreen(onBack: () -> Unit) {
         },
         containerColor = materialPageContainerColor()
     ) { padding ->
-        Column(
+        androidx.compose.foundation.lazy.LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
-                .verticalScroll(rememberScrollState())
-                .padding(16.dp)
+                .padding(padding),
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 24.dp)
         ) {
-            Text(
-                text = stringResource(R.string.diag_lab_page_desc),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp)
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            DiagnosticsCard(
-                title = stringResource(R.string.diag_lab_category_general),
-                icon = Icons.Default.Science
-            ) {
-                SettingsSwitchItem(
-                    title = stringResource(R.string.settings_full_offline_mode),
-                    subtitle = stringResource(R.string.settings_full_offline_mode_desc),
-                    checked = offlineModeEnabled,
-                    onCheckedChange = {
-                        offlineModeEnabled = it
-                        OfflineModeManager.setEnabled(context, it)
-                    }
+            item {
+                Text(
+                    text = stringResource(R.string.diag_lab_page_desc),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)
                 )
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            item { SettingsSectionHeader(text = stringResource(R.string.diag_lab_category_general)) }
+            item {
+                SettingsCard {
+                    SettingsSwitchItem(
+                        title = stringResource(R.string.settings_full_offline_mode),
+                        subtitle = stringResource(R.string.settings_full_offline_mode_desc),
+                        checked = offlineModeEnabled,
+                        onCheckedChange = {
+                            offlineModeEnabled = it
+                            OfflineModeManager.setEnabled(context, it)
+                        }
+                    )
+                }
+            }
 
-            DiagnosticsCard(
-                title = stringResource(R.string.diag_lab_category_interface),
-                icon = Icons.Default.Science
-            ) {
+            item { SettingsSectionHeader(text = stringResource(R.string.diag_lab_category_interface)) }
+            item {
+                SettingsCard {
                     if (RomUtils.isXiaomi()) {
                         SettingsSwitchItem(
                             title = stringResource(R.string.diag_lab_super_island_advanced_style_title),
-                        subtitle = stringResource(R.string.diag_lab_super_island_advanced_style_desc),
-                        checked = superIslandAdvancedStyleEnabled,
-                        onCheckedChange = { enabled ->
-                            if (enabled) {
-                                showAdvancedStyleDialog = true
-                            } else {
-                                LabFeatureManager.setSuperIslandAdvancedStyleEnabled(context, false)
-                                superIslandAdvancedStyleEnabled = false
-                            }
+                            subtitle = stringResource(R.string.diag_lab_super_island_advanced_style_desc),
+                            checked = superIslandAdvancedStyleEnabled,
+                            onCheckedChange = { enabled ->
+                                if (enabled) showAdvancedStyleDialog = true
+                                else {
+                                    LabFeatureManager.setSuperIslandAdvancedStyleEnabled(context, false)
+                                    superIslandAdvancedStyleEnabled = false
+                                }
                             }
                         )
-
+                        SettingsCardDivider()
                         SettingsSwitchItem(
                             title = stringResource(R.string.diag_lab_super_island_text_limits_title),
                             subtitle = stringResource(R.string.diag_lab_super_island_text_limits_desc),
@@ -133,35 +124,33 @@ fun LabScreen(onBack: () -> Unit) {
                                 LabFeatureManager.setSuperIslandTextLimitsEnabled(context, it)
                             }
                         )
+                        SettingsCardDivider()
                     }
-
-                SettingsSwitchItem(
-                    title = stringResource(R.string.diag_lab_floating_lyrics_title),
-                    subtitle = stringResource(R.string.diag_lab_floating_lyrics_desc),
-                    checked = floatingLyricsLabEnabled,
-                    onCheckedChange = {
-                        floatingLyricsLabEnabled = it
-                        LabFeatureManager.setFloatingLyricsEnabled(context, it)
-                    }
-                )
+                    SettingsSwitchItem(
+                        title = stringResource(R.string.diag_lab_floating_lyrics_title),
+                        subtitle = stringResource(R.string.diag_lab_floating_lyrics_desc),
+                        checked = floatingLyricsLabEnabled,
+                        onCheckedChange = {
+                            floatingLyricsLabEnabled = it
+                            LabFeatureManager.setFloatingLyricsEnabled(context, it)
+                        }
+                    )
+                }
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
-
-            DiagnosticsCard(
-                title = stringResource(R.string.diag_lab_category_updates),
-                icon = Icons.Default.Science
-            ) {
-                SettingsSwitchItem(
-                    title = stringResource(R.string.diag_lab_experiment_updates_title),
-                    subtitle = stringResource(R.string.diag_lab_experiment_updates_desc),
-                    checked = experimentUpdatesEnabled,
-                    onCheckedChange = {
-                        experimentUpdatesEnabled = it
-                        LabFeatureManager.setExperimentUpdatesEnabled(context, it)
-                    }
-                )
-
+            item { SettingsSectionHeader(text = stringResource(R.string.diag_lab_category_updates)) }
+            item {
+                SettingsCard {
+                    SettingsSwitchItem(
+                        title = stringResource(R.string.diag_lab_experiment_updates_title),
+                        subtitle = stringResource(R.string.diag_lab_experiment_updates_desc),
+                        checked = experimentUpdatesEnabled,
+                        onCheckedChange = {
+                            experimentUpdatesEnabled = it
+                            LabFeatureManager.setExperimentUpdatesEnabled(context, it)
+                        }
+                    )
+                }
             }
         }
     }

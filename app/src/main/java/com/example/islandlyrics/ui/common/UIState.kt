@@ -12,6 +12,7 @@ data class UIState(
     val artist: String = "",
     val displayLyric: String = "",
     val fullLyric: String = "",
+    val preferMetadataLayout: Boolean = false,
     val isStatic: Boolean = false,
     val progressMax: Int = 0,
     val progressCurrent: Int = 0,

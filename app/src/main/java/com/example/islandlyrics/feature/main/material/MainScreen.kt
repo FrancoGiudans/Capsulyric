@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -33,24 +34,27 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
@@ -71,6 +75,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -86,6 +91,8 @@ import com.example.islandlyrics.R
 import com.example.islandlyrics.data.LyricRepository
 import com.example.islandlyrics.data.ParserRuleHelper
 import com.example.islandlyrics.service.MediaMonitorService
+import com.example.islandlyrics.ui.theme.material.materialPageContainerColor
+import com.example.islandlyrics.ui.theme.material.neutralMaterialTopBarColors
 import com.google.android.material.progressindicator.LinearProgressIndicator
 import androidx.palette.graphics.Palette
 import kotlinx.coroutines.delay
@@ -94,10 +101,10 @@ import kotlin.math.roundToInt
 
 private val StatusActive = Color(0xFF2E7D32)
 private val StatusInactive = Color(0xFFC62828)
-private val LyricAccent = Color(0xFF3D7DFF)
 private const val SeekSyncThresholdMs = 250L
 private const val SeekFallbackTimeoutMs = 4000L
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(
     versionText: String,
@@ -108,7 +115,7 @@ fun MainScreen(
     onOpenDebug: () -> Unit,
     onOpenPromotedSettings: () -> Unit,
     onStatusCardTap: () -> Unit,
-    contentPadding: PaddingValues = PaddingValues(),
+    extraBottomPadding: androidx.compose.ui.unit.Dp = 0.dp,
 ) {
     val repo = remember { LyricRepository.getInstance() }
     val context = LocalContext.current
@@ -173,143 +180,121 @@ fun MainScreen(
         else -> stringResource(R.string.main_status_service_ready)
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-            .padding(contentPadding)
-            .statusBarsPadding()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 20.dp, vertical = 14.dp)
-    ) {
-        CompactHeader(
-            versionText = versionText,
-            isDebugBuild = isDebugBuild,
-            onOpenDebug = onOpenDebug
-        )
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 
-        Spacer(modifier = Modifier.height(12.dp))
-        StatusPill(
-            statusText = statusText,
-            isActive = listenerEnabled && serviceConnected,
-            onTap = if (!serviceConnected && listenerEnabled) onStatusCardTap else null
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-        SectionLabel(
-            title = stringResource(R.string.main_now_playing_title),
-            subtitle = if (whitelistedSessions.isEmpty()) {
-                stringResource(R.string.main_now_playing_subtitle_idle)
-            } else {
-                stringResource(R.string.main_now_playing_subtitle_active)
-            }
-        )
-
-        Spacer(modifier = Modifier.height(12.dp))
-        if (whitelistedSessions.isEmpty()) {
-            IdleCard()
-        } else {
-            val pagerState = rememberPagerState(pageCount = { whitelistedSessions.size })
-            var maxCardHeightPx by remember(whitelistedSessions.size) { mutableIntStateOf(0) }
-            val minCardHeight = with(LocalDensity.current) {
-                if (maxCardHeightPx > 0) maxCardHeightPx.toDp() else 0.dp
-            }
-            Column {
-                HorizontalPager(state = pagerState, pageSpacing = 14.dp) { page ->
-                    val controller = whitelistedSessions[page]
-                    val isPrimary = isPrimarySession(controller, repoMetadata)
-                    MediaSessionCard(
-                        controller = controller,
-                        isPrimary = isPrimary,
-                        primaryMetadata = if (isPrimary) repoMetadata else null,
-                        primaryLyric = if (isPrimary) {
-                            repoCurrentLine?.text ?: repoLyric?.lyric?.takeIf { it.isNotBlank() }
-                        } else {
-                            null
-                        },
-                        primaryLyricSource = if (isPrimary) formatPrimaryLyricSource(repoLyric?.apiPath, repoParsedLyrics?.sourceLabel) else null,
-                        primaryAlbumArt = if (isPrimary) repoAlbumArt else null,
-                        primaryProgress = if (isPrimary) repoProgress else null,
-                        primaryIsPlaying = if (isPrimary) repoPlaying else null,
-                        minCardHeight = minCardHeight,
-                        onHeightMeasured = { measuredHeight ->
-                            if (measuredHeight > maxCardHeightPx) {
-                                maxCardHeightPx = measuredHeight
-                            }
-                        }
-                    )
-                }
-                if (whitelistedSessions.size > 1) {
-                    Spacer(modifier = Modifier.height(14.dp))
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
-                        repeat(whitelistedSessions.size) { index ->
-                            val active = pagerState.currentPage == index
-                            Box(
-                                modifier = Modifier
-                                    .padding(horizontal = 4.dp)
-                                    .height(8.dp)
-                                    .width(if (active) 28.dp else 8.dp)
-                                    .clip(CircleShape)
-                                    .background(if (active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHighest)
+    Scaffold(
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+        containerColor = materialPageContainerColor(),
+        contentWindowInsets = WindowInsets(0),
+        topBar = {
+            LargeTopAppBar(
+                title = {
+                    Text(text = stringResource(R.string.app_name))
+                },
+                actions = {
+                    if (isDebugBuild) {
+                        IconButton(onClick = onOpenDebug) {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_bug_report),
+                                contentDescription = stringResource(R.string.main_debug_center_cd)
                             )
                         }
                     }
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(18.dp))
-    }
-}
-
-@Composable
-private fun CompactHeader(
-    versionText: String,
-    isDebugBuild: Boolean,
-    onOpenDebug: () -> Unit,
-) {
-    val context = LocalContext.current
-    val appIconBitmap = remember {
-        val drawable = context.packageManager.getApplicationIcon(context.packageName)
-        val bitmap = Bitmap.createBitmap(128, 128, Bitmap.Config.ARGB_8888)
-        val canvas = Canvas(bitmap)
-        drawable.setBounds(0, 0, 128, 128)
-        drawable.draw(canvas)
-        bitmap
-    }
-
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Image(
-            bitmap = appIconBitmap.asImageBitmap(),
-            contentDescription = stringResource(R.string.main_app_icon_cd),
-            modifier = Modifier
-                .size(30.dp)
-                .clip(RoundedCornerShape(9.dp))
-        )
-        Spacer(modifier = Modifier.width(10.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = stringResource(R.string.app_name),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onBackground
+                },
+                scrollBehavior = scrollBehavior,
+                colors = neutralMaterialTopBarColors()
             )
         }
-        if (isDebugBuild) {
-            Surface(
-                shape = CircleShape,
-                color = MaterialTheme.colorScheme.surfaceContainerLow,
-                modifier = Modifier.clickable { onOpenDebug() }
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_bug_report),
-                    contentDescription = stringResource(R.string.main_debug_center_cd),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(10.dp).size(18.dp)
+    ) { innerPadding ->
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding),
+            contentPadding = PaddingValues(
+                start = 20.dp,
+                top = 16.dp,
+                end = 20.dp,
+                bottom = 16.dp + extraBottomPadding
+            ),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            item {
+                StatusPill(
+                    statusText = statusText,
+                    isActive = listenerEnabled && serviceConnected,
+                    onTap = if (!serviceConnected && listenerEnabled) onStatusCardTap else null
                 )
+            }
+
+            item {
+                SectionLabel(
+                    title = stringResource(R.string.main_now_playing_title),
+                    subtitle = if (whitelistedSessions.isEmpty()) {
+                        stringResource(R.string.main_now_playing_subtitle_idle)
+                    } else {
+                        stringResource(R.string.main_now_playing_subtitle_active)
+                    }
+                )
+            }
+
+            item {
+                if (whitelistedSessions.isEmpty()) {
+                    IdleCard()
+                } else {
+                    val pagerState = rememberPagerState(pageCount = { whitelistedSessions.size })
+                    var maxCardHeightPx by remember(whitelistedSessions.size) { mutableIntStateOf(0) }
+                    val minCardHeight = with(LocalDensity.current) {
+                        if (maxCardHeightPx > 0) maxCardHeightPx.toDp() else 0.dp
+                    }
+                    Column {
+                        HorizontalPager(state = pagerState, pageSpacing = 14.dp) { page ->
+                            val controller = whitelistedSessions[page]
+                            val isPrimary = isPrimarySession(controller, repoMetadata)
+                            MediaSessionCard(
+                                controller = controller,
+                                isPrimary = isPrimary,
+                                primaryMetadata = if (isPrimary) repoMetadata else null,
+                                primaryLyric = if (isPrimary) {
+                                    repoCurrentLine?.text ?: repoLyric?.lyric?.takeIf { it.isNotBlank() }
+                                } else {
+                                    null
+                                },
+                                primaryLyricSource = if (isPrimary) formatPrimaryLyricSource(repoLyric?.apiPath, repoParsedLyrics?.sourceLabel) else null,
+                                primaryAlbumArt = if (isPrimary) repoAlbumArt else null,
+                                primaryProgress = if (isPrimary) repoProgress else null,
+                                primaryIsPlaying = if (isPrimary) repoPlaying else null,
+                                minCardHeight = minCardHeight,
+                                onHeightMeasured = { measuredHeight ->
+                                    if (measuredHeight > maxCardHeightPx) {
+                                        maxCardHeightPx = measuredHeight
+                                    }
+                                }
+                            )
+                        }
+                        if (whitelistedSessions.size > 1) {
+                            Spacer(modifier = Modifier.height(14.dp))
+                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
+                                repeat(whitelistedSessions.size) { index ->
+                                    val active = pagerState.currentPage == index
+                                    Box(
+                                        modifier = Modifier
+                                            .padding(horizontal = 4.dp)
+                                            .height(8.dp)
+                                            .width(if (active) 28.dp else 8.dp)
+                                            .clip(CircleShape)
+                                            .background(
+                                                if (active) {
+                                                    MaterialTheme.colorScheme.primary
+                                                } else {
+                                                    MaterialTheme.colorScheme.surfaceContainerHighest
+                                                }
+                                            )
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
     }
@@ -323,7 +308,7 @@ private fun StatusPill(
 ) {
     Surface(
         shape = RoundedCornerShape(50),
-        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        color = MaterialTheme.colorScheme.surfaceContainer,
         modifier = Modifier
             .fillMaxWidth()
             .then(if (onTap != null) Modifier.clickable { onTap() } else Modifier)
@@ -360,7 +345,7 @@ private fun SectionLabel(
 @Composable
 private fun IdleCard() {
     Card(
-        shape = RoundedCornerShape(24.dp),
+        shape = RoundedCornerShape(28.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
         modifier = Modifier.fillMaxWidth()
     ) {
@@ -369,14 +354,6 @@ private fun IdleCard() {
             modifier = Modifier
                 .fillMaxWidth()
                 .defaultMinSize(minHeight = 180.dp)
-                .background(
-                    Brush.verticalGradient(
-                        listOf(
-                            MaterialTheme.colorScheme.surfaceContainer,
-                            MaterialTheme.colorScheme.surfaceContainerLow
-                        )
-                    )
-                )
                 .padding(24.dp)
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -490,7 +467,7 @@ private fun MediaSessionCard(
 
     Card(
         shape = RoundedCornerShape(28.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = minCardHeight)
@@ -745,7 +722,7 @@ private fun LyricPanel(
 
     Surface(
         shape = RoundedCornerShape(18.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        color = MaterialTheme.colorScheme.surfaceContainer,
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = 118.dp)
@@ -759,7 +736,7 @@ private fun LyricPanel(
     ) {
         Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(imageVector = Icons.Filled.AutoAwesome, contentDescription = null, tint = LyricAccent, modifier = Modifier.size(16.dp))
+                Icon(imageVector = Icons.Filled.AutoAwesome, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(text = stringResource(R.string.main_current_lyric_title), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
@@ -771,7 +748,7 @@ private fun LyricPanel(
                         style = MaterialTheme.typography.titleMedium,
                         fontSize = 18.sp,
                         lineHeight = 26.sp,
-                        color = LyricAccent
+                        color = MaterialTheme.colorScheme.primary
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(text = stringResource(R.string.tap_to_copy_hint), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)

@@ -8,33 +8,34 @@
         <item name="android:enforceNavigationBarContrast">false</item>
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
-        <!-- Primary Brand Colors -->
-        <item name="colorPrimary">#3482FF</item>
+        <!-- Primary Brand Colors — Monet-derived from #3482FF -->
+        <item name="colorPrimary">#005FAF</item>
         <item name="colorOnPrimary">#FFFFFF</item>
-        <item name="colorPrimaryContainer">#5D9BFF</item>
-        <item name="colorOnPrimaryContainer">#FFFFFF</item>
+        <item name="colorPrimaryContainer">#D6E3FF</item>
+        <item name="colorOnPrimaryContainer">#001B3E</item>
 
-        <!-- Secondary (Accents) -->
-        <item name="colorSecondary">#E6E6E6</item>
+        <!-- Secondary -->
+        <item name="colorSecondary">#545F71</item>
         <item name="colorOnSecondary">#FFFFFF</item>
-        <item name="colorSecondaryContainer">#F0F0F0</item>
-        <item name="colorOnSecondaryContainer">#303030</item>
+        <item name="colorSecondaryContainer">#D8E3F8</item>
+        <item name="colorOnSecondaryContainer">#111C2B</item>
 
         <!-- Tertiary -->
-        <item name="colorTertiary">#3482FF</item>
+        <item name="colorTertiary">#6B5778</item>
         <item name="colorOnTertiary">#FFFFFF</item>
-        <item name="colorTertiaryContainer">#EAF2FF</item>
-        <item name="colorOnTertiaryContainer">#3482FF</item>
+        <item name="colorTertiaryContainer">#F2DAFF</item>
+        <item name="colorOnTertiaryContainer">#251431</item>
 
-        <!-- Surface & Background -->
-        <item name="colorSurface">#FFFFFF</item>
-        <item name="colorOnSurface">#000000</item>
-        <item name="colorSurfaceVariant">#FFFFFF</item>
-        <item name="colorOnSurfaceVariant">#99000000</item>
-        <item name="colorSurfaceContainer">#FFFFFF</item>
-        <item name="colorSurfaceContainerLow">#F0F0F0</item>
-        <item name="colorSurfaceContainerLowest">#FAFAFA</item>
-        <item name="android:colorBackground">#F7F7F7</item>
+        <!-- Surface & Background — must match Compose LightColorScheme to avoid white flash -->
+        <item name="colorSurface">#F8F9FF</item>
+        <item name="colorOnSurface">#191C20</item>
+        <item name="colorSurfaceVariant">#DFE2EB</item>
+        <item name="colorOnSurfaceVariant">#43474E</item>
+        <item name="colorSurfaceContainer">#ECEDF4</item>
+        <item name="colorSurfaceContainerLow">#F2F3FA</item>
+        <item name="colorSurfaceContainerLowest">#FFFFFF</item>
+        <item name="android:colorBackground">#F8F9FF</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
 
         <!-- Outline -->
         <item name="colorOutline">#D9D9D9</item>

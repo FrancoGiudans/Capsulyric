@@ -10,16 +10,12 @@ import com.example.islandlyrics.data.LyricRepository
 import com.example.islandlyrics.data.lyric.OnlineLyricProvider
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.lifecycle.Lifecycle
@@ -27,17 +23,13 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.graphics.vector.path
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import com.example.islandlyrics.feature.parserrule.ParserRuleEditorActivity
 import com.example.islandlyrics.ui.theme.material.materialPageContainerColor
 import com.example.islandlyrics.ui.theme.material.neutralMaterialTopBarColors
@@ -74,6 +66,7 @@ fun ParserRuleScreen(
 
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+        contentWindowInsets = WindowInsets(0),
         topBar = {
             MediumTopAppBar(
                 title = { Text(stringResource(R.string.parser_rule_title)) },
@@ -81,7 +74,7 @@ fun ParserRuleScreen(
                     {
                         IconButton(onClick = onBack) {
                             Icon(
-                                imageVector = ParserLocalIcons.ArrowBack,
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                                 contentDescription = "Back"
                             )
                         }
@@ -172,31 +165,65 @@ fun ParserRuleScreen(
             modifier = Modifier
                 .padding(padding)
                 .fillMaxSize(),
-            contentPadding = PaddingValues(bottom = 80.dp + extraBottomPadding)
+            contentPadding = PaddingValues(
+                start = 16.dp,
+                end = 16.dp,
+                bottom = 80.dp + extraBottomPadding
+            ),
+            verticalArrangement = Arrangement.spacedBy(0.dp)
         ) {
-            items(rules) { rule ->
-                ParserRuleItem(
-                    rule = rule,
-                    offlineModeEnabled = offlineModeEnabled,
-                    onToggleEnabled = { enabled ->
-                        val index = rules.indexOf(rule)
-                        if (index != -1) {
-                            val newRule = rule.copy(enabled = enabled)
-                            rules = rules.toMutableList().apply { set(index, newRule) }
-                            ParserRuleHelper.saveRules(context, rules)
-                        }
-                    },
-                    onEdit = {
-                        context.startActivity(
-                            android.content.Intent(context, ParserRuleEditorActivity::class.java)
-                                .putExtra(ParserRuleEditorActivity.EXTRA_PACKAGE_NAME, rule.packageName)
+            if (rules.isEmpty()) {
+                item {
+                    Card(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                        shape = MaterialTheme.shapes.extraLarge,
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+                        elevation = CardDefaults.cardElevation(0.dp)
+                    ) {
+                        ListItem(
+                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                            headlineContent = { Text(stringResource(R.string.parser_no_rules), style = MaterialTheme.typography.titleMedium) },
+                            supportingContent = { Text(stringResource(R.string.parser_no_rules_desc), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                         )
-                    },
-                    onDelete = {
-                        showDeleteDialog = rule
                     }
-                )
-                HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                }
+            } else {
+                item {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = MaterialTheme.shapes.extraLarge,
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+                        elevation = CardDefaults.cardElevation(0.dp)
+                    ) {
+                        rules.forEachIndexed { index, rule ->
+                            ParserRuleItem(
+                                rule = rule,
+                                offlineModeEnabled = offlineModeEnabled,
+                                onToggleEnabled = { enabled ->
+                                    val idx = rules.indexOf(rule)
+                                    if (idx != -1) {
+                                        val newRule = rule.copy(enabled = enabled)
+                                        rules = rules.toMutableList().apply { set(idx, newRule) }
+                                        ParserRuleHelper.saveRules(context, rules)
+                                    }
+                                },
+                                onEdit = {
+                                    context.startActivity(
+                                        android.content.Intent(context, ParserRuleEditorActivity::class.java)
+                                            .putExtra(ParserRuleEditorActivity.EXTRA_PACKAGE_NAME, rule.packageName)
+                                    )
+                                },
+                                onDelete = { showDeleteDialog = rule }
+                            )
+                            if (index < rules.lastIndex) {
+                                HorizontalDivider(
+                                    modifier = Modifier.padding(horizontal = 16.dp),
+                                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
+                                )
+                            }
+                        }
+                    }
+                }
             }
         }
     }
@@ -236,74 +263,73 @@ fun ParserRuleItem(
     onDelete: () -> Unit
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
-    Row(
+    val onlineOrderSummary = if (!offlineModeEnabled && rule.useOnlineLyrics && !rule.useSmartOnlineLyricSelection) {
+        OnlineLyricProvider.normalizeOrder(rule.onlineLyricProviderOrder)
+            .joinToString(" > ") { it.displayName(context) }
+    } else {
+        null
+    }
+    val packageSummary = if (!rule.customName.isNullOrEmpty()) rule.packageName else null
+
+    ListItem(
         modifier = Modifier
             .fillMaxWidth()
-            .combinedClickable(
-                onClick = onEdit,
-                onLongClick = onDelete
-            )
-            .padding(16.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
+            .combinedClickable(onClick = onEdit, onLongClick = onDelete),
+        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+        headlineContent = {
             Text(
                 text = rule.customName ?: rule.packageName,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
                 color = if (rule.enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
             )
-            if (!rule.customName.isNullOrEmpty()) {
-                Text(
-                    text = rule.packageName,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-
-            Spacer(modifier = Modifier.height(4.dp))
-            if (!offlineModeEnabled && rule.useOnlineLyrics && !rule.useSmartOnlineLyricSelection) {
-                val onlineOrderSummary = OnlineLyricProvider.normalizeOrder(rule.onlineLyricProviderOrder)
-                    .joinToString(" > ") { it.displayName(context) }
-                Text(
-                    text = stringResource(R.string.parser_online_priority_summary, onlineOrderSummary),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-            }
-
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                StatusBadge(active = rule.usesCarProtocol, label = "Notify Lyric")
-                if (!offlineModeEnabled) {
-                    Spacer(modifier = Modifier.width(8.dp))
-                    StatusBadge(active = rule.useOnlineLyrics, label = "Online")
+        },
+        supportingContent = {
+            Column {
+                packageSummary?.let {
+                    Text(
+                        text = it,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
                 }
-                Spacer(modifier = Modifier.width(8.dp))
-                StatusBadge(active = rule.useSuperLyricApi, label = "SuperLyric")
-                Spacer(modifier = Modifier.width(8.dp))
-                StatusBadge(active = rule.useLyricGetterApi, label = "LyricGetter")
-                Spacer(modifier = Modifier.width(8.dp))
-                StatusBadge(active = rule.useLyriconApi, label = "Lyricon")
+                onlineOrderSummary?.let {
+                    Text(
+                        text = context.getString(R.string.parser_online_priority_summary, it),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                }
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    RuleSourceBadge(active = rule.usesCarProtocol, label = "Notify")
+                    if (!offlineModeEnabled) {
+                        RuleSourceBadge(active = rule.useOnlineLyrics, label = "Online")
+                    }
+                    RuleSourceBadge(active = rule.useSuperLyricApi, label = "Super")
+                    RuleSourceBadge(active = rule.useLyricGetterApi, label = "LGetter")
+                    RuleSourceBadge(active = rule.useLyriconApi, label = "Lyricon")
+                }
             }
+        },
+        trailingContent = {
+            Switch(checked = rule.enabled, onCheckedChange = onToggleEnabled)
         }
-
-        Switch(
-            checked = rule.enabled,
-            onCheckedChange = onToggleEnabled
-        )
-    }
+    )
 }
 
 @Composable
-fun StatusBadge(active: Boolean, label: String) {
-    val color = if (active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
+private fun RuleSourceBadge(active: Boolean, label: String) {
     Text(
         text = label,
         style = MaterialTheme.typography.labelSmall,
-        color = color,
-        modifier = Modifier,
-        fontSize = 10.sp
+        color = if (active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
     )
 }
 
@@ -324,38 +350,13 @@ fun SwitchRow(
         Column(modifier = Modifier.weight(1f)) {
             Text(title, style = MaterialTheme.typography.bodyLarge)
             if (subtitle != null) {
-                Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
         Switch(checked = checked, onCheckedChange = onCheckedChange)
     }
-}
-
-private object ParserLocalIcons {
-    val ArrowBack: ImageVector
-        get() {
-            if (_arrowBack != null) return _arrowBack!!
-            _arrowBack = ImageVector.Builder(
-                name = "ArrowBack",
-                defaultWidth = 24.dp,
-                defaultHeight = 24.dp,
-                viewportWidth = 24f,
-                viewportHeight = 24f
-            ).apply {
-                path(fill = SolidColor(Color.Black)) {
-                    moveTo(20f, 11f)
-                    horizontalLineTo(7.83f)
-                    lineTo(13.42f, 5.41f)
-                    lineTo(12f, 4f)
-                    lineTo(4f, 12f)
-                    lineTo(12f, 20f)
-                    lineTo(13.41f, 18.59f)
-                    lineTo(7.83f, 13f)
-                    horizontalLineTo(20f)
-                    close()
-                }
-            }.build()
-            return _arrowBack!!
-        }
-    private var _arrowBack: ImageVector? = null
 }

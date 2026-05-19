@@ -14,7 +14,7 @@ import com.example.islandlyrics.feature.settings.miuix.MiuixAboutScreen
 import com.example.islandlyrics.ui.common.BaseActivity
 import com.example.islandlyrics.ui.miuix.MiuixAppTheme
 import com.example.islandlyrics.ui.miuix.isMiuixEnabled
-import com.example.islandlyrics.ui.theme.material.AppTheme
+import com.example.islandlyrics.ui.theme.material.IslandLyricsMaterialTheme
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -58,7 +58,7 @@ class AboutActivity : BaseActivity() {
                     )
                 }
             } else {
-                AppTheme {
+                IslandLyricsMaterialTheme {
                     AboutScreen(
                         updateVersionText = version,
                         updateCodenameText = codename,

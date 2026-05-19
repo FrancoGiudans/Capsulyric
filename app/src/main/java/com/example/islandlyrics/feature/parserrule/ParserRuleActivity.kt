@@ -1,14 +1,12 @@
 package com.example.islandlyrics.feature.parserrule
 
 import com.example.islandlyrics.ui.common.BaseActivity
-import android.content.Context
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.activity.compose.setContent
 import com.example.islandlyrics.ui.miuix.isMiuixEnabled
 import com.example.islandlyrics.feature.parserrule.miuix.MiuixParserRuleScreen
 import com.example.islandlyrics.ui.miuix.MiuixAppTheme
 import com.example.islandlyrics.feature.parserrule.material.ParserRuleScreen
-import com.example.islandlyrics.ui.theme.material.AppTheme
+import com.example.islandlyrics.ui.theme.material.IslandLyricsMaterialTheme
 import android.os.Bundle
 
 class ParserRuleActivity : BaseActivity() {
@@ -24,19 +22,7 @@ class ParserRuleActivity : BaseActivity() {
                     )
                 }
             } else {
-                val prefs = getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE)
-                val followSystem = prefs.getBoolean("theme_follow_system", true)
-                val darkMode = prefs.getBoolean("theme_dark_mode", false)
-                val pureBlack = prefs.getBoolean("theme_pure_black", false)
-                val dynamicColor = prefs.getBoolean("theme_dynamic_color", true)
-                val isSystemDark = isSystemInDarkTheme()
-                val useDarkTheme = if (followSystem) isSystemDark else darkMode
-
-                AppTheme(
-                    darkTheme = useDarkTheme,
-                    dynamicColor = dynamicColor,
-                    pureBlack = pureBlack && useDarkTheme
-                ) {
+                IslandLyricsMaterialTheme {
                     ParserRuleScreen(
                         onBack = { finish() }
                     )

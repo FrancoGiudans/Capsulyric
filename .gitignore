@@ -3,6 +3,7 @@
 .gradlew-user-home/
 .idea/
 .vscode/
+.claude/
 /local.properties
 .DS_Store
 /build/

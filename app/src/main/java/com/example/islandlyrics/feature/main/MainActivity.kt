@@ -22,7 +22,7 @@ import com.example.islandlyrics.ui.miuix.LocalMiuixBlurEnabled
 import com.example.islandlyrics.feature.update.material.UpdateDialog
 import com.example.islandlyrics.feature.update.miuix.MiuixUpdateDialog
 import com.example.islandlyrics.feature.main.material.MainScreen
-import com.example.islandlyrics.ui.theme.material.AppTheme
+import com.example.islandlyrics.ui.theme.material.IslandLyricsMaterialTheme
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
@@ -42,6 +42,8 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.fillMaxSize
@@ -236,33 +238,7 @@ class MainActivity : BaseActivity() {
 
     @Composable
     private fun MaterialThemeHost() {
-        val prefs = remember { getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE) }
-        var followSystem by remember { mutableStateOf(prefs.getBoolean("theme_follow_system", true)) }
-        var darkMode by remember { mutableStateOf(prefs.getBoolean("theme_dark_mode", false)) }
-        var pureBlack by remember { mutableStateOf(prefs.getBoolean("theme_pure_black", false)) }
-        var dynamicColor by remember { mutableStateOf(prefs.getBoolean("theme_dynamic_color", false)) }
-
-        DisposableEffect(prefs) {
-            val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
-                when (key) {
-                    "theme_follow_system" -> followSystem = prefs.getBoolean("theme_follow_system", true)
-                    "theme_dark_mode" -> darkMode = prefs.getBoolean("theme_dark_mode", false)
-                    "theme_pure_black" -> pureBlack = prefs.getBoolean("theme_pure_black", false)
-                    "theme_dynamic_color" -> dynamicColor = prefs.getBoolean("theme_dynamic_color", false)
-                }
-            }
-            prefs.registerOnSharedPreferenceChangeListener(listener)
-            onDispose { prefs.unregisterOnSharedPreferenceChangeListener(listener) }
-        }
-
-        val isSystemDark = androidx.compose.foundation.isSystemInDarkTheme()
-        val useDarkTheme = if (followSystem) isSystemDark else darkMode
-
-        AppTheme(
-            darkTheme = useDarkTheme,
-            dynamicColor = dynamicColor,
-            pureBlack = pureBlack && useDarkTheme
-        ) {
+        IslandLyricsMaterialTheme {
             val snackbarHostState = remember { SnackbarHostState() }
             val pendingRelease = pendingUpdateSnackbarReleaseInfo
             LaunchedEffect(pendingRelease) {
@@ -334,14 +310,14 @@ class MainActivity : BaseActivity() {
             modifier = Modifier
                 .fillMaxSize()
                 .background(MaterialTheme.colorScheme.background)
-                .clipToBounds()
         ) {
+            // Content fills the entire screen, including behind the floating nav bar.
             HorizontalPager(
                 state = pagerState,
                 modifier = Modifier.fillMaxSize()
             ) { page ->
-                val homeBottomPadding = if (bottomBarVisible) 104.dp else 24.dp
-                val pageContentBottomPadding = if (bottomBarVisible) 88.dp else 16.dp
+                // Give enough bottom padding so the last item can scroll clear of the nav bar.
+                val bottomPadding = if (bottomBarVisible) 120.dp else 24.dp
                 when (TopLevelDestination.entries[page]) {
                     TopLevelDestination.HOME -> MainScreen(
                         versionText = versionText,
@@ -355,12 +331,12 @@ class MainActivity : BaseActivity() {
                             MediaMonitorService.requestRebind(this@MainActivity)
                             Toast.makeText(this@MainActivity, "Requesting Rebind...", Toast.LENGTH_SHORT).show()
                         },
-                        contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = homeBottomPadding)
+                        extraBottomPadding = bottomPadding
                     )
 
                     TopLevelDestination.PARSER_RULES -> ParserRuleScreen(
                         showBackButton = false,
-                        extraBottomPadding = pageContentBottomPadding
+                        extraBottomPadding = bottomPadding
                     )
 
                     TopLevelDestination.SETTINGS -> SettingsScreen(
@@ -373,18 +349,20 @@ class MainActivity : BaseActivity() {
                             startActivity(Intent(this@MainActivity, CustomSettingsActivity::class.java))
                         },
                         showBackButton = false,
-                        extraBottomPadding = pageContentBottomPadding
+                        extraBottomPadding = bottomPadding
                     )
                 }
             }
 
+            // Floating nav bar — sits above the system navigation bar, overlaid on content.
             AnimatedVisibility(
                 visible = bottomBarVisible,
                 enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
                 exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .padding(bottom = 18.dp)
+                    .navigationBarsPadding()
+                    .padding(bottom = 12.dp)
             ) {
                 MaterialTopLevelNavigationBar(
                     currentDestination = TopLevelDestination.entries[pagerState.currentPage],

@@ -488,11 +488,14 @@ class SuperIslandHandler(
 
             bigIslandArea {
                 applyBigIslandLyrics(
+                    preferMetadataLayout = state.preferMetadataLayout,
                     fullLyric = state.fullLyric,
                     displayLyric = displayLyric,
                     titleWithArtist = titleWithArtist,
                     islandKey = islandKey,
-                    showHighlightColor = showHighlightColor
+                    showHighlightColor = showHighlightColor,
+                    title = state.title,
+                    artist = state.artist
                 )
             }
 
@@ -500,13 +503,13 @@ class SuperIslandHandler(
                         shareData {
                             pic = shareKey
                             title = state.title.ifEmpty { "♪" }
-                            content = state.fullLyric.ifEmpty { "♪" }
+                            content = resolvePrimaryLyricText(state)
                             val shareArtist = if (state.artist.isNotBlank()) state.artist else "未知歌手"
                             val shareSong = state.title.ifEmpty { "未知歌曲" }
                             this.shareContent = when (cachedSuperIslandShareFormat) {
-                                "format_2" -> "${state.fullLyric} -$shareArtist\uff0c$shareSong"
-                                "format_3" -> "${state.fullLyric}\n$shareArtist\uff0c$shareSong"
-                                else -> "${state.fullLyric}\n$shareSong by $shareArtist"
+                                "format_2" -> "${resolvePrimaryLyricText(state)} -$shareArtist\uff0c$shareSong"
+                                "format_3" -> "${resolvePrimaryLyricText(state)}\n$shareArtist\uff0c$shareSong"
+                                else -> "${resolvePrimaryLyricText(state)}\n$shareSong by $shareArtist"
                             }
                         }
                     }
@@ -536,7 +539,9 @@ class SuperIslandHandler(
             return
         }
 
-        val notificationTitle = displayLyric.ifEmpty { state.fullLyric.ifEmpty { state.title.ifEmpty { "Capsulyric" } } }
+        val notificationTitle = sequenceOf(displayLyric, state.fullLyric, state.title)
+            .firstOrNull { !isLyricPlaceholder(it) }
+            ?: "Capsulyric"
         val notificationText = subText.ifEmpty { context.getString(R.string.channel_live_lyrics) }
         val notificationBuilder = createBaseBuilder()
             .setContentTitle(notificationTitle)
@@ -818,7 +823,7 @@ class SuperIslandHandler(
         val iconTintColor = primaryTextColor
         views.setTextViewText(
             R.id.custom_expand_title,
-            state.fullLyric.ifEmpty { state.displayLyric.ifEmpty { "♪" } }
+            resolvePrimaryLyricText(state)
         )
         views.setTextViewText(R.id.custom_expand_subtitle, subText.ifEmpty { context.getString(R.string.channel_live_lyrics) })
         views.setTextColor(R.id.custom_expand_title, primaryTextColor)
@@ -930,7 +935,7 @@ class SuperIslandHandler(
         val secondaryTextColor = android.graphics.Color.parseColor(if (darkMode) "#B3FFFFFF" else "#99000000")
         views.setTextViewText(
             R.id.custom_tiny_title,
-            state.displayLyric.ifEmpty { state.title.ifEmpty { "♪" } }
+            resolveCompactLyricText(state)
         )
         views.setTextViewText(
             R.id.custom_tiny_subtitle,
@@ -1002,6 +1007,22 @@ class SuperIslandHandler(
         }
     }
 
+    private fun isLyricPlaceholder(text: String): Boolean {
+        return text.isBlank() || text.trim() == "♪"
+    }
+
+    private fun resolvePrimaryLyricText(state: UIState): String {
+        return sequenceOf(state.fullLyric, state.displayLyric, state.title)
+            .firstOrNull { !isLyricPlaceholder(it) }
+            ?: "♪"
+    }
+
+    private fun resolveCompactLyricText(state: UIState): String {
+        return sequenceOf(state.displayLyric, state.title)
+            .firstOrNull { !isLyricPlaceholder(it) }
+            ?: "♪"
+    }
+
     private fun clearBitmapCaches() {
         scaledBitmapCache.values.forEach { recycleBitmap(it) }
         progressBitmapCache.values.forEach { recycleBitmap(it) }
@@ -1024,17 +1045,54 @@ class SuperIslandHandler(
     private val standardActionBundle = android.os.Bundle()
 
     private fun com.xzakota.hyper.notification.island.model.BigIslandArea.applyBigIslandLyrics(
+        preferMetadataLayout: Boolean,
         fullLyric: String,
         displayLyric: String,
         titleWithArtist: String,
         islandKey: String?,
-        showHighlightColor: Boolean
+        showHighlightColor: Boolean,
+        title: String = "",
+        artist: String = ""
     ) {
         if (cachedSuperIslandLyricMode == "full") {
-            val lyric = fullLyric.ifBlank { displayLyric }.ifBlank { "♪" }
+            val resolvedLyric = sequenceOf(fullLyric, displayLyric).firstOrNull { !isLyricPlaceholder(it) }.orEmpty()
+            val hasLyric = resolvedLyric.isNotBlank()
             val showLeftCover = cachedSuperIslandFullLyricShowLeftCover && islandKey != null
+
+            if (preferMetadataLayout || !hasLyric) {
+                val leftText = SuperIslandLyricLayout.takeByWeight(
+                    title.ifBlank { "♪" },
+                    if (showLeftCover) cachedSuperIslandLeftWithCoverTextWeight else cachedSuperIslandLeftNoCoverTextWeight
+                ).ifEmpty { "♪" }
+                val rightText = SuperIslandLyricLayout.takeByWeight(
+                    artist.ifBlank { "♪" },
+                    cachedSuperIslandRightTextWeight
+                ).ifEmpty { "♪" }
+
+                imageTextInfoLeft {
+                    type = 1
+                    if (showLeftCover) {
+                        picInfo {
+                            type = 1
+                            pic = islandKey
+                        }
+                    }
+                    textInfo {
+                        this.title = leftText
+                        this.showHighlightColor = showHighlightColor
+                        narrowFont = false
+                    }
+                }
+                this.textInfo = com.xzakota.hyper.notification.island.model.TextInfo().apply {
+                    this.title = rightText
+                    this.showHighlightColor = showHighlightColor
+                    narrowFont = false
+                }
+                return
+            }
+
             val split = SuperIslandLyricLayout.splitFullLyric(
-                text = lyric,
+                text = resolvedLyric,
                 showLeftCover = showLeftCover,
                 leftMaxWeight = if (showLeftCover) {
                     cachedSuperIslandLeftWithCoverTextWeight
@@ -1053,13 +1111,13 @@ class SuperIslandHandler(
                     }
                 }
                 textInfo {
-                    title = split.left.ifEmpty { "♪" }
+                    this.title = split.left.ifEmpty { "♪" }
                     this.showHighlightColor = showHighlightColor
                     narrowFont = false
                 }
             }
             this.textInfo = com.xzakota.hyper.notification.island.model.TextInfo().apply {
-                title = split.right.ifEmpty { "♪" }
+                this.title = split.right.ifEmpty { "♪" }
                 this.showHighlightColor = showHighlightColor
                 narrowFont = false
             }
@@ -1067,6 +1125,37 @@ class SuperIslandHandler(
         }
 
         val showLeftCover = islandKey != null
+        if (preferMetadataLayout) {
+            val leftText = SuperIslandLyricLayout.takeByWeight(
+                title.ifBlank { "♪" },
+                if (showLeftCover) cachedSuperIslandLeftWithCoverTextWeight else cachedSuperIslandLeftNoCoverTextWeight
+            ).ifEmpty { "♪" }
+            val rightText = SuperIslandLyricLayout.takeByWeight(
+                artist.ifBlank { "♪" },
+                cachedSuperIslandRightTextWeight
+            ).ifEmpty { "♪" }
+
+            imageTextInfoLeft {
+                type = 1
+                if (showLeftCover) {
+                    picInfo {
+                        type = 1
+                        pic = islandKey
+                    }
+                }
+                textInfo {
+                    this.title = leftText
+                    this.showHighlightColor = showHighlightColor
+                }
+            }
+            this.textInfo = com.xzakota.hyper.notification.island.model.TextInfo().apply {
+                this.title = rightText
+                this.showHighlightColor = showHighlightColor
+                narrowFont = false
+            }
+            return
+        }
+
         val leftTitle = SuperIslandLyricLayout.takeByWeight(
             titleWithArtist.ifBlank { "♪" },
             if (showLeftCover) cachedSuperIslandLeftWithCoverTextWeight else cachedSuperIslandLeftNoCoverTextWeight
@@ -1085,12 +1174,12 @@ class SuperIslandHandler(
                 }
             }
             textInfo {
-                title = leftTitle
+                this.title = leftTitle
                 this.showHighlightColor = showHighlightColor
             }
         }
         this.textInfo = com.xzakota.hyper.notification.island.model.TextInfo().apply {
-            title = rightLyric
+            this.title = rightLyric
             this.showHighlightColor = showHighlightColor
             narrowFont = false
         }
@@ -1127,7 +1216,7 @@ class SuperIslandHandler(
 
         chatInfo {
             picProfile = avatarKey
-            title = state.fullLyric.ifEmpty { state.title.ifEmpty { "♪" } }
+            title = resolvePrimaryLyricText(state)
             content = subText
             appIconPkg = packageName
         }
@@ -1202,11 +1291,14 @@ class SuperIslandHandler(
 
             bigIslandArea {
                 applyBigIslandLyrics(
+                    preferMetadataLayout = state.preferMetadataLayout,
                     fullLyric = state.fullLyric,
                     displayLyric = displayLyric,
                     titleWithArtist = titleWithArtist,
                     islandKey = islandKey,
-                    showHighlightColor = showHighlightColor
+                    showHighlightColor = showHighlightColor,
+                    title = state.title,
+                    artist = state.artist
                 )
             }
 
@@ -1214,13 +1306,13 @@ class SuperIslandHandler(
                 shareData {
                     pic = shareKey
                     title = state.title.ifEmpty { "♪" }
-                    content = state.fullLyric.ifEmpty { "♪" }
+                    content = resolvePrimaryLyricText(state)
                     val shareArtist = if (state.artist.isNotBlank()) state.artist else "未知歌手"
                     val shareSong = state.title.ifEmpty { "未知歌曲" }
                     this.shareContent = when (cachedSuperIslandShareFormat) {
-                        "format_2" -> "${state.fullLyric} -$shareArtist\uff0c$shareSong"
-                        "format_3" -> "${state.fullLyric}\n$shareArtist\uff0c$shareSong"
-                        else -> "${state.fullLyric}\n$shareSong by $shareArtist"
+                        "format_2" -> "${resolvePrimaryLyricText(state)} -$shareArtist\uff0c$shareSong"
+                        "format_3" -> "${resolvePrimaryLyricText(state)}\n$shareArtist\uff0c$shareSong"
+                        else -> "${resolvePrimaryLyricText(state)}\n$shareSong by $shareArtist"
                     }
                 }
             }

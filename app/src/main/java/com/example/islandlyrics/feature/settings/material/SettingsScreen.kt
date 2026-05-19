@@ -21,6 +21,7 @@ import android.provider.Settings
 import android.widget.Toast
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -34,6 +35,7 @@ import android.content.ClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -49,6 +51,7 @@ import androidx.compose.material.icons.automirrored.filled.Help
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalLayoutDirection
 import com.example.islandlyrics.ui.theme.material.materialPageContainerColor
 import com.example.islandlyrics.ui.theme.material.neutralMaterialTopBarColors
 
@@ -65,8 +68,8 @@ fun SettingsScreen(
     extraBottomPadding: androidx.compose.ui.unit.Dp = 0.dp
 ) {
     val context = LocalContext.current
+    val layoutDirection = LocalLayoutDirection.current
     val prefs = remember { context.getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE) }
-    val scrollState = rememberScrollState()
     var offlineModeEnabled by remember { mutableStateOf(OfflineModeManager.isEnabled(context)) }
 
     // Preferences State
@@ -76,7 +79,7 @@ fun SettingsScreen(
     var followSystem by remember { mutableStateOf(prefs.getBoolean("theme_follow_system", true)) }
     var darkMode by remember { mutableStateOf(prefs.getBoolean("theme_dark_mode", false)) }
     var pureBlack by remember { mutableStateOf(prefs.getBoolean("theme_pure_black", false)) }
-    var dynamicColor by remember { mutableStateOf(prefs.getBoolean("theme_dynamic_color", true)) }
+    var dynamicColor by remember { mutableStateOf(prefs.getBoolean("theme_dynamic_color", false)) }
     var dynamicIconEnabled by remember { mutableStateOf(prefs.getBoolean("dynamic_icon_enabled", false)) }
     var iconStyle by remember { mutableStateOf(prefs.getString("dynamic_icon_style", "classic") ?: "classic") }
     
@@ -147,6 +150,7 @@ fun SettingsScreen(
 
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+        contentWindowInsets = WindowInsets(0),
         topBar = {
             MediumTopAppBar(
                 title = { Text(stringResource(R.string.title_app_settings)) },
@@ -165,237 +169,232 @@ fun SettingsScreen(
         },
         containerColor = materialPageContainerColor()
     ) { paddingValues ->
-        Column(
+        val currentLangCode = prefs.getString("language_code", "")
+        val currentLangText = when (currentLangCode) {
+            "en" -> stringResource(R.string.lang_english)
+            "zh-CN" -> stringResource(R.string.lang_chinese)
+            else -> stringResource(R.string.lang_sys_default)
+        }
+        var recommendMediaAppEnabled by remember { mutableStateOf(prefs.getBoolean("recommend_media_app", true)) }
+        var hideRecentsEnabled by remember { mutableStateOf(prefs.getBoolean("hide_recents_enabled", false)) }
+
+        LazyColumn(
             modifier = Modifier
                 .padding(
-                    start = paddingValues.calculateStartPadding(androidx.compose.ui.unit.LayoutDirection.Ltr),
+                    start = paddingValues.calculateStartPadding(layoutDirection),
                     top = paddingValues.calculateTopPadding(),
-                    end = paddingValues.calculateEndPadding(androidx.compose.ui.unit.LayoutDirection.Ltr),
+                    end = paddingValues.calculateEndPadding(layoutDirection),
                     bottom = 0.dp
                 )
-                .fillMaxSize()
-                .verticalScroll(scrollState)
-                .padding(bottom = extraBottomPadding)
+                .fillMaxSize(),
+            contentPadding = PaddingValues(bottom = 24.dp + extraBottomPadding)
         ) {
-
-                // ═══════════════════════════════════════
-                // ── 1. Personalization ──
-                // ═══════════════════════════════════════
-                SettingsSectionHeader(text = stringResource(R.string.settings_personalization_header))
-
-                SettingsActionItem(
-                    title = stringResource(R.string.page_title_personalization),
-                    icon = Icons.Filled.Palette,
-                    onClick = onOpenCustomSettings
-                )
-
-                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-
-                // ═══════════════════════════════════════
-                // ── 2. General ──
-                // ═══════════════════════════════════════
-                SettingsSectionHeader(text = stringResource(R.string.settings_general_header))
-
-                // Language
-                val currentLangCode = prefs.getString("language_code", "")
-                val currentLangText = when(currentLangCode) {
-                    "en" -> stringResource(R.string.lang_english)
-                    "zh-CN" -> stringResource(R.string.lang_chinese)
-                    else -> stringResource(R.string.lang_sys_default)
-                }
-                Box(modifier = Modifier.fillMaxWidth()) {
-                    SettingsTextItem(
-                        title = stringResource(R.string.settings_language),
-                        value = currentLangText,
-                        onClick = { showLanguageDropdown = true }
+            // ── Personalization ──────────────────────────────────────────────
+            item { SettingsSectionHeader(text = stringResource(R.string.settings_personalization_header)) }
+            item {
+                SettingsCard {
+                    SettingsActionItem(
+                        title = stringResource(R.string.page_title_personalization),
+                        icon = Icons.Filled.Palette,
+                        onClick = onOpenCustomSettings
                     )
-                    Box(modifier = Modifier.matchParentSize().wrapContentSize(Alignment.Center)) {
-                        DropdownMenu(
-                            expanded = showLanguageDropdown,
-                            onDismissRequest = { showLanguageDropdown = false }
-                        ) {
-                            val languages = listOf(
-                                stringResource(R.string.lang_sys_default) to "",
-                                stringResource(R.string.lang_english) to "en",
-                                stringResource(R.string.lang_chinese) to "zh-CN"
-                            )
-                            languages.forEach { (label, code) ->
-                                DropdownMenuItem(
-                                    text = { Text(label) },
-                                    onClick = {
-                                        ThemeHelper.setLanguage(context, code)
-                                        (context as? Activity)?.recreate()
-                                        showLanguageDropdown = false
-                                    }
+                }
+            }
+
+            // ── General ──────────────────────────────────────────────────────
+            item { SettingsSectionHeader(text = stringResource(R.string.settings_general_header)) }
+            item {
+                SettingsCard {
+                    Box(modifier = Modifier.fillMaxWidth()) {
+                        SettingsTextItem(
+                            title = stringResource(R.string.settings_language),
+                            value = currentLangText,
+                            onClick = { showLanguageDropdown = true }
+                        )
+                        Box(modifier = Modifier.matchParentSize().wrapContentSize(Alignment.CenterEnd)) {
+                            DropdownMenu(
+                                expanded = showLanguageDropdown,
+                                onDismissRequest = { showLanguageDropdown = false }
+                            ) {
+                                val languages = listOf(
+                                    stringResource(R.string.lang_sys_default) to "",
+                                    stringResource(R.string.lang_english) to "en",
+                                    stringResource(R.string.lang_chinese) to "zh-CN"
                                 )
+                                languages.forEach { (label, code) ->
+                                    DropdownMenuItem(
+                                        text = { Text(label) },
+                                        onClick = {
+                                            ThemeHelper.setLanguage(context, code)
+                                            (context as? Activity)?.recreate()
+                                            showLanguageDropdown = false
+                                        }
+                                    )
+                                }
                             }
                         }
                     }
+                    SettingsCardDivider()
+                    SettingsSwitchItem(
+                        title = stringResource(R.string.settings_recommend_media_app),
+                        subtitle = stringResource(R.string.settings_recommend_media_app_desc),
+                        checked = recommendMediaAppEnabled,
+                        onCheckedChange = {
+                            recommendMediaAppEnabled = it
+                            prefs.edit().putBoolean("recommend_media_app", it).apply()
+                        }
+                    )
+                    SettingsCardDivider()
+                    SettingsSwitchItem(
+                        title = stringResource(R.string.settings_hide_recents),
+                        subtitle = stringResource(R.string.settings_hide_recents_desc),
+                        checked = hideRecentsEnabled,
+                        onCheckedChange = {
+                            hideRecentsEnabled = it
+                            prefs.edit().putBoolean("hide_recents_enabled", it).apply()
+                        }
+                    )
                 }
+            }
 
-                var recommendMediaAppEnabled by remember { mutableStateOf(prefs.getBoolean("recommend_media_app", true)) }
-                SettingsSwitchItem(
-                    title = stringResource(R.string.settings_recommend_media_app),
-                    subtitle = stringResource(R.string.settings_recommend_media_app_desc),
-                    checked = recommendMediaAppEnabled,
-                    onCheckedChange = {
-                        recommendMediaAppEnabled = it
-                        prefs.edit().putBoolean("recommend_media_app", it).apply()
-                    }
-                )
-
-                var hideRecentsEnabled by remember { mutableStateOf(prefs.getBoolean("hide_recents_enabled", false)) }
-                SettingsSwitchItem(
-                    title = stringResource(R.string.settings_hide_recents),
-                    subtitle = stringResource(R.string.settings_hide_recents_desc),
-                    checked = hideRecentsEnabled,
-                    onCheckedChange = {
-                        hideRecentsEnabled = it
-                        prefs.edit().putBoolean("hide_recents_enabled", it).apply()
-                    }
-                )
-
-                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-
-                // ═══════════════════════════════════════
-                // ── 3. System & Permissions ──
-                // ═══════════════════════════════════════
-                SettingsSectionHeader(text = stringResource(R.string.settings_core_services_header))
-
-                SettingsSwitchItem(
-                    title = stringResource(R.string.perm_read_notif),
-                    subtitle = stringResource(R.string.perm_read_notif_desc),
-                    checked = notificationGranted,
-                    enabled = true,
-                    onClick = {
-                        if (notificationGranted) {
-                            context.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
-                        } else {
-                            showPrivacyDialog = true
+            // ── Services ─────────────────────────────────────────────────────
+            item { SettingsSectionHeader(text = stringResource(R.string.settings_core_services_header)) }
+            item {
+                SettingsCard {
+                    SettingsSwitchItem(
+                        title = stringResource(R.string.perm_read_notif),
+                        subtitle = stringResource(R.string.perm_read_notif_desc),
+                        checked = notificationGranted,
+                        enabled = true,
+                        onClick = {
+                            if (notificationGranted) {
+                                context.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
+                            } else {
+                                showPrivacyDialog = true
+                            }
+                        },
+                        onCheckedChange = {}
+                    )
+                    SettingsCardDivider()
+                    SettingsSwitchItem(
+                        title = stringResource(R.string.perm_post_notif),
+                        subtitle = stringResource(R.string.perm_post_notif_desc),
+                        checked = postNotificationGranted,
+                        enabled = true,
+                        onClick = {
+                            val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                            intent.data = Uri.fromParts("package", context.packageName, null)
+                            context.startActivity(intent)
+                        },
+                        onCheckedChange = {}
+                    )
+                    SettingsCardDivider()
+                    SettingsActionItem(
+                        title = stringResource(R.string.settings_general_battery),
+                        icon = Icons.Filled.MusicNote,
+                        onClick = {
+                            val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
+                            intent.data = Uri.parse("package:${context.packageName}")
+                            context.startActivity(intent)
                         }
-                    },
-                    onCheckedChange = {}
-                )
-
-                SettingsSwitchItem(
-                    title = stringResource(R.string.perm_post_notif),
-                    subtitle = stringResource(R.string.perm_post_notif_desc),
-                    checked = postNotificationGranted,
-                    enabled = true,
-                    onClick = {
-                        val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
-                        intent.data = Uri.fromParts("package", context.packageName, null)
-                        context.startActivity(intent)
-                    },
-                    onCheckedChange = {}
-                )
-
-                SettingsActionItem(
-                    title = stringResource(R.string.settings_general_battery),
-                    icon = Icons.Filled.MusicNote,
-                    onClick = {
-                        val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
-                        intent.data = Uri.parse("package:${context.packageName}")
-                        context.startActivity(intent)
-                    }
-                )
-
-                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-
-                // ═══════════════════════════════════════
-                // ── 5. Help & About ──
-                // ═══════════════════════════════════════
-                SettingsSectionHeader(text = stringResource(R.string.settings_help_about_header))
-
-                SettingsActionItem(
-                    title = stringResource(R.string.faq_title),
-                    icon = Icons.AutoMirrored.Filled.Help,
-                    onClick = {
-                        context.startActivity(Intent(context, FAQActivity::class.java))
-                    }
-                )
-
-                SettingsActionItem(
-                    title = stringResource(R.string.community_about_title),
-                    icon = Icons.Filled.Info,
-                    onClick = { context.startActivity(Intent(context, AboutActivity::class.java)) }
-                )
-
-                Spacer(modifier = Modifier.height(24.dp))
+                    )
+                }
             }
 
-            if (showPrivacyDialog) {
-                AlertDialog(
-                    onDismissRequest = { showPrivacyDialog = false },
-                    title = { Text(stringResource(R.string.dialog_privacy_title)) },
-                    text = { Text(stringResource(R.string.dialog_privacy_message)) },
-                    confirmButton = {
-                        TextButton(onClick = {
-                            showPrivacyDialog = false
-                            context.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
-                        }) {
-                            Text(stringResource(R.string.dialog_btn_understand))
+            // ── Help & About ─────────────────────────────────────────────────
+            item { SettingsSectionHeader(text = stringResource(R.string.settings_help_about_header)) }
+            item {
+                SettingsCard {
+                    SettingsActionItem(
+                        title = stringResource(R.string.faq_title),
+                        icon = Icons.AutoMirrored.Filled.Help,
+                        onClick = {
+                            context.startActivity(Intent(context, FAQActivity::class.java))
                         }
-                    },
-                    dismissButton = {
-                        TextButton(onClick = { showPrivacyDialog = false }) {
-                            Text(stringResource(R.string.dialog_btn_cancel))
-                        }
+                    )
+                    SettingsCardDivider()
+                    SettingsActionItem(
+                        title = stringResource(R.string.community_about_title),
+                        icon = Icons.Filled.Info,
+                        onClick = { context.startActivity(Intent(context, AboutActivity::class.java)) }
+                    )
+                }
+            }
+
+            item { Spacer(modifier = Modifier.height(8.dp)) }
+        }
+
+        if (showPrivacyDialog) {
+            AlertDialog(
+                onDismissRequest = { showPrivacyDialog = false },
+                title = { Text(stringResource(R.string.dialog_privacy_title)) },
+                text = { Text(stringResource(R.string.dialog_privacy_message)) },
+                confirmButton = {
+                    TextButton(onClick = {
+                        showPrivacyDialog = false
+                        context.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
+                    }) {
+                        Text(stringResource(R.string.dialog_btn_understand))
                     }
-                )
-            }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showPrivacyDialog = false }) {
+                        Text(stringResource(R.string.dialog_btn_cancel))
+                    }
+                }
+            )
+        }
 
-            if (showIconStyleDialog) {
-                IconStyleSelectionDialog(
-                    currentStyle = iconStyle,
-                    onStyleSelected = { style ->
-                        iconStyle = style
-                        prefs.edit().putString("dynamic_icon_style", style).apply()
-                        showIconStyleDialog = false
-                    },
-                    onDismiss = { showIconStyleDialog = false }
-                )
-            }
+        if (showIconStyleDialog) {
+            IconStyleSelectionDialog(
+                currentStyle = iconStyle,
+                onStyleSelected = { style ->
+                    iconStyle = style
+                    prefs.edit().putString("dynamic_icon_style", style).apply()
+                    showIconStyleDialog = false
+                },
+                onDismiss = { showIconStyleDialog = false }
+            )
+        }
 
-            if (showActionStyleDialog) {
-                NotificationActionsDialog(
-                    currentStyle = actionStyle,
-                    isHyperOsSupported = isHyperOsSupported,
-                    onStyleSelected = { style ->
-                        actionStyle = style
-                        prefs.edit().putString("notification_actions_style", style).apply()
-                        showActionStyleDialog = false
-                    },
-                    onDismiss = { showActionStyleDialog = false }
-                )
-            }
+        if (showActionStyleDialog) {
+            NotificationActionsDialog(
+                currentStyle = actionStyle,
+                isHyperOsSupported = isHyperOsSupported,
+                onStyleSelected = { style ->
+                    actionStyle = style
+                    prefs.edit().putString("notification_actions_style", style).apply()
+                    showActionStyleDialog = false
+                },
+                onDismiss = { showActionStyleDialog = false }
+            )
+        }
 
-            if (showNotificationClickDialog) {
-                NotificationClickDialog(
-                    currentStyle = notificationClickStyle,
-                    onStyleSelected = { style ->
-                        notificationClickStyle = style
-                        prefs.edit().putString("notification_click_style", style).apply()
-                        showNotificationClickDialog = false
-                    },
-                    onDismiss = { showNotificationClickDialog = false }
-                )
-            }
+        if (showNotificationClickDialog) {
+            NotificationClickDialog(
+                currentStyle = notificationClickStyle,
+                onStyleSelected = { style ->
+                    notificationClickStyle = style
+                    prefs.edit().putString("notification_click_style", style).apply()
+                    showNotificationClickDialog = false
+                },
+                onDismiss = { showNotificationClickDialog = false }
+            )
+        }
 
-            if (showDismissDelayDialog) {
-                DismissDelaySelectionDialog(
-                    currentDelay = dismissDelay,
-                    onDelaySelected = { delay ->
-                        dismissDelay = delay
-                        prefs.edit().putLong("notification_dismiss_delay", delay).apply()
-                        showDismissDelayDialog = false
-                    },
-                    onDismiss = { showDismissDelayDialog = false }
-                )
-            }
-
+        if (showDismissDelayDialog) {
+            DismissDelaySelectionDialog(
+                currentDelay = dismissDelay,
+                onDelaySelected = { delay ->
+                    dismissDelay = delay
+                    prefs.edit().putLong("notification_dismiss_delay", delay).apply()
+                    showDismissDelayDialog = false
+                },
+                onDismiss = { showDismissDelayDialog = false }
+            )
         }
     }
+}
 @Composable
 fun FeedbackSelectionDialog(onDismiss: () -> Unit) {
     val context = LocalContext.current
@@ -732,12 +731,34 @@ fun NotificationActionsDialog(
 
 
 @Composable
+fun SettingsCard(content: @Composable () -> Unit) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 2.dp),
+        shape = MaterialTheme.shapes.extraLarge,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+    ) {
+        content()
+    }
+}
+
+@Composable
+fun SettingsCardDivider() {
+    MaterialHorizontalDivider(
+        modifier = Modifier.padding(horizontal = 16.dp),
+        thickness = 1.dp,
+        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+    )
+}
+
+@Composable
 fun SettingsSectionHeader(text: String, marginTop: androidx.compose.ui.unit.Dp = 8.dp) {
     Text(
         text = text,
+        style = MaterialTheme.typography.labelLarge,
         color = MaterialTheme.colorScheme.primary,
-        fontSize = 14.sp,
-        fontWeight = FontWeight.Bold,
         modifier = Modifier
             .fillMaxWidth()
             .padding(start = 24.dp, top = marginTop, bottom = 8.dp)
@@ -753,39 +774,43 @@ fun SettingsSwitchItem(
     enabled: Boolean = true,
     onClick: (() -> Unit)? = null
 ) {
-    Row(
+    ListItem(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(enabled = enabled) { onClick?.invoke() ?: onCheckedChange(!checked) }
-            .padding(horizontal = 24.dp, vertical = 16.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
+            .clickable(enabled = enabled) { onClick?.invoke() ?: onCheckedChange(!checked) },
+        colors = ListItemDefaults.colors(
+            containerColor = Color.Transparent
+        ),
+        headlineContent = {
             Text(
                 text = title,
-                fontSize = 18.sp,
+                style = MaterialTheme.typography.bodyLarge,
                 color = if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
             )
-            if (subtitle != null) {
+        },
+        supportingContent = subtitle?.let {
+            {
                 Text(
                     text = subtitle,
-                    fontSize = 14.sp,
+                    style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-        }
-        Switch(
-            checked = checked, 
-            onCheckedChange = { 
+        },
+        trailingContent = {
+            Switch(
+                checked = checked,
+                onCheckedChange = {
                 if (onClick != null) {
                     onClick()
                 } else {
                     onCheckedChange(it)
                 }
-            },
-            enabled = enabled
-        )
-    }
+                },
+                enabled = enabled
+            )
+        }
+    )
 }
 
 @Composable
@@ -795,33 +820,37 @@ fun SettingsActionItem(
     summary: String? = null,
     onClick: () -> Unit
 ) {
-    Row(
+    ListItem(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(horizontal = 24.dp, vertical = 16.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
+            .clickable(onClick = onClick),
+        colors = ListItemDefaults.colors(
+            containerColor = Color.Transparent
+        ),
+        leadingContent = {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        },
+        headlineContent = {
             Text(
                 text = title,
-                fontSize = 18.sp,
+                style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurface
             )
-            if (summary != null) {
+        },
+        supportingContent = summary?.let {
+            {
                 Text(
                     text = summary,
-                    fontSize = 14.sp,
+                    style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
-        Icon(
-             imageVector = icon,
-             contentDescription = null,
-             tint = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-    }
+    )
 }
 
 @Composable
@@ -901,28 +930,41 @@ fun CommunityDetailsDialog(
 @Composable
 fun SettingsTextItem(
     title: String,
+    subtitle: String? = null,
     value: String,
     onClick: () -> Unit
 ) {
-    Row(
+    ListItem(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(horizontal = 24.dp, vertical = 16.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            text = title,
-            fontSize = 18.sp,
-            color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.weight(1f)
-        )
-        Text(
-            text = value,
-            fontSize = 14.sp,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-    }
+            .clickable(onClick = onClick),
+        colors = ListItemDefaults.colors(
+            containerColor = Color.Transparent
+        ),
+        headlineContent = {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        },
+        supportingContent = subtitle?.let {
+            {
+                Text(
+                    text = it,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        },
+        trailingContent = {
+            Text(
+                text = value,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    )
 }
 
 @Composable
@@ -931,25 +973,28 @@ fun SettingsValueItem(
     value: String,
     onClick: (() -> Unit)? = null
 ) {
-    Row(
+    ListItem(
         modifier = Modifier
             .fillMaxWidth()
-            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
-            .padding(horizontal = 24.dp, vertical = 16.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
+            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier),
+        colors = ListItemDefaults.colors(
+            containerColor = Color.Transparent
+        ),
+        headlineContent = {
+            Text(
             text = title,
-            fontSize = 18.sp,
-            color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.weight(1f)
-        )
-        Text(
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        },
+        trailingContent = {
+            Text(
             text = value,
-            fontSize = 16.sp,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-    }
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    )
 }
 
 @Composable

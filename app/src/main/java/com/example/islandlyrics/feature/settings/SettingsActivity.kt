@@ -15,7 +15,7 @@ import com.example.islandlyrics.feature.settings.miuix.MiuixSettingsScreen
 import com.example.islandlyrics.ui.miuix.MiuixAppTheme
 import com.example.islandlyrics.feature.update.material.UpdateDialog
 import com.example.islandlyrics.feature.settings.material.SettingsScreen
-import com.example.islandlyrics.ui.theme.material.AppTheme
+import com.example.islandlyrics.ui.theme.material.IslandLyricsMaterialTheme
 import android.widget.Toast
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.*
@@ -62,7 +62,7 @@ class SettingsActivity : BaseActivity() {
                     )
                 }
             } else {
-                AppTheme {
+                IslandLyricsMaterialTheme {
                     SettingsScreen(
                         onCheckUpdate = { performUpdateCheck() },
                         onShowDiagnostics = { showDiagnostics() },
