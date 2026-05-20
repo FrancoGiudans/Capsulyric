@@ -1,6 +1,7 @@
 package com.example.islandlyrics.feature.settings
 
 import com.example.islandlyrics.ui.common.BaseActivity
+import com.example.islandlyrics.ui.common.PredictiveBackActivity
 import android.os.Bundle
 import com.example.islandlyrics.ui.miuix.isMiuixEnabled
 import com.example.islandlyrics.BuildConfig
@@ -44,7 +45,8 @@ class SettingsActivity : BaseActivity() {
         setContent {
             if (isMiuixEnabled(this@SettingsActivity)) {
                 MiuixAppTheme {
-                    MiuixSettingsScreen(
+                    PredictiveBackActivity {
+                        MiuixSettingsScreen(
                         onCheckUpdate = { performUpdateCheck() },
                         onShowDiagnostics = { showDiagnostics() },
                         updateVersionText = version,
@@ -60,10 +62,12 @@ class SettingsActivity : BaseActivity() {
                             AppLogger.getInstance().log("Update", "Ignored version: $version")
                         }
                     )
+                    }
                 }
             } else {
                 IslandLyricsMaterialTheme {
-                    SettingsScreen(
+                    PredictiveBackActivity {
+                        SettingsScreen(
                         onCheckUpdate = { performUpdateCheck() },
                         onShowDiagnostics = { showDiagnostics() },
                         updateVersionText = version,
@@ -83,6 +87,7 @@ class SettingsActivity : BaseActivity() {
                                 AppLogger.getInstance().log("Update", "Ignored version: $version")
                             }
                         )
+                    }
                     }
                 }
             }

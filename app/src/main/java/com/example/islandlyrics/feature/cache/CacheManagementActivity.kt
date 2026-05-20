@@ -5,6 +5,7 @@ import androidx.activity.compose.setContent
 import com.example.islandlyrics.feature.cache.material.CacheManagementScreen
 import com.example.islandlyrics.feature.cache.miuix.MiuixCacheManagementScreen
 import com.example.islandlyrics.ui.common.BaseActivity
+import com.example.islandlyrics.ui.common.PredictiveBackActivity
 import com.example.islandlyrics.ui.miuix.MiuixAppTheme
 import com.example.islandlyrics.ui.miuix.isMiuixEnabled
 import com.example.islandlyrics.ui.theme.material.AppTheme
@@ -15,11 +16,15 @@ class CacheManagementActivity : BaseActivity() {
         setContent {
             if (isMiuixEnabled(this)) {
                 MiuixAppTheme {
-                    MiuixCacheManagementScreen(onBack = { finish() })
+                    PredictiveBackActivity {
+                        MiuixCacheManagementScreen(onBack = { finish() })
+                    }
                 }
             } else {
                 AppTheme {
-                    CacheManagementScreen(onBack = { finish() })
+                    PredictiveBackActivity {
+                        CacheManagementScreen(onBack = { finish() })
+                    }
                 }
             }
         }

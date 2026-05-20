@@ -12,6 +12,7 @@ import com.example.islandlyrics.feature.diagnostics.DiagnosticsActivity
 import com.example.islandlyrics.feature.settings.material.AboutScreen
 import com.example.islandlyrics.feature.settings.miuix.MiuixAboutScreen
 import com.example.islandlyrics.ui.common.BaseActivity
+import com.example.islandlyrics.ui.common.PredictiveBackActivity
 import com.example.islandlyrics.ui.miuix.MiuixAppTheme
 import com.example.islandlyrics.ui.miuix.isMiuixEnabled
 import com.example.islandlyrics.ui.theme.material.IslandLyricsMaterialTheme
@@ -43,7 +44,8 @@ class AboutActivity : BaseActivity() {
         setContent {
             if (isMiuixEnabled(this@AboutActivity)) {
                 MiuixAppTheme {
-                    MiuixAboutScreen(
+                    PredictiveBackActivity {
+                        MiuixAboutScreen(
                         updateVersionText = version,
                         updateCodenameText = codename,
                         updateBuildText = build,
@@ -56,22 +58,25 @@ class AboutActivity : BaseActivity() {
                             AppLogger.getInstance().log("Update", "Ignored version: $version")
                         }
                     )
+                    }
                 }
             } else {
                 IslandLyricsMaterialTheme {
-                    AboutScreen(
-                        updateVersionText = version,
-                        updateCodenameText = codename,
-                        updateBuildText = build,
-                        onShowDiagnostics = { showDiagnostics() },
-                        onCheckUpdate = { performUpdateCheck() },
-                        updateReleaseInfo = updateReleaseInfo,
-                        onUpdateDismiss = { updateReleaseInfo = null },
-                        onUpdateIgnore = { version ->
-                            UpdateChecker.setIgnoredVersion(this@AboutActivity, version)
-                            AppLogger.getInstance().log("Update", "Ignored version: $version")
-                        }
-                    )
+                    PredictiveBackActivity {
+                        AboutScreen(
+                            updateVersionText = version,
+                            updateCodenameText = codename,
+                            updateBuildText = build,
+                            onShowDiagnostics = { showDiagnostics() },
+                            onCheckUpdate = { performUpdateCheck() },
+                            updateReleaseInfo = updateReleaseInfo,
+                            onUpdateDismiss = { updateReleaseInfo = null },
+                            onUpdateIgnore = { version ->
+                                UpdateChecker.setIgnoredVersion(this@AboutActivity, version)
+                                AppLogger.getInstance().log("Update", "Ignored version: $version")
+                            }
+                        )
+                    }
                 }
             }
         }

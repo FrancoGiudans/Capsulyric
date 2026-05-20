@@ -10,6 +10,7 @@ import com.example.islandlyrics.data.ParserRuleHelper
 import com.example.islandlyrics.feature.parserrule.material.ParserRuleSourceConfigScreen
 import com.example.islandlyrics.feature.parserrule.miuix.MiuixParserRuleSourceConfigScreen
 import com.example.islandlyrics.ui.common.BaseActivity
+import com.example.islandlyrics.ui.common.PredictiveBackActivity
 import com.example.islandlyrics.ui.miuix.MiuixAppTheme
 import com.example.islandlyrics.ui.miuix.isMiuixEnabled
 import com.example.islandlyrics.ui.theme.material.IslandLyricsMaterialTheme
@@ -39,21 +40,25 @@ class ParserRuleSourceConfigActivity : BaseActivity() {
         setContent {
             if (isMiuixEnabled(this@ParserRuleSourceConfigActivity)) {
                 MiuixAppTheme {
-                    MiuixParserRuleSourceConfigScreen(
-                        configType = configType,
-                        initialRule = initialRule,
-                        onBack = { finish() },
-                        onStateChange = ::saveSourceState
-                    )
+                    PredictiveBackActivity {
+                        MiuixParserRuleSourceConfigScreen(
+                            configType = configType,
+                            initialRule = initialRule,
+                            onBack = { finish() },
+                            onStateChange = ::saveSourceState
+                        )
+                    }
                 }
             } else {
                 IslandLyricsMaterialTheme {
-                    ParserRuleSourceConfigScreen(
-                        configType = configType,
-                        initialRule = initialRule,
-                        onBack = { finish() },
-                        onStateChange = ::saveSourceState
-                    )
+                    PredictiveBackActivity {
+                        ParserRuleSourceConfigScreen(
+                            configType = configType,
+                            initialRule = initialRule,
+                            onBack = { finish() },
+                            onStateChange = ::saveSourceState
+                        )
+                    }
                 }
             }
         }

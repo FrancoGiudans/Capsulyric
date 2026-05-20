@@ -1,6 +1,7 @@
 package com.example.islandlyrics.feature.customsettings
 
 import com.example.islandlyrics.ui.common.BaseActivity
+import com.example.islandlyrics.ui.common.PredictiveBackActivity
 import android.os.Bundle
 import com.example.islandlyrics.ui.miuix.isMiuixEnabled
 import com.example.islandlyrics.core.update.UpdateChecker
@@ -18,23 +19,27 @@ class CustomSettingsActivity : BaseActivity() {
         setContent {
             if (isMiuixEnabled(this@CustomSettingsActivity)) {
                 MiuixAppTheme {
-                    MiuixCustomSettingsScreen(
-                        onBack = { finish() },
-                        onCheckUpdate = { /* No-op */ },
-                        onShowLogs = { /* No-op */ },
-                        updateVersionText = "",
-                        updateBuildText = ""
-                    )
+                    PredictiveBackActivity {
+                        MiuixCustomSettingsScreen(
+                            onBack = { finish() },
+                            onCheckUpdate = { /* No-op */ },
+                            onShowLogs = { /* No-op */ },
+                            updateVersionText = "",
+                            updateBuildText = ""
+                        )
+                    }
                 }
             } else {
                 IslandLyricsMaterialTheme {
-                    CustomSettingsScreen(
-                        onBack = { finish() },
-                        onCheckUpdate = { /* No-op or reuse UpdateChecker if needed */ },
-                        onShowLogs = { /* No-op */ },
-                        updateVersionText = "", // Not used in this screen
-                        updateBuildText = "" // Not used in this screen
-                    )
+                    PredictiveBackActivity {
+                        CustomSettingsScreen(
+                            onBack = { finish() },
+                            onCheckUpdate = { /* No-op or reuse UpdateChecker if needed */ },
+                            onShowLogs = { /* No-op */ },
+                            updateVersionText = "", // Not used in this screen
+                            updateBuildText = "" // Not used in this screen
+                        )
+                    }
                 }
             }
         }

@@ -16,7 +16,11 @@ import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
+import android.os.Build
+import androidx.activity.ComponentActivity
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.navigationevent.NavigationEventDispatcher
+import androidx.navigationevent.OnBackInvokedDefaultInput
 import androidx.navigationevent.compose.LocalNavigationEventDispatcherOwner
 import top.yukonga.miuix.kmp.theme.ColorSchemeMode
 import top.yukonga.miuix.kmp.theme.Colors
@@ -111,7 +115,19 @@ fun MiuixAppTheme(
         }
     }
 
-    val navigationEventDispatcher = remember { NavigationEventDispatcher() }
+    val activity = context as? ComponentActivity
+    val navigationEventDispatcher = remember {
+        NavigationEventDispatcher { (activity as? Activity)?.finish() }
+    }
+    DisposableEffect(navigationEventDispatcher, activity) {
+        if (activity != null && Build.VERSION.SDK_INT >= 33) {
+            val input = OnBackInvokedDefaultInput(activity.onBackInvokedDispatcher)
+            navigationEventDispatcher.addInput(input)
+            onDispose { navigationEventDispatcher.removeInput(input) }
+        } else {
+            onDispose { }
+        }
+    }
     val navigationEventDispatcherOwner = remember(navigationEventDispatcher) {
         object : androidx.navigationevent.NavigationEventDispatcherOwner {
             override val navigationEventDispatcher = navigationEventDispatcher

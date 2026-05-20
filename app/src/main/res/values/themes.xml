@@ -35,8 +35,6 @@
         <item name="colorSurfaceContainerLow">#F2F3FA</item>
         <item name="colorSurfaceContainerLowest">#FFFFFF</item>
         <item name="android:colorBackground">#F8F9FF</item>
-        <item name="android:windowBackground">@android:color/transparent</item>
-
         <!-- Outline -->
         <item name="colorOutline">#D9D9D9</item>
         <item name="colorOutlineVariant">#E0E0E0</item>
@@ -46,6 +44,11 @@
         <item name="colorOnSurfaceInverse">#FFFFFF</item>
         <item name="colorPrimaryInverse">#277AF7</item>
 
+    </style>
+
+    <style name="Theme.IslandLyrics.Translucent" parent="Theme.IslandLyrics">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
     </style>
 
     <style name="Theme.IslandLyrics.Transparent" parent="Theme.Material3.DayNight.NoActionBar">

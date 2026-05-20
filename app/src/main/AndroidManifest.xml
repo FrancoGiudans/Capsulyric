@@ -33,34 +33,42 @@
         <activity
             android:name="com.example.islandlyrics.feature.settings.SettingsActivity"
             android:label="@string/title_app_settings"
+            android:theme="@style/Theme.IslandLyrics.Translucent"
             android:parentActivityName="com.example.islandlyrics.feature.main.MainActivity" />
         <activity
             android:name="com.example.islandlyrics.feature.settings.AboutActivity"
             android:label="@string/community_about_title"
+            android:theme="@style/Theme.IslandLyrics.Translucent"
             android:parentActivityName="com.example.islandlyrics.feature.settings.SettingsActivity" />
         <activity
             android:name="com.example.islandlyrics.feature.customsettings.CustomSettingsActivity"
             android:label="@string/page_title_personalization"
+            android:theme="@style/Theme.IslandLyrics.Translucent"
             android:parentActivityName="com.example.islandlyrics.feature.main.MainActivity" />
         <activity
             android:name="com.example.islandlyrics.feature.cache.CacheManagementActivity"
             android:label="@string/title_cache_management"
+            android:theme="@style/Theme.IslandLyrics.Translucent"
             android:parentActivityName="com.example.islandlyrics.feature.settings.SettingsActivity" />
         <activity
             android:name="com.example.islandlyrics.feature.faq.FAQActivity"
             android:label="@string/faq_title"
+            android:theme="@style/Theme.IslandLyrics.Translucent"
             android:exported="false" />
         <activity
             android:name="com.example.islandlyrics.feature.parserrule.ParserRuleActivity"
             android:label="@string/title_parser_whitelist_manager"
+            android:theme="@style/Theme.IslandLyrics.Translucent"
             android:parentActivityName="com.example.islandlyrics.feature.main.MainActivity" />
         <activity
             android:name="com.example.islandlyrics.feature.parserrule.ParserRuleEditorActivity"
             android:label="@string/parser_edit"
+            android:theme="@style/Theme.IslandLyrics.Translucent"
             android:parentActivityName="com.example.islandlyrics.feature.parserrule.ParserRuleActivity" />
         <activity
             android:name="com.example.islandlyrics.feature.parserrule.ParserRuleSourceConfigActivity"
             android:label="@string/parser_source_config_title"
+            android:theme="@style/Theme.IslandLyrics.Translucent"
             android:parentActivityName="com.example.islandlyrics.feature.parserrule.ParserRuleEditorActivity" />
 
         <service 
@@ -83,16 +91,20 @@
 
         <activity android:name="com.example.islandlyrics.feature.diagnostics.DiagnosticsActivity"
                   android:label="@string/title_diagnostics"
+                  android:theme="@style/Theme.IslandLyrics.Translucent"
                   android:parentActivityName="com.example.islandlyrics.feature.settings.SettingsActivity" />
         <activity android:name="com.example.islandlyrics.feature.lab.LabActivity"
                   android:label="@string/title_lab"
+                  android:theme="@style/Theme.IslandLyrics.Translucent"
                   android:parentActivityName="com.example.islandlyrics.feature.diagnostics.DiagnosticsActivity" />
         <activity android:name="com.example.islandlyrics.feature.onlinelyricdebug.OnlineLyricDebugActivity"
                   android:label="在线歌词调试"
+                  android:theme="@style/Theme.IslandLyrics.Translucent"
                   android:parentActivityName="com.example.islandlyrics.feature.diagnostics.DiagnosticsActivity" />
 
         <activity android:name="com.example.islandlyrics.feature.logviewer.LogViewerActivity"
                   android:label="Developer Logs"
+                  android:theme="@style/Theme.IslandLyrics.Translucent"
                   android:parentActivityName="com.example.islandlyrics.feature.main.MainActivity" />
 
         <activity android:name="com.example.islandlyrics.feature.mediacontrol.MediaControlActivity"

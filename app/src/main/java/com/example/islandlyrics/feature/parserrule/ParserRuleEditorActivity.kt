@@ -6,6 +6,7 @@ import com.example.islandlyrics.data.ParserRuleHelper
 import com.example.islandlyrics.feature.parserrule.material.ParserRuleEditorScreen
 import com.example.islandlyrics.feature.parserrule.miuix.MiuixParserRuleEditorScreen
 import com.example.islandlyrics.ui.common.BaseActivity
+import com.example.islandlyrics.ui.common.PredictiveBackActivity
 import com.example.islandlyrics.ui.miuix.MiuixAppTheme
 import com.example.islandlyrics.ui.miuix.isMiuixEnabled
 import com.example.islandlyrics.ui.theme.material.IslandLyricsMaterialTheme
@@ -27,7 +28,8 @@ class ParserRuleEditorActivity : BaseActivity() {
         setContent {
             if (isMiuixEnabled(this@ParserRuleEditorActivity)) {
                 MiuixAppTheme {
-                    MiuixParserRuleEditorScreen(
+                    PredictiveBackActivity {
+                        MiuixParserRuleEditorScreen(
                         initialRule = initialRule,
                         isNewRule = packageName.isNullOrBlank() || ParserRuleHelper.getRuleForPackage(this@ParserRuleEditorActivity, packageName) == null,
                         onBack = { finish() },
@@ -50,10 +52,12 @@ class ParserRuleEditorActivity : BaseActivity() {
                             finish()
                         }
                     )
+                    }
                 }
             } else {
                 IslandLyricsMaterialTheme {
-                    ParserRuleEditorScreen(
+                    PredictiveBackActivity {
+                        ParserRuleEditorScreen(
                         initialRule = initialRule,
                         isNewRule = packageName.isNullOrBlank() || ParserRuleHelper.getRuleForPackage(this@ParserRuleEditorActivity, packageName) == null,
                         onBack = { finish() },
@@ -76,6 +80,7 @@ class ParserRuleEditorActivity : BaseActivity() {
                             finish()
                         }
                     )
+                    }
                 }
             }
         }

@@ -1,18 +1,14 @@
 package com.example.islandlyrics.ui.common
 
 import android.app.ActivityManager
-import com.example.islandlyrics.R
 import com.example.islandlyrics.core.theme.ThemeHelper
 import com.example.islandlyrics.service.MediaMonitorService
 import android.content.res.Configuration
 import android.graphics.Color
 import android.os.Bundle
-import androidx.appcompat.app.AppCompatActivity
+import androidx.activity.ComponentActivity
 
-/**
- * Base Activity to handle common UI logic like Pure Black mode.
- */
-open class BaseActivity : AppCompatActivity() {
+open class BaseActivity : ComponentActivity() {
 
     companion object {
         /** Tracks the number of started (visible) activities across the app. */
@@ -65,7 +61,7 @@ open class BaseActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        
+
         // Check for changes that require recreation (Dynamic Color)
         val newDynamicColor = ThemeHelper.isDynamicColorEnabled(this)
         if (newDynamicColor != currentDynamicColorEnabled) {
@@ -93,34 +89,12 @@ open class BaseActivity : AppCompatActivity() {
 
     private fun updatePureBlackMode() {
         val isPureBlack = ThemeHelper.isPureBlackEnabled(this)
-        
-        // Check if we are physically in dark mode
+
         val nightModeFlags = resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK
         val isDarkMode = nightModeFlags == Configuration.UI_MODE_NIGHT_YES
-        
+
         if (isPureBlack && isDarkMode) {
             window.decorView.setBackgroundColor(Color.BLACK)
-            window.setBackgroundDrawableResource(android.R.color.black)
-        } else {
-            // Revert to default theme background (using colorSurface to match default layout look)
-            val typedValue = android.util.TypedValue()
-            // Try colorSurface first, fallback to windowBackground
-            val attr = com.google.android.material.R.attr.colorSurface
-            if (theme.resolveAttribute(attr, typedValue, true)) {
-                if (typedValue.resourceId != 0) {
-                   window.setBackgroundDrawableResource(typedValue.resourceId)
-                } else {
-                   window.decorView.setBackgroundColor(typedValue.data)
-                }
-            } else {
-                // Fallback to windowBackground
-                theme.resolveAttribute(android.R.attr.windowBackground, typedValue, true)
-                if (typedValue.resourceId != 0) {
-                    window.setBackgroundDrawableResource(typedValue.resourceId)
-                } else {
-                    window.decorView.setBackgroundColor(typedValue.data)
-                }
-            }
         }
     }
 }

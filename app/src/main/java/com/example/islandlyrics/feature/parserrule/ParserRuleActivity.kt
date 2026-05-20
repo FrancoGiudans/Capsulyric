@@ -1,6 +1,7 @@
 package com.example.islandlyrics.feature.parserrule
 
 import com.example.islandlyrics.ui.common.BaseActivity
+import com.example.islandlyrics.ui.common.PredictiveBackActivity
 import androidx.activity.compose.setContent
 import com.example.islandlyrics.ui.miuix.isMiuixEnabled
 import com.example.islandlyrics.feature.parserrule.miuix.MiuixParserRuleScreen
@@ -13,19 +14,19 @@ class ParserRuleActivity : BaseActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        
+
         setContent {
             if (isMiuixEnabled(this@ParserRuleActivity)) {
                 MiuixAppTheme {
-                    MiuixParserRuleScreen(
-                        onBack = { finish() }
-                    )
+                    PredictiveBackActivity {
+                        MiuixParserRuleScreen(onBack = { finish() })
+                    }
                 }
             } else {
                 IslandLyricsMaterialTheme {
-                    ParserRuleScreen(
-                        onBack = { finish() }
-                    )
+                    PredictiveBackActivity {
+                        ParserRuleScreen(onBack = { finish() })
+                    }
                 }
             }
         }
