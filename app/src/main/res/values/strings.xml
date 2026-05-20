@@ -55,8 +55,14 @@
     <string name="settings_theme_dynamic_color">Dynamic Colors</string>
     <string name="settings_theme_dynamic_color_desc">Use wallpaper colors (Material You)</string>
     <string name="settings_theme_custom_color">Custom Theme Color</string>
+    <string name="settings_theme_color_source">Theme Color Source</string>
+    <string name="settings_theme_color_source_default">Default Theme Color</string>
+    <string name="settings_theme_color_source_custom">Custom Theme Color</string>
+    <string name="settings_theme_color_edit_hint">Tap Edit before changing the palette to avoid accidental touches.</string>
+    <string name="settings_theme_color_editing_hint">Changes preview live here until you tap Apply. Cancel restores the previous color.</string>
     <string name="settings_theme_custom_color_global_tint">Global Tint</string>
     <string name="settings_theme_custom_color_global_tint_desc">Use Monet-based color generation to tint the whole app.</string>
+    <string name="apply">Apply</string>
 
     <!-- Dialogs -->
     <string name="dialog_add_whitelist">Add Whitelist</string>

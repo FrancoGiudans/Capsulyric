@@ -1,12 +1,12 @@
 package com.example.islandlyrics.ui.common
 
-import android.app.ActivityManager
-import com.example.islandlyrics.core.theme.ThemeHelper
-import com.example.islandlyrics.service.MediaMonitorService
 import android.content.res.Configuration
 import android.graphics.Color
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import com.example.islandlyrics.core.theme.ThemeHelper
+import com.example.islandlyrics.service.MediaMonitorService
+import android.app.ActivityManager
 
 open class BaseActivity : ComponentActivity() {
 
@@ -15,14 +15,12 @@ open class BaseActivity : ComponentActivity() {
         private var startedActivityCount = 0
     }
 
-    private var currentDynamicColorEnabled: Boolean = false
     private var currentPureBlackEnabled: Boolean = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         // Track initial state
-        currentDynamicColorEnabled = ThemeHelper.isDynamicColorEnabled(this)
         currentPureBlackEnabled = ThemeHelper.isPureBlackEnabled(this)
 
         // Enforce Edge-to-Edge globally to prevent layout jumps/trembling during state changes
@@ -62,14 +60,6 @@ open class BaseActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
 
-        // Check for changes that require recreation (Dynamic Color)
-        val newDynamicColor = ThemeHelper.isDynamicColorEnabled(this)
-        if (newDynamicColor != currentDynamicColorEnabled) {
-            // Log for debugging (if possible)
-            recreate()
-            return
-        }
-
         // Check for Pure Black changes (can be applied without recreate)
         updatePureBlackMode()
     }
@@ -98,4 +88,3 @@ open class BaseActivity : ComponentActivity() {
         }
     }
 }
-

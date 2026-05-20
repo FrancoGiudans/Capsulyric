@@ -21,8 +21,12 @@ object ThemeHelper {
     private const val KEY_MATERIAL_DARK_MODE = "material_theme_dark_mode"
     private const val KEY_MATERIAL_PURE_BLACK = "material_theme_pure_black"
     private const val KEY_MATERIAL_DYNAMIC_COLOR = "material_theme_dynamic_color"
+    private const val KEY_MATERIAL_THEME_COLOR_SOURCE = "material_theme_color_source"
     private const val KEY_MATERIAL_CUSTOM_COLOR = "material_theme_custom_color"
     private const val KEY_MATERIAL_CUSTOM_COLOR_GLOBAL_TINT = "material_theme_custom_color_global_tint"
+
+    const val MATERIAL_THEME_COLOR_SOURCE_DEFAULT = "default"
+    const val MATERIAL_THEME_COLOR_SOURCE_CUSTOM = "custom"
 
     fun applyTheme(context: Context) {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -137,14 +141,16 @@ object ThemeHelper {
         return readIntWithFallback(prefs, KEY_MATERIAL_CUSTOM_COLOR, KEY_MIUIX_CUSTOM_COLOR, 0xFF3482FF.toInt())
     }
 
+    fun getMaterialThemeColorSource(context: Context): String {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val stored = prefs.getString(KEY_MATERIAL_THEME_COLOR_SOURCE, MATERIAL_THEME_COLOR_SOURCE_DEFAULT)
+        return stored.takeIf { it == MATERIAL_THEME_COLOR_SOURCE_DEFAULT || it == MATERIAL_THEME_COLOR_SOURCE_CUSTOM }
+            ?: MATERIAL_THEME_COLOR_SOURCE_DEFAULT
+    }
+
     fun isMaterialCustomColorGlobalTintEnabled(context: Context): Boolean {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        return readBooleanWithFallback(
-            prefs,
-            KEY_MATERIAL_CUSTOM_COLOR_GLOBAL_TINT,
-            KEY_MIUIX_CUSTOM_COLOR_GLOBAL_TINT,
-            false
-        )
+        return getMaterialThemeColorSource(context) == MATERIAL_THEME_COLOR_SOURCE_CUSTOM
     }
 
     fun setMaterialCustomColor(context: Context, argb: Int) {
@@ -158,6 +164,18 @@ object ThemeHelper {
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             .edit()
             .putBoolean(KEY_MATERIAL_CUSTOM_COLOR_GLOBAL_TINT, enabled)
+            .apply()
+    }
+
+    fun setMaterialThemeColorSource(context: Context, source: String) {
+        val normalized = when (source) {
+            MATERIAL_THEME_COLOR_SOURCE_CUSTOM -> MATERIAL_THEME_COLOR_SOURCE_CUSTOM
+            else -> MATERIAL_THEME_COLOR_SOURCE_DEFAULT
+        }
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .edit()
+            .putString(KEY_MATERIAL_THEME_COLOR_SOURCE, normalized)
+            .putBoolean(KEY_MATERIAL_CUSTOM_COLOR_GLOBAL_TINT, normalized == MATERIAL_THEME_COLOR_SOURCE_CUSTOM)
             .apply()
     }
 

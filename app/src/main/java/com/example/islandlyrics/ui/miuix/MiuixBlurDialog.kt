@@ -1,5 +1,7 @@
 package com.example.islandlyrics.ui.miuix
 
+import android.os.Build
+import android.view.View
 import androidx.compose.foundation.border
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -15,29 +17,41 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
-import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
+import androidx.navigationevent.NavigationEventDispatcher
+import androidx.navigationevent.NavigationEventInfo
+import androidx.navigationevent.NavigationEventTransitionState
+import androidx.navigationevent.OnBackInvokedDefaultInput
+import androidx.navigationevent.compose.LocalNavigationEventDispatcherOwner
+import androidx.navigationevent.compose.NavigationBackHandler
+import androidx.navigationevent.compose.rememberNavigationEventState
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.blur.BlendColorEntry
 import top.yukonga.miuix.kmp.blur.BlurColors
 import top.yukonga.miuix.kmp.theme.MiuixTheme
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 
@@ -99,12 +113,52 @@ fun MiuixBlurDialog(
     Dialog(
         onDismissRequest = { currentOnDismissRequest?.invoke() },
         properties = DialogProperties(
-            dismissOnBackPress = true,
+            dismissOnBackPress = false,
             dismissOnClickOutside = true,
             usePlatformDefaultWidth = false,
             decorFitsSystemWindows = false
         )
     ) {
+        val dialogView = LocalView.current
+        val dialogDispatcher = remember { NavigationEventDispatcher() }
+        val dialogDispatcherOwner = remember(dialogDispatcher) {
+            object : androidx.navigationevent.NavigationEventDispatcherOwner {
+                override val navigationEventDispatcher = dialogDispatcher
+            }
+        }
+        DisposableEffect(dialogView) {
+            if (Build.VERSION.SDK_INT >= 33) {
+                val backDispatcher = dialogView.findOnBackInvokedDispatcher()
+                if (backDispatcher != null) {
+                    val input = OnBackInvokedDefaultInput(backDispatcher)
+                    dialogDispatcher.addInput(input)
+                    onDispose { dialogDispatcher.removeInput(input) }
+                } else {
+                    onDispose { }
+                }
+            } else {
+                onDispose { }
+            }
+        }
+
+        val navEventState = rememberNavigationEventState(NavigationEventInfo.None)
+        val currentDismiss by rememberUpdatedState(currentOnDismissRequest)
+
+        CompositionLocalProvider(
+            LocalNavigationEventDispatcherOwner provides dialogDispatcherOwner
+        ) {
+            NavigationBackHandler(
+                state = navEventState,
+                isBackEnabled = true,
+                onBackCompleted = { currentDismiss?.invoke() }
+            )
+        }
+
+        val transitionState = navEventState.transitionState
+        val progressInProgress = transitionState as? NavigationEventTransitionState.InProgress
+        val gestureProgress = progressInProgress?.latestEvent?.progress ?: 0f
+        val isGestureActive = progressInProgress != null
+        val translationYPx = with(LocalDensity.current) { 200.dp.toPx() } * gestureProgress
         Box(modifier = Modifier.fillMaxSize()) {
             if (enableWindowDim) {
                 Box(
@@ -140,6 +194,12 @@ fun MiuixBlurDialog(
                     .widthIn(max = 420.dp)
                     .fillMaxWidth()
                     .then(modifier)
+                    .graphicsLayer {
+                        if (isGestureActive) {
+                            this.translationY = translationYPx
+                            this.alpha = 1f - gestureProgress * 0.3f
+                        }
+                    }
                     .pointerInput(Unit) {
                         detectTapGestures { }
                     }

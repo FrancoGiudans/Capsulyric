@@ -20,14 +20,18 @@ import android.net.Uri
 import android.os.Build
 import android.provider.Settings
 import android.widget.Toast
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
@@ -39,11 +43,14 @@ import androidx.core.content.ContextCompat
 import androidx.compose.ui.Alignment
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.basic.*
+import top.yukonga.miuix.kmp.basic.ButtonDefaults
 import top.yukonga.miuix.kmp.preference.OverlayDropdownPreference as SuperDropdown
 import top.yukonga.miuix.kmp.preference.SwitchPreference as SuperSwitch
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.MiuixPopupUtils.Companion.MiuixPopupHost
 import com.example.islandlyrics.ui.miuix.*
+
+private const val MIUIX_THEME_COLOR_SOURCE_PREF_KEY = "miuix_theme_color_source"
 
 @Composable
 fun MiuixCustomSettingsScreen(
@@ -106,10 +113,24 @@ fun MiuixCustomSettingsScreen(
     var superIslandShareEnabled by remember { mutableStateOf(prefs.getBoolean("super_island_share_enabled", true)) }
     var superIslandShareFormat by remember { mutableStateOf(prefs.getString("super_island_share_format", "format_1") ?: "format_1") }
     var miuixEnabled by remember { mutableStateOf(prefs.getBoolean("ui_use_miuix", true)) }
-
+    var predictiveBackEnabled by remember { mutableStateOf(prefs.getBoolean("predictive_back_enabled", true)) }
     var monetEnabled by remember { mutableStateOf(prefs.getBoolean("theme_dynamic_color", true)) }
     var customThemeGlobalTintEnabled by remember {
         mutableStateOf(prefs.getBoolean("theme_custom_color_global_tint", false))
+    }
+    var miuixThemeColorEditing by remember { mutableStateOf(false) }
+    var miuixThemeColorSnapshot by remember { mutableStateOf(customThemeColor) }
+    var miuixThemeColorSource by remember {
+        mutableStateOf(
+            prefs.getString(
+                MIUIX_THEME_COLOR_SOURCE_PREF_KEY,
+                if (customThemeGlobalTintEnabled) {
+                    ThemeHelper.MATERIAL_THEME_COLOR_SOURCE_CUSTOM
+                } else {
+                    ThemeHelper.MATERIAL_THEME_COLOR_SOURCE_DEFAULT
+                }
+            ) ?: ThemeHelper.MATERIAL_THEME_COLOR_SOURCE_DEFAULT
+        )
     }
     var cardBlurEnabled by remember { mutableStateOf(prefs.getBoolean("card_blur_enabled", false)) }
     var blockXmsfMode by remember { mutableStateOf(XmsfBypassMode.read(prefs)) }
@@ -189,60 +210,73 @@ fun MiuixCustomSettingsScreen(
         }
     }
 
-    MiuixBlurScaffold(
-        topBar = {
-            MiuixBlurTopAppBar(
-                title = stringResource(R.string.page_title_personalization),
-                largeTitle = stringResource(R.string.page_title_personalization),
-                scrollBehavior = scrollBehavior,
-                navigationIcon = {
-                    IconButton(onClick = onBack, modifier = Modifier.padding(start = 12.dp)) {
-                        androidx.compose.material3.Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
-                            tint = MiuixTheme.colorScheme.onBackground
-                        )
+    val previewController = rememberIslandLyricsMiuixThemeController(
+        dynamicColor = monetEnabled,
+        followSystem = followSystem,
+        forceDark = darkMode,
+        customThemeColorArgb = customThemeColor.toArgb(),
+        customThemeColorSource = miuixThemeColorSource,
+        customThemeGlobalTintEnabled = customThemeGlobalTintEnabled
+    )
+
+    MiuixTheme(controller = previewController) {
+        MiuixBlurScaffold(
+            topBar = {
+                MiuixBlurTopAppBar(
+                    title = stringResource(R.string.page_title_personalization),
+                    largeTitle = stringResource(R.string.page_title_personalization),
+                    scrollBehavior = scrollBehavior,
+                    navigationIcon = {
+                        androidx.compose.material3.IconButton(
+                            onClick = onBack,
+                            modifier = Modifier.padding(start = 12.dp)
+                        ) {
+                            androidx.compose.material3.Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "Back",
+                                tint = MiuixTheme.colorScheme.onBackground
+                            )
+                        }
+                    },
+                    bottomContent = {
+                        Column {
+                            Spacer(modifier = Modifier.height(12.dp))
+                            TabRowWithContour(
+                                tabs = tabs,
+                                selectedTabIndex = pagerState.currentPage,
+                                onTabSelected = { index ->
+                                    scope.launch { pagerState.animateScrollToPage(index) }
+                                },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 12.dp),
+                                colors = TabRowDefaults.tabRowColors(
+                                    backgroundColor = MiuixTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f),
+                                    contentColor = MiuixTheme.colorScheme.onSurfaceVariantActions,
+                                    selectedBackgroundColor = MiuixTheme.colorScheme.onBackground.copy(alpha = 0.12f),
+                                    selectedContentColor = MiuixTheme.colorScheme.onBackground
+                                ),
+                                maxWidth = 96.dp
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                        }
                     }
-                },
-                bottomContent = {
-                    Column {
-                        Spacer(modifier = Modifier.height(12.dp))
-                        TabRowWithContour(
-                            tabs = tabs,
-                            selectedTabIndex = pagerState.currentPage,
-                            onTabSelected = { index ->
-                                scope.launch { pagerState.animateScrollToPage(index) }
-                            },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 12.dp),
-                            colors = TabRowDefaults.tabRowColors(
-                                backgroundColor = MiuixTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f),
-                                contentColor = MiuixTheme.colorScheme.onSurfaceVariantActions,
-                                selectedBackgroundColor = MiuixTheme.colorScheme.onBackground.copy(alpha = 0.12f),
-                                selectedContentColor = MiuixTheme.colorScheme.onBackground
-                            ),
-                            maxWidth = 96.dp
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                    }
-                }
-            )
-        },
-    ) { padding ->
-        HorizontalPager(
-            state = pagerState,
-            modifier = Modifier.fillMaxSize()
-        ) { page ->
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .miuixPageScroll(scrollBehavior),
-                contentPadding = PaddingValues(
-                    top = padding.calculateTopPadding() + 12.dp,
-                    bottom = padding.calculateBottomPadding() + 24.dp
                 )
-            ) {
+            },
+        ) { padding ->
+            HorizontalPager(
+                state = pagerState,
+                modifier = Modifier.fillMaxSize()
+            ) { page ->
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .miuixPageScroll(scrollBehavior),
+                    contentPadding = PaddingValues(
+                        top = padding.calculateTopPadding() + 12.dp,
+                        bottom = padding.calculateBottomPadding() + 24.dp
+                    )
+                ) {
                 when (page) {
                         0 -> { // Capsule
                             item {
@@ -737,48 +771,153 @@ fun MiuixCustomSettingsScreen(
                                         }
                                     )
                                     SuperSwitch(
+                                        title = stringResource(R.string.settings_predictive_back),
+                                        summary = stringResource(R.string.settings_predictive_back_desc),
+                                        checked = predictiveBackEnabled,
+                                        onCheckedChange = {
+                                            predictiveBackEnabled = it
+                                            prefs.edit().putBoolean("predictive_back_enabled", it).apply()
+                                        }
+                                    )
+                                    SuperSwitch(
                                         title = stringResource(R.string.settings_theme_dynamic_color),
                                         summary = stringResource(R.string.settings_theme_dynamic_color_desc),
                                         checked = monetEnabled,
                                         onCheckedChange = { enabled ->
                                             monetEnabled = enabled
                                             ThemeHelper.setDynamicColor(context, enabled)
-                                            // Restart to apply new ThemeController mode
-                                            val restartIntent = Intent(context, MainActivity::class.java)
-                                            restartIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
-                                            context.startActivity(restartIntent)
-                                            (context as? Activity)?.finish()
                                         }
                                     )
                                     if (!monetEnabled) {
-                                        Column(
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .padding(horizontal = 16.dp, vertical = 10.dp)
-                                        ) {
-                                            Text(
-                                                text = stringResource(R.string.settings_theme_custom_color),
-                                                color = MiuixTheme.colorScheme.onSurface,
-                                                fontSize = 15.dp.value.sp
-                                            )
-                                            Spacer(modifier = Modifier.height(12.dp))
-                                            ColorPalette(
-                                                color = customThemeColor,
-                                                onColorChanged = { color ->
-                                                    customThemeColor = color
-                                                    prefs.edit().putInt("theme_custom_color", color.toArgb()).apply()
+                                        val themeColorSources = listOf(
+                                            ThemeHelper.MATERIAL_THEME_COLOR_SOURCE_DEFAULT,
+                                            ThemeHelper.MATERIAL_THEME_COLOR_SOURCE_CUSTOM
+                                        )
+                                        val themeColorSourceLabels = listOf(
+                                            stringResource(R.string.settings_theme_color_source_default),
+                                            stringResource(R.string.settings_theme_color_source_custom)
+                                        )
+                                        val currentThemeColorSourceIndex =
+                                            themeColorSources.indexOf(miuixThemeColorSource).takeIf { it >= 0 } ?: 0
+
+                                        SuperDropdown(
+                                            title = stringResource(R.string.settings_theme_color_source),
+                                            items = themeColorSourceLabels,
+                                            selectedIndex = currentThemeColorSourceIndex,
+                                            onSelectedIndexChange = { index ->
+                                                if (miuixThemeColorEditing) {
+                                                    customThemeColor = miuixThemeColorSnapshot
+                                                    miuixThemeColorEditing = false
+                                                }
+                                                miuixThemeColorSource = themeColorSources[index]
+                                                prefs.edit()
+                                                    .putString(MIUIX_THEME_COLOR_SOURCE_PREF_KEY, miuixThemeColorSource)
+                                                    .apply()
+                                            }
+                                        )
+
+                                        if (miuixThemeColorSource == ThemeHelper.MATERIAL_THEME_COLOR_SOURCE_CUSTOM) {
+                                            Column(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .padding(horizontal = 16.dp, vertical = 10.dp)
+                                            ) {
+                                                Text(
+                                                    text = stringResource(R.string.settings_theme_custom_color),
+                                                    color = MiuixTheme.colorScheme.onSurface,
+                                                    fontSize = 15.dp.value.sp
+                                                )
+                                                Spacer(modifier = Modifier.height(12.dp))
+                                                Box(
+                                                    modifier = Modifier
+                                                        .fillMaxWidth()
+                                                        .height(14.dp)
+                                                        .clip(RoundedCornerShape(7.dp))
+                                                        .background(customThemeColor)
+                                                )
+                                                Spacer(modifier = Modifier.height(6.dp))
+                                                if (miuixThemeColorEditing) {
+                                                    ColorPalette(
+                                                        color = customThemeColor,
+                                                        onColorChanged = { color ->
+                                                            customThemeColor = color
+                                                        }
+                                                    )
+                                                    Spacer(modifier = Modifier.height(10.dp))
+                                                    Row(
+                                                        modifier = Modifier.fillMaxWidth(),
+                                                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                                        verticalAlignment = Alignment.CenterVertically
+                                                    ) {
+                                                        top.yukonga.miuix.kmp.basic.TextButton(
+                                                            text = stringResource(R.string.dialog_btn_cancel),
+                                                            onClick = {
+                                                                customThemeColor = miuixThemeColorSnapshot
+                                                                miuixThemeColorEditing = false
+                                                            },
+                                                            modifier = Modifier.weight(1f)
+                                                        )
+                                                        top.yukonga.miuix.kmp.basic.TextButton(
+                                                            text = stringResource(R.string.settings_theme_color_source_default),
+                                                            onClick = {
+                                                                customThemeColor = miuixThemeColorSnapshot
+                                                                miuixThemeColorSource = ThemeHelper.MATERIAL_THEME_COLOR_SOURCE_DEFAULT
+                                                                prefs.edit()
+                                                                    .putString(
+                                                                        MIUIX_THEME_COLOR_SOURCE_PREF_KEY,
+                                                                        ThemeHelper.MATERIAL_THEME_COLOR_SOURCE_DEFAULT
+                                                                    )
+                                                                    .apply()
+                                                                miuixThemeColorEditing = false
+                                                            },
+                                                            modifier = Modifier.weight(1f)
+                                                        )
+                                                        top.yukonga.miuix.kmp.basic.TextButton(
+                                                            text = stringResource(R.string.apply),
+                                                            onClick = {
+                                                                prefs.edit()
+                                                                    .putInt("theme_custom_color", customThemeColor.toArgb())
+                                                                    .apply()
+                                                                miuixThemeColorEditing = false
+                                                            },
+                                                            modifier = Modifier.weight(1f),
+                                                            colors = ButtonDefaults.textButtonColorsPrimary()
+                                                        )
+                                                    }
+                                                } else {
+                                                    top.yukonga.miuix.kmp.basic.TextButton(
+                                                        text = stringResource(R.string.parser_edit),
+                                                        onClick = {
+                                                            miuixThemeColorSnapshot = customThemeColor
+                                                            miuixThemeColorEditing = true
+                                                        },
+                                                        modifier = Modifier.align(Alignment.End),
+                                                        colors = ButtonDefaults.textButtonColorsPrimary()
+                                                    )
+                                                }
+                                                Spacer(modifier = Modifier.height(6.dp))
+                                                Text(
+                                                    text = stringResource(
+                                                        if (miuixThemeColorEditing) {
+                                                            R.string.settings_theme_color_editing_hint
+                                                        } else {
+                                                            R.string.settings_theme_color_edit_hint
+                                                        }
+                                                    ),
+                                                    color = MiuixTheme.colorScheme.onSurfaceSecondary,
+                                                    fontSize = 13.dp.value.sp
+                                                )
+                                            }
+                                            SuperSwitch(
+                                                title = stringResource(R.string.settings_theme_custom_color_global_tint),
+                                                summary = stringResource(R.string.settings_theme_custom_color_global_tint_desc),
+                                                checked = customThemeGlobalTintEnabled,
+                                                onCheckedChange = { enabled ->
+                                                    customThemeGlobalTintEnabled = enabled
+                                                    prefs.edit().putBoolean("theme_custom_color_global_tint", enabled).apply()
                                                 }
                                             )
                                         }
-                                        SuperSwitch(
-                                            title = stringResource(R.string.settings_theme_custom_color_global_tint),
-                                            summary = stringResource(R.string.settings_theme_custom_color_global_tint_desc),
-                                            checked = customThemeGlobalTintEnabled,
-                                            onCheckedChange = { enabled ->
-                                                customThemeGlobalTintEnabled = enabled
-                                                prefs.edit().putBoolean("theme_custom_color_global_tint", enabled).apply()
-                                            }
-                                        )
                                     }
                                     SuperSwitch(
                                         title = stringResource(R.string.settings_card_blur),
@@ -796,6 +935,7 @@ fun MiuixCustomSettingsScreen(
                         item {
                             MiuixFloatingLyricsSettingsSubScreen(prefs, scope)
                         }
+                    }
                     }
                 }
             }

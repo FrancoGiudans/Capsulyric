@@ -102,10 +102,10 @@ fun CustomSettingsScreen(
     var darkMode by remember { mutableStateOf(ThemeHelper.getDarkMode(context)) }
     var pureBlack by remember { mutableStateOf(ThemeHelper.getMaterialPureBlack(context)) }
     var dynamicColor by remember { mutableStateOf(ThemeHelper.getMaterialDynamicColor(context)) }
+    var materialThemeColorSource by remember { mutableStateOf(ThemeHelper.getMaterialThemeColorSource(context)) }
     var customThemeColor by remember { mutableStateOf(Color(ThemeHelper.getMaterialCustomColor(context))) }
-    var customThemeGlobalTintEnabled by remember {
-        mutableStateOf(ThemeHelper.isMaterialCustomColorGlobalTintEnabled(context))
-    }
+    var materialThemeColorEditing by remember { mutableStateOf(false) }
+    var materialThemeColorSnapshot by remember { mutableStateOf(customThemeColor) }
     var iconStyle by remember { mutableStateOf(prefs.getString("dynamic_icon_style", "disabled") ?: "disabled") }
     
     // Dialog State
@@ -116,6 +116,7 @@ fun CustomSettingsScreen(
     var showLyricTextDisplayModeDropdown by remember { mutableStateOf(false) }
     var showSuperIslandLyricModeDropdown by remember { mutableStateOf(false) }
     var showSuperIslandColorSourceDropdown by remember { mutableStateOf(false) }
+    var showThemeColorSourceDropdown by remember { mutableStateOf(false) }
     var showPrivacyDialog by remember { mutableStateOf(false) }
 
     // Notification Action Style State
@@ -164,6 +165,7 @@ fun CustomSettingsScreen(
     var superIslandShareEnabled by remember { mutableStateOf(prefs.getBoolean("super_island_share_enabled", true)) }
     var superIslandShareFormat by remember { mutableStateOf(prefs.getString("super_island_share_format", "format_1") ?: "format_1") }
     var miuixEnabled by remember { mutableStateOf(prefs.getBoolean("ui_use_miuix", true)) }
+    var predictiveBackEnabled by remember { mutableStateOf(prefs.getBoolean("predictive_back_enabled", true)) }
 
 
     // Dialog State for UI Style
@@ -303,7 +305,7 @@ fun CustomSettingsScreen(
         dynamicColor = dynamicColor,
         pureBlack = pureBlack && useDarkTheme,
         customThemeColorArgb = customThemeColor.toArgb(),
-        customThemeGlobalTintEnabled = customThemeGlobalTintEnabled
+        customThemeGlobalTintEnabled = materialThemeColorSource == ThemeHelper.MATERIAL_THEME_COLOR_SOURCE_CUSTOM
     ) {
         Scaffold(
             topBar = {
@@ -1102,22 +1104,91 @@ fun CustomSettingsScreen(
                                     onCheckedChange = {
                                         dynamicColor = it
                                         ThemeHelper.setDynamicColor(context, it)
-                                        if (!it) {
-                                            customThemeGlobalTintEnabled = true
-                                            ThemeHelper.setMaterialCustomColorGlobalTint(context, true)
-                                        }
                                     }
                                 )
                                 if (!dynamicColor) {
-                                    SettingsCardDivider()
-                                    MaterialThemeColorSection(
-                                        color = customThemeColor,
-                                        onColorChanged = { color ->
-                                            customThemeColor = color
-                                            ThemeHelper.setMaterialCustomColor(context, color.toArgb())
-                                        }
+                                    val themeColorSources = listOf(
+                                        ThemeHelper.MATERIAL_THEME_COLOR_SOURCE_DEFAULT,
+                                        ThemeHelper.MATERIAL_THEME_COLOR_SOURCE_CUSTOM
                                     )
+                                    val themeColorSourceLabels = listOf(
+                                        stringResource(R.string.settings_theme_color_source_default),
+                                        stringResource(R.string.settings_theme_color_source_custom)
+                                    )
+                                    val currentThemeColorSourceIndex =
+                                        themeColorSources.indexOf(materialThemeColorSource).takeIf { it >= 0 } ?: 0
+
+                                    SettingsCardDivider()
+                                    Box(modifier = Modifier.fillMaxWidth()) {
+                                        SettingsTextItem(
+                                            title = stringResource(R.string.settings_theme_color_source),
+                                            value = themeColorSourceLabels[currentThemeColorSourceIndex],
+                                            onClick = { showThemeColorSourceDropdown = true }
+                                        )
+                                        Box(modifier = Modifier.matchParentSize().wrapContentSize(Alignment.Center)) {
+                                            DropdownMenu(
+                                                expanded = showThemeColorSourceDropdown,
+                                                onDismissRequest = { showThemeColorSourceDropdown = false }
+                                            ) {
+                                                themeColorSourceLabels.forEachIndexed { index, label ->
+                                                    DropdownMenuItem(
+                                                        text = { Text(label) },
+                                                        onClick = {
+                                                            if (materialThemeColorEditing) {
+                                                                customThemeColor = materialThemeColorSnapshot
+                                                                materialThemeColorEditing = false
+                                                            }
+                                                            materialThemeColorSource = themeColorSources[index]
+                                                            ThemeHelper.setMaterialThemeColorSource(context, materialThemeColorSource)
+                                                            showThemeColorSourceDropdown = false
+                                                        }
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                    if (materialThemeColorSource == ThemeHelper.MATERIAL_THEME_COLOR_SOURCE_CUSTOM) {
+                                        SettingsCardDivider()
+                                        MaterialThemeColorSection(
+                                            color = customThemeColor,
+                                            isEditing = materialThemeColorEditing,
+                                            onStartEditing = {
+                                                materialThemeColorSnapshot = customThemeColor
+                                                materialThemeColorEditing = true
+                                            },
+                                            onColorChanged = { color ->
+                                                customThemeColor = color
+                                            },
+                                            onApply = {
+                                                ThemeHelper.setMaterialCustomColor(context, customThemeColor.toArgb())
+                                                materialThemeColorEditing = false
+                                            },
+                                            onCancel = {
+                                                customThemeColor = materialThemeColorSnapshot
+                                                materialThemeColorEditing = false
+                                            },
+                                            onUseDefault = {
+                                                customThemeColor = materialThemeColorSnapshot
+                                                materialThemeColorSource = ThemeHelper.MATERIAL_THEME_COLOR_SOURCE_DEFAULT
+                                                ThemeHelper.setMaterialThemeColorSource(
+                                                    context,
+                                                    ThemeHelper.MATERIAL_THEME_COLOR_SOURCE_DEFAULT
+                                                )
+                                                materialThemeColorEditing = false
+                                            }
+                                        )
+                                    }
                                 }
+                                SettingsCardDivider()
+                                SettingsSwitchItem(
+                                    title = stringResource(R.string.settings_predictive_back),
+                                    subtitle = stringResource(R.string.settings_predictive_back_desc),
+                                    checked = predictiveBackEnabled,
+                                    onCheckedChange = {
+                                        predictiveBackEnabled = it
+                                        prefs.edit().putBoolean("predictive_back_enabled", it).apply()
+                                    }
+                                )
                             }
                         }
                         floatingLyricsPageIndex -> {
@@ -1188,7 +1259,12 @@ private fun MaterialSuperIslandTextLimitSlider(
 @Composable
 private fun MaterialThemeColorSection(
     color: Color,
-    onColorChanged: (Color) -> Unit
+    isEditing: Boolean,
+    onStartEditing: () -> Unit,
+    onColorChanged: (Color) -> Unit,
+    onApply: () -> Unit,
+    onCancel: () -> Unit,
+    onUseDefault: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -1201,12 +1277,52 @@ private fun MaterialThemeColorSection(
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.SemiBold
         )
-        MaterialLiteralColorPalette(
-            color = color,
-            onColorChanged = onColorChanged
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(14.dp)
+                .clip(RoundedCornerShape(7.dp))
+                .background(color)
         )
+        if (isEditing) {
+            MaterialLiteralColorPalette(
+                color = color,
+                onColorChanged = onColorChanged
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                TextButton(onClick = onCancel) {
+                    Text(stringResource(R.string.dialog_btn_cancel))
+                }
+                OutlinedButton(onClick = onUseDefault) {
+                    Text(stringResource(R.string.settings_theme_color_source_default))
+                }
+                FilledTonalButton(
+                    onClick = onApply,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(stringResource(R.string.apply))
+                }
+            }
+        } else {
+            OutlinedButton(
+                onClick = onStartEditing,
+                modifier = Modifier.align(Alignment.End)
+            ) {
+                Text(stringResource(R.string.parser_edit))
+            }
+        }
         Text(
-            text = stringResource(R.string.settings_theme_custom_color_global_tint_desc),
+            text = stringResource(
+                if (isEditing) {
+                    R.string.settings_theme_color_editing_hint
+                } else {
+                    R.string.settings_theme_color_edit_hint
+                }
+            ),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )

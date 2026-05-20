@@ -55,8 +55,14 @@
     <string name="settings_theme_dynamic_color">动态取色</string>
     <string name="settings_theme_dynamic_color_desc">使用壁纸颜色 (Material You)</string>
     <string name="settings_theme_custom_color">自选主题色</string>
+    <string name="settings_theme_color_source">主题色来源</string>
+    <string name="settings_theme_color_source_default">默认主题色</string>
+    <string name="settings_theme_color_source_custom">自选主题色</string>
+    <string name="settings_theme_color_edit_hint">先点“编辑”再改调色盘，避免误触。</string>
+    <string name="settings_theme_color_editing_hint">这里会实时预览颜色，点“应用”后保存，点“取消”恢复之前的颜色。</string>
     <string name="settings_theme_custom_color_global_tint">全局着色</string>
     <string name="settings_theme_custom_color_global_tint_desc">基于莫奈取色，为应用整体着色。</string>
+    <string name="apply">应用</string>
 
     <!-- Dialogs -->
     <string name="dialog_add_whitelist">添加白名单</string>

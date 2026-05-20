@@ -1,6 +1,7 @@
 package com.example.islandlyrics.ui.common
 
 import android.app.Activity
+import android.content.Context
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
@@ -35,6 +36,15 @@ fun PredictiveBackActivity(
 ) {
     val context = LocalContext.current
     val activity = context as? Activity
+    val prefs = remember {
+        context.getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE)
+    }
+    val enabled = remember { prefs.getBoolean("predictive_back_enabled", true) }
+
+    if (!enabled) {
+        content()
+        return
+    }
     val navEventState = rememberNavigationEventState(NavigationEventInfo.None)
     val scope = rememberCoroutineScope()
     val exitAnimatable = remember { Animatable(0f) }

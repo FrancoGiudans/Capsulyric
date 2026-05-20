@@ -3,6 +3,7 @@ package com.example.islandlyrics.ui.miuix
 import android.app.Activity
 import android.content.Context
 import android.content.SharedPreferences
+import com.example.islandlyrics.core.theme.ThemeHelper
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -31,6 +32,8 @@ import top.yukonga.miuix.kmp.theme.darkColorScheme
 import top.yukonga.miuix.kmp.theme.lightColorScheme
 // Remove library-layer blur import and use app-layer one implicitly or explicitly
 
+private const val MIUIX_THEME_COLOR_SOURCE_PREF_KEY = "miuix_theme_color_source"
+
 /**
  * Miuix-styled app theme wrapper.
  * Supports Monet dynamic color via ThemeController, driven by existing pref keys:
@@ -50,11 +53,21 @@ fun MiuixAppTheme(
     var forceDark by remember { mutableStateOf(prefs.getBoolean("theme_dark_mode", false)) }
     var cardBlurEnabled by remember { mutableStateOf(prefs.getBoolean("card_blur_enabled", false)) }
     var customThemeColorArgb by remember { mutableStateOf(prefs.getInt("theme_custom_color", 0xFF3482FF.toInt())) }
+    var customThemeColorSource by remember {
+        mutableStateOf(
+            prefs.getString(
+                MIUIX_THEME_COLOR_SOURCE_PREF_KEY,
+                if (prefs.getBoolean("theme_custom_color_global_tint", false)) {
+                    ThemeHelper.MATERIAL_THEME_COLOR_SOURCE_CUSTOM
+                } else {
+                    ThemeHelper.MATERIAL_THEME_COLOR_SOURCE_DEFAULT
+                }
+            ) ?: ThemeHelper.MATERIAL_THEME_COLOR_SOURCE_DEFAULT
+        )
+    }
     var customThemeGlobalTintEnabled by remember {
         mutableStateOf(prefs.getBoolean("theme_custom_color_global_tint", false))
     }
-    val isSystemDark    = isSystemInDarkTheme()
-
     DisposableEffect(prefs) {
         val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
             when (key) {
@@ -63,7 +76,15 @@ fun MiuixAppTheme(
                 "theme_dark_mode" -> forceDark = prefs.getBoolean("theme_dark_mode", false)
                 "card_blur_enabled" -> cardBlurEnabled = prefs.getBoolean("card_blur_enabled", false)
                 "theme_custom_color" -> customThemeColorArgb = prefs.getInt("theme_custom_color", 0xFF3482FF.toInt())
-                "theme_custom_color_global_tint" -> {
+                MIUIX_THEME_COLOR_SOURCE_PREF_KEY, "theme_custom_color_global_tint" -> {
+                    customThemeColorSource = prefs.getString(
+                        MIUIX_THEME_COLOR_SOURCE_PREF_KEY,
+                        if (prefs.getBoolean("theme_custom_color_global_tint", false)) {
+                            ThemeHelper.MATERIAL_THEME_COLOR_SOURCE_CUSTOM
+                        } else {
+                            ThemeHelper.MATERIAL_THEME_COLOR_SOURCE_DEFAULT
+                        }
+                    ) ?: ThemeHelper.MATERIAL_THEME_COLOR_SOURCE_DEFAULT
                     customThemeGlobalTintEnabled = prefs.getBoolean("theme_custom_color_global_tint", false)
                 }
             }
@@ -74,38 +95,15 @@ fun MiuixAppTheme(
         }
     }
 
-    // Determine whether we should be in dark mode right now
-    val isDark = if (followSystem) isSystemDark else forceDark
-
-    // Pick the appropriate ColorSchemeMode
-    val colorSchemeMode = when {
-        isDynamicColor && followSystem  -> ColorSchemeMode.MonetSystem
-        isDynamicColor && !isDark       -> ColorSchemeMode.MonetLight
-        isDynamicColor                  -> ColorSchemeMode.MonetDark
-        customThemeGlobalTintEnabled && followSystem -> ColorSchemeMode.MonetSystem
-        customThemeGlobalTintEnabled && !isDark      -> ColorSchemeMode.MonetLight
-        customThemeGlobalTintEnabled                  -> ColorSchemeMode.MonetDark
-        followSystem                    -> ColorSchemeMode.System
-        forceDark                       -> ColorSchemeMode.Dark
-        else                            -> ColorSchemeMode.Light
-    }
-
-    val customThemeColor = remember(customThemeColorArgb) { Color(customThemeColorArgb) }
-    val customLightColors = remember(customThemeColorArgb) {
-        buildCustomLightColors(customThemeColor)
-    }
-    val customDarkColors = remember(customThemeColorArgb) {
-        buildCustomDarkColors(customThemeColor)
-    }
-    val controller = remember(colorSchemeMode, customThemeColorArgb, isDynamicColor, customThemeGlobalTintEnabled) {
-        ThemeController(
-            colorSchemeMode = colorSchemeMode,
-            lightColors = customLightColors,
-            darkColors = customDarkColors,
-            keyColor = if (customThemeGlobalTintEnabled && !isDynamicColor) customThemeColor else null,
-            paletteStyle = ThemePaletteStyle.TonalSpot
-        )
-    }
+    val isDark = if (followSystem) isSystemInDarkTheme() else forceDark
+    val controller = rememberIslandLyricsMiuixThemeController(
+        dynamicColor = isDynamicColor,
+        followSystem = followSystem,
+        forceDark = forceDark,
+        customThemeColorArgb = customThemeColorArgb,
+        customThemeColorSource = customThemeColorSource,
+        customThemeGlobalTintEnabled = customThemeGlobalTintEnabled
+    )
 
     val view = LocalView.current
     if (!view.isInEditMode) {
@@ -152,6 +150,58 @@ fun MiuixAppTheme(
                 content()
             }
         }
+    }
+}
+
+@Composable
+fun rememberIslandLyricsMiuixThemeController(
+    dynamicColor: Boolean,
+    followSystem: Boolean,
+    forceDark: Boolean,
+    customThemeColorArgb: Int,
+    customThemeColorSource: String,
+    customThemeGlobalTintEnabled: Boolean
+): ThemeController {
+    val isSystemDark = isSystemInDarkTheme()
+    val isDark = if (followSystem) isSystemDark else forceDark
+    val useCustomThemeColor =
+        customThemeColorSource == ThemeHelper.MATERIAL_THEME_COLOR_SOURCE_CUSTOM && !dynamicColor
+    val useCustomThemeGlobalTint = useCustomThemeColor && customThemeGlobalTintEnabled
+
+    val colorSchemeMode = when {
+        dynamicColor && followSystem -> ColorSchemeMode.MonetSystem
+        dynamicColor && !isDark -> ColorSchemeMode.MonetLight
+        dynamicColor -> ColorSchemeMode.MonetDark
+        useCustomThemeGlobalTint && followSystem -> ColorSchemeMode.MonetSystem
+        useCustomThemeGlobalTint && !isDark -> ColorSchemeMode.MonetLight
+        useCustomThemeGlobalTint -> ColorSchemeMode.MonetDark
+        followSystem -> ColorSchemeMode.System
+        forceDark -> ColorSchemeMode.Dark
+        else -> ColorSchemeMode.Light
+    }
+
+    val customThemeColor = remember(customThemeColorArgb) { Color(customThemeColorArgb) }
+    val themeLightColors = remember(customThemeColorArgb, useCustomThemeColor) {
+        if (useCustomThemeColor) buildCustomLightColors(customThemeColor) else lightColorScheme()
+    }
+    val themeDarkColors = remember(customThemeColorArgb, useCustomThemeColor) {
+        if (useCustomThemeColor) buildCustomDarkColors(customThemeColor) else darkColorScheme()
+    }
+
+    return remember(
+        colorSchemeMode,
+        customThemeColorArgb,
+        dynamicColor,
+        customThemeColorSource,
+        customThemeGlobalTintEnabled
+    ) {
+        ThemeController(
+            colorSchemeMode = colorSchemeMode,
+            lightColors = themeLightColors,
+            darkColors = themeDarkColors,
+            keyColor = if (useCustomThemeGlobalTint) customThemeColor else null,
+            paletteStyle = ThemePaletteStyle.TonalSpot
+        )
     }
 }
 
