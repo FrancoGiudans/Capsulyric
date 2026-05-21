@@ -190,7 +190,7 @@ fun MiuixTopLevelFloatingNavigationBar(
     val floatingHighlight = remember(isDark) {
         if (isDark) Highlight.GlassStrokeMiddleDark else Highlight.GlassStrokeMiddleLight
     }
-    val navModifier = if (shouldUseBlur && backdrop != null) {
+    val navModifier = if (shouldUseBlur) {
         Modifier.textureBlur(
             backdrop = backdrop,
             shape = navShape,

@@ -207,13 +207,18 @@ fun MiuixLocalLyricDirectoryScreen(
         ) {
             Column(modifier = Modifier.fillMaxWidth()) {
                 val meta = editTarget?.metadata
-                if (meta?.title != null || meta?.artist != null) {
-                    Text(
-                        text = stringResource(R.string.local_lyric_metadata_hint,
-                            meta?.artist.orEmpty(), meta?.title.orEmpty()),
-                        color = MiuixTheme.colorScheme.onSurfaceSecondary,
-                        modifier = Modifier.padding(bottom = 12.dp)
-                    )
+                meta?.let { metadata ->
+                    if (metadata.title != null || metadata.artist != null) {
+                        Text(
+                            text = stringResource(
+                                R.string.local_lyric_metadata_hint,
+                                metadata.artist.orEmpty(),
+                                metadata.title.orEmpty()
+                            ),
+                            color = MiuixTheme.colorScheme.onSurfaceSecondary,
+                            modifier = Modifier.padding(bottom = 12.dp)
+                        )
+                    }
                 }
                 InputField(
                     query = editTitle,

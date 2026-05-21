@@ -171,13 +171,18 @@ fun LocalLyricDirectoryScreen(
                 text = {
                     Column {
                         val meta = editTarget?.metadata
-                        if (meta?.title != null || meta?.artist != null) {
-                            Text(
-                                stringResource(R.string.local_lyric_metadata_hint,
-                                    meta?.artist.orEmpty(), meta?.title.orEmpty()),
-                                style = MaterialTheme.typography.bodySmall
-                            )
-                            Spacer(modifier = Modifier.height(12.dp))
+                        meta?.let { metadata ->
+                            if (metadata.title != null || metadata.artist != null) {
+                                Text(
+                                    stringResource(
+                                        R.string.local_lyric_metadata_hint,
+                                        metadata.artist.orEmpty(),
+                                        metadata.title.orEmpty()
+                                    ),
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                                Spacer(modifier = Modifier.height(12.dp))
+                            }
                         }
                         OutlinedTextField(
                             value = editTitle,

@@ -200,19 +200,17 @@ jobs:
           echo "> [!WARNING]" > canary_body.md
           echo "> **实验性版本 (Experimental Build)**" >> canary_body.md
           echo ">" >> canary_body.md
-          echo "> 这是从 \`${BRANCH_NAME}\` 分支自动生成的 Experiment 滚动构建。可能包含不稳定的代码或破坏性变更。请谨慎使用。" >> canary_body.md
+          echo "> 这是自动生成的 Experiment 滚动构建。可能包含不稳定的代码或破坏性变更。" >> canary_body.md
           echo ">" >> canary_body.md
-          echo "> This is a rolling Experiment release generated automatically from the \`${BRANCH_NAME}\` branch. It may contain unstable code or breaking changes. Use with caution." >> canary_body.md
+          echo "> This is a rolling Experiment release generated automatically. It may contain unstable code or breaking changes." >> canary_body.md
           echo "" >> canary_body.md
-          echo "## Experiment Build (Rolling Canary Tag)" >> canary_body.md
+          echo "## Experiment Build" >> canary_body.md
           echo "- **Codename:** \`${CODENAME}\`" >> canary_body.md
           echo "- **Version:** \`${DISPLAY_VERSION}\`" >> canary_body.md
-          echo "- **Tag:** \`${TAG_NAME}\`" >> canary_body.md
-          echo "- **Build Number:** \`_C${COUNT}\`" >> canary_body.md
           echo "- **Latest Commit:** \`${SHORT_SHA}\`" >> canary_body.md
           echo "- **Branch:** \`${BRANCH_NAME}\`" >> canary_body.md
           echo "" >> canary_body.md
-          echo "### Changes since last Experiment / Canary release" >> canary_body.md
+          echo "### Changes since last Experiment release" >> canary_body.md
           
           if [ -z "$PREV_SHA" ]; then
             echo "First Experiment build recorded." >> canary_body.md
@@ -227,8 +225,8 @@ jobs:
           fi
           echo "" >> canary_body.md
           echo "> [!NOTE]" >> canary_body.md
-          echo "> 本次发布的 MD5 校验文件已同步上传，请在下载后进行校验。" >> canary_body.md
-          echo "> The MD5 checksum file for this release has been uploaded. Please verify after downloading." >> canary_body.md
+          echo "> 本次发布的 MD5 校验文件已同步上传。" >> canary_body.md
+          echo "> The MD5 checksum file for this release has been uploaded." >> canary_body.md
           echo "" >> canary_body.md
           echo "---" >> canary_body.md
 
