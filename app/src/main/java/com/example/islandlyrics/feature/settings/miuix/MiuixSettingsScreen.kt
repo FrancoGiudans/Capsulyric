@@ -85,6 +85,7 @@ fun MiuixSettingsScreen(
     var dynamicIconEnabled by remember { mutableStateOf(prefs.getBoolean("dynamic_icon_enabled", false)) }
 
     val showPrivacyDialog = remember { mutableStateOf(false) }
+    val localLyricDirState = rememberLocalLyricDirectoriesState()
     val showFeedbackPopup = remember { mutableStateOf(false) }
 
     MiuixBackHandler(enabled = showPrivacyDialog.value) { showPrivacyDialog.value = false }
@@ -298,6 +299,11 @@ fun MiuixSettingsScreen(
                 }
             }
 
+            // ═══ Local Lyrics ═══
+            item {
+                MiuixLocalLyricDirectoriesContent(localLyricDirState)
+            }
+
             // ═══ 5. Help & About ═══
             item { SmallTitle(text = stringResource(R.string.settings_help_about_header)) }
             item {
@@ -361,6 +367,8 @@ fun MiuixSettingsScreen(
                 onIgnore = onUpdateIgnore
             )
         }
+
+        MiuixLocalLyricDirectoriesDialog(localLyricDirState)
     }
 }
 

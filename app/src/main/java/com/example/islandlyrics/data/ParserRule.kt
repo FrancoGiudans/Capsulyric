@@ -29,7 +29,8 @@ data class ParserRule(
     val useLyricGetterApi: Boolean = false,    // Whether to use Lyric Getter API broadcasts
     val useLyriconApi: Boolean = false,        // Whether to subscribe to Lyricon active-player lyrics
     val receiveLyriconTranslation: Boolean = false,
-    val receiveLyriconRomanization: Boolean = false
+    val receiveLyriconRomanization: Boolean = false,
+    val useLocalLyrics: Boolean = false         // Whether to search local .lrc files first
 ) : Comparable<ParserRule> {
     override fun compareTo(other: ParserRule): Int {
         return packageName.compareTo(other.packageName)

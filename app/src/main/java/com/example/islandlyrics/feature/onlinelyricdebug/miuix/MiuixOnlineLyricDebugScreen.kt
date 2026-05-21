@@ -1,5 +1,6 @@
 package com.example.islandlyrics.feature.onlinelyricdebug.miuix
 
+import android.widget.Toast
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -20,11 +21,13 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.SaveAlt
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -34,6 +37,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.islandlyrics.R
 import com.example.islandlyrics.data.ParserRuleHelper
+import com.example.islandlyrics.data.lyric.LyricExporter
 import com.example.islandlyrics.data.lyric.OnlineLyricProvider
 import com.example.islandlyrics.feature.onlinelyricdebug.OnlineLyricDebugViewModel
 import com.example.islandlyrics.ui.miuix.MiuixBlurDialog
@@ -50,6 +54,7 @@ import top.yukonga.miuix.kmp.basic.rememberTopAppBarState
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.MiuixPopupUtils.Companion.MiuixPopupHost
+import kotlinx.coroutines.launch
 
 @Composable
 fun MiuixOnlineLyricDebugScreen(
@@ -58,6 +63,7 @@ fun MiuixOnlineLyricDebugScreen(
 ) {
     val scrollBehavior = MiuixScrollBehavior(rememberTopAppBarState())
     val context = LocalContext.current
+    val exportScope = rememberCoroutineScope()
     val mediaInfo by viewModel.liveMetadata.observeAsState()
     val liveProgress by viewModel.liveProgress.observeAsState()
     val liveLyric by viewModel.liveLyric.observeAsState()
@@ -100,6 +106,22 @@ fun MiuixOnlineLyricDebugScreen(
                 navigationIcon = {
                     IconButton(onClick = onBack, modifier = Modifier.padding(start = 12.dp)) {
                         androidx.compose.material3.Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.online_lyric_debug_back), tint = MiuixTheme.colorScheme.onBackground)
+                    }
+                },
+                actions = {
+                    IconButton(onClick = {
+                        exportScope.launch {
+                            val result = LyricExporter.exportCurrentLyrics(context)
+                            val msg = when {
+                                result.success -> context.getString(R.string.export_lyric_success, result.fileName)
+                                result.error == "no_directory" -> context.getString(R.string.export_lyric_no_directory)
+                                result.error == "no_lyrics" || result.error == "no_metadata" -> context.getString(R.string.export_lyric_no_lyrics)
+                                else -> context.getString(R.string.export_lyric_failed)
+                            }
+                            Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+                        }
+                    }) {
+                        androidx.compose.material3.Icon(Icons.Default.SaveAlt, contentDescription = stringResource(R.string.export_lyric_button), tint = MiuixTheme.colorScheme.onBackground)
                     }
                 }
             )

@@ -1,5 +1,7 @@
 package com.example.islandlyrics.feature.cache.material
 
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -12,11 +14,15 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.SaveAlt
+import androidx.compose.material.icons.filled.SelectAll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -54,7 +60,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun CacheManagementScreen(
     onBack: () -> Unit,
@@ -66,6 +72,8 @@ fun CacheManagementScreen(
     val imageStats by viewModel.imageStats.observeAsState(AppImageCacheManager.ImageCacheStats())
     val busy by viewModel.busy.observeAsState(false)
     val statusMessage by viewModel.statusMessage.observeAsState()
+    val selectedIds by viewModel.selectedIds.observeAsState(emptySet())
+    val isSelectionMode by viewModel.isSelectionMode.observeAsState(false)
     val snackbarHostState = remember { SnackbarHostState() }
     var searchQuery by remember { mutableStateOf("") }
     val filteredLyricEntries = remember(lyricEntries, searchQuery) {
@@ -83,15 +91,33 @@ fun CacheManagementScreen(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.title_cache_management)) },
+                title = { Text(if (isSelectionMode) "${selectedIds.size} selected" else stringResource(R.string.title_cache_management)) },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.cache_management_back))
+                    if (isSelectionMode) {
+                        IconButton(onClick = { viewModel.exitSelectionMode() }) {
+                            Icon(Icons.Default.Close, contentDescription = stringResource(R.string.cache_management_deselect))
+                        }
+                    } else {
+                        IconButton(onClick = onBack) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.cache_management_back))
+                        }
                     }
                 },
                 actions = {
-                    IconButton(onClick = { viewModel.refresh() }) {
-                        Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.cache_management_refresh))
+                    if (isSelectionMode) {
+                        IconButton(onClick = { viewModel.selectAll() }) {
+                            Icon(Icons.Default.SelectAll, contentDescription = stringResource(R.string.cache_management_select_all))
+                        }
+                        IconButton(onClick = { viewModel.exportSelected() }) {
+                            Icon(Icons.Default.SaveAlt, contentDescription = stringResource(R.string.cache_management_export_selected))
+                        }
+                        IconButton(onClick = { viewModel.deleteSelected() }) {
+                            Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.cache_management_delete_selected), tint = MaterialTheme.colorScheme.error)
+                        }
+                    } else {
+                        IconButton(onClick = { viewModel.refresh() }) {
+                            Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.cache_management_refresh))
+                        }
                     }
                 },
                 colors = neutralMaterialTopBarColors(),
@@ -201,7 +227,15 @@ fun CacheManagementScreen(
             } else {
                 items(filteredLyricEntries, key = { it.id }) { entry ->
                     Card(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .combinedClickable(
+                                onClick = { if (isSelectionMode) viewModel.toggleSelection(entry.id) },
+                                onLongClick = {
+                                    if (!isSelectionMode) viewModel.enterSelectionMode(entry.id)
+                                    else viewModel.toggleSelection(entry.id)
+                                }
+                            ),
                         shape = MaterialTheme.shapes.extraLarge,
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
                         elevation = CardDefaults.cardElevation(0.dp)
@@ -212,12 +246,25 @@ fun CacheManagementScreen(
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.Top
                             ) {
+                                if (isSelectionMode) {
+                                    Checkbox(
+                                        checked = selectedIds.contains(entry.id),
+                                        onCheckedChange = { viewModel.toggleSelection(entry.id) }
+                                    )
+                                }
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text("${entry.title} - ${entry.artist}", fontWeight = FontWeight.SemiBold)
                                     Text(entry.packageName, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 }
-                                IconButton(onClick = { viewModel.deleteLyricEntry(entry.id) }, enabled = !busy) {
-                                    Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.cache_management_delete))
+                                if (!isSelectionMode) {
+                                    Row {
+                                        IconButton(onClick = { viewModel.exportEntry(entry.id) }, enabled = !busy) {
+                                            Icon(Icons.Default.SaveAlt, contentDescription = stringResource(R.string.cache_management_export))
+                                        }
+                                        IconButton(onClick = { viewModel.deleteLyricEntry(entry.id) }, enabled = !busy) {
+                                            Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.cache_management_delete))
+                                        }
+                                    }
                                 }
                             }
                             Spacer(modifier = Modifier.height(8.dp))

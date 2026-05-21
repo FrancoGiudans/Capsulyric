@@ -124,6 +124,7 @@ fun ParserRuleEditorScreen(
                     usesCarProtocol = next.usesCarProtocol,
                     separatorPattern = next.separator,
                     fieldOrder = next.fieldOrder,
+                    useLocalLyrics = next.useLocalLyrics,
                     useOnlineLyrics = next.useOnlineLyrics,
                     useSmartOnlineLyricSelection = next.useSmartOnlineLyricSelection,
                     useRawMetadataForOnlineMatching = next.useRawMetadataForOnlineMatching,
@@ -307,6 +308,12 @@ private fun MaterialSourceRows(
         checked = state.usesCarProtocol,
         onCheckedChange = { onStateChange(state.copy(usesCarProtocol = it)) },
         onArrowClick = { onNavigate(ParserRuleSourceConfigType.NOTIFICATION) }
+    )
+    SwitchRow(
+        title = stringResource(R.string.parser_local_lyric),
+        subtitle = stringResource(R.string.parser_local_lyric_desc_short),
+        checked = state.useLocalLyrics,
+        onCheckedChange = { onStateChange(state.copy(useLocalLyrics = it)) }
     )
     SwitchArrowRow(
         title = stringResource(R.string.settings_use_online_lyrics),

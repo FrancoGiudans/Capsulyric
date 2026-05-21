@@ -96,7 +96,8 @@ object ParserRuleHelper {
                             useLyricGetterApi = obj.optBoolean("useLyricGetterApi", false),
                             useLyriconApi = obj.optBoolean("useLyriconApi", false),
                             receiveLyriconTranslation = obj.optBoolean("receiveLyriconTranslation", false),
-                            receiveLyriconRomanization = obj.optBoolean("receiveLyriconRomanization", false)
+                            receiveLyriconRomanization = obj.optBoolean("receiveLyriconRomanization", false),
+                            useLocalLyrics = obj.optBoolean("useLocalLyrics", false)
                         )
                     )
                 }
@@ -150,6 +151,7 @@ object ParserRuleHelper {
                 obj.put("useLyriconApi", rule.useLyriconApi)
                 obj.put("receiveLyriconTranslation", rule.receiveLyriconTranslation)
                 obj.put("receiveLyriconRomanization", rule.receiveLyriconRomanization)
+                obj.put("useLocalLyrics", rule.useLocalLyrics)
                 array.put(obj)
             } catch (e: Exception) {
                 e.printStackTrace()

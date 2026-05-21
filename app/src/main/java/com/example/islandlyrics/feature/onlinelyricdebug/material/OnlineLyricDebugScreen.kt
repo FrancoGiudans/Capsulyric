@@ -22,6 +22,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.SaveAlt
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -43,6 +44,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -54,10 +56,13 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.islandlyrics.R
 import com.example.islandlyrics.data.ParserRuleHelper
+import com.example.islandlyrics.data.lyric.LyricExporter
 import com.example.islandlyrics.data.lyric.OnlineLyricProvider
 import com.example.islandlyrics.feature.onlinelyricdebug.OnlineLyricDebugViewModel
 import com.example.islandlyrics.ui.theme.material.materialPageContainerColor
 import com.example.islandlyrics.ui.theme.material.neutralMaterialTopBarColors
+import android.widget.Toast
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -67,6 +72,7 @@ fun OnlineLyricDebugScreen(
 ) {
     val scrollState = rememberScrollState()
     val context = LocalContext.current
+    val exportScope = rememberCoroutineScope()
     val mediaInfo by viewModel.liveMetadata.observeAsState()
     val liveProgress by viewModel.liveProgress.observeAsState()
     val liveLyric by viewModel.liveLyric.observeAsState()
@@ -108,6 +114,22 @@ fun OnlineLyricDebugScreen(
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.online_lyric_debug_back))
+                    }
+                },
+                actions = {
+                    IconButton(onClick = {
+                        exportScope.launch {
+                            val result = LyricExporter.exportCurrentLyrics(context)
+                            val msg = when {
+                                result.success -> context.getString(R.string.export_lyric_success, result.fileName)
+                                result.error == "no_directory" -> context.getString(R.string.export_lyric_no_directory)
+                                result.error == "no_lyrics" || result.error == "no_metadata" -> context.getString(R.string.export_lyric_no_lyrics)
+                                else -> context.getString(R.string.export_lyric_failed)
+                            }
+                            Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+                        }
+                    }) {
+                        Icon(Icons.Default.SaveAlt, contentDescription = stringResource(R.string.export_lyric_button))
                     }
                 },
                 colors = neutralMaterialTopBarColors()

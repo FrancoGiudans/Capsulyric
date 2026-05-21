@@ -1,5 +1,7 @@
 package com.example.islandlyrics.feature.cache.miuix
 
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -13,8 +15,11 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.SaveAlt
+import androidx.compose.material.icons.filled.SelectAll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -38,6 +43,7 @@ import com.example.islandlyrics.ui.miuix.MiuixBlurTopAppBar
 import com.example.islandlyrics.ui.miuix.miuixPageScroll
 import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.basic.Card
+import top.yukonga.miuix.kmp.basic.Checkbox
 import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.InputField
 import top.yukonga.miuix.kmp.basic.SearchBar
@@ -52,6 +58,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun MiuixCacheManagementScreen(
     onBack: () -> Unit,
@@ -63,6 +70,8 @@ fun MiuixCacheManagementScreen(
     val imageStats by viewModel.imageStats.observeAsState(AppImageCacheManager.ImageCacheStats())
     val busy by viewModel.busy.observeAsState(false)
     val statusMessage by viewModel.statusMessage.observeAsState()
+    val selectedIds by viewModel.selectedIds.observeAsState(emptySet())
+    val isSelectionMode by viewModel.isSelectionMode.observeAsState(false)
     var searchQuery by remember { mutableStateOf("") }
     var searchExpanded by remember { mutableStateOf(false) }
     val filteredLyricEntries = remember(lyricEntries, searchQuery) {
@@ -78,17 +87,35 @@ fun MiuixCacheManagementScreen(
     MiuixBlurScaffold(
         topBar = {
             MiuixBlurTopAppBar(
-                title = stringResource(R.string.title_cache_management),
-                largeTitle = stringResource(R.string.title_cache_management),
+                title = if (isSelectionMode) "${selectedIds.size} selected" else stringResource(R.string.title_cache_management),
+                largeTitle = if (isSelectionMode) "${selectedIds.size} selected" else stringResource(R.string.title_cache_management),
                 scrollBehavior = scrollBehavior,
                 navigationIcon = {
-                    IconButton(onClick = onBack, modifier = Modifier.padding(start = 12.dp)) {
-                        androidx.compose.material3.Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.cache_management_back), tint = MiuixTheme.colorScheme.onBackground)
+                    if (isSelectionMode) {
+                        IconButton(onClick = { viewModel.exitSelectionMode() }, modifier = Modifier.padding(start = 12.dp)) {
+                            androidx.compose.material3.Icon(Icons.Default.Close, contentDescription = stringResource(R.string.cache_management_deselect), tint = MiuixTheme.colorScheme.onBackground)
+                        }
+                    } else {
+                        IconButton(onClick = onBack, modifier = Modifier.padding(start = 12.dp)) {
+                            androidx.compose.material3.Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.cache_management_back), tint = MiuixTheme.colorScheme.onBackground)
+                        }
                     }
                 },
                 actions = {
-                    IconButton(onClick = { viewModel.refresh() }) {
-                        androidx.compose.material3.Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.cache_management_refresh), tint = MiuixTheme.colorScheme.onBackground)
+                    if (isSelectionMode) {
+                        IconButton(onClick = { viewModel.selectAll() }) {
+                            androidx.compose.material3.Icon(Icons.Default.SelectAll, contentDescription = stringResource(R.string.cache_management_select_all), tint = MiuixTheme.colorScheme.onBackground)
+                        }
+                        IconButton(onClick = { viewModel.exportSelected() }) {
+                            androidx.compose.material3.Icon(Icons.Default.SaveAlt, contentDescription = stringResource(R.string.cache_management_export_selected), tint = MiuixTheme.colorScheme.onBackground)
+                        }
+                        IconButton(onClick = { viewModel.deleteSelected() }) {
+                            androidx.compose.material3.Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.cache_management_delete_selected), tint = MiuixTheme.colorScheme.error)
+                        }
+                    } else {
+                        IconButton(onClick = { viewModel.refresh() }) {
+                            androidx.compose.material3.Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.cache_management_refresh), tint = MiuixTheme.colorScheme.onBackground)
+                        }
                     }
                 }
             )
@@ -187,21 +214,48 @@ fun MiuixCacheManagementScreen(
                 }
             } else {
                 items(filteredLyricEntries, key = { it.id }) { entry ->
-                    Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp)) {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp, vertical = 4.dp)
+                            .combinedClickable(
+                                onClick = {
+                                    if (isSelectionMode) viewModel.toggleSelection(entry.id)
+                                },
+                                onLongClick = {
+                                    if (!isSelectionMode) viewModel.enterSelectionMode(entry.id)
+                                    else viewModel.toggleSelection(entry.id)
+                                }
+                            )
+                    ) {
                         Column(modifier = Modifier.padding(16.dp)) {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.Top
                             ) {
+                                if (isSelectionMode) {
+                                    Checkbox(
+                                        state = if (selectedIds.contains(entry.id)) androidx.compose.ui.state.ToggleableState.On else androidx.compose.ui.state.ToggleableState.Off,
+                                        onClick = { viewModel.toggleSelection(entry.id) }
+                                    )
+                                }
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text("${entry.title} - ${entry.artist}", fontWeight = FontWeight.SemiBold)
                                     Text(entry.packageName, color = MiuixTheme.colorScheme.onSurfaceSecondary)
                                 }
-                                TextButton(
-                                    text = stringResource(R.string.cache_management_delete),
-                                    onClick = { viewModel.deleteLyricEntry(entry.id) }
-                                )
+                                if (!isSelectionMode) {
+                                    Row {
+                                        TextButton(
+                                            text = stringResource(R.string.cache_management_export),
+                                            onClick = { viewModel.exportEntry(entry.id) }
+                                        )
+                                        TextButton(
+                                            text = stringResource(R.string.cache_management_delete),
+                                            onClick = { viewModel.deleteLyricEntry(entry.id) }
+                                        )
+                                    }
+                                }
                             }
                             Spacer(modifier = Modifier.height(8.dp))
                             MiuixStatRow(stringResource(R.string.cache_management_query_info), "${entry.queryTitle} / ${entry.queryArtist}")

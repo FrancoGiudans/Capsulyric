@@ -308,6 +308,7 @@ fun ParserRuleItem(
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+                    RuleSourceBadge(active = rule.useLocalLyrics, label = "Local")
                     RuleSourceBadge(active = rule.usesCarProtocol, label = "Notify")
                     if (!offlineModeEnabled) {
                         RuleSourceBadge(active = rule.useOnlineLyrics, label = "Online")

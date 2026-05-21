@@ -102,6 +102,12 @@
                   android:theme="@style/Theme.IslandLyrics.Translucent"
                   android:parentActivityName="com.example.islandlyrics.feature.diagnostics.DiagnosticsActivity" />
 
+        <activity
+            android:name="com.example.islandlyrics.feature.locallyrics.LocalLyricDirectoryActivity"
+            android:label="@string/settings_local_lyrics_directories"
+            android:theme="@style/Theme.IslandLyrics.Translucent"
+            android:parentActivityName="com.example.islandlyrics.feature.settings.SettingsActivity" />
+
         <activity android:name="com.example.islandlyrics.feature.logviewer.LogViewerActivity"
                   android:label="Developer Logs"
                   android:theme="@style/Theme.IslandLyrics.Translucent"

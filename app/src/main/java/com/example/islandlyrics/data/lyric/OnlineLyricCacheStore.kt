@@ -326,6 +326,15 @@ class OnlineLyricCacheStore(context: Context) {
         writeEntries(updated)
     }
 
+    fun getEntryParsedLines(entryId: String): List<OnlineLyricFetcher.LyricLine>? = synchronized(lock) {
+        readEntries().firstOrNull { it.id == entryId }?.parsedLines?.takeIf { it.isNotEmpty() }
+    }
+
+    fun getEntryMetadata(entryId: String): Pair<String, String>? = synchronized(lock) {
+        val entry = readEntries().firstOrNull { it.id == entryId } ?: return null
+        (entry.title to entry.artist)
+    }
+
     fun clearLyricCache() = synchronized(lock) {
         val retained = readEntries().mapNotNull { entry ->
             if (entry.overrideTitle.isNullOrBlank() && entry.overrideArtist.isNullOrBlank()) {

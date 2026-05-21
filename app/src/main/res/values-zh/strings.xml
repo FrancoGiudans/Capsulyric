@@ -171,6 +171,28 @@
     <string name="parser_logic_desc">歌词来源与功能</string>
     <string name="parser_notify_lyric_desc">从通知标题中提取歌词</string>
     <string name="parser_online_lyric_desc_short">从互联网 API 获取</string>
+    <string name="parser_local_lyric">本地 LRC 文件</string>
+    <string name="parser_local_lyric_desc_short">从配置的目录中搜索 .lrc 文件</string>
+    <string name="settings_local_lyrics_title">本地歌词</string>
+    <string name="settings_local_lyrics_directories">歌词目录</string>
+    <string name="settings_local_lyrics_add">添加目录</string>
+    <string name="settings_local_lyrics_empty">未配置目录，点击添加</string>
+    <string name="settings_local_lyrics_remove_confirm">移除此目录？</string>
+    <string name="export_lyric_button">导出为 LRC</string>
+    <string name="export_lyric_success">已导出: %1$s</string>
+    <string name="export_lyric_no_directory">请先配置本地歌词目录</string>
+    <string name="export_lyric_no_lyrics">没有可导出的歌词</string>
+    <string name="export_lyric_failed">导出失败</string>
+    <string name="local_lyric_dir_empty">此目录中未找到 .lrc 文件</string>
+    <string name="local_lyric_dir_file_count">%1$d 个文件</string>
+    <string name="local_lyric_no_metadata">无元数据标签</string>
+    <string name="local_lyric_custom_match_label">自定义匹配: %1$s - %2$s</string>
+    <string name="local_lyric_edit_match">编辑匹配</string>
+    <string name="local_lyric_edit_match_desc">指定此文件应匹配的歌曲</string>
+    <string name="local_lyric_metadata_hint">元数据: %1$s - %2$s</string>
+    <string name="local_lyric_match_title">歌曲名</string>
+    <string name="local_lyric_match_artist">歌手</string>
+    <string name="local_lyric_reset_match">重置为自动</string>
     <string name="parser_online_priority">在线歌词优先级</string>
     <string name="parser_online_priority_summary">在线优先级: %1$s</string>
     <string name="parser_reset_online_priority">恢复默认顺序</string>
@@ -700,6 +722,16 @@
     <string name="cache_management_status_lyrics_cleared">已清空歌词缓存</string>
     <string name="cache_management_status_images_cleared">已清空图片缓存</string>
     <string name="cache_management_status_all_cleared">已清空全部缓存</string>
+    <string name="cache_management_export">导出</string>
+    <string name="cache_management_export_batch_result">已导出 %1$d / %2$d 条</string>
+    <string name="cache_management_delete_batch_result">已删除 %1$d 条</string>
+    <string name="cache_management_select_all">全选</string>
+    <string name="cache_management_deselect">取消</string>
+    <string name="cache_management_export_selected">导出选中</string>
+    <string name="cache_management_delete_selected">删除选中</string>
+    <string name="local_lyric_set_export_dir">设为导出目录</string>
+    <string name="local_lyric_export_dir_set">已设为导出目录</string>
+    <string name="local_lyric_export_dir_badge">导出目录</string>
 
     <!-- 日志控制台 -->
     <string name="log_viewer_title">日志控制台</string>

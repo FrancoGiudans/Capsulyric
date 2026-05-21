@@ -25,6 +25,7 @@ import com.example.islandlyrics.core.network.OfflineModeManager
 import com.example.islandlyrics.data.LyricRepository
 import com.example.islandlyrics.data.ParserRuleHelper
 import com.example.islandlyrics.data.lyric.LyricGetterSource
+import com.example.islandlyrics.data.lyric.LocalLyricSource
 import com.example.islandlyrics.data.lyric.LyriconSource
 import com.example.islandlyrics.data.lyric.OnlineLyricSource
 import com.example.islandlyrics.data.lyric.SuperLyricSource
@@ -40,6 +41,7 @@ class LyricService : Service() {
     private var lastObservedTrackKey: String? = null
 
     // ── Lyric sources (each handles one acquisition path) ────────────────────
+    private lateinit var localLyricSource: LocalLyricSource
     private lateinit var onlineLyricSource: OnlineLyricSource
     private lateinit var superLyricSource: SuperLyricSource
     private lateinit var lyricGetterSource: LyricGetterSource
@@ -140,12 +142,23 @@ class LyricService : Service() {
             )
 
             if (trackChanged && rule.useOnlineLyrics) {
-                if (!rule.usesCarProtocol) {
+                if (rule.useLocalLyrics) {
+                    localLyricSource.fetchFor(info.title, info.artist, info.packageName) { found ->
+                        if (!found) {
+                            if (!rule.usesCarProtocol) {
+                                AppLogger.getInstance().log(TAG, "[${info.packageName}] Local miss, triggering online fetch...")
+                                onlineLyricSource.fetchFor(info.title, info.artist, info.packageName)
+                            }
+                        }
+                    }
+                } else if (!rule.usesCarProtocol) {
                     AppLogger.getInstance().log(TAG, "[${info.packageName}] Non-CarProtocol app, triggering fetch...")
                     onlineLyricSource.fetchFor(info.title, info.artist, info.packageName)
                 } else {
                     AppLogger.getInstance().log(TAG, "[${info.packageName}] CarProtocol app, waiting for lyric observer trigger...")
                 }
+            } else if (trackChanged && rule.useLocalLyrics) {
+                localLyricSource.fetchFor(info.title, info.artist, info.packageName) { _ -> }
             }
             
             // CRITICAL: Force immediate UI update to propagate new track metadata to SuperIsland
@@ -265,6 +278,7 @@ class LyricService : Service() {
         )
         
         // Initialise lyric sources
+        localLyricSource = LocalLyricSource(this)
         onlineLyricSource = OnlineLyricSource(this)
         superLyricSource  = SuperLyricSource(
             context = this,
@@ -418,6 +432,7 @@ class LyricService : Service() {
         superLyricSource.stop()
         lyricGetterSource.stop()
         lyriconSource.stop()
+        localLyricSource.cancel()
         onlineLyricSource.cancel()
         
         getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE).unregisterOnSharedPreferenceChangeListener(prefsListener)

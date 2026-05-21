@@ -301,6 +301,11 @@ fun SettingsScreen(
                 }
             }
 
+            // ── Local Lyrics ────────────────────────────────────────────────
+            item {
+                com.example.islandlyrics.feature.settings.LocalLyricDirectoriesSection()
+            }
+
             // ── Help & About ─────────────────────────────────────────────────
             item { SettingsSectionHeader(text = stringResource(R.string.settings_help_about_header)) }
             item {

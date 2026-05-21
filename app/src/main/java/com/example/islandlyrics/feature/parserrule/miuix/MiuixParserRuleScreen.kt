@@ -343,6 +343,8 @@ fun MiuixParserRuleItem(
                 Spacer(modifier = Modifier.height(6.dp))
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
+                MiuixStatusBadge(active = rule.useLocalLyrics, label = "Local")
+                Spacer(modifier = Modifier.width(8.dp))
                 MiuixStatusBadge(active = rule.usesCarProtocol, label = "Notify")
                 if (!offlineModeEnabled) {
                     Spacer(modifier = Modifier.width(8.dp))
