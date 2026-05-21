@@ -7,9 +7,12 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.FolderSpecial
 import androidx.compose.material.icons.filled.SaveAlt
 import androidx.compose.material3.*
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -56,6 +59,12 @@ fun LocalLyricDirectoryScreen(
                 },
                 actions = {
                     IconButton(onClick = {
+                        dirManager.setExportDirectory(directoryUri)
+                        Toast.makeText(context, context.getString(R.string.local_lyric_export_dir_set), Toast.LENGTH_SHORT).show()
+                    }) {
+                        Icon(Icons.Default.FolderSpecial, contentDescription = stringResource(R.string.local_lyric_set_export_dir))
+                    }
+                    IconButton(onClick = {
                         exportScope.launch {
                             val result = LyricExporter.exportCurrentLyrics(context)
                             val msg = when {
@@ -73,13 +82,28 @@ fun LocalLyricDirectoryScreen(
             )
         }
     ) { padding ->
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(
-                top = padding.calculateTopPadding(),
-                bottom = padding.calculateBottomPadding() + 16.dp
-            )
+        var isRefreshing by remember { mutableStateOf(false) }
+
+        LaunchedEffect(isRefreshing) {
+            if (isRefreshing) {
+                files = withContext(Dispatchers.IO) {
+                    dirManager.listFilesInDirectory(directoryUri)
+                }
+                isRefreshing = false
+            }
+        }
+
+        PullToRefreshBox(
+            isRefreshing = isRefreshing,
+            onRefresh = { isRefreshing = true },
+            modifier = Modifier.fillMaxSize().padding(top = padding.calculateTopPadding())
         ) {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(
+                    bottom = padding.calculateBottomPadding() + 16.dp
+                )
+            ) {
             if (loading) {
                 item { Text("Loading...", modifier = Modifier.padding(16.dp)) }
             } else if (files.isEmpty()) {
@@ -106,38 +130,38 @@ fun LocalLyricDirectoryScreen(
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
-                            Text(file.fileName, style = MaterialTheme.typography.titleSmall)
-                            val meta = file.metadata
-                            if (meta?.title != null || meta?.artist != null) {
-                                Text(
-                                    buildString {
-                                        meta.artist?.let { append(it) }
-                                        if (meta.title != null && meta.artist != null) append(" - ")
-                                        meta.title?.let { append(it) }
-                                    },
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            } else {
-                                Text(
-                                    stringResource(R.string.local_lyric_no_metadata),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.Top
+                            ) {
+                                Text(file.fileName, style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
+                                TextButton(onClick = {
+                                    editTarget = file
+                                    editTitle = file.customMatch?.title
+                                        ?: file.metadata?.title
+                                        ?: file.fileName.substringBeforeLast(".")
+                                    editArtist = file.customMatch?.artist
+                                        ?: file.metadata?.artist ?: ""
+                                }) {
+                                    Text(stringResource(R.string.local_lyric_edit_match))
+                                }
                             }
+                            Spacer(modifier = Modifier.height(4.dp))
+                            val meta = file.metadata
+                            MaterialFileInfoRow(stringResource(R.string.local_lyric_match_title), meta?.title ?: "-")
+                            MaterialFileInfoRow(stringResource(R.string.local_lyric_match_artist), meta?.artist ?: "-")
                             if (file.customMatch != null) {
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Text(
-                                    stringResource(R.string.local_lyric_custom_match_label,
-                                        file.customMatch.artist, file.customMatch.title),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.primary
+                                MaterialFileInfoRow(
+                                    stringResource(R.string.local_lyric_custom_match_label_short),
+                                    "${file.customMatch.artist} - ${file.customMatch.title}"
                                 )
                             }
                         }
                     }
                 }
             }
+        }
         }
 
         if (editTarget != null) {
@@ -203,4 +227,16 @@ fun LocalLyricDirectoryScreen(
             )
         }
     }
+}
+
+@Composable
+private fun MaterialFileInfoRow(label: String, value: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(label, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(value, style = MaterialTheme.typography.bodySmall)
+    }
+    Spacer(modifier = Modifier.height(4.dp))
 }

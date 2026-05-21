@@ -194,6 +194,11 @@
     <string name="local_lyric_match_title">Song title</string>
     <string name="local_lyric_match_artist">Artist</string>
     <string name="local_lyric_reset_match">Reset to auto</string>
+    <string name="local_lyric_custom_match_label_short">Custom match</string>
+    <string name="local_lyric_pull_refresh_pull">Pull down to refresh</string>
+    <string name="local_lyric_pull_refresh_release">Release to refresh</string>
+    <string name="local_lyric_pull_refresh_refreshing">Refreshing...</string>
+    <string name="local_lyric_pull_refresh_complete">Refreshed successfully</string>
     <string name="parser_online_priority">Online Lyric Priority</string>
     <string name="parser_online_priority_summary">Online Priority: %1$s</string>
     <string name="parser_reset_online_priority">Reset to Default Order</string>

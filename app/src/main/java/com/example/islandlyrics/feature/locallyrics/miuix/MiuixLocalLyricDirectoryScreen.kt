@@ -10,6 +10,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.FolderSpecial
 import androidx.compose.material.icons.filled.SaveAlt
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -24,6 +25,7 @@ import com.example.islandlyrics.ui.miuix.MiuixBlurScaffold
 import com.example.islandlyrics.ui.miuix.MiuixBlurTopAppBar
 import com.example.islandlyrics.ui.miuix.miuixPageScroll
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import top.yukonga.miuix.kmp.basic.*
@@ -102,76 +104,95 @@ fun MiuixLocalLyricDirectoryScreen(
         },
         popupHost = { MiuixPopupHost() }
     ) { padding ->
-        LazyColumn(
-            modifier = Modifier.fillMaxSize().miuixPageScroll(scrollBehavior),
-            contentPadding = PaddingValues(
-                top = padding.calculateTopPadding(),
-                bottom = padding.calculateBottomPadding() + 24.dp
-            )
+        var isRefreshing by remember { mutableStateOf(false) }
+        val pullToRefreshState = rememberPullToRefreshState()
+        val refreshTexts = listOf(
+            stringResource(R.string.local_lyric_pull_refresh_pull),
+            stringResource(R.string.local_lyric_pull_refresh_release),
+            stringResource(R.string.local_lyric_pull_refresh_refreshing),
+            stringResource(R.string.local_lyric_pull_refresh_complete),
+        )
+
+        LaunchedEffect(isRefreshing) {
+            if (isRefreshing) {
+                files = withContext(Dispatchers.IO) {
+                    dirManager.listFilesInDirectory(directoryUri)
+                }
+                isRefreshing = false
+            }
+        }
+
+        PullToRefresh(
+            isRefreshing = isRefreshing,
+            onRefresh = { isRefreshing = true },
+            pullToRefreshState = pullToRefreshState,
+            topAppBarScrollBehavior = scrollBehavior,
+            contentPadding = PaddingValues(top = padding.calculateTopPadding()),
+            refreshTexts = refreshTexts,
         ) {
-            if (loading) {
-                item {
-                    Text(
-                        text = "Loading...",
-                        modifier = Modifier.padding(16.dp),
-                        color = MiuixTheme.colorScheme.onSurfaceSecondary
-                    )
-                }
-            } else if (files.isEmpty()) {
-                item {
-                    Text(
-                        text = stringResource(R.string.local_lyric_dir_empty),
-                        modifier = Modifier.padding(16.dp),
-                        color = MiuixTheme.colorScheme.onSurfaceSecondary
-                    )
-                }
-            } else {
-                item {
-                    SmallTitle(text = stringResource(R.string.local_lyric_dir_file_count, files.size))
-                }
-                items(files, key = { it.uri.toString() }) { file ->
-                    Card(
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp)
-                    ) {
-                        Column(modifier = Modifier.padding(16.dp)) {
-                            Text(file.fileName, fontWeight = FontWeight.SemiBold)
-                            Spacer(modifier = Modifier.height(4.dp))
-                            val meta = file.metadata
-                            if (meta?.title != null || meta?.artist != null) {
-                                Text(
-                                    text = buildString {
-                                        meta.artist?.let { append(it) }
-                                        if (meta.title != null && meta.artist != null) append(" - ")
-                                        meta.title?.let { append(it) }
-                                    },
-                                    color = MiuixTheme.colorScheme.onSurfaceSecondary
-                                )
-                            } else {
-                                Text(
-                                    text = stringResource(R.string.local_lyric_no_metadata),
-                                    color = MiuixTheme.colorScheme.onSurfaceVariantActions
-                                )
-                            }
-                            if (file.customMatch != null) {
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Text(
-                                    text = stringResource(R.string.local_lyric_custom_match_label,
-                                        file.customMatch.artist, file.customMatch.title),
-                                    color = MiuixTheme.colorScheme.primary
-                                )
-                            }
-                            Spacer(modifier = Modifier.height(8.dp))
-                            TextButton(
-                                text = stringResource(R.string.local_lyric_edit_match),
-                                onClick = {
-                                    editTarget = file
-                                    editTitle = file.customMatch?.title
-                                        ?: file.metadata?.title
-                                        ?: file.fileName.substringBeforeLast(".")
-                                    editArtist = file.customMatch?.artist
-                                        ?: file.metadata?.artist ?: ""
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(
+                    top = padding.calculateTopPadding(),
+                    bottom = padding.calculateBottomPadding() + 24.dp
+                )
+            ) {
+                if (loading) {
+                    item {
+                        Text(
+                            text = "Loading...",
+                            modifier = Modifier.padding(16.dp),
+                            color = MiuixTheme.colorScheme.onSurfaceSecondary
+                        )
+                    }
+                } else if (files.isEmpty()) {
+                    item {
+                        Text(
+                            text = stringResource(R.string.local_lyric_dir_empty),
+                            modifier = Modifier.padding(16.dp),
+                            color = MiuixTheme.colorScheme.onSurfaceSecondary
+                        )
+                    }
+                } else {
+                    item {
+                        SmallTitle(text = stringResource(R.string.local_lyric_dir_file_count, files.size))
+                    }
+                    items(files, key = { it.uri.toString() }) { file ->
+                        Card(
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp)
+                        ) {
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.Top
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(file.fileName, fontWeight = FontWeight.SemiBold)
+                                    }
+                                    TextButton(
+                                        text = stringResource(R.string.local_lyric_edit_match),
+                                        onClick = {
+                                            editTarget = file
+                                            editTitle = file.customMatch?.title
+                                                ?: file.metadata?.title
+                                                ?: file.fileName.substringBeforeLast(".")
+                                            editArtist = file.customMatch?.artist
+                                                ?: file.metadata?.artist ?: ""
+                                        }
+                                    )
                                 }
-                            )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                val meta = file.metadata
+                                MiuixFileInfoRow(stringResource(R.string.local_lyric_match_title), meta?.title ?: "-")
+                                MiuixFileInfoRow(stringResource(R.string.local_lyric_match_artist), meta?.artist ?: "-")
+                                if (file.customMatch != null) {
+                                    MiuixFileInfoRow(
+                                        stringResource(R.string.local_lyric_custom_match_label_short),
+                                        "${file.customMatch.artist} - ${file.customMatch.title}"
+                                    )
+                                }
+                            }
                         }
                     }
                 }
@@ -254,4 +275,16 @@ fun MiuixLocalLyricDirectoryScreen(
             }
         }
     }
+}
+
+@Composable
+private fun MiuixFileInfoRow(label: String, value: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(label, color = MiuixTheme.colorScheme.onSurfaceSecondary)
+        Text(value)
+    }
+    Spacer(modifier = Modifier.height(4.dp))
 }

@@ -193,6 +193,11 @@
     <string name="local_lyric_match_title">歌曲名</string>
     <string name="local_lyric_match_artist">歌手</string>
     <string name="local_lyric_reset_match">重置为自动</string>
+    <string name="local_lyric_custom_match_label_short">自定义匹配</string>
+    <string name="local_lyric_pull_refresh_pull">下拉刷新</string>
+    <string name="local_lyric_pull_refresh_release">松开刷新</string>
+    <string name="local_lyric_pull_refresh_refreshing">正在刷新...</string>
+    <string name="local_lyric_pull_refresh_complete">刷新完成</string>
     <string name="parser_online_priority">在线歌词优先级</string>
     <string name="parser_online_priority_summary">在线优先级: %1$s</string>
     <string name="parser_reset_online_priority">恢复默认顺序</string>

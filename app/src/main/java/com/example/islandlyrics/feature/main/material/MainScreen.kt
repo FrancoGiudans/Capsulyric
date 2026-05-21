@@ -259,7 +259,13 @@ fun MainScreen(
                                 } else {
                                     null
                                 },
-                                primaryLyricSource = if (isPrimary) formatPrimaryLyricSource(repoLyric?.apiPath, repoParsedLyrics?.sourceLabel) else null,
+                                primaryLyricSource = if (isPrimary) {
+                                    formatPrimaryLyricSource(
+                                        apiPath = repoLyric?.apiPath,
+                                        sourceLabel = repoParsedLyrics?.sourceLabel,
+                                        sourceApp = repoLyric?.sourceApp
+                                    )
+                                } else null,
                                 primaryAlbumArt = if (isPrimary) repoAlbumArt else null,
                                 primaryProgress = if (isPrimary) repoProgress else null,
                                 primaryIsPlaying = if (isPrimary) repoPlaying else null,
@@ -869,13 +875,23 @@ private fun MediaProgressBar(
     }
 }
 
-private fun formatPrimaryLyricSource(apiPath: String?, sourceLabel: String?): String? {
-    val label = sourceLabel?.trim().orEmpty()
-    if (label.isBlank()) return null
+private fun formatPrimaryLyricSource(
+    apiPath: String?,
+    sourceLabel: String?,
+    sourceApp: String?
+): String? {
+    val label = sourceLabel?.trim().takeUnless { it.isNullOrBlank() }
+        ?: sourceApp?.trim().takeUnless { it.isNullOrBlank() }
+
     return when (apiPath) {
-        "Online API" -> "$label [在线]"
-        "Online Cache" -> "$label [缓存]"
-        else -> null
+        "Online API" -> label?.let { "$it [在线]" } ?: "在线歌词"
+        "Online Cache" -> label?.let { "$it [缓存]" } ?: "在线歌词缓存"
+        "Local LRC" -> label ?: "本地歌词"
+        "Lyricon" -> label?.let { "$it [Lyricon]" } ?: "Lyricon"
+        "SuperLyric" -> label?.let { "$it [SuperLyric]" } ?: "SuperLyric"
+        "Lyric Getter" -> label?.let { "$it [Lyric Getter]" } ?: "Lyric Getter"
+        "Notification" -> label?.let { "$it [通知歌词]" } ?: "通知歌词"
+        else -> label ?: apiPath?.trim().takeUnless { it.isNullOrBlank() }
     }
 }
 
