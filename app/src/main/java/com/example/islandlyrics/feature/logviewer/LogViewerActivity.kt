@@ -9,11 +9,11 @@ import com.example.islandlyrics.ui.theme.material.AppTheme
 import com.example.islandlyrics.ui.common.PredictiveBackActivity
 import android.content.Intent
 import android.os.Bundle
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.appcompat.app.AppCompatActivity
 
-class LogViewerActivity : ComponentActivity() {
+class LogViewerActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

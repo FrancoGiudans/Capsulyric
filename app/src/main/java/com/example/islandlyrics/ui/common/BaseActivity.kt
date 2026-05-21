@@ -3,12 +3,12 @@ package com.example.islandlyrics.ui.common
 import android.content.res.Configuration
 import android.graphics.Color
 import android.os.Bundle
-import androidx.activity.ComponentActivity
+import androidx.appcompat.app.AppCompatActivity
 import com.example.islandlyrics.core.theme.ThemeHelper
 import com.example.islandlyrics.service.MediaMonitorService
 import android.app.ActivityManager
 
-open class BaseActivity : ComponentActivity() {
+open class BaseActivity : AppCompatActivity() {
 
     companion object {
         /** Tracks the number of started (visible) activities across the app. */
