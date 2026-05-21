@@ -24,12 +24,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.foundation.layout.fillMaxWidth
 import android.widget.TextView
+import com.example.islandlyrics.feature.settings.ReleaseDialogMode
 import com.example.islandlyrics.feature.update.UpdateMarkdown
 import com.example.islandlyrics.feature.update.UpdateParser
 
 @Composable
 fun UpdateDialog(
     releaseInfo: UpdateChecker.ReleaseInfo,
+    mode: ReleaseDialogMode = ReleaseDialogMode.UPDATE_AVAILABLE,
     onDismiss: () -> Unit,
     onIgnore: (String) -> Unit
 ) {
@@ -42,12 +44,16 @@ fun UpdateDialog(
     val markwon = remember(context) { UpdateMarkdown.create(context) }
     
     val textColor = MaterialTheme.colorScheme.onSurface.toArgb()
+    val title = when (mode) {
+        ReleaseDialogMode.UPDATE_AVAILABLE -> stringResource(R.string.update_available_title, comparableVersion)
+        ReleaseDialogMode.CURRENT_VERSION_CHANGELOG -> stringResource(R.string.update_current_version_changelog_title, comparableVersion)
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
-                text = stringResource(R.string.update_available_title, comparableVersion),
+                text = title,
                 style = MaterialTheme.typography.headlineSmall
             )
         },
@@ -55,12 +61,14 @@ fun UpdateDialog(
             Column(
                 modifier = Modifier.verticalScroll(rememberScrollState())
             ) {
-                Text(
-                    text = stringResource(R.string.update_current_version, BuildConfig.VERSION_NAME),
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                Spacer(modifier = Modifier.height(16.dp))
+                if (mode == ReleaseDialogMode.UPDATE_AVAILABLE) {
+                    Text(
+                        text = stringResource(R.string.update_current_version, BuildConfig.VERSION_NAME),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
                 AndroidView(
                     modifier = Modifier.fillMaxWidth(),
                     factory = { ctx ->
@@ -89,18 +97,36 @@ fun UpdateDialog(
                     onDismiss()
                 }
             ) {
-                Text(stringResource(R.string.update_download))
+                Text(
+                    stringResource(
+                        if (mode == ReleaseDialogMode.UPDATE_AVAILABLE) {
+                            R.string.update_download
+                        } else {
+                            R.string.update_view_release_page
+                        }
+                    )
+                )
             }
         },
         dismissButton = {
-            TextButton(onClick = {
-                onIgnore(comparableVersion)
-                onDismiss()
-            }) {
-                Text(stringResource(R.string.update_ignore))
+            if (mode == ReleaseDialogMode.UPDATE_AVAILABLE) {
+                TextButton(onClick = {
+                    onIgnore(comparableVersion)
+                    onDismiss()
+                }) {
+                    Text(stringResource(R.string.update_ignore))
+                }
             }
             TextButton(onClick = onDismiss) {
-                Text(stringResource(R.string.dialog_btn_cancel))
+                Text(
+                    stringResource(
+                        if (mode == ReleaseDialogMode.UPDATE_AVAILABLE) {
+                            R.string.dialog_btn_cancel
+                        } else {
+                            R.string.update_close
+                        }
+                    )
+                )
             }
         }
     )

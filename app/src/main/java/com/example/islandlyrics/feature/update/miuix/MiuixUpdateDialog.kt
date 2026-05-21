@@ -19,6 +19,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import com.example.islandlyrics.feature.settings.ReleaseDialogMode
 import com.example.islandlyrics.feature.update.UpdateMarkdown
 import com.example.islandlyrics.feature.update.UpdateParser
 import top.yukonga.miuix.kmp.basic.ButtonDefaults
@@ -30,6 +31,7 @@ import com.example.islandlyrics.ui.miuix.MiuixBlurDialog
 fun MiuixUpdateDialog(
     show: Boolean,
     releaseInfo: UpdateChecker.ReleaseInfo,
+    mode: ReleaseDialogMode = ReleaseDialogMode.UPDATE_AVAILABLE,
     onDismiss: () -> Unit,
     onIgnore: (String) -> Unit
 ) {
@@ -46,9 +48,13 @@ fun MiuixUpdateDialog(
     val markwon = remember(context) { UpdateMarkdown.create(context) }
     
     val textColor = MiuixTheme.colorScheme.onSurface.toArgb()
+    val title = when (mode) {
+        ReleaseDialogMode.UPDATE_AVAILABLE -> stringResource(R.string.update_available_title, comparableVersion)
+        ReleaseDialogMode.CURRENT_VERSION_CHANGELOG -> stringResource(R.string.update_current_version_changelog_title, comparableVersion)
+    }
 
     MiuixBlurDialog(
-        title = stringResource(R.string.update_available_title, comparableVersion),
+        title = title,
         show = show,
         onDismissRequest = onDismiss
     ) {
@@ -62,12 +68,14 @@ fun MiuixUpdateDialog(
                     .weight(1f, fill = false) // Ensures it doesn't exceed screen but takes only needed space
                     .verticalScroll(rememberScrollState())
             ) {
-                Text(
-                    text = stringResource(R.string.update_current_version, BuildConfig.VERSION_NAME),
-                    fontSize = MiuixTheme.textStyles.body2.fontSize,
-                    color = MiuixTheme.colorScheme.primary
-                )
-                Spacer(modifier = Modifier.height(16.dp))
+                if (mode == ReleaseDialogMode.UPDATE_AVAILABLE) {
+                    Text(
+                        text = stringResource(R.string.update_current_version, BuildConfig.VERSION_NAME),
+                        fontSize = MiuixTheme.textStyles.body2.fontSize,
+                        color = MiuixTheme.colorScheme.primary
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
                 AndroidView(
                     modifier = Modifier.fillMaxWidth(),
                     factory = { ctx ->
@@ -91,20 +99,38 @@ fun MiuixUpdateDialog(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
+                if (mode == ReleaseDialogMode.UPDATE_AVAILABLE) {
+                    TextButton(
+                        text = stringResource(R.string.update_ignore),
+                        onClick = {
+                            onIgnore(comparableVersion)
+                            onDismiss()
+                        },
+                        colors = ButtonDefaults.textButtonColors(
+                            textColor = MiuixTheme.colorScheme.onSurfaceVariantActions
+                        ),
+                        modifier = Modifier.weight(1f)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                } else {
+                    TextButton(
+                        text = stringResource(R.string.update_close),
+                        onClick = onDismiss,
+                        colors = ButtonDefaults.textButtonColors(
+                            textColor = MiuixTheme.colorScheme.onSurfaceVariantActions
+                        ),
+                        modifier = Modifier.weight(1f)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                }
                 TextButton(
-                    text = stringResource(R.string.update_ignore),
-                    onClick = {
-                        onIgnore(comparableVersion)
-                        onDismiss()
-                    },
-                    colors = ButtonDefaults.textButtonColors(
-                        textColor = MiuixTheme.colorScheme.onSurfaceVariantActions
+                    text = stringResource(
+                        if (mode == ReleaseDialogMode.UPDATE_AVAILABLE) {
+                            R.string.update_download
+                        } else {
+                            R.string.update_view_release_page
+                        }
                     ),
-                    modifier = Modifier.weight(1f)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                TextButton(
-                    text = stringResource(R.string.update_download),
                     onClick = {
                         try {
                             val intent = Intent(Intent.ACTION_VIEW, Uri.parse(releaseInfo.htmlUrl))

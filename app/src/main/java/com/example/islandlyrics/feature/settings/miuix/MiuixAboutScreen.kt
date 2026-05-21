@@ -25,6 +25,7 @@ import com.example.islandlyrics.core.settings.LabFeatureManager
 import com.example.islandlyrics.core.update.UpdateChecker
 import com.example.islandlyrics.data.LyricRepository
 import com.example.islandlyrics.feature.settings.CommunityDialogState
+import com.example.islandlyrics.feature.settings.ReleaseDialogState
 import com.example.islandlyrics.feature.update.miuix.MiuixUpdateDialog
 import com.example.islandlyrics.ui.miuix.*
 import top.yukonga.miuix.kmp.basic.*
@@ -41,9 +42,12 @@ fun MiuixAboutScreen(
     updateBuildText: String,
     onShowDiagnostics: () -> Unit,
     onCheckUpdate: () -> Unit,
-    updateReleaseInfo: UpdateChecker.ReleaseInfo? = null,
-    onUpdateDismiss: () -> Unit = {},
-    onUpdateIgnore: (String) -> Unit = {}
+    onViewCurrentVersionChangelog: () -> Unit,
+    releaseDialogState: ReleaseDialogState? = null,
+    onReleaseDialogDismiss: () -> Unit = {},
+    onUpdateIgnore: (String) -> Unit = {},
+    releaseLookupMessage: String? = null,
+    onReleaseLookupMessageDismiss: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val listState = rememberLazyListState()
@@ -202,6 +206,11 @@ fun MiuixAboutScreen(
                             summary = stringResource(R.string.summary_check_updates_now),
                             onClick = onCheckUpdate
                         )
+                        SuperArrow(
+                            title = stringResource(R.string.update_current_version_changelog_title_short),
+                            summary = stringResource(R.string.summary_view_current_version_changelog),
+                            onClick = onViewCurrentVersionChangelog
+                        )
                     }
                 }
             }
@@ -322,13 +331,36 @@ fun MiuixAboutScreen(
             )
         }
 
-        if (updateReleaseInfo != null) {
+        releaseDialogState?.let { dialogState ->
             MiuixUpdateDialog(
                 show = true,
-                releaseInfo = updateReleaseInfo,
-                onDismiss = onUpdateDismiss,
+                releaseInfo = dialogState.releaseInfo,
+                mode = dialogState.mode,
+                onDismiss = onReleaseDialogDismiss,
                 onIgnore = onUpdateIgnore
             )
+        }
+
+        if (releaseLookupMessage != null) {
+            MiuixBlurDialog(
+                title = stringResource(R.string.update_current_version_changelog_unavailable_title),
+                show = true,
+                onDismissRequest = onReleaseLookupMessageDismiss
+            ) {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Text(text = releaseLookupMessage)
+                    Spacer(modifier = Modifier.height(24.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End
+                    ) {
+                        TextButton(
+                            text = stringResource(R.string.update_close),
+                            onClick = onReleaseLookupMessageDismiss
+                        )
+                    }
+                }
+            }
         }
     }
 }

@@ -39,6 +39,7 @@ import com.example.islandlyrics.core.settings.LabFeatureManager
 import com.example.islandlyrics.core.update.UpdateChecker
 import com.example.islandlyrics.data.LyricRepository
 import com.example.islandlyrics.feature.settings.CommunityDialogState
+import com.example.islandlyrics.feature.settings.ReleaseDialogState
 import com.example.islandlyrics.feature.update.material.UpdateDialog
 import com.example.islandlyrics.ui.theme.material.materialPageContainerColor
 import com.example.islandlyrics.ui.theme.material.neutralMaterialTopBarColors
@@ -51,9 +52,12 @@ fun AboutScreen(
     updateBuildText: String,
     onShowDiagnostics: () -> Unit,
     onCheckUpdate: () -> Unit,
-    updateReleaseInfo: UpdateChecker.ReleaseInfo? = null,
-    onUpdateDismiss: () -> Unit = {},
-    onUpdateIgnore: (String) -> Unit = {}
+    onViewCurrentVersionChangelog: () -> Unit,
+    releaseDialogState: ReleaseDialogState? = null,
+    onReleaseDialogDismiss: () -> Unit = {},
+    onUpdateIgnore: (String) -> Unit = {},
+    releaseLookupMessage: String? = null,
+    onReleaseLookupMessageDismiss: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
@@ -244,6 +248,13 @@ fun AboutScreen(
                             icon = Icons.Filled.Sync,
                             onClick = onCheckUpdate
                         )
+                        SettingsCardDivider()
+                        SettingsActionItem(
+                            title = stringResource(R.string.update_current_version_changelog_title_short),
+                            summary = stringResource(R.string.summary_view_current_version_changelog),
+                            icon = Icons.Filled.Info,
+                            onClick = onViewCurrentVersionChangelog
+                        )
                     }
                 }
             }
@@ -337,11 +348,25 @@ fun AboutScreen(
             )
         }
 
-        if (updateReleaseInfo != null) {
+        releaseDialogState?.let { dialogState ->
             UpdateDialog(
-                releaseInfo = updateReleaseInfo,
-                onDismiss = onUpdateDismiss,
+                releaseInfo = dialogState.releaseInfo,
+                mode = dialogState.mode,
+                onDismiss = onReleaseDialogDismiss,
                 onIgnore = onUpdateIgnore
+            )
+        }
+
+        if (releaseLookupMessage != null) {
+            AlertDialog(
+                onDismissRequest = onReleaseLookupMessageDismiss,
+                title = { Text(stringResource(R.string.update_current_version_changelog_unavailable_title)) },
+                text = { Text(releaseLookupMessage) },
+                confirmButton = {
+                    TextButton(onClick = onReleaseLookupMessageDismiss) {
+                        Text(stringResource(R.string.update_close))
+                    }
+                }
             )
         }
     }

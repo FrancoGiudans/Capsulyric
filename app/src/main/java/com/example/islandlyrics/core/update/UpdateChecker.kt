@@ -4,6 +4,7 @@ import android.content.Context
 import com.example.islandlyrics.BuildConfig
 import com.example.islandlyrics.core.logging.AppLogger
 import com.example.islandlyrics.core.network.OfflineModeManager
+import com.example.islandlyrics.feature.update.UpdateParser
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
@@ -247,6 +248,55 @@ object UpdateChecker {
         }
     }
 
+    suspend fun fetchReleaseForVersion(
+        context: Context,
+        currentVersionOverride: String? = null
+    ): ReleaseInfo? = withContext(Dispatchers.IO) {
+        if (OfflineModeManager.isEnabled(context)) {
+            AppLogger.getInstance().i(TAG, "Offline mode enabled, skipping release lookup")
+            return@withContext null
+        }
+        try {
+            val targetVersion = currentVersionOverride ?: BuildConfig.VERSION_NAME
+            var page = 1
+            var matchedRelease: ReleaseInfo? = null
+
+            while (matchedRelease == null) {
+                val url = URL("https://api.github.com/repos/FrancoGiudans/Capsulyric/releases?per_page=100&page=$page")
+                val connection = url.openConnection() as HttpURLConnection
+                connection.requestMethod = "GET"
+                connection.setRequestProperty("Accept", "application/vnd.github.v3+json")
+                connection.connectTimeout = 10000
+                connection.readTimeout = 10000
+
+                if (connection.responseCode != 200) {
+                    return@withContext null
+                }
+
+                val response = connection.inputStream.bufferedReader().use { it.readText() }
+                val jsonArray = org.json.JSONArray(response)
+                if (jsonArray.length() == 0) {
+                    return@withContext null
+                }
+
+                for (i in 0 until jsonArray.length()) {
+                    val release = parseRelease(jsonArray.getJSONObject(i))
+                    if (getComparableVersion(release) == targetVersion) {
+                        matchedRelease = release
+                        break
+                    }
+                }
+                if (matchedRelease == null) {
+                    page++
+                }
+            }
+            matchedRelease
+        } catch (e: Exception) {
+            AppLogger.getInstance().e(TAG, "fetchReleaseForVersion failed", e)
+            null
+        }
+    }
+
     private const val CN_HEADER = "## \uD83C\uDDE8\uD83C\uDDF3"
     private const val EN_HEADER = "## \uD83C\uDDEC\uD83C\uDDE7"
 
@@ -290,47 +340,11 @@ object UpdateChecker {
     }
 
     private fun extractSections(body: String): Triple<String, String, String> {
-        val cnStart = body.indexOf(CN_HEADER)
-        val enStart = body.indexOf(EN_HEADER)
-        
-        // GitHub-generated sections usually start with these headers
-        val ghMarkers = listOf("## What's Changed", "## New Contributors", "**Full Changelog**")
-        var ghStart = -1
-        for (marker in ghMarkers) {
-            val idx = body.indexOf(marker)
-            if (idx != -1 && (ghStart == -1 || idx < ghStart)) {
-                ghStart = idx
-            }
+        val sections = UpdateParser.extractSections(body)
+        if (!sections.hasLocalizedContent) {
+            return Triple(body.trim(), "", "")
         }
-        
-        // Collect all found section starts and their types
-        val markers = mutableListOf<Pair<Int, String>>()
-        if (cnStart != -1) markers.add(cnStart to "CN")
-        if (enStart != -1) markers.add(enStart to "EN")
-        if (ghStart != -1) markers.add(ghStart to "GH")
-        markers.sortBy { it.first }
-        
-        var cn = ""
-        var en = ""
-        var gh = ""
-        
-        for (i in markers.indices) {
-            val start = markers[i].first
-            val type = markers[i].second
-            val end = if (i + 1 < markers.size) markers[i+1].first else body.length
-            
-            val content = body.substring(start, end).trim()
-            when (type) {
-                "CN" -> cn = content.substring(CN_HEADER.length).trim()
-                "EN" -> en = content.substring(EN_HEADER.length).trim()
-                "GH" -> gh = content.trim()
-            }
-        }
-        
-        // If no markers found at all, treat whole body as CN for backward compatibility
-        if (markers.isEmpty()) return Triple(body, "", "")
-        
-        return Triple(cn, en, gh)
+        return Triple(sections.chinese, sections.english, sections.shared)
     }
 
     private fun parseRelease(json: JSONObject): ReleaseInfo {

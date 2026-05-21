@@ -255,8 +255,15 @@
     <string name="update_check_title">Check for Updates</string>
     <string name="update_available_title">Update Available: %s</string>
     <string name="update_current_version">Current: %s</string>
+    <string name="update_current_version_changelog_title">Release Notes for %s</string>
+    <string name="update_current_version_changelog_title_short">Current Version Release Notes</string>
+    <string name="update_current_version_changelog_loading">Looking up current version release notes...</string>
+    <string name="update_current_version_changelog_unavailable_title">Release Notes Unavailable</string>
+    <string name="update_current_version_changelog_unavailable_message">Release notes for the current version could not be found.\n\nPossible reasons:\n1. You are using an older Experiment build. Experiment releases roll forward quickly, and notes for older builds may already have been cleared.\n2. The installed build was not published as a public release, such as an Actions build, a local build, or a build from another branch.</string>
     <string name="update_changelog">What\'s New</string>
     <string name="update_download">Download Update</string>
+    <string name="update_view_release_page">Open Release Page</string>
+    <string name="update_close">Close</string>
     <string name="update_view">View</string>
     <string name="update_available_snackbar">New version available: %s</string>
     <string name="update_ignore">Ignore This Version</string>
@@ -355,6 +362,7 @@
     <!-- Miuix Summaries -->
     <string name="summary_optimize_battery">Optimize battery usage</string>
     <string name="summary_check_updates_now">Check for updates now</string>
+    <string name="summary_view_current_version_changelog">View the release notes for the version currently installed</string>
     <string name="summary_faq">Frequently asked questions</string>
     <string name="summary_feedback">Send feedback or report issues</string>
     <string name="summary_github">View source on GitHub</string>

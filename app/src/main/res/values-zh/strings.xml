@@ -251,8 +251,15 @@
     <string name="update_check_title">检查更新</string>
     <string name="update_available_title">发现新版本: %s</string>
     <string name="update_current_version">当前版本: %s</string>
+    <string name="update_current_version_changelog_title">当前版本更新日志：%s</string>
+    <string name="update_current_version_changelog_title_short">查看当前版本更新日志</string>
+    <string name="update_current_version_changelog_loading">正在查询当前版本更新日志...</string>
+    <string name="update_current_version_changelog_unavailable_title">无法查询当前版本更新日志</string>
+    <string name="update_current_version_changelog_unavailable_message">暂时无法查询到当前版本对应的更新日志。\n\n可能的原因有：\n1. 你当前使用的是较早的 Experiment 测试版本。Experiment 通道采用滚动更新，旧版本日志可能会随着版本推进被清空。\n2. 你当前安装的并非公开发布版本，例如 GitHub Actions 自构建、本地构建，或其他分支产物。</string>
     <string name="update_changelog">更新内容</string>
     <string name="update_download">下载更新</string>
+    <string name="update_view_release_page">打开发布页</string>
+    <string name="update_close">关闭</string>
     <string name="update_view">查看</string>
     <string name="update_available_snackbar">发现新版本: %s</string>
     <string name="update_ignore">忽略该版本</string>
@@ -546,6 +553,7 @@
     <string name="toast_copied">已复制到剪切板</string>
     <string name="summary_optimize_battery">优化后台表现</string>
     <string name="summary_check_updates_now">立即检查更新</string>
+    <string name="summary_view_current_version_changelog">查看当前已安装版本对应的发布说明</string>
     <string name="summary_faq">查看常见问题</string>
     <string name="summary_feedback">通过WPS或者GitHub发送反馈</string>
     <string name="summary_github">在GitHub查看源码</string>

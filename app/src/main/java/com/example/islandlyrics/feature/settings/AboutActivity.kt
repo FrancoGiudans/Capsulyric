@@ -24,7 +24,8 @@ import kotlinx.coroutines.launch
 
 class AboutActivity : BaseActivity() {
 
-    private var updateReleaseInfo by mutableStateOf<UpdateChecker.ReleaseInfo?>(null)
+    private var releaseDialogState by mutableStateOf<ReleaseDialogState?>(null)
+    private var releaseLookupMessage by mutableStateOf<String?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -51,12 +52,15 @@ class AboutActivity : BaseActivity() {
                         updateBuildText = build,
                         onShowDiagnostics = { showDiagnostics() },
                         onCheckUpdate = { performUpdateCheck() },
-                        updateReleaseInfo = updateReleaseInfo,
-                        onUpdateDismiss = { updateReleaseInfo = null },
+                        onViewCurrentVersionChangelog = { showCurrentVersionChangelog() },
+                        releaseDialogState = releaseDialogState,
+                        onReleaseDialogDismiss = { releaseDialogState = null },
                         onUpdateIgnore = { version ->
                             UpdateChecker.setIgnoredVersion(this@AboutActivity, version)
                             AppLogger.getInstance().log("Update", "Ignored version: $version")
-                        }
+                        },
+                        releaseLookupMessage = releaseLookupMessage,
+                        onReleaseLookupMessageDismiss = { releaseLookupMessage = null }
                     )
                     }
                 }
@@ -69,12 +73,15 @@ class AboutActivity : BaseActivity() {
                             updateBuildText = build,
                             onShowDiagnostics = { showDiagnostics() },
                             onCheckUpdate = { performUpdateCheck() },
-                            updateReleaseInfo = updateReleaseInfo,
-                            onUpdateDismiss = { updateReleaseInfo = null },
+                            onViewCurrentVersionChangelog = { showCurrentVersionChangelog() },
+                            releaseDialogState = releaseDialogState,
+                            onReleaseDialogDismiss = { releaseDialogState = null },
                             onUpdateIgnore = { version ->
                                 UpdateChecker.setIgnoredVersion(this@AboutActivity, version)
                                 AppLogger.getInstance().log("Update", "Ignored version: $version")
-                            }
+                            },
+                            releaseLookupMessage = releaseLookupMessage,
+                            onReleaseLookupMessageDismiss = { releaseLookupMessage = null }
                         )
                     }
                 }
@@ -93,7 +100,10 @@ class AboutActivity : BaseActivity() {
             try {
                 val release = UpdateChecker.checkForUpdate(this@AboutActivity)
                 if (release != null) {
-                    updateReleaseInfo = release
+                    releaseDialogState = ReleaseDialogState(
+                        releaseInfo = release,
+                        mode = ReleaseDialogMode.UPDATE_AVAILABLE
+                    )
                     AppLogger.getInstance().log("About", "Update found: ${UpdateChecker.getComparableVersion(release)}")
                 } else {
                     Toast.makeText(
@@ -114,7 +124,51 @@ class AboutActivity : BaseActivity() {
         }
     }
 
+    private fun showCurrentVersionChangelog() {
+        if (OfflineModeManager.isEnabled(this)) {
+            Toast.makeText(this, R.string.offline_mode_network_blocked, Toast.LENGTH_SHORT).show()
+            return
+        }
+        Toast.makeText(this, R.string.update_current_version_changelog_loading, Toast.LENGTH_SHORT).show()
+
+        lifecycleScope.launch {
+            try {
+                val release = UpdateChecker.fetchReleaseForVersion(this@AboutActivity)
+                if (release != null) {
+                    releaseDialogState = ReleaseDialogState(
+                        releaseInfo = release,
+                        mode = ReleaseDialogMode.CURRENT_VERSION_CHANGELOG
+                    )
+                    AppLogger.getInstance().log(
+                        "About",
+                        "Current version changelog found: ${UpdateChecker.getComparableVersion(release)}"
+                    )
+                } else {
+                    releaseLookupMessage = getString(R.string.update_current_version_changelog_unavailable_message)
+                    AppLogger.getInstance().log("About", "Current version changelog unavailable")
+                }
+            } catch (e: Exception) {
+                Toast.makeText(
+                    this@AboutActivity,
+                    R.string.update_check_failed,
+                    Toast.LENGTH_SHORT
+                ).show()
+                AppLogger.getInstance().log("About", "Current version changelog lookup failed: ${e.message}")
+            }
+        }
+    }
+
     private fun showDiagnostics() {
         startActivity(android.content.Intent(this, DiagnosticsActivity::class.java))
     }
+}
+
+data class ReleaseDialogState(
+    val releaseInfo: UpdateChecker.ReleaseInfo,
+    val mode: ReleaseDialogMode
+)
+
+enum class ReleaseDialogMode {
+    UPDATE_AVAILABLE,
+    CURRENT_VERSION_CHANGELOG
 }
