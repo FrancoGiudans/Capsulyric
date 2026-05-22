@@ -111,12 +111,9 @@ fun MiuixOobeScreen(onFinish: () -> Unit) {
         AppGuide(
             name = stringResource(R.string.oobe_tab_xiaomi),
             guide = stringResource(R.string.oobe_guide_xiaomi)
-        ),
-        AppGuide(
-            name = stringResource(R.string.oobe_tab_apple),
-            guide = stringResource(R.string.oobe_guide_apple)
         )
     )
+
 
     BackHandler(enabled = currentStep > 0 || showRuleGuideDialog) {
         when {
@@ -539,9 +536,28 @@ private fun AppSetupStepBody(
 
         Spacer(modifier = Modifier.height(14.dp))
 
+        SmallTitle(text = stringResource(R.string.oobe_online_alt_title))
+        FilledCard {
+            Text(
+                text = stringResource(R.string.oobe_online_alt_desc),
+                fontSize = 15.sp,
+                lineHeight = 22.sp,
+                color = MiuixTheme.colorScheme.onSurface
+            )
+            Spacer(modifier = Modifier.height(14.dp))
+            FormattedText(
+                text = stringResource(R.string.oobe_online_alt_guide),
+                color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                fontSize = 14f
+            )
+        }
+
+        Spacer(modifier = Modifier.height(14.dp))
+
         FilledArrowCard {
             SuperArrow(
                 title = stringResource(R.string.title_app_settings),
+
                 startAction = {
                     PreferenceIcon(imageVector = Icons.Filled.Settings)
                 },

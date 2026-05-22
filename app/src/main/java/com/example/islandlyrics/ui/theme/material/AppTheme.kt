@@ -2,13 +2,15 @@ package com.example.islandlyrics.ui.theme.material
 
 import android.app.Activity
 import android.content.Context
+import android.os.Build
 import com.example.islandlyrics.core.theme.ThemeHelper
 import com.example.islandlyrics.ui.common.BaseActivity
-import android.os.Build
+import androidx.activity.ComponentActivity
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -25,6 +27,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.view.WindowCompat
+import androidx.navigationevent.NavigationEventDispatcher
+import androidx.navigationevent.OnBackInvokedDefaultInput
+import androidx.navigationevent.compose.LocalNavigationEventDispatcherOwner
 import kotlin.math.roundToInt
 
 // Monet-derived palette from seed #3482FF (H≈220°, C≈80 in HCT).
@@ -84,12 +89,35 @@ fun AppTheme(
         }
     }
 
-    MaterialTheme(
-        colorScheme = colorScheme,
-        typography = AppTypography,
-        shapes = AppShapes,
-        content = content
-    )
+    val activity = LocalContext.current as? ComponentActivity
+    val navigationEventDispatcher = remember {
+        NavigationEventDispatcher { (activity as? Activity)?.finish() }
+    }
+    DisposableEffect(navigationEventDispatcher, activity) {
+        if (activity != null && Build.VERSION.SDK_INT >= 33) {
+            val input = OnBackInvokedDefaultInput(activity.onBackInvokedDispatcher)
+            navigationEventDispatcher.addInput(input)
+            onDispose { navigationEventDispatcher.removeInput(input) }
+        } else {
+            onDispose { }
+        }
+    }
+    val navigationEventDispatcherOwner = remember(navigationEventDispatcher) {
+        object : androidx.navigationevent.NavigationEventDispatcherOwner {
+            override val navigationEventDispatcher = navigationEventDispatcher
+        }
+    }
+
+    CompositionLocalProvider(
+        LocalNavigationEventDispatcherOwner provides navigationEventDispatcherOwner
+    ) {
+        MaterialTheme(
+            colorScheme = colorScheme,
+            typography = AppTypography,
+            shapes = AppShapes,
+            content = content
+        )
+    }
 }
 
 @Composable

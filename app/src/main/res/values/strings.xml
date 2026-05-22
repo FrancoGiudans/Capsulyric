@@ -507,12 +507,14 @@ Within the log interface, select the share/export icon. You can specify a timefr
     <string name="oobe_tab_qq">QQ Music</string>
     <string name="oobe_tab_netease">Netease Music</string>
     <string name="oobe_tab_xiaomi">Xiaomi Music by TME</string>
-    <string name="oobe_tab_apple">Apple Music</string>
     
     <string name="oobe_guide_qq">1. Connect a Bluetooth audio device first.\n2. Go to <b>Me</b> -> <b>Menu (Top Right 3-lines)</b> -> <b>Settings</b>.\n3. Find and enable <b>Car Bluetooth Lyrics</b>.</string>
     <string name="oobe_guide_netease">1. Connect a Bluetooth audio device first.\n2. Go to <b>Menu (Top Left)</b> -> <b>Settings</b> -> <b>General</b>.\n3. Find and enable <b>External Device Bluetooth Lyrics</b>.</string>
     <string name="oobe_guide_xiaomi">1. Go to <b>Me</b> -> <b>Menu (Top Right 3-lines)</b> -> <b>General Settings</b>.\n2. Enable <b>Notification Bar Lyrics</b>.</string>
-    <string name="oobe_guide_apple">1. Requires <b>Root</b> (Magisk/KernelSU).\n2. Install <b>LSPosed</b> framework.\n3. Install the <b>SuperLyric</b> module.\n4. Enable the module for Apple Music.</string>
+    
+    <string name="oobe_online_alt_title">My music app doesn\'t support notification lyrics / I want an easier setup</string>
+    <string name="oobe_online_alt_desc">Online lyrics work with any music app — just enable it in Parser Rules. No Bluetooth pairing required. Lyrics are fetched by searching the song title and artist from the internet.</string>
+    <string name="oobe_online_alt_guide">1. Go to <b>Settings</b> -> <b>Parser Rules</b>.\n2. Select your music app from the list.\n3. Under <b>Sources &amp; Logic</b>, tap <b>Lyric source settings</b>.\n4. Enable <b>"Use Online Lyrics API"</b>.\n5. Keep <b>"Smart lyric selection"</b> on for best results.</string>
     
     <string name="oobe_app_not_in_list">My app is not in this list?</string>
     <string name="oobe_i_understand">I understand</string>

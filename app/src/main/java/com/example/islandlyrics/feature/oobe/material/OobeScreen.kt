@@ -369,9 +369,9 @@ fun AppSetupStep() {
     val guides = listOf(
         AppGuide(stringResource(R.string.oobe_tab_qq), stringResource(R.string.oobe_guide_qq)),
         AppGuide(stringResource(R.string.oobe_tab_netease), stringResource(R.string.oobe_guide_netease)),
-        AppGuide(stringResource(R.string.oobe_tab_xiaomi), stringResource(R.string.oobe_guide_xiaomi)),
-        AppGuide(stringResource(R.string.oobe_tab_apple), stringResource(R.string.oobe_guide_apple))
+        AppGuide(stringResource(R.string.oobe_tab_xiaomi), stringResource(R.string.oobe_guide_xiaomi))
     )
+
 
     Column(
         modifier = Modifier
@@ -407,6 +407,36 @@ fun AppSetupStep() {
         
         Spacer(modifier = Modifier.height(24.dp))
         
+        // Online Lyrics Alternative
+        Card(
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.4f)
+            ),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text(
+                    text = stringResource(R.string.oobe_online_alt_title),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = stringResource(R.string.oobe_online_alt_desc),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                FormattedText(
+                    text = context.resources.getText(R.string.oobe_online_alt_guide),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontSize = 14f
+                )
+            }
+        }
+        
+        Spacer(modifier = Modifier.height(16.dp))
+        
         TextButton(
             onClick = {
                 showGuideDialog = true
@@ -415,6 +445,7 @@ fun AppSetupStep() {
         ) {
             Text(stringResource(R.string.oobe_app_not_in_list))
         }
+
 
         Spacer(modifier = Modifier.height(16.dp))
 

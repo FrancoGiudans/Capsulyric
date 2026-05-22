@@ -220,8 +220,8 @@
     <string name="parser_receive_romanization">接收罗马音</string>
     <string name="parser_online_translation_desc">目前只有 QQ 音乐和网易云在线歌词提供翻译数据。</string>
     <string name="parser_online_romanization_desc">目前只有 QQ 音乐和网易云在线歌词提供罗马音数据。</string>
-    <string name="parser_lyricon_translation_desc">当当前 Lyricon 提供方上报翻译字段时接收。</string>
-    <string name="parser_lyricon_romanization_desc">当当前 Lyricon 提供方上报罗马音或 secondary 字段时接收。</string>
+    <string name="parser_lyricon_translation_desc">在当前 Lyricon 提供方上报翻译字段时接收。</string>
+    <string name="parser_lyricon_romanization_desc">在当前 Lyricon 提供方上报罗马音或 secondary 字段时接收。</string>
     <string name="parser_save">保存</string>
     <string name="parser_save_rule">保存规则</string>
     <string name="parser_add_app_fmt">添加 %s</string>
@@ -446,12 +446,14 @@
     <string name="oobe_tab_qq">QQ音乐</string>
     <string name="oobe_tab_netease">网易云音乐</string>
     <string name="oobe_tab_xiaomi">小米音乐</string>
-    <string name="oobe_tab_apple">Apple Music</string>
     
     <string name="oobe_guide_qq">1. 必须先连接蓝牙音频设备。\n2. 进入 <b>我的</b> -> <b>更多 (右上角三横)</b> -> <b>设置</b>。\n3. 找到并开启 <b>车载蓝牙歌词</b>。</string>
     <string name="oobe_guide_netease">1. 必须先连接蓝牙音频设备。\n2. 进入 <b>菜单 (左上角)</b> -> <b>设置</b> -> <b>通用</b>。\n3. 找到并开启 <b>外接设备蓝牙歌词</b>。</string>
     <string name="oobe_guide_xiaomi">1. 进入 <b>我的</b> -> <b>更多 (右上角三横)</b> -> <b>通用设置</b>。\n2. 开启 <b>通知栏歌词</b>。</string>
-    <string name="oobe_guide_apple">1. 需要 <b>Root</b> 权限 (Magisk/KernelSU)。\n2. 安装 <b>LSPosed</b> 框架。\n3. 安装 <b>SuperLyric</b> 模块。\n4. 在模块中启用 Apple Music。</string>
+    
+    <string name="oobe_online_alt_title">我的音乐App没有提供媒体通知歌词 / 我想更方便地配置</string>
+    <string name="oobe_online_alt_desc">在线歌词适用于任意音乐App——只需在解析规则中开启即可。无需连接蓝牙，歌词通过搜索歌名和歌手从互联网获取。</string>
+    <string name="oobe_online_alt_guide">1. 进入 <b>设置</b> -> <b>解析规则</b>。\n2. 从列表中选择你的音乐App。\n3. 在 <b>来源与逻辑</b> 下点击 <b>歌词来源设置</b>。\n4. 开启 <b>"使用在线歌词 API"</b>。\n5. 建议保持 <b>"智能获取"</b> 开启以获得最佳效果。</string>
     
     <string name="oobe_app_not_in_list">我的应用不在列表中？</string>
     <string name="oobe_i_understand">我已了解</string>
@@ -806,6 +808,6 @@
     <string name="community_dialog_open">前往链接</string>
     <string name="community_dialog_close">关闭</string>
     <string name="parser_online_conflict_title">关闭媒体通知歌词以发挥在线歌词的最佳效果</string>
-    <string name="parser_online_conflict_message">如果希望在线歌词是该应用的主要歌词来源，为避免错误检索和重复出发，推荐关闭媒体通知歌词来源与对应应用内的媒体通知歌词。你希望现在就关闭吗？</string>
+    <string name="parser_online_conflict_message">如果希望在线歌词是该应用的主要歌词来源，为避免错误检索和重复触发，推荐关闭媒体通知歌词来源与对应应用内的媒体通知歌词。你希望现在就关闭吗？</string>
     <string name="parser_online_conflict_keep">保持现有设置</string>
 </resources>

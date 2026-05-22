@@ -397,7 +397,9 @@ object UpdateChecker {
     }
 
     private fun isCanaryTag(tag: String): Boolean {
-        return tag.startsWith("Canary.Version") || tag.contains(".Canary")
+        return tag.startsWith("Canary.Version") ||
+            tag.contains(".Canary") ||
+            tag.contains(".Experiment")
     }
 
     private fun isPreviewTag(tag: String): Boolean {
