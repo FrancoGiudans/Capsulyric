@@ -1,14 +1,6 @@
 name: Stable Build
 
 on:
-  push:
-    branches:
-      - main
-    paths-ignore:
-      - '**.md'
-      - '.gitignore'
-      - 'screenshots/**'
-      - 'LICENSE'
   workflow_dispatch:
 
 concurrency:
