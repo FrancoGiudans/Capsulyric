@@ -1,6 +1,7 @@
 package com.example.islandlyrics.service
 
 import android.content.ComponentName
+import com.example.islandlyrics.BuildConfig
 import com.example.islandlyrics.data.ServiceDiagnostics
 import com.example.islandlyrics.core.logging.AppLogger
 import com.example.islandlyrics.data.lyric.SuperLyricSource
@@ -549,7 +550,12 @@ class MediaMonitorService : NotificationListenerService() {
         val artHash = artBitmap?.hashCode() ?: 0
         
         val metadataHash = java.util.Objects.hash(rawTitle, rawArtist, pkg, duration, artHash)
-        
+        if (BuildConfig.DEBUG) {
+            AppLogger.getInstance().log(
+                TAG,
+                "[NotifyTrace] updateMetadataIfPrimary pkg=$pkg rawTitle=$rawTitle rawArtist=$rawArtist duration=$duration artHash=$artHash metadataHash=$metadataHash lastMetadataHash=$lastMetadataHash state=${playbackState?.state}"
+            )
+        }
         // SKIP DUPLICATE CHECK if this is a forced update (from whitelist change)
         // We detect this via a transient flag or simply by checking if the LAST hash was from a DIFFERENT package?
         // Simpler: We just rely on the fact that if we switched primary, the hash is likely different.
@@ -600,6 +606,12 @@ class MediaMonitorService : NotificationListenerService() {
             // New-song detection: duration change of >1000ms is a reliable indicator
             val durationDiffers = duration > 0 && prevDuration > 0 &&
                                   kotlin.math.abs(duration - prevDuration) > 1000L
+            if (BuildConfig.DEBUG) {
+                AppLogger.getInstance().log(
+                    TAG,
+                    "[NotifyTrace] parserInputs pkg=$pkg prevTitle=$prevTitle prevArtist=$prevArtist prevDuration=$prevDuration rawTitle=$rawTitle rawArtist=$rawArtist duration=$duration durationDiffers=$durationDiffers dynamicBefore=$isDynamicLyricMode"
+                )
+            }
             if (durationDiffers) {
                 // Reset all cached state for this package
                 isDynamicLyricMode = false
@@ -720,6 +732,12 @@ class MediaMonitorService : NotificationListenerService() {
             packageLyricMode[pkg]    = isDynamicLyricMode
         }
 
+        if (BuildConfig.DEBUG) {
+            AppLogger.getInstance().log(
+                TAG,
+                "[NotifyTrace] metadataResolved pkg=$pkg finalTitle=$finalTitle finalArtist=$finalArtist finalLyric=$finalLyric dynamicAfter=$isDynamicLyricMode"
+            )
+        }
 
         // Update PUBLIC Metadata (Main UI)
         LyricRepository.getInstance().updateMediaMetadata(

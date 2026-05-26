@@ -56,6 +56,9 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
+      - name: Compile Debug App and Smoke Tests
+        run: ./gradlew :app:assembleDebugAndroidTest
+
       - name: Build Stable Package
         run: ./gradlew assembleRelease -PversionPrefix="${{ steps.build_meta.outputs.version_prefix }}" -PversionChannel=Stable -PappCodename="${{ steps.build_meta.outputs.codename }}"
 

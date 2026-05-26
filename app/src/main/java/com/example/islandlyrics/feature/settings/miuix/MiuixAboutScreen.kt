@@ -351,12 +351,16 @@ fun MiuixAboutScreen(
                     Text(text = releaseLookupMessage)
                     Spacer(modifier = Modifier.height(24.dp))
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.End
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         TextButton(
                             text = stringResource(R.string.update_close),
-                            onClick = onReleaseLookupMessageDismiss
+                            onClick = onReleaseLookupMessageDismiss,
+                            modifier = Modifier.weight(1f),
+                            colors = ButtonDefaults.textButtonColorsPrimary()
                         )
                     }
                 }

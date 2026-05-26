@@ -120,7 +120,8 @@ class OnlineLyricSource(private val context: Context) {
                             lines = lines,
                             hasSyllable = cacheHit.result.hasSyllable,
                             sourceLabel = "${cacheHit.result.api} · Cache",
-                            apiPath = "Online Cache"
+                            apiPath = "Online Cache",
+                            timelineCapability = LyricRepository.TimelineCapability.MULTI_LINE
                         )
                         return@launch
                     }
@@ -175,7 +176,8 @@ class OnlineLyricSource(private val context: Context) {
                             lines = lines,
                             hasSyllable = result.hasSyllable,
                             sourceLabel = result.api,
-                            apiPath = "Online API"
+                            apiPath = "Online API",
+                            timelineCapability = LyricRepository.TimelineCapability.MULTI_LINE
                         )
                 } else {
                     AppLogger.getInstance().i(TAG, "Online fetch: no usable result")

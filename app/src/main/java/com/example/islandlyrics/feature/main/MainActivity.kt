@@ -213,11 +213,11 @@ class MainActivity : BaseActivity() {
                         } else {
                             AppLogger.getInstance().log("MainActivity", "✅ Service connected after FORCE REBIND")
                         }
-                    }, 1000) // Give force rebind time (1s)
+                    }, 1000)
                 } else {
                     AppLogger.getInstance().log("MainActivity", "✅ Service connected after first retry")
                 }
-            }, 500) // Faster fallback to force rebind
+            }, 500)
         } else if (!isPermissionGranted) {
             AppLogger.getInstance().log("MainActivity", "❌ Notification Listener Permission NOT granted!")
         } else {
@@ -225,7 +225,6 @@ class MainActivity : BaseActivity() {
         }
 
     }
-
 
     companion object {
         private const val TAG = "IslandLyrics"

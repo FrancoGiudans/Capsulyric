@@ -96,8 +96,10 @@ fun MiuixUpdateDialog(
 
             // Fixed Buttons Row (persistent at the bottom)
             Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 if (mode == ReleaseDialogMode.UPDATE_AVAILABLE) {
                     TextButton(
@@ -111,7 +113,6 @@ fun MiuixUpdateDialog(
                         ),
                         modifier = Modifier.weight(1f)
                     )
-                    Spacer(modifier = Modifier.width(8.dp))
                 } else {
                     TextButton(
                         text = stringResource(R.string.update_close),
@@ -121,7 +122,6 @@ fun MiuixUpdateDialog(
                         ),
                         modifier = Modifier.weight(1f)
                     )
-                    Spacer(modifier = Modifier.width(8.dp))
                 }
                 TextButton(
                     text = stringResource(

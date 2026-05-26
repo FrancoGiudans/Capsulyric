@@ -48,8 +48,6 @@ import androidx.navigationevent.compose.LocalNavigationEventDispatcherOwner
 import androidx.navigationevent.compose.NavigationBackHandler
 import androidx.navigationevent.compose.rememberNavigationEventState
 import top.yukonga.miuix.kmp.basic.Text
-import top.yukonga.miuix.kmp.blur.BlendColorEntry
-import top.yukonga.miuix.kmp.blur.BlurColors
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.window.Dialog
@@ -91,18 +89,6 @@ fun MiuixBlurDialog(
     val displayCutoutPadding = WindowInsets.displayCutout.asPaddingValues().calculateTopPadding()
     val topInset = remember(statusBarPadding, captionBarPadding, displayCutoutPadding) {
         maxOf(statusBarPadding, captionBarPadding, displayCutoutPadding)
-    }
-    val topBarBlurColors = remember(panelColor) {
-        BlurColors(
-            blendColors = listOf(
-                BlendColorEntry(color = panelColor.copy(alpha = 0.8f))
-            )
-        )
-    }
-    val fallbackPanelColor = if (blurEnabled) {
-        panelColor.copy(alpha = 0.8f)
-    } else {
-        panelColor
     }
     val borderColor = if (panelColor.luminance() > 0.5f) {
         Color.White
@@ -208,10 +194,10 @@ fun MiuixBlurDialog(
                         enabled = shouldUseBlur,
                         backdrop = backdrop,
                         shape = BlurDialogShape,
-                        fallbackColor = fallbackPanelColor,
-                        blurRadius = 25f,
+                        fallbackColor = panelColor,
+                        blurRadius = MiuixBlurStyleDefaults.DialogBlurRadius,
                         noiseCoefficient = MiuixBlurStyleDefaults.DialogNoiseCoefficient,
-                        colors = topBarBlurColors
+                        colors = miuixDialogBlurColors(surfaceColor = panelColor)
                     )
                     .border(1.dp, borderColor, BlurDialogShape)
                     .padding(

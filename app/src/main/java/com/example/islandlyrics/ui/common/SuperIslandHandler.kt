@@ -10,7 +10,9 @@ import android.content.SharedPreferences
 import android.graphics.Bitmap
 import android.graphics.drawable.Icon
 import android.widget.RemoteViews
+import com.example.islandlyrics.BuildConfig
 import com.example.islandlyrics.R
+import com.example.islandlyrics.core.logging.AppLogger
 import com.example.islandlyrics.core.platform.XmsfBypassMode
 import com.example.islandlyrics.data.LyricRepository
 import com.example.islandlyrics.service.LyricService
@@ -149,6 +151,7 @@ class SuperIslandHandler(
     private var lastSentTitle = ""
     private var lastSentArtist = ""
     private var isFirstNotification = true
+    private var firstNotificationReason = "initial"
     private var lastFocusParam = ""
     
     private var lastNotifyTime = 0L
@@ -189,6 +192,7 @@ class SuperIslandHandler(
         lastSentSubText = ""
         lastSentIsPlaying = false
         isFirstNotification = true
+        firstNotificationReason = "initial"
         
         lastAlbumArtHash = 0
         lastPicAppHash = 0
@@ -333,7 +337,9 @@ class SuperIslandHandler(
     }
 
     private fun createBaseBuilder(): Notification.Builder {
-        return Notification.Builder(context, CHANNEL_ID)
+        return applyImmediateForegroundBehavior(
+            Notification.Builder(context, CHANNEL_ID)
+        )
             .setSmallIcon(R.drawable.ic_music_note)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
@@ -358,7 +364,14 @@ class SuperIslandHandler(
         val trackChanged = state.title != lastSentTitle || state.artist != lastSentArtist
         if (trackChanged && !isFirstNotification) {
             com.example.islandlyrics.core.logging.AppLogger.getInstance().d("SuperIsland", "Track changed: ${state.title}. Resetting builder.")
+            if (BuildConfig.DEBUG) {
+                AppLogger.getInstance().log(
+                    "SuperIsland",
+                    "[NotifyTrace] markFirst reason=trackChanged track=${state.title} - ${state.artist}"
+                )
+            }
             isFirstNotification = true
+            firstNotificationReason = "trackChanged"
             lastFocusParam = ""
         }
 
@@ -372,7 +385,14 @@ class SuperIslandHandler(
         val lyricLineChanged = !isFirstNotification && !trackChanged
                 && state.fullLyric.isNotEmpty() && state.fullLyric != lastSentFullLyric
         if (lyricLineChanged) {
+            if (BuildConfig.DEBUG) {
+                AppLogger.getInstance().log(
+                    "SuperIsland",
+                    "[NotifyTrace] markFirst reason=lyricLineChanged fullLyric=${state.fullLyric}"
+                )
+            }
             isFirstNotification = true
+            firstNotificationReason = "lyricLineChanged"
         }
 
         // 3. CONTENT-AWARE THROTTLING
@@ -489,6 +509,7 @@ class SuperIslandHandler(
             bigIslandArea {
                 applyBigIslandLyrics(
                     preferMetadataLayout = state.preferMetadataLayout,
+                    isTimingGapPlaceholder = state.isTimingGapPlaceholder,
                     fullLyric = state.fullLyric,
                     displayLyric = displayLyric,
                     titleWithArtist = titleWithArtist,
@@ -566,26 +587,64 @@ class SuperIslandHandler(
         lastSentArtist = state.artist
         lastNotifyTime = System.currentTimeMillis()
 
-        notifyWithNetworkCut(notification, isFirstNotification, currentTrackKey, state.isPlaying)
+        if (BuildConfig.DEBUG) {
+            AppLogger.getInstance().log(
+                "SuperIsland",
+                "[NotifyTrace] send first=$isFirstNotification reason=$firstNotificationReason title=$notificationTitle focusEmpty=${focusSignature.isEmpty()} running=$isRunning isPlaying=${state.isPlaying} track=${state.title} - ${state.artist}"
+            )
+        }
+
+        notifyWithNetworkCut(
+            notification = notification,
+            isFirst = isFirstNotification,
+            firstReason = firstNotificationReason,
+            currentTrackKey = currentTrackKey,
+            isPlaying = state.isPlaying
+        )
         if (isFirstNotification) {
             isFirstNotification = false
+            firstNotificationReason = "steady"
         }
     }
 
     private fun notifyWithNetworkCut(
         notification: Notification,
         isFirst: Boolean,
+        firstReason: String,
         currentTrackKey: String,
         isPlaying: Boolean
     ) {
+        val canUsePrimedNotify = isFirst &&
+            firstReason != "lyricLineChanged" &&
+            service.isForegroundSlotPrimed() &&
+            manager != null
+
+        fun traceDispatch(path: String) {
+            if (BuildConfig.DEBUG) {
+                AppLogger.getInstance().log(
+                    "SuperIsland",
+                    "[NotifyTrace] dispatch mode=$cachedXmsfBypassMode path=$path isFirst=$isFirst firstReason=$firstReason primed=${service.isForegroundSlotPrimed()} playing=$isPlaying trackKey=$currentTrackKey"
+                )
+            }
+        }
+
         when (cachedXmsfBypassMode) {
             XmsfBypassMode.AGGRESSIVE -> {
                 networkCutJob?.cancel()
                 if (!isPlaying) {
                     restoreXmsfNetworkingAsync(expectedGeneration = aggressiveCutGeneration)
-                    if (isFirst) {
-                        service.startForeground(NOTIFICATION_ID, notification)
+                    if (canUsePrimedNotify) {
+                        traceDispatch("notify.aggressive.notPlaying.primed")
+                        manager.notify(NOTIFICATION_ID, notification)
+                    } else if (isFirst) {
+                        traceDispatch("startForeground.aggressive.notPlaying")
+                        service.startForegroundTracked(
+                            NOTIFICATION_ID,
+                            notification,
+                            reason = "superIsland.aggressive.notPlaying.$firstReason"
+                        )
                     } else {
+                        traceDispatch("notify.aggressive.notPlaying")
                         manager?.notify(NOTIFICATION_ID, notification)
                     }
                     return
@@ -605,9 +664,15 @@ class SuperIslandHandler(
                         }
                         aggressiveTrackKey = currentTrackKey
                         if (manager != null) {
+                            traceDispatch("notify.aggressive.cut")
                             manager.notify(NOTIFICATION_ID, notification)
                         } else if (isFirst) {
-                            service.startForeground(NOTIFICATION_ID, notification)
+                            traceDispatch("startForeground.aggressive.cutFallback")
+                            service.startForegroundTracked(
+                                NOTIFICATION_ID,
+                                notification,
+                                reason = "superIsland.aggressive.cutFallback.$firstReason"
+                            )
                         }
                     }
                 }
@@ -625,9 +690,15 @@ class SuperIslandHandler(
                     // startForeground() adds extra service/AMS hops, which can let HyperOS finish
                     // the whitelist scan after the network has already been restored.
                     if (manager != null) {
+                        traceDispatch("notify.standard.cut")
                         manager.notify(NOTIFICATION_ID, notification)
                     } else if (isFirst) {
-                        service.startForeground(NOTIFICATION_ID, notification)
+                        traceDispatch("startForeground.standard.cutFallback")
+                        service.startForegroundTracked(
+                            NOTIFICATION_ID,
+                            notification,
+                            reason = "superIsland.standard.cutFallback.$firstReason"
+                        )
                     }
                     // Keep offline for a brief moment; if a new send happens within this window,
                     // the previous restore will be cancelled.
@@ -645,13 +716,29 @@ class SuperIslandHandler(
             }
             }
             XmsfBypassMode.DISABLED -> {
-                if (isFirst) {
-                    service.startForeground(NOTIFICATION_ID, notification)
+                if (canUsePrimedNotify) {
+                    traceDispatch("notify.disabled.primed")
+                    manager.notify(NOTIFICATION_ID, notification)
+                } else if (isFirst) {
+                    traceDispatch("startForeground.disabled")
+                    service.startForegroundTracked(
+                        NOTIFICATION_ID,
+                        notification,
+                        reason = "superIsland.disabled.$firstReason"
+                    )
                 } else {
+                    traceDispatch("notify.disabled")
                     manager?.notify(NOTIFICATION_ID, notification)
                 }
             }
         }
+    }
+
+    private fun applyImmediateForegroundBehavior(builder: Notification.Builder): Notification.Builder {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+            builder.setForegroundServiceBehavior(Notification.FOREGROUND_SERVICE_IMMEDIATE)
+        }
+        return builder
     }
 
     private fun restoreXmsfNetworkingAsync() {
@@ -1012,13 +1099,23 @@ class SuperIslandHandler(
     }
 
     private fun resolvePrimaryLyricText(state: UIState): String {
-        return sequenceOf(state.fullLyric, state.displayLyric, state.title)
+        val candidates = if (state.isTimingGapPlaceholder && !state.preferMetadataLayout) {
+            sequenceOf(state.fullLyric, state.displayLyric)
+        } else {
+            sequenceOf(state.fullLyric, state.displayLyric, state.title)
+        }
+        return candidates
             .firstOrNull { !isLyricPlaceholder(it) }
             ?: "♪"
     }
 
     private fun resolveCompactLyricText(state: UIState): String {
-        return sequenceOf(state.displayLyric, state.title)
+        val candidates = if (state.isTimingGapPlaceholder && !state.preferMetadataLayout) {
+            sequenceOf(state.displayLyric)
+        } else {
+            sequenceOf(state.displayLyric, state.title)
+        }
+        return candidates
             .firstOrNull { !isLyricPlaceholder(it) }
             ?: "♪"
     }
@@ -1046,6 +1143,7 @@ class SuperIslandHandler(
 
     private fun com.xzakota.hyper.notification.island.model.BigIslandArea.applyBigIslandLyrics(
         preferMetadataLayout: Boolean,
+        isTimingGapPlaceholder: Boolean,
         fullLyric: String,
         displayLyric: String,
         titleWithArtist: String,
@@ -1059,7 +1157,8 @@ class SuperIslandHandler(
             val hasLyric = resolvedLyric.isNotBlank()
             val showLeftCover = cachedSuperIslandFullLyricShowLeftCover && islandKey != null
 
-            if (preferMetadataLayout || !hasLyric) {
+            val shouldShowMetadataFallback = preferMetadataLayout || (!hasLyric && !isTimingGapPlaceholder)
+            if (shouldShowMetadataFallback) {
                 val leftText = SuperIslandLyricLayout.takeByWeight(
                     title.ifBlank { "♪" },
                     if (showLeftCover) cachedSuperIslandLeftWithCoverTextWeight else cachedSuperIslandLeftNoCoverTextWeight
@@ -1292,6 +1391,7 @@ class SuperIslandHandler(
             bigIslandArea {
                 applyBigIslandLyrics(
                     preferMetadataLayout = state.preferMetadataLayout,
+                    isTimingGapPlaceholder = state.isTimingGapPlaceholder,
                     fullLyric = state.fullLyric,
                     displayLyric = displayLyric,
                     titleWithArtist = titleWithArtist,

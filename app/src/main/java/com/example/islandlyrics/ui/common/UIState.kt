@@ -1,6 +1,7 @@
 package com.example.islandlyrics.ui.common
 
 import android.graphics.Bitmap
+import com.example.islandlyrics.data.LyricRepository
 import com.example.islandlyrics.data.lyric.OnlineLyricFetcher
 
 /**
@@ -13,6 +14,8 @@ data class UIState(
     val displayLyric: String = "",
     val fullLyric: String = "",
     val preferMetadataLayout: Boolean = false,
+    val isTimingGapPlaceholder: Boolean = false,
+    val timelineCapability: LyricRepository.TimelineCapability = LyricRepository.TimelineCapability.NONE,
     val isStatic: Boolean = false,
     val progressMax: Int = 0,
     val progressCurrent: Int = 0,

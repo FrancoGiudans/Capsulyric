@@ -218,7 +218,8 @@ class SuperLyricSource(
                         lines = parsedLines,
                         hasSyllable = true,
                         sourceLabel = appName,
-                        apiPath = "SuperLyric"
+                        apiPath = "SuperLyric",
+                        timelineCapability = LyricRepository.TimelineCapability.ACTIVE_LINE_ONLY
                     )
                     AppLogger.getInstance().d(
                         TAG,

@@ -71,9 +71,16 @@ class LyricRepository private constructor() {
         val lines: List<OnlineLyricFetcher.LyricLine>,
         val hasSyllable: Boolean,
         val sourceLabel: String? = null,
-        val apiPath: String? = null
+        val apiPath: String? = null,
+        val timelineCapability: TimelineCapability = TimelineCapability.NONE
     )
     val liveParsedLyrics = MutableLiveData<ParsedLyricsInfo?>()
+
+    enum class TimelineCapability {
+        NONE,
+        ACTIVE_LINE_ONLY,
+        MULTI_LINE
+    }
     
     // Valid timing-rich lyric line for the current position
     val liveCurrentLine = MutableLiveData<OnlineLyricFetcher.LyricLine?>()
@@ -87,6 +94,7 @@ class LyricRepository private constructor() {
     )
 
     private val sidecars = LinkedHashMap<String, LyricSidecar>()
+    private val lyricSourceArbiter = LyricSourceArbiter()
 
     // Update methods
     fun updatePlaybackStatus(playing: Boolean) {
@@ -119,8 +127,13 @@ class LyricRepository private constructor() {
             roma = normalizedRoma ?: sidecar?.roma
         )
         if (liveLyric.value == newInfo) return
-        
-        postOrSet(liveLyric, newInfo)
+
+        val acceptedInfo = lyricSourceArbiter.chooseLyric(
+            current = liveLyric.value,
+            candidate = newInfo
+        ) ?: return
+
+        postOrSet(liveLyric, acceptedInfo)
     }
 
     fun updateLyricSidecars(
@@ -159,6 +172,7 @@ class LyricRepository private constructor() {
         val currentTrackId = "$title-$artist-$packageName"
         if (lastTrackId != currentTrackId) {
             lastTrackId = currentTrackId
+            lyricSourceArbiter.resetForTrack()
             AppLogger.getInstance().log("Repo", "📝 Song changed ($currentTrackId), clearing old lyric")
             postOrSet(liveLyric, LyricInfo("", packageName, "System"))
             postOrSet(liveParsedLyrics, null)
@@ -193,10 +207,19 @@ class LyricRepository private constructor() {
         lines: List<OnlineLyricFetcher.LyricLine>,
         hasSyllable: Boolean,
         sourceLabel: String? = null,
-        apiPath: String? = null
+        apiPath: String? = null,
+        timelineCapability: TimelineCapability = TimelineCapability.NONE
     ) {
-        liveParsedLyrics.postValue(ParsedLyricsInfo(lines, hasSyllable, sourceLabel, apiPath))
-        AppLogger.getInstance().log("Repo", "📝 Parsed lyrics updated: ${lines.size} lines, syllable: $hasSyllable")
+        val info = ParsedLyricsInfo(lines, hasSyllable, sourceLabel, apiPath, timelineCapability)
+        val acceptedInfo = lyricSourceArbiter.chooseParsedLyrics(
+            current = liveParsedLyrics.value,
+            candidate = info
+        ) ?: return
+        liveParsedLyrics.postValue(acceptedInfo)
+        AppLogger.getInstance().log(
+            "Repo",
+            "📝 Parsed lyrics updated: ${lines.size} lines, syllable: $hasSyllable, capability=$timelineCapability"
+        )
     }
     
     fun updateCurrentLine(line: OnlineLyricFetcher.LyricLine?) {

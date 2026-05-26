@@ -178,6 +178,7 @@
     <string name="settings_local_lyrics_add">添加目录</string>
     <string name="settings_local_lyrics_empty">未配置目录，点击添加</string>
     <string name="settings_local_lyrics_remove_confirm">移除此目录？</string>
+    <string name="settings_local_lyrics_remove_confirm_named">确认移除目录 %s 吗？</string>
     <string name="export_lyric_button">导出为 LRC</string>
     <string name="export_lyric_success">已导出: %1$s</string>
     <string name="export_lyric_no_directory">请先配置本地歌词目录</string>

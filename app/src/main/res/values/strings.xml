@@ -179,6 +179,7 @@
     <string name="settings_local_lyrics_add">Add Directory</string>
     <string name="settings_local_lyrics_empty">No directories configured. Tap to add one.</string>
     <string name="settings_local_lyrics_remove_confirm">Remove this directory?</string>
+    <string name="settings_local_lyrics_remove_confirm_named">Remove directory %s?</string>
     <string name="export_lyric_button">Export as LRC</string>
     <string name="export_lyric_success">Exported: %1$s</string>
     <string name="export_lyric_no_directory">Please configure a local lyrics directory first</string>

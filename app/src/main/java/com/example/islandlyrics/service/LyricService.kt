@@ -14,10 +14,10 @@ import android.os.Build
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
+import android.os.SystemClock
 import androidx.lifecycle.Observer
 import com.example.islandlyrics.BuildConfig
 import com.example.islandlyrics.R
-import com.example.islandlyrics.core.platform.XmsfBypassMode
 import com.example.islandlyrics.core.platform.RomUtils
 import com.example.islandlyrics.core.logging.AppLogger
 import com.example.islandlyrics.core.logging.LogManager
@@ -39,6 +39,10 @@ class LyricService : Service() {
 
     private var lastUpdateTime = 0L
     private var lastObservedTrackKey: String? = null
+    @Volatile
+    private var foregroundSlotPrimed = false
+    private var lastWarmAttemptAtMs = 0L
+    private var lastWarmTrackKey: String? = null
 
     // ── Lyric sources (each handles one acquisition path) ────────────────────
     private lateinit var localLyricSource: LocalLyricSource
@@ -97,6 +101,15 @@ class LyricService : Service() {
     }
 
     private val playbackObserver = Observer<Boolean> { playing ->
+        if (BuildConfig.DEBUG) {
+            val currentLyric = LyricRepository.getInstance().liveLyric.value
+            val hasLyric = currentLyric?.lyric?.isNotBlank() == true
+            val hasMetadata = LyricRepository.getInstance().liveMetadata.value != null
+            AppLogger.getInstance().log(
+                TAG,
+                "[NotifyTrace] playbackObserver playing=$playing isAlive=$isAlive superRunning=${superIslandHandler.isRunning} capsuleRunning=${capsuleHandler?.isRunning()} hasMetadata=$hasMetadata hasLyric=$hasLyric"
+            )
+        }
         if (playing) {
             updateActiveHandler()
             progressSyncController.start()
@@ -113,15 +126,26 @@ class LyricService : Service() {
         if (info != null) {
             progressSyncController.setDurationIfValid(info.duration)
             val trackKey = "${info.packageName}|${info.title}|${info.artist}"
+            val previousTrackKey = lastObservedTrackKey
             val trackChanged = trackKey != lastObservedTrackKey
             lastObservedTrackKey = trackKey
+            if (BuildConfig.DEBUG) {
+                AppLogger.getInstance().log(
+                    TAG,
+                    "[NotifyTrace] metadataObserver prevTrackKey=$previousTrackKey newTrackKey=$trackKey trackChanged=$trackChanged duration=${info.duration} rawTitle=${info.rawTitle} rawArtist=${info.rawArtist}"
+                )
+            }
 
             if (trackChanged) {
                 // Only clear lyric-related state when the actual track identity changes.
                 // Metadata can refresh multiple times per song, and wiping here would
                 // replace an already received lyric with the placeholder notification.
                 LyricRepository.getInstance().updateLyric("", info.packageName, "System")
-                LyricRepository.getInstance().updateParsedLyrics(emptyList(), false)
+                LyricRepository.getInstance().updateParsedLyrics(
+                    lines = emptyList(),
+                    hasSyllable = false,
+                    timelineCapability = LyricRepository.TimelineCapability.NONE
+                )
                 LyricRepository.getInstance().updateCurrentLine(null)
                 progressSyncController.resetLineIndex()
                 progressSyncController.resetProgressForTrackChange(info.duration)
@@ -333,6 +357,12 @@ class LyricService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val action = intent?.action ?: "null"
         AppLogger.getInstance().log(TAG, "onStartCommand Received Action: $action")
+        if (BuildConfig.DEBUG) {
+            AppLogger.getInstance().log(
+                TAG,
+                "[NotifyTrace] onStartCommand action=$action startId=$startId isAlive=$isAlive superRunning=${superIslandHandler.isRunning} capsuleRunning=${capsuleHandler?.isRunning()}"
+            )
+        }
 
         // 1. Proactively sync the Super Island Mode preference
         val prefs = getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE)
@@ -348,23 +378,7 @@ class LyricService : Service() {
         // [Fix Task 1] Immediate Foreground Promotion
         createNotificationChannel()
 
-        // Occupy the foreground notification slot immediately with a plain
-        // notification. The rich lyric notification reuses NOTIFICATION_ID and
-        // replaces this as soon as the first UI state is rendered.
-        warmForegroundSlot()
-
-        val shouldWarmForegroundForXmsfBypass =
-            isSuperIslandMode && XmsfBypassMode.read(prefs).isEnabled
-        if (shouldWarmForegroundForXmsfBypass) {
-            val currentInfo = LyricRepository.getInstance().liveLyric.value
-            val title = currentInfo?.sourceApp ?: "Island Lyrics"
-            val text = currentInfo?.lyric ?: "Initializing..."
-            try {
-                startForeground(NOTIFICATION_ID, buildNotification(text, title, ""))
-            } catch (e: Exception) {
-                AppLogger.getInstance().e(TAG, "Failed to warm foreground for XMSF bypass: ${e.message}")
-            }
-        }
+        maybeWarmForegroundSlot(action)
 
         // 2. Ensure only the correct handler is running
         updateActiveHandler()
@@ -375,23 +389,12 @@ class LyricService : Service() {
             displayManager.forceUpdate()
         } else if (RomUtils.isLiveUpdateSupported() && !isSuperIslandMode && capsuleHandler?.isRunning() == true) {
             displayManager.forceUpdate()
-        } else {
-            // Always preheat the foreground slot with a plain notification before
-            // the richer renderer takes over. This matches the observed behavior
-            // on MIUI where a missed warm-up causes the first lyric update to lag.
-            val currentInfo = LyricRepository.getInstance().liveLyric.value
-            val title = currentInfo?.sourceApp ?: "Island Lyrics"
-            val text = currentInfo?.lyric ?: "Initializing..."
-            try {
-                startForeground(NOTIFICATION_ID, buildNotification(text, title, ""))
-            } catch (e: Exception) {
-                AppLogger.getInstance().e(TAG, "Failed startForeground in fallback: ${e.message}")
-            }
         }
 
         if ("ACTION_STOP" == action) {
             @Suppress("DEPRECATION")
             stopForeground(true)
+            clearForegroundSlotPrimed("actionStop")
             stopSelf()
             return START_NOT_STICKY
         } else if ("ACTION_MEDIA_PAUSE" == action) {
@@ -418,6 +421,7 @@ class LyricService : Service() {
     override fun onDestroy() {
         super.onDestroy()
         isAlive = false
+        clearForegroundSlotPrimed("onDestroy")
         AppLogger.getInstance().log(TAG, "Service Destroyed")
         progressSyncController.stop()
         progressSyncController.destroy()
@@ -478,16 +482,94 @@ class LyricService : Service() {
         return buildModernNotification(title, text, subText)
     }
 
+    fun isForegroundSlotPrimed(): Boolean = foregroundSlotPrimed
+
+    fun startForegroundTracked(notificationId: Int, notification: Notification, reason: String) {
+        if (BuildConfig.DEBUG) {
+            AppLogger.getInstance().log(
+                TAG,
+                "[NotifyTrace] startForegroundTracked reason=$reason primedBefore=$foregroundSlotPrimed notificationId=$notificationId"
+            )
+        }
+        startForeground(notificationId, notification)
+        foregroundSlotPrimed = true
+    }
+
+    private fun clearForegroundSlotPrimed(reason: String) {
+        if (BuildConfig.DEBUG && foregroundSlotPrimed) {
+            AppLogger.getInstance().log(
+                TAG,
+                "[NotifyTrace] clearForegroundSlot reason=$reason"
+            )
+        }
+        foregroundSlotPrimed = false
+    }
+
     private fun warmForegroundSlot() {
         try {
-            startForeground(NOTIFICATION_ID, buildPlainWarmNotification())
+            if (BuildConfig.DEBUG) {
+                AppLogger.getInstance().log(
+                    TAG,
+                    "[NotifyTrace] warmForegroundSlot channel=$currentChannelId notificationId=$NOTIFICATION_ID"
+                )
+            }
+            startForegroundTracked(
+                NOTIFICATION_ID,
+                buildPlainWarmNotification(),
+                reason = "warmForegroundSlot"
+            )
         } catch (e: Exception) {
             AppLogger.getInstance().e(TAG, "Failed to warm foreground slot: ${e.message}")
         }
     }
 
+    private fun maybeWarmForegroundSlot(action: String) {
+        val repo = LyricRepository.getInstance()
+        val metadata = repo.liveMetadata.value
+        val isPlaying = repo.isPlaying.value == true
+        val hasMetadata = metadata?.title?.isNotBlank() == true || metadata?.artist?.isNotBlank() == true
+        val trackKey = metadata?.let { "${it.packageName}|${it.title}|${it.artist}" }
+        val activeNotificationPresent = hasActivePrimaryNotification()
+        val now = SystemClock.elapsedRealtime()
+        val warmThrottled = lastWarmTrackKey == trackKey && now - lastWarmAttemptAtMs < WARM_DEBOUNCE_MS
+        val shouldWarm = action == "null" &&
+            isPlaying &&
+            hasMetadata &&
+            !foregroundSlotPrimed &&
+            !activeNotificationPresent &&
+            !warmThrottled
+
+        if (BuildConfig.DEBUG) {
+            AppLogger.getInstance().log(
+                TAG,
+                "[NotifyTrace] maybeWarmForegroundSlot action=$action shouldWarm=$shouldWarm playing=$isPlaying hasMetadata=$hasMetadata primed=$foregroundSlotPrimed active=$activeNotificationPresent throttled=$warmThrottled trackKey=${trackKey ?: "<none>"}"
+            )
+        }
+
+        if (!shouldWarm) {
+            return
+        }
+
+        lastWarmAttemptAtMs = now
+        lastWarmTrackKey = trackKey
+        warmForegroundSlot()
+    }
+
+    private fun hasActivePrimaryNotification(): Boolean {
+        return try {
+            val manager = getSystemService(NotificationManager::class.java) ?: return false
+            manager.activeNotifications.any { record ->
+                record.id == NOTIFICATION_ID && record.packageName == packageName
+            }
+        } catch (_: Exception) {
+            false
+        }
+    }
+
     private fun buildPlainWarmNotification(): Notification {
-        return Notification.Builder(this, currentChannelId)
+        return applyImmediateForegroundBehavior(
+            Notification.Builder(this, currentChannelId)
+        )
             .setSmallIcon(R.drawable.ic_music_note)
             .setContentTitle("")
             .setContentText("")
@@ -507,7 +589,9 @@ class LyricService : Service() {
     private fun buildModernNotification(title: String, text: String, subText: String): Notification {
         LogManager.getInstance().d(this, TAG, "Building Modern Notification (ProgressStyle)")
 
-        val builder = Notification.Builder(this, currentChannelId)
+        val builder = applyImmediateForegroundBehavior(
+            Notification.Builder(this, currentChannelId)
+        )
             .setSmallIcon(R.drawable.ic_music_note)
             .setContentTitle(title)
             .setContentText(text)
@@ -559,6 +643,13 @@ class LyricService : Service() {
         applyPromotedFlagFallback(notification)
 
         return notification
+    }
+
+    private fun applyImmediateForegroundBehavior(builder: Notification.Builder): Notification.Builder {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            builder.setForegroundServiceBehavior(Notification.FOREGROUND_SERVICE_IMMEDIATE)
+        }
+        return builder
     }
 
 
@@ -911,6 +1002,7 @@ class LyricService : Service() {
         private const val TAG = "LyricService"
         private const val CHANNEL_ID = "lyric_capsule_channel"
         private const val NOTIFICATION_ID = 1001
+        private const val WARM_DEBOUNCE_MS = 1500L
         @Volatile var isAlive: Boolean = false
     }
 }

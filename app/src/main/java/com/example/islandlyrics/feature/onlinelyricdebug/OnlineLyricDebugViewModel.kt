@@ -95,7 +95,8 @@ class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(app
             lines = lines,
             hasSyllable = result.hasSyllable,
             sourceLabel = result.api,
-            apiPath = apiPath
+            apiPath = apiPath,
+            timelineCapability = LyricRepository.TimelineCapability.MULTI_LINE
         )
 
         val appLabel = ParserRuleHelper.getAppNameForPackage(getApplication(), mediaInfo.packageName)

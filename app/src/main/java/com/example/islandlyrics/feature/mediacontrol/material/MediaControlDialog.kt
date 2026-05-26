@@ -132,54 +132,53 @@ fun MediaControlDialog(onDismiss: () -> Unit) {
             exit = scaleOut() + fadeOut()
         ) {
             Surface(
-                shape = RoundedCornerShape(24.dp), 
+                shape = RoundedCornerShape(24.dp),
                 color = MaterialTheme.colorScheme.surface,
                 tonalElevation = 6.dp,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 24.dp) 
-                    .wrapContentHeight() 
+                    .padding(vertical = 24.dp)
+                    .wrapContentHeight()
             ) {
-            Column(
-                modifier = Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                // Title Row
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = stringResource(R.string.media_control_title),
-                        style = MaterialTheme.typography.titleMedium
-                    )
-                    Spacer(modifier = Modifier.weight(1f))
-
-                    // Open App Button (Pill Icon)
-                    IconButton(onClick = {
-                        val intent = Intent(context, MainActivity::class.java).apply {
-                            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-                        }
-                        context.startActivity(intent)
-                        triggerDismiss()
-                    }) {
-                        Icon(
-                            painter = painterResource(R.drawable.ic_pill),
-                            contentDescription = "Open Capsulyric",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    // Title Row
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = stringResource(R.string.media_control_title),
+                            style = MaterialTheme.typography.titleMedium
                         )
-                    }
+                        Spacer(modifier = Modifier.weight(1f))
 
-                    // Mi Play Action (Top Right)
-                    if (isHyperOsSupported) {
+                        // Open App Button (Pill Icon)
                         IconButton(onClick = {
-                            try {
-                                val intent = Intent()
-                                intent.component = android.content.ComponentName(
-                                    "miui.systemui.plugin",
-                                    "miui.systemui.miplay.MiPlayDetailActivity"
-                                )
-                                intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                                context.startActivity(intent)
+                            val intent = Intent(context, MainActivity::class.java).apply {
+                                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                            }
+                            context.startActivity(intent)
+                            triggerDismiss()
+                        }) {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_pill),
+                                contentDescription = "Open Capsulyric",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+
+                        // Mi Play Action (Top Right)
+                        if (isHyperOsSupported) {
+                            IconButton(onClick = {
+                                try {
+                                    val intent = Intent()
+                                    intent.component = android.content.ComponentName(
+                                        "miui.systemui.plugin",
+                                        "miui.systemui.miplay.MiPlayDetailActivity"
+                                    )
+                                    intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
                                     context.startActivity(intent)
-                                    triggerDismiss() 
+                                    triggerDismiss()
                                 } catch (e: Exception) {
                                     Toast.makeText(context, context.getString(R.string.media_control_miplay_failed, e.message), Toast.LENGTH_SHORT).show()
                                 }
@@ -191,10 +190,10 @@ fun MediaControlDialog(onDismiss: () -> Unit) {
                                 )
                             }
                         }
-                    
+
                         // Small info icon for status
-                        IconButton(onClick = { 
-                             Toast.makeText(context, "$statusMessage (Whitelisted: ${whitelistedControllers.size})", Toast.LENGTH_SHORT).show()
+                        IconButton(onClick = {
+                            Toast.makeText(context, "$statusMessage (Whitelisted: ${whitelistedControllers.size})", Toast.LENGTH_SHORT).show()
                         }) {
                             Icon(
                                 painter = painterResource(R.drawable.ic_info),
@@ -205,64 +204,75 @@ fun MediaControlDialog(onDismiss: () -> Unit) {
                         }
                     }
 
-                if (whitelistedControllers.isNotEmpty()) {
-                    val pagerState = androidx.compose.foundation.pager.rememberPagerState(pageCount = { whitelistedControllers.size })
-                    
-                    androidx.compose.foundation.pager.HorizontalPager(
-                        state = pagerState,
-                        contentPadding = PaddingValues(horizontal = 0.dp), // No extra padding needed
-                        pageSpacing = 16.dp // Separation between cards
-                    ) { page ->
-                        key(whitelistedControllers[page].packageName) {
-                            val controller = whitelistedControllers[page]
-                            val isPrimary = controller.packageName == repoMetadata?.packageName
-                            
-                            MediaSessionCard(
-                                controller = controller, 
-                                context = context,
-                                isPrimary = isPrimary,
-                                primaryLyric = if (isPrimary) repoLyric?.lyric else null,
-                                primaryProgress = if (isPrimary) repoProgress else null
-                            )
-                        }
-                    }
-                    
-                    // Simple Pager Indicator
-                    if (whitelistedControllers.size > 1) {
-                         Row(
-                            modifier = Modifier.fillMaxWidth().height(8.dp),
-                            horizontalArrangement = Arrangement.Center
-                        ) {
-                            repeat(whitelistedControllers.size) { iteration ->
-                                val color = if (pagerState.currentPage == iteration) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant
-                                Box(
-                                    modifier = Modifier
-                                        .padding(2.dp)
-                                        .size(6.dp)
-                                        .background(color, CircleShape)
+                    if (whitelistedControllers.isNotEmpty()) {
+                        val pagerState = androidx.compose.foundation.pager.rememberPagerState(pageCount = { whitelistedControllers.size })
+
+                        androidx.compose.foundation.pager.HorizontalPager(
+                            state = pagerState,
+                            contentPadding = PaddingValues(horizontal = 0.dp),
+                            pageSpacing = 16.dp
+                        ) { page ->
+                            key(whitelistedControllers[page].packageName) {
+                                val controller = whitelistedControllers[page]
+                                val isPrimary = controller.packageName == repoMetadata?.packageName
+
+                                MediaSessionCard(
+                                    controller = controller,
+                                    context = context,
+                                    isPrimary = isPrimary,
+                                    primaryLyric = if (isPrimary) repoLyric?.lyric else null,
+                                    primaryProgress = if (isPrimary) repoProgress else null
                                 )
                             }
                         }
+
+                        if (whitelistedControllers.size > 1) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(8.dp),
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                repeat(whitelistedControllers.size) { iteration ->
+                                    val color = if (pagerState.currentPage == iteration) {
+                                        MaterialTheme.colorScheme.primary
+                                    } else {
+                                        MaterialTheme.colorScheme.surfaceVariant
+                                    }
+                                    Box(
+                                        modifier = Modifier
+                                            .padding(2.dp)
+                                            .size(6.dp)
+                                            .background(color, CircleShape)
+                                    )
+                                }
+                            }
+                        }
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(80.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                stringResource(R.string.media_control_no_sessions),
+                                color = MaterialTheme.colorScheme.error
+                            )
+                        }
                     }
-                } else {
-                    Box(modifier = Modifier.fillMaxWidth().height(80.dp), contentAlignment = Alignment.Center) {
-                        Text(stringResource(R.string.media_control_no_sessions), color = MaterialTheme.colorScheme.error)
+
+                    OutlinedButton(
+                        onClick = triggerDismiss,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(stringResource(R.string.media_control_close))
                     }
-                }
-                
-                // Close Button - Full Width Outlined Button
-                OutlinedButton(
-                    onClick = triggerDismiss,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(stringResource(R.string.media_control_close))
                 }
             }
         }
     }
 }
-}
-
 @Composable
 fun MediaSessionCard(
     controller: MediaController, 

@@ -20,6 +20,7 @@ import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import androidx.core.app.NotificationCompat
+import com.example.islandlyrics.BuildConfig
 
 /**
  * LyricCapsuleHandler
@@ -287,9 +288,20 @@ class LyricCapsuleHandler(
                 iconFrame,
                 state.albumColor
             )
+
+            if (BuildConfig.DEBUG) {
+                LogManager.getInstance().d(
+                    context,
+                    TAG,
+                    "[NotifyTrace] send first=$isFirstNotification primed=${service.isForegroundSlotPrimed()} running=$isRunning title=$displayTitle lyric=${displayLyric.ifBlank { state.fullLyric.ifBlank { "<blank>" } }}"
+                )
+            }
             
-            if (isFirstNotification) {
-                service.startForeground(1001, notification)
+            if (isFirstNotification && service.isForegroundSlotPrimed() && manager != null) {
+                manager.notify(1001, notification)
+                isFirstNotification = false
+            } else if (isFirstNotification) {
+                service.startForegroundTracked(1001, notification, "capsule.first")
                 isFirstNotification = false
             } else {
                 manager?.notify(1001, notification)
@@ -308,7 +320,9 @@ class LyricCapsuleHandler(
         iconFrame: IconFrame,
         albumColor: Int
     ): Notification {
-        val builder = NotificationCompat.Builder(context, CHANNEL_ID)
+        val builder = applyImmediateForegroundBehavior(
+            NotificationCompat.Builder(context, CHANNEL_ID)
+        )
             .setSmallIcon(R.drawable.ic_music_note)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
@@ -433,6 +447,15 @@ class LyricCapsuleHandler(
                 }
             }
         }
+    }
+
+    private fun applyImmediateForegroundBehavior(
+        builder: NotificationCompat.Builder
+    ): NotificationCompat.Builder {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            builder.setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
+        }
+        return builder
     }
 
     companion object {

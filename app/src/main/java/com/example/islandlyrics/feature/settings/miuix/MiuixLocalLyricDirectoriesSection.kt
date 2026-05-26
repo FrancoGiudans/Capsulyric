@@ -4,6 +4,8 @@ import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -39,6 +41,7 @@ fun rememberLocalLyricDirectoriesState(): MiuixLocalLyricDirectoriesState {
 }
 
 @Composable
+@OptIn(ExperimentalFoundationApi::class)
 fun MiuixLocalLyricDirectoriesContent(state: MiuixLocalLyricDirectoriesState) {
     val context = LocalContext.current
     val dirManager = remember { LocalLyricDirectoryManager.getInstance(context) }
@@ -69,12 +72,17 @@ fun MiuixLocalLyricDirectoriesContent(state: MiuixLocalLyricDirectoriesState) {
                     title = entry.displayName,
                     summary = if (isExportDir) stringResource(R.string.local_lyric_export_dir_badge)
                               else stringResource(R.string.settings_local_lyrics_directories),
-                    onClick = {
-                        context.startActivity(Intent(context, LocalLyricDirectoryActivity::class.java).apply {
-                            putExtra(LocalLyricDirectoryActivity.EXTRA_DIRECTORY_URI, entry.uri.toString())
-                            putExtra(LocalLyricDirectoryActivity.EXTRA_DIRECTORY_NAME, entry.displayName)
-                        })
-                    },
+                    modifier = Modifier.combinedClickable(
+                        onClick = {
+                            context.startActivity(Intent(context, LocalLyricDirectoryActivity::class.java).apply {
+                                putExtra(LocalLyricDirectoryActivity.EXTRA_DIRECTORY_URI, entry.uri.toString())
+                                putExtra(LocalLyricDirectoryActivity.EXTRA_DIRECTORY_NAME, entry.displayName)
+                            })
+                        },
+                        onLongClick = {
+                            state.removeTarget = entry.uri
+                        }
+                    ),
                     holdDownState = state.removeTarget == entry.uri
                 )
             }
@@ -90,9 +98,14 @@ fun MiuixLocalLyricDirectoriesContent(state: MiuixLocalLyricDirectoriesState) {
 fun MiuixLocalLyricDirectoriesDialog(state: MiuixLocalLyricDirectoriesState) {
     val context = LocalContext.current
     val dirManager = remember { LocalLyricDirectoryManager.getInstance(context) }
+    val removeTargetName = remember(state.removeTarget, state.directories) {
+        state.directories.firstOrNull { it.uri == state.removeTarget }?.displayName
+    }
 
     MiuixBlurDialog(
-        title = stringResource(R.string.settings_local_lyrics_remove_confirm),
+        title = removeTargetName?.let {
+            stringResource(R.string.settings_local_lyrics_remove_confirm_named, it)
+        } ?: stringResource(R.string.settings_local_lyrics_remove_confirm),
         show = state.removeTarget != null,
         onDismissRequest = { state.removeTarget = null }
     ) {

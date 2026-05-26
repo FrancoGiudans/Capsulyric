@@ -7,10 +7,6 @@ import com.example.islandlyrics.feature.mediacontrol.miuix.MiuixMediaControlDial
 import com.example.islandlyrics.ui.miuix.MiuixAppTheme
 import com.example.islandlyrics.feature.mediacontrol.material.MediaControlDialog
 import androidx.activity.compose.setContent
-import androidx.compose.ui.graphics.Color
-import androidx.compose.runtime.SideEffect
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.appcompat.app.AppCompatActivity
 import com.example.islandlyrics.ui.theme.material.AppTheme
 import androidx.compose.runtime.mutableStateOf

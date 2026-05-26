@@ -121,7 +121,8 @@ class LyriconSource(private val context: Context) {
                     lines = linesWithSidecars,
                     hasSyllable = hasSyllable,
                     sourceLabel = appName,
-                    apiPath = "Lyricon"
+                    apiPath = "Lyricon",
+                    timelineCapability = LyricRepository.TimelineCapability.MULTI_LINE
                 )
                 AppLogger.getInstance().d(
                     TAG,
@@ -155,17 +156,11 @@ class LyriconSource(private val context: Context) {
             }
         }
 
-        override fun onPlaybackStateChanged(isPlaying: Boolean) {
-            LyricRepository.getInstance().updatePlaybackStatus(isPlaying)
-        }
+        override fun onPlaybackStateChanged(isPlaying: Boolean) = Unit
 
-        override fun onPositionChanged(position: Long) {
-            updateProgress(position)
-        }
+        override fun onPositionChanged(position: Long) = Unit
 
-        override fun onSeekTo(position: Long) {
-            updateProgress(position)
-        }
+        override fun onSeekTo(position: Long) = Unit
 
         override fun onDisplayTranslationChanged(isDisplayTranslation: Boolean) = Unit
 
@@ -355,11 +350,6 @@ class LyriconSource(private val context: Context) {
         return ParserRuleHelper.loadRules(context)
             .firstOrNull { it.enabled && it.useLyriconApi }
             ?.packageName
-    }
-
-    private fun updateProgress(position: Long) {
-        val duration = LyricRepository.getInstance().liveMetadata.value?.duration ?: 0L
-        LyricRepository.getInstance().updateProgress(position.coerceAtLeast(0L), duration)
     }
 
     private fun getAppName(pkg: String): String {

@@ -25,6 +25,7 @@ import androidx.navigationevent.compose.rememberNavigationEventState
 fun PredictiveBackDialogWrapper(
     onDismiss: () -> Unit,
     animationDirection: DialogBackAnimation = DialogBackAnimation.ScaleToCenter,
+    onGestureProgressChanged: (isActive: Boolean, progress: Float) -> Unit = { _, _ -> },
     content: @Composable () -> Unit
 ) {
     val dialogView = LocalView.current
@@ -66,6 +67,7 @@ fun PredictiveBackDialogWrapper(
     val progressInProgress = transitionState as? NavigationEventTransitionState.InProgress
     val gestureProgress = progressInProgress?.latestEvent?.progress ?: 0f
     val isGestureActive = progressInProgress != null
+    onGestureProgressChanged(isGestureActive, gestureProgress)
 
     Box(
         modifier = Modifier.graphicsLayer {
@@ -82,6 +84,7 @@ fun PredictiveBackDialogWrapper(
                         scaleY = scale
                         alpha = 1f - gestureProgress * 0.3f
                     }
+                    DialogBackAnimation.None -> Unit
                 }
             }
         }
@@ -91,6 +94,7 @@ fun PredictiveBackDialogWrapper(
 }
 
 enum class DialogBackAnimation {
+    None,
     SlideDown,
     ScaleToCenter
 }

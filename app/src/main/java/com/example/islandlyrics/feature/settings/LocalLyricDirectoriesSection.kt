@@ -30,6 +30,9 @@ fun LocalLyricDirectoriesSection() {
     val dirManager = remember { LocalLyricDirectoryManager.getInstance(context) }
     var directories by remember { mutableStateOf(dirManager.getDirectories()) }
     var showRemoveDialog by remember { mutableStateOf<Uri?>(null) }
+    val removeTargetName = remember(showRemoveDialog, directories) {
+        directories.firstOrNull { it.uri == showRemoveDialog }?.displayName
+    }
 
     val dirPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocumentTree()
@@ -92,7 +95,13 @@ fun LocalLyricDirectoriesSection() {
     if (showRemoveDialog != null) {
         AlertDialog(
             onDismissRequest = { showRemoveDialog = null },
-            title = { Text(stringResource(R.string.settings_local_lyrics_remove_confirm)) },
+            title = {
+                Text(
+                    removeTargetName?.let {
+                        stringResource(R.string.settings_local_lyrics_remove_confirm_named, it)
+                    } ?: stringResource(R.string.settings_local_lyrics_remove_confirm)
+                )
+            },
             confirmButton = {
                 TextButton(onClick = {
                     dirManager.removeDirectory(showRemoveDialog!!)

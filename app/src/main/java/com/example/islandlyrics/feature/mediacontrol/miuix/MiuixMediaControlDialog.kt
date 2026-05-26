@@ -1,6 +1,5 @@
 package com.example.islandlyrics.feature.mediacontrol.miuix
 
-import com.example.islandlyrics.ui.miuix.MiuixBackHandler
 import android.content.Context
 import com.example.islandlyrics.R
 import com.example.islandlyrics.core.platform.RomUtils
@@ -70,10 +69,7 @@ fun MiuixMediaControlDialog(
     val context = LocalContext.current
     var activeControllers by remember { mutableStateOf<List<MediaController>>(emptyList()) }
     var statusMessage by remember { mutableStateOf(context.getString(R.string.media_control_scanning)) }
-    MiuixBackHandler(enabled = show) {
-        onDismiss()
-    }
-    
+
     // Check for HyperOS 3.0.300+
     val isHyperOsSupported = remember { RomUtils.isHyperOsVersionAtLeast(3, 0, 300) }
 
@@ -115,15 +111,22 @@ fun MiuixMediaControlDialog(
     val repoProgress by repo.liveProgress.observeAsState()
 
     val blurEnabled = remember { context.getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE).getBoolean("card_blur_enabled", false) }
-    
+
     var visibleState by remember { mutableStateOf(false) }
-    LaunchedEffect(show) { 
-        if (show) visibleState = true 
+    var dismissRequested by remember { mutableStateOf(false) }
+    LaunchedEffect(show) {
+        if (show) visibleState = true
+    }
+    val triggerDismiss = {
+        if (!dismissRequested) {
+            dismissRequested = true
+            visibleState = false
+        }
     }
 
     if (show || visibleState) {
         androidx.compose.ui.window.Dialog(
-            onDismissRequest = onDismiss,
+            onDismissRequest = triggerDismiss,
             properties = androidx.compose.ui.window.DialogProperties(
                 usePlatformDefaultWidth = false,
                 decorFitsSystemWindows = false
@@ -131,8 +134,7 @@ fun MiuixMediaControlDialog(
         ) {
             val view = androidx.compose.ui.platform.LocalView.current
             val density = LocalDensity.current
-            
-            // Runs synchronously after composition before draw
+
             SideEffect {
                 val window = (view.parent as? androidx.compose.ui.window.DialogWindowProvider)?.window
                 if (window != null) {
@@ -157,26 +159,30 @@ fun MiuixMediaControlDialog(
                     )
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                         try {
-                            window.setBackgroundBlurRadius(if (blurEnabled) 140 else 0)
+                            window.setBackgroundBlurRadius(
+                                if (blurEnabled && visibleState) 140 else 0
+                            )
                         } catch (_: Exception) {}
                     }
                 }
             }
 
-            // Miuix scale/fade animation
-            val scale by androidx.compose.animation.core.animateFloatAsState(
-                targetValue = if (visibleState && show) 1f else 0.8f,
+            val scale by animateFloatAsState(
+                targetValue = if (visibleState) 1f else 0.8f,
                 animationSpec = androidx.compose.animation.core.spring(dampingRatio = 0.8f, stiffness = 300f),
-                finishedListener = { if (!show) visibleState = false },
+                finishedListener = {
+                    if (!visibleState && dismissRequested) {
+                        onDismiss()
+                    }
+                },
                 label = "scale"
             )
-            val alpha by androidx.compose.animation.core.animateFloatAsState(
-                targetValue = if (visibleState && show) 1f else 0f,
-                animationSpec = androidx.compose.animation.core.tween(200),
+            val alpha by animateFloatAsState(
+                targetValue = if (visibleState) 1f else 0f,
+                animationSpec = tween(200),
                 label = "alpha"
             )
 
-            // Miuix Bottom Sheet Container
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -209,128 +215,127 @@ fun MiuixMediaControlDialog(
                                 modifier = Modifier.padding(top = 4.dp, bottom = 8.dp)
                             )
                         }
-            if (whitelistedControllers.isNotEmpty()) {
-                val pagerState = androidx.compose.foundation.pager.rememberPagerState(pageCount = { whitelistedControllers.size })
-                
-                androidx.compose.foundation.pager.HorizontalPager(
-                    state = pagerState,
-                    contentPadding = PaddingValues(horizontal = 0.dp),
-                    pageSpacing = 16.dp
-                ) { page ->
-                    key(whitelistedControllers[page].packageName) {
-                        val controller = whitelistedControllers[page]
-                        val isPrimary = controller.packageName == repoMetadata?.packageName
-                        
-                        MiuixMediaSessionLayout(
-                            controller = controller, 
-                            context = context,
-                            isPrimary = isPrimary,
-                            primaryLyric = if (isPrimary) repoLyric?.lyric else null,
-                            primaryProgress = if (isPrimary) repoProgress else null,
-                            onOpenApp = {
-                                onDismiss()
-                            }
-                        )
-                    }
-                }
-                
-                if (whitelistedControllers.size > 1) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
-                        horizontalArrangement = Arrangement.Center
-                    ) {
-                        repeat(whitelistedControllers.size) { iteration ->
-                            val active = pagerState.currentPage == iteration
-                            val color = if (active) {
-                                MiuixTheme.colorScheme.primary
-                            } else {
-                                MiuixTheme.colorScheme.surfaceVariant
-                            }
-                            Box(
-                                modifier = Modifier
-                                    .padding(horizontal = 4.dp)
-                                    .height(8.dp)
-                                    .width(if (active) 28.dp else 8.dp)
-                                    .clip(CircleShape)
-                                    .background(color)
-                            )
-                        }
-                    }
-                }
-            } else {
-                Box(modifier = Modifier.fillMaxWidth().height(120.dp), contentAlignment = Alignment.Center) {
-                    Text(stringResource(R.string.media_control_no_sessions), color = MiuixTheme.colorScheme.onSurfaceVariantSummary)
-                }
-            }
+                        if (whitelistedControllers.isNotEmpty()) {
+                            val pagerState = androidx.compose.foundation.pager.rememberPagerState(pageCount = { whitelistedControllers.size })
 
-            // Bottom Actions Row (Mi Play, Open App, Info)
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(
-                    onClick = {
-                        val intent = Intent(context, MainActivity::class.java).apply {
-                            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-                        }
-                        context.startActivity(intent)
-                        onDismiss()
-                    },
-                    modifier = Modifier.background(MiuixTheme.colorScheme.surfaceVariant, CircleShape)
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_pill),
-                        contentDescription = "Open Capsulyric",
-                        tint = MiuixTheme.colorScheme.onSurfaceVariantActions,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
+                            androidx.compose.foundation.pager.HorizontalPager(
+                                state = pagerState,
+                                contentPadding = PaddingValues(horizontal = 0.dp),
+                                pageSpacing = 16.dp
+                            ) { page ->
+                                key(whitelistedControllers[page].packageName) {
+                                    val controller = whitelistedControllers[page]
+                                    val isPrimary = controller.packageName == repoMetadata?.packageName
 
-                if (isHyperOsSupported) {
-                    IconButton(
-                        onClick = {
-                            try {
-                                val intent = Intent()
-                                intent.component = android.content.ComponentName(
-                                    "miui.systemui.plugin",
-                                    "miui.systemui.miplay.MiPlayDetailActivity"
+                                    MiuixMediaSessionLayout(
+                                        controller = controller,
+                                        context = context,
+                                        isPrimary = isPrimary,
+                                        primaryLyric = if (isPrimary) repoLyric?.lyric else null,
+                                        primaryProgress = if (isPrimary) repoProgress else null,
+                                        onOpenApp = {
+                                            triggerDismiss()
+                                        }
+                                    )
+                                }
+                            }
+
+                            if (whitelistedControllers.size > 1) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
+                                    horizontalArrangement = Arrangement.Center
+                                ) {
+                                    repeat(whitelistedControllers.size) { iteration ->
+                                        val active = pagerState.currentPage == iteration
+                                        val color = if (active) {
+                                            MiuixTheme.colorScheme.primary
+                                        } else {
+                                            MiuixTheme.colorScheme.surfaceVariant
+                                        }
+                                        Box(
+                                            modifier = Modifier
+                                                .padding(horizontal = 4.dp)
+                                                .height(8.dp)
+                                                .width(if (active) 28.dp else 8.dp)
+                                                .clip(CircleShape)
+                                                .background(color)
+                                        )
+                                    }
+                                }
+                            }
+                        } else {
+                            Box(modifier = Modifier.fillMaxWidth().height(120.dp), contentAlignment = Alignment.Center) {
+                                Text(stringResource(R.string.media_control_no_sessions), color = MiuixTheme.colorScheme.onSurfaceVariantSummary)
+                            }
+                        }
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceEvenly,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            IconButton(
+                                onClick = {
+                                    val intent = Intent(context, MainActivity::class.java).apply {
+                                        flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                                    }
+                                    context.startActivity(intent)
+                                    triggerDismiss()
+                                },
+                                modifier = Modifier.background(MiuixTheme.colorScheme.surfaceVariant, CircleShape)
+                            ) {
+                                Icon(
+                                    painter = painterResource(R.drawable.ic_pill),
+                                    contentDescription = "Open Capsulyric",
+                                    tint = MiuixTheme.colorScheme.onSurfaceVariantActions,
+                                    modifier = Modifier.size(24.dp)
                                 )
-                                intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                                context.startActivity(intent)
-                                onDismiss()
-                            } catch (e: Exception) {
-                                Toast.makeText(context, context.getString(R.string.media_control_miplay_failed, e.message), Toast.LENGTH_SHORT).show()
                             }
-                        },
-                        modifier = Modifier.background(MiuixTheme.colorScheme.surfaceVariant, CircleShape)
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.ic_miplay),
-                            contentDescription = "Mi Play",
-                            tint = MiuixTheme.colorScheme.onSurfaceVariantActions,
-                            modifier = Modifier.size(24.dp)
-                        )
+
+                            if (isHyperOsSupported) {
+                                IconButton(
+                                    onClick = {
+                                        try {
+                                            val intent = Intent()
+                                            intent.component = android.content.ComponentName(
+                                                "miui.systemui.plugin",
+                                                "miui.systemui.miplay.MiPlayDetailActivity"
+                                            )
+                                            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                                            context.startActivity(intent)
+                                            triggerDismiss()
+                                        } catch (e: Exception) {
+                                            Toast.makeText(context, context.getString(R.string.media_control_miplay_failed, e.message), Toast.LENGTH_SHORT).show()
+                                        }
+                                    },
+                                    modifier = Modifier.background(MiuixTheme.colorScheme.surfaceVariant, CircleShape)
+                                ) {
+                                    Icon(
+                                        painter = painterResource(R.drawable.ic_miplay),
+                                        contentDescription = "Mi Play",
+                                        tint = MiuixTheme.colorScheme.onSurfaceVariantActions,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                }
+                            }
+
+                            IconButton(
+                                onClick = {
+                                    Toast.makeText(context, "$statusMessage (Whitelisted: ${whitelistedControllers.size})", Toast.LENGTH_SHORT).show()
+                                },
+                                modifier = Modifier.background(MiuixTheme.colorScheme.surfaceVariant, CircleShape)
+                            ) {
+                                Icon(
+                                    painter = painterResource(R.drawable.ic_info),
+                                    contentDescription = "Status",
+                                    tint = MiuixTheme.colorScheme.onSurfaceVariantActions,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
+                        }
                     }
                 }
-
-                IconButton(
-                    onClick = { 
-                        Toast.makeText(context, "$statusMessage (Whitelisted: ${whitelistedControllers.size})", Toast.LENGTH_SHORT).show()
-                    },
-                    modifier = Modifier.background(MiuixTheme.colorScheme.surfaceVariant, CircleShape)
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_info),
-                        contentDescription = "Status",
-                        tint = MiuixTheme.colorScheme.onSurfaceVariantActions,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
             }
-        }
-    }
-}
         }
     }
 }

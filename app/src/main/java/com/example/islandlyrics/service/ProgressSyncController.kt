@@ -9,6 +9,7 @@ import android.os.Handler
 import android.os.HandlerThread
 import android.os.SystemClock
 import android.util.Log
+import com.example.islandlyrics.BuildConfig
 import com.example.islandlyrics.core.logging.AppLogger
 import com.example.islandlyrics.data.LyricRepository
 import com.example.islandlyrics.data.lyric.OnlineLyricFetcher
@@ -93,6 +94,13 @@ class ProgressSyncController(
     }
 
     fun resetProgressForTrackChange(newDuration: Long) {
+        if (BuildConfig.DEBUG) {
+            val metadata = repo.liveMetadata.value
+            AppLogger.getInstance().log(
+                TAG,
+                "[NotifyTrace] resetProgressForTrackChange pkg=${metadata?.packageName} title=${metadata?.title} artist=${metadata?.artist} oldPosition=$currentPosition oldDuration=$duration newDuration=$newDuration lastResolvedControllerKey=$lastResolvedControllerKey"
+            )
+        }
         duration = newDuration.coerceAtLeast(0L)
         currentPosition = 0L
         consecutiveResolveMisses = 0

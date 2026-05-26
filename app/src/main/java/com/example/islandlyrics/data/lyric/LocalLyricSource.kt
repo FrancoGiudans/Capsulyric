@@ -76,7 +76,8 @@ class LocalLyricSource(private val context: Context) {
                     lines = linesWithSidecars,
                     hasSyllable = parseResult.hasSyllable,
                     sourceLabel = "Local · ${match.originalName}",
-                    apiPath = "Local LRC"
+                    apiPath = "Local LRC",
+                    timelineCapability = LyricRepository.TimelineCapability.MULTI_LINE
                 )
 
                 AppLogger.getInstance().i(TAG, "Local lyrics loaded: ${linesWithSidecars.size} lines, syllable=${parseResult.hasSyllable}")

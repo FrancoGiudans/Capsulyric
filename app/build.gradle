@@ -115,6 +115,7 @@ android {
         applicationId = "com.franco.capsulyric"
         minSdk = 35
         targetSdk = 36
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         def versionPrefix = getBuildMetadata(project, "versionPrefix", "APP_VERSION_PREFIX", getDefaultVersionPrefix())
         def versionChannel = getBuildMetadata(project, "versionChannel", "APP_VERSION_CHANNEL", "")
@@ -251,4 +252,7 @@ dependencies {
 
     debugImplementation libs.ui.tooling
     debugImplementation libs.ui.test.manifest
+    androidTestImplementation libs.androidx.test.ext.junit
+    androidTestImplementation libs.androidx.test.core.ktx
+    androidTestImplementation libs.androidx.test.runner
 }
