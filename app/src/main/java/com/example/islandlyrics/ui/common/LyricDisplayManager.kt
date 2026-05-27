@@ -373,8 +373,10 @@ class LyricDisplayManager(private val context: Context) {
                     val currentProgressWeight = (lineProgress * currentLineWeight).toInt()
                     val scrollStartThreshold = scrollStartThreshold(preferredLineText, maxDisplayWeight)
                     val targetWeightOffset = if (currentProgressWeight < scrollStartThreshold) 0 else currentProgressWeight - scrollStartThreshold
-                    val minVisibleWeight = 14
-                    val maxAllowedScroll = maxOf(0, currentLineWeight - minVisibleWeight)
+                    // Keep the scrolling window width aligned with the configured
+                    // Super Island right-side limit instead of shrinking back to
+                    // the old fixed 7-char tail.
+                    val maxAllowedScroll = maxOf(0, currentLineWeight - maxDisplayWeight)
                     val finalOffset = minOf(targetWeightOffset, maxAllowedScroll)
                     displayLyric = extractByWeight(preferredLineText, finalOffset, maxDisplayWeight)
                 }
@@ -548,18 +550,11 @@ class LyricDisplayManager(private val context: Context) {
         }
 
         val sungWeight = calculateWeight(sungText)
-        val unsungWeight = calculateWeight(unsungText)
         val scrollStartThreshold = scrollStartThreshold(fullText, maxDisplayWeight)
-        val minTailVisibleWeight = maxOf(maxDisplayWeight - 2, maxDisplayWeight / 2)
-        val maxOffset = maxOf(0, fullWeight - minTailVisibleWeight)
+        val maxOffset = maxOf(0, fullWeight - maxDisplayWeight)
         val targetOffset = maxOf(0, sungWeight - scrollStartThreshold)
         val finalOffset = minOf(targetOffset, maxOffset)
-        val visibleWeight = if (unsungWeight <= minTailVisibleWeight || finalOffset >= maxOffset) {
-            minTailVisibleWeight
-        } else {
-            maxDisplayWeight
-        }
-        return extractByWeight(fullText, finalOffset, visibleWeight)
+        return extractByWeight(fullText, finalOffset, maxDisplayWeight)
     }
 
     private fun resolveTimingGapDisplayIfSupported(
