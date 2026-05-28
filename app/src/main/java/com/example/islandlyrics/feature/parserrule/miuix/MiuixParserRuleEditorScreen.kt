@@ -90,7 +90,8 @@ fun MiuixParserRuleEditorScreen(
     isNewRule: Boolean,
     onBack: () -> Unit,
     onDelete: (ParserRule) -> Unit,
-    onSaved: (ParserRule) -> Unit
+    onSaved: (ParserRule) -> Unit,
+    onOpenFaq: (() -> Unit)? = null
 ) {
     val context = LocalContext.current
     val scrollBehavior = MiuixScrollBehavior(rememberTopAppBarState())
@@ -181,7 +182,8 @@ fun MiuixParserRuleEditorScreen(
                     }
                     IconButton(
                         onClick = {
-                            context.startActivity(android.content.Intent(context, com.example.islandlyrics.feature.faq.FAQActivity::class.java))
+                            onOpenFaq?.invoke()
+                                ?: context.startActivity(android.content.Intent(context, com.example.islandlyrics.feature.faq.FAQActivity::class.java))
                         }
                     ) {
                         androidx.compose.material3.Icon(Icons.Default.Info, contentDescription = stringResource(R.string.faq_title), tint = MiuixTheme.colorScheme.onBackground)

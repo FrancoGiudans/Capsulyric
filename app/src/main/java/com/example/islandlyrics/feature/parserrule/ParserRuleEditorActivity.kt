@@ -5,13 +5,17 @@ import androidx.activity.compose.setContent
 import com.example.islandlyrics.data.ParserRuleHelper
 import com.example.islandlyrics.feature.parserrule.material.ParserRuleEditorScreen
 import com.example.islandlyrics.feature.parserrule.miuix.MiuixParserRuleEditorScreen
+import com.example.islandlyrics.ui.common.ActivityTransitionStyle
 import com.example.islandlyrics.ui.common.BaseActivity
 import com.example.islandlyrics.ui.common.PredictiveBackActivity
 import com.example.islandlyrics.ui.miuix.MiuixAppTheme
 import com.example.islandlyrics.ui.miuix.isMiuixEnabled
 import com.example.islandlyrics.ui.theme.material.IslandLyricsMaterialTheme
+import com.example.islandlyrics.R
 
 class ParserRuleEditorActivity : BaseActivity() {
+
+    override fun activityTransitionStyle() = ActivityTransitionStyle.OverlaySheet
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -28,7 +32,10 @@ class ParserRuleEditorActivity : BaseActivity() {
         setContent {
             if (isMiuixEnabled(this@ParserRuleEditorActivity)) {
                 MiuixAppTheme {
-                    PredictiveBackActivity {
+                    PredictiveBackActivity(
+                        closeEnterTransition = R.anim.overlay_sheet_close_enter,
+                        closeExitTransition = R.anim.overlay_sheet_close_exit
+                    ) {
                         MiuixParserRuleEditorScreen(
                         initialRule = initialRule,
                         isNewRule = packageName.isNullOrBlank() || ParserRuleHelper.getRuleForPackage(this@ParserRuleEditorActivity, packageName) == null,
@@ -56,7 +63,10 @@ class ParserRuleEditorActivity : BaseActivity() {
                 }
             } else {
                 IslandLyricsMaterialTheme {
-                    PredictiveBackActivity {
+                    PredictiveBackActivity(
+                        closeEnterTransition = R.anim.overlay_sheet_close_enter,
+                        closeExitTransition = R.anim.overlay_sheet_close_exit
+                    ) {
                         ParserRuleEditorScreen(
                         initialRule = initialRule,
                         isNewRule = packageName.isNullOrBlank() || ParserRuleHelper.getRuleForPackage(this@ParserRuleEditorActivity, packageName) == null,

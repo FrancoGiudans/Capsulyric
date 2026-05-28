@@ -25,7 +25,9 @@ import com.example.islandlyrics.feature.settings.material.SettingsCardDivider
 import com.example.islandlyrics.feature.settings.material.SettingsSectionHeader
 
 @Composable
-fun LocalLyricDirectoriesSection() {
+fun LocalLyricDirectoriesSection(
+    onOpenDirectory: ((Uri, String) -> Unit)? = null
+) {
     val context = LocalContext.current
     val dirManager = remember { LocalLyricDirectoryManager.getInstance(context) }
     var directories by remember { mutableStateOf(dirManager.getDirectories()) }
@@ -72,10 +74,11 @@ fun LocalLyricDirectoriesSection() {
                     },
                     colors = ListItemDefaults.colors(containerColor = Color.Transparent),
                     modifier = Modifier.clickable {
-                        context.startActivity(Intent(context, LocalLyricDirectoryActivity::class.java).apply {
-                            putExtra(LocalLyricDirectoryActivity.EXTRA_DIRECTORY_URI, entry.uri.toString())
-                            putExtra(LocalLyricDirectoryActivity.EXTRA_DIRECTORY_NAME, entry.displayName)
-                        })
+                        onOpenDirectory?.invoke(entry.uri, entry.displayName)
+                            ?: context.startActivity(Intent(context, LocalLyricDirectoryActivity::class.java).apply {
+                                putExtra(LocalLyricDirectoryActivity.EXTRA_DIRECTORY_URI, entry.uri.toString())
+                                putExtra(LocalLyricDirectoryActivity.EXTRA_DIRECTORY_NAME, entry.displayName)
+                            })
                     }
                 )
                 if (index < directories.size - 1) SettingsCardDivider()

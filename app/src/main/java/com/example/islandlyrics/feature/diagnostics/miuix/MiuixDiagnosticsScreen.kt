@@ -35,7 +35,13 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 @Composable
-fun MiuixDiagnosticsScreen(onBack: () -> Unit) {
+fun MiuixDiagnosticsScreen(
+    onBack: () -> Unit,
+    onOpenOnlineLyricDebug: (() -> Unit)? = null,
+    onOpenCacheManagement: (() -> Unit)? = null,
+    onOpenLab: (() -> Unit)? = null,
+    onOpenLogViewer: (() -> Unit)? = null
+) {
     val context = LocalContext.current
     val scrollBehavior = MiuixScrollBehavior(rememberTopAppBarState())
     val diagnostics by LyricRepository.getInstance().liveDiagnostics.observeAsState()
@@ -75,7 +81,8 @@ fun MiuixDiagnosticsScreen(onBack: () -> Unit) {
                         title = stringResource(R.string.diag_online_lyric_debug_title),
                         summary = stringResource(R.string.diag_online_lyric_debug_desc),
                         onClick = {
-                            context.startActivity(android.content.Intent(context, OnlineLyricDebugActivity::class.java))
+                            onOpenOnlineLyricDebug?.invoke()
+                                ?: context.startActivity(android.content.Intent(context, OnlineLyricDebugActivity::class.java))
                         }
                     )
                     if (BuildConfig.DEBUG) {
@@ -96,13 +103,16 @@ fun MiuixDiagnosticsScreen(onBack: () -> Unit) {
                     SuperArrow(
                         title = stringResource(R.string.menu_log),
                         summary = stringResource(R.string.summary_view_logs),
-                        onClick = { LogViewerActivity.start(context) }
+                        onClick = {
+                            onOpenLogViewer?.invoke() ?: LogViewerActivity.start(context)
+                        }
                     )
                     SuperArrow(
                         title = stringResource(R.string.title_cache_management),
                         summary = stringResource(R.string.settings_cache_management_desc),
                         onClick = {
-                            context.startActivity(android.content.Intent(context, CacheManagementActivity::class.java))
+                            onOpenCacheManagement?.invoke()
+                                ?: context.startActivity(android.content.Intent(context, CacheManagementActivity::class.java))
                         }
                     )
                 }
@@ -115,7 +125,8 @@ fun MiuixDiagnosticsScreen(onBack: () -> Unit) {
                         title = stringResource(R.string.title_lab),
                         summary = stringResource(R.string.diag_lab_page_desc),
                         onClick = {
-                            context.startActivity(android.content.Intent(context, LabActivity::class.java))
+                            onOpenLab?.invoke()
+                                ?: context.startActivity(android.content.Intent(context, LabActivity::class.java))
                         }
                     )
                 }

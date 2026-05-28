@@ -25,7 +25,6 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Refresh
-import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.lifecycle.Lifecycle
@@ -44,16 +43,24 @@ import top.yukonga.miuix.kmp.preference.SwitchPreference as SuperSwitch
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.MiuixPopupUtils.Companion.MiuixPopupHost
 import com.example.islandlyrics.ui.miuix.*
+import com.example.islandlyrics.ui.common.OverlaySheetHost
 import com.example.islandlyrics.feature.parserrule.ParserRuleEditorActivity
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.delay
+
+private data class InlineParserRuleEditorState(
+    val initialRule: ParserRule,
+    val isNewRule: Boolean,
+)
 
 @Composable
 fun MiuixParserRuleScreen(
     onBack: () -> Unit = {},
     showBackButton: Boolean = true,
     bottomBar: @Composable () -> Unit = {},
-    onBottomBarVisibilityChange: (Boolean) -> Unit = {}
+    onBottomBarVisibilityChange: (Boolean) -> Unit = {},
+    onOpenFaq: (() -> Unit)? = null
 ) {
     val context = LocalContext.current
     val offlineModeEnabled = OfflineModeManager.isEnabled(context)
@@ -63,6 +70,8 @@ fun MiuixParserRuleScreen(
     var rules by remember { mutableStateOf(ParserRuleHelper.loadRules(context)) }
     var showDeleteDialog = remember { mutableStateOf(false) }
     var deletingRule by remember { mutableStateOf<ParserRule?>(null) }
+    var inlineEditorState by remember { mutableStateOf<InlineParserRuleEditorState?>(null) }
+    var inlineEditorVisible by remember { mutableStateOf(false) }
     val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
 
     MiuixBackHandler(enabled = showDeleteDialog.value) { showDeleteDialog.value = false }
@@ -109,192 +118,256 @@ fun MiuixParserRuleScreen(
         com.example.islandlyrics.service.MediaMonitorService.triggerRecheck()
     }
 
-    MiuixBlurScaffold(
-        topBar = {
-            MiuixBlurTopAppBar(
-                title = stringResource(R.string.parser_rule_title),
-                largeTitle = stringResource(R.string.parser_rule_title),
-                scrollBehavior = scrollBehavior,
-                navigationIcon = if (showBackButton) {
-                    {
-                        IconButton(onClick = onBack, modifier = Modifier.padding(start = 12.dp)) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = "Back",
-                                tint = MiuixTheme.colorScheme.onBackground
-                            )
-                        }
-                    }
-                } else {
-                    {}
-                },
-                actions = {
-                    IconButton(onClick = {
-                        val actContext = context
-                        actContext.startActivity(android.content.Intent(actContext, com.example.islandlyrics.feature.faq.FAQActivity::class.java))
-                    }, modifier = Modifier.padding(end = 12.dp)) {
-                        Icon(
-                            imageVector = androidx.compose.material.icons.Icons.Default.Info,
-                            contentDescription = stringResource(R.string.faq_title),
-                            tint = MiuixTheme.colorScheme.onBackground
-                        )
-                    }
-                }
-            )
-        },
-        bottomBar = bottomBar,
-        floatingActionButton = {
-            // Recommendation Logic
-            val recommendEnabled = remember { 
-                context.getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE)
-                    .getBoolean("recommend_media_app", true) 
+    fun openRuleEditor(packageName: String? = null, suggestedName: String? = null) {
+        val initialRule = when {
+            !packageName.isNullOrBlank() -> {
+                ParserRuleHelper.getRuleForPackage(context, packageName)
+                    ?: ParserRuleHelper.createDefaultRule(packageName).copy(customName = suggestedName)
             }
-            
-            val metadata by LyricRepository.getInstance().liveSuggestionMetadata.observeAsState()
-            val currentPkg = metadata?.packageName
-            
-            val isKnownApp = remember(rules, currentPkg) {
-                if (currentPkg == null) true
-                else rules.any { it.packageName == currentPkg }
-            }
-            
-            val showRecommendation = recommendEnabled && !isKnownApp && currentPkg != null
-
-            val appLabel = remember(currentPkg) {
-                if (currentPkg != null) {
-                    try {
-                        val pm = context.packageManager
-                        val info = pm.getApplicationInfo(currentPkg, 0)
-                        pm.getApplicationLabel(info).toString()
-                    } catch (e: Exception) {
-                        null
-                    }
-                } else null
-            }
-
-            FloatingActionButton(
-                onClick = {
-                    if (showRecommendation) {
-                        val pkg = currentPkg
-                        context.startActivity(
-                            android.content.Intent(context, ParserRuleEditorActivity::class.java)
-                                .putExtra(ParserRuleEditorActivity.EXTRA_PACKAGE_NAME, pkg)
-                                .putExtra(ParserRuleEditorActivity.EXTRA_SUGGESTED_NAME, appLabel)
-                        )
-                    } else {
-                        context.startActivity(android.content.Intent(context, ParserRuleEditorActivity::class.java))
-                    }
-                },
-                modifier = Modifier.padding(bottom = 108.dp, end = 8.dp)
-            ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(imageVector = Icons.Filled.Add, contentDescription = null, tint = MiuixTheme.colorScheme.onPrimary)
-                    if (showRecommendation) {
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = stringResource(R.string.parser_add_app_fmt, appLabel ?: stringResource(R.string.parser_current_app)),
-                            color = MiuixTheme.colorScheme.onPrimary,
-                            fontWeight = FontWeight.Medium
-                        )
-                    } else {
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = stringResource(R.string.parser_add_rule),
-                            color = MiuixTheme.colorScheme.onPrimary,
-                            fontWeight = FontWeight.Medium
-                        )
-                    }
-                }
-            }
-        },
-        popupHost = { MiuixPopupHost() }
-    ) { padding ->
-        LazyColumn(
-            state = listState,
-            modifier = Modifier
-                .fillMaxSize()
-                .miuixPageScroll(scrollBehavior),
-            contentPadding = PaddingValues(
-                top = padding.calculateTopPadding(),
-                bottom = padding.calculateBottomPadding() + 136.dp
-            )
-        ) {
-            if (rules.isEmpty()) {
-                item {
-                    Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
-                        BasicComponent(
-                            title = stringResource(R.string.parser_no_rules),
-                            summary = stringResource(R.string.parser_no_rules_desc)
-                        )
-                    }
-                }
-            } else {
-                item {
-                    SmallTitle(text = stringResource(R.string.parser_rules_count, rules.size))
-                }
-                item {
-                    Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
-                        rules.forEach { rule ->
-                            MiuixParserRuleItem(
-                                rule = rule,
-                                offlineModeEnabled = offlineModeEnabled,
-                                onClick = {
-                                    context.startActivity(
-                                        android.content.Intent(context, ParserRuleEditorActivity::class.java)
-                                            .putExtra(ParserRuleEditorActivity.EXTRA_PACKAGE_NAME, rule.packageName)
-                                    )
-                                },
-                                onLongClick = {
-                                    deletingRule = rule
-                                    showDeleteDialog.value = true
-                                },
-                                onToggle = { enabled ->
-                                    val updatedRules = rules.toMutableList()
-                                    val index = updatedRules.indexOfFirst { it.packageName == rule.packageName }
-                                    if (index >= 0) {
-                                        updatedRules[index] = rule.copy(enabled = enabled)
-                                        ParserRuleHelper.saveRules(context, updatedRules)
-                                        refreshRules()
-                                    }
-                                }
-                            )
-                        }
-                    }
-                }
-            }
+            else -> ParserRuleHelper.createDefaultRule("").copy(customName = suggestedName)
         }
+        inlineEditorState = InlineParserRuleEditorState(
+            initialRule = initialRule,
+            isNewRule = packageName.isNullOrBlank() || ParserRuleHelper.getRuleForPackage(context, packageName) == null
+        )
+        inlineEditorVisible = true
+    }
 
-        // Dialogs must be inside Scaffold content for MiuixPopupHost
-        MiuixBlurDialog(
-            title = stringResource(R.string.parser_delete),
-            summary = stringResource(R.string.dialog_delete_confirm, deletingRule?.customName ?: deletingRule?.packageName ?: ""),
-            show = showDeleteDialog.value,
-            onDismissRequest = { showDeleteDialog.value = false }
-        ) {
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                TextButton(
-                    text = stringResource(R.string.dialog_btn_cancel),
-                    onClick = { showDeleteDialog.value = false },
-                    modifier = Modifier.weight(1f)
-                )
-                TextButton(
-                    text = stringResource(android.R.string.ok),
-                    onClick = {
-                        val updatedRules = rules.toMutableList()
-                        updatedRules.remove(deletingRule)
-                        ParserRuleHelper.saveRules(context, updatedRules)
-                        refreshRules()
-                        showDeleteDialog.value = false
-                    },
-                    modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.textButtonColorsPrimary()
-                )
-            }
+    fun closeRuleEditor() {
+        inlineEditorVisible = false
+    }
+
+    LaunchedEffect(inlineEditorVisible) {
+        if (inlineEditorVisible) {
+            onBottomBarVisibilityChange(false)
+        } else {
+            delay(430)
+            inlineEditorState = null
+            onBottomBarVisibilityChange(true)
         }
     }
+
+    OverlaySheetHost(
+        visible = inlineEditorVisible && inlineEditorState != null,
+        onDismissRequest = ::closeRuleEditor,
+        content = {
+            MiuixBlurScaffold(
+                topBar = {
+                    MiuixBlurTopAppBar(
+                        title = stringResource(R.string.parser_rule_title),
+                        largeTitle = stringResource(R.string.parser_rule_title),
+                        scrollBehavior = scrollBehavior,
+                        navigationIcon = if (showBackButton) {
+                            {
+                                IconButton(onClick = onBack, modifier = Modifier.padding(start = 12.dp)) {
+                                    Icon(
+                                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                        contentDescription = "Back",
+                                        tint = MiuixTheme.colorScheme.onBackground
+                                    )
+                                }
+                            }
+                        } else {
+                            {}
+                        },
+                        actions = {
+                            IconButton(onClick = {
+                                val actContext = context
+                                onOpenFaq?.invoke()
+                                    ?: actContext.startActivity(android.content.Intent(actContext, com.example.islandlyrics.feature.faq.FAQActivity::class.java))
+                            }, modifier = Modifier.padding(end = 12.dp)) {
+                                Icon(
+                                    imageVector = androidx.compose.material.icons.Icons.Default.Info,
+                                    contentDescription = stringResource(R.string.faq_title),
+                                    tint = MiuixTheme.colorScheme.onBackground
+                                )
+                            }
+                        }
+                    )
+                },
+                bottomBar = bottomBar,
+                floatingActionButton = {
+                    // Recommendation Logic
+                    val recommendEnabled = remember {
+                        context.getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE)
+                            .getBoolean("recommend_media_app", true)
+                    }
+
+                    val metadata by LyricRepository.getInstance().liveSuggestionMetadata.observeAsState()
+                    val currentPkg = metadata?.packageName
+
+                    val isKnownApp = remember(rules, currentPkg) {
+                        if (currentPkg == null) true
+                        else rules.any { it.packageName == currentPkg }
+                    }
+
+                    val showRecommendation = recommendEnabled && !isKnownApp && currentPkg != null
+
+                    val appLabel = remember(currentPkg) {
+                        if (currentPkg != null) {
+                            try {
+                                val pm = context.packageManager
+                                val info = pm.getApplicationInfo(currentPkg, 0)
+                                pm.getApplicationLabel(info).toString()
+                            } catch (e: Exception) {
+                                null
+                            }
+                        } else null
+                    }
+
+                    FloatingActionButton(
+                        onClick = {
+                            if (showRecommendation) {
+                                val pkg = currentPkg
+                                openRuleEditor(packageName = pkg, suggestedName = appLabel)
+                            } else {
+                                openRuleEditor()
+                            }
+                        },
+                        modifier = Modifier.padding(bottom = 108.dp, end = 8.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(imageVector = Icons.Filled.Add, contentDescription = null, tint = MiuixTheme.colorScheme.onPrimary)
+                            if (showRecommendation) {
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = stringResource(R.string.parser_add_app_fmt, appLabel ?: stringResource(R.string.parser_current_app)),
+                                    color = MiuixTheme.colorScheme.onPrimary,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            } else {
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = stringResource(R.string.parser_add_rule),
+                                    color = MiuixTheme.colorScheme.onPrimary,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+                        }
+                    }
+                },
+                popupHost = { MiuixPopupHost() }
+            ) { padding ->
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .miuixPageScroll(scrollBehavior),
+                    contentPadding = PaddingValues(
+                        top = padding.calculateTopPadding(),
+                        bottom = padding.calculateBottomPadding() + 136.dp
+                    )
+                ) {
+                    if (rules.isEmpty()) {
+                        item {
+                            Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
+                                BasicComponent(
+                                    title = stringResource(R.string.parser_no_rules),
+                                    summary = stringResource(R.string.parser_no_rules_desc)
+                                )
+                            }
+                        }
+                    } else {
+                        item {
+                            SmallTitle(text = stringResource(R.string.parser_rules_count, rules.size))
+                        }
+                        item {
+                            Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
+                                rules.forEach { rule ->
+                                    MiuixParserRuleItem(
+                                        rule = rule,
+                                        offlineModeEnabled = offlineModeEnabled,
+                                        onClick = {
+                                            openRuleEditor(packageName = rule.packageName)
+                                        },
+                                        onLongClick = {
+                                            deletingRule = rule
+                                            showDeleteDialog.value = true
+                                        },
+                                        onToggle = { enabled ->
+                                            val updatedRules = rules.toMutableList()
+                                            val index = updatedRules.indexOfFirst { it.packageName == rule.packageName }
+                                            if (index >= 0) {
+                                                updatedRules[index] = rule.copy(enabled = enabled)
+                                                ParserRuleHelper.saveRules(context, updatedRules)
+                                                refreshRules()
+                                            }
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Dialogs must be inside Scaffold content for MiuixPopupHost
+                MiuixBlurDialog(
+                    title = stringResource(R.string.parser_delete),
+                    summary = stringResource(R.string.dialog_delete_confirm, deletingRule?.customName ?: deletingRule?.packageName ?: ""),
+                    show = showDeleteDialog.value,
+                    onDismissRequest = { showDeleteDialog.value = false }
+                ) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        TextButton(
+                            text = stringResource(R.string.dialog_btn_cancel),
+                            onClick = { showDeleteDialog.value = false },
+                            modifier = Modifier.weight(1f)
+                        )
+                        TextButton(
+                            text = stringResource(android.R.string.ok),
+                            onClick = {
+                                val updatedRules = rules.toMutableList()
+                                updatedRules.remove(deletingRule)
+                                ParserRuleHelper.saveRules(context, updatedRules)
+                                refreshRules()
+                                showDeleteDialog.value = false
+                            },
+                            modifier = Modifier.weight(1f),
+                            colors = ButtonDefaults.textButtonColorsPrimary()
+                        )
+                    }
+                }
+            }
+        },
+        sheetContent = {
+            val editorState = inlineEditorState
+            if (editorState != null) {
+                MiuixParserRuleEditorScreen(
+                    initialRule = editorState.initialRule,
+                    isNewRule = editorState.isNewRule,
+                    onBack = ::closeRuleEditor,
+                    onDelete = { rule ->
+                        val updatedRules = ParserRuleHelper.loadRules(context).toMutableList()
+                        updatedRules.removeAll { it.packageName == rule.packageName }
+                        ParserRuleHelper.saveRules(context, updatedRules)
+                        refreshRules()
+                        closeRuleEditor()
+                    },
+                    onSaved = { rule ->
+                        val updatedRules = ParserRuleHelper.loadRules(context).toMutableList()
+                        val index = updatedRules.indexOfFirst { it.packageName == rule.packageName }
+                        if (index >= 0) {
+                            updatedRules[index] = rule
+                        } else {
+                            updatedRules.add(rule)
+                        }
+                        updatedRules.sort()
+                        ParserRuleHelper.saveRules(context, updatedRules)
+                        refreshRules()
+                        closeRuleEditor()
+                    },
+                    onOpenFaq = {
+                        closeRuleEditor()
+                        onOpenFaq?.invoke()
+                            ?: context.startActivity(android.content.Intent(context, com.example.islandlyrics.feature.faq.FAQActivity::class.java))
+                    }
+                )
+            }
+        }
+    )
 }
 
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)

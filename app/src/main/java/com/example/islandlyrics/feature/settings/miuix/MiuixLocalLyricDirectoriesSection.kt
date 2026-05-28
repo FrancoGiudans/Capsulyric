@@ -42,7 +42,10 @@ fun rememberLocalLyricDirectoriesState(): MiuixLocalLyricDirectoriesState {
 
 @Composable
 @OptIn(ExperimentalFoundationApi::class)
-fun MiuixLocalLyricDirectoriesContent(state: MiuixLocalLyricDirectoriesState) {
+fun MiuixLocalLyricDirectoriesContent(
+    state: MiuixLocalLyricDirectoriesState,
+    onOpenDirectory: ((Uri, String) -> Unit)? = null
+) {
     val context = LocalContext.current
     val dirManager = remember { LocalLyricDirectoryManager.getInstance(context) }
 
@@ -74,10 +77,11 @@ fun MiuixLocalLyricDirectoriesContent(state: MiuixLocalLyricDirectoriesState) {
                               else stringResource(R.string.settings_local_lyrics_directories),
                     modifier = Modifier.combinedClickable(
                         onClick = {
-                            context.startActivity(Intent(context, LocalLyricDirectoryActivity::class.java).apply {
-                                putExtra(LocalLyricDirectoryActivity.EXTRA_DIRECTORY_URI, entry.uri.toString())
-                                putExtra(LocalLyricDirectoryActivity.EXTRA_DIRECTORY_NAME, entry.displayName)
-                            })
+                            onOpenDirectory?.invoke(entry.uri, entry.displayName)
+                                ?: context.startActivity(Intent(context, LocalLyricDirectoryActivity::class.java).apply {
+                                    putExtra(LocalLyricDirectoryActivity.EXTRA_DIRECTORY_URI, entry.uri.toString())
+                                    putExtra(LocalLyricDirectoryActivity.EXTRA_DIRECTORY_NAME, entry.displayName)
+                                })
                         },
                         onLongClick = {
                             state.removeTarget = entry.uri

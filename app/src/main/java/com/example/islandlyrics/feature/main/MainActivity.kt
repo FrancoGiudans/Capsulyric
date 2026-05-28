@@ -9,19 +9,39 @@ import com.example.islandlyrics.core.update.UpdateChecker
 import com.example.islandlyrics.core.logging.AppLogger
 import com.example.islandlyrics.core.network.OfflineModeManager
 import com.example.islandlyrics.service.MediaMonitorService
-import com.example.islandlyrics.feature.customsettings.CustomSettingsActivity
+import com.example.islandlyrics.feature.cache.material.CacheManagementScreen
+import com.example.islandlyrics.feature.cache.miuix.MiuixCacheManagementScreen
+import com.example.islandlyrics.feature.customsettings.material.CustomSettingsScreen
+import com.example.islandlyrics.feature.customsettings.miuix.MiuixCustomSettingsScreen
+import com.example.islandlyrics.feature.diagnostics.material.DiagnosticsScreen
+import com.example.islandlyrics.feature.diagnostics.miuix.MiuixDiagnosticsScreen
+import com.example.islandlyrics.feature.faq.material.FAQScreen
+import com.example.islandlyrics.feature.faq.miuix.MiuixFAQScreen
+import com.example.islandlyrics.feature.lab.material.LabScreen
+import com.example.islandlyrics.feature.lab.miuix.MiuixLabScreen
+import com.example.islandlyrics.feature.locallyrics.material.LocalLyricDirectoryScreen
+import com.example.islandlyrics.feature.locallyrics.miuix.MiuixLocalLyricDirectoryScreen
+import com.example.islandlyrics.feature.logviewer.material.LogViewerScreen
+import com.example.islandlyrics.feature.logviewer.miuix.MiuixLogViewerScreen
 import com.example.islandlyrics.feature.navigation.MaterialTopLevelNavigationBar
 import com.example.islandlyrics.feature.navigation.MiuixTopLevelFloatingNavigationBar
 import com.example.islandlyrics.feature.navigation.TopLevelDestination
 import com.example.islandlyrics.feature.main.miuix.MiuixMainScreen
+import com.example.islandlyrics.feature.onlinelyricdebug.material.OnlineLyricDebugScreen
+import com.example.islandlyrics.feature.onlinelyricdebug.miuix.MiuixOnlineLyricDebugScreen
 import com.example.islandlyrics.feature.parserrule.material.ParserRuleScreen
+import com.example.islandlyrics.feature.settings.ReleaseDialogMode
+import com.example.islandlyrics.feature.settings.ReleaseDialogState
+import com.example.islandlyrics.feature.settings.material.AboutScreen
 import com.example.islandlyrics.feature.settings.material.SettingsScreen
+import com.example.islandlyrics.feature.settings.miuix.MiuixAboutScreen
 import com.example.islandlyrics.ui.miuix.MiuixAppTheme
 import com.example.islandlyrics.ui.miuix.LocalMiuixBlurBackdrop
 import com.example.islandlyrics.ui.miuix.LocalMiuixBlurEnabled
 import com.example.islandlyrics.feature.update.material.UpdateDialog
 import com.example.islandlyrics.feature.update.miuix.MiuixUpdateDialog
 import com.example.islandlyrics.feature.main.material.MainScreen
+import com.example.islandlyrics.ui.common.PageStackHost
 import com.example.islandlyrics.ui.theme.material.IslandLyricsMaterialTheme
 import android.content.Context
 import android.content.Intent
@@ -32,6 +52,7 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.net.Uri
 import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.compose.setContent
@@ -91,6 +112,8 @@ class MainActivity : BaseActivity() {
     private var versionText by mutableStateOf("...")
     private var updateReleaseInfo by mutableStateOf<UpdateChecker.ReleaseInfo?>(null)
     private var pendingUpdateSnackbarReleaseInfo by mutableStateOf<UpdateChecker.ReleaseInfo?>(null)
+    private var aboutReleaseDialogState by mutableStateOf<ReleaseDialogState?>(null)
+    private var aboutReleaseLookupMessage by mutableStateOf<String?>(null)
 
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -300,29 +323,40 @@ class MainActivity : BaseActivity() {
         val pagerState = rememberPagerState(pageCount = { TopLevelDestination.entries.size })
         val scope = rememberCoroutineScope()
         var bottomBarVisible by androidx.compose.runtime.remember { mutableStateOf(true) }
-
-        androidx.compose.runtime.LaunchedEffect(pagerState.currentPage) {
-            bottomBarVisible = true
+        val pageStack = remember { androidx.compose.runtime.mutableStateListOf<AppPage>() }
+        fun pushPage(page: AppPage) {
+            pageStack.add(page)
+        }
+        fun popPage() {
+            if (pageStack.isNotEmpty()) pageStack.removeAt(pageStack.lastIndex)
         }
 
-        Box(
+        androidx.compose.runtime.LaunchedEffect(pagerState.currentPage) {
+            if (pageStack.isEmpty()) bottomBarVisible = true
+        }
+
+        val targetBottomBarVisible = bottomBarVisible && pageStack.isEmpty()
+        PageStackHost(
+            stack = pageStack,
+            onPop = ::popPage,
+            backdropColor = MaterialTheme.colorScheme.background,
             modifier = Modifier
                 .fillMaxSize()
-                .background(MaterialTheme.colorScheme.background)
-        ) {
+                .background(MaterialTheme.colorScheme.background),
+            backgroundContent = {
             // Content fills the entire screen, including behind the floating nav bar.
             HorizontalPager(
                 state = pagerState,
                 modifier = Modifier.fillMaxSize()
             ) { page ->
                 // Give enough bottom padding so the last item can scroll clear of the nav bar.
-                val bottomPadding = if (bottomBarVisible) 120.dp else 24.dp
+                val bottomPadding = if (targetBottomBarVisible) 120.dp else 24.dp
                 when (TopLevelDestination.entries[page]) {
                     TopLevelDestination.HOME -> MainScreen(
                         versionText = versionText,
                         isDebugBuild = BuildConfig.DEBUG,
                         onOpenSettings = {},
-                        onOpenPersonalization = { startActivity(Intent(this@MainActivity, CustomSettingsActivity::class.java)) },
+                        onOpenPersonalization = { pushPage(AppPage.CustomSettings) },
                         onOpenWhitelist = {},
                         onOpenDebug = { openDebugCenter() },
                         onOpenPromotedSettings = { openPromotedSettings() },
@@ -335,17 +369,24 @@ class MainActivity : BaseActivity() {
 
                     TopLevelDestination.PARSER_RULES -> ParserRuleScreen(
                         showBackButton = false,
-                        extraBottomPadding = bottomPadding
+                        extraBottomPadding = bottomPadding,
+                        onBottomBarVisibilityChange = { bottomBarVisible = it },
+                        onOpenFaq = { pushPage(AppPage.Faq) }
                     )
 
                     TopLevelDestination.SETTINGS -> SettingsScreen(
                         onCheckUpdate = { performUpdateCheckFromMain() },
-                        onShowDiagnostics = { showDiagnosticsFromMain() },
+                        onShowDiagnostics = { pushPage(AppPage.Diagnostics) },
                         updateVersionText = getVersionNameForUi(),
                         updateCodenameText = BuildConfig.VERSION_CODENAME,
                         updateBuildText = BuildConfig.GIT_COMMIT_HASH,
                         onOpenCustomSettings = {
-                            startActivity(Intent(this@MainActivity, CustomSettingsActivity::class.java))
+                            pushPage(AppPage.CustomSettings)
+                        },
+                        onOpenFaq = { pushPage(AppPage.Faq) },
+                        onOpenAbout = { pushPage(AppPage.About) },
+                        onOpenLocalLyricDirectory = { uri, name ->
+                            pushPage(AppPage.LocalLyricDirectory(uri.toString(), name))
                         },
                         showBackButton = false,
                         extraBottomPadding = bottomPadding
@@ -355,7 +396,7 @@ class MainActivity : BaseActivity() {
 
             // Floating nav bar — sits above the system navigation bar, overlaid on content.
             AnimatedVisibility(
-                visible = bottomBarVisible,
+                visible = targetBottomBarVisible,
                 enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
                 exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
                 modifier = Modifier
@@ -370,14 +411,29 @@ class MainActivity : BaseActivity() {
                     }
                 )
             }
+            },
+            pageContent = { page ->
+                MaterialAppPage(
+                    page = page,
+                    onBack = ::popPage,
+                    onPushPage = ::pushPage
+                )
+            }
+        )
         }
-    }
 
     @Composable
     private fun MiuixTopLevelPager() {
         val pagerState = rememberPagerState(pageCount = { TopLevelDestination.entries.size })
         val scope = rememberCoroutineScope()
         var bottomBarVisible by androidx.compose.runtime.remember { mutableStateOf(true) }
+        val pageStack = remember { androidx.compose.runtime.mutableStateListOf<AppPage>() }
+        fun pushPage(page: AppPage) {
+            pageStack.add(page)
+        }
+        fun popPage() {
+            if (pageStack.isNotEmpty()) pageStack.removeAt(pageStack.lastIndex)
+        }
         val snackbarHostState = remember { MiuixSnackbarHostState() }
         val backdropBackground = MiuixTheme.colorScheme.surface
         val backdrop = rememberLayerBackdrop {
@@ -388,7 +444,7 @@ class MainActivity : BaseActivity() {
         var blurEnabled by remember { mutableStateOf(prefs.getBoolean("card_blur_enabled", false)) }
 
         androidx.compose.runtime.LaunchedEffect(pagerState.currentPage) {
-            bottomBarVisible = true
+            if (pageStack.isEmpty()) bottomBarVisible = true
         }
         DisposableEffect(prefs) {
             val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
@@ -427,7 +483,13 @@ class MainActivity : BaseActivity() {
                 popupHost = { MiuixPopupHost() },
                 containerColor = Color.Transparent
             ) {
-                Box(modifier = Modifier.fillMaxSize()) {
+                val targetBottomBarVisible = bottomBarVisible && pageStack.isEmpty()
+                PageStackHost(
+                    stack = pageStack,
+                    onPop = ::popPage,
+                    backdropColor = MiuixTheme.colorScheme.surface,
+                    modifier = Modifier.fillMaxSize(),
+                    backgroundContent = {
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
@@ -444,7 +506,7 @@ class MainActivity : BaseActivity() {
                                     versionText = versionText,
                                     isDebugBuild = BuildConfig.DEBUG,
                                     onOpenSettings = {},
-                                    onOpenPersonalization = { startActivity(Intent(this@MainActivity, CustomSettingsActivity::class.java)) },
+                                    onOpenPersonalization = { pushPage(AppPage.CustomSettings) },
                                     onOpenWhitelist = {},
                                     onOpenDebug = { openDebugCenter() },
                                     onOpenPromotedSettings = { openPromotedSettings() },
@@ -457,17 +519,23 @@ class MainActivity : BaseActivity() {
 
                                 TopLevelDestination.PARSER_RULES -> com.example.islandlyrics.feature.parserrule.miuix.MiuixParserRuleScreen(
                                     showBackButton = false,
-                                    onBottomBarVisibilityChange = { bottomBarVisible = it }
+                                    onBottomBarVisibilityChange = { bottomBarVisible = it },
+                                    onOpenFaq = { pushPage(AppPage.Faq) }
                                 )
 
                                 TopLevelDestination.SETTINGS -> com.example.islandlyrics.feature.settings.miuix.MiuixSettingsScreen(
                                     onCheckUpdate = { performUpdateCheckFromMain() },
-                                    onShowDiagnostics = { showDiagnosticsFromMain() },
+                                    onShowDiagnostics = { pushPage(AppPage.Diagnostics) },
                                     updateVersionText = getVersionNameForUi(),
                                     updateCodenameText = BuildConfig.VERSION_CODENAME,
                                     updateBuildText = BuildConfig.GIT_COMMIT_HASH,
                                     onOpenCustomSettings = {
-                                        startActivity(Intent(this@MainActivity, CustomSettingsActivity::class.java))
+                                        pushPage(AppPage.CustomSettings)
+                                    },
+                                    onOpenFaq = { pushPage(AppPage.Faq) },
+                                    onOpenAbout = { pushPage(AppPage.About) },
+                                    onOpenLocalLyricDirectory = { uri, name ->
+                                        pushPage(AppPage.LocalLyricDirectory(uri.toString(), name))
                                     },
                                     showBackButton = false,
                                     onBottomBarVisibilityChange = { bottomBarVisible = it }
@@ -477,7 +545,7 @@ class MainActivity : BaseActivity() {
                     }
 
                     AnimatedVisibility(
-                        visible = bottomBarVisible,
+                        visible = targetBottomBarVisible,
                         enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
                         exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
                         modifier = Modifier
@@ -496,7 +564,7 @@ class MainActivity : BaseActivity() {
                         state = snackbarHostState,
                         modifier = Modifier
                             .align(Alignment.BottomCenter)
-                            .padding(bottom = if (bottomBarVisible) 82.dp else 16.dp),
+                            .padding(bottom = if (targetBottomBarVisible) 82.dp else 16.dp),
                         content = { data -> MiuixSnackbar(data = data) }
                     )
 
@@ -511,10 +579,18 @@ class MainActivity : BaseActivity() {
                             }
                         )
                     }
+                    },
+                    pageContent = { page ->
+                        MiuixAppPage(
+                            page = page,
+                            onBack = ::popPage,
+                            onPushPage = ::pushPage
+                        )
+                    }
+                )
                 }
             }
         }
-    }
 
     private fun maybeHandleUpdateSnackbarIntent(intent: Intent?) {
         if (intent?.getBooleanExtra(EXTRA_SHOW_DEBUG_UPDATE_SNACKBAR, false) != true) return
@@ -578,7 +654,177 @@ class MainActivity : BaseActivity() {
         }
     }
 
+    private fun performAboutUpdateCheck() {
+        if (OfflineModeManager.isEnabled(this)) {
+            Toast.makeText(this, R.string.offline_mode_network_blocked, Toast.LENGTH_SHORT).show()
+            return
+        }
+        Toast.makeText(this, "Checking for updates...", Toast.LENGTH_SHORT).show()
+        lifecycleScope.launch {
+            try {
+                val release = UpdateChecker.checkForUpdate(this@MainActivity)
+                if (release != null) {
+                    aboutReleaseDialogState = ReleaseDialogState(
+                        releaseInfo = release,
+                        mode = ReleaseDialogMode.UPDATE_AVAILABLE
+                    )
+                    AppLogger.getInstance().log("About", "Update found: ${UpdateChecker.getComparableVersion(release)}")
+                } else {
+                    Toast.makeText(this@MainActivity, R.string.update_no_update, Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                Toast.makeText(this@MainActivity, R.string.update_check_failed, Toast.LENGTH_SHORT).show()
+                AppLogger.getInstance().log("About", "Update check failed: ${e.message}")
+            }
+        }
+    }
+
+    private fun showCurrentVersionChangelogFromMain() {
+        if (OfflineModeManager.isEnabled(this)) {
+            Toast.makeText(this, R.string.offline_mode_network_blocked, Toast.LENGTH_SHORT).show()
+            return
+        }
+        Toast.makeText(this, R.string.update_current_version_changelog_loading, Toast.LENGTH_SHORT).show()
+        lifecycleScope.launch {
+            try {
+                val release = UpdateChecker.fetchReleaseForVersion(this@MainActivity)
+                if (release != null) {
+                    aboutReleaseDialogState = ReleaseDialogState(
+                        releaseInfo = release,
+                        mode = ReleaseDialogMode.CURRENT_VERSION_CHANGELOG
+                    )
+                    AppLogger.getInstance().log(
+                        "About",
+                        "Current version changelog found: ${UpdateChecker.getComparableVersion(release)}"
+                    )
+                } else {
+                    aboutReleaseLookupMessage = getString(R.string.update_current_version_changelog_unavailable_message)
+                }
+            } catch (e: Exception) {
+                Toast.makeText(this@MainActivity, R.string.update_check_failed, Toast.LENGTH_SHORT).show()
+                AppLogger.getInstance().log("About", "Current version changelog lookup failed: ${e.message}")
+            }
+        }
+    }
+
     private fun showDiagnosticsFromMain() {
         startActivity(Intent(this, com.example.islandlyrics.feature.diagnostics.DiagnosticsActivity::class.java))
     }
+
+    @Composable
+    private fun MaterialAppPage(
+        page: AppPage,
+        onBack: () -> Unit,
+        onPushPage: (AppPage) -> Unit
+    ) {
+        when (page) {
+            AppPage.CustomSettings -> CustomSettingsScreen(
+                onBack = onBack,
+                onCheckUpdate = {},
+                onShowLogs = { onPushPage(AppPage.LogViewer) },
+                updateVersionText = getVersionNameForUi(),
+                updateBuildText = BuildConfig.GIT_COMMIT_HASH
+            )
+            AppPage.Faq -> FAQScreen(onBack = onBack)
+            AppPage.About -> AboutScreen(
+                updateVersionText = getVersionNameForUi(),
+                updateCodenameText = BuildConfig.VERSION_CODENAME,
+                updateBuildText = BuildConfig.GIT_COMMIT_HASH,
+                onShowDiagnostics = { onPushPage(AppPage.Diagnostics) },
+                onCheckUpdate = { performAboutUpdateCheck() },
+                onViewCurrentVersionChangelog = { showCurrentVersionChangelogFromMain() },
+                onBack = onBack,
+                releaseDialogState = aboutReleaseDialogState,
+                onReleaseDialogDismiss = { aboutReleaseDialogState = null },
+                onUpdateIgnore = { version ->
+                    UpdateChecker.setIgnoredVersion(this@MainActivity, version)
+                    AppLogger.getInstance().log("Update", "Ignored version: $version")
+                },
+                releaseLookupMessage = aboutReleaseLookupMessage,
+                onReleaseLookupMessageDismiss = { aboutReleaseLookupMessage = null }
+            )
+            AppPage.Diagnostics -> DiagnosticsScreen(
+                onBack = onBack,
+                onOpenOnlineLyricDebug = { onPushPage(AppPage.OnlineLyricDebug) },
+                onOpenCacheManagement = { onPushPage(AppPage.CacheManagement) },
+                onOpenLab = { onPushPage(AppPage.Lab) },
+                onOpenLogViewer = { onPushPage(AppPage.LogViewer) }
+            )
+            AppPage.OnlineLyricDebug -> OnlineLyricDebugScreen(onBack = onBack)
+            AppPage.CacheManagement -> CacheManagementScreen(onBack = onBack)
+            AppPage.Lab -> LabScreen(onBack = onBack)
+            AppPage.LogViewer -> LogViewerScreen(onBack = onBack)
+            is AppPage.LocalLyricDirectory -> LocalLyricDirectoryScreen(
+                directoryUri = Uri.parse(page.directoryUri),
+                directoryName = page.directoryName,
+                onBack = onBack
+            )
+        }
+    }
+
+    @Composable
+    private fun MiuixAppPage(
+        page: AppPage,
+        onBack: () -> Unit,
+        onPushPage: (AppPage) -> Unit
+    ) {
+        when (page) {
+            AppPage.CustomSettings -> MiuixCustomSettingsScreen(
+                onBack = onBack,
+                onCheckUpdate = {},
+                onShowLogs = { onPushPage(AppPage.LogViewer) },
+                updateVersionText = getVersionNameForUi(),
+                updateBuildText = BuildConfig.GIT_COMMIT_HASH
+            )
+            AppPage.Faq -> MiuixFAQScreen(onBack = onBack)
+            AppPage.About -> MiuixAboutScreen(
+                updateVersionText = getVersionNameForUi(),
+                updateCodenameText = BuildConfig.VERSION_CODENAME,
+                updateBuildText = BuildConfig.GIT_COMMIT_HASH,
+                onShowDiagnostics = { onPushPage(AppPage.Diagnostics) },
+                onCheckUpdate = { performAboutUpdateCheck() },
+                onViewCurrentVersionChangelog = { showCurrentVersionChangelogFromMain() },
+                onBack = onBack,
+                releaseDialogState = aboutReleaseDialogState,
+                onReleaseDialogDismiss = { aboutReleaseDialogState = null },
+                onUpdateIgnore = { version ->
+                    UpdateChecker.setIgnoredVersion(this@MainActivity, version)
+                    AppLogger.getInstance().log("Update", "Ignored version: $version")
+                },
+                releaseLookupMessage = aboutReleaseLookupMessage,
+                onReleaseLookupMessageDismiss = { aboutReleaseLookupMessage = null }
+            )
+            AppPage.Diagnostics -> MiuixDiagnosticsScreen(
+                onBack = onBack,
+                onOpenOnlineLyricDebug = { onPushPage(AppPage.OnlineLyricDebug) },
+                onOpenCacheManagement = { onPushPage(AppPage.CacheManagement) },
+                onOpenLab = { onPushPage(AppPage.Lab) },
+                onOpenLogViewer = { onPushPage(AppPage.LogViewer) }
+            )
+            AppPage.OnlineLyricDebug -> MiuixOnlineLyricDebugScreen(onBack = onBack)
+            AppPage.CacheManagement -> MiuixCacheManagementScreen(onBack = onBack)
+            AppPage.Lab -> MiuixLabScreen(onBack = onBack)
+            AppPage.LogViewer -> MiuixLogViewerScreen(onBack = onBack)
+            is AppPage.LocalLyricDirectory -> MiuixLocalLyricDirectoryScreen(
+                directoryUri = Uri.parse(page.directoryUri),
+                directoryName = page.directoryName,
+                onBack = onBack
+            )
+        }
+    }
+}
+
+private sealed class AppPage {
+    data object CustomSettings : AppPage()
+    data object Faq : AppPage()
+    data object About : AppPage()
+    data object Diagnostics : AppPage()
+    data object OnlineLyricDebug : AppPage()
+    data object CacheManagement : AppPage()
+    data object Lab : AppPage()
+    data object LogViewer : AppPage()
+    data class LocalLyricDirectory(
+        val directoryUri: String,
+        val directoryName: String
+    ) : AppPage()
 }

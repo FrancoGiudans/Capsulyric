@@ -53,6 +53,7 @@ fun AboutScreen(
     onShowDiagnostics: () -> Unit,
     onCheckUpdate: () -> Unit,
     onViewCurrentVersionChangelog: () -> Unit,
+    onBack: (() -> Unit)? = null,
     releaseDialogState: ReleaseDialogState? = null,
     onReleaseDialogDismiss: () -> Unit = {},
     onUpdateIgnore: (String) -> Unit = {},
@@ -96,7 +97,7 @@ fun AboutScreen(
             MediumTopAppBar(
                 title = { Text(stringResource(R.string.community_about_title)) },
                 navigationIcon = {
-                    IconButton(onClick = { (context as? Activity)?.finish() }) {
+                    IconButton(onClick = { onBack?.invoke() ?: (context as? Activity)?.finish() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },

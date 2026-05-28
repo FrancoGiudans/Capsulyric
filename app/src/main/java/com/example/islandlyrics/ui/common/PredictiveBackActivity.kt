@@ -35,10 +35,14 @@ import androidx.navigationevent.compose.LocalNavigationEventDispatcherOwner
 import androidx.navigationevent.compose.NavigationBackHandler
 import androidx.navigationevent.compose.rememberNavigationEventState
 import android.os.Build
+import com.example.islandlyrics.R
 import kotlinx.coroutines.launch
 
 @Composable
 fun PredictiveBackActivity(
+    enabled: Boolean = true,
+    closeEnterTransition: Int = R.anim.page_close_enter,
+    closeExitTransition: Int = R.anim.page_close_exit,
     content: @Composable () -> Unit
 ) {
     val context = LocalContext.current
@@ -46,9 +50,9 @@ fun PredictiveBackActivity(
     val prefs = remember {
         context.getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE)
     }
-    val enabled = remember { prefs.getBoolean("predictive_back_enabled", true) }
+    val predictiveBackEnabled = remember { prefs.getBoolean("predictive_back_enabled", true) }
 
-    if (!enabled) {
+    if (!enabled || !predictiveBackEnabled) {
         content()
         return
     }
@@ -92,7 +96,11 @@ fun PredictiveBackActivity(
                         animationSpec = tween(durationMillis = 150, easing = LinearEasing)
                     )
                     activity?.finish()
-                    activity?.overrideActivityTransition(Activity.OVERRIDE_TRANSITION_CLOSE, 0, 0)
+                    activity?.overrideActivityTransition(
+                        Activity.OVERRIDE_TRANSITION_CLOSE,
+                        closeEnterTransition,
+                        closeExitTransition
+                    )
                 }
             }
         )

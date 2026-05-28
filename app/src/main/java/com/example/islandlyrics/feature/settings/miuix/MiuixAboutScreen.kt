@@ -43,6 +43,7 @@ fun MiuixAboutScreen(
     onShowDiagnostics: () -> Unit,
     onCheckUpdate: () -> Unit,
     onViewCurrentVersionChangelog: () -> Unit,
+    onBack: (() -> Unit)? = null,
     releaseDialogState: ReleaseDialogState? = null,
     onReleaseDialogDismiss: () -> Unit = {},
     onUpdateIgnore: (String) -> Unit = {},
@@ -84,7 +85,7 @@ fun MiuixAboutScreen(
                 scrollBehavior = scrollBehavior,
                 navigationIcon = {
                     IconButton(
-                        onClick = { (context as? android.app.Activity)?.finish() },
+                        onClick = { onBack?.invoke() ?: (context as? android.app.Activity)?.finish() },
                         modifier = Modifier.padding(start = 12.dp)
                     ) {
                         androidx.compose.material3.Icon(

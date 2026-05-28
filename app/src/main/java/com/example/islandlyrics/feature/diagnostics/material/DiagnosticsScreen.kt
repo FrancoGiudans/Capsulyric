@@ -39,7 +39,13 @@ import com.example.islandlyrics.ui.theme.material.neutralMaterialTopBarColors
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DiagnosticsScreen(onBack: () -> Unit) {
+fun DiagnosticsScreen(
+    onBack: () -> Unit,
+    onOpenOnlineLyricDebug: (() -> Unit)? = null,
+    onOpenCacheManagement: (() -> Unit)? = null,
+    onOpenLab: (() -> Unit)? = null,
+    onOpenLogViewer: (() -> Unit)? = null
+) {
     val context = LocalContext.current
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     val diagnostics by LyricRepository.getInstance().liveDiagnostics.observeAsState()
@@ -73,7 +79,10 @@ fun DiagnosticsScreen(onBack: () -> Unit) {
                     SettingsActionItem(
                         title = stringResource(R.string.diag_online_lyric_debug_title),
                         icon = Icons.Default.Terminal,
-                        onClick = { context.startActivity(android.content.Intent(context, OnlineLyricDebugActivity::class.java)) }
+                        onClick = {
+                            onOpenOnlineLyricDebug?.invoke()
+                                ?: context.startActivity(android.content.Intent(context, OnlineLyricDebugActivity::class.java))
+                        }
                     )
                     if (BuildConfig.DEBUG) {
                         SettingsCardDivider()
@@ -92,13 +101,18 @@ fun DiagnosticsScreen(onBack: () -> Unit) {
                     SettingsActionItem(
                         title = stringResource(R.string.summary_view_logs),
                         icon = Icons.Default.Info,
-                        onClick = { LogViewerActivity.start(context) }
+                        onClick = {
+                            onOpenLogViewer?.invoke() ?: LogViewerActivity.start(context)
+                        }
                     )
                     SettingsCardDivider()
                     SettingsActionItem(
                         title = stringResource(R.string.title_cache_management),
                         icon = Icons.Default.Info,
-                        onClick = { context.startActivity(android.content.Intent(context, CacheManagementActivity::class.java)) }
+                        onClick = {
+                            onOpenCacheManagement?.invoke()
+                                ?: context.startActivity(android.content.Intent(context, CacheManagementActivity::class.java))
+                        }
                     )
                 }
             }
@@ -109,7 +123,10 @@ fun DiagnosticsScreen(onBack: () -> Unit) {
                     SettingsActionItem(
                         title = stringResource(R.string.title_lab),
                         icon = Icons.Default.Info,
-                        onClick = { context.startActivity(android.content.Intent(context, LabActivity::class.java)) }
+                        onClick = {
+                            onOpenLab?.invoke()
+                                ?: context.startActivity(android.content.Intent(context, LabActivity::class.java))
+                        }
                     )
                 }
             }

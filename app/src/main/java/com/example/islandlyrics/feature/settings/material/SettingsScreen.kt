@@ -1,6 +1,7 @@
 package com.example.islandlyrics.feature.settings.material
 
 import android.app.Activity
+import android.net.Uri
 import com.example.islandlyrics.BuildConfig
 import com.example.islandlyrics.R
 import com.example.islandlyrics.core.feed.CommunityFeedItem
@@ -15,7 +16,6 @@ import com.example.islandlyrics.feature.settings.CommunityMarkdownBody
 import com.example.islandlyrics.feature.settings.buildCommunityMarkdown
 import android.content.Context
 import android.content.Intent
-import android.net.Uri
 import android.os.Build
 import android.provider.Settings
 import android.widget.Toast
@@ -64,6 +64,9 @@ fun SettingsScreen(
     updateCodenameText: String,
     updateBuildText: String,
     onOpenCustomSettings: () -> Unit = {},
+    onOpenFaq: (() -> Unit)? = null,
+    onOpenAbout: (() -> Unit)? = null,
+    onOpenLocalLyricDirectory: ((Uri, String) -> Unit)? = null,
     showBackButton: Boolean = true,
     extraBottomPadding: androidx.compose.ui.unit.Dp = 0.dp
 ) {
@@ -303,7 +306,9 @@ fun SettingsScreen(
 
             // ── Local Lyrics ────────────────────────────────────────────────
             item {
-                com.example.islandlyrics.feature.settings.LocalLyricDirectoriesSection()
+                com.example.islandlyrics.feature.settings.LocalLyricDirectoriesSection(
+                    onOpenDirectory = onOpenLocalLyricDirectory
+                )
             }
 
             // ── Help & About ─────────────────────────────────────────────────
@@ -314,14 +319,18 @@ fun SettingsScreen(
                         title = stringResource(R.string.faq_title),
                         icon = Icons.AutoMirrored.Filled.Help,
                         onClick = {
-                            context.startActivity(Intent(context, FAQActivity::class.java))
+                            onOpenFaq?.invoke()
+                                ?: context.startActivity(Intent(context, FAQActivity::class.java))
                         }
                     )
                     SettingsCardDivider()
                     SettingsActionItem(
                         title = stringResource(R.string.community_about_title),
                         icon = Icons.Filled.Info,
-                        onClick = { context.startActivity(Intent(context, AboutActivity::class.java)) }
+                        onClick = {
+                            onOpenAbout?.invoke()
+                                ?: context.startActivity(Intent(context, AboutActivity::class.java))
+                        }
                     )
                 }
             }

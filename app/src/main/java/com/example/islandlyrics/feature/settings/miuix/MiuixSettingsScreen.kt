@@ -65,6 +65,9 @@ fun MiuixSettingsScreen(
     updateCodenameText: String,
     updateBuildText: String,
     onOpenCustomSettings: () -> Unit = {},
+    onOpenFaq: (() -> Unit)? = null,
+    onOpenAbout: (() -> Unit)? = null,
+    onOpenLocalLyricDirectory: ((Uri, String) -> Unit)? = null,
     showBackButton: Boolean = true,
     bottomBar: @Composable () -> Unit = {},
     onBottomBarVisibilityChange: (Boolean) -> Unit = {},
@@ -301,7 +304,10 @@ fun MiuixSettingsScreen(
 
             // ═══ Local Lyrics ═══
             item {
-                MiuixLocalLyricDirectoriesContent(localLyricDirState)
+                MiuixLocalLyricDirectoriesContent(
+                    state = localLyricDirState,
+                    onOpenDirectory = onOpenLocalLyricDirectory
+                )
             }
 
             // ═══ 5. Help & About ═══
@@ -311,12 +317,18 @@ fun MiuixSettingsScreen(
                     SuperArrow(
                         title = stringResource(R.string.faq_title),
                         summary = stringResource(R.string.summary_faq),
-                        onClick = { context.startActivity(Intent(context, FAQActivity::class.java)) }
+                        onClick = {
+                            onOpenFaq?.invoke()
+                                ?: context.startActivity(Intent(context, FAQActivity::class.java))
+                        }
                     )
                     SuperArrow(
                         title = stringResource(R.string.community_about_title),
                         summary = stringResource(R.string.settings_about_capsulyric),
-                        onClick = { context.startActivity(Intent(context, AboutActivity::class.java)) }
+                        onClick = {
+                            onOpenAbout?.invoke()
+                                ?: context.startActivity(Intent(context, AboutActivity::class.java))
+                        }
                     )
                 }
             }

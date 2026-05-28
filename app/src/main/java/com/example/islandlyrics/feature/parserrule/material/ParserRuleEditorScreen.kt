@@ -92,7 +92,8 @@ fun ParserRuleEditorScreen(
     isNewRule: Boolean,
     onBack: () -> Unit,
     onDelete: (ParserRule) -> Unit,
-    onSaved: (ParserRule) -> Unit
+    onSaved: (ParserRule) -> Unit,
+    onOpenFaq: (() -> Unit)? = null
 ) {
     val context = LocalContext.current
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
@@ -181,7 +182,8 @@ fun ParserRuleEditorScreen(
                         Icon(Icons.Default.Check, contentDescription = stringResource(R.string.parser_save_rule))
                     }
                     IconButton(onClick = {
-                        context.startActivity(android.content.Intent(context, com.example.islandlyrics.feature.faq.FAQActivity::class.java))
+                        onOpenFaq?.invoke()
+                            ?: context.startActivity(android.content.Intent(context, com.example.islandlyrics.feature.faq.FAQActivity::class.java))
                     }) {
                         Icon(Icons.Default.Info, contentDescription = stringResource(R.string.faq_title))
                     }
