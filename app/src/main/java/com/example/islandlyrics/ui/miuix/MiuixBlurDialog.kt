@@ -231,6 +231,7 @@ fun MiuixBlurDialog(
                     }
                 }
             }
+            MiuixBlurPopupHost()
         }
     }
 

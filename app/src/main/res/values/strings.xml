@@ -344,6 +344,14 @@
     <string name="dialog_feedback_wps_desc">Alternative. May require login.</string>
     <string name="settings_hide_recents">Hide from Recents</string>
     <string name="settings_hide_recents_desc">Automatically remove from recents when app goes to background</string>
+    <string name="settings_backup_export">Export Settings (JSON)</string>
+    <string name="settings_backup_export_desc">Export current app settings to a JSON backup file</string>
+    <string name="settings_backup_import">Import Settings (JSON)</string>
+    <string name="settings_backup_import_desc">Import settings from a JSON backup file</string>
+    <string name="settings_backup_export_success">Backed up %1$d settings</string>
+    <string name="settings_backup_import_success">Restored %1$d settings</string>
+    <string name="settings_backup_export_failed">Settings export failed</string>
+    <string name="settings_backup_import_failed">Settings restore failed</string>
     <string name="settings_predictive_back">Predictive Back Gesture</string>
     <string name="settings_predictive_back_desc">Show a preview of the previous screen when swiping back. Restart to apply.</string>
     <string name="settings_monet_color">Monet Dynamic Color</string>
@@ -522,6 +530,10 @@ Within the log interface, select the share/export icon. You can specify a timefr
     <string name="oobe_add_rule_guide_title">How to add parser rules</string>
     
     <string name="oobe_step_finish">All Set!</string>
+    <string name="oobe_step_restore">Backup Restore</string>
+    <string name="oobe_restore_intro_desc">If you used Capsulyric before, you can directly import a JSON backup to restore your settings on this new phone.</string>
+    <string name="oobe_restore_import_desc">Choose a JSON backup file to restore all settings, then go straight to the main screen.</string>
+    <string name="oobe_restore_fresh_start">Start Fresh</string>
     <string name="oobe_finish_title">Ready to Go</string>
     <string name="oobe_finish_subtitle">Starting "Island Lyrics" service...</string>
     <string name="oobe_finish_start">Start Using</string>

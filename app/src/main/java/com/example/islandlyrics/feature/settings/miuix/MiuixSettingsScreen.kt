@@ -1,11 +1,12 @@
+@file:Suppress("UnusedMaterial3ScaffoldPaddingParameter")
+
 package com.example.islandlyrics.feature.settings.miuix
 
 import com.example.islandlyrics.ui.miuix.MiuixBackHandler
+import android.annotation.SuppressLint
 import android.app.Activity
-import com.example.islandlyrics.BuildConfig
 import com.example.islandlyrics.R
 import com.example.islandlyrics.core.feed.CommunityFeedItem
-import com.example.islandlyrics.core.network.OfflineModeManager
 import com.example.islandlyrics.core.update.UpdateChecker
 import com.example.islandlyrics.core.theme.ThemeHelper
 import com.example.islandlyrics.core.platform.RomUtils
@@ -16,12 +17,9 @@ import com.example.islandlyrics.feature.settings.CommunityMarkdownBody
 import com.example.islandlyrics.feature.settings.buildCommunityMarkdown
 import android.content.Intent
 import android.net.Uri
-import android.os.Build
 import android.provider.Settings
-import android.widget.Toast
-import androidx.compose.runtime.livedata.observeAsState
-import com.example.islandlyrics.data.LyricRepository
-import androidx.compose.foundation.clickable
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -29,35 +27,35 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Palette
-import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import android.content.ClipData
-import android.content.ClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.core.app.NotificationManagerCompat
+import androidx.core.content.edit
 import androidx.core.content.ContextCompat
+import androidx.core.net.toUri
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.basic.*
-import top.yukonga.miuix.kmp.overlay.OverlayListPopup as SuperListPopup
 import top.yukonga.miuix.kmp.preference.ArrowPreference as SuperArrow
 import top.yukonga.miuix.kmp.preference.OverlayDropdownPreference as SuperDropdown
 import top.yukonga.miuix.kmp.preference.SwitchPreference as SuperSwitch
 import top.yukonga.miuix.kmp.theme.MiuixTheme
-import top.yukonga.miuix.kmp.utils.MiuixPopupUtils.Companion.MiuixPopupHost
 import com.example.islandlyrics.feature.update.miuix.MiuixUpdateDialog
 import com.example.islandlyrics.ui.miuix.*
+import com.example.islandlyrics.core.settings.SettingsBackupManager
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
+import top.yukonga.miuix.kmp.basic.Snackbar as MiuixSnackbar
+import top.yukonga.miuix.kmp.basic.SnackbarHost as MiuixSnackbarHost
+import top.yukonga.miuix.kmp.basic.SnackbarHostState as MiuixSnackbarHostState
+import java.util.Locale
 
 @Composable
+@SuppressLint("BatteryLife")
+@Suppress("UNUSED_PARAMETER")
 fun MiuixSettingsScreen(
     onCheckUpdate: () -> Unit,
     onShowDiagnostics: () -> Unit,
@@ -74,14 +72,44 @@ fun MiuixSettingsScreen(
 ) {
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences("IslandLyricsPrefs", android.content.Context.MODE_PRIVATE) }
+    val snackbarHostState = remember { MiuixSnackbarHostState() }
+    val coroutineScope = rememberCoroutineScope()
     val scrollBehavior = MiuixScrollBehavior(rememberTopAppBarState())
     val listState = rememberLazyListState()
-    var offlineModeEnabled by remember { mutableStateOf(OfflineModeManager.isEnabled(context)) }
+    val backupExportSuccessFormat = stringResource(R.string.settings_backup_export_success)
+    val backupExportFailedText = stringResource(R.string.settings_backup_export_failed)
+    val backupImportSuccessFormat = stringResource(R.string.settings_backup_import_success)
+    val backupImportFailedText = stringResource(R.string.settings_backup_import_failed)
+    val exportSettingsLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("application/json")
+    ) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        coroutineScope.launch {
+            val result = SettingsBackupManager.exportToUri(context, uri)
+            val message = if (result.success) {
+                String.format(Locale.getDefault(), backupExportSuccessFormat, result.exportedCount)
+            } else {
+                backupExportFailedText
+            }
+            snackbarHostState.showSnackbar(message = message)
+        }
+    }
+    val importSettingsLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        coroutineScope.launch {
+            val result = SettingsBackupManager.importFromUri(context, uri)
+            val message = if (result.success) {
+                String.format(Locale.getDefault(), backupImportSuccessFormat, result.importedCount)
+            } else {
+                backupImportFailedText
+            }
+            snackbarHostState.showSnackbar(message = message)
+        }
+    }
 
     // State
-    var followSystem by remember { mutableStateOf(prefs.getBoolean("theme_follow_system", true)) }
-    var darkMode by remember { mutableStateOf(prefs.getBoolean("theme_dark_mode", false)) }
-    var pureBlack by remember { mutableStateOf(prefs.getBoolean("theme_pure_black", false)) }
     var dynamicIconEnabled by remember { mutableStateOf(prefs.getBoolean("dynamic_icon_enabled", false)) }
 
     val showPrivacyDialog = remember { mutableStateOf(false) }
@@ -97,10 +125,7 @@ fun MiuixSettingsScreen(
         return NotificationManagerCompat.getEnabledListenerPackages(context).contains(context.packageName)
     }
     fun checkPostNotificationPermission(): Boolean {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            return ContextCompat.checkSelfPermission(context, android.Manifest.permission.POST_NOTIFICATIONS) == android.content.pm.PackageManager.PERMISSION_GRANTED
-        }
-        return true
+        return ContextCompat.checkSelfPermission(context, android.Manifest.permission.POST_NOTIFICATIONS) == android.content.pm.PackageManager.PERMISSION_GRANTED
     }
 
     var notificationGranted by remember { mutableStateOf(checkNotificationPermission()) }
@@ -110,7 +135,7 @@ fun MiuixSettingsScreen(
         if (!isHyperOsSupported) {
             if (dynamicIconEnabled) {
                 dynamicIconEnabled = false
-                prefs.edit().putBoolean("dynamic_icon_enabled", false).apply()
+                prefs.edit { putBoolean("dynamic_icon_enabled", false) }
             }
         }
     }
@@ -183,6 +208,12 @@ fun MiuixSettingsScreen(
                 }
             )
         },
+        snackbarHost = {
+            MiuixSnackbarHost(
+                state = snackbarHostState,
+                content = { data -> MiuixSnackbar(data = data) }
+            )
+        },
         bottomBar = bottomBar,
     ) { padding ->
         LazyColumn(
@@ -226,7 +257,7 @@ fun MiuixSettingsScreen(
                         selectedIndex = currentLangIndex,
                         onSelectedIndexChange = { index ->
                             val code = langOptions[index]
-                            prefs.edit().putString("language_code", code).apply()
+                            prefs.edit { putString("language_code", code) }
                             ThemeHelper.setLanguage(context, code)
                             (context as? Activity)?.recreate()
                         }
@@ -240,7 +271,7 @@ fun MiuixSettingsScreen(
                         checked = recommendMediaAppEnabled,
                         onCheckedChange = {
                             recommendMediaAppEnabled = it
-                            prefs.edit().putBoolean("recommend_media_app", it).apply()
+                            prefs.edit { putBoolean("recommend_media_app", it) }
                         }
                     )
 
@@ -252,7 +283,21 @@ fun MiuixSettingsScreen(
                         checked = hideRecentsEnabled,
                         onCheckedChange = {
                             hideRecentsEnabled = it
-                            prefs.edit().putBoolean("hide_recents_enabled", it).apply()
+                            prefs.edit { putBoolean("hide_recents_enabled", it) }
+                        }
+                    )
+                    SuperArrow(
+                        title = stringResource(R.string.settings_backup_export),
+                        summary = stringResource(R.string.settings_backup_export_desc),
+                        onClick = {
+                            exportSettingsLauncher.launch(SettingsBackupManager.buildExportFileName())
+                        }
+                    )
+                    SuperArrow(
+                        title = stringResource(R.string.settings_backup_import),
+                        summary = stringResource(R.string.settings_backup_import_desc),
+                        onClick = {
+                            importSettingsLauncher.launch(arrayOf("application/json"))
                         }
                     )
                 }
@@ -292,7 +337,7 @@ fun MiuixSettingsScreen(
                         summary = stringResource(R.string.summary_optimize_battery),
                         onClick = {
                             val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
-                            intent.data = Uri.parse("package:${context.packageName}")
+                            intent.data = "package:${context.packageName}".toUri()
                             context.startActivity(intent)
                         }
                     )
