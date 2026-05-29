@@ -6,17 +6,16 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.MonitorHeart
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Terminal
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
 import com.example.islandlyrics.data.LyricRepository
-import com.example.islandlyrics.data.ServiceDiagnostics
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -47,6 +46,7 @@ fun DiagnosticsScreen(
     onOpenLogViewer: (() -> Unit)? = null
 ) {
     val context = LocalContext.current
+    val locale = LocalConfiguration.current.locales[0]
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     val diagnostics by LyricRepository.getInstance().liveDiagnostics.observeAsState()
 
@@ -145,7 +145,10 @@ fun DiagnosticsScreen(
                             InfoRow(stringResource(R.string.diag_label_primary_pkg), diagnostics?.primaryPackage ?: stringResource(R.string.diag_none))
                             InfoRow(stringResource(R.string.diag_label_whitelist_size), diagnostics?.whitelistSize?.toString() ?: "0")
                             InfoRow(stringResource(R.string.diag_label_last_params), diagnostics?.lastUpdateParams ?: stringResource(R.string.diag_none))
-                            InfoRow(stringResource(R.string.diag_label_last_update), SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date(diagnostics?.timestamp ?: 0)))
+                            val timestampText = remember(diagnostics?.timestamp, locale) {
+                                SimpleDateFormat("HH:mm:ss", locale).format(Date(diagnostics?.timestamp ?: 0))
+                            }
+                            InfoRow(stringResource(R.string.diag_label_last_update), timestampText)
                         }
                     }
                 }
@@ -213,7 +216,6 @@ fun DiagnosticsScreen(
             // ── Disable diagnostics ───────────────────────────────────────────
             item {
                 var showDisableDialog by remember { mutableStateOf(false) }
-                val prefs = remember { context.getSharedPreferences("IslandLyricsPrefs", android.content.Context.MODE_PRIVATE) }
                 Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
                     OutlinedButton(
                         onClick = { showDisableDialog = true },

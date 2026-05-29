@@ -1,6 +1,9 @@
+@file:Suppress("UnusedMaterial3ScaffoldPaddingParameter")
+
 package com.example.islandlyrics.feature.oobe.miuix
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
@@ -10,8 +13,11 @@ import android.net.Uri
 import android.os.Build
 import android.provider.Settings
 import android.text.method.LinkMovementMethod
+import android.widget.Toast
 import android.widget.TextView
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
@@ -49,6 +55,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -57,7 +64,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -69,6 +76,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.example.islandlyrics.R
 import com.example.islandlyrics.core.platform.RomUtils
+import com.example.islandlyrics.core.settings.SettingsBackupManager
 import com.example.islandlyrics.feature.customsettings.CustomSettingsActivity
 import com.example.islandlyrics.feature.faq.FAQActivity
 import com.example.islandlyrics.feature.faq.material.FormattedText
@@ -92,10 +100,20 @@ import top.yukonga.miuix.kmp.basic.rememberTopAppBarState
 import top.yukonga.miuix.kmp.preference.ArrowPreference as SuperArrow
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.MiuixPopupUtils.Companion.MiuixPopupHost
+import androidx.core.graphics.createBitmap
+import androidx.core.net.toUri
+import kotlinx.coroutines.launch
+import java.util.Locale
 
 @Composable
-fun MiuixOobeScreen(onFinish: () -> Unit) {
+fun MiuixOobeScreen(
+    onFinish: () -> Unit,
+    onImportAndFinish: (String) -> Unit
+) {
     val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+    val backupImportSuccessFormat = stringResource(R.string.settings_backup_import_success)
+    val backupImportFailedText = stringResource(R.string.settings_backup_import_failed)
     var currentStep by remember { mutableIntStateOf(0) }
     var showRuleGuideDialog by remember { mutableStateOf(false) }
     val appIcon = remember { appIconBitmap(context) }
@@ -113,6 +131,20 @@ fun MiuixOobeScreen(onFinish: () -> Unit) {
             guide = stringResource(R.string.oobe_guide_xiaomi)
         )
     )
+    val importSettingsLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        coroutineScope.launch {
+            val result = SettingsBackupManager.importFromUri(context, uri)
+            if (result.success) {
+                val message = String.format(Locale.getDefault(), backupImportSuccessFormat, result.importedCount)
+                onImportAndFinish(message)
+            } else {
+                Toast.makeText(context, backupImportFailedText, Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
 
 
     BackHandler(enabled = currentStep > 0 || showRuleGuideDialog) {
@@ -158,10 +190,24 @@ fun MiuixOobeScreen(onFinish: () -> Unit) {
             }
 
             3 -> StandardStepPage(
+                title = stringResource(R.string.oobe_step_restore),
+                showBack = true,
+                actionText = stringResource(R.string.oobe_restore_fresh_start),
+                onBack = { currentStep = 2 },
+                onAction = { currentStep = 4 }
+            ) {
+                RestoreStepBody(
+                    onImportBackup = {
+                        importSettingsLauncher.launch(arrayOf("application/json"))
+                    }
+                )
+            }
+
+            4 -> StandardStepPage(
                 title = stringResource(R.string.oobe_step_apps),
                 showBack = true,
                 actionText = stringResource(R.string.oobe_next),
-                onBack = { currentStep = 2 },
+                onBack = { currentStep = 3 },
                 onAction = { currentStep = OOBE_LAST_STEP },
                 overlay = {
                     if (showRuleGuideDialog) {
@@ -201,7 +247,7 @@ fun MiuixOobeScreen(onFinish: () -> Unit) {
                 onAction = onFinish,
                 primary = true,
                 showBack = true,
-                onBack = { currentStep = 3 }
+                onBack = { currentStep = 4 }
             )
         }
     }
@@ -393,7 +439,6 @@ private fun FeaturesStepBody() {
                         SystemStatus.UntestedA16 -> stringResource(R.string.oobe_warning_untested_system)
                         SystemStatus.SuperIslandOnly -> stringResource(R.string.oobe_warning_super_island_limited)
                         SystemStatus.Unsupported -> stringResource(R.string.oobe_error_unsupported_device)
-                        SystemStatus.FullSupport -> ""
                     },
                     fontSize = 15.sp,
                     lineHeight = 22.sp,
@@ -434,6 +479,7 @@ private fun FeaturesStepBody() {
 }
 
 @Composable
+@SuppressLint("BatteryLife")
 private fun PermissionsStepBody() {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -466,22 +512,20 @@ private fun PermissionsStepBody() {
                 ),
                 onClick = { context.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)) }
             )
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                HorizontalDivider(modifier = Modifier.padding(horizontal = 20.dp))
-                SuperArrow(
-                    title = stringResource(R.string.oobe_perm_post_title),
-                    summary = permissionSummary(
-                        granted = postGranted,
-                        text = stringResource(R.string.oobe_perm_post_desc)
-                    ),
-                    onClick = {
-                        val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
-                            data = Uri.fromParts("package", context.packageName, null)
-                        }
-                        context.startActivity(intent)
+            HorizontalDivider(modifier = Modifier.padding(horizontal = 20.dp))
+            SuperArrow(
+                title = stringResource(R.string.oobe_perm_post_title),
+                summary = permissionSummary(
+                    granted = postGranted,
+                    text = stringResource(R.string.oobe_perm_post_desc)
+                ),
+                onClick = {
+                    val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                        data = Uri.fromParts("package", context.packageName, null)
                     }
-                )
-            }
+                    context.startActivity(intent)
+                }
+            )
             if (showAutostart) {
                 HorizontalDivider(modifier = Modifier.padding(horizontal = 20.dp))
                 SuperArrow(
@@ -499,7 +543,7 @@ private fun PermissionsStepBody() {
                 ),
                 onClick = {
                     val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
-                        data = Uri.parse("package:${context.packageName}")
+                        data = "package:${context.packageName}".toUri()
                     }
                     runCatching { context.startActivity(intent) }
                         .onFailure {
@@ -596,6 +640,33 @@ private fun AppSetupStepBody(
                 title = stringResource(R.string.oobe_app_not_in_list),
                 summary = stringResource(R.string.oobe_add_rule_guide_title),
                 onClick = onOpenRuleGuide
+            )
+        }
+    }
+}
+
+@Composable
+private fun RestoreStepBody(
+    onImportBackup: () -> Unit
+) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        SmallTitle(text = stringResource(R.string.oobe_step_restore))
+        FilledCard {
+            Text(
+                text = stringResource(R.string.oobe_restore_intro_desc),
+                fontSize = 15.sp,
+                lineHeight = 22.sp,
+                color = MiuixTheme.colorScheme.onSurface
+            )
+        }
+
+        Spacer(modifier = Modifier.height(14.dp))
+
+        FilledArrowCard {
+            SuperArrow(
+                title = stringResource(R.string.settings_backup_import),
+                summary = stringResource(R.string.oobe_restore_import_desc),
+                onClick = onImportBackup
             )
         }
     }
@@ -730,7 +801,7 @@ private fun RuleGuideDialog(
     onDismiss: () -> Unit,
     onOpenParserRules: () -> Unit
 ) {
-    val context = LocalContext.current
+    val faqGuideText = LocalResources.current.getText(R.string.faq_a_add_rule)
     MiuixBlurDialog(
         title = stringResource(R.string.oobe_add_rule_guide_title),
         show = true,
@@ -738,7 +809,7 @@ private fun RuleGuideDialog(
         renderInRootScaffold = false
     ) {
         HtmlFormattedText(
-            text = context.resources.getText(R.string.faq_a_add_rule),
+            text = faqGuideText,
             modifier = Modifier
                 .fillMaxWidth()
                 .heightIn(max = 400.dp)
@@ -816,7 +887,7 @@ private fun appIconBitmap(context: Context): Bitmap {
 private fun drawableToBitmap(drawable: Drawable): Bitmap {
     val width = drawable.intrinsicWidth.takeIf { it > 0 } ?: 192
     val height = drawable.intrinsicHeight.takeIf { it > 0 } ?: 192
-    val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+    val bitmap = createBitmap(width, height, Bitmap.Config.ARGB_8888)
     val canvas = Canvas(bitmap)
     drawable.setBounds(0, 0, canvas.width, canvas.height)
     drawable.draw(canvas)
@@ -863,13 +934,10 @@ private fun checkNotificationListener(context: Context): Boolean {
 }
 
 private fun checkPostNotification(context: Context): Boolean {
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-        return ContextCompat.checkSelfPermission(
-            context,
-            Manifest.permission.POST_NOTIFICATIONS
-        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
-    }
-    return true
+    return ContextCompat.checkSelfPermission(
+        context,
+        Manifest.permission.POST_NOTIFICATIONS
+    ) == android.content.pm.PackageManager.PERMISSION_GRANTED
 }
 
 private fun checkBatteryOptimization(context: Context): Boolean {
@@ -877,4 +945,4 @@ private fun checkBatteryOptimization(context: Context): Boolean {
     return pm.isIgnoringBatteryOptimizations(context.packageName)
 }
 
-private const val OOBE_LAST_STEP = 4
+private const val OOBE_LAST_STEP = 5

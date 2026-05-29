@@ -1,7 +1,6 @@
 package com.example.islandlyrics.feature.main
 
 import com.example.islandlyrics.ui.common.BaseActivity
-import android.content.BroadcastReceiver
 import com.example.islandlyrics.ui.miuix.isMiuixEnabled
 import com.example.islandlyrics.BuildConfig
 import com.example.islandlyrics.R
@@ -29,12 +28,15 @@ import com.example.islandlyrics.feature.navigation.TopLevelDestination
 import com.example.islandlyrics.feature.main.miuix.MiuixMainScreen
 import com.example.islandlyrics.feature.onlinelyricdebug.material.OnlineLyricDebugScreen
 import com.example.islandlyrics.feature.onlinelyricdebug.miuix.MiuixOnlineLyricDebugScreen
+import com.example.islandlyrics.feature.oobe.OobeActivity
 import com.example.islandlyrics.feature.parserrule.material.ParserRuleScreen
+import com.example.islandlyrics.feature.parserrule.miuix.MiuixParserRuleScreen
 import com.example.islandlyrics.feature.settings.ReleaseDialogMode
 import com.example.islandlyrics.feature.settings.ReleaseDialogState
 import com.example.islandlyrics.feature.settings.material.AboutScreen
 import com.example.islandlyrics.feature.settings.material.SettingsScreen
 import com.example.islandlyrics.feature.settings.miuix.MiuixAboutScreen
+import com.example.islandlyrics.feature.settings.miuix.MiuixSettingsScreen
 import com.example.islandlyrics.ui.miuix.MiuixAppTheme
 import com.example.islandlyrics.ui.miuix.LocalMiuixBlurBackdrop
 import com.example.islandlyrics.ui.miuix.LocalMiuixBlurEnabled
@@ -43,7 +45,6 @@ import com.example.islandlyrics.feature.update.miuix.MiuixUpdateDialog
 import com.example.islandlyrics.feature.main.material.MainScreen
 import com.example.islandlyrics.ui.common.PageStackHost
 import com.example.islandlyrics.ui.theme.material.IslandLyricsMaterialTheme
-import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
 import android.content.pm.ApplicationInfo
@@ -62,11 +63,8 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.pager.HorizontalPager
@@ -108,21 +106,22 @@ class MainActivity : BaseActivity() {
 
     private val handler = Handler(Looper.getMainLooper())
 
-    // Compose state for API dashboard (driven by BroadcastReceiver + reflection checks)
+    // Compose state for API dashboard
     private var versionText by mutableStateOf("...")
     private var updateReleaseInfo by mutableStateOf<UpdateChecker.ReleaseInfo?>(null)
     private var pendingUpdateSnackbarReleaseInfo by mutableStateOf<UpdateChecker.ReleaseInfo?>(null)
     private var aboutReleaseDialogState by mutableStateOf<ReleaseDialogState?>(null)
     private var aboutReleaseLookupMessage by mutableStateOf<String?>(null)
+    private var pendingStartupSnackbarMessage by mutableStateOf<String?>(null)
 
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         // OOBE Check
-        val prefs = getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE)
+        val prefs = getSharedPreferences("IslandLyricsPrefs", MODE_PRIVATE)
         if (!prefs.getBoolean("is_setup_complete", false)) {
-            startActivity(Intent(this, com.example.islandlyrics.feature.oobe.OobeActivity::class.java))
+            startActivity(Intent(this, OobeActivity::class.java))
             finish()
             return
         }
@@ -159,12 +158,14 @@ class MainActivity : BaseActivity() {
 
         checkPromotedNotificationPermission()
         maybeHandleUpdateSnackbarIntent(intent)
+        maybeHandleStartupSnackbarIntent(intent)
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
         maybeHandleUpdateSnackbarIntent(intent)
+        maybeHandleStartupSnackbarIntent(intent)
     }
 
     // API 36 Permission Check (Standard Runtime Permission)
@@ -183,7 +184,7 @@ class MainActivity : BaseActivity() {
                 intent.putExtra(Settings.EXTRA_APP_PACKAGE, packageName)
                 startActivity(intent)
                 return
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 // Fallback to standard settings
             }
         }
@@ -250,10 +251,9 @@ class MainActivity : BaseActivity() {
     }
 
     companion object {
-        private const val TAG = "IslandLyrics"
-        private const val PREFS_NAME = "IslandLyricsPrefs"
         const val EXTRA_SHOW_DEBUG_UPDATE_SNACKBAR = "com.example.islandlyrics.extra.SHOW_DEBUG_UPDATE_SNACKBAR"
         const val EXTRA_DEBUG_UPDATE_TAG = "com.example.islandlyrics.extra.DEBUG_UPDATE_TAG"
+        const val EXTRA_STARTUP_SNACKBAR_MESSAGE = "com.example.islandlyrics.extra.STARTUP_SNACKBAR_MESSAGE"
         private const val UPDATE_SNACKBAR_DURATION_MS = 5000L
         private var hasCheckedForUpdates = false
     }
@@ -263,6 +263,7 @@ class MainActivity : BaseActivity() {
         IslandLyricsMaterialTheme {
             val snackbarHostState = remember { SnackbarHostState() }
             val pendingRelease = pendingUpdateSnackbarReleaseInfo
+            val startupMessage = pendingStartupSnackbarMessage
             LaunchedEffect(pendingRelease) {
                 if (pendingRelease != null) {
                     val comparableVersion = UpdateChecker.getComparableVersion(pendingRelease)
@@ -282,6 +283,18 @@ class MainActivity : BaseActivity() {
                     }
                     if (pendingUpdateSnackbarReleaseInfo == pendingRelease) {
                         pendingUpdateSnackbarReleaseInfo = null
+                    }
+                }
+            }
+            LaunchedEffect(startupMessage) {
+                if (!startupMessage.isNullOrBlank()) {
+                    snackbarHostState.showSnackbar(
+                        message = startupMessage,
+                        withDismissAction = true,
+                        duration = SnackbarDuration.Long
+                    )
+                    if (pendingStartupSnackbarMessage == startupMessage) {
+                        pendingStartupSnackbarMessage = null
                     }
                 }
             }
@@ -440,7 +453,7 @@ class MainActivity : BaseActivity() {
             drawRect(backdropBackground)
             drawContent()
         }
-        val prefs = remember { getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE) }
+        val prefs = remember { getSharedPreferences("IslandLyricsPrefs", MODE_PRIVATE) }
         var blurEnabled by remember { mutableStateOf(prefs.getBoolean("card_blur_enabled", false)) }
 
         androidx.compose.runtime.LaunchedEffect(pagerState.currentPage) {
@@ -457,6 +470,7 @@ class MainActivity : BaseActivity() {
         }
 
         val pendingRelease = pendingUpdateSnackbarReleaseInfo
+        val startupMessage = pendingStartupSnackbarMessage
         LaunchedEffect(pendingRelease) {
             if (pendingRelease != null) {
                 val comparableVersion = UpdateChecker.getComparableVersion(pendingRelease)
@@ -471,6 +485,18 @@ class MainActivity : BaseActivity() {
                 }
                 if (pendingUpdateSnackbarReleaseInfo == pendingRelease) {
                     pendingUpdateSnackbarReleaseInfo = null
+                }
+            }
+        }
+        LaunchedEffect(startupMessage) {
+            if (!startupMessage.isNullOrBlank()) {
+                snackbarHostState.showSnackbar(
+                    message = startupMessage,
+                    withDismissAction = true,
+                    duration = MiuixSnackbarDuration.Long
+                )
+                if (pendingStartupSnackbarMessage == startupMessage) {
+                    pendingStartupSnackbarMessage = null
                 }
             }
         }
@@ -517,13 +543,13 @@ class MainActivity : BaseActivity() {
                                     onBottomBarVisibilityChange = { bottomBarVisible = it }
                                 )
 
-                                TopLevelDestination.PARSER_RULES -> com.example.islandlyrics.feature.parserrule.miuix.MiuixParserRuleScreen(
+                                TopLevelDestination.PARSER_RULES -> MiuixParserRuleScreen(
                                     showBackButton = false,
                                     onBottomBarVisibilityChange = { bottomBarVisible = it },
                                     onOpenFaq = { pushPage(AppPage.Faq) }
                                 )
 
-                                TopLevelDestination.SETTINGS -> com.example.islandlyrics.feature.settings.miuix.MiuixSettingsScreen(
+                                TopLevelDestination.SETTINGS -> MiuixSettingsScreen(
                                     onCheckUpdate = { performUpdateCheckFromMain() },
                                     onShowDiagnostics = { pushPage(AppPage.Diagnostics) },
                                     updateVersionText = getVersionNameForUi(),
@@ -606,6 +632,13 @@ class MainActivity : BaseActivity() {
         intent.removeExtra(EXTRA_DEBUG_UPDATE_TAG)
     }
 
+    private fun maybeHandleStartupSnackbarIntent(intent: Intent?) {
+        val message = intent?.getStringExtra(EXTRA_STARTUP_SNACKBAR_MESSAGE)
+        if (message.isNullOrBlank()) return
+        pendingStartupSnackbarMessage = message
+        intent.removeExtra(EXTRA_STARTUP_SNACKBAR_MESSAGE)
+    }
+
     private fun buildDebugUpdateBody(): String {
         val isChinese = resources.configuration.locales[0].language == "zh"
         return if (isChinese) {
@@ -619,7 +652,7 @@ class MainActivity : BaseActivity() {
         try {
             val clazz = Class.forName("com.example.islandlyrics.DebugCenterActivity")
             startActivity(Intent(this@MainActivity, clazz))
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             Toast.makeText(this@MainActivity, "Debug Activity not found", Toast.LENGTH_SHORT).show()
         }
     }

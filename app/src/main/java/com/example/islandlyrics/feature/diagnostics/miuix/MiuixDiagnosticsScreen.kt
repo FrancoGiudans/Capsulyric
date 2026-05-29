@@ -9,11 +9,12 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
 import com.example.islandlyrics.data.LyricRepository
-import com.example.islandlyrics.data.ServiceDiagnostics
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.example.islandlyrics.R
 import com.example.islandlyrics.BuildConfig
@@ -43,6 +44,7 @@ fun MiuixDiagnosticsScreen(
     onOpenLogViewer: (() -> Unit)? = null
 ) {
     val context = LocalContext.current
+    val currentLocale = LocalConfiguration.current.locales[0]
     val scrollBehavior = MiuixScrollBehavior(rememberTopAppBarState())
     val diagnostics by LyricRepository.getInstance().liveDiagnostics.observeAsState()
     val showDisableDialog = remember { mutableStateOf(false) }
@@ -151,7 +153,10 @@ fun MiuixDiagnosticsScreen(
                         MiuixInfoRow(stringResource(R.string.diag_label_primary_pkg), diagnostics?.primaryPackage ?: stringResource(R.string.diag_none))
                         MiuixInfoRow(stringResource(R.string.diag_label_whitelist_size), diagnostics?.whitelistSize?.toString() ?: "0")
                         MiuixInfoRow(stringResource(R.string.diag_label_last_params), diagnostics?.lastUpdateParams ?: stringResource(R.string.diag_none))
-                        MiuixInfoRow(stringResource(R.string.diag_label_last_update), SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date(diagnostics?.timestamp ?: 0)))
+                        MiuixInfoRow(
+                            stringResource(R.string.diag_label_last_update),
+                            SimpleDateFormat("HH:mm:ss", currentLocale).format(Date(diagnostics?.timestamp ?: 0))
+                        )
                     }
                 }
             }
@@ -186,7 +191,7 @@ fun MiuixDiagnosticsScreen(
                                 .padding(end = 12.dp)
                         ) {
                             androidx.compose.material3.Icon(
-                                imageVector = androidx.compose.material.icons.Icons.Default.Refresh,
+                                imageVector = Icons.Default.Refresh,
                                 contentDescription = stringResource(R.string.diag_btn_refresh),
                                 tint = MiuixTheme.colorScheme.primary
                             )
@@ -282,7 +287,7 @@ fun MiuixInfoRow(label: String, value: String) {
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 12.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+        verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
             text = label, 
@@ -293,7 +298,7 @@ fun MiuixInfoRow(label: String, value: String) {
             text = value, 
             color = MiuixTheme.colorScheme.onSurface,
             modifier = Modifier.weight(1f),
-            textAlign = androidx.compose.ui.text.style.TextAlign.End
+            textAlign = TextAlign.End
         )
     }
 }

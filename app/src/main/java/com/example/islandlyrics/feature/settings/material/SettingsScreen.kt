@@ -1,12 +1,12 @@
+@file:Suppress("UnusedMaterial3ScaffoldPaddingParameter")
+
 package com.example.islandlyrics.feature.settings.material
 
+import android.annotation.SuppressLint
 import android.app.Activity
-import android.net.Uri
 import com.example.islandlyrics.BuildConfig
 import com.example.islandlyrics.R
 import com.example.islandlyrics.core.feed.CommunityFeedItem
-import com.example.islandlyrics.core.network.OfflineModeManager
-import com.example.islandlyrics.core.update.UpdateChecker
 import com.example.islandlyrics.core.theme.ThemeHelper
 import com.example.islandlyrics.core.platform.RomUtils
 import com.example.islandlyrics.feature.faq.FAQActivity
@@ -17,8 +17,10 @@ import com.example.islandlyrics.feature.settings.buildCommunityMarkdown
 import android.content.Context
 import android.content.Intent
 import android.os.Build
+import android.net.Uri
 import android.provider.Settings
-import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -30,10 +32,7 @@ import androidx.compose.material3.HorizontalDivider as MaterialHorizontalDivider
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import android.content.ClipData
-import android.content.ClipboardManager
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
@@ -41,6 +40,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.app.NotificationManagerCompat
+import androidx.core.content.edit
 import androidx.core.content.ContextCompat
 import androidx.compose.material.icons.Icons
 
@@ -54,9 +54,15 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalLayoutDirection
 import com.example.islandlyrics.ui.theme.material.materialPageContainerColor
 import com.example.islandlyrics.ui.theme.material.neutralMaterialTopBarColors
+import com.example.islandlyrics.core.settings.SettingsBackupManager
+import androidx.core.net.toUri
+import kotlinx.coroutines.launch
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
+@SuppressLint("BatteryLife")
+@Suppress("UNUSED_PARAMETER")
 fun SettingsScreen(
     onCheckUpdate: () -> Unit,
     onShowDiagnostics: () -> Unit,
@@ -73,16 +79,40 @@ fun SettingsScreen(
     val context = LocalContext.current
     val layoutDirection = LocalLayoutDirection.current
     val prefs = remember { context.getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE) }
-    var offlineModeEnabled by remember { mutableStateOf(OfflineModeManager.isEnabled(context)) }
-
-    // Preferences State
-    var autoUpdateEnabled by remember { mutableStateOf(UpdateChecker.isAutoUpdateEnabled(context)) }
-    
-    // Theme State
-    var followSystem by remember { mutableStateOf(ThemeHelper.getFollowSystem(context)) }
-    var darkMode by remember { mutableStateOf(ThemeHelper.getDarkMode(context)) }
-    var pureBlack by remember { mutableStateOf(ThemeHelper.getMaterialPureBlack(context)) }
-    var dynamicColor by remember { mutableStateOf(ThemeHelper.getMaterialDynamicColor(context)) }
+    val snackbarHostState = remember { SnackbarHostState() }
+    val coroutineScope = rememberCoroutineScope()
+    val backupExportSuccessFormat = stringResource(R.string.settings_backup_export_success)
+    val backupExportFailedText = stringResource(R.string.settings_backup_export_failed)
+    val backupImportSuccessFormat = stringResource(R.string.settings_backup_import_success)
+    val backupImportFailedText = stringResource(R.string.settings_backup_import_failed)
+    val exportSettingsLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("application/json")
+    ) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        coroutineScope.launch {
+            val result = SettingsBackupManager.exportToUri(context, uri)
+            val message = if (result.success) {
+                String.format(Locale.getDefault(), backupExportSuccessFormat, result.exportedCount)
+            } else {
+                backupExportFailedText
+            }
+            snackbarHostState.showSnackbar(message)
+        }
+    }
+    val importSettingsLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        coroutineScope.launch {
+            val result = SettingsBackupManager.importFromUri(context, uri)
+            val message = if (result.success) {
+                String.format(Locale.getDefault(), backupImportSuccessFormat, result.importedCount)
+            } else {
+                backupImportFailedText
+            }
+            snackbarHostState.showSnackbar(message)
+        }
+    }
     var dynamicIconEnabled by remember { mutableStateOf(prefs.getBoolean("dynamic_icon_enabled", false)) }
     var iconStyle by remember { mutableStateOf(prefs.getString("dynamic_icon_style", "classic") ?: "classic") }
     
@@ -110,10 +140,7 @@ fun SettingsScreen(
         return NotificationManagerCompat.getEnabledListenerPackages(context).contains(context.packageName)
     }
     fun checkPostNotificationPermission(): Boolean {
-         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            return ContextCompat.checkSelfPermission(context, android.Manifest.permission.POST_NOTIFICATIONS) == android.content.pm.PackageManager.PERMISSION_GRANTED
-         }
-         return true
+        return ContextCompat.checkSelfPermission(context, android.Manifest.permission.POST_NOTIFICATIONS) == android.content.pm.PackageManager.PERMISSION_GRANTED
     }
 
     var notificationGranted by remember { mutableStateOf(checkNotificationPermission()) }
@@ -126,11 +153,11 @@ fun SettingsScreen(
         if (!isHyperOsSupported) {
             if (dynamicIconEnabled) {
                 dynamicIconEnabled = false
-                prefs.edit().putBoolean("dynamic_icon_enabled", false).apply()
+                prefs.edit { putBoolean("dynamic_icon_enabled", false) }
             }
             if (actionStyle == "miplay") {
                 actionStyle = "disabled"
-                prefs.edit().putString("notification_actions_style", "disabled").apply()
+                prefs.edit { putString("notification_actions_style", "disabled") }
             }
         }
     }
@@ -154,6 +181,7 @@ fun SettingsScreen(
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         contentWindowInsets = WindowInsets(0),
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
             MediumTopAppBar(
                 title = { Text(stringResource(R.string.title_app_settings)) },
@@ -192,7 +220,6 @@ fun SettingsScreen(
                 .fillMaxSize(),
             contentPadding = PaddingValues(bottom = 24.dp + extraBottomPadding)
         ) {
-            // ── Personalization ──────────────────────────────────────────────
             item { SettingsSectionHeader(text = stringResource(R.string.settings_personalization_header)) }
             item {
                 SettingsCard {
@@ -204,7 +231,6 @@ fun SettingsScreen(
                 }
             }
 
-            // ── General ──────────────────────────────────────────────────────
             item { SettingsSectionHeader(text = stringResource(R.string.settings_general_header)) }
             item {
                 SettingsCard {
@@ -244,7 +270,7 @@ fun SettingsScreen(
                         checked = recommendMediaAppEnabled,
                         onCheckedChange = {
                             recommendMediaAppEnabled = it
-                            prefs.edit().putBoolean("recommend_media_app", it).apply()
+                            prefs.edit { putBoolean("recommend_media_app", it) }
                         }
                     )
                     SettingsCardDivider()
@@ -254,13 +280,30 @@ fun SettingsScreen(
                         checked = hideRecentsEnabled,
                         onCheckedChange = {
                             hideRecentsEnabled = it
-                            prefs.edit().putBoolean("hide_recents_enabled", it).apply()
+                            prefs.edit { putBoolean("hide_recents_enabled", it) }
+                        }
+                    )
+                    SettingsCardDivider()
+                    SettingsActionItem(
+                        title = stringResource(R.string.settings_backup_export),
+                        summary = stringResource(R.string.settings_backup_export_desc),
+                        icon = Icons.Filled.Sync,
+                        onClick = {
+                            exportSettingsLauncher.launch(SettingsBackupManager.buildExportFileName())
+                        }
+                    )
+                    SettingsCardDivider()
+                    SettingsActionItem(
+                        title = stringResource(R.string.settings_backup_import),
+                        summary = stringResource(R.string.settings_backup_import_desc),
+                        icon = Icons.Filled.Sync,
+                        onClick = {
+                            importSettingsLauncher.launch(arrayOf("application/json"))
                         }
                     )
                 }
             }
 
-            // ── Services ─────────────────────────────────────────────────────
             item { SettingsSectionHeader(text = stringResource(R.string.settings_core_services_header)) }
             item {
                 SettingsCard {
@@ -297,21 +340,19 @@ fun SettingsScreen(
                         icon = Icons.Filled.MusicNote,
                         onClick = {
                             val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
-                            intent.data = Uri.parse("package:${context.packageName}")
+                            intent.data = "package:${context.packageName}".toUri()
                             context.startActivity(intent)
                         }
                     )
                 }
             }
 
-            // ── Local Lyrics ────────────────────────────────────────────────
             item {
                 com.example.islandlyrics.feature.settings.LocalLyricDirectoriesSection(
                     onOpenDirectory = onOpenLocalLyricDirectory
                 )
             }
 
-            // ── Help & About ─────────────────────────────────────────────────
             item { SettingsSectionHeader(text = stringResource(R.string.settings_help_about_header)) }
             item {
                 SettingsCard {
@@ -364,7 +405,7 @@ fun SettingsScreen(
                 currentStyle = iconStyle,
                 onStyleSelected = { style ->
                     iconStyle = style
-                    prefs.edit().putString("dynamic_icon_style", style).apply()
+                    prefs.edit { putString("dynamic_icon_style", style) }
                     showIconStyleDialog = false
                 },
                 onDismiss = { showIconStyleDialog = false }
@@ -377,7 +418,7 @@ fun SettingsScreen(
                 isHyperOsSupported = isHyperOsSupported,
                 onStyleSelected = { style ->
                     actionStyle = style
-                    prefs.edit().putString("notification_actions_style", style).apply()
+                    prefs.edit { putString("notification_actions_style", style) }
                     showActionStyleDialog = false
                 },
                 onDismiss = { showActionStyleDialog = false }
@@ -389,7 +430,7 @@ fun SettingsScreen(
                 currentStyle = notificationClickStyle,
                 onStyleSelected = { style ->
                     notificationClickStyle = style
-                    prefs.edit().putString("notification_click_style", style).apply()
+                    prefs.edit { putString("notification_click_style", style) }
                     showNotificationClickDialog = false
                 },
                 onDismiss = { showNotificationClickDialog = false }
@@ -401,7 +442,7 @@ fun SettingsScreen(
                 currentDelay = dismissDelay,
                 onDelaySelected = { delay ->
                     dismissDelay = delay
-                    prefs.edit().putLong("notification_dismiss_delay", delay).apply()
+                    prefs.edit { putLong("notification_dismiss_delay", delay) }
                     showDismissDelayDialog = false
                 },
                 onDismiss = { showDismissDelayDialog = false }
@@ -421,7 +462,7 @@ fun FeedbackSelectionDialog(onDismiss: () -> Unit) {
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable {
-                            val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/FrancoGiudans/Capsulyric/issues/new?template=bug_report.yml"))
+                            val browserIntent = Intent(Intent.ACTION_VIEW, "https://github.com/FrancoGiudans/Capsulyric/issues/new?template=bug_report.yml".toUri())
                             context.startActivity(browserIntent)
                             onDismiss()
                         }
@@ -446,7 +487,7 @@ fun FeedbackSelectionDialog(onDismiss: () -> Unit) {
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable {
-                            val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://f.wps.cn/g/qACKW9I3/"))
+                            val browserIntent = Intent(Intent.ACTION_VIEW, "https://f.wps.cn/g/qACKW9I3/".toUri())
                             context.startActivity(browserIntent)
                             onDismiss()
                         }
@@ -476,7 +517,6 @@ fun FeedbackSelectionDialog(onDismiss: () -> Unit) {
         }
     )
 }
-
 @Composable
 fun NotificationClickDialog(
     currentStyle: String,
@@ -533,7 +573,6 @@ fun NotificationClickDialog(
         }
     )
 }
-
 @Composable
 fun DismissDelaySelectionDialog(
     currentDelay: Long,
@@ -583,10 +622,13 @@ fun DismissDelaySelectionDialog(
         }
     )
 }
-
 @Composable
 fun LanguageSelectionDialog(onDismiss: () -> Unit) {
-    val languages = listOf("System Default" to "", "English" to "en", "简体中文" to "zh-CN")
+    val languages = listOf(
+        stringResource(R.string.lang_sys_default) to "",
+        stringResource(R.string.lang_english) to "en",
+        stringResource(R.string.lang_chinese) to "zh-CN"
+    )
     val context = LocalContext.current
     
     AlertDialog(
@@ -621,7 +663,6 @@ fun LanguageSelectionDialog(onDismiss: () -> Unit) {
         }
     )
 }
-
 @Composable
 fun IconStyleSelectionDialog(
     currentStyle: String,
@@ -1011,11 +1052,3 @@ fun SettingsValueItem(
     )
 }
 
-@Composable
-fun HorizontalDivider(modifier: Modifier = Modifier) {
-    MaterialHorizontalDivider(
-        modifier = modifier.padding(horizontal = 24.dp),
-        thickness = 1.dp,
-        color = MaterialTheme.colorScheme.outlineVariant
-    )
-}

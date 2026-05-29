@@ -305,6 +305,14 @@
     <string name="dialog_feedback_wps_desc">可能需要登录。</string>
     <string name="settings_hide_recents">隐藏后台窗口</string>
     <string name="settings_hide_recents_desc">划到后台时自动从最近任务中移除</string>
+    <string name="settings_backup_export">导出配置（JSON）</string>
+    <string name="settings_backup_export_desc">将当前应用配置导出为 JSON 备份文件</string>
+    <string name="settings_backup_import">导入配置（JSON）</string>
+    <string name="settings_backup_import_desc">从 JSON 备份文件导入应用配置</string>
+    <string name="settings_backup_export_success">已备份 %1$d 项设置</string>
+    <string name="settings_backup_import_success">已还原 %1$d 项设置</string>
+    <string name="settings_backup_export_failed">配置导出失败</string>
+    <string name="settings_backup_import_failed">配置还原失败</string>
     <!-- FAQ Strings -->
     <string name="settings_predictive_back_desc">重启应用生效</string>
     <string name="summary_view_logs">查看日志文件</string>
@@ -461,6 +469,10 @@
     <string name="oobe_add_rule_guide_title">如何添加解析规则</string>
     
     <string name="oobe_step_finish">进入应用</string>
+    <string name="oobe_step_restore">备份还原</string>
+    <string name="oobe_restore_intro_desc">如果你之前使用过 Capsulyric，可直接导入 JSON 备份，在新手机上恢复原有配置。</string>
+    <string name="oobe_restore_import_desc">选择 JSON 备份文件后将恢复全部配置，并直接进入主界面。</string>
+    <string name="oobe_restore_fresh_start">全新开始</string>
     <string name="oobe_finish_title">一切准备就绪</string>
     <string name="oobe_finish_subtitle">欢迎使用 Capsulyric</string>
     <string name="oobe_finish_start">开始使用</string>
