@@ -345,10 +345,11 @@
     <string name="dialog_feedback_wps_desc">Alternative. May require login.</string>
     <string name="settings_hide_recents">Hide from Recents</string>
     <string name="settings_hide_recents_desc">Automatically remove from recents when app goes to background</string>
-    <string name="settings_backup_export">Export Settings (JSON)</string>
+    <string name="settings_backup_export">Export Settings</string>
     <string name="settings_backup_export_desc">Export current app settings to a JSON backup file</string>
-    <string name="settings_backup_import">Import Settings (JSON)</string>
+    <string name="settings_backup_import">Import Settings</string>
     <string name="settings_backup_import_desc">Import settings from a JSON backup file</string>
+    <string name="settings_backup_header">Backup &amp; Restore</string>
     <string name="settings_backup_export_success">Backed up %1$d settings</string>
     <string name="settings_backup_import_success">Restored %1$d settings</string>
     <string name="settings_backup_export_failed">Settings export failed</string>
