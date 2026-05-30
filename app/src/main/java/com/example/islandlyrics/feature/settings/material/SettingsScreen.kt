@@ -4,7 +4,6 @@ package com.example.islandlyrics.feature.settings.material
 
 import android.annotation.SuppressLint
 import android.app.Activity
-import com.example.islandlyrics.BuildConfig
 import com.example.islandlyrics.R
 import com.example.islandlyrics.core.feed.CommunityFeedItem
 import com.example.islandlyrics.core.theme.ThemeHelper
@@ -16,7 +15,6 @@ import com.example.islandlyrics.feature.settings.CommunityMarkdownBody
 import com.example.islandlyrics.feature.settings.buildCommunityMarkdown
 import android.content.Context
 import android.content.Intent
-import android.os.Build
 import android.net.Uri
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -48,7 +46,8 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.automirrored.filled.Help
-import androidx.compose.material.icons.filled.Sync
+import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.Upload
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -284,24 +283,6 @@ fun SettingsScreen(
                             prefs.edit { putBoolean("hide_recents_enabled", it) }
                         }
                     )
-                    SettingsCardDivider()
-                    SettingsActionItem(
-                        title = stringResource(R.string.settings_backup_export),
-                        summary = stringResource(R.string.settings_backup_export_desc),
-                        icon = Icons.Filled.Sync,
-                        onClick = {
-                            exportSettingsLauncher.launch(SettingsBackupManager.buildExportFileName())
-                        }
-                    )
-                    SettingsCardDivider()
-                    SettingsActionItem(
-                        title = stringResource(R.string.settings_backup_import),
-                        summary = stringResource(R.string.settings_backup_import_desc),
-                        icon = Icons.Filled.Sync,
-                        onClick = {
-                            importSettingsLauncher.launch(arrayOf("application/json"))
-                        }
-                    )
                 }
             }
 
@@ -352,6 +333,28 @@ fun SettingsScreen(
                 com.example.islandlyrics.feature.settings.LocalLyricDirectoriesSection(
                     onOpenDirectory = onOpenLocalLyricDirectory
                 )
+            }
+            item { SettingsSectionHeader(text = stringResource(R.string.settings_backup_header)) }
+            item {
+                SettingsCard {
+                    SettingsActionItem(
+                        title = stringResource(R.string.settings_backup_export),
+                        summary = stringResource(R.string.settings_backup_export_desc),
+                        icon = Icons.Filled.Upload,
+                        onClick = {
+                            exportSettingsLauncher.launch(SettingsBackupManager.buildExportFileName())
+                        }
+                    )
+                    SettingsCardDivider()
+                    SettingsActionItem(
+                        title = stringResource(R.string.settings_backup_import),
+                        summary = stringResource(R.string.settings_backup_import_desc),
+                        icon = Icons.Filled.Download,
+                        onClick = {
+                            importSettingsLauncher.launch(arrayOf("application/json"))
+                        }
+                    )
+                }
             }
 
             item { SettingsSectionHeader(text = stringResource(R.string.settings_help_about_header)) }
