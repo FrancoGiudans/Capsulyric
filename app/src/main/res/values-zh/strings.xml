@@ -182,6 +182,7 @@
     <string name="export_lyric_button">导出为 LRC</string>
     <string name="export_lyric_success">已导出: %1$s</string>
     <string name="export_lyric_no_directory">请先配置本地歌词目录</string>
+    <string name="export_lyric_directory_not_writable">导出目录不可写，请重新选择目录</string>
     <string name="export_lyric_no_lyrics">没有可导出的歌词</string>
     <string name="export_lyric_failed">导出失败</string>
     <string name="local_lyric_dir_empty">此目录中未找到 .lrc 文件</string>
@@ -745,6 +746,8 @@
     <string name="cache_management_updated_at">更新时间</string>
     <string name="cache_management_unknown">未知</string>
     <string name="cache_management_has_custom_match">包含自定义匹配信息</string>
+    <string name="cache_management_export_match_info_title">同时导出自定义匹配信息</string>
+    <string name="cache_management_export_match_info_desc">导出缓存歌词时，同时写入本地歌词的自定义匹配信息</string>
     <string name="cache_management_none">无</string>
     <string name="cache_management_status_deleted">已删除歌词缓存</string>
     <string name="cache_management_status_lyrics_cleared">已清空歌词缓存</string>
@@ -755,6 +758,7 @@
     <string name="cache_management_delete_batch_result">已删除 %1$d 条</string>
     <string name="cache_management_select_all">全选</string>
     <string name="cache_management_deselect">取消</string>
+    <string name="cache_management_selected_count">已选中 %1$d 条</string>
     <string name="cache_management_export_selected">导出选中</string>
     <string name="cache_management_delete_selected">删除选中</string>
     <string name="local_lyric_set_export_dir">设为导出目录</string>

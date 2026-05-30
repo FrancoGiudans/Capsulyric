@@ -29,15 +29,18 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.islandlyrics.R
 import com.example.islandlyrics.core.cache.AppImageCacheManager
+import com.example.islandlyrics.data.lyric.LocalLyricDirectoryManager
 import com.example.islandlyrics.data.lyric.OnlineLyricCacheStore
 import com.example.islandlyrics.feature.cache.CacheManagementViewModel
 import com.example.islandlyrics.feature.cache.filterByCacheQuery
+import com.example.islandlyrics.ui.miuix.MiuixBackHandler
 import com.example.islandlyrics.ui.miuix.MiuixBlurScaffold
 import com.example.islandlyrics.ui.miuix.MiuixBlurTopAppBar
 import com.example.islandlyrics.ui.miuix.miuixPageScroll
@@ -46,12 +49,16 @@ import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.Checkbox
 import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.InputField
+import top.yukonga.miuix.kmp.basic.Snackbar as MiuixSnackbar
+import top.yukonga.miuix.kmp.basic.SnackbarHost as MiuixSnackbarHost
+import top.yukonga.miuix.kmp.basic.SnackbarHostState as MiuixSnackbarHostState
 import top.yukonga.miuix.kmp.basic.SearchBar
 import top.yukonga.miuix.kmp.basic.SmallTitle
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TextButton
 import top.yukonga.miuix.kmp.basic.rememberTopAppBarState
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
+import top.yukonga.miuix.kmp.preference.SwitchPreference as SuperSwitch
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.MiuixPopupUtils.Companion.MiuixPopupHost
 import java.text.SimpleDateFormat
@@ -64,6 +71,8 @@ fun MiuixCacheManagementScreen(
     onBack: () -> Unit,
     viewModel: CacheManagementViewModel = viewModel()
 ) {
+    val context = LocalContext.current
+    val dirManager = remember { LocalLyricDirectoryManager.getInstance(context) }
     val scrollBehavior = MiuixScrollBehavior(rememberTopAppBarState())
     val lyricStats by viewModel.lyricStats.observeAsState(OnlineLyricCacheStore.LyricCacheStats())
     val lyricEntries by viewModel.lyricEntries.observeAsState(emptyList())
@@ -72,6 +81,8 @@ fun MiuixCacheManagementScreen(
     val statusMessage by viewModel.statusMessage.observeAsState()
     val selectedIds by viewModel.selectedIds.observeAsState(emptySet())
     val isSelectionMode by viewModel.isSelectionMode.observeAsState(false)
+    var exportMatchInfoEnabled by remember { mutableStateOf(dirManager.isExportMatchSyncEnabled()) }
+    val snackbarHostState = remember { MiuixSnackbarHostState() }
     var searchQuery by remember { mutableStateOf("") }
     var searchExpanded by remember { mutableStateOf(false) }
     val filteredLyricEntries = remember(lyricEntries, searchQuery) {
@@ -79,16 +90,29 @@ fun MiuixCacheManagementScreen(
     }
 
     LaunchedEffect(statusMessage) {
-        if (statusMessage != null) {
+        statusMessage?.let {
+            snackbarHostState.showSnackbar(message = it)
             viewModel.consumeStatusMessage()
         }
+    }
+
+    MiuixBackHandler(enabled = isSelectionMode) {
+        viewModel.exitSelectionMode()
     }
 
     MiuixBlurScaffold(
         topBar = {
             MiuixBlurTopAppBar(
-                title = if (isSelectionMode) "${selectedIds.size} selected" else stringResource(R.string.title_cache_management),
-                largeTitle = if (isSelectionMode) "${selectedIds.size} selected" else stringResource(R.string.title_cache_management),
+                title = if (isSelectionMode) {
+                    stringResource(R.string.cache_management_selected_count, selectedIds.size)
+                } else {
+                    stringResource(R.string.title_cache_management)
+                },
+                largeTitle = if (isSelectionMode) {
+                    stringResource(R.string.cache_management_selected_count, selectedIds.size)
+                } else {
+                    stringResource(R.string.title_cache_management)
+                },
                 scrollBehavior = scrollBehavior,
                 navigationIcon = {
                     if (isSelectionMode) {
@@ -120,6 +144,12 @@ fun MiuixCacheManagementScreen(
                 }
             )
         },
+        snackbarHost = {
+            MiuixSnackbarHost(
+                state = snackbarHostState,
+                content = { data -> MiuixSnackbar(data = data) }
+            )
+        },
         popupHost = { MiuixPopupHost() }
     ) { padding ->
         LazyColumn(
@@ -138,6 +168,15 @@ fun MiuixCacheManagementScreen(
                         MiuixStatRow(stringResource(R.string.cache_management_entry_count), lyricStats.entryCount.toString())
                         MiuixStatRow(stringResource(R.string.cache_management_total_size), formatBytes(lyricStats.totalBytes))
                         MiuixStatRow(stringResource(R.string.cache_management_last_updated), formatTimestamp(stringResource(R.string.cache_management_none), lyricStats.lastUpdatedAt))
+                        SuperSwitch(
+                            title = stringResource(R.string.cache_management_export_match_info_title),
+                            summary = stringResource(R.string.cache_management_export_match_info_desc),
+                            checked = exportMatchInfoEnabled,
+                            onCheckedChange = { enabled ->
+                                exportMatchInfoEnabled = enabled
+                                dirManager.setExportMatchSyncEnabled(enabled)
+                            }
+                        )
                         Spacer(modifier = Modifier.height(12.dp))
                         Button(onClick = { viewModel.clearLyricCache() }, enabled = !busy, modifier = Modifier.fillMaxWidth()) {
                             Text(stringResource(R.string.cache_management_clear_lyric_cache))

@@ -46,6 +46,15 @@ class OnlineLyricCacheStore(context: Context) {
         val lastUpdatedAt: Long? = null
     )
 
+    data class LyricCacheExportData(
+        val title: String,
+        val artist: String,
+        val queryTitle: String,
+        val queryArtist: String,
+        val lines: List<OnlineLyricFetcher.LyricLine>,
+        val matchOverride: MatchOverride?
+    )
+
     data class CurrentSongCacheState(
         val effectiveTitle: String,
         val effectiveArtist: String,
@@ -112,21 +121,7 @@ class OnlineLyricCacheStore(context: Context) {
         val entry = synchronized(lock) {
             readEntries().firstMatching(mediaInfo)
         }
-        val matchOverride = entry?.overrideTitle
-            ?.let {
-                MatchOverride(
-                    title = entry.overrideTitle.takeIf { value -> value.isNotBlank() },
-                    artist = entry.overrideArtist?.takeIf { value -> value.isNotBlank() },
-                    updatedAt = entry.overrideUpdatedAt ?: entry.updatedAt
-                )
-            }
-            ?: entry?.overrideArtist?.let {
-                MatchOverride(
-                    title = entry.overrideTitle?.takeIf { value -> value.isNotBlank() },
-                    artist = entry.overrideArtist.takeIf { value -> value.isNotBlank() },
-                    updatedAt = entry.overrideUpdatedAt ?: entry.updatedAt
-                )
-            }
+        val matchOverride = entry?.toMatchOverride()
 
         val rawFallbackTitle = mediaInfo.rawTitle.ifBlank { fallbackTitle }
         val rawFallbackArtist = mediaInfo.rawArtist.ifBlank { fallbackArtist }
@@ -290,7 +285,8 @@ class OnlineLyricCacheStore(context: Context) {
         readEntries()
             .filter {
                 (!it.lyrics.isNullOrBlank() && it.parsedLines.isNotEmpty()) ||
-                    (!it.overrideTitle.isNullOrBlank() && !it.overrideArtist.isNullOrBlank())
+                    !it.overrideTitle.isNullOrBlank() ||
+                    !it.overrideArtist.isNullOrBlank()
             }
             .sortedByDescending { it.updatedAt }
             .map { entry ->
@@ -333,6 +329,19 @@ class OnlineLyricCacheStore(context: Context) {
     fun getEntryMetadata(entryId: String): Pair<String, String>? = synchronized(lock) {
         val entry = readEntries().firstOrNull { it.id == entryId } ?: return null
         (entry.title to entry.artist)
+    }
+
+    fun getEntryExportData(entryId: String): LyricCacheExportData? = synchronized(lock) {
+        val entry = readEntries().firstOrNull { it.id == entryId } ?: return null
+        val lines = entry.parsedLines.takeIf { it.isNotEmpty() } ?: return null
+        LyricCacheExportData(
+            title = entry.title,
+            artist = entry.artist,
+            queryTitle = entry.queryTitle.orEmpty(),
+            queryArtist = entry.queryArtist.orEmpty(),
+            lines = lines,
+            matchOverride = entry.toMatchOverride()
+        )
     }
 
     fun clearLyricCache() = synchronized(lock) {
@@ -421,6 +430,17 @@ class OnlineLyricCacheStore(context: Context) {
         val updated = filterNot { it.id == entry.id }.toMutableList()
         updated.add(entry)
         return updated
+    }
+
+    private fun CacheEntry.toMatchOverride(): MatchOverride? {
+        val title = overrideTitle?.takeIf { it.isNotBlank() }
+        val artist = overrideArtist?.takeIf { it.isNotBlank() }
+        if (title == null && artist == null) return null
+        return MatchOverride(
+            title = title,
+            artist = artist,
+            updatedAt = overrideUpdatedAt ?: updatedAt
+        )
     }
 
     private fun CacheEntry.toJson(): JSONObject = JSONObject().apply {

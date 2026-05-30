@@ -20,6 +20,7 @@ import com.example.islandlyrics.R
 import com.example.islandlyrics.data.lyric.LyricExporter
 import com.example.islandlyrics.data.lyric.LocalLyricDirectoryManager
 import com.example.islandlyrics.data.lyric.LocalLyricDirectoryManager.LrcFileInfo
+import com.example.islandlyrics.feature.lyric.toUserMessage
 import com.example.islandlyrics.ui.miuix.MiuixBlurDialog
 import com.example.islandlyrics.ui.miuix.MiuixBlurScaffold
 import com.example.islandlyrics.ui.miuix.MiuixBlurTopAppBar
@@ -48,11 +49,15 @@ fun MiuixLocalLyricDirectoryScreen(
     var editTitle by remember { mutableStateOf("") }
     var editArtist by remember { mutableStateOf("") }
 
-    LaunchedEffect(directoryUri) {
+    suspend fun reloadFiles() {
         files = withContext(Dispatchers.IO) {
             dirManager.listFilesInDirectory(directoryUri)
         }
         loading = false
+    }
+
+    LaunchedEffect(directoryUri) {
+        reloadFiles()
     }
 
     MiuixBlurScaffold(
@@ -84,12 +89,7 @@ fun MiuixLocalLyricDirectoryScreen(
                     IconButton(onClick = {
                         exportScope.launch {
                             val result = LyricExporter.exportCurrentLyrics(context)
-                            val msg = when {
-                                result.success -> context.getString(R.string.export_lyric_success, result.fileName)
-                                result.error == "no_directory" -> context.getString(R.string.export_lyric_no_directory)
-                                result.error == "no_lyrics" || result.error == "no_metadata" -> context.getString(R.string.export_lyric_no_lyrics)
-                                else -> context.getString(R.string.export_lyric_failed)
-                            }
+                            val msg = result.toUserMessage(context)
                             Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
                         }
                     }) {
@@ -115,9 +115,7 @@ fun MiuixLocalLyricDirectoryScreen(
 
         LaunchedEffect(isRefreshing) {
             if (isRefreshing) {
-                files = withContext(Dispatchers.IO) {
-                    dirManager.listFilesInDirectory(directoryUri)
-                }
+                reloadFiles()
                 isRefreshing = false
             }
         }

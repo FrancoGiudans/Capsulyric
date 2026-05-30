@@ -39,6 +39,7 @@ import com.example.islandlyrics.R
 import com.example.islandlyrics.data.ParserRuleHelper
 import com.example.islandlyrics.data.lyric.LyricExporter
 import com.example.islandlyrics.data.lyric.OnlineLyricProvider
+import com.example.islandlyrics.feature.lyric.toUserMessage
 import com.example.islandlyrics.feature.onlinelyricdebug.OnlineLyricDebugViewModel
 import com.example.islandlyrics.ui.miuix.MiuixBlurDialog
 import com.example.islandlyrics.ui.miuix.MiuixBlurScaffold
@@ -112,12 +113,7 @@ fun MiuixOnlineLyricDebugScreen(
                     IconButton(onClick = {
                         exportScope.launch {
                             val result = LyricExporter.exportCurrentLyrics(context)
-                            val msg = when {
-                                result.success -> context.getString(R.string.export_lyric_success, result.fileName)
-                                result.error == "no_directory" -> context.getString(R.string.export_lyric_no_directory)
-                                result.error == "no_lyrics" || result.error == "no_metadata" -> context.getString(R.string.export_lyric_no_lyrics)
-                                else -> context.getString(R.string.export_lyric_failed)
-                            }
+                            val msg = result.toUserMessage(context)
                             Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
                         }
                     }) {

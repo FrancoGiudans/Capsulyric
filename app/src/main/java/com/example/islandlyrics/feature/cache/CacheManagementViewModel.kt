@@ -9,6 +9,7 @@ import com.example.islandlyrics.R
 import com.example.islandlyrics.core.cache.AppImageCacheManager
 import com.example.islandlyrics.data.lyric.LyricExporter
 import com.example.islandlyrics.data.lyric.OnlineLyricCacheStore
+import com.example.islandlyrics.feature.lyric.toUserMessage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -80,18 +81,22 @@ class CacheManagementViewModel(application: Application) : AndroidViewModel(appl
 
     fun exportEntry(entryId: String) {
         viewModelScope.launch {
-            val meta = withContext(Dispatchers.IO) { lyricCacheStore.getEntryMetadata(entryId) }
-            val lines = withContext(Dispatchers.IO) { lyricCacheStore.getEntryParsedLines(entryId) }
-            if (meta == null || lines == null) {
+            val exportData = withContext(Dispatchers.IO) { lyricCacheStore.getEntryExportData(entryId) }
+            if (exportData == null) {
                 _statusMessage.value = s(R.string.export_lyric_no_lyrics)
                 return@launch
             }
-            val result = LyricExporter.exportCacheEntry(getApplication(), meta.first, meta.second, lines)
-            _statusMessage.value = when {
-                result.success -> s(R.string.export_lyric_success, result.fileName ?: "")
-                result.error == "no_directory" -> s(R.string.export_lyric_no_directory)
-                else -> s(R.string.export_lyric_failed)
-            }
+            val result = LyricExporter.exportCacheEntry(
+                context = getApplication(),
+                title = exportData.title,
+                artist = exportData.artist,
+                lines = exportData.lines,
+                customMatch = exportData.matchOverride?.let {
+                    exportData.queryTitle.ifBlank { exportData.title } to
+                        exportData.queryArtist.ifBlank { exportData.artist }
+                }
+            )
+            _statusMessage.value = result.toUserMessage(getApplication())
         }
     }
 
@@ -101,13 +106,30 @@ class CacheManagementViewModel(application: Application) : AndroidViewModel(appl
         viewModelScope.launch {
             _busy.value = true
             var successCount = 0
+            var firstFailure: LyricExporter.ExportResult? = null
             for (id in ids) {
-                val meta = withContext(Dispatchers.IO) { lyricCacheStore.getEntryMetadata(id) } ?: continue
-                val lines = withContext(Dispatchers.IO) { lyricCacheStore.getEntryParsedLines(id) } ?: continue
-                val result = LyricExporter.exportCacheEntry(getApplication(), meta.first, meta.second, lines)
-                if (result.success) successCount++
+                val exportData = withContext(Dispatchers.IO) { lyricCacheStore.getEntryExportData(id) } ?: continue
+                val result = LyricExporter.exportCacheEntry(
+                    context = getApplication(),
+                    title = exportData.title,
+                    artist = exportData.artist,
+                    lines = exportData.lines,
+                    customMatch = exportData.matchOverride?.let {
+                        exportData.queryTitle.ifBlank { exportData.title } to
+                        exportData.queryArtist.ifBlank { exportData.artist }
+                    }
+                )
+                if (result.success) {
+                    successCount++
+                } else if (firstFailure == null) {
+                    firstFailure = result
+                }
             }
-            _statusMessage.value = s(R.string.cache_management_export_batch_result, successCount, ids.size)
+            _statusMessage.value = if (successCount == 0 && firstFailure != null) {
+                firstFailure.toUserMessage(getApplication())
+            } else {
+                s(R.string.cache_management_export_batch_result, successCount, ids.size)
+            }
             _busy.value = false
             exitSelectionMode()
         }

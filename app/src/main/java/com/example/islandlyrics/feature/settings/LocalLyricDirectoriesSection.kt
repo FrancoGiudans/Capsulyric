@@ -41,7 +41,7 @@ fun LocalLyricDirectoriesSection(
     ) { uri ->
         if (uri != null) {
             context.contentResolver.takePersistableUriPermission(
-                uri, Intent.FLAG_GRANT_READ_URI_PERMISSION
+                uri, Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
             )
             dirManager.addDirectory(uri)
             directories = dirManager.getDirectories()

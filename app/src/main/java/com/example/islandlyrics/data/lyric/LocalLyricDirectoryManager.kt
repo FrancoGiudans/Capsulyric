@@ -14,6 +14,12 @@ import org.json.JSONObject
 
 class LocalLyricDirectoryManager private constructor(private val context: Context) {
 
+    enum class ExportDirectoryStatus {
+        AVAILABLE,
+        NONE_CONFIGURED,
+        NOT_WRITABLE
+    }
+
     data class DirectoryEntry(
         val uri: Uri,
         val displayName: String
@@ -36,6 +42,11 @@ class LocalLyricDirectoryManager private constructor(private val context: Contex
         val fileUri: String,
         val title: String,
         val artist: String
+    )
+
+    data class ExportDirectoryResolution(
+        val uri: Uri?,
+        val status: ExportDirectoryStatus
     )
 
     private val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -63,7 +74,7 @@ class LocalLyricDirectoryManager private constructor(private val context: Contex
     fun addDirectory(uri: Uri) {
         try {
             context.contentResolver.takePersistableUriPermission(
-                uri, Intent.FLAG_GRANT_READ_URI_PERMISSION
+                uri, Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
             )
         } catch (e: SecurityException) {
             AppLogger.getInstance().e(TAG, "Failed to take URI permission: ${e.message}")
@@ -100,7 +111,7 @@ class LocalLyricDirectoryManager private constructor(private val context: Contex
 
         try {
             context.contentResolver.releasePersistableUriPermission(
-                uri, Intent.FLAG_GRANT_READ_URI_PERMISSION
+                uri, Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
             )
         } catch (_: SecurityException) {}
 
@@ -172,12 +183,41 @@ class LocalLyricDirectoryManager private constructor(private val context: Contex
     }
 
     fun getExportDirectoryUri(): Uri? {
+        return resolveExportDirectory().uri
+    }
+
+    fun resolveExportDirectory(): ExportDirectoryResolution {
+        val directories = getDirectories()
+        if (directories.isEmpty()) {
+            return ExportDirectoryResolution(
+                uri = null,
+                status = ExportDirectoryStatus.NONE_CONFIGURED
+            )
+        }
+
         val saved = prefs.getString(KEY_EXPORT_DIRECTORY, null)
         if (saved != null) {
             val uri = Uri.parse(saved)
-            if (isUriPermissionValid(uri)) return uri
+            if (isUriWritablePermissionValid(uri)) {
+                return ExportDirectoryResolution(
+                    uri = uri,
+                    status = ExportDirectoryStatus.AVAILABLE
+                )
+            }
         }
-        return getFirstDirectoryUri()
+
+        val fallbackUri = directories.firstOrNull { isUriWritablePermissionValid(it.uri) }?.uri
+        return if (fallbackUri != null) {
+            ExportDirectoryResolution(
+                uri = fallbackUri,
+                status = ExportDirectoryStatus.AVAILABLE
+            )
+        } else {
+            ExportDirectoryResolution(
+                uri = null,
+                status = ExportDirectoryStatus.NOT_WRITABLE
+            )
+        }
     }
 
     fun setExportDirectory(uri: Uri) {
@@ -193,10 +233,19 @@ class LocalLyricDirectoryManager private constructor(private val context: Contex
         return getDirectories().isNotEmpty()
     }
 
+    fun isExportMatchSyncEnabled(): Boolean {
+        return prefs.getBoolean(KEY_EXPORT_MATCH_SYNC_ENABLED, true)
+    }
+
+    fun setExportMatchSyncEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_EXPORT_MATCH_SYNC_ENABLED, enabled).apply()
+        invalidateIndex()
+    }
+
     suspend fun listFilesInDirectory(directoryUri: Uri): List<LrcFileInfo> = withContext(Dispatchers.IO) {
-        val customMatches = getCustomMatches()
         try {
             val tree = DocumentFile.fromTreeUri(context, directoryUri) ?: return@withContext emptyList()
+            val customMatches = getCustomMatches()
             tree.listFiles()
                 .filter { it.name?.let { n -> isLrcFile(n) } == true }
                 .map { file ->
@@ -304,6 +353,12 @@ class LocalLyricDirectoryManager private constructor(private val context: Contex
         }
     }
 
+    private fun isUriWritablePermissionValid(uri: Uri): Boolean {
+        return context.contentResolver.persistedUriPermissions.any {
+            it.uri == uri && it.isReadPermission && it.isWritePermission
+        }
+    }
+
     private fun getDirectoriesRaw(): JSONArray {
         val json = prefs.getString(KEY_DIRECTORIES, null) ?: return JSONArray()
         return try { JSONArray(json) } catch (_: Exception) { JSONArray() }
@@ -315,6 +370,7 @@ class LocalLyricDirectoryManager private constructor(private val context: Contex
         private const val KEY_DIRECTORIES = "local_lyric_directories_json"
         private const val KEY_CUSTOM_MATCHES = "local_lyric_custom_matches_json"
         private const val KEY_EXPORT_DIRECTORY = "local_lyric_export_directory_uri"
+        private const val KEY_EXPORT_MATCH_SYNC_ENABLED = "local_lyric_export_match_sync_enabled"
 
         @Volatile
         private var instance: LocalLyricDirectoryManager? = null

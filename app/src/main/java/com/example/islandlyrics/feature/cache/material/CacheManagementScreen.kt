@@ -44,16 +44,23 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigationevent.NavigationEventInfo
+import androidx.navigationevent.compose.NavigationBackHandler
+import androidx.navigationevent.compose.rememberNavigationEventState
 import com.example.islandlyrics.R
 import com.example.islandlyrics.core.cache.AppImageCacheManager
+import com.example.islandlyrics.data.lyric.LocalLyricDirectoryManager
 import com.example.islandlyrics.data.lyric.OnlineLyricCacheStore
 import com.example.islandlyrics.feature.cache.CacheManagementViewModel
 import com.example.islandlyrics.feature.cache.filterByCacheQuery
+import com.example.islandlyrics.feature.settings.material.SettingsCardDivider
+import com.example.islandlyrics.feature.settings.material.SettingsSwitchItem
 import com.example.islandlyrics.ui.theme.material.materialPageContainerColor
 import com.example.islandlyrics.ui.theme.material.neutralMaterialTopBarColors
 import java.text.SimpleDateFormat
@@ -66,6 +73,8 @@ fun CacheManagementScreen(
     onBack: () -> Unit,
     viewModel: CacheManagementViewModel = viewModel()
 ) {
+    val context = LocalContext.current
+    val dirManager = remember { LocalLyricDirectoryManager.getInstance(context) }
     val scrollBehavior = androidx.compose.material3.TopAppBarDefaults.pinnedScrollBehavior()
     val lyricStats by viewModel.lyricStats.observeAsState(OnlineLyricCacheStore.LyricCacheStats())
     val lyricEntries by viewModel.lyricEntries.observeAsState(emptyList())
@@ -74,11 +83,13 @@ fun CacheManagementScreen(
     val statusMessage by viewModel.statusMessage.observeAsState()
     val selectedIds by viewModel.selectedIds.observeAsState(emptySet())
     val isSelectionMode by viewModel.isSelectionMode.observeAsState(false)
+    var exportMatchInfoEnabled by remember { mutableStateOf(dirManager.isExportMatchSyncEnabled()) }
     val snackbarHostState = remember { SnackbarHostState() }
     var searchQuery by remember { mutableStateOf("") }
     val filteredLyricEntries = remember(lyricEntries, searchQuery) {
         lyricEntries.filterByCacheQuery(searchQuery)
     }
+    val navEventState = rememberNavigationEventState(NavigationEventInfo.None)
 
     LaunchedEffect(statusMessage) {
         statusMessage?.let {
@@ -87,11 +98,25 @@ fun CacheManagementScreen(
         }
     }
 
+    NavigationBackHandler(
+        state = navEventState,
+        isBackEnabled = isSelectionMode,
+        onBackCompleted = { viewModel.exitSelectionMode() }
+    )
+
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             TopAppBar(
-                title = { Text(if (isSelectionMode) "${selectedIds.size} selected" else stringResource(R.string.title_cache_management)) },
+                title = {
+                    Text(
+                        if (isSelectionMode) {
+                            stringResource(R.string.cache_management_selected_count, selectedIds.size)
+                        } else {
+                            stringResource(R.string.title_cache_management)
+                        }
+                    )
+                },
                 navigationIcon = {
                     if (isSelectionMode) {
                         IconButton(onClick = { viewModel.exitSelectionMode() }) {
@@ -139,6 +164,16 @@ fun CacheManagementScreen(
                     CacheStatRow(stringResource(R.string.cache_management_entry_count), lyricStats.entryCount.toString())
                     CacheStatRow(stringResource(R.string.cache_management_total_size), formatBytes(lyricStats.totalBytes))
                     CacheStatRow(stringResource(R.string.cache_management_last_updated), formatTimestamp(stringResource(R.string.cache_management_none), lyricStats.lastUpdatedAt))
+                    SettingsCardDivider()
+                    SettingsSwitchItem(
+                        title = stringResource(R.string.cache_management_export_match_info_title),
+                        subtitle = stringResource(R.string.cache_management_export_match_info_desc),
+                        checked = exportMatchInfoEnabled,
+                        onCheckedChange = { enabled ->
+                            exportMatchInfoEnabled = enabled
+                            dirManager.setExportMatchSyncEnabled(enabled)
+                        }
+                    )
                     Spacer(modifier = Modifier.height(12.dp))
                     Button(
                         onClick = { viewModel.clearLyricCache() },

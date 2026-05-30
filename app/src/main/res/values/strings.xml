@@ -183,6 +183,7 @@
     <string name="export_lyric_button">Export as LRC</string>
     <string name="export_lyric_success">Exported: %1$s</string>
     <string name="export_lyric_no_directory">Please configure a local lyrics directory first</string>
+    <string name="export_lyric_directory_not_writable">Export directory is not writable. Please choose the directory again</string>
     <string name="export_lyric_no_lyrics">No lyrics available to export</string>
     <string name="export_lyric_failed">Export failed</string>
     <string name="local_lyric_dir_empty">No .lrc files found in this directory</string>
@@ -754,6 +755,8 @@ Within the log interface, select the share/export icon. You can specify a timefr
     <string name="cache_management_updated_at">Updated At</string>
     <string name="cache_management_unknown">Unknown</string>
     <string name="cache_management_has_custom_match">Contains custom match info</string>
+    <string name="cache_management_export_match_info_title">Also export custom match info</string>
+    <string name="cache_management_export_match_info_desc">When exporting cached lyrics, also write the custom match info used by local lyrics</string>
     <string name="cache_management_none">None</string>
     <string name="cache_management_status_deleted">Deleted lyric cache entry</string>
     <string name="cache_management_status_lyrics_cleared">Cleared lyric cache</string>
@@ -764,6 +767,7 @@ Within the log interface, select the share/export icon. You can specify a timefr
     <string name="cache_management_delete_batch_result">Deleted %1$d entries</string>
     <string name="cache_management_select_all">Select All</string>
     <string name="cache_management_deselect">Cancel</string>
+    <string name="cache_management_selected_count">%1$d selected</string>
     <string name="cache_management_export_selected">Export Selected</string>
     <string name="cache_management_delete_selected">Delete Selected</string>
     <string name="local_lyric_set_export_dir">Set as export directory</string>
