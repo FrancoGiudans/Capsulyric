@@ -295,6 +295,8 @@
     <string name="icon_style_classic_desc">显示默认的应用音符图标</string>
     <string name="icon_style_advanced">播放信息（特殊样式）</string>
     <string name="icon_style_advanced_desc">专辑封面+双行布局</string>
+    <string name="icon_style_album_art">专辑图片</string>
+    <string name="icon_style_album_art_desc">将专辑封面直接作为通知图标显示</string>
     <string name="dialog_icon_style_title">设置左侧图标样式</string>
 
     <string name="settings_disable_scrolling_desc">显示稳定的静态歌词文本，对于长歌词则只会展示前半段，阻止任何歌词滚动</string>

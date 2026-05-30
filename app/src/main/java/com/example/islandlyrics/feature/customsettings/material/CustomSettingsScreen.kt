@@ -237,6 +237,10 @@ fun CustomSettingsScreen(
                 actionStyle = "disabled"
                 prefs.edit { putString("notification_actions_style", "disabled") }
             }
+        } else if (!isHyperOs && iconStyle == "advanced") {
+            // Advanced style is HyperOS-only; reset to classic on other ROMs
+            iconStyle = "disabled"
+            prefs.edit { putString("dynamic_icon_style", "disabled") }
         }
     }
 
@@ -471,6 +475,7 @@ fun CustomSettingsScreen(
                                 if (isLiveUpdateSupported && !superIslandEnabled) {
                                     val styleDisplayName = when (iconStyle) {
                                         "advanced" -> stringResource(R.string.icon_style_advanced)
+                                        "album_art" -> stringResource(R.string.icon_style_album_art)
                                         else -> stringResource(R.string.icon_style_classic)
                                     }
                                     SettingsCardDivider()
@@ -485,10 +490,11 @@ fun CustomSettingsScreen(
                                                 expanded = showIconStyleDropdown,
                                                 onDismissRequest = { showIconStyleDropdown = false }
                                             ) {
-                                                val styles = listOf(
-                                                    "disabled" to R.string.icon_style_classic,
-                                                    "advanced" to R.string.icon_style_advanced
-                                                )
+                                                val styles = buildList {
+                                                    add("disabled" to R.string.icon_style_classic)
+                                                    if (isHyperOs) add("advanced" to R.string.icon_style_advanced)
+                                                    add("album_art" to R.string.icon_style_album_art)
+                                                }
                                                 styles.forEach { (styleId, nameId) ->
                                                     DropdownMenuItem(
                                                         text = { Text(stringResource(nameId)) },

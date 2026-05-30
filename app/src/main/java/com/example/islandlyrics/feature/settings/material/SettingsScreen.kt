@@ -134,6 +134,7 @@ fun SettingsScreen(
 
     // Check for HyperOS 3.0.300+
     val isHyperOsSupported = remember { RomUtils.isHyperOsVersionAtLeast(3, 0, 300) }
+    val isHyperOs = remember { RomUtils.isHyperOs() }
 
     // Logic for permissions status
     fun checkNotificationPermission(): Boolean {
@@ -403,6 +404,7 @@ fun SettingsScreen(
         if (showIconStyleDialog) {
             IconStyleSelectionDialog(
                 currentStyle = iconStyle,
+                isHyperOs = isHyperOs,
                 onStyleSelected = { style ->
                     iconStyle = style
                     prefs.edit { putString("dynamic_icon_style", style) }
@@ -666,13 +668,15 @@ fun LanguageSelectionDialog(onDismiss: () -> Unit) {
 @Composable
 fun IconStyleSelectionDialog(
     currentStyle: String,
+    isHyperOs: Boolean,
     onStyleSelected: (String) -> Unit,
     onDismiss: () -> Unit
 ) {
-    val styles = listOf(
-        Triple("classic", R.string.icon_style_classic, R.string.icon_style_classic_desc),
-        Triple("advanced", R.string.icon_style_advanced, R.string.icon_style_advanced_desc)
-    )
+    val styles = buildList {
+        add(Triple("classic", R.string.icon_style_classic, R.string.icon_style_classic_desc))
+        if (isHyperOs) add(Triple("advanced", R.string.icon_style_advanced, R.string.icon_style_advanced_desc))
+        add(Triple("album_art", R.string.icon_style_album_art, R.string.icon_style_album_art_desc))
+    }
     
     AlertDialog(
         onDismissRequest = onDismiss,

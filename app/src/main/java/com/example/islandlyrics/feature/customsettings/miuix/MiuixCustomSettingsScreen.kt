@@ -207,6 +207,10 @@ fun MiuixCustomSettingsScreen(
                 actionStyle = "disabled"
                 prefs.edit().putString("notification_actions_style", "disabled").apply()
             }
+        } else if (!isHyperOs && iconStyle == "advanced") {
+            // Advanced style is HyperOS-only; reset to classic on other ROMs
+            iconStyle = "disabled"
+            prefs.edit().putString("dynamic_icon_style", "disabled").apply()
         }
     }
 
@@ -570,11 +574,16 @@ fun MiuixCustomSettingsScreen(
                                         }
                                     }
                                     if (isLiveUpdateSupported && !superIslandEnabled) {
-                                        val iconStyles = listOf("disabled", "advanced")
-                                        val iconStyleNames = listOf(
-                                            stringResource(R.string.icon_style_classic),
-                                            stringResource(R.string.icon_style_advanced)
-                                        )
+                                        val iconStyles = buildList {
+                                            add("disabled")
+                                            if (isHyperOs) add("advanced")
+                                            add("album_art")
+                                        }
+                                        val iconStyleNames = buildList {
+                                            add(stringResource(R.string.icon_style_classic))
+                                            if (isHyperOs) add(stringResource(R.string.icon_style_advanced))
+                                            add(stringResource(R.string.icon_style_album_art))
+                                        }
                                         val currentIconIndex = iconStyles.indexOf(iconStyle).takeIf { it >= 0 } ?: 0
                                         
                                         SuperDropdown(

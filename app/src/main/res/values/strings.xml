@@ -298,6 +298,8 @@
     <string name="icon_style_classic_desc">Show the default music app icon</string>
     <string name="icon_style_advanced">Advanced Style</string>
     <string name="icon_style_advanced_desc">Dual-line layout with album art</string>
+    <string name="icon_style_album_art">Album Art</string>
+    <string name="icon_style_album_art_desc">Show the album artwork as the notification icon</string>
     <string name="dialog_icon_style_title">Select Icon Style</string>
     <string name="settings_disable_scrolling">Disable Lyric Scrolling</string>
     <string name="settings_lyric_text_display_mode">Preferred lyric text</string>

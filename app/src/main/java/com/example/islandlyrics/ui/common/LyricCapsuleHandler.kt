@@ -199,6 +199,17 @@ class LyricCapsuleHandler(
         replaceCachedIconBitmap("", null)
     }
 
+    private fun scaleAlbumArtForIcon(albumArt: Bitmap): Bitmap? {
+        try {
+            val density = context.resources.displayMetrics.density
+            val size = (120f * density).toInt()
+            return Bitmap.createScaledBitmap(albumArt, size, size, true)
+        } catch (e: Exception) {
+            LogManager.getInstance().e(context, TAG, "Failed to scale album art for icon: $e")
+            return null
+        }
+    }
+
     private fun textToBitmap(text: String, forceFontSize: Float? = null): Bitmap? {
         try {
             val density = context.resources.displayMetrics.density
@@ -418,6 +429,17 @@ class LyricCapsuleHandler(
                             replaceCachedIconBitmap(
                                 cacheKey,
                                 AdvancedIconRenderer.render(albumArt, parsedTitle, realArtist, context)
+                            )
+                        }
+                        cachedIconBitmap
+                    }
+                    "album_art" -> {
+                        val albumArt = LyricRepository.getInstance().liveAlbumArt.value
+                        val cacheKey = "album_art|${albumArt?.hashCode()}"
+                        if (cachedIconKey != cacheKey) {
+                            replaceCachedIconBitmap(
+                                cacheKey,
+                                albumArt?.let { scaleAlbumArtForIcon(it) }
                             )
                         }
                         cachedIconBitmap
