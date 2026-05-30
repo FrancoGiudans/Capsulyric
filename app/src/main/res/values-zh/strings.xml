@@ -305,10 +305,11 @@
     <string name="dialog_feedback_wps_desc">可能需要登录。</string>
     <string name="settings_hide_recents">隐藏后台窗口</string>
     <string name="settings_hide_recents_desc">划到后台时自动从最近任务中移除</string>
-    <string name="settings_backup_export">导出配置（JSON）</string>
+    <string name="settings_backup_export">导出配置</string>
     <string name="settings_backup_export_desc">将当前应用配置导出为 JSON 备份文件</string>
-    <string name="settings_backup_import">导入配置（JSON）</string>
+    <string name="settings_backup_import">导入配置</string>
     <string name="settings_backup_import_desc">从 JSON 备份文件导入应用配置</string>
+    <string name="settings_backup_header">备份与恢复</string>
     <string name="settings_backup_export_success">已备份 %1$d 项设置</string>
     <string name="settings_backup_import_success">已还原 %1$d 项设置</string>
     <string name="settings_backup_export_failed">配置导出失败</string>

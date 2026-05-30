@@ -289,20 +289,6 @@ fun MiuixSettingsScreen(
                             prefs.edit { putBoolean("hide_recents_enabled", it) }
                         }
                     )
-                    SuperArrow(
-                        title = stringResource(R.string.settings_backup_export),
-                        summary = stringResource(R.string.settings_backup_export_desc),
-                        onClick = {
-                            exportSettingsLauncher.launch(SettingsBackupManager.buildExportFileName())
-                        }
-                    )
-                    SuperArrow(
-                        title = stringResource(R.string.settings_backup_import),
-                        summary = stringResource(R.string.settings_backup_import_desc),
-                        onClick = {
-                            importSettingsLauncher.launch(arrayOf("application/json"))
-                        }
-                    )
                 }
             }
 
@@ -353,6 +339,25 @@ fun MiuixSettingsScreen(
                     state = localLyricDirState,
                     onOpenDirectory = onOpenLocalLyricDirectory
                 )
+            }
+            item { SmallTitle(text = stringResource(R.string.settings_backup_header)) }
+            item {
+                Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
+                    SuperArrow(
+                        title = stringResource(R.string.settings_backup_export),
+                        summary = stringResource(R.string.settings_backup_export_desc),
+                        onClick = {
+                            exportSettingsLauncher.launch(SettingsBackupManager.buildExportFileName())
+                        }
+                    )
+                    SuperArrow(
+                        title = stringResource(R.string.settings_backup_import),
+                        summary = stringResource(R.string.settings_backup_import_desc),
+                        onClick = {
+                            importSettingsLauncher.launch(arrayOf("application/json"))
+                        }
+                    )
+                }
             }
 
             // ═══ 5. Help & About ═══
