@@ -46,6 +46,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Tune
@@ -117,6 +118,23 @@ fun MiuixOobeScreen(
     var currentStep by remember { mutableIntStateOf(0) }
     var showRuleGuideDialog by remember { mutableStateOf(false) }
     val appIcon = remember { appIconBitmap(context) }
+    val lifecycleOwner = LocalLifecycleOwner.current
+
+    // Permission states lifted for cross-step access
+    var listenerGranted by remember { mutableStateOf(checkNotificationListener(context)) }
+    var postGranted by remember { mutableStateOf(checkPostNotification(context)) }
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+                listenerGranted = checkNotificationListener(context)
+                postGranted = checkPostNotification(context)
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
     val guides = listOf(
         AppGuide(
             name = stringResource(R.string.oobe_tab_qq),
@@ -183,10 +201,16 @@ fun MiuixOobeScreen(
                 title = stringResource(R.string.oobe_step_permissions),
                 showBack = true,
                 actionText = stringResource(R.string.oobe_next),
+                actionEnabled = listenerGranted && postGranted,
                 onBack = { currentStep = 1 },
                 onAction = { currentStep = 3 }
             ) {
-                PermissionsStepBody()
+                PermissionsStepBody(
+                    listenerGranted = listenerGranted,
+                    postGranted = postGranted,
+                    onListenerGrantedChange = { listenerGranted = it },
+                    onPostGrantedChange = { postGranted = it }
+                )
             }
 
             3 -> StandardStepPage(
@@ -346,6 +370,7 @@ private fun StandardStepPage(
     actionText: String,
     onBack: () -> Unit,
     onAction: () -> Unit,
+    actionEnabled: Boolean = true,
     overlay: @Composable BoxScope.() -> Unit = {},
     content: @Composable () -> Unit
 ) {
@@ -401,12 +426,13 @@ private fun StandardStepPage(
 
                 Button(
                     onClick = onAction,
+                    enabled = actionEnabled,
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(
                             start = 16.dp,
                             end = 16.dp,
-                            top = 8.dp,
+                            top = if (!actionEnabled) 4.dp else 8.dp,
                             bottom = padding.calculateBottomPadding() + 12.dp
                         ),
                     minHeight = 60.dp,
@@ -417,6 +443,18 @@ private fun StandardStepPage(
                         text = actionText,
                         fontSize = 18.sp,
                         fontWeight = FontWeight.SemiBold
+                    )
+                }
+
+                if (!actionEnabled) {
+                    Text(
+                        text = stringResource(R.string.oobe_perm_required_hint),
+                        fontSize = 13.sp,
+                        color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 4.dp)
                     )
                 }
             }
@@ -480,20 +518,24 @@ private fun FeaturesStepBody() {
 
 @Composable
 @SuppressLint("BatteryLife")
-private fun PermissionsStepBody() {
+private fun PermissionsStepBody(
+    listenerGranted: Boolean,
+    postGranted: Boolean,
+    onListenerGrantedChange: (Boolean) -> Unit,
+    onPostGrantedChange: (Boolean) -> Unit
+) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
-    var listenerGranted by remember { mutableStateOf(checkNotificationListener(context)) }
-    var postGranted by remember { mutableStateOf(checkPostNotification(context)) }
     var batteryGranted by remember { mutableStateOf(checkBatteryOptimization(context)) }
     val autostartIntent = remember { RomUtils.getAutostartPermissionIntent(context) }
     val showAutostart = RomUtils.isHeavySkin() && autostartIntent != null
+    var showListenerScopeDialog by remember { mutableStateOf(false) }
 
     DisposableEffect(lifecycleOwner) {
         val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
             if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
-                listenerGranted = checkNotificationListener(context)
-                postGranted = checkPostNotification(context)
+                onListenerGrantedChange(checkNotificationListener(context))
+                onPostGrantedChange(checkPostNotification(context))
                 batteryGranted = checkBatteryOptimization(context)
             }
         }
@@ -502,23 +544,40 @@ private fun PermissionsStepBody() {
     }
 
     Column(modifier = Modifier.fillMaxWidth()) {
-        SmallTitle(text = stringResource(R.string.settings_core_services_header))
         FilledArrowCard {
             SuperArrow(
                 title = stringResource(R.string.oobe_perm_listener_title),
-                summary = permissionSummary(
+                summary = permissionSummaryEnhanced(
                     granted = listenerGranted,
-                    text = stringResource(R.string.oobe_perm_listener_desc)
+                    text = stringResource(R.string.oobe_perm_listener_desc),
+                    isRequired = true
                 ),
-                onClick = { context.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)) }
+                endActions = {
+                    if (listenerGranted) {
+                        PermissionGrantedCheckmark()
+                    }
+                },
+                onClick = {
+                    if (!listenerGranted) {
+                        showListenerScopeDialog = true
+                    } else {
+                        context.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
+                    }
+                }
             )
             HorizontalDivider(modifier = Modifier.padding(horizontal = 20.dp))
             SuperArrow(
                 title = stringResource(R.string.oobe_perm_post_title),
-                summary = permissionSummary(
+                summary = permissionSummaryEnhanced(
                     granted = postGranted,
-                    text = stringResource(R.string.oobe_perm_post_desc)
+                    text = stringResource(R.string.oobe_perm_post_desc),
+                    isRequired = true
                 ),
+                endActions = {
+                    if (postGranted) {
+                        PermissionGrantedCheckmark()
+                    }
+                },
                 onClick = {
                     val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
                         data = Uri.fromParts("package", context.packageName, null)
@@ -537,9 +596,10 @@ private fun PermissionsStepBody() {
             HorizontalDivider(modifier = Modifier.padding(horizontal = 20.dp))
             SuperArrow(
                 title = stringResource(R.string.oobe_perm_battery_title),
-                summary = permissionSummary(
+                summary = permissionSummaryEnhanced(
                     granted = batteryGranted,
-                    text = stringResource(R.string.oobe_perm_battery_desc)
+                    text = stringResource(R.string.oobe_perm_battery_desc),
+                    isRequired = false
                 ),
                 onClick = {
                     val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
@@ -550,6 +610,43 @@ private fun PermissionsStepBody() {
                             context.startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
                         }
                 }
+            )
+        }
+    }
+
+    // Privacy / Scope Dialog for Notification Listener
+    MiuixBlurDialog(
+        show = showListenerScopeDialog,
+        title = stringResource(R.string.oobe_perm_listener_title),
+        onDismissRequest = { showListenerScopeDialog = false }
+    ) {
+        androidx.compose.material3.Text(
+            text = stringResource(R.string.oobe_perm_listener_scope),
+            color = MiuixTheme.colorScheme.onSurface,
+            fontSize = MiuixTheme.textStyles.body2.fontSize,
+            modifier = Modifier.padding(bottom = 24.dp)
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            TextButton(
+                text = stringResource(R.string.dialog_btn_cancel),
+                onClick = { showListenerScopeDialog = false },
+                modifier = Modifier.weight(1f),
+                colors = ButtonDefaults.textButtonColors(
+                    textColor = MiuixTheme.colorScheme.onSurfaceVariantActions
+                )
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            TextButton(
+                text = stringResource(R.string.dialog_btn_understand),
+                onClick = {
+                    showListenerScopeDialog = false
+                    context.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
+                },
+                modifier = Modifier.weight(1f),
+                colors = ButtonDefaults.textButtonColorsPrimary()
             )
         }
     }
@@ -870,13 +967,27 @@ private fun HtmlFormattedText(
 private fun pageBackgroundColor(): Color = MiuixTheme.colorScheme.background
 
 @Composable
-private fun permissionSummary(granted: Boolean, text: String): String {
+private fun permissionSummaryEnhanced(granted: Boolean, text: String, isRequired: Boolean): String {
     val status = if (granted) {
         stringResource(R.string.oobe_btn_granted)
+    } else if (isRequired) {
+        "❌ ${stringResource(R.string.oobe_btn_grant)}"
     } else {
         stringResource(R.string.oobe_btn_grant)
     }
     return "$status · $text"
+}
+
+@Composable
+private fun PermissionGrantedCheckmark() {
+    androidx.compose.material3.Icon(
+        imageVector = Icons.Filled.CheckCircle,
+        contentDescription = stringResource(R.string.oobe_btn_granted),
+        tint = androidx.compose.ui.graphics.Color(0xFF4CAF50),
+        modifier = Modifier
+            .size(22.dp)
+            .padding(end = 4.dp)
+    )
 }
 
 private fun appIconBitmap(context: Context): Bitmap {

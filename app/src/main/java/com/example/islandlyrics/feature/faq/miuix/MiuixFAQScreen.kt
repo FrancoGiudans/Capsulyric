@@ -69,7 +69,9 @@ fun MiuixFAQScreen(onBack: () -> Unit) {
                 context.getString(R.string.faq_cat_func),
                 listOf(
                     QAItem(context.resources.getText(R.string.faq_q_no_lyrics), context.resources.getText(R.string.faq_a_no_lyrics)),
-                    QAItem(context.resources.getText(R.string.faq_q_service_error), context.resources.getText(R.string.faq_a_service_error))
+                    QAItem(context.resources.getText(R.string.faq_q_service_error), context.resources.getText(R.string.faq_a_service_error)),
+                    QAItem(context.resources.getText(R.string.faq_q_how_to_diagnostics), context.resources.getText(R.string.faq_a_how_to_diagnostics)),
+                    QAItem(context.resources.getText(R.string.faq_q_island_camera_overlap), context.resources.getText(R.string.faq_a_island_camera_overlap))
                 )
             ),
             FAQCategory(

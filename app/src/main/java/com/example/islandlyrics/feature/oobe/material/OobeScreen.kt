@@ -51,8 +51,27 @@ fun OobeScreen(onFinish: () -> Unit) {
     val pagerState = rememberPagerState(pageCount = { 4 })
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+
+    // Permission states lifted for cross-step access
+    var listenerGranted by remember { mutableStateOf(checkNotificationListener(context)) }
+    var postGranted by remember { mutableStateOf(checkPostNotification(context)) }
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+                listenerGranted = checkNotificationListener(context)
+                postGranted = checkPostNotification(context)
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
+    val snackbarHostState = remember { SnackbarHostState() }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         bottomBar = {
             Row(
                 modifier = Modifier
@@ -94,6 +113,16 @@ fun OobeScreen(onFinish: () -> Unit) {
                     Button(
                         onClick = {
                             if (pagerState.currentPage < pagerState.pageCount - 1) {
+                                // Block navigation from permissions step if required perms not granted
+                                if (pagerState.currentPage == 1 && (!listenerGranted || !postGranted)) {
+                                    scope.launch {
+                                        snackbarHostState.showSnackbar(
+                                            message = context.getString(R.string.oobe_perm_required_hint),
+                                            duration = SnackbarDuration.Short
+                                        )
+                                    }
+                                    return@Button
+                                }
                                 scope.launch { pagerState.animateScrollToPage(pagerState.currentPage + 1) }
                             } else {
                                 onFinish()
@@ -119,7 +148,12 @@ fun OobeScreen(onFinish: () -> Unit) {
         ) { page ->
             when (page) {
                 0 -> WelcomeStep()
-                1 -> PermissionsStep()
+                1 -> PermissionsStep(
+                    listenerGranted = listenerGranted,
+                    postGranted = postGranted,
+                    onListenerGrantedChange = { listenerGranted = it },
+                    onPostGrantedChange = { postGranted = it }
+                )
                 2 -> AppSetupStep()
                 3 -> CompletionStep(onFinish)
             }
@@ -234,24 +268,28 @@ private fun checkSystemStatus(): SystemStatus {
 }
 
 @Composable
-fun PermissionsStep() {
+fun PermissionsStep(
+    listenerGranted: Boolean,
+    postGranted: Boolean,
+    onListenerGrantedChange: (Boolean) -> Unit,
+    onPostGrantedChange: (Boolean) -> Unit
+) {
     val context = LocalContext.current
     val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
     
-    // Permission States
-    var listenerGranted by remember { mutableStateOf(checkNotificationListener(context)) }
-    var postGranted by remember { mutableStateOf(checkPostNotification(context)) }
+    // Battery & Autostart states remain local
     var batteryGranted by remember { mutableStateOf(checkBatteryOptimization(context)) }
-    
-    // Autostart Logic
     val autostartIntent = remember { RomUtils.getAutostartPermissionIntent(context) }
     val showAutostart = RomUtils.isHeavySkin() && autostartIntent != null
+
+    // Privacy/scope dialog for notification listener
+    var showListenerScopeDialog by remember { mutableStateOf(false) }
     
     DisposableEffect(lifecycleOwner) {
         val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
             if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
-                listenerGranted = checkNotificationListener(context)
-                postGranted = checkPostNotification(context)
+                onListenerGrantedChange(checkNotificationListener(context))
+                onPostGrantedChange(checkPostNotification(context))
                 batteryGranted = checkBatteryOptimization(context)
             }
         }
@@ -271,20 +309,39 @@ fun PermissionsStep() {
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold
         )
+        Spacer(modifier = Modifier.height(8.dp))
+        // Required permissions hint
+        Text(
+            text = stringResource(R.string.oobe_perm_required_hint),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
         Spacer(modifier = Modifier.height(24.dp))
         
-        PermissionItem(
+        PermissionItemEnhanced(
             title = stringResource(R.string.oobe_perm_listener_title),
             desc = stringResource(R.string.oobe_perm_listener_desc),
             granted = listenerGranted,
-            onClick = { context.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)) }
+            isRequired = true,
+            onClick = {
+                if (!listenerGranted) {
+                    showListenerScopeDialog = true
+                } else {
+                    context.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
+                }
+            }
         )
         
+        Spacer(modifier = Modifier.height(4.dp))
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
+        Spacer(modifier = Modifier.height(4.dp))
+        
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            PermissionItem(
+            PermissionItemEnhanced(
                 title = stringResource(R.string.oobe_perm_post_title),
                 desc = stringResource(R.string.oobe_perm_post_desc),
                 granted = postGranted,
+                isRequired = true,
                 onClick = {
                     val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
                         data = Uri.fromParts("package", context.packageName, null)
@@ -292,15 +349,18 @@ fun PermissionsStep() {
                     context.startActivity(intent)
                 }
             )
+            Spacer(modifier = Modifier.height(4.dp))
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
+            Spacer(modifier = Modifier.height(4.dp))
         }
         
         // Autostart (High Priority for Heavy Skins)
         if (showAutostart) {
-            PermissionItem(
+            PermissionItemEnhanced(
                 title = stringResource(R.string.oobe_perm_autostart_title),
                 desc = stringResource(R.string.oobe_perm_autostart_desc),
-                granted = false, // Cannot reliably check, so always allow click
-                buttonText = stringResource(R.string.oobe_btn_grant), // Or "Manage"
+                granted = false,
+                isRequired = false,
                 onClick = {
                      try {
                          context.startActivity(autostartIntent)
@@ -309,12 +369,16 @@ fun PermissionsStep() {
                      }
                 }
             )
+            Spacer(modifier = Modifier.height(4.dp))
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
+            Spacer(modifier = Modifier.height(4.dp))
         }
         
-        PermissionItem(
+        PermissionItemEnhanced(
             title = stringResource(R.string.oobe_perm_battery_title),
             desc = stringResource(R.string.oobe_perm_battery_desc),
             granted = batteryGranted,
+            isRequired = false,
             onClick = {
                 val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
                     data = Uri.parse("package:${context.packageName}")
@@ -322,8 +386,46 @@ fun PermissionsStep() {
                 try {
                     context.startActivity(intent)
                 } catch (e: Exception) {
-                    // Fallback
                     context.startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
+                }
+            }
+        )
+    }
+
+    // Privacy / Scope Dialog for Notification Listener
+    if (showListenerScopeDialog) {
+        AlertDialog(
+            onDismissRequest = { showListenerScopeDialog = false },
+            title = {
+                Text(
+                    stringResource(R.string.oobe_perm_listener_title),
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Column(
+                    modifier = Modifier
+                        .heightIn(max = 400.dp)
+                        .verticalScroll(rememberScrollState())
+                ) {
+                    Text(
+                        text = stringResource(R.string.oobe_perm_listener_scope),
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    showListenerScopeDialog = false
+                    context.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
+                }) {
+                    Text(stringResource(R.string.dialog_btn_understand))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showListenerScopeDialog = false }) {
+                    Text(stringResource(R.string.dialog_btn_cancel))
                 }
             }
         )
@@ -331,30 +433,80 @@ fun PermissionsStep() {
 }
 
 @Composable
-fun PermissionItem(
+fun PermissionItemEnhanced(
     title: String, 
     desc: String, 
     granted: Boolean, 
-    onClick: () -> Unit,
-    buttonText: String = if (granted) stringResource(R.string.oobe_btn_granted) else stringResource(R.string.oobe_btn_grant)
+    isRequired: Boolean,
+    onClick: () -> Unit
 ) {
+    val statusColor = if (granted) 
+        MaterialTheme.colorScheme.primary 
+    else if (isRequired) 
+        MaterialTheme.colorScheme.error 
+    else 
+        MaterialTheme.colorScheme.onSurfaceVariant
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 12.dp),
+            .clickable(onClick = onClick)
+            .padding(vertical = 12.dp, horizontal = 4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
+        // Status indicator dot
+        Box(
+            modifier = Modifier
+                .size(10.dp)
+                .clip(CircleShape)
+                .background(statusColor)
+        )
+        Spacer(modifier = Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
-            Text(text = title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-            Text(text = desc, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = title, 
+                    style = MaterialTheme.typography.titleMedium, 
+                    fontWeight = FontWeight.SemiBold
+                )
+                if (isRequired) {
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "●",
+                        color = MaterialTheme.colorScheme.error,
+                        fontSize = 10.sp
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(
+                text = desc, 
+                style = MaterialTheme.typography.bodyMedium, 
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
-        Spacer(modifier = Modifier.width(8.dp))
-        Button(
-            onClick = onClick,
-            enabled = !granted || buttonText == stringResource(R.string.oobe_btn_grant), // Allow clicking battery opt/autostart
-            colors = if (granted) ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondaryContainer, contentColor = MaterialTheme.colorScheme.onSecondaryContainer) else ButtonDefaults.buttonColors()
+        Spacer(modifier = Modifier.width(12.dp))
+        // Status badge
+        Surface(
+            shape = RoundedCornerShape(16.dp),
+            color = if (granted) 
+                MaterialTheme.colorScheme.primaryContainer 
+            else 
+                MaterialTheme.colorScheme.surfaceVariant,
+            contentColor = if (granted)
+                MaterialTheme.colorScheme.onPrimaryContainer
+            else
+                MaterialTheme.colorScheme.onSurfaceVariant
         ) {
-            Text(text = buttonText)
+            Text(
+                text = if (granted) 
+                    stringResource(R.string.oobe_btn_granted) 
+                else 
+                    stringResource(R.string.oobe_btn_grant),
+                modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.SemiBold
+            )
         }
     }
 }

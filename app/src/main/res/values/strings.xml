@@ -70,8 +70,8 @@
     <string name="dialog_btn_add">Add</string>
     <string name="dialog_btn_cancel">Cancel</string>
     <string name="dialog_delete_confirm">Confirm delete %s ?</string>
-    <string name="dialog_privacy_title">Security &amp; Privacy Warning</string>
-    <string name="dialog_privacy_message">To function, Capsulyric needs to read your notifications.\n\nWe Promise:\n1. No Internet Access: This app does not connect to the net.\n2. No Data Collection: No personal data is stored or transmitted.\n3. Local Only: All processing happens on your device.\n\nNote: We are not responsible for the behavior of other apps.</string>
+    <string name="dialog_privacy_title">Permission Scope</string>
+    <string name="dialog_privacy_message">This app needs to read notifications to get lyrics and playback information.\n\nWe only read media playback notification content, including: album art, artist, song title, album name, and the package name of the app currently playing media.\n\nThe above information is used solely for:\n• Reading and displaying playback information\n• Extracting lyrics from media notifications\n• Matching online lyrics when Online Lyrics is enabled\n• App self-logging for diagnostics\n\nWe do NOT read chat messages, verification codes, emails, or any non-media notifications. No personal data is collected or transmitted. All processing is done locally on your device.</string>
     <string name="dialog_btn_understand">I Understand &amp; Grant</string>
     <string name="dialog_block_xmsf_title">Warning</string>
     <string name="dialog_block_xmsf_message">Enabling this may increase battery usage and cause message delays. Continue?</string>
@@ -450,6 +450,20 @@ If you want to use online lyrics, please turn off Full Offline Mode first.</stri
 <b>Reason</b>: Some systems limit the duration of "Notification Access" authorization.\n
 <b>Solution</b>: Please go to system settings and re-grant Notification Access to this app.</string>
     
+    <string name="faq_q_how_to_diagnostics">Q: How to open the Diagnostics Tool?</string>
+    <string name="faq_a_how_to_diagnostics">A: Go to the <b>Settings → About</b> page, and repeatedly tap the <b>"Internal Development Number"</b> or <b>"Commit Hash"</b> 7 times. This will unlock the <b>Diagnostics Tool</b> entry at the bottom of the settings list.\n\n
+Once inside the Diagnostics Tool, you can access <b>Cache Management</b>, <b>Online Lyric Debugging</b>, <b>Lab</b> experimental features, and more.</string>
+    <string name="faq_q_island_camera_overlap">Q: Super Island lyrics overlap with the camera cutout?</string>
+    <string name="faq_a_island_camera_overlap">A: This can happen when the lyric text is too long on devices with a centered punch-hole camera. To resolve this:\n\n
+<b>1. Open the Diagnostics Tool</b>\n
+Follow the steps above to unlock and enter the Diagnostics Tool.\n\n
+<b>2. Navigate to Lab</b>\n
+Find and enter the <b>Lab</b> page within the Diagnostics Tool.\n\n
+<b>3. Enable the adjustment</b>\n
+Turn on <b>"Super Island Word Count Limit Adjustment"</b>.\n\n
+<b>4. Fine-tune in Custom Settings</b>\n
+Go back to <b>Settings → Custom Settings</b> (for the relevant music app rule). You will now see the <b>"Word Count Limit"</b> options for both the <b>left</b> and <b>right</b> sides. Adjust these values based on your actual usage — reducing the word count on the camera-cutout side will prevent overlap.\n\n
+Experiment with different values until the lyrics fit comfortably around the camera area.</string>
     <string name="faq_cat_feedback">Feedback &amp; Logs</string>
     <string name="faq_q_unresolved">Q: None of the above solved my problem. What should I do?</string>
     <string name="faq_a_unresolved">A: Please submit an Issue on the feedback page.   - <b>Recommended</b>: GitHub Issues (Highest efficiency).  - <b>Alternative</b>: WPS Form (May require login).   <b>Important</b>: When submitting feedback, please attach <b>Logs</b> to help us troubleshoot.</string>
@@ -507,13 +521,15 @@ Within the log interface, select the share/export icon. You can specify a timefr
     
     <string name="oobe_step_permissions">Permissions</string>
     <string name="oobe_perm_listener_title">Notification Listener</string>
-    <string name="oobe_perm_listener_desc">Required to read lyrics from music apps.</string>
+    <string name="oobe_perm_listener_desc">Required to read lyrics and playback info from media notifications</string>
+    <string name="oobe_perm_listener_scope">This app only reads media playback notification content, including: album art, artist, song title, album name, and the package name of the app currently playing media.\n\nThe above information is used solely for:\n• Reading and displaying playback information\n• Extracting lyrics from media notifications\n• Matching online lyrics when Online Lyrics is enabled\n• App self-logging for diagnostics\n\nWe do NOT read chat messages, verification codes, emails, or any non-media notifications. No personal data is collected or transmitted.</string>
     <string name="oobe_perm_post_title">Post Notifications</string>
-    <string name="oobe_perm_post_desc">Required to display the lyrics capsule.</string>
+    <string name="oobe_perm_post_desc">Required to display the real-time lyrics capsule in the status bar</string>
     <string name="oobe_perm_battery_title">Battery Optimization (optional)</string>
     <string name="oobe_perm_battery_desc">Allow background running to keep lyrics alive.</string>
     <string name="oobe_btn_grant">Grant</string>
     <string name="oobe_btn_granted">Granted</string>
+    <string name="oobe_perm_required_hint">Please grant Notification Listener and Post Notifications first</string>
     
     <string name="oobe_step_apps">App Setup</string>
     <string name="oobe_apps_intro">To broadcast lyrics, you must enable "Bluetooth/Car Lyrics" in your music app.</string>

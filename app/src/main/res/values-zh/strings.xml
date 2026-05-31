@@ -70,8 +70,8 @@
     <string name="dialog_btn_add">添加</string>
     <string name="dialog_btn_cancel">取消</string>
     <string name="dialog_delete_confirm">确认删除 %s 吗？</string>
-    <string name="dialog_privacy_title">安全隐私警告</string>
-    <string name="dialog_privacy_message">本应用需要读取通知栏以获取歌词。\n\n我们承诺：\n1. 无网络权限：本 app 不会联网。\n2. 隐私数据：不收集任何个人数据。\n3. 本地处理：所有逻辑仅在本地运行。\n\n注意：我们对他人的 App 行为不负责。</string>
+    <string name="dialog_privacy_title">权限使用说明</string>
+    <string name="dialog_privacy_message">本应用需要读取通知以获取歌词与播放信息。\n\n我们仅会读取媒体播放通知的内容，包括：专辑图片、歌手、歌名、专辑名，以及正在播放媒体的应用包名。\n\n上述信息仅用于以下用途：\n• 播放信息的读取和显示\n• 媒体通知歌词的提取\n• 开启在线歌词后用以匹配在线歌词\n• 应用记录自身日志\n\n我们不会读取您的聊天消息、验证码、邮件等非媒体类通知，也不会收集或上传您的任何个人数据。所有处理均在本地完成。</string>
     <string name="dialog_btn_understand">理解并授权</string>
     <string name="dialog_block_xmsf_title">提示</string>
     <string name="dialog_block_xmsf_message">开启后可能会造成耗电量增加和消息延迟，是否继续开启？</string>
@@ -394,6 +394,20 @@
 <b>原因</b>： 部分系统会限制应用“通知使用权”的授权持续时间。\n
 <b>解决</b>： 请尝试前往系统设置，重新授予本应用的通知使用权。</string>
     
+    <string name="faq_q_how_to_diagnostics">Q：如何打开诊断工具？</string>
+    <string name="faq_a_how_to_diagnostics">A：前往<b>“设置 → 关于”</b>页面，连续点击<b>“内部开发号”</b>或<b>“Commit Hash”</b> 7 次，即可在设置列表底部看到<b>“诊断工具”</b>入口，点击进入即可。\n\n
+诊断工具内包含<b>缓存管理</b>、<b>在线歌词调试</b>以及<b>实验室</b>实验性功能等多项工具。</string>
+    <string name="faq_q_island_camera_overlap">Q：超级岛歌词与摄像头重叠？</string>
+    <string name="faq_a_island_camera_overlap">A：当歌词文字较长时，可能会与屏幕顶部居中挖孔摄像头区域发生重叠。请按以下步骤调整：\n\n
+<b>1. 打开诊断工具</b>\n
+按照上面的方法解锁并进入诊断工具。\n\n
+<b>2. 进入实验室</b>\n
+在诊断工具中找到并进入<b>“实验室”</b>页面。\n\n
+<b>3. 开启调节开关</b>\n
+打开<b>“超级岛字数上限调节”</b>。\n\n
+<b>4. 回到自定义设置微调</b>\n
+返回<b>“设置 → 自定义设置”</b>（找到你使用的音乐应用规则），此时可以看到左右两侧分别出现了<b>“字数上限”</b>调节选项。根据实际使用情况调整数值——减少摄像头一侧的字数上限即可避免重叠。\n\n
+你可以反复尝试不同的数值，直到歌词能够舒适地避开摄像头区域。</string>
     <string name="faq_cat_feedback">反馈与日志类</string>
     <string name="faq_q_unresolved">Q：以上内容都无法解决我的问题，怎么办？</string>
     <string name="faq_a_unresolved">A： 请前往反馈页面提交 Issue。   - <b>推荐渠道</b>： GitHub Issues（处理效率最高）。  - <b>备用渠道</b>： WPS 表单（可能需要登录）。   <b>重要</b>： 提交反馈时，请务必附带 <b>日志（Log）</b> 以便我们排查问题。</string>
@@ -445,14 +459,16 @@
     <string name="oobe_privacy_notice">🔒 隐私优先\n本应用完全在本地运行。只有在您明确开启“在线歌词”时才会使用网络权限。我们绝不收集或传输您的个人数据。</string>
     
     <string name="oobe_step_permissions">权限设置</string>
-    <string name="oobe_perm_listener_title">通知监听权限</string>
-    <string name="oobe_perm_listener_desc">用于读取音乐App的歌词通知。</string>
-    <string name="oobe_perm_post_title">发送通知权限</string>
-    <string name="oobe_perm_post_desc">用于显示歌词胶囊。</string>
+    <string name="oobe_perm_listener_title">通知使用权</string>
+    <string name="oobe_perm_listener_desc">用于读取媒体播放通知中的歌词与播放信息</string>
+    <string name="oobe_perm_listener_scope">本应用仅会读取媒体播放通知的内容，包括：专辑图片、歌手、歌名、专辑名，以及正在播放媒体的应用包名。\n\n上述信息仅用于以下用途：\n• 播放信息的读取和显示\n• 媒体通知歌词的提取\n• 开启在线歌词后用以匹配在线歌词\n• 应用记录自身日志\n\n我们不会读取您的聊天消息、验证码、邮件内容等非媒体类通知，也不会收集或上传您的任何个人数据。</string>
+    <string name="oobe_perm_post_title">通知发送权</string>
+    <string name="oobe_perm_post_desc">用于在状态栏显示包含实时歌词的通知胶囊</string>
     <string name="oobe_perm_battery_title">电池优化 （可选）</string>
     <string name="oobe_perm_battery_desc">允许后台运行以保持歌词更新。</string>
     <string name="oobe_btn_grant">授权</string>
     <string name="oobe_btn_granted">已授权</string>
+    <string name="oobe_perm_required_hint">请先授予通知使用权和通知发送权</string>
     
     <string name="oobe_step_apps">应用设置</string>
     <string name="oobe_apps_intro">为了广播歌词，您必须在音乐App中开启“车载/蓝牙歌词”功能。</string>
