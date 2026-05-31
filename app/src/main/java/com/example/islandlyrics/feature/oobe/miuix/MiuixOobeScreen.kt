@@ -18,10 +18,15 @@ import android.widget.TextView
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.Crossfade
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -172,13 +177,44 @@ fun MiuixOobeScreen(
         }
     }
 
-    Crossfade(
-        targetState = currentStep,
-        animationSpec = tween(durationMillis = 160),
-        label = "oobePage"
-    ) { step ->
-        when (step) {
-            0 -> LandingPage(
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(pageBackgroundColor())
+    ) {
+        AnimatedContent(
+            targetState = currentStep,
+            transitionSpec = {
+                if (targetState > initialState) {
+                    // Forward: new page slides in from right, old slides out to left
+                    (slideIntoContainer(
+                        towards = AnimatedContentTransitionScope.SlideDirection.Left,
+                        animationSpec = tween(430, easing = FastOutSlowInEasing)
+                    ) + fadeIn(tween(430, easing = FastOutSlowInEasing)))
+                        .togetherWith(
+                            slideOutOfContainer(
+                                towards = AnimatedContentTransitionScope.SlideDirection.Left,
+                                animationSpec = tween(430, easing = FastOutSlowInEasing)
+                            ) + fadeOut(tween(430, easing = FastOutSlowInEasing))
+                        )
+                } else {
+                    // Backward: old page slides back in from left, current slides out to right
+                    (slideIntoContainer(
+                        towards = AnimatedContentTransitionScope.SlideDirection.Right,
+                        animationSpec = tween(380, easing = FastOutSlowInEasing)
+                    ) + fadeIn(tween(380, easing = FastOutSlowInEasing)))
+                        .togetherWith(
+                            slideOutOfContainer(
+                                towards = AnimatedContentTransitionScope.SlideDirection.Right,
+                                animationSpec = tween(380, easing = FastOutSlowInEasing)
+                            ) + fadeOut(tween(380, easing = FastOutSlowInEasing))
+                        )
+                }
+            },
+            label = "oobePage"
+        ) { step ->
+            when (step) {
+                0 -> LandingPage(
                 appIcon = appIcon,
                 title = stringResource(R.string.app_name),
                 subtitle = stringResource(R.string.oobe_welcome_subtitle),
@@ -274,6 +310,7 @@ fun MiuixOobeScreen(
                 onBack = { currentStep = 4 }
             )
         }
+    }
     }
 }
 
