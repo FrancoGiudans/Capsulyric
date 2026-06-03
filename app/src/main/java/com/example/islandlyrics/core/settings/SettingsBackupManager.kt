@@ -13,9 +13,8 @@ import java.util.Locale
 object SettingsBackupManager {
 
     private const val PREFS_NAME = "IslandLyricsPrefs"
-    private const val SCHEMA_VERSION = 1
+    private const val SCHEMA_VERSION = 2
     private val FILE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMdd_HH_mm_ss", Locale.US)
-    private val EXCLUDED_KEYS = setOf("is_setup_complete")
 
     data class ExportResult(
         val success: Boolean,
@@ -26,6 +25,21 @@ object SettingsBackupManager {
     data class ImportResult(
         val success: Boolean,
         val importedCount: Int,
+        val error: String? = null,
+        /** Parser rule conflicts detected (empty = no conflicts or resolved). */
+        val parserConflicts: List<ParserConflict> = emptyList()
+    )
+
+    data class ParserConflict(
+        val packageName: String,
+        val displayName: String
+    )
+
+    data class PreviewResult(
+        val success: Boolean,
+        /** categoryId → key count present in the file */
+        val categoryCounts: Map<String, Int> = emptyMap(),
+        val totalKeys: Int = 0,
         val error: String? = null
     )
 
@@ -33,25 +47,74 @@ object SettingsBackupManager {
         return "Capsulyric_${now.format(FILE_TIME_FORMATTER)}.json"
     }
 
-    suspend fun exportToUri(context: Context, uri: Uri): ExportResult = withContext(Dispatchers.IO) {
+    // ── v1 (legacy, full export) ────────────────────────────────────────
+
+    /** Full export (v2 schema, all categories). Kept for backward compat callers. */
+    suspend fun exportToUri(context: Context, uri: Uri): ExportResult {
+        val allLeafIds = BackupCategories.ALL_CATEGORIES.flatMap { c ->
+            if (c.subGroups.isNotEmpty()) c.subGroups.map { it.id } else listOf(c.id)
+        }.toSet()
+        return exportSelected(context, uri, allLeafIds)
+    }
+
+    /** Full import – compatible with v1 and v2 files. */
+    suspend fun importFromUri(context: Context, uri: Uri): ImportResult {
+        val allLeafIds = BackupCategories.ALL_CATEGORIES.flatMap { c ->
+            if (c.subGroups.isNotEmpty()) c.subGroups.map { it.id } else listOf(c.id)
+        }.toSet()
+        return importSelected(context, uri, allLeafIds)
+    }
+
+    // ── v2 (selective) ─────────────────────────────────────────────────
+
+    /** Export only the selected leaf items (category IDs for atomic, subGroup IDs for expandable). */
+    suspend fun exportSelected(
+        context: Context,
+        uri: Uri,
+        selectedLeafIds: Set<String>
+    ): ExportResult = withContext(Dispatchers.IO) {
         runCatching {
             val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             val all = prefs.all
-            val entries = JSONObject()
-            var count = 0
+            val selectedKeys = BackupCategories.collectKeysForLeafIds(all.keys, selectedLeafIds)
 
-            all.toSortedMap().forEach { (key, value) ->
-                if (EXCLUDED_KEYS.contains(key)) return@forEach
-                val wrapped = wrapValue(value) ?: return@forEach
-                entries.put(key, wrapped)
-                count += 1
+            val categoriesJson = JSONObject()
+            var count = 0
+            val grouped = selectedKeys.groupBy { key -> BackupCategories.categoryForKey(key)?.id ?: "other" }
+
+            // Detect if parser_rules is being exported with partial app selection
+            val parserSelected = selectedLeafIds.any { it.startsWith("parser_") && it != "parser_all" }
+
+            for ((catId, keys) in grouped) {
+                val entries = JSONObject()
+                for (key in keys.sorted()) {
+                    val value = all[key] ?: continue
+                    if (key in BackupCategories.EXCLUDED_KEYS) continue
+                    
+                    // Filter parser_rules_json to only selected apps
+                    val exportValue = if (key == "parser_rules_json" && parserSelected && value is String) {
+                        BackupCategories.filterParserRulesJson(value, selectedLeafIds)
+                    } else {
+                        value
+                    }
+                    
+                    val wrapped = wrapValue(exportValue) ?: continue
+                    entries.put(key, wrapped)
+                    count += 1
+                }
+                if (entries.length() > 0) {
+                    categoriesJson.put(catId, JSONObject().apply {
+                        put("preferences", entries)
+                    })
+                }
             }
 
             val root = JSONObject().apply {
                 put("schema_version", SCHEMA_VERSION)
                 put("app", "Capsulyric")
                 put("exported_at", LocalDateTime.now().toString())
-                put("preferences", entries)
+                put("selected_leaf_ids", JSONArray(selectedLeafIds.toList()))
+                put("categories", categoriesJson)
             }
 
             context.contentResolver.openOutputStream(uri)?.use { output ->
@@ -64,31 +127,128 @@ object SettingsBackupManager {
         }
     }
 
-    suspend fun importFromUri(context: Context, uri: Uri): ImportResult = withContext(Dispatchers.IO) {
+    /** Import only the selected leaf items. Handles both v1 (flat) and v2 (structured) files. */
+    suspend fun importSelected(
+        context: Context,
+        uri: Uri,
+        selectedLeafIds: Set<String>
+    ): ImportResult = withContext(Dispatchers.IO) {
         runCatching {
             val text = context.contentResolver.openInputStream(uri)?.use { input ->
                 input.bufferedReader(Charsets.UTF_8).readText()
             } ?: throw IllegalStateException("openInputStream returned null")
 
             val root = JSONObject(text)
-            val prefsJson = root.optJSONObject("preferences") ?: root
             val editor = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit()
+            val schemaVersion = root.optInt("schema_version", 1)
 
             var count = 0
-            val iterator = prefsJson.keys()
-            while (iterator.hasNext()) {
-                val key = iterator.next()
-                if (EXCLUDED_KEYS.contains(key)) continue
-                val value = prefsJson.opt(key)
-                if (applyValue(editor, key, value)) {
-                    count += 1
+            var importedParserJson: String? = null
+
+            if (schemaVersion >= 2 && root.has("categories")) {
+                // v2: structured categories – filter keys by leaf ID patterns
+                val allowedPatterns = BackupCategories.patternsForLeafIds(selectedLeafIds)
+                val categoriesObj = root.optJSONObject("categories")
+                if (categoriesObj != null) {
+                    val catIter = categoriesObj.keys()
+                    while (catIter.hasNext()) {
+                        val catId = catIter.next()
+                        val catBlock = categoriesObj.optJSONObject(catId) ?: continue
+                        val prefsJson = catBlock.optJSONObject("preferences") ?: continue
+                        val keyIter = prefsJson.keys()
+                        while (keyIter.hasNext()) {
+                            val key = keyIter.next()
+                            if (key in BackupCategories.EXCLUDED_KEYS) continue
+                            if (!allowedPatterns.any { BackupCategories.matchesPattern(key, it) }) continue
+                            // Intercept parser_rules_json for merge (unwrap type wrapper)
+                            if (key == "parser_rules_json" && selectedLeafIds.any { it.startsWith("parser_") }) {
+                                importedParserJson = unwrapStringValue(prefsJson.opt(key))
+                                count += 1
+                                continue
+                            }
+                            val value = prefsJson.opt(key)
+                            if (applyValue(editor, key, value)) count += 1
+                        }
+                    }
+                }
+            } else {
+                // v1: flat preferences block – map each key to its category, filter by leaf patterns
+                val allowedPatterns = BackupCategories.patternsForLeafIds(selectedLeafIds)
+                val prefsJson = root.optJSONObject("preferences") ?: root
+                val iterator = prefsJson.keys()
+                while (iterator.hasNext()) {
+                    val key = iterator.next()
+                    if (key in BackupCategories.EXCLUDED_KEYS) continue
+                    if (allowedPatterns.isNotEmpty() &&
+                        !allowedPatterns.any { BackupCategories.matchesPattern(key, it) }) continue
+                    if (key == "parser_rules_json" && selectedLeafIds.any { it.startsWith("parser_") }) {
+                        importedParserJson = unwrapStringValue(prefsJson.opt(key))
+                        count += 1
+                        continue
+                    }
+                    val value = prefsJson.opt(key)
+                    if (applyValue(editor, key, value)) count += 1
                 }
             }
 
             editor.apply()
-            ImportResult(success = true, importedCount = count)
+
+            // Check for parser rule conflicts
+            val conflicts = if (importedParserJson != null && importedParserJson.isNotEmpty()) {
+                val existingConflicts = checkParserConflicts(context, importedParserJson)
+                if (existingConflicts.isEmpty()) {
+                    // No conflicts — apply directly
+                    BackupCategories.mergeParserRulesJson(context, importedParserJson)
+                }
+                existingConflicts
+            } else {
+                emptyList()
+            }
+
+            ImportResult(success = true, importedCount = count, parserConflicts = conflicts)
         }.getOrElse {
             ImportResult(success = false, importedCount = 0, error = it.message)
+        }
+    }
+
+    /** Read a backup file and return which categories + key counts it contains. */
+    suspend fun previewImportFile(context: Context, uri: Uri): PreviewResult = withContext(Dispatchers.IO) {
+        runCatching {
+            val text = context.contentResolver.openInputStream(uri)?.use { input ->
+                input.bufferedReader(Charsets.UTF_8).readText()
+            } ?: throw IllegalStateException("openInputStream returned null")
+
+            val root = JSONObject(text)
+            val schemaVersion = root.optInt("schema_version", 1)
+
+            if (schemaVersion >= 2 && root.has("categories")) {
+                val categoriesObj = root.optJSONObject("categories")
+                if (categoriesObj != null) {
+                    val counts = mutableMapOf<String, Int>()
+                    var total = 0
+                    val catIter = categoriesObj.keys()
+                    while (catIter.hasNext()) {
+                        val catId = catIter.next()
+                        val catBlock = categoriesObj.optJSONObject(catId) ?: continue
+                        val prefsJson = catBlock.optJSONObject("preferences") ?: continue
+                        val n = prefsJson.length()
+                        counts[catId] = n
+                        total += n
+                    }
+                    PreviewResult(success = true, categoryCounts = counts, totalKeys = total)
+                } else {
+                    PreviewResult(success = false, error = "Missing categories in v2 file")
+                }
+            } else {
+                // v1: detect categories from flat preferences
+                val prefsJson = root.optJSONObject("preferences") ?: root
+                val counts = BackupCategories.detectCategoriesFromJson(prefsJson)
+                var total = 0
+                counts.values.forEach { total += it }
+                PreviewResult(success = true, categoryCounts = counts, totalKeys = total)
+            }
+        }.getOrElse {
+            PreviewResult(success = false, error = it.message)
         }
     }
 
@@ -190,5 +350,86 @@ object SettingsBackupManager {
             }
             else -> false
         }
+    }
+
+    // ── Parser rule conflict detection & resolution ────────────────────
+
+    /**
+     * Unwrap a type-wrapped value (e.g. {"type":"string","value":"..."}) to its raw string.
+     */
+    internal fun unwrapStringValue(rawValue: Any?): String? {
+        if (rawValue is JSONObject && rawValue.has("type")) {
+            val type = rawValue.optString("type")
+            val value = rawValue.opt("value")
+            return when (type) {
+                "string" -> if (value == JSONObject.NULL) null else value?.toString()
+                else -> null
+            }
+        }
+        return when (rawValue) {
+            is String -> rawValue
+            else -> null
+        }?.takeIf { it.isNotEmpty() }
+    }
+
+    /**
+     * Check if the imported parser_rules_json contains apps that already exist.
+     * Returns list of conflicting package names with display names.
+     */
+    private fun checkParserConflicts(context: Context, importedJson: String): List<ParserConflict> {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val existingJson = prefs.getString("parser_rules_json", null) ?: return emptyList()
+        return try {
+            val existing = JSONArray(existingJson)
+            val imported = JSONArray(importedJson)
+            val existingPkgs = (0 until existing.length()).mapNotNull {
+                existing.getJSONObject(it).optString("pkg", "").takeIf { pkg -> pkg.isNotEmpty() }
+            }.toSet()
+            val conflicts = mutableListOf<ParserConflict>()
+            for (i in 0 until imported.length()) {
+                val obj = imported.getJSONObject(i)
+                val pkg = obj.optString("pkg", "")
+                if (pkg.isNotEmpty() && pkg in existingPkgs) {
+                    val name = if (obj.has("name") && !obj.isNull("name")) obj.getString("name") else pkg
+                    conflicts.add(ParserConflict(packageName = pkg, displayName = name))
+                }
+            }
+            conflicts
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+
+    /**
+     * Resolve parser rule conflicts after user choice.
+     * @param keepExistingPkgs set of package names to keep existing (rest are replaced with imported).
+     */
+    fun resolveParserConflicts(
+        context: Context,
+        importedJson: String,
+        keepExistingPkgs: Set<String>
+    ) {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val existingJson = prefs.getString("parser_rules_json", "[]") ?: "[]"
+        try {
+            val existing = JSONArray(existingJson)
+            val imported = JSONArray(importedJson)
+            val byPkg = mutableMapOf<String, Int>()
+            for (i in 0 until existing.length()) {
+                byPkg[existing.getJSONObject(i).getString("pkg")] = i
+            }
+            for (i in 0 until imported.length()) {
+                val obj = imported.getJSONObject(i)
+                val pkg = obj.getString("pkg")
+                if (pkg in keepExistingPkgs) continue
+                val idx = byPkg[pkg]
+                if (idx != null) {
+                    existing.put(idx, obj)
+                } else {
+                    existing.put(obj)
+                }
+            }
+            prefs.edit().putString("parser_rules_json", existing.toString()).apply()
+        } catch (_: Exception) { }
     }
 }

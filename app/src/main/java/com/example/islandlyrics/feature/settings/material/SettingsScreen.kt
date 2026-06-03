@@ -54,8 +54,13 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import com.example.islandlyrics.ui.theme.material.materialPageContainerColor
 import com.example.islandlyrics.ui.theme.material.neutralMaterialTopBarColors
 import com.example.islandlyrics.core.settings.SettingsBackupManager
+import com.example.islandlyrics.core.settings.SettingsBackupManager.ParserConflict
+import com.example.islandlyrics.core.settings.BackupCategories
+import com.example.islandlyrics.core.settings.SettingsBackupManager.PreviewResult
 import androidx.core.net.toUri
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -84,12 +89,32 @@ fun SettingsScreen(
     val backupExportFailedText = stringResource(R.string.settings_backup_export_failed)
     val backupImportSuccessFormat = stringResource(R.string.settings_backup_import_success)
     val backupImportFailedText = stringResource(R.string.settings_backup_import_failed)
+
+    // Backup category selection states
+    var showExportCategoryDialog by remember { mutableStateOf(false) }
+    var selectedExportCategories by remember {
+        mutableStateOf(BackupCategories.ALL_CATEGORIES.flatMap { c ->
+            if (c.subGroups.isNotEmpty()) c.subGroups.map { it.id } else listOf(c.id)
+        }.toSet())
+    }
+    var showImportPreviewDialog by remember { mutableStateOf(false) }
+    var importPreviewResult by remember { mutableStateOf<PreviewResult?>(null) }
+    var pendingImportUri by remember { mutableStateOf<Uri?>(null) }
+    var selectedImportCategories by remember { mutableStateOf(setOf<String>()) }
+
+    // Parser conflict resolution state
+    var showParserConflictDialog by remember { mutableStateOf(false) }
+    var parserConflicts by remember { mutableStateOf<List<ParserConflict>>(emptyList()) }
+    var pendingConflictImportUri by remember { mutableStateOf<Uri?>(null) }
+    var pendingConflictSelections by remember { mutableStateOf(setOf<String>()) }
+    var conflictKeepExisting by remember { mutableStateOf(setOf<String>()) }
+
     val exportSettingsLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument("application/json")
     ) { uri ->
         if (uri == null) return@rememberLauncherForActivityResult
         coroutineScope.launch {
-            val result = SettingsBackupManager.exportToUri(context, uri)
+            val result = SettingsBackupManager.exportSelected(context, uri, selectedExportCategories)
             val message = if (result.success) {
                 String.format(Locale.getDefault(), backupExportSuccessFormat, result.exportedCount)
             } else {
@@ -103,13 +128,56 @@ fun SettingsScreen(
     ) { uri ->
         if (uri == null) return@rememberLauncherForActivityResult
         coroutineScope.launch {
-            val result = SettingsBackupManager.importFromUri(context, uri)
-            val message = if (result.success) {
-                String.format(Locale.getDefault(), backupImportSuccessFormat, result.importedCount)
+            val preview = SettingsBackupManager.previewImportFile(context, uri)
+            if (preview.success) {
+                importPreviewResult = preview
+                pendingImportUri = uri
+                // Build dynamic categories list (including parser rules from backup file)
+                val dynamicCategoriesList = BackupCategories.ALL_CATEGORIES.map { cat ->
+                    if (cat.id == "parser_rules" && uri != null) {
+                        // Read parser rules from backup file
+                        val parserJson = runCatching {
+                            context.contentResolver.openInputStream(uri)?.use { input ->
+                                val text = input.bufferedReader(Charsets.UTF_8).readText()
+                                val root = org.json.JSONObject(text)
+                                val schemaVersion = root.optInt("schema_version", 1)
+                                if (schemaVersion >= 2 && root.has("categories")) {
+                                    val catObj = root.optJSONObject("categories")
+                                    val parserBlock = catObj?.optJSONObject("parser_rules")
+                                    val prefsJson = parserBlock?.optJSONObject("preferences")
+                                    val wrapped = prefsJson?.opt("parser_rules_json")
+                                    if (wrapped is org.json.JSONObject && wrapped.has("type")) {
+                                        wrapped.optString("value", "")
+                                    } else if (wrapped is String) {
+                                        wrapped
+                                    } else null
+                                } else {
+                                    val prefsJson = root.optJSONObject("preferences") ?: root
+                                    val wrapped = prefsJson?.opt("parser_rules_json")
+                                    if (wrapped is org.json.JSONObject && wrapped.has("type")) {
+                                        wrapped.optString("value", "")
+                                    } else if (wrapped is String) {
+                                        wrapped
+                                    } else null
+                                }
+                            }
+                        }.getOrNull()
+                        cat.copy(subGroups = BackupCategories.parserAppSubGroupsFromJson(parserJson))
+                    } else cat
+                }
+                // Convert category IDs to leaf IDs for the dialog - ALL selected by default
+                selectedImportCategories = preview.categoryCounts.keys.flatMap { catId ->
+                    val cat = dynamicCategoriesList.find { it.id == catId }
+                    if (cat != null && cat.subGroups.isNotEmpty()) {
+                        cat.subGroups.map { it.id }
+                    } else {
+                        listOf(catId)
+                    }
+                }.toSet()
+                showImportPreviewDialog = true
             } else {
-                backupImportFailedText
+                snackbarHostState.showSnackbar(backupImportFailedText)
             }
-            snackbarHostState.showSnackbar(message)
         }
     }
     var dynamicIconEnabled by remember { mutableStateOf(prefs.getBoolean("dynamic_icon_enabled", false)) }
@@ -181,7 +249,16 @@ fun SettingsScreen(
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         contentWindowInsets = WindowInsets(0),
-        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
+        snackbarHost = {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 16.dp, vertical = 96.dp),
+                contentAlignment = Alignment.BottomCenter
+            ) {
+                SnackbarHost(hostState = snackbarHostState)
+            }
+        },
         topBar = {
             MediumTopAppBar(
                 title = { Text(stringResource(R.string.title_app_settings)) },
@@ -342,7 +419,7 @@ fun SettingsScreen(
                         summary = stringResource(R.string.settings_backup_export_desc),
                         icon = Icons.Filled.Upload,
                         onClick = {
-                            exportSettingsLauncher.launch(SettingsBackupManager.buildExportFileName())
+                            showExportCategoryDialog = true
                         }
                     )
                     SettingsCardDivider()
@@ -453,8 +530,210 @@ fun SettingsScreen(
                 onDismiss = { showDismissDelayDialog = false }
             )
         }
+
+        // Backup category export dialog
+        if (showExportCategoryDialog) {
+            val dynamicCategories = BackupCategories.ALL_CATEGORIES.map { cat ->
+                if (cat.id == "parser_rules") {
+                    cat.copy(subGroups = BackupCategories.parserAppSubGroups(context))
+                } else cat
+            }
+            val allLeafIds = dynamicCategories.flatMap { c ->
+                if (c.subGroups.isNotEmpty()) c.subGroups.map { it.id } else listOf(c.id)
+            }.toSet()
+            BackupCategoryDialog(
+                titleRes = R.string.backup_dialog_export_title,
+                categories = dynamicCategories,
+                initialSelected = allLeafIds,
+                onConfirm = { selected ->
+                    selectedExportCategories = selected
+                    showExportCategoryDialog = false
+                    exportSettingsLauncher.launch(SettingsBackupManager.buildExportFileName())
+                },
+                onDismiss = { showExportCategoryDialog = false }
+            )
+        }
+
+        // Backup category import preview dialog
+        if (showImportPreviewDialog && importPreviewResult != null) {
+            val dynamicCategories = BackupCategories.ALL_CATEGORIES.map { cat ->
+                if (cat.id == "parser_rules") {
+                    // Use parser rules from the backup file, not from device
+                    val uri = pendingImportUri
+                    val parserJson = if (uri != null) {
+                        remember(uri) {
+                            runCatching {
+                                context.contentResolver.openInputStream(uri)?.use { input ->
+                                    val text = input.bufferedReader(Charsets.UTF_8).readText()
+                                    val root = org.json.JSONObject(text)
+                                    val schemaVersion = root.optInt("schema_version", 1)
+                                    if (schemaVersion >= 2 && root.has("categories")) {
+                                        val catObj = root.optJSONObject("categories")
+                                        val parserBlock = catObj?.optJSONObject("parser_rules")
+                                        val prefsJson = parserBlock?.optJSONObject("preferences")
+                                        val wrapped = prefsJson?.opt("parser_rules_json")
+                                        // Unwrap if it's a type-wrapped value
+                                        if (wrapped is org.json.JSONObject && wrapped.has("type")) {
+                                            wrapped.optString("value", "")
+                                        } else if (wrapped is String) {
+                                            wrapped
+                                        } else null
+                                    } else {
+                                        val prefsJson = root.optJSONObject("preferences") ?: root
+                                        val wrapped = prefsJson?.opt("parser_rules_json")
+                                        if (wrapped is org.json.JSONObject && wrapped.has("type")) {
+                                            wrapped.optString("value", "")
+                                        } else if (wrapped is String) {
+                                            wrapped
+                                        } else null
+                                    }
+                                }
+                            }.getOrNull()
+                        }
+                    } else null
+                    cat.copy(subGroups = BackupCategories.parserAppSubGroupsFromJson(parserJson))
+                } else cat
+            }
+            BackupCategoryDialog(
+                titleRes = R.string.backup_dialog_import_title,
+                categories = dynamicCategories,
+                categoryKeyCounts = importPreviewResult!!.categoryCounts,
+                initialSelected = selectedImportCategories,
+                onConfirm = { selected ->
+                    selectedImportCategories = selected
+                    showImportPreviewDialog = false
+                    val uri = pendingImportUri ?: return@BackupCategoryDialog
+                    coroutineScope.launch {
+                        val result = SettingsBackupManager.importSelected(context, uri, selected)
+                        if (result.success && result.parserConflicts.isNotEmpty()) {
+                            // Parser rule conflicts detected - show conflict dialog
+                            parserConflicts = result.parserConflicts
+                            pendingConflictImportUri = uri
+                            pendingConflictSelections = selected
+                            conflictKeepExisting = emptySet()  // Default: none selected = keep all existing
+                            showParserConflictDialog = true
+                        } else {
+                            // No conflicts or import failed - show result
+                            val message = if (result.success) {
+                                String.format(Locale.getDefault(), backupImportSuccessFormat, result.importedCount)
+                            } else {
+                                backupImportFailedText
+                            }
+                            snackbarHostState.showSnackbar(message)
+                        }
+                        pendingImportUri = null
+                        importPreviewResult = null
+                    }
+                },
+                onDismiss = {
+                    showImportPreviewDialog = false
+                    pendingImportUri = null
+                    importPreviewResult = null
+                }
+            )
+        }
+
+        // Parser conflict resolution dialog
+        if (showParserConflictDialog && parserConflicts.isNotEmpty()) {
+            AlertDialog(
+                onDismissRequest = { showParserConflictDialog = false },
+                title = { Text(stringResource(R.string.backup_conflict_title)) },
+                text = {
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        Text(
+                            stringResource(R.string.backup_conflict_description),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        for (conflict in parserConflicts) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        conflictKeepExisting = if (conflict.packageName in conflictKeepExisting) {
+                                            conflictKeepExisting - conflict.packageName
+                                        } else {
+                                            conflictKeepExisting + conflict.packageName
+                                        }
+                                    }
+                                    .padding(vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Checkbox(
+                                    checked = conflict.packageName in conflictKeepExisting,
+                                    onCheckedChange = { checked ->
+                                        conflictKeepExisting = if (checked) {
+                                            conflictKeepExisting + conflict.packageName
+                                        } else {
+                                            conflictKeepExisting - conflict.packageName
+                                        }
+                                    }
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Column {
+                                    Text(conflict.displayName, style = MaterialTheme.typography.bodyMedium)
+                                    Text(conflict.packageName, style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                            }
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = {
+                        showParserConflictDialog = false
+                        val uri = pendingConflictImportUri ?: return@TextButton
+                        coroutineScope.launch {
+                            val parserJson = readParserJsonFromFile(context, uri)
+                            val allConflictPkgs = parserConflicts.map { it.packageName }.toSet()
+                            val packagesToKeep = allConflictPkgs - conflictKeepExisting
+                            SettingsBackupManager.resolveParserConflicts(context, parserJson, packagesToKeep)
+                            snackbarHostState.showSnackbar(
+                                String.format(Locale.getDefault(), backupImportSuccessFormat,
+                                    pendingConflictSelections.size))
+                            pendingConflictImportUri = null
+                            pendingConflictSelections = emptySet()
+                        }
+                    }) { Text(stringResource(R.string.backup_conflict_apply)) }
+                },
+                dismissButton = {
+                    TextButton(onClick = {
+                        showParserConflictDialog = false
+                        pendingConflictImportUri = null
+                    }) { Text(stringResource(R.string.backup_dialog_cancel)) }
+                }
+            )
+        }
     }
 }
+private suspend fun readParserJsonFromFile(context: Context, uri: Uri): String = withContext(Dispatchers.IO) {
+    try {
+        val text = context.contentResolver.openInputStream(uri)?.bufferedReader(Charsets.UTF_8)?.readText()
+            ?: return@withContext "[]"
+        val root = org.json.JSONObject(text)
+        val schemaVersion = root.optInt("schema_version", 1)
+        val wrappedValue = if (schemaVersion >= 2 && root.has("categories")) {
+            val catObj = root.optJSONObject("categories")
+            val parserBlock = catObj?.optJSONObject("parser_rules")
+            parserBlock?.optJSONObject("preferences")?.optString("parser_rules_json", "[]") ?: "[]"
+        } else {
+            val prefsJson = root.optJSONObject("preferences") ?: root
+            prefsJson.optString("parser_rules_json", "[]") ?: "[]"
+        }
+        // Unwrap the type-wrapped value
+        SettingsBackupManager.unwrapStringValue(wrappedValue) ?: "[]"
+    } catch (_: Exception) { "[]" }
+}
+
+private fun applyImportedLanguage(context: Context, prefs: android.content.SharedPreferences) {
+    val code = prefs.getString("language_code", "") ?: ""
+    if (code.isNotEmpty()) {
+        ThemeHelper.setLanguage(context, code)
+        (context as? Activity)?.recreate()
+    }
+}
+
 @Composable
 fun FeedbackSelectionDialog(onDismiss: () -> Unit) {
     val context = LocalContext.current

@@ -16,10 +16,12 @@ import com.example.islandlyrics.feature.settings.CommunityDialogState
 import com.example.islandlyrics.feature.settings.CommunityMarkdownBody
 import com.example.islandlyrics.feature.settings.buildCommunityMarkdown
 import android.content.Intent
+import android.content.Context
 import android.net.Uri
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -28,6 +30,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -38,6 +41,8 @@ import androidx.core.content.edit
 import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import top.yukonga.miuix.kmp.basic.*
 import top.yukonga.miuix.kmp.preference.ArrowPreference as SuperArrow
 import top.yukonga.miuix.kmp.preference.OverlayDropdownPreference as SuperDropdown
@@ -46,6 +51,9 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
 import com.example.islandlyrics.feature.update.miuix.MiuixUpdateDialog
 import com.example.islandlyrics.ui.miuix.*
 import com.example.islandlyrics.core.settings.SettingsBackupManager
+import com.example.islandlyrics.core.settings.SettingsBackupManager.ParserConflict
+import com.example.islandlyrics.core.settings.BackupCategories
+import com.example.islandlyrics.core.settings.SettingsBackupManager.PreviewResult
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import top.yukonga.miuix.kmp.basic.Snackbar as MiuixSnackbar
@@ -83,12 +91,31 @@ fun MiuixSettingsScreen(
     val backupExportFailedText = stringResource(R.string.settings_backup_export_failed)
     val backupImportSuccessFormat = stringResource(R.string.settings_backup_import_success)
     val backupImportFailedText = stringResource(R.string.settings_backup_import_failed)
+
+    // Backup category selection states
+    var showExportCategoryDialog by remember { mutableStateOf(false) }
+    var selectedExportCategories by remember {
+        mutableStateOf(BackupCategories.ALL_CATEGORIES.flatMap { c ->
+            if (c.subGroups.isNotEmpty()) c.subGroups.map { it.id } else listOf(c.id)
+        }.toSet())
+    }
+    var showImportPreviewDialog by remember { mutableStateOf(false) }
+    var importPreviewResult by remember { mutableStateOf<PreviewResult?>(null) }
+    var pendingImportUri by remember { mutableStateOf<Uri?>(null) }
+    var selectedImportCategories by remember { mutableStateOf(setOf<String>()) }
+
+    var showParserConflictDialog by remember { mutableStateOf(false) }
+    var parserConflicts by remember { mutableStateOf<List<ParserConflict>>(emptyList()) }
+    var pendingConflictImportUri by remember { mutableStateOf<Uri?>(null) }
+    var pendingConflictSelections by remember { mutableStateOf(setOf<String>()) }
+    var conflictKeepExisting by remember { mutableStateOf(setOf<String>()) }
+
     val exportSettingsLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument("application/json")
     ) { uri ->
         if (uri == null) return@rememberLauncherForActivityResult
         coroutineScope.launch {
-            val result = SettingsBackupManager.exportToUri(context, uri)
+            val result = SettingsBackupManager.exportSelected(context, uri, selectedExportCategories)
             val message = if (result.success) {
                 String.format(Locale.getDefault(), backupExportSuccessFormat, result.exportedCount)
             } else {
@@ -102,13 +129,56 @@ fun MiuixSettingsScreen(
     ) { uri ->
         if (uri == null) return@rememberLauncherForActivityResult
         coroutineScope.launch {
-            val result = SettingsBackupManager.importFromUri(context, uri)
-            val message = if (result.success) {
-                String.format(Locale.getDefault(), backupImportSuccessFormat, result.importedCount)
+            val preview = SettingsBackupManager.previewImportFile(context, uri)
+            if (preview.success) {
+                importPreviewResult = preview
+                pendingImportUri = uri
+                // Build dynamic categories list (including parser rules from backup file)
+                val dynamicCategoriesList = BackupCategories.ALL_CATEGORIES.map { cat ->
+                    if (cat.id == "parser_rules" && uri != null) {
+                        // Read parser rules from backup file
+                        val parserJson = runCatching {
+                            context.contentResolver.openInputStream(uri)?.use { input ->
+                                val text = input.bufferedReader(Charsets.UTF_8).readText()
+                                val root = org.json.JSONObject(text)
+                                val schemaVersion = root.optInt("schema_version", 1)
+                                if (schemaVersion >= 2 && root.has("categories")) {
+                                    val catObj = root.optJSONObject("categories")
+                                    val parserBlock = catObj?.optJSONObject("parser_rules")
+                                    val prefsJson = parserBlock?.optJSONObject("preferences")
+                                    val wrapped = prefsJson?.opt("parser_rules_json")
+                                    if (wrapped is org.json.JSONObject && wrapped.has("type")) {
+                                        wrapped.optString("value", "")
+                                    } else if (wrapped is String) {
+                                        wrapped
+                                    } else null
+                                } else {
+                                    val prefsJson = root.optJSONObject("preferences") ?: root
+                                    val wrapped = prefsJson?.opt("parser_rules_json")
+                                    if (wrapped is org.json.JSONObject && wrapped.has("type")) {
+                                        wrapped.optString("value", "")
+                                    } else if (wrapped is String) {
+                                        wrapped
+                                    } else null
+                                }
+                            }
+                        }.getOrNull()
+                        cat.copy(subGroups = BackupCategories.parserAppSubGroupsFromJson(parserJson))
+                    } else cat
+                }
+                // Convert category IDs to leaf IDs for the dialog - ALL selected by default
+                selectedImportCategories = preview.categoryCounts.keys.flatMap { catId ->
+                    val cat = dynamicCategoriesList.find { it.id == catId }
+                    if (cat != null && cat.subGroups.isNotEmpty()) {
+                        cat.subGroups.map { it.id }
+                    } else {
+                        listOf(catId)
+                    }
+                }.toSet()
+                showImportPreviewDialog = true
             } else {
-                backupImportFailedText
+                snackbarHostState.showSnackbar(message = backupImportFailedText)
             }
-            snackbarHostState.showSnackbar(message = message)
         }
     }
 
@@ -212,10 +282,17 @@ fun MiuixSettingsScreen(
             )
         },
         snackbarHost = {
-            MiuixSnackbarHost(
-                state = snackbarHostState,
-                content = { data -> MiuixSnackbar(data = data) }
-            )
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(bottom = 82.dp),
+                contentAlignment = Alignment.BottomCenter
+            ) {
+                MiuixSnackbarHost(
+                    state = snackbarHostState,
+                    content = { data -> MiuixSnackbar(data = data) }
+                )
+            }
         },
         bottomBar = bottomBar,
     ) { padding ->
@@ -347,7 +424,7 @@ fun MiuixSettingsScreen(
                         title = stringResource(R.string.settings_backup_export),
                         summary = stringResource(R.string.settings_backup_export_desc),
                         onClick = {
-                            exportSettingsLauncher.launch(SettingsBackupManager.buildExportFileName())
+                            showExportCategoryDialog = true
                         }
                     )
                     SuperArrow(
@@ -431,6 +508,216 @@ fun MiuixSettingsScreen(
         }
 
         MiuixLocalLyricDirectoriesDialog(localLyricDirState)
+
+        // Backup category export dialog
+        MiuixBackupCategoryDialog(
+            show = showExportCategoryDialog,
+            titleRes = R.string.backup_dialog_export_title,
+            categories = BackupCategories.ALL_CATEGORIES.map { cat ->
+                if (cat.id == "parser_rules") cat.copy(subGroups = BackupCategories.parserAppSubGroups(context))
+                else cat
+            }.also { cats ->
+                // Default to all leaf IDs for export
+                if (showExportCategoryDialog) {
+                    selectedExportCategories = cats.flatMap { c ->
+                        if (c.subGroups.isNotEmpty()) c.subGroups.map { it.id } else listOf(c.id)
+                    }.toSet()
+                }
+            },
+            initialSelected = if (showExportCategoryDialog) selectedExportCategories else emptySet(),
+            onConfirm = { selected ->
+                selectedExportCategories = selected
+                showExportCategoryDialog = false
+                exportSettingsLauncher.launch(SettingsBackupManager.buildExportFileName())
+            },
+            onDismiss = { showExportCategoryDialog = false }
+        )
+
+        // Backup category import preview dialog
+        MiuixBackupCategoryDialog(
+            show = showImportPreviewDialog && importPreviewResult != null,
+            titleRes = R.string.backup_dialog_import_title,
+            categories = BackupCategories.ALL_CATEGORIES.map { cat ->
+                if (cat.id == "parser_rules") {
+                    // Use parser rules from the backup file, not from device
+                    val uri = pendingImportUri
+                    val parserJson = if (uri != null) {
+                        remember(uri) {
+                            runCatching {
+                                context.contentResolver.openInputStream(uri)?.use { input ->
+                                    val text = input.bufferedReader(Charsets.UTF_8).readText()
+                                    val root = org.json.JSONObject(text)
+                                    val schemaVersion = root.optInt("schema_version", 1)
+                                    if (schemaVersion >= 2 && root.has("categories")) {
+                                        val catObj = root.optJSONObject("categories")
+                                        val parserBlock = catObj?.optJSONObject("parser_rules")
+                                        val prefsJson = parserBlock?.optJSONObject("preferences")
+                                        val wrapped = prefsJson?.opt("parser_rules_json")
+                                        // Unwrap if it's a type-wrapped value
+                                        if (wrapped is org.json.JSONObject && wrapped.has("type")) {
+                                            wrapped.optString("value", "")
+                                        } else if (wrapped is String) {
+                                            wrapped
+                                        } else null
+                                    } else {
+                                        val prefsJson = root.optJSONObject("preferences") ?: root
+                                        val wrapped = prefsJson?.opt("parser_rules_json")
+                                        if (wrapped is org.json.JSONObject && wrapped.has("type")) {
+                                            wrapped.optString("value", "")
+                                        } else if (wrapped is String) {
+                                            wrapped
+                                        } else null
+                                    }
+                                }
+                            }.getOrNull()
+                        }
+                    } else null
+                    cat.copy(subGroups = BackupCategories.parserAppSubGroupsFromJson(parserJson))
+                } else cat
+            },
+            categoryKeyCounts = importPreviewResult?.categoryCounts,
+            initialSelected = selectedImportCategories,
+            onConfirm = { selected ->
+                selectedImportCategories = selected
+                showImportPreviewDialog = false
+                val uri = pendingImportUri ?: return@MiuixBackupCategoryDialog
+                coroutineScope.launch {
+                    val result = SettingsBackupManager.importSelected(context, uri, selected)
+                    if (result.success && result.parserConflicts.isNotEmpty()) {
+                        // Parser rule conflicts detected - show conflict dialog
+                        parserConflicts = result.parserConflicts
+                        pendingConflictImportUri = uri
+                        pendingConflictSelections = selected
+                        conflictKeepExisting = emptySet()  // Default: none selected = keep all existing
+                        showParserConflictDialog = true
+                    } else {
+                        // No conflicts or import failed - show result
+                        val message = if (result.success)
+                            String.format(Locale.getDefault(), backupImportSuccessFormat, result.importedCount)
+                        else backupImportFailedText
+                        snackbarHostState.showSnackbar(message = message)
+                    }
+                    pendingImportUri = null
+                    importPreviewResult = null
+                }
+            },
+            onDismiss = {
+                showImportPreviewDialog = false
+                pendingImportUri = null
+                importPreviewResult = null
+            }
+        )
+
+        // Parser conflict dialog (MIUIX)
+        if (showParserConflictDialog && parserConflicts.isNotEmpty()) {
+            MiuixBlurDialog(
+                title = stringResource(R.string.backup_conflict_title),
+                show = true,
+                onDismissRequest = { showParserConflictDialog = false }
+            ) {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Text(
+                        stringResource(R.string.backup_conflict_description),
+                        color = MiuixTheme.colorScheme.onSurfaceSecondary,
+                        fontSize = MiuixTheme.textStyles.body2.fontSize,
+                        modifier = Modifier.padding(bottom = 12.dp)
+                    )
+                    for (conflict in parserConflicts) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    conflictKeepExisting = if (conflict.packageName in conflictKeepExisting) {
+                                        conflictKeepExisting - conflict.packageName
+                                    } else {
+                                        conflictKeepExisting + conflict.packageName
+                                    }
+                                }
+                                .padding(vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Checkbox(
+                                state = if (conflict.packageName in conflictKeepExisting)
+                                    androidx.compose.ui.state.ToggleableState.On
+                                else androidx.compose.ui.state.ToggleableState.Off,
+                                onClick = {
+                                    conflictKeepExisting = if (conflict.packageName in conflictKeepExisting) {
+                                        conflictKeepExisting - conflict.packageName
+                                    } else {
+                                        conflictKeepExisting + conflict.packageName
+                                    }
+                                }
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Column {
+                                Text(conflict.displayName, color = MiuixTheme.colorScheme.onSurface,
+                                    fontSize = MiuixTheme.textStyles.body2.fontSize)
+                                Text(conflict.packageName, color = MiuixTheme.colorScheme.onSurfaceSecondary,
+                                    fontSize = MiuixTheme.textStyles.body2.fontSize)
+                            }
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        TextButton(
+                            text = stringResource(R.string.backup_dialog_cancel),
+                            onClick = { showParserConflictDialog = false; pendingConflictImportUri = null },
+                            modifier = Modifier.weight(1f),
+                            colors = ButtonDefaults.textButtonColors(textColor = MiuixTheme.colorScheme.onSurfaceVariantActions)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        TextButton(
+                            text = stringResource(R.string.backup_conflict_apply),
+                            onClick = {
+                                showParserConflictDialog = false
+                                val uri = pendingConflictImportUri ?: return@TextButton
+                                coroutineScope.launch {
+                                    val parserJson = readParserJsonFromFile(context, uri)
+                                    val allConflictPkgs = parserConflicts.map { it.packageName }.toSet()
+                                    val packagesToKeep = allConflictPkgs - conflictKeepExisting
+                                    SettingsBackupManager.resolveParserConflicts(context, parserJson, packagesToKeep)
+                                    snackbarHostState.showSnackbar(message =
+                                        String.format(Locale.getDefault(), backupImportSuccessFormat, pendingConflictSelections.size))
+                                    pendingConflictImportUri = null
+                                    pendingConflictSelections = emptySet()
+                                }
+                            },
+                            modifier = Modifier.weight(1f),
+                            colors = ButtonDefaults.textButtonColorsPrimary()
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+private suspend fun readParserJsonFromFile(context: Context, uri: Uri): String = withContext(Dispatchers.IO) {
+    try {
+        val text = context.contentResolver.openInputStream(uri)?.bufferedReader(Charsets.UTF_8)?.readText()
+            ?: return@withContext "[]"
+        val root = org.json.JSONObject(text)
+        val schemaVersion = root.optInt("schema_version", 1)
+        val rawValue = if (schemaVersion >= 2 && root.has("categories")) {
+            val catObj = root.optJSONObject("categories")
+            val parserBlock = catObj?.optJSONObject("parser_rules")
+            parserBlock?.optJSONObject("preferences")?.opt("parser_rules_json")
+        } else {
+            val prefsJson = root.optJSONObject("preferences") ?: root
+            prefsJson.opt("parser_rules_json")
+        }
+        SettingsBackupManager.unwrapStringValue(rawValue) ?: "[]"
+    } catch (_: Exception) { "[]" }
+}
+
+private fun applyImportedLanguage(context: Context, prefs: android.content.SharedPreferences) {
+    val code = prefs.getString("language_code", "") ?: ""
+    if (code.isNotEmpty()) {
+        ThemeHelper.setLanguage(context, code)
+        (context as? Activity)?.recreate()
     }
 }
 
