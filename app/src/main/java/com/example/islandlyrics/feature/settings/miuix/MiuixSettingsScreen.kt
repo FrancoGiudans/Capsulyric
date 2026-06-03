@@ -141,7 +141,7 @@ fun MiuixSettingsScreen(
                 importPreviewResult = preview
                 pendingImportUri = uri
                 val dynamicCategoriesList = BackupCategories.ALL_CATEGORIES.map { cat ->
-                    if (cat.id == "parser_rules" && uri != null) {
+                    if (cat.id == "parser_rules") {
                         val parserJson = readParserJsonForPreviewMiuix(context, uri)
                         cat.copy(subGroups = BackupCategories.parserAppSubGroupsFromJson(parserJson))
                     } else if (cat.id == "lyric_cache" && preview.lyricCacheEntryCount != 0) {

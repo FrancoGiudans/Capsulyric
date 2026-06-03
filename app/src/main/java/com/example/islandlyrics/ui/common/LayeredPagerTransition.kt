@@ -52,7 +52,7 @@ fun LayeredPagerPage(
             modifier = Modifier
                 .fillMaxSize()
                 .graphicsLayer {
-                    val width = size.width.toFloat()
+                    val width = size.width
                     if (isIncoming) {
                         translationX = -clampedOffset * width
                         val scale = 1.01f - (0.01f * incomingProgress)

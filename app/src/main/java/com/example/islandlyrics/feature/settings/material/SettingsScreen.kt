@@ -141,7 +141,7 @@ fun SettingsScreen(
                 pendingImportUri = uri
                 // Build dynamic categories list (including parser rules from backup file)
                 val dynamicCategoriesList = BackupCategories.ALL_CATEGORIES.map { cat ->
-                    if (cat.id == "parser_rules" && uri != null) {
+                    if (cat.id == "parser_rules") {
                         val parserJson = readParserJsonForPreview(context, uri)
                         cat.copy(subGroups = BackupCategories.parserAppSubGroupsFromJson(parserJson))
                     } else if (cat.id == "lyric_cache" && preview.lyricCacheEntryCount != 0) {
