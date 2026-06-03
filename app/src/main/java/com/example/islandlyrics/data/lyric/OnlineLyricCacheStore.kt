@@ -437,6 +437,100 @@ class OnlineLyricCacheStore(context: Context) {
         writeIndex(index)
     }
 
+    // ── Backup: export / import cache to/from a directory ───────────
+
+    /**
+     * Export the entire lyric cache to [outputDir]/lyric_cache/.
+     * Preserves the v2 multi-file layout: index.json + lyrics/{xx}/{id}.json.
+     * Thread-safe, callable from any coroutine context.
+     *
+     * @return number of entries exported.
+     */
+    fun exportCacheToDir(outputDir: File): Int = synchronized(lock) {
+        ensureMigrated()
+        val cacheDir = File(outputDir, "lyric_cache")
+        cacheDir.mkdirs()
+
+        // Copy index.json
+        if (indexFile.exists()) {
+            indexFile.copyTo(File(cacheDir, "index.json"), overwrite = true)
+        }
+
+        // Copy all entry files, preserving subdirectory structure
+        val lyricsDir = File(cacheDir, "lyrics")
+        var count = 0
+        if (entriesDir.exists()) {
+            entriesDir.walkTopDown().forEach { file ->
+                if (file.isFile && file.extension == "json") {
+                    val relativePath = file.relativeTo(entriesDir)
+                    val targetFile = File(lyricsDir, relativePath.path)
+                    targetFile.parentFile?.mkdirs()
+                    file.copyTo(targetFile, overwrite = true)
+                    count++
+                }
+            }
+        }
+        android.util.Log.i("OnlineLyricCache", "Exported $count cache entries to $cacheDir")
+        count
+    }
+
+    /**
+     * Import lyric cache from [inputDir]/lyric_cache/ into the current cache.
+     * Reads index.json and entry files, merging with existing cache.
+     * Entries with newer [updatedAt] overwrite existing; older entries are skipped.
+     * Thread-safe.
+     *
+     * @return number of entries imported (new or updated).
+     */
+    fun importCacheFromDir(inputDir: File): Int = synchronized(lock) {
+        ensureMigrated()
+        val cacheDir = File(inputDir, "lyric_cache")
+        val importedIndexFile = File(cacheDir, "index.json")
+        if (!importedIndexFile.exists()) {
+            android.util.Log.w("OnlineLyricCache", "No lyric_cache/index.json found in $inputDir")
+            return 0
+        }
+
+        val importedLyricsDir = File(cacheDir, "lyrics")
+        var count = 0
+
+        runCatching {
+            val root = JSONObject(importedIndexFile.readText(Charsets.UTF_8))
+            val entriesJson = root.optJSONObject("entries") ?: return 0
+
+            val existingIndex = readIndex()
+
+            for (key in entriesJson.keys()) {
+                val importedIdxEntry = entriesJson.getJSONObject(key)
+                val importedUpdatedAt = importedIdxEntry.optLong("updatedAt", 0L)
+
+                // Merge: skip if existing entry is newer
+                val existing = existingIndex[key]
+                if (existing != null && existing.updatedAt >= importedUpdatedAt) {
+                    continue
+                }
+
+                // Read the full entry from imported lyrics dir
+                val subDir = if (key.length >= 2) key.substring(0, 2) else "xx"
+                val importedEntryFile = File(importedLyricsDir, "$subDir/$key.json")
+                if (!importedEntryFile.exists()) continue
+
+                val importedEntry = runCatching {
+                    JSONObject(importedEntryFile.readText(Charsets.UTF_8)).toEntry()
+                }.getOrNull() ?: continue
+
+                // Write entry file and update index
+                writeEntryFile(importedEntry)
+                count++
+            }
+        }.onFailure {
+            android.util.Log.e("OnlineLyricCache", "Import failed: ${it.message}", it)
+        }
+
+        android.util.Log.i("OnlineLyricCache", "Imported $count cache entries from $cacheDir")
+        count
+    }
+
     // ── Migration ────────────────────────────────────────────────────
 
     /** Migrate from v1 (single JSON file) to v2 (split files + index) if needed. */

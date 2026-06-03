@@ -86,8 +86,10 @@ fun SettingsScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
     val backupExportSuccessFormat = stringResource(R.string.settings_backup_export_success)
+    val backupExportSuccessWithCacheFormat = stringResource(R.string.settings_backup_export_success_with_cache)
     val backupExportFailedText = stringResource(R.string.settings_backup_export_failed)
     val backupImportSuccessFormat = stringResource(R.string.settings_backup_import_success)
+    val backupImportSuccessWithCacheFormat = stringResource(R.string.settings_backup_import_success_with_cache)
     val backupImportFailedText = stringResource(R.string.settings_backup_import_failed)
 
     // Backup category selection states
@@ -110,13 +112,18 @@ fun SettingsScreen(
     var conflictKeepExisting by remember { mutableStateOf(setOf<String>()) }
 
     val exportSettingsLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.CreateDocument("application/json")
+        contract = ActivityResultContracts.CreateDocument("application/zip")
     ) { uri ->
         if (uri == null) return@rememberLauncherForActivityResult
         coroutineScope.launch {
-            val result = SettingsBackupManager.exportSelected(context, uri, selectedExportCategories)
+            val includeLyricCache = selectedExportCategories.contains("lyric_cache")
+            val result = SettingsBackupManager.exportToZip(context, uri, selectedExportCategories, includeLyricCache)
             val message = if (result.success) {
-                String.format(Locale.getDefault(), backupExportSuccessFormat, result.exportedCount)
+                if (result.lyricCacheCount > 0) {
+                    String.format(Locale.getDefault(), backupExportSuccessWithCacheFormat, result.exportedCount, result.lyricCacheCount)
+                } else {
+                    String.format(Locale.getDefault(), backupExportSuccessFormat, result.exportedCount)
+                }
             } else {
                 backupExportFailedText
             }
@@ -135,34 +142,10 @@ fun SettingsScreen(
                 // Build dynamic categories list (including parser rules from backup file)
                 val dynamicCategoriesList = BackupCategories.ALL_CATEGORIES.map { cat ->
                     if (cat.id == "parser_rules" && uri != null) {
-                        // Read parser rules from backup file
-                        val parserJson = runCatching {
-                            context.contentResolver.openInputStream(uri)?.use { input ->
-                                val text = input.bufferedReader(Charsets.UTF_8).readText()
-                                val root = org.json.JSONObject(text)
-                                val schemaVersion = root.optInt("schema_version", 1)
-                                if (schemaVersion >= 2 && root.has("categories")) {
-                                    val catObj = root.optJSONObject("categories")
-                                    val parserBlock = catObj?.optJSONObject("parser_rules")
-                                    val prefsJson = parserBlock?.optJSONObject("preferences")
-                                    val wrapped = prefsJson?.opt("parser_rules_json")
-                                    if (wrapped is org.json.JSONObject && wrapped.has("type")) {
-                                        wrapped.optString("value", "")
-                                    } else if (wrapped is String) {
-                                        wrapped
-                                    } else null
-                                } else {
-                                    val prefsJson = root.optJSONObject("preferences") ?: root
-                                    val wrapped = prefsJson?.opt("parser_rules_json")
-                                    if (wrapped is org.json.JSONObject && wrapped.has("type")) {
-                                        wrapped.optString("value", "")
-                                    } else if (wrapped is String) {
-                                        wrapped
-                                    } else null
-                                }
-                            }
-                        }.getOrNull()
+                        val parserJson = readParserJsonForPreview(context, uri)
                         cat.copy(subGroups = BackupCategories.parserAppSubGroupsFromJson(parserJson))
+                    } else if (cat.id == "lyric_cache" && preview.lyricCacheEntryCount != 0) {
+                        cat
                     } else cat
                 }
                 // Convert category IDs to leaf IDs for the dialog - ALL selected by default
@@ -174,6 +157,10 @@ fun SettingsScreen(
                         listOf(catId)
                     }
                 }.toSet()
+                // Also include lyric_cache if present in ZIP
+                if (preview.lyricCacheEntryCount != 0) {
+                    selectedImportCategories = selectedImportCategories + "lyric_cache"
+                }
                 showImportPreviewDialog = true
             } else {
                 snackbarHostState.showSnackbar(backupImportFailedText)
@@ -428,7 +415,7 @@ fun SettingsScreen(
                         summary = stringResource(R.string.settings_backup_import_desc),
                         icon = Icons.Filled.Download,
                         onClick = {
-                            importSettingsLauncher.launch(arrayOf("application/json"))
+                            importSettingsLauncher.launch(arrayOf("application/zip", "application/json", "*/*"))
                         }
                     )
                 }
@@ -556,66 +543,48 @@ fun SettingsScreen(
 
         // Backup category import preview dialog
         if (showImportPreviewDialog && importPreviewResult != null) {
+            val preview = importPreviewResult!!
             val dynamicCategories = BackupCategories.ALL_CATEGORIES.map { cat ->
                 if (cat.id == "parser_rules") {
-                    // Use parser rules from the backup file, not from device
                     val uri = pendingImportUri
                     val parserJson = if (uri != null) {
-                        remember(uri) {
-                            runCatching {
-                                context.contentResolver.openInputStream(uri)?.use { input ->
-                                    val text = input.bufferedReader(Charsets.UTF_8).readText()
-                                    val root = org.json.JSONObject(text)
-                                    val schemaVersion = root.optInt("schema_version", 1)
-                                    if (schemaVersion >= 2 && root.has("categories")) {
-                                        val catObj = root.optJSONObject("categories")
-                                        val parserBlock = catObj?.optJSONObject("parser_rules")
-                                        val prefsJson = parserBlock?.optJSONObject("preferences")
-                                        val wrapped = prefsJson?.opt("parser_rules_json")
-                                        // Unwrap if it's a type-wrapped value
-                                        if (wrapped is org.json.JSONObject && wrapped.has("type")) {
-                                            wrapped.optString("value", "")
-                                        } else if (wrapped is String) {
-                                            wrapped
-                                        } else null
-                                    } else {
-                                        val prefsJson = root.optJSONObject("preferences") ?: root
-                                        val wrapped = prefsJson?.opt("parser_rules_json")
-                                        if (wrapped is org.json.JSONObject && wrapped.has("type")) {
-                                            wrapped.optString("value", "")
-                                        } else if (wrapped is String) {
-                                            wrapped
-                                        } else null
-                                    }
-                                }
-                            }.getOrNull()
-                        }
+                        remember(uri) { readParserJsonForPreview(context, uri) }
                     } else null
                     cat.copy(subGroups = BackupCategories.parserAppSubGroupsFromJson(parserJson))
+                } else if (cat.id == "lyric_cache" && preview.lyricCacheEntryCount != 0) {
+                    cat
                 } else cat
             }
             BackupCategoryDialog(
                 titleRes = R.string.backup_dialog_import_title,
                 categories = dynamicCategories,
-                categoryKeyCounts = importPreviewResult!!.categoryCounts,
+                categoryKeyCounts = preview.categoryCounts,
                 initialSelected = selectedImportCategories,
                 onConfirm = { selected ->
                     selectedImportCategories = selected
                     showImportPreviewDialog = false
                     val uri = pendingImportUri ?: return@BackupCategoryDialog
                     coroutineScope.launch {
-                        val result = SettingsBackupManager.importSelected(context, uri, selected)
+                        val result = if (preview.isZip) {
+                            SettingsBackupManager.importFromZip(context, uri, selected)
+                        } else {
+                            SettingsBackupManager.importSelected(context, uri, selected)
+                        }
                         if (result.success && result.parserConflicts.isNotEmpty()) {
                             // Parser rule conflicts detected - show conflict dialog
                             parserConflicts = result.parserConflicts
                             pendingConflictImportUri = uri
                             pendingConflictSelections = selected
-                            conflictKeepExisting = emptySet()  // Default: none selected = keep all existing
+                            conflictKeepExisting = emptySet()
                             showParserConflictDialog = true
                         } else {
                             // No conflicts or import failed - show result
                             val message = if (result.success) {
-                                String.format(Locale.getDefault(), backupImportSuccessFormat, result.importedCount)
+                                if (result.lyricCacheCount > 0) {
+                                    String.format(Locale.getDefault(), backupImportSuccessWithCacheFormat, result.importedCount, result.lyricCacheCount)
+                                } else {
+                                    String.format(Locale.getDefault(), backupImportSuccessFormat, result.importedCount)
+                                }
                             } else {
                                 backupImportFailedText
                             }
@@ -707,23 +676,71 @@ fun SettingsScreen(
         }
     }
 }
+
+/** Read parser_rules_json from a backup file (ZIP or legacy JSON). */
+private fun readParserJsonForPreview(context: Context, uri: Uri): String {
+    return kotlinx.coroutines.runBlocking { readParserJsonFromFile(context, uri) }
+}
+
 private suspend fun readParserJsonFromFile(context: Context, uri: Uri): String = withContext(Dispatchers.IO) {
     try {
-        val text = context.contentResolver.openInputStream(uri)?.bufferedReader(Charsets.UTF_8)?.readText()
-            ?: return@withContext "[]"
-        val root = org.json.JSONObject(text)
-        val schemaVersion = root.optInt("schema_version", 1)
-        val wrappedValue = if (schemaVersion >= 2 && root.has("categories")) {
-            val catObj = root.optJSONObject("categories")
-            val parserBlock = catObj?.optJSONObject("parser_rules")
-            parserBlock?.optJSONObject("preferences")?.optString("parser_rules_json", "[]") ?: "[]"
+        // Check if ZIP
+        val header = ByteArray(4)
+        val isZip = context.contentResolver.openInputStream(uri)?.use { input ->
+            if (input.read(header) == 4) {
+                header[0] == 0x50.toByte() && header[1] == 0x4B.toByte() &&
+                    header[2] == 0x03.toByte() && header[3] == 0x04.toByte()
+            } else false
+        } ?: false
+
+        if (isZip) {
+            // Extract settings.json from ZIP
+            val tempDir = java.io.File(context.cacheDir, "parser_preview_${System.currentTimeMillis()}")
+            tempDir.mkdirs()
+            try {
+                context.contentResolver.openInputStream(uri)?.use { input ->
+                    java.util.zip.ZipInputStream(input).use { zip ->
+                        var entry = zip.nextEntry
+                        while (entry != null) {
+                            if (entry.name == "settings.json" && !entry.isDirectory) {
+                                val targetFile = java.io.File(tempDir, "settings.json")
+                                targetFile.outputStream().use { fileOut -> zip.copyTo(fileOut) }
+                                break
+                            }
+                            zip.closeEntry()
+                            entry = zip.nextEntry
+                        }
+                    }
+                }
+                val settingsFile = java.io.File(tempDir, "settings.json")
+                if (settingsFile.exists()) {
+                    val text = settingsFile.readText(Charsets.UTF_8)
+                    return@withContext extractParserJson(text)
+                }
+            } finally {
+                tempDir.deleteRecursively()
+            }
         } else {
-            val prefsJson = root.optJSONObject("preferences") ?: root
-            prefsJson.optString("parser_rules_json", "[]") ?: "[]"
+            val text = context.contentResolver.openInputStream(uri)?.bufferedReader(Charsets.UTF_8)?.readText()
+                ?: return@withContext "[]"
+            return@withContext extractParserJson(text)
         }
-        // Unwrap the type-wrapped value
-        SettingsBackupManager.unwrapStringValue(wrappedValue) ?: "[]"
+        "[]"
     } catch (_: Exception) { "[]" }
+}
+
+private fun extractParserJson(text: String): String {
+    val root = org.json.JSONObject(text)
+    val schemaVersion = root.optInt("schema_version", 1)
+    val wrappedValue = if (schemaVersion >= 2 && root.has("categories")) {
+        val catObj = root.optJSONObject("categories")
+        val parserBlock = catObj?.optJSONObject("parser_rules")
+        parserBlock?.optJSONObject("preferences")?.optString("parser_rules_json", "[]") ?: "[]"
+    } else {
+        val prefsJson = root.optJSONObject("preferences") ?: root
+        prefsJson.optString("parser_rules_json", "[]") ?: "[]"
+    }
+    return SettingsBackupManager.unwrapStringValue(wrappedValue) ?: "[]"
 }
 
 private fun applyImportedLanguage(context: Context, prefs: android.content.SharedPreferences) {

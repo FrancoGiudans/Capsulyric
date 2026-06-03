@@ -214,6 +214,7 @@ fun miuixCategoryLabel(catId: String): String {
         "appearance" -> stringResource(R.string.backup_cat_appearance)
         "general" -> stringResource(R.string.backup_cat_general)
         "parser_rules" -> stringResource(R.string.backup_cat_parser_rules)
+        "lyric_cache" -> stringResource(R.string.backup_cat_lyric_cache)
         "advanced" -> stringResource(R.string.backup_cat_advanced)
         else -> catId
     }

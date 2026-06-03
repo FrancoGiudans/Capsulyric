@@ -83,6 +83,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.example.islandlyrics.R
 import com.example.islandlyrics.core.platform.RomUtils
 import com.example.islandlyrics.core.settings.SettingsBackupManager
+import com.example.islandlyrics.core.theme.ThemeHelper
 import com.example.islandlyrics.feature.customsettings.CustomSettingsActivity
 import com.example.islandlyrics.feature.faq.FAQActivity
 import com.example.islandlyrics.feature.faq.material.FormattedText
@@ -119,6 +120,7 @@ fun MiuixOobeScreen(
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     val backupImportSuccessFormat = stringResource(R.string.settings_backup_import_success)
+    val backupImportSuccessWithCacheFormat = stringResource(R.string.settings_backup_import_success_with_cache)
     val backupImportFailedText = stringResource(R.string.settings_backup_import_failed)
     var currentStep by remember { mutableIntStateOf(0) }
     var showRuleGuideDialog by remember { mutableStateOf(false) }
@@ -161,7 +163,25 @@ fun MiuixOobeScreen(
         coroutineScope.launch {
             val result = SettingsBackupManager.importFromUri(context, uri)
             if (result.success) {
-                val message = String.format(Locale.getDefault(), backupImportSuccessFormat, result.importedCount)
+                // Auto-resolve parser rule conflicts: overwrite all (OOBE backup restore)
+                if (result.parserConflicts.isNotEmpty()) {
+                    SettingsBackupManager.resolveParserConflicts(
+                        context,
+                        readParserJsonFromImportUri(context, uri),
+                        keepExistingPkgs = emptySet()  // overwrite all with imported rules
+                    )
+                }
+                // Apply imported language before finishing OOBE
+                val prefs = context.getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE)
+                val langCode = prefs.getString("language_code", "") ?: ""
+                if (langCode.isNotEmpty()) {
+                    ThemeHelper.setLanguage(context, langCode)
+                }
+                val message = if (result.lyricCacheCount > 0) {
+                    String.format(Locale.getDefault(), backupImportSuccessWithCacheFormat, result.importedCount, result.lyricCacheCount)
+                } else {
+                    String.format(Locale.getDefault(), backupImportSuccessFormat, result.importedCount)
+                }
                 onImportAndFinish(message)
             } else {
                 Toast.makeText(context, backupImportFailedText, Toast.LENGTH_SHORT).show()
@@ -258,7 +278,7 @@ fun MiuixOobeScreen(
             ) {
                 RestoreStepBody(
                     onImportBackup = {
-                        importSettingsLauncher.launch(arrayOf("application/json"))
+                        importSettingsLauncher.launch(arrayOf("application/zip", "application/json", "*/*"))
                     }
                 )
             }
@@ -1091,6 +1111,58 @@ private fun checkPostNotification(context: Context): Boolean {
 private fun checkBatteryOptimization(context: Context): Boolean {
     val pm = context.getSystemService(Context.POWER_SERVICE) as android.os.PowerManager
     return pm.isIgnoringBatteryOptimizations(context.packageName)
+}
+
+/** Read parser_rules_json from a backup file (ZIP or legacy JSON) for conflict resolution. */
+private fun readParserJsonFromImportUri(context: Context, uri: Uri): String {
+    return try {
+        val header = ByteArray(4)
+        val isZip = context.contentResolver.openInputStream(uri)?.use { input ->
+            if (input.read(header) == 4) {
+                header[0] == 0x50.toByte() && header[1] == 0x4B.toByte() &&
+                    header[2] == 0x03.toByte() && header[3] == 0x04.toByte()
+            } else false
+        } ?: false
+
+        val text = if (isZip) {
+            val tempDir = java.io.File(context.cacheDir, "oobe_parser_${System.currentTimeMillis()}")
+            tempDir.mkdirs()
+            try {
+                context.contentResolver.openInputStream(uri)?.use { input ->
+                    java.util.zip.ZipInputStream(input).use { zip ->
+                        var entry = zip.nextEntry
+                        while (entry != null) {
+                            if (entry.name == "settings.json" && !entry.isDirectory) {
+                                val targetFile = java.io.File(tempDir, "settings.json")
+                                targetFile.outputStream().use { fileOut -> zip.copyTo(fileOut) }
+                                break
+                            }
+                            zip.closeEntry()
+                            entry = zip.nextEntry
+                        }
+                    }
+                }
+                java.io.File(tempDir, "settings.json").takeIf { it.exists() }?.readText(Charsets.UTF_8) ?: ""
+            } finally {
+                tempDir.deleteRecursively()
+            }
+        } else {
+            context.contentResolver.openInputStream(uri)?.bufferedReader(Charsets.UTF_8)?.readText() ?: ""
+        }
+
+        if (text.isEmpty()) return "[]"
+        val root = org.json.JSONObject(text)
+        val schemaVersion = root.optInt("schema_version", 1)
+        val rawValue = if (schemaVersion >= 2 && root.has("categories")) {
+            val catObj = root.optJSONObject("categories")
+            val parserBlock = catObj?.optJSONObject("parser_rules")
+            parserBlock?.optJSONObject("preferences")?.opt("parser_rules_json")
+        } else {
+            val prefsJson = root.optJSONObject("preferences") ?: root
+            prefsJson.opt("parser_rules_json")
+        }
+        SettingsBackupManager.unwrapStringValue(rawValue) ?: "[]"
+    } catch (_: Exception) { "[]" }
 }
 
 private const val OOBE_LAST_STEP = 5

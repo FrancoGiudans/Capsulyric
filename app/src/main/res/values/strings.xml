@@ -348,12 +348,14 @@
     <string name="settings_hide_recents">Hide from Recents</string>
     <string name="settings_hide_recents_desc">Automatically remove from recents when app goes to background</string>
     <string name="settings_backup_export">Export Settings</string>
-    <string name="settings_backup_export_desc">Export current app settings to a JSON backup file</string>
+    <string name="settings_backup_export_desc">Export current app settings to a ZIP backup file</string>
     <string name="settings_backup_import">Import Settings</string>
-    <string name="settings_backup_import_desc">Import settings from a JSON backup file</string>
+    <string name="settings_backup_import_desc">Import settings from a ZIP backup file</string>
     <string name="settings_backup_header">Backup &amp; Restore</string>
     <string name="settings_backup_export_success">Backed up %1$d settings</string>
+    <string name="settings_backup_export_success_with_cache">Backed up %1$d settings, %2$d lyric cache entries</string>
     <string name="settings_backup_import_success">Restored %1$d settings</string>
+    <string name="settings_backup_import_success_with_cache">Restored %1$d settings, %2$d lyric cache entries</string>
     <string name="settings_backup_export_failed">Settings export failed</string>
     <string name="settings_backup_import_failed">Settings restore failed</string>
     <!-- Backup Category Dialog -->
@@ -375,6 +377,7 @@
     <string name="backup_cat_general">General</string>
     <string name="backup_cat_parser_rules">Parser Rules</string>
     <string name="backup_cat_advanced">Advanced</string>
+    <string name="backup_cat_lyric_cache">Cached Lyrics</string>
     <string name="backup_sub_capsule_style">Style &amp; Mode</string>
     <string name="backup_sub_capsule_layout">Layout &amp; Text</string>
     <string name="backup_sub_capsule_color_share">Color &amp; Sharing</string>
@@ -588,8 +591,8 @@ Within the log interface, select the share/export icon. You can specify a timefr
     
     <string name="oobe_step_finish">All Set!</string>
     <string name="oobe_step_restore">Backup Restore</string>
-    <string name="oobe_restore_intro_desc">If you used Capsulyric before, you can directly import a JSON backup to restore your settings on this new phone.</string>
-    <string name="oobe_restore_import_desc">Choose a JSON backup file to restore all settings, then go straight to the main screen.</string>
+    <string name="oobe_restore_intro_desc">If you used Capsulyric before, you can directly import a ZIP backup to restore your settings on this new phone.</string>
+    <string name="oobe_restore_import_desc">Choose a ZIP backup file to restore all settings, then go straight to the main screen.</string>
     <string name="oobe_restore_fresh_start">Start Fresh</string>
     <string name="oobe_finish_title">Ready to Go</string>
     <string name="oobe_finish_subtitle">Starting "Island Lyrics" service...</string>

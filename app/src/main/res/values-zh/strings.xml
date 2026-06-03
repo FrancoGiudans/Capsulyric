@@ -309,12 +309,14 @@
     <string name="settings_hide_recents">隐藏后台窗口</string>
     <string name="settings_hide_recents_desc">划到后台时自动从最近任务中移除</string>
     <string name="settings_backup_export">导出配置</string>
-    <string name="settings_backup_export_desc">将当前应用配置导出为 JSON 备份文件</string>
+    <string name="settings_backup_export_desc">将当前应用配置导出为 ZIP 备份文件</string>
     <string name="settings_backup_import">导入配置</string>
-    <string name="settings_backup_import_desc">从 JSON 备份文件导入应用配置</string>
+    <string name="settings_backup_import_desc">从 ZIP 备份文件导入应用配置</string>
     <string name="settings_backup_header">备份与恢复</string>
     <string name="settings_backup_export_success">已备份 %1$d 项设置</string>
+    <string name="settings_backup_export_success_with_cache">已备份 %1$d 项设置，%2$d 条歌词缓存</string>
     <string name="settings_backup_import_success">已还原 %1$d 项设置</string>
+    <string name="settings_backup_import_success_with_cache">已还原 %1$d 项设置，%2$d 条歌词缓存</string>
     <string name="settings_backup_export_failed">配置导出失败</string>
     <string name="settings_backup_import_failed">配置还原失败</string>
     <!-- Backup Category Dialog -->
@@ -336,6 +338,7 @@
     <string name="backup_cat_general">通用设置</string>
     <string name="backup_cat_parser_rules">解析规则</string>
     <string name="backup_cat_advanced">高级功能</string>
+    <string name="backup_cat_lyric_cache">已缓存的歌词</string>
     <string name="backup_sub_capsule_style">样式与模式</string>
     <string name="backup_sub_capsule_layout">布局与文字</string>
     <string name="backup_sub_capsule_color_share">颜色与分享</string>
@@ -527,8 +530,8 @@
     
     <string name="oobe_step_finish">进入应用</string>
     <string name="oobe_step_restore">备份还原</string>
-    <string name="oobe_restore_intro_desc">如果你之前使用过 Capsulyric，可直接导入 JSON 备份，在新手机上恢复原有配置。</string>
-    <string name="oobe_restore_import_desc">选择 JSON 备份文件后将恢复全部配置，并直接进入主界面。</string>
+    <string name="oobe_restore_intro_desc">如果你之前使用过 Capsulyric，可直接导入 ZIP 备份，在新手机上恢复原有配置。</string>
+    <string name="oobe_restore_import_desc">选择 ZIP 备份文件后将恢复全部配置，并直接进入主界面。</string>
     <string name="oobe_restore_fresh_start">全新开始</string>
     <string name="oobe_finish_title">一切准备就绪</string>
     <string name="oobe_finish_subtitle">欢迎使用 Capsulyric</string>

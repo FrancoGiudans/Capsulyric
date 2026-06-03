@@ -133,7 +133,22 @@ object BackupCategories {
     )
 
     // ═══════════════════════════════════════════════════════════════════════
-    // 6. 高级功能 (Advanced)
+    // 6. 歌词缓存 (Lyric Cache)
+    // ═══════════════════════════════════════════════════════════════════════
+
+    /**
+     * Lyric cache is not stored in SharedPreferences — it lives in cache_store/ on disk.
+     * Flat category: selecting it signals the export/import engine to include lyric_cache/
+     * in the ZIP archive.
+     */
+    val LYRIC_CACHE = Category(
+        id = "lyric_cache",
+        keyPatterns = emptyList(),
+        subGroups = emptyList()
+    )
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // 7. 高级功能 (Advanced)
     // ═══════════════════════════════════════════════════════════════════════
 
     val ADVANCED = Category(
@@ -160,7 +175,7 @@ object BackupCategories {
     // ── Flat list ──────────────────────────────────────────────────────
 
     val ALL_CATEGORIES: List<Category> = listOf(
-        CAPSULE, NOTIFICATIONS, APPEARANCE, GENERAL, PARSER_RULES, ADVANCED
+        CAPSULE, NOTIFICATIONS, APPEARANCE, GENERAL, PARSER_RULES, LYRIC_CACHE, ADVANCED
     )
 
     // ── Key → Category lookup ──────────────────────────────────────────
