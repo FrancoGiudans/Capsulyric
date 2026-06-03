@@ -70,6 +70,27 @@ class OnlineLyricCacheStore(context: Context) {
         CUSTOM_OVERRIDE
     }
 
+    // ── Index entry: lightweight metadata stored in index.json ──
+    private data class IndexEntry(
+        val packageName: String,
+        val title: String,
+        val artist: String,
+        val queryTitle: String?,
+        val queryArtist: String?,
+        val api: String?,
+        val providerId: String?,
+        val hasSyllable: Boolean,
+        val hasTranslation: Boolean,
+        val hasRomanization: Boolean,
+        val overrideTitle: String?,
+        val overrideArtist: String?,
+        val overrideUpdatedAt: Long?,
+        val cachedAt: Long?,
+        val updatedAt: Long,
+        val sizeBytes: Long
+    )
+
+    // ── Full cache entry: stored in individual lyrics/{id}.json files ──
     private data class CacheEntry(
         val id: String,
         val packageName: String,
@@ -99,8 +120,21 @@ class OnlineLyricCacheStore(context: Context) {
     )
 
     private val appContext = context.applicationContext
-    private val storeFile = File(File(appContext.filesDir, "cache_store"), "online_lyric_cache.json")
+
+    // ── v2 file layout ──
+    private val storeDir = File(appContext.filesDir, "cache_store")
+    private val entriesDir = File(storeDir, "lyrics")
+    private val indexFile = File(storeDir, "index.json")
+
+    // ── v1 legacy file (for migration) ──
+    private val legacyStoreFile = File(storeDir, "online_lyric_cache.json")
+
     private val lock = Any()
+
+    @Volatile
+    private var migrated = false
+
+    // ── Public API (unchanged) ───────────────────────────────────────
 
     fun resolveQuery(
         mediaInfo: LyricRepository.MediaInfo,
@@ -119,7 +153,14 @@ class OnlineLyricCacheStore(context: Context) {
         useRawMetadata: Boolean
     ): CurrentSongCacheState {
         val entry = synchronized(lock) {
-            readEntries().firstMatching(mediaInfo)
+            ensureMigrated()
+            val id = buildEntryId(mediaInfo)
+            val legacyId = buildLegacyEntryId(mediaInfo)
+            val index = readIndex()
+            val matchId = if (index.containsKey(id)) id
+                else if (index.containsKey(legacyId)) legacyId
+                else null
+            matchId?.let { readEntryFile(it) }
         }
         val matchOverride = entry?.toMatchOverride()
 
@@ -160,14 +201,20 @@ class OnlineLyricCacheStore(context: Context) {
         queryTitle: String,
         queryArtist: String
     ): CachedLyricHit? = synchronized(lock) {
-        val entries = readEntries()
-        val entry = entries.firstMatching(mediaInfo) ?: return null
+        ensureMigrated()
+        val id = buildEntryId(mediaInfo)
+        val legacyId = buildLegacyEntryId(mediaInfo)
+        val index = readIndex()
+        val matchId = if (index.containsKey(id)) id
+            else if (index.containsKey(legacyId)) legacyId
+            else return null
+        val entry = readEntryFile(matchId) ?: return null
         if (entry.queryTitle != queryTitle || entry.queryArtist != queryArtist) return null
         if (entry.lyrics.isNullOrBlank() || entry.parsedLines.isEmpty()) return null
 
         val now = System.currentTimeMillis()
         val updatedEntry = entry.copy(updatedAt = now)
-        writeEntries(entries.replace(updatedEntry))
+        writeEntryFile(updatedEntry)
 
         CachedLyricHit(
             result = OnlineLyricFetcher.LyricResult(
@@ -195,9 +242,9 @@ class OnlineLyricCacheStore(context: Context) {
         queryArtist: String,
         result: OnlineLyricFetcher.LyricResult
     ) = synchronized(lock) {
-        val entries = readEntries().toMutableList()
+        ensureMigrated()
         val id = buildEntryId(mediaInfo)
-        val existing = entries.firstMatching(mediaInfo)
+        val existing = readEntryFile(id)
         val now = System.currentTimeMillis()
         val merged = CacheEntry(
             id = id,
@@ -226,15 +273,15 @@ class OnlineLyricCacheStore(context: Context) {
             cachedAt = now,
             updatedAt = now
         )
-        writeEntries(entries.replace(merged))
+        writeEntryFile(merged)
     }
 
     fun saveMatchOverride(mediaInfo: LyricRepository.MediaInfo, title: String, artist: String) = synchronized(lock) {
+        ensureMigrated()
         val sanitizedTitle = title.trim()
         val sanitizedArtist = artist.trim()
-        val entries = readEntries().toMutableList()
         val id = buildEntryId(mediaInfo)
-        val existing = entries.firstMatching(mediaInfo)
+        val existing = readEntryFile(id)
         val now = System.currentTimeMillis()
         val merged = CacheEntry(
             id = id,
@@ -249,14 +296,14 @@ class OnlineLyricCacheStore(context: Context) {
             overrideUpdatedAt = now,
             updatedAt = now
         )
-        writeEntries(entries.replace(merged))
+        writeEntryFile(merged)
     }
 
     fun clearMatchOverride(mediaInfo: LyricRepository.MediaInfo) {
         synchronized(lock) {
-            val entries = readEntries().toMutableList()
+            ensureMigrated()
             val id = buildEntryId(mediaInfo)
-            val existing = entries.firstMatching(mediaInfo) ?: return
+            val existing = readEntryFile(id) ?: return
             val cleared = existing.copy(
                 overrideTitle = null,
                 overrideArtist = null,
@@ -277,38 +324,41 @@ class OnlineLyricCacheStore(context: Context) {
                 cachedAt = null,
                 updatedAt = System.currentTimeMillis()
             )
-            writeEntries(entries.replace(cleared))
+            writeEntryFile(cleared)
         }
     }
 
     fun getLyricCacheSummaries(): List<LyricCacheEntrySummary> = synchronized(lock) {
-        readEntries()
-            .filter {
-                (!it.lyrics.isNullOrBlank() && it.parsedLines.isNotEmpty()) ||
-                    !it.overrideTitle.isNullOrBlank() ||
-                    !it.overrideArtist.isNullOrBlank()
+        ensureMigrated()
+        val index = readIndex()
+        index.entries
+            .filter { (_, ie) ->
+                ie.cachedAt != null ||
+                    !ie.overrideTitle.isNullOrBlank() ||
+                    !ie.overrideArtist.isNullOrBlank()
             }
-            .sortedByDescending { it.updatedAt }
-            .map { entry ->
+            .sortedByDescending { (_, ie) -> ie.updatedAt }
+            .map { (id, ie) ->
                 LyricCacheEntrySummary(
-                    id = entry.id,
-                    packageName = entry.packageName,
-                    title = entry.title,
-                    artist = entry.artist,
-                    queryTitle = entry.queryTitle.orEmpty(),
-                    queryArtist = entry.queryArtist.orEmpty(),
-                    providerLabel = entry.api.orEmpty(),
-                    hasCustomMatch = !entry.overrideTitle.isNullOrBlank() || !entry.overrideArtist.isNullOrBlank(),
-                    hasTranslation = entry.hasTranslation,
-                    hasRomanization = entry.hasRomanization,
-                    cachedAt = entry.cachedAt ?: entry.updatedAt,
-                    updatedAt = entry.updatedAt,
-                    sizeBytes = estimateEntrySize(entry)
+                    id = id,
+                    packageName = ie.packageName,
+                    title = ie.title,
+                    artist = ie.artist,
+                    queryTitle = ie.queryTitle.orEmpty(),
+                    queryArtist = ie.queryArtist.orEmpty(),
+                    providerLabel = ie.api.orEmpty(),
+                    hasCustomMatch = !ie.overrideTitle.isNullOrBlank() || !ie.overrideArtist.isNullOrBlank(),
+                    hasTranslation = ie.hasTranslation,
+                    hasRomanization = ie.hasRomanization,
+                    cachedAt = ie.cachedAt ?: ie.updatedAt,
+                    updatedAt = ie.updatedAt,
+                    sizeBytes = ie.sizeBytes
                 )
             }
     }
 
     fun getLyricCacheStats(): LyricCacheStats = synchronized(lock) {
+        ensureMigrated()
         val summaries = getLyricCacheSummaries()
         LyricCacheStats(
             entryCount = summaries.size,
@@ -318,21 +368,24 @@ class OnlineLyricCacheStore(context: Context) {
     }
 
     fun deleteLyricEntry(entryId: String) = synchronized(lock) {
-        val updated = readEntries().filterNot { it.id == entryId }
-        writeEntries(updated)
+        ensureMigrated()
+        deleteEntryFile(entryId)
     }
 
     fun getEntryParsedLines(entryId: String): List<OnlineLyricFetcher.LyricLine>? = synchronized(lock) {
-        readEntries().firstOrNull { it.id == entryId }?.parsedLines?.takeIf { it.isNotEmpty() }
+        ensureMigrated()
+        readEntryFile(entryId)?.parsedLines?.takeIf { it.isNotEmpty() }
     }
 
     fun getEntryMetadata(entryId: String): Pair<String, String>? = synchronized(lock) {
-        val entry = readEntries().firstOrNull { it.id == entryId } ?: return null
+        ensureMigrated()
+        val entry = readEntryFile(entryId) ?: return null
         (entry.title to entry.artist)
     }
 
     fun getEntryExportData(entryId: String): LyricCacheExportData? = synchronized(lock) {
-        val entry = readEntries().firstOrNull { it.id == entryId } ?: return null
+        ensureMigrated()
+        val entry = readEntryFile(entryId) ?: return null
         val lines = entry.parsedLines.takeIf { it.isNotEmpty() } ?: return null
         LyricCacheExportData(
             title = entry.title,
@@ -345,31 +398,186 @@ class OnlineLyricCacheStore(context: Context) {
     }
 
     fun clearLyricCache() = synchronized(lock) {
-        val retained = readEntries().mapNotNull { entry ->
-            if (entry.overrideTitle.isNullOrBlank() && entry.overrideArtist.isNullOrBlank()) {
-                null
+        ensureMigrated()
+        val index = readIndex()
+        val idsToDelete = mutableListOf<String>()
+        for ((id, ie) in index) {
+            if (ie.overrideTitle.isNullOrBlank() && ie.overrideArtist.isNullOrBlank()) {
+                // Fully delete: remove entry file
+                entryFile(id).delete()
+                idsToDelete.add(id)
             } else {
-                entry.copy(
-                    queryTitle = null,
-                    queryArtist = null,
-                    api = null,
-                    providerId = null,
-                    lyrics = null,
-                    hasSyllable = false,
-                    matchedTitle = null,
-                    matchedArtist = null,
-                    translationLyrics = null,
-                    romanLyrics = null,
-                    hasTranslation = false,
-                    hasRomanization = false,
-                    parsedLines = emptyList(),
-                    cachedAt = null,
-                    updatedAt = System.currentTimeMillis()
-                )
+                // Retain override metadata, clear lyrics data
+                val existing = readEntryFile(id)
+                if (existing != null) {
+                    val cleared = existing.copy(
+                        queryTitle = null,
+                        queryArtist = null,
+                        api = null,
+                        providerId = null,
+                        lyrics = null,
+                        hasSyllable = false,
+                        matchedTitle = null,
+                        matchedArtist = null,
+                        translationLyrics = null,
+                        romanLyrics = null,
+                        hasTranslation = false,
+                        hasRomanization = false,
+                        parsedLines = emptyList(),
+                        cachedAt = null,
+                        updatedAt = System.currentTimeMillis()
+                    )
+                    writeEntryFile(cleared)
+                }
             }
         }
-        writeEntries(retained)
+        for (id in idsToDelete) {
+            index.remove(id)
+        }
+        writeIndex(index)
     }
+
+    // ── Migration ────────────────────────────────────────────────────
+
+    /** Migrate from v1 (single JSON file) to v2 (split files + index) if needed. */
+    private fun ensureMigrated() {
+        if (migrated) return
+        if (!legacyStoreFile.exists()) {
+            migrated = true
+            return
+        }
+        try {
+            val root = JSONObject(legacyStoreFile.readText(Charsets.UTF_8))
+            val array = root.optJSONArray("entries") ?: JSONArray()
+            val index = mutableMapOf<String, IndexEntry>()
+
+            entriesDir.mkdirs()
+
+            for (i in 0 until array.length()) {
+                val entry = array.getJSONObject(i).toEntry()
+                writeEntryFileInternal(entry)
+                index[entry.id] = entry.toIndexEntry()
+            }
+
+            writeIndex(index)
+
+            // Migration complete — remove old file
+            legacyStoreFile.delete()
+
+            android.util.Log.i(
+                "OnlineLyricCache",
+                "Migrated ${index.size} entries from v1 → v2 (split files). Old cache file removed."
+            )
+        } catch (e: Exception) {
+            android.util.Log.e("OnlineLyricCache", "Migration failed: ${e.message}", e)
+            // If migration fails, leave old file untouched so it can be retried
+        }
+        migrated = true
+    }
+
+    // ── Index I/O ────────────────────────────────────────────────────
+
+    private fun readIndex(): MutableMap<String, IndexEntry> {
+        if (!indexFile.exists()) return mutableMapOf()
+        return runCatching {
+            val root = JSONObject(indexFile.readText(Charsets.UTF_8))
+            val entriesJson = root.optJSONObject("entries") ?: return mutableMapOf()
+            val map = mutableMapOf<String, IndexEntry>()
+            for (key in entriesJson.keys()) {
+                val obj = entriesJson.getJSONObject(key)
+                map[key] = IndexEntry(
+                    packageName = obj.optString("packageName"),
+                    title = obj.optString("title"),
+                    artist = obj.optString("artist"),
+                    queryTitle = obj.optNullableString("queryTitle"),
+                    queryArtist = obj.optNullableString("queryArtist"),
+                    api = obj.optNullableString("api"),
+                    providerId = obj.optNullableString("providerId"),
+                    hasSyllable = obj.optBoolean("hasSyllable", false),
+                    hasTranslation = obj.optBoolean("hasTranslation", false),
+                    hasRomanization = obj.optBoolean("hasRomanization", false),
+                    overrideTitle = obj.optNullableString("overrideTitle"),
+                    overrideArtist = obj.optNullableString("overrideArtist"),
+                    overrideUpdatedAt = obj.optNullableLong("overrideUpdatedAt"),
+                    cachedAt = obj.optNullableLong("cachedAt"),
+                    updatedAt = obj.optLong("updatedAt", System.currentTimeMillis()),
+                    sizeBytes = obj.optLong("sizeBytes", 0L)
+                )
+            }
+            map
+        }.getOrDefault(mutableMapOf())
+    }
+
+    private fun writeIndex(index: MutableMap<String, IndexEntry>) {
+        storeDir.mkdirs()
+        val entriesJson = JSONObject()
+        for ((id, ie) in index) {
+            entriesJson.put(id, JSONObject().apply {
+                put("packageName", ie.packageName)
+                put("title", ie.title)
+                put("artist", ie.artist)
+                ie.queryTitle?.let { put("queryTitle", it) }
+                ie.queryArtist?.let { put("queryArtist", it) }
+                ie.api?.let { put("api", it) }
+                ie.providerId?.let { put("providerId", it) }
+                put("hasSyllable", ie.hasSyllable)
+                put("hasTranslation", ie.hasTranslation)
+                put("hasRomanization", ie.hasRomanization)
+                ie.overrideTitle?.let { put("overrideTitle", it) }
+                ie.overrideArtist?.let { put("overrideArtist", it) }
+                ie.overrideUpdatedAt?.let { put("overrideUpdatedAt", it) }
+                ie.cachedAt?.let { put("cachedAt", it) }
+                put("updatedAt", ie.updatedAt)
+                put("sizeBytes", ie.sizeBytes)
+            })
+        }
+        val root = JSONObject().apply {
+            put("version", 2)
+            put("entries", entriesJson)
+        }
+        indexFile.writeText(root.toString(), Charsets.UTF_8)
+    }
+
+    // ── Entry file I/O ───────────────────────────────────────────────
+
+    private fun entryFile(id: String): File {
+        // Use first 2 hex chars as subdirectory to avoid too many files in one dir
+        val subDir = if (id.length >= 2) id.substring(0, 2) else "xx"
+        return File(File(entriesDir, subDir), "$id.json")
+    }
+
+    private fun readEntryFile(id: String): CacheEntry? {
+        val file = entryFile(id)
+        if (!file.exists()) return null
+        return runCatching {
+            JSONObject(file.readText(Charsets.UTF_8)).toEntry()
+        }.getOrNull()
+    }
+
+    /** Writes entry file AND updates index. */
+    private fun writeEntryFile(entry: CacheEntry) {
+        writeEntryFileInternal(entry)
+        val index = readIndex()
+        index[entry.id] = entry.toIndexEntry()
+        writeIndex(index)
+    }
+
+    /** Writes only the entry file (no index update). Used during migration. */
+    private fun writeEntryFileInternal(entry: CacheEntry) {
+        val file = entryFile(entry.id)
+        file.parentFile?.mkdirs()
+        file.writeText(entry.toJson().toString(), Charsets.UTF_8)
+    }
+
+    /** Deletes entry file AND removes from index. */
+    private fun deleteEntryFile(id: String) {
+        entryFile(id).delete()
+        val index = readIndex()
+        index.remove(id)
+        writeIndex(index)
+    }
+
+    // ── ID computation ───────────────────────────────────────────────
 
     private fun buildEntryId(mediaInfo: LyricRepository.MediaInfo): String {
         val rawTitle = mediaInfo.rawTitle.ifBlank { mediaInfo.title }
@@ -394,42 +602,27 @@ class OnlineLyricCacheStore(context: Context) {
         return sha256(payload)
     }
 
-    private fun List<CacheEntry>.firstMatching(mediaInfo: LyricRepository.MediaInfo): CacheEntry? {
-        val id = buildEntryId(mediaInfo)
-        val legacyId = buildLegacyEntryId(mediaInfo)
-        return firstOrNull { it.id == id } ?: firstOrNull { it.id == legacyId }
-    }
+    // ── Conversion helpers ───────────────────────────────────────────
 
-    private fun estimateEntrySize(entry: CacheEntry): Long {
-        return entry.toJson().toString().toByteArray(Charsets.UTF_8).size.toLong()
-    }
-
-    private fun readEntries(): List<CacheEntry> {
-        if (!storeFile.exists()) return emptyList()
-        return runCatching {
-            val root = JSONObject(storeFile.readText(Charsets.UTF_8))
-            val array = root.optJSONArray("entries") ?: JSONArray()
-            buildList {
-                for (index in 0 until array.length()) {
-                    add(array.getJSONObject(index).toEntry())
-                }
-            }
-        }.getOrDefault(emptyList())
-    }
-
-    private fun writeEntries(entries: List<CacheEntry>) {
-        storeFile.parentFile?.mkdirs()
-        val root = JSONObject().apply {
-            put("version", 1)
-            put("entries", JSONArray(entries.map { it.toJson() }))
-        }
-        storeFile.writeText(root.toString(), Charsets.UTF_8)
-    }
-
-    private fun List<CacheEntry>.replace(entry: CacheEntry): List<CacheEntry> {
-        val updated = filterNot { it.id == entry.id }.toMutableList()
-        updated.add(entry)
-        return updated
+    private fun CacheEntry.toIndexEntry(): IndexEntry {
+        return IndexEntry(
+            packageName = packageName,
+            title = title,
+            artist = artist,
+            queryTitle = queryTitle,
+            queryArtist = queryArtist,
+            api = api,
+            providerId = providerId,
+            hasSyllable = hasSyllable,
+            hasTranslation = hasTranslation,
+            hasRomanization = hasRomanization,
+            overrideTitle = overrideTitle,
+            overrideArtist = overrideArtist,
+            overrideUpdatedAt = overrideUpdatedAt,
+            cachedAt = cachedAt,
+            updatedAt = updatedAt,
+            sizeBytes = estimateEntrySize(this)
+        )
     }
 
     private fun CacheEntry.toMatchOverride(): MatchOverride? {
@@ -442,6 +635,12 @@ class OnlineLyricCacheStore(context: Context) {
             updatedAt = overrideUpdatedAt ?: updatedAt
         )
     }
+
+    private fun estimateEntrySize(entry: CacheEntry): Long {
+        return entry.toJson().toString().toByteArray(Charsets.UTF_8).size.toLong()
+    }
+
+    // ── JSON serialization ───────────────────────────────────────────
 
     private fun CacheEntry.toJson(): JSONObject = JSONObject().apply {
         put("id", id)
