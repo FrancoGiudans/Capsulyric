@@ -12,6 +12,8 @@ import android.os.HandlerThread
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
+import rikka.shizuku.ShizukuBinderWrapper
+import rikka.shizuku.SystemServiceHelper
 
 @Keep
 class PrivilegedServiceImpl : IPrivilegedService.Stub() {
@@ -60,13 +62,21 @@ class PrivilegedServiceImpl : IPrivilegedService.Stub() {
                     // Chain IDs: 9 = FILTER_CHAIN_NAME_STANDBY_ALLOWLIST or similar on some ROMs
                     // On some vendors, 2 or 1 might be used. 9 is most common for firewall.
                     val chain = 9
-                    
-                    logD("Step 3: Calling setFirewallChainEnabled($chain, true)...")
-                    // Pass Boolean instead of Integer to match expected 'boolean' type
-                    callMethodResilient(realCm, "setFirewallChainEnabled", chain, true)
-                    logD("Step 4: setFirewallChainEnabled succeeded")
-                    
                     val rule = if (enabled) 0 else 2 // 0 = ALLOW, 2 = DENY
+
+                    if (!enabled) {
+                        // setFirewallChainEnabled may be missing on some devices (e.g. MediaTek).
+                        // Try it but fall through to setUidFirewallRule if unavailable —
+                        // the OEM deny chain may already be enabled.
+                        try {
+                            logD("Step 3: Calling setFirewallChainEnabled($chain, true)...")
+                            callMethodResilient(realCm, "setFirewallChainEnabled", chain, true)
+                            logD("Step 4: setFirewallChainEnabled succeeded")
+                        } catch (e: Exception) {
+                            logW("setFirewallChainEnabled not available (chain may already be enabled): ${e.message}")
+                        }
+                    }
+
                     logD("Step 5: Calling setUidFirewallRule($chain, $uid, $rule)...")
                     callMethodResilient(realCm, "setUidFirewallRule", chain, uid, rule)
                     
@@ -108,14 +118,15 @@ class PrivilegedServiceImpl : IPrivilegedService.Stub() {
     }
     
     private fun getConnectivityManagerInstance(): Any {
-        val smClass = Class.forName("android.os.ServiceManager")
-        val getService = smClass.getMethod("getService", String::class.java)
-        val binder = getService.invoke(null, "connectivity") as? IBinder
+        // Use SystemServiceHelper + ShizukuBinderWrapper for proper Shizuku elevation,
+        // matching InstallerX's approach. Raw ServiceManager.getService() can miss
+        // hidden firewall APIs on some devices (e.g. MediaTek).
+        val originalBinder = SystemServiceHelper.getSystemService("connectivity")
             ?: throw RuntimeException("connectivity service not found")
-            
+        val wrapper: IBinder = ShizukuBinderWrapper(originalBinder)
         val stubClass = Class.forName("android.net.IConnectivityManager\$Stub")
         val asInterface = stubClass.getMethod("asInterface", IBinder::class.java)
-        return asInterface.invoke(null, binder) ?: throw RuntimeException("asInterface returned null")
+        return asInterface.invoke(null, wrapper) ?: throw RuntimeException("asInterface returned null")
     }
     
     /**

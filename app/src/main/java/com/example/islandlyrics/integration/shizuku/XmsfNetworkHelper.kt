@@ -14,7 +14,13 @@ object XmsfNetworkHelper {
     private const val MAX_RETRIES = 2
     private const val RETRY_DELAY_MS = 500L
 
+    /** Set to true when all backends have failed on this device, to avoid repeated timeouts. */
+    @Volatile
+    private var deviceUnsupported = false
+
     suspend fun setXmsfNetworkingEnabled(context: Context, enabled: Boolean): Boolean {
+        if (deviceUnsupported) return false
+
         val logger = AppLogger.getInstance()
         try {
             val pm = context.packageManager
@@ -75,7 +81,10 @@ object XmsfNetworkHelper {
                             }
                         }
                     }
-                    lastError?.let { logger.e(TAG, "❌ All XMSF networking paths failed after retries: ${it.message}") }
+                    lastError?.let {
+                        logger.e(TAG, "❌ All XMSF networking paths failed after retries: ${it.message}")
+                        deviceUnsupported = true
+                    }
                     false
                 }
             } catch (e: Exception) {

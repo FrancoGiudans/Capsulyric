@@ -49,8 +49,12 @@ object ShizukuHook {
         try {
             val cm = getHookedConnectivityManager()
             if (!enabled) {
-                cm.setFirewallChainEnabled(OEM_DENY_CHAIN, true)
-                Log.d(TAG, "Enabled firewall chain $OEM_DENY_CHAIN via typed IConnectivityManager before blocking uid=$uid")
+                try {
+                    cm.setFirewallChainEnabled(OEM_DENY_CHAIN, true)
+                    Log.d(TAG, "Enabled firewall chain $OEM_DENY_CHAIN via typed IConnectivityManager before blocking uid=$uid")
+                } catch (t: Throwable) {
+                    Log.w(TAG, "setFirewallChainEnabled unavailable via typed IConnectivityManager, chain may already be enabled", t)
+                }
             }
             cm.setUidFirewallRule(OEM_DENY_CHAIN, uid, rule)
             Log.d(TAG, "Network ${if (enabled) "restored" else "blocked"} for uid=$uid via typed IConnectivityManager")
@@ -64,8 +68,12 @@ object ShizukuHook {
         try {
             val nm = getHookedNetworkManagementService()
             if (!enabled) {
-                nm.setFirewallChainEnabled(OEM_DENY_CHAIN, true)
-                Log.d(TAG, "Enabled firewall chain $OEM_DENY_CHAIN via typed INetworkManagementService before blocking uid=$uid")
+                try {
+                    nm.setFirewallChainEnabled(OEM_DENY_CHAIN, true)
+                    Log.d(TAG, "Enabled firewall chain $OEM_DENY_CHAIN via typed INetworkManagementService before blocking uid=$uid")
+                } catch (t: Throwable) {
+                    Log.w(TAG, "setFirewallChainEnabled unavailable via typed INetworkManagementService, chain may already be enabled", t)
+                }
             }
             try {
                 nm.setUidFirewallRule(OEM_DENY_CHAIN, uid, rule)
@@ -87,13 +95,17 @@ object ShizukuHook {
                 Log.d(TAG, "Trying ${backend.label} backend for uid=$uid, enabled=$enabled")
 
                 if (!enabled) {
-                    callMethodResilient(
-                        service,
-                        listOf("setFirewallChainEnabled"),
-                        OEM_DENY_CHAIN,
-                        true
-                    )
-                    Log.d(TAG, "Enabled firewall chain $OEM_DENY_CHAIN via ${backend.label} before blocking uid=$uid")
+                    try {
+                        callMethodResilient(
+                            service,
+                            listOf("setFirewallChainEnabled"),
+                            OEM_DENY_CHAIN,
+                            true
+                        )
+                        Log.d(TAG, "Enabled firewall chain $OEM_DENY_CHAIN via ${backend.label} before blocking uid=$uid")
+                    } catch (t: Throwable) {
+                        Log.w(TAG, "setFirewallChainEnabled unavailable via ${backend.label} reflection, chain may already be enabled", t)
+                    }
                 }
 
                 val methodUsed = callMethodResilient(

@@ -219,7 +219,6 @@ class MainActivity : BaseActivity() {
         AppLogger.getInstance().log("MainActivity", "=== Service Status ===")
         AppLogger.getInstance().log("MainActivity", "Permission Granted: $isPermissionGranted")
         AppLogger.getInstance().log("MainActivity", "Service Connected: $serviceConnected")
-        AppLogger.getInstance().log("MainActivity", "Enabled Listeners: $listenerString")
 
         // ENHANCED: Auto-Rebind Check with detailed logging
         if (isPermissionGranted && !serviceConnected) {
