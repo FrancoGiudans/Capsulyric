@@ -3,17 +3,15 @@ package com.example.islandlyrics.integration.shizuku
 import androidx.annotation.Keep
 import com.example.islandlyrics.IPrivilegedService
 import com.example.islandlyrics.IPrivilegedLogCallback
+import android.net.IConnectivityManager
 import android.util.Log
 import android.os.IBinder
-import android.os.IInterface
 import java.lang.reflect.InvocationTargetException
 import android.os.Handler
 import android.os.HandlerThread
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
-import rikka.shizuku.ShizukuBinderWrapper
-import rikka.shizuku.SystemServiceHelper
 
 @Keep
 class PrivilegedServiceImpl : IPrivilegedService.Stub() {
@@ -56,11 +54,10 @@ class PrivilegedServiceImpl : IPrivilegedService.Stub() {
             workerHandler.post {
                 val result = runCatching {
                     logD("Step 1: Getting ConnectivityManager...")
-                    val realCm = getConnectivityManagerInstance()
-                    logD("Step 2: Got ConnectivityManager: ${realCm.javaClass.name}")
+                    val cm = getConnectivityManagerInstance()
+                    logD("Step 2: Got ConnectivityManager: ${cm.javaClass.name}")
                     
-                    // Chain IDs: 9 = FILTER_CHAIN_NAME_STANDBY_ALLOWLIST or similar on some ROMs
-                    // On some vendors, 2 or 1 might be used. 9 is most common for firewall.
+                    // Chain IDs: 9 = OEM_DENY_3 (Blacklist mode). Matches InstallerX.
                     val chain = 9
                     val rule = if (enabled) 0 else 2 // 0 = ALLOW, 2 = DENY
 
@@ -70,7 +67,7 @@ class PrivilegedServiceImpl : IPrivilegedService.Stub() {
                         // the OEM deny chain may already be enabled.
                         try {
                             logD("Step 3: Calling setFirewallChainEnabled($chain, true)...")
-                            callMethodResilient(realCm, "setFirewallChainEnabled", chain, true)
+                            cm.setFirewallChainEnabled(chain, true)
                             logD("Step 4: setFirewallChainEnabled succeeded")
                         } catch (e: Exception) {
                             logW("setFirewallChainEnabled not available (chain may already be enabled): ${e.message}")
@@ -78,7 +75,7 @@ class PrivilegedServiceImpl : IPrivilegedService.Stub() {
                     }
 
                     logD("Step 5: Calling setUidFirewallRule($chain, $uid, $rule)...")
-                    callMethodResilient(realCm, "setUidFirewallRule", chain, uid, rule)
+                    cm.setUidFirewallRule(chain, uid, rule)
                     
                     logD("✅ SUCCESS: Firewall rules updated for $uid")
                     true
@@ -117,59 +114,19 @@ class PrivilegedServiceImpl : IPrivilegedService.Stub() {
         }
     }
     
-    private fun getConnectivityManagerInstance(): Any {
-        // Use SystemServiceHelper + ShizukuBinderWrapper for proper Shizuku elevation,
-        // matching InstallerX's approach. Raw ServiceManager.getService() can miss
-        // hidden firewall APIs on some devices (e.g. MediaTek).
-        val originalBinder = SystemServiceHelper.getSystemService("connectivity")
+    private fun getConnectivityManagerInstance(): IConnectivityManager {
+        // Use raw ServiceManager.getService() + typed AIDL — this runs in the Shizuku
+        // user service process which already has system UID. Hidden APIs are accessible
+        // here without ShizukuBinderWrapper. Matches InstallerX's approach exactly.
+        val smClass = Class.forName("android.os.ServiceManager")
+        val getService = smClass.getMethod("getService", String::class.java)
+        val binder = getService.invoke(null, "connectivity") as? IBinder
             ?: throw RuntimeException("connectivity service not found")
-        val wrapper: IBinder = ShizukuBinderWrapper(originalBinder)
-        val stubClass = Class.forName("android.net.IConnectivityManager\$Stub")
-        val asInterface = stubClass.getMethod("asInterface", IBinder::class.java)
-        return asInterface.invoke(null, wrapper) ?: throw RuntimeException("asInterface returned null")
+
+        return IConnectivityManager.Stub.asInterface(binder)
+            ?: throw RuntimeException("asInterface returned null")
     }
     
-    /**
-     * More resilient method call that searches for the best matching method
-     */
-    private fun callMethodResilient(obj: Any, methodName: String, vararg args: Any) {
-        val clazz = obj.javaClass
-        val methods = clazz.methods
-        
-        // Find a method that matches by name and parameter count
-        val targetMethod = methods.find { it.name == methodName && it.parameterCount == args.size }
-            ?: throw NoSuchMethodException("Could not find method $methodName with ${args.size} params on ${clazz.name}")
-            
-        targetMethod.isAccessible = true
-        
-        // Ensure arguments match primitive types if needed
-        val finalArgs = Array(args.size) { i ->
-            val paramType = targetMethod.parameterTypes[i]
-            val arg = args[i]
-            
-            when {
-                paramType == Int::class.javaPrimitiveType && arg is Int -> arg
-                paramType == Boolean::class.javaPrimitiveType && arg is Boolean -> arg
-                // Force conversion if there's a mismatch (common in reflection)
-                paramType == Boolean::class.javaPrimitiveType && arg is Number -> arg.toInt() != 0
-                paramType == Int::class.javaPrimitiveType && arg is Boolean -> if (arg) 1 else 0
-                else -> arg
-            }
-        }
-        
-        try {
-            targetMethod.invoke(obj, *finalArgs)
-        } catch (e: InvocationTargetException) {
-            val cause = e.targetException ?: e.cause
-            if (cause != null) {
-                logW("InvocationTargetException cause: ${cause.javaClass.name}: ${cause.message}")
-            } else {
-                logW("InvocationTargetException with null cause")
-            }
-            throw e
-        }
-    }
-
     private fun logD(message: String) {
         Log.d(TAG, message)
         logCallback?.let { runCatching { it.log(0, TAG, message) } }
