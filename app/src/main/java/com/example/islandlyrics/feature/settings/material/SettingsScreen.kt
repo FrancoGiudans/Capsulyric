@@ -732,15 +732,16 @@ private suspend fun readParserJsonFromFile(context: Context, uri: Uri): String =
 private fun extractParserJson(text: String): String {
     val root = org.json.JSONObject(text)
     val schemaVersion = root.optInt("schema_version", 1)
-    val wrappedValue = if (schemaVersion >= 2 && root.has("categories")) {
+    val rawValue = if (schemaVersion >= 2 && root.has("categories")) {
         val catObj = root.optJSONObject("categories")
         val parserBlock = catObj?.optJSONObject("parser_rules")
-        parserBlock?.optJSONObject("preferences")?.optString("parser_rules_json", "[]") ?: "[]"
+        parserBlock?.optJSONArray("parsers")
+            ?: parserBlock?.optJSONObject("preferences")?.opt("parser_rules_json")
     } else {
         val prefsJson = root.optJSONObject("preferences") ?: root
-        prefsJson.optString("parser_rules_json", "[]") ?: "[]"
+        prefsJson.opt("parser_rules_json")
     }
-    return SettingsBackupManager.unwrapStringValue(wrappedValue) ?: "[]"
+    return SettingsBackupManager.parserRulesJsonFromBackupValue(rawValue) ?: "[]"
 }
 
 private fun applyImportedLanguage(context: Context, prefs: android.content.SharedPreferences) {
