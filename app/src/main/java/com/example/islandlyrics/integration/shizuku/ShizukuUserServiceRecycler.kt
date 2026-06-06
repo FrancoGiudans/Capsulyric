@@ -2,16 +2,12 @@ package com.example.islandlyrics.integration.shizuku
 
 import android.content.ComponentName
 import com.example.islandlyrics.BuildConfig
-import android.content.Context
 import android.content.ServiceConnection
 import android.os.IBinder
 import com.example.islandlyrics.IPrivilegedService
 import com.example.islandlyrics.IPrivilegedLogCallback
 import com.example.islandlyrics.core.logging.AppLogger
 import rikka.shizuku.Shizuku
-import kotlinx.coroutines.channels.awaitClose
-import kotlinx.coroutines.flow.callbackFlow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -28,7 +24,7 @@ object ShizukuUserServiceRecycler {
     private var lastPingAttempt = 0L
     private const val TAG = "ShizukuRecycler"
     private const val PING_INTERVAL_MS = 5000L  // Only ping every 5 seconds to avoid overhead
-    private const val BIND_TIMEOUT_MS = 10000L  // 10 second timeout for service binding
+    private const val BIND_TIMEOUT_MS = 15000L  // Some MTK devices need longer to spin up the user service
 
     private val log get() = AppLogger.getInstance()
     @Volatile private var logCallbackEnabled = false

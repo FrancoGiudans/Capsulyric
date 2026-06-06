@@ -3,10 +3,8 @@ package com.example.islandlyrics.integration.shizuku
 import androidx.annotation.Keep
 import com.example.islandlyrics.IPrivilegedService
 import com.example.islandlyrics.IPrivilegedLogCallback
-import android.net.IConnectivityManager
 import android.util.Log
 import android.os.IBinder
-import java.lang.reflect.InvocationTargetException
 import android.os.Handler
 import android.os.HandlerThread
 import java.util.concurrent.CountDownLatch
@@ -53,30 +51,10 @@ class PrivilegedServiceImpl : IPrivilegedService.Stub() {
 
             workerHandler.post {
                 val result = runCatching {
-                    logD("Step 1: Getting ConnectivityManager...")
-                    val cm = getConnectivityManagerInstance()
-                    logD("Step 2: Got ConnectivityManager: ${cm.javaClass.name}")
-                    
-                    // Chain IDs: 9 = OEM_DENY_3 (Blacklist mode). Matches InstallerX.
-                    val chain = 9
-                    val rule = if (enabled) 0 else 2 // 0 = ALLOW, 2 = DENY
-
-                    if (!enabled) {
-                        // setFirewallChainEnabled may be missing on some devices (e.g. MediaTek).
-                        // Try it but fall through to setUidFirewallRule if unavailable —
-                        // the OEM deny chain may already be enabled.
-                        try {
-                            logD("Step 3: Calling setFirewallChainEnabled($chain, true)...")
-                            cm.setFirewallChainEnabled(chain, true)
-                            logD("Step 4: setFirewallChainEnabled succeeded")
-                        } catch (e: Exception) {
-                            logW("setFirewallChainEnabled not available (chain may already be enabled): ${e.message}")
-                        }
+                    logD("Step 1: Resolving compatible firewall backend...")
+                    FirewallCompat.setPackageNetworkingEnabled(uid, enabled) { serviceName, stubClassName, label ->
+                        getSystemServiceProxy(serviceName, stubClassName, label)
                     }
-
-                    logD("Step 5: Calling setUidFirewallRule($chain, $uid, $rule)...")
-                    cm.setUidFirewallRule(chain, uid, rule)
-                    
                     logD("✅ SUCCESS: Firewall rules updated for $uid")
                     true
                 }
@@ -114,17 +92,17 @@ class PrivilegedServiceImpl : IPrivilegedService.Stub() {
         }
     }
     
-    private fun getConnectivityManagerInstance(): IConnectivityManager {
-        // Use raw ServiceManager.getService() + typed AIDL — this runs in the Shizuku
-        // user service process which already has system UID. Hidden APIs are accessible
-        // here without ShizukuBinderWrapper. Matches InstallerX's approach exactly.
+    private fun getSystemServiceProxy(serviceName: String, stubClassName: String, label: String): Any {
+        // Use raw ServiceManager.getService() in the Shizuku user-service process to avoid
+        // verifier failures on vendor ROMs where specific hidden firewall methods are absent.
         val smClass = Class.forName("android.os.ServiceManager")
         val getService = smClass.getMethod("getService", String::class.java)
-        val binder = getService.invoke(null, "connectivity") as? IBinder
-            ?: throw RuntimeException("connectivity service not found")
-
-        return IConnectivityManager.Stub.asInterface(binder)
-            ?: throw RuntimeException("asInterface returned null")
+        val binder = getService.invoke(null, serviceName) as? IBinder
+            ?: throw RuntimeException("$serviceName service not found")
+        val stubClass = Class.forName(stubClassName)
+        val asInterface = stubClass.getMethod("asInterface", IBinder::class.java)
+        return asInterface.invoke(null, binder)
+            ?: throw RuntimeException("$label asInterface returned null")
     }
     
     private fun logD(message: String) {
