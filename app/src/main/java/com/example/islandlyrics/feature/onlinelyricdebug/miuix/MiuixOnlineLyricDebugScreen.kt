@@ -188,6 +188,14 @@ fun MiuixOnlineLyricDebugScreen(
                                 Text(stringResource(R.string.online_lyric_debug_clear_custom))
                             }
                         }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Button(
+                            onClick = { viewModel.importCurrentPlaybackToCustomMatch() },
+                            enabled = mediaInfo != null,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(stringResource(R.string.online_lyric_debug_import_current_playback))
+                        }
                     }
                 }
             }

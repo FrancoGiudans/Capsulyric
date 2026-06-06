@@ -719,6 +719,7 @@
     <string name="online_lyric_debug_custom_artist">自定义匹配歌手</string>
     <string name="online_lyric_debug_save">保存到缓存</string>
     <string name="online_lyric_debug_clear_custom">清除自定义</string>
+    <string name="online_lyric_debug_import_current_playback">导入当前播放歌曲/歌手</string>
     <string name="online_lyric_debug_live_status">实时歌词状态</string>
     <string name="online_lyric_debug_lyric_source_fmt">歌词来源: %1$s / %2$s</string>
     <string name="online_lyric_debug_current_lyric_fmt">当前歌词: %1$s</string>
@@ -765,6 +766,7 @@
     <string name="online_lyric_debug_no_cached_lyric">当前歌曲暂无歌词缓存</string>
     <string name="online_lyric_debug_error_no_song">没有可用的歌曲信息</string>
     <string name="online_lyric_debug_error_empty_override">请至少填写歌名或歌手中的一项</string>
+    <string name="online_lyric_debug_imported_current_playback">已导入当前播放信息到自定义匹配输入框，点击保存到缓存后生效</string>
     <string name="online_lyric_debug_override_saved">已保存当前歌曲匹配信息，留空项会自动使用原始播放信息</string>
     <string name="online_lyric_debug_override_cleared">已清除当前歌曲自定义匹配和关联歌词缓存</string>
     <string name="online_lyric_debug_cache_hit">本次结果来自歌词缓存</string>

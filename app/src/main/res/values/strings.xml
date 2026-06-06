@@ -728,6 +728,7 @@ Within the log interface, select the share/export icon. You can specify a timefr
     <string name="online_lyric_debug_custom_artist">Custom Match Artist</string>
     <string name="online_lyric_debug_save">Save to Cache</string>
     <string name="online_lyric_debug_clear_custom">Clear Custom Match</string>
+    <string name="online_lyric_debug_import_current_playback">Import Current Song / Artist</string>
     <string name="online_lyric_debug_live_status">Live Lyric Status</string>
     <string name="online_lyric_debug_lyric_source_fmt">Lyric Source: %1$s / %2$s</string>
     <string name="online_lyric_debug_current_lyric_fmt">Current Lyric: %1$s</string>
@@ -774,6 +775,7 @@ Within the log interface, select the share/export icon. You can specify a timefr
     <string name="online_lyric_debug_no_cached_lyric">No cached lyric for the current song</string>
     <string name="online_lyric_debug_error_no_song">No song information available</string>
     <string name="online_lyric_debug_error_empty_override">Enter at least a title or an artist</string>
+    <string name="online_lyric_debug_imported_current_playback">Imported current playback info into the custom match fields. Tap Save to Cache to apply it</string>
     <string name="online_lyric_debug_override_saved">Saved current song match info. Blank fields will automatically fall back to the original playback info</string>
     <string name="online_lyric_debug_override_cleared">Cleared the current song\'s custom match and related lyric cache</string>
     <string name="online_lyric_debug_cache_hit">This result came from lyric cache</string>

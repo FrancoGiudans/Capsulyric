@@ -43,7 +43,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -71,9 +70,7 @@ fun OnlineLyricDebugScreen(
     onBack: () -> Unit,
     viewModel: OnlineLyricDebugViewModel = viewModel()
 ) {
-    val scrollState = rememberScrollState()
     val context = LocalContext.current
-    val exportScope = rememberCoroutineScope()
     val mediaInfo by viewModel.liveMetadata.observeAsState()
     val liveProgress by viewModel.liveProgress.observeAsState()
     val liveLyric by viewModel.liveLyric.observeAsState()
@@ -94,12 +91,10 @@ fun OnlineLyricDebugScreen(
     val canSelectDialogResult = dialogAttempt?.result?.let { result ->
         result.error == null && !result.parsedLines.isNullOrEmpty()
     } == true
-    val showPrioritySection = remember(mediaInfo?.packageName, useSmartSelection) {
-        val pkg = mediaInfo?.packageName
-        pkg != null &&
-            (ParserRuleHelper.getRuleForPackage(context, pkg)?.useOnlineLyrics == true) &&
-            !useSmartSelection
-    }
+    val currentPackageName = mediaInfo?.packageName
+    val showPrioritySection = currentPackageName != null &&
+        (ParserRuleHelper.getRuleForPackage(context, currentPackageName)?.useOnlineLyrics == true) &&
+        !useSmartSelection
 
     LaunchedEffect(mediaInfo?.packageName) {
         if (mediaInfo?.packageName != null) {
@@ -118,6 +113,7 @@ fun OnlineLyricDebugScreen(
                     }
                 },
                 actions = {
+                    val exportScope = rememberCoroutineScope()
                     IconButton(onClick = {
                         exportScope.launch {
                             val result = LyricExporter.exportCurrentLyrics(context)
@@ -138,7 +134,7 @@ fun OnlineLyricDebugScreen(
                 .fillMaxSize()
                 .padding(padding)
                 .padding(horizontal = 24.dp)
-                .verticalScroll(scrollState),
+                .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
             Spacer(modifier = Modifier.height(1.dp))
@@ -196,6 +192,14 @@ fun OnlineLyricDebugScreen(
                     ) {
                         Text(stringResource(R.string.online_lyric_debug_clear_custom))
                     }
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedButton(
+                    onClick = { viewModel.importCurrentPlaybackToCustomMatch() },
+                    enabled = mediaInfo != null,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(stringResource(R.string.online_lyric_debug_import_current_playback))
                 }
             }
 
