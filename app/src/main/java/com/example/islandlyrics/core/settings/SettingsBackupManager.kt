@@ -18,6 +18,7 @@ import java.util.zip.ZipOutputStream
 object SettingsBackupManager {
 
     private const val PREFS_NAME = "IslandLyricsPrefs"
+    private const val PREF_PARSER_RULES = "parser_rules_json"
     private const val SCHEMA_VERSION = 2
     private val FILE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMdd_HH_mm_ss", Locale.US)
 
@@ -272,23 +273,32 @@ object SettingsBackupManager {
 
         for ((catId, keys) in grouped) {
             val entries = JSONObject()
+            val catBlock = JSONObject()
             for (key in keys.sorted()) {
                 val value = all[key] ?: continue
                 if (key in BackupCategories.EXCLUDED_KEYS) continue
 
-                val exportValue = if (key == "parser_rules_json" && parserSelected && value is String) {
-                    BackupCategories.filterParserRulesJson(value, selectedLeafIds)
-                } else {
-                    value
+                if (key == PREF_PARSER_RULES && value is String) {
+                    val parserJson = if (parserSelected) {
+                        BackupCategories.filterParserRulesJson(value, selectedLeafIds)
+                    } else {
+                        value
+                    }
+                    val parsers = parserRulesJsonToBackupArray(parserJson)
+                    if (parsers.length() > 0) {
+                        catBlock.put("parsers", parsers)
+                    }
+                    continue
                 }
 
-                val wrapped = wrapValue(exportValue) ?: continue
+                val wrapped = wrapValue(value) ?: continue
                 entries.put(key, wrapped)
             }
             if (entries.length() > 0) {
-                categoriesJson.put(catId, JSONObject().apply {
-                    put("preferences", entries)
-                })
+                catBlock.put("preferences", entries)
+            }
+            if (catBlock.length() > 0) {
+                categoriesJson.put(catId, catBlock)
             }
         }
 
@@ -309,8 +319,11 @@ object SettingsBackupManager {
         while (catIter.hasNext()) {
             val catId = catIter.next()
             val catBlock = categoriesObj.optJSONObject(catId) ?: continue
-            val prefsJson = catBlock.optJSONObject("preferences") ?: continue
-            count += prefsJson.length()
+            val prefsJson = catBlock.optJSONObject("preferences")
+            count += prefsJson?.length() ?: 0
+            if (catId == "parser_rules") {
+                count += catBlock.optJSONArray("parsers")?.length() ?: 0
+            }
         }
         return count
     }
@@ -339,14 +352,33 @@ object SettingsBackupManager {
                 while (catIter.hasNext()) {
                     val catId = catIter.next()
                     val catBlock = categoriesObj.optJSONObject(catId) ?: continue
+                    val hasStructuredParsers = catId == "parser_rules" &&
+                        catBlock.optJSONArray("parsers") != null
+                    if (catId == "parser_rules" && selectedLeafIds.any { it.startsWith("parser_") }) {
+                        val parsers = catBlock.optJSONArray("parsers")
+                        if (parsers != null) {
+                            importedParserJson = BackupCategories.filterParserRulesJson(
+                                parserRulesJsonFromBackupValue(parsers) ?: "[]",
+                                selectedLeafIds
+                            )
+                            count += countParserRules(importedParserJson)
+                        }
+                    }
                     val prefsJson = catBlock.optJSONObject("preferences") ?: continue
                     val keyIter = prefsJson.keys()
                     while (keyIter.hasNext()) {
                         val key = keyIter.next()
                         if (key in BackupCategories.EXCLUDED_KEYS) continue
                         if (!allowedPatterns.any { BackupCategories.matchesPattern(key, it) }) continue
-                        if (key == "parser_rules_json" && selectedLeafIds.any { it.startsWith("parser_") }) {
-                            importedParserJson = unwrapStringValue(prefsJson.opt(key))
+                        if (key == PREF_PARSER_RULES && hasStructuredParsers) continue
+                        if (key == PREF_PARSER_RULES &&
+                            selectedLeafIds.any { it.startsWith("parser_") } &&
+                            !hasStructuredParsers
+                        ) {
+                            importedParserJson = BackupCategories.filterParserRulesJson(
+                                parserRulesJsonFromBackupValue(prefsJson.opt(key)) ?: "[]",
+                                selectedLeafIds
+                            )
                             count += 1
                             continue
                         }
@@ -364,8 +396,11 @@ object SettingsBackupManager {
                 if (key in BackupCategories.EXCLUDED_KEYS) continue
                 if (allowedPatterns.isNotEmpty() &&
                     !allowedPatterns.any { BackupCategories.matchesPattern(key, it) }) continue
-                if (key == "parser_rules_json" && selectedLeafIds.any { it.startsWith("parser_") }) {
-                    importedParserJson = unwrapStringValue(prefsJson.opt(key))
+                if (key == PREF_PARSER_RULES && selectedLeafIds.any { it.startsWith("parser_") }) {
+                    importedParserJson = BackupCategories.filterParserRulesJson(
+                        parserRulesJsonFromBackupValue(prefsJson.opt(key)) ?: "[]",
+                        selectedLeafIds
+                    )
                     count += 1
                     continue
                 }
@@ -473,8 +508,11 @@ object SettingsBackupManager {
                 while (catIter.hasNext()) {
                     val catId = catIter.next()
                     val catBlock = categoriesObj.optJSONObject(catId) ?: continue
-                    val prefsJson = catBlock.optJSONObject("preferences") ?: continue
-                    val n = prefsJson.length()
+                    val prefsJson = catBlock.optJSONObject("preferences")
+                    var n = prefsJson?.length() ?: 0
+                    if (catId == "parser_rules") {
+                        n += catBlock.optJSONArray("parsers")?.length() ?: 0
+                    }
                     counts[catId] = n
                     total += n
                 }
@@ -617,6 +655,104 @@ object SettingsBackupManager {
 
     // ── Parser rule conflict detection & resolution ────────────────────
 
+    private fun parserRulesJsonToBackupArray(json: String): JSONArray {
+        val source = runCatching { JSONArray(json) }.getOrNull() ?: return JSONArray()
+        val result = JSONArray()
+        for (i in 0 until source.length()) {
+            val rule = source.optJSONObject(i) ?: continue
+            val pkg = rule.optString("pkg", rule.optString("package", ""))
+            if (pkg.isBlank()) continue
+
+            val backupRule = JSONObject()
+                .put("package", pkg)
+                .put("name", optDisplayName(rule, pkg))
+                .put("enabled", rule.optBoolean("enabled", true))
+                .put("car_protocol", rule.optBoolean("usesCarProtocol", rule.optBoolean("car_protocol", true)))
+                .put("separator", rule.optString("separator", "-"))
+                .put("field_order", rule.optString("fieldOrder", rule.optString("field_order", "ARTIST_TITLE")))
+                .put("sources", JSONObject()
+                    .put("local_lyrics", rule.optBoolean("useLocalLyrics", false))
+                    .put("online_lyrics", rule.optBoolean("useOnlineLyrics", false))
+                    .put("smart_selection", rule.optBoolean("useSmartOnlineLyricSelection", true))
+                    .put("use_raw_metadata", rule.optBoolean("useRawMetadataForOnlineMatching", false)))
+                .put("online_providers", rule.optJSONArray("onlineLyricProviderOrder") ?: JSONArray())
+                .put("apis", JSONObject()
+                    .put("super_lyric", rule.optBoolean("useSuperLyricApi", false))
+                    .put("lyric_getter", rule.optBoolean("useLyricGetterApi", false))
+                    .put("lyricon", rule.optBoolean("useLyriconApi", false)))
+                .put("translations", JSONObject()
+                    .put("online_translation", rule.optBoolean("receiveOnlineTranslation", false))
+                    .put("online_romanization", rule.optBoolean("receiveOnlineRomanization", false))
+                    .put("lyricon_translation", rule.optBoolean("receiveLyriconTranslation", false))
+                    .put("lyricon_romanization", rule.optBoolean("receiveLyriconRomanization", false)))
+            result.put(backupRule)
+        }
+        return result
+    }
+
+    internal fun parserRulesJsonFromBackupValue(rawValue: Any?): String? {
+        return when (rawValue) {
+            is JSONArray -> backupParserArrayToParserRulesJson(rawValue)
+            is JSONObject -> {
+                if (rawValue.has("type")) {
+                    unwrapStringValue(rawValue)
+                } else {
+                    backupParserArrayToParserRulesJson(JSONArray().put(rawValue))
+                }
+            }
+            is String -> rawValue.takeIf { it.isNotEmpty() }
+            else -> null
+        }
+    }
+
+    private fun backupParserArrayToParserRulesJson(array: JSONArray): String {
+        val result = JSONArray()
+        for (i in 0 until array.length()) {
+            val obj = array.optJSONObject(i) ?: continue
+            val pkg = obj.optString("package", obj.optString("pkg", ""))
+            if (pkg.isBlank()) continue
+
+            val sources = obj.optJSONObject("sources") ?: JSONObject()
+            val apis = obj.optJSONObject("apis") ?: JSONObject()
+            val translations = obj.optJSONObject("translations") ?: JSONObject()
+            val providers = obj.optJSONArray("online_providers")
+                ?: obj.optJSONArray("onlineLyricProviderOrder")
+                ?: JSONArray()
+
+            result.put(JSONObject()
+                .put("pkg", pkg)
+                .put("name", optDisplayName(obj, pkg))
+                .put("enabled", obj.optBoolean("enabled", true))
+                .put("usesCarProtocol", obj.optBoolean("car_protocol", obj.optBoolean("usesCarProtocol", true)))
+                .put("separator", obj.optString("separator", "-"))
+                .put("fieldOrder", obj.optString("field_order", obj.optString("fieldOrder", "ARTIST_TITLE")))
+                .put("useOnlineLyrics", sources.optBoolean("online_lyrics", obj.optBoolean("useOnlineLyrics", false)))
+                .put("useSmartOnlineLyricSelection", sources.optBoolean("smart_selection", obj.optBoolean("useSmartOnlineLyricSelection", true)))
+                .put("useRawMetadataForOnlineMatching", sources.optBoolean("use_raw_metadata", obj.optBoolean("useRawMetadataForOnlineMatching", false)))
+                .put("receiveOnlineTranslation", translations.optBoolean("online_translation", obj.optBoolean("receiveOnlineTranslation", false)))
+                .put("receiveOnlineRomanization", translations.optBoolean("online_romanization", obj.optBoolean("receiveOnlineRomanization", false)))
+                .put("onlineLyricProviderOrder", providers)
+                .put("useSuperLyricApi", apis.optBoolean("super_lyric", obj.optBoolean("useSuperLyricApi", false)))
+                .put("useLyricGetterApi", apis.optBoolean("lyric_getter", obj.optBoolean("useLyricGetterApi", false)))
+                .put("useLyriconApi", apis.optBoolean("lyricon", obj.optBoolean("useLyriconApi", false)))
+                .put("receiveLyriconTranslation", translations.optBoolean("lyricon_translation", obj.optBoolean("receiveLyriconTranslation", false)))
+                .put("receiveLyriconRomanization", translations.optBoolean("lyricon_romanization", obj.optBoolean("receiveLyriconRomanization", false)))
+                .put("useLocalLyrics", sources.optBoolean("local_lyrics", obj.optBoolean("useLocalLyrics", false))))
+        }
+        return result.toString()
+    }
+
+    private fun countParserRules(json: String?): Int {
+        if (json.isNullOrEmpty()) return 0
+        return runCatching { JSONArray(json).length() }.getOrDefault(0)
+    }
+
+    private fun optDisplayName(obj: JSONObject, fallback: String): String {
+        return obj.optString("name", fallback)
+            .takeUnless { it.isBlank() || it == "null" }
+            ?: fallback
+    }
+
     /**
      * Unwrap a type-wrapped value (e.g. {"type":"string","value":"..."}) to its raw string.
      */
@@ -641,7 +777,7 @@ object SettingsBackupManager {
      */
     private fun checkParserConflicts(context: Context, importedJson: String): List<ParserConflict> {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        val existingJson = prefs.getString("parser_rules_json", null) ?: return emptyList()
+        val existingJson = prefs.getString(PREF_PARSER_RULES, null) ?: return emptyList()
         return try {
             val existing = JSONArray(existingJson)
             val imported = JSONArray(importedJson)
@@ -673,7 +809,7 @@ object SettingsBackupManager {
         keepExistingPkgs: Set<String>
     ) {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        val existingJson = prefs.getString("parser_rules_json", "[]") ?: "[]"
+        val existingJson = prefs.getString(PREF_PARSER_RULES, "[]") ?: "[]"
         try {
             val existing = JSONArray(existingJson)
             val imported = JSONArray(importedJson)
@@ -692,7 +828,7 @@ object SettingsBackupManager {
                     existing.put(obj)
                 }
             }
-            prefs.edit().putString("parser_rules_json", existing.toString()).apply()
+            prefs.edit().putString(PREF_PARSER_RULES, existing.toString()).apply()
         } catch (_: Exception) { }
     }
 }

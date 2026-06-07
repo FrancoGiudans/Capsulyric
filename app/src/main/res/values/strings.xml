@@ -123,6 +123,7 @@
     <string name="settings_recommend_media_app">Recommend current media app</string>
     <string name="settings_recommend_media_app_desc">Automatically recommend the current media app when entering rule settings</string>
     <string name="settings_help_about_header">Help &amp; About</string>
+    <string name="settings_developer_mode_header">Developer Mode</string>
     <string name="community_about_title">Community &amp; About</string>
     <string name="settings_about_capsulyric">About Capsulyric</string>
     <string name="settings_community_header">Community</string>
@@ -468,7 +469,7 @@ Available actions include:\n\n
 4. Clear image cache as well if needed.\n\n
 If online lyric results never update, or if you already corrected the match information but still see the old result, it is recommended to delete the cache entry for that song first and fetch it again.</string>
     <string name="faq_q_access_diagnostics">Q: How to access Cache Management and Lyric Debugging?</string>
-    <string name="faq_a_access_diagnostics">A: You can access the <b>Diagnostics Tool</b> by repeatedly tapping the <b>"Internal Development Number"</b> (or "Commit Hash") in the <b>About</b> section of Settings. Both Cache Management and Online Lyric Debugging pages are located within the Diagnostics Tool. Note that the <b>custom matching</b> feature is found inside the "Online Lyric Debugging" page.</string>
+    <string name="faq_a_access_diagnostics">A: Repeatedly tap <b>"Version"</b> or <b>"Internal Development Number"</b> on the <b>About</b> page to unlock the <b>Developer Mode</b> section at the bottom of App Settings. The <b>Diagnostics Tool</b> entry is inside that section. Cache Management and Online Lyric Debugging pages are located within the Diagnostics Tool. Note that the <b>custom matching</b> feature is found inside the "Online Lyric Debugging" page.</string>
     <string name="faq_q_offline_mode_online_lyrics">Q: Does Full Offline Mode affect online lyrics?</string>
     <string name="faq_a_offline_mode_online_lyrics">A: Yes. After <b>"Full Offline Mode"</b> is enabled, all online lyric requests are disabled. Update checks and other network-dependent content are also blocked.\n\n
 If you want to use online lyrics, please turn off Full Offline Mode first.</string>
@@ -491,7 +492,7 @@ If you want to use online lyrics, please turn off Full Offline Mode first.</stri
 <b>Solution</b>: Please go to system settings and re-grant Notification Access to this app.</string>
     
     <string name="faq_q_how_to_diagnostics">Q: How to open the Diagnostics Tool?</string>
-    <string name="faq_a_how_to_diagnostics">A: Go to the <b>Settings → About</b> page, and repeatedly tap the <b>"Internal Development Number"</b> or <b>"Commit Hash"</b> 7 times. This will unlock the <b>Diagnostics Tool</b> entry at the bottom of the settings list.\n\n
+    <string name="faq_a_how_to_diagnostics">A: Go to the <b>Settings → About</b> page and tap <b>"Version"</b> or <b>"Internal Development Number"</b> 7 times. This unlocks the <b>Developer Mode</b> section at the bottom of <b>App Settings</b>; open <b>"Diagnostics Tool"</b> from there.\n\n
 Once inside the Diagnostics Tool, you can access <b>Cache Management</b>, <b>Online Lyric Debugging</b>, <b>Lab</b> experimental features, and more.</string>
     <string name="faq_q_island_camera_overlap">Q: Super Island lyrics overlap with the camera cutout?</string>
     <string name="faq_a_island_camera_overlap">A: This can happen when the lyric text is too long on devices with a centered punch-hole camera. To resolve this:\n\n
@@ -512,7 +513,7 @@ Experiment with different values until the lyrics fit comfortably around the cam
     <string name="faq_a_get_log">A: Please follow the standardized procedure:\n\n
 <b>1. Activate Diagnostics Tool</b>\n
 - <b>Debug Version</b>: Direct access available via the Log Console on the main screen.\n
-- <b>Release Version</b>: Navigate to the "About" section and tap the version number or "Commit Hash" 7 times to unlock the entry point.\n\n
+- <b>Release Version</b>: Go to Settings → About and tap "Version" or "Internal Development Number" 7 times to unlock the Developer Mode section at the bottom of App Settings, then open Diagnostics Tool from there.\n\n
 <b>2. Export ZIP Package</b>\n
 Within the log interface, select the share/export icon. You can specify a timeframe for data capture. The application will aggregate environment context and system logs into a ZIP file. Please ensure this file is attached when submitting a GitHub Issue or feedback form.</string>
 
@@ -728,6 +729,7 @@ Within the log interface, select the share/export icon. You can specify a timefr
     <string name="online_lyric_debug_custom_artist">Custom Match Artist</string>
     <string name="online_lyric_debug_save">Save to Cache</string>
     <string name="online_lyric_debug_clear_custom">Clear Custom Match</string>
+    <string name="online_lyric_debug_import_current_playback">Import Current Song / Artist</string>
     <string name="online_lyric_debug_live_status">Live Lyric Status</string>
     <string name="online_lyric_debug_lyric_source_fmt">Lyric Source: %1$s / %2$s</string>
     <string name="online_lyric_debug_current_lyric_fmt">Current Lyric: %1$s</string>
@@ -774,6 +776,7 @@ Within the log interface, select the share/export icon. You can specify a timefr
     <string name="online_lyric_debug_no_cached_lyric">No cached lyric for the current song</string>
     <string name="online_lyric_debug_error_no_song">No song information available</string>
     <string name="online_lyric_debug_error_empty_override">Enter at least a title or an artist</string>
+    <string name="online_lyric_debug_imported_current_playback">Imported current playback info into the custom match fields. Tap Save to Cache to apply it</string>
     <string name="online_lyric_debug_override_saved">Saved current song match info. Blank fields will automatically fall back to the original playback info</string>
     <string name="online_lyric_debug_override_cleared">Cleared the current song\'s custom match and related lyric cache</string>
     <string name="online_lyric_debug_cache_hit">This result came from lyric cache</string>
