@@ -30,6 +30,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.runtime.*
+import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -54,6 +55,7 @@ import com.example.islandlyrics.core.settings.SettingsBackupManager
 import com.example.islandlyrics.core.settings.SettingsBackupManager.ParserConflict
 import com.example.islandlyrics.core.settings.BackupCategories
 import com.example.islandlyrics.core.settings.SettingsBackupManager.PreviewResult
+import com.example.islandlyrics.data.LyricRepository
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import top.yukonga.miuix.kmp.basic.Snackbar as MiuixSnackbar
@@ -82,7 +84,7 @@ fun MiuixSettingsScreen(
     onUpdateIgnore: (String) -> Unit = {}
 ) {
     val context = LocalContext.current
-    val prefs = remember { context.getSharedPreferences("IslandLyricsPrefs", android.content.Context.MODE_PRIVATE) }
+    val prefs = remember { context.getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE) }
     val snackbarHostState = remember { MiuixSnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
     val scrollBehavior = MiuixScrollBehavior(rememberTopAppBarState())
@@ -93,6 +95,7 @@ fun MiuixSettingsScreen(
     val backupImportSuccessFormat = stringResource(R.string.settings_backup_import_success)
     val backupImportSuccessWithCacheFormat = stringResource(R.string.settings_backup_import_success_with_cache)
     val backupImportFailedText = stringResource(R.string.settings_backup_import_failed)
+    val devModeEnabled by LyricRepository.getInstance().devModeEnabled.observeAsState(false)
 
     // Backup category selection states
     var showExportCategoryDialog by remember { mutableStateOf(false) }
@@ -141,12 +144,14 @@ fun MiuixSettingsScreen(
                 importPreviewResult = preview
                 pendingImportUri = uri
                 val dynamicCategoriesList = BackupCategories.ALL_CATEGORIES.map { cat ->
-                    if (cat.id == "parser_rules") {
-                        val parserJson = readParserJsonForPreviewMiuix(context, uri)
-                        cat.copy(subGroups = BackupCategories.parserAppSubGroupsFromJson(parserJson))
-                    } else if (cat.id == "lyric_cache" && preview.lyricCacheEntryCount != 0) {
-                        cat
-                    } else cat
+                    when {
+                        cat.id == "parser_rules" -> {
+                            val parserJson = readParserJsonForPreviewMiuix(context, uri)
+                            cat.copy(subGroups = BackupCategories.parserAppSubGroupsFromJson(parserJson))
+                        }
+                        cat.id == "lyric_cache" && preview.lyricCacheEntryCount != 0 -> cat
+                        else -> cat
+                    }
                 }
                 selectedImportCategories = preview.categoryCounts.keys.flatMap { catId ->
                     val cat = dynamicCategoriesList.find { it.id == catId }
@@ -443,6 +448,19 @@ fun MiuixSettingsScreen(
                     )
                 }
             }
+
+            if (devModeEnabled) {
+                item { SmallTitle(text = stringResource(R.string.settings_developer_mode_header)) }
+                item {
+                    Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
+                        SuperArrow(
+                            title = stringResource(R.string.title_diagnostics),
+                            summary = stringResource(R.string.summary_diagnostics),
+                            onClick = onShowDiagnostics
+                        )
+                    }
+                }
+            }
         }
 
         // --- Dialogs (must be inside Scaffold content for MiuixPopupHost) ---
@@ -522,15 +540,17 @@ fun MiuixSettingsScreen(
             show = showImportPreviewDialog && importPreviewResult != null,
             titleRes = R.string.backup_dialog_import_title,
             categories = BackupCategories.ALL_CATEGORIES.map { cat ->
-                if (cat.id == "parser_rules") {
-                    val uri = pendingImportUri
-                    val parserJson = if (uri != null) {
-                        remember(uri) { readParserJsonForPreviewMiuix(context, uri) }
-                    } else null
-                    cat.copy(subGroups = BackupCategories.parserAppSubGroupsFromJson(parserJson))
-                } else if (cat.id == "lyric_cache" && (importPreviewResult?.lyricCacheEntryCount ?: 0) != 0) {
-                    cat
-                } else cat
+                when {
+                    cat.id == "parser_rules" -> {
+                        val uri = pendingImportUri
+                        val parserJson = if (uri != null) {
+                            remember(uri) { readParserJsonForPreviewMiuix(context, uri) }
+                        } else null
+                        cat.copy(subGroups = BackupCategories.parserAppSubGroupsFromJson(parserJson))
+                    }
+                    cat.id == "lyric_cache" && (importPreviewResult?.lyricCacheEntryCount ?: 0) != 0 -> cat
+                    else -> cat
+                }
             },
             categoryKeyCounts = importPreviewResult?.categoryCounts,
             initialSelected = selectedImportCategories,
@@ -723,14 +743,6 @@ private fun extractParserJsonMiuix(text: String): String {
         prefsJson.opt("parser_rules_json")
     }
     return SettingsBackupManager.parserRulesJsonFromBackupValue(rawValue) ?: "[]"
-}
-
-private fun applyImportedLanguage(context: Context, prefs: android.content.SharedPreferences) {
-    val code = prefs.getString("language_code", "") ?: ""
-    if (code.isNotEmpty()) {
-        ThemeHelper.setLanguage(context, code)
-        (context as? Activity)?.recreate()
-    }
 }
 
 @Composable

@@ -3,7 +3,6 @@ package com.example.islandlyrics.feature.settings.miuix
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Intent
-import android.net.Uri
 import android.widget.Toast
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -16,7 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import com.example.islandlyrics.BuildConfig
+import androidx.core.net.toUri
 import com.example.islandlyrics.R
 import com.example.islandlyrics.core.feed.CommunityFeed
 import com.example.islandlyrics.core.feed.CommunityFeedRepository
@@ -40,7 +39,6 @@ fun MiuixAboutScreen(
     updateVersionText: String,
     updateCodenameText: String,
     updateBuildText: String,
-    onShowDiagnostics: () -> Unit,
     onCheckUpdate: () -> Unit,
     onViewCurrentVersionChangelog: () -> Unit,
     onBack: (() -> Unit)? = null,
@@ -56,7 +54,6 @@ fun MiuixAboutScreen(
 
     val showFeedbackPopup = remember { mutableStateOf(false) }
     val devModeEnabled by LyricRepository.getInstance().devModeEnabled.observeAsState(false)
-    val showDiagnostics = BuildConfig.DEBUG || devModeEnabled
     val offlineModeEnabled = remember { OfflineModeManager.isEnabled(context) }
     var autoUpdateEnabled by remember { mutableStateOf(UpdateChecker.isAutoUpdateEnabled(context)) }
     var currentChannel by remember { mutableStateOf(UpdateChecker.getUpdateChannel(context)) }
@@ -65,6 +62,27 @@ fun MiuixAboutScreen(
     var communityFeed by remember { mutableStateOf<CommunityFeed?>(null) }
     var communityFeedLoaded by remember { mutableStateOf(false) }
     val showCommunityDialog = remember { mutableStateOf<CommunityDialogState?>(null) }
+    var devStepCount by remember { mutableIntStateOf(0) }
+    val devModeAlreadyEnabledText = stringResource(R.string.toast_dev_mode_already_enabled)
+    val devModeStepsFormat = stringResource(R.string.toast_dev_mode_steps)
+    val devModeEnabledText = stringResource(R.string.toast_dev_mode_enabled)
+    val copiedText = stringResource(R.string.toast_copied)
+    fun handleDevModeTap(): Boolean {
+        if (devModeEnabled) {
+            Toast.makeText(context, devModeAlreadyEnabledText, Toast.LENGTH_SHORT).show()
+            return true
+        }
+        devStepCount++
+        if (devStepCount in 3..6) {
+            Toast.makeText(context, String.format(devModeStepsFormat, 7 - devStepCount), Toast.LENGTH_SHORT).show()
+            return true
+        } else if (devStepCount == 7) {
+            LyricRepository.getInstance().setDevMode(context, true)
+            Toast.makeText(context, devModeEnabledText, Toast.LENGTH_SHORT).show()
+            return true
+        }
+        return false
+    }
 
     LaunchedEffect(offlineModeEnabled, feedSourcePriority) {
         communityFeedLoaded = false
@@ -242,7 +260,7 @@ fun MiuixAboutScreen(
                                             showFeedbackPopup.value = false
                                             val browserIntent = Intent(
                                                 Intent.ACTION_VIEW,
-                                                Uri.parse("https://github.com/FrancoGiudans/Capsulyric/issues/new?template=bug_report.yml")
+                                                "https://github.com/FrancoGiudans/Capsulyric/issues/new?template=bug_report.yml".toUri()
                                             )
                                             context.startActivity(browserIntent)
                                         }
@@ -254,7 +272,7 @@ fun MiuixAboutScreen(
                                         index = 1,
                                         onSelectedIndexChange = {
                                             showFeedbackPopup.value = false
-                                            val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://f.wps.cn/g/qACKW9I3/"))
+                                            val browserIntent = Intent(Intent.ACTION_VIEW, "https://f.wps.cn/g/qACKW9I3/".toUri())
                                             context.startActivity(browserIntent)
                                         }
                                     )
@@ -266,7 +284,7 @@ fun MiuixAboutScreen(
                             title = stringResource(R.string.settings_about_github),
                             summary = stringResource(R.string.summary_github),
                             onClick = {
-                                val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/FrancoGiudans/Capsulyric"))
+                                val browserIntent = Intent(Intent.ACTION_VIEW, "https://github.com/FrancoGiudans/Capsulyric".toUri())
                                 context.startActivity(browserIntent)
                             }
                         )
@@ -279,7 +297,9 @@ fun MiuixAboutScreen(
                             val cm = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as ClipboardManager
                             val copyText = "$updateVersionText（$updateCodenameText，$updateBuildText）"
                             cm.setPrimaryClip(ClipData.newPlainText("Version", copyText))
-                            Toast.makeText(context, context.getString(R.string.toast_copied), Toast.LENGTH_SHORT).show()
+                            if (!handleDevModeTap()) {
+                                Toast.makeText(context, copiedText, Toast.LENGTH_SHORT).show()
+                            }
                         }
                     )
 
@@ -288,32 +308,11 @@ fun MiuixAboutScreen(
                         summary = updateCodenameText
                     )
 
-                    var devStepCount by remember { mutableIntStateOf(0) }
                     BasicComponent(
                         title = stringResource(R.string.about_commit),
                         summary = updateBuildText,
-                        onClick = {
-                            if (devModeEnabled) {
-                                Toast.makeText(context, context.getString(R.string.toast_dev_mode_already_enabled), Toast.LENGTH_SHORT).show()
-                                return@BasicComponent
-                            }
-                            devStepCount++
-                            if (devStepCount in 3..6) {
-                                Toast.makeText(context, context.getString(R.string.toast_dev_mode_steps, 7 - devStepCount), Toast.LENGTH_SHORT).show()
-                            } else if (devStepCount == 7) {
-                                LyricRepository.getInstance().setDevMode(context, true)
-                                Toast.makeText(context, context.getString(R.string.toast_dev_mode_enabled), Toast.LENGTH_SHORT).show()
-                            }
-                        }
+                        onClick = { handleDevModeTap() }
                     )
-
-                    if (showDiagnostics) {
-                        SuperArrow(
-                            title = stringResource(R.string.title_diagnostics),
-                            summary = stringResource(R.string.summary_diagnostics),
-                            onClick = onShowDiagnostics
-                        )
-                    }
                 }
             }
         }
@@ -324,7 +323,7 @@ fun MiuixAboutScreen(
                 onDismiss = { showCommunityDialog.value = null },
                 onOpen = {
                     if (dialogState.item.hasUrl) {
-                        val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse(dialogState.item.url))
+                        val browserIntent = Intent(Intent.ACTION_VIEW, dialogState.item.url.toUri())
                         context.startActivity(browserIntent)
                     }
                     showCommunityDialog.value = null

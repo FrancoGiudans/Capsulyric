@@ -28,6 +28,7 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.material3.*
 import androidx.compose.material3.HorizontalDivider as MaterialHorizontalDivider
 import androidx.compose.runtime.*
+import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -51,6 +52,7 @@ import androidx.compose.material.icons.filled.Upload
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalLayoutDirection
+import com.example.islandlyrics.data.LyricRepository
 import com.example.islandlyrics.ui.theme.material.materialPageContainerColor
 import com.example.islandlyrics.ui.theme.material.neutralMaterialTopBarColors
 import com.example.islandlyrics.core.settings.SettingsBackupManager
@@ -91,6 +93,7 @@ fun SettingsScreen(
     val backupImportSuccessFormat = stringResource(R.string.settings_backup_import_success)
     val backupImportSuccessWithCacheFormat = stringResource(R.string.settings_backup_import_success_with_cache)
     val backupImportFailedText = stringResource(R.string.settings_backup_import_failed)
+    val devModeEnabled by LyricRepository.getInstance().devModeEnabled.observeAsState(false)
 
     // Backup category selection states
     var showExportCategoryDialog by remember { mutableStateOf(false) }
@@ -141,12 +144,14 @@ fun SettingsScreen(
                 pendingImportUri = uri
                 // Build dynamic categories list (including parser rules from backup file)
                 val dynamicCategoriesList = BackupCategories.ALL_CATEGORIES.map { cat ->
-                    if (cat.id == "parser_rules") {
-                        val parserJson = readParserJsonForPreview(context, uri)
-                        cat.copy(subGroups = BackupCategories.parserAppSubGroupsFromJson(parserJson))
-                    } else if (cat.id == "lyric_cache" && preview.lyricCacheEntryCount != 0) {
-                        cat
-                    } else cat
+                    when {
+                        cat.id == "parser_rules" -> {
+                            val parserJson = readParserJsonForPreview(context, uri)
+                            cat.copy(subGroups = BackupCategories.parserAppSubGroupsFromJson(parserJson))
+                        }
+                        cat.id == "lyric_cache" && preview.lyricCacheEntryCount != 0 -> cat
+                        else -> cat
+                    }
                 }
                 // Convert category IDs to leaf IDs for the dialog - ALL selected by default
                 selectedImportCategories = preview.categoryCounts.keys.flatMap { catId ->
@@ -444,6 +449,20 @@ fun SettingsScreen(
                 }
             }
 
+            if (devModeEnabled) {
+                item { SettingsSectionHeader(text = stringResource(R.string.settings_developer_mode_header)) }
+                item {
+                    SettingsCard {
+                        SettingsActionItem(
+                            title = stringResource(R.string.title_diagnostics),
+                            summary = stringResource(R.string.summary_diagnostics),
+                            icon = Icons.Filled.Info,
+                            onClick = onShowDiagnostics
+                        )
+                    }
+                }
+            }
+
             item { Spacer(modifier = Modifier.height(8.dp)) }
         }
 
@@ -545,15 +564,17 @@ fun SettingsScreen(
         if (showImportPreviewDialog && importPreviewResult != null) {
             val preview = importPreviewResult!!
             val dynamicCategories = BackupCategories.ALL_CATEGORIES.map { cat ->
-                if (cat.id == "parser_rules") {
-                    val uri = pendingImportUri
-                    val parserJson = if (uri != null) {
-                        remember(uri) { readParserJsonForPreview(context, uri) }
-                    } else null
-                    cat.copy(subGroups = BackupCategories.parserAppSubGroupsFromJson(parserJson))
-                } else if (cat.id == "lyric_cache" && preview.lyricCacheEntryCount != 0) {
-                    cat
-                } else cat
+                when {
+                    cat.id == "parser_rules" -> {
+                        val uri = pendingImportUri
+                        val parserJson = if (uri != null) {
+                            remember(uri) { readParserJsonForPreview(context, uri) }
+                        } else null
+                        cat.copy(subGroups = BackupCategories.parserAppSubGroupsFromJson(parserJson))
+                    }
+                    cat.id == "lyric_cache" && preview.lyricCacheEntryCount != 0 -> cat
+                    else -> cat
+                }
             }
             BackupCategoryDialog(
                 titleRes = R.string.backup_dialog_import_title,
@@ -742,14 +763,6 @@ private fun extractParserJson(text: String): String {
         prefsJson.opt("parser_rules_json")
     }
     return SettingsBackupManager.parserRulesJsonFromBackupValue(rawValue) ?: "[]"
-}
-
-private fun applyImportedLanguage(context: Context, prefs: android.content.SharedPreferences) {
-    val code = prefs.getString("language_code", "") ?: ""
-    if (code.isNotEmpty()) {
-        ThemeHelper.setLanguage(context, code)
-        (context as? Activity)?.recreate()
-    }
 }
 
 @Composable

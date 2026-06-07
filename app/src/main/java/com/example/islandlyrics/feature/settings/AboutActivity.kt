@@ -8,7 +8,6 @@ import com.example.islandlyrics.R
 import com.example.islandlyrics.core.logging.AppLogger
 import com.example.islandlyrics.core.network.OfflineModeManager
 import com.example.islandlyrics.core.update.UpdateChecker
-import com.example.islandlyrics.feature.diagnostics.DiagnosticsActivity
 import com.example.islandlyrics.feature.settings.material.AboutScreen
 import com.example.islandlyrics.feature.settings.miuix.MiuixAboutScreen
 import com.example.islandlyrics.ui.common.BaseActivity
@@ -50,7 +49,6 @@ class AboutActivity : BaseActivity() {
                         updateVersionText = version,
                         updateCodenameText = codename,
                         updateBuildText = build,
-                        onShowDiagnostics = { showDiagnostics() },
                         onCheckUpdate = { performUpdateCheck() },
                         onViewCurrentVersionChangelog = { showCurrentVersionChangelog() },
                         releaseDialogState = releaseDialogState,
@@ -71,7 +69,6 @@ class AboutActivity : BaseActivity() {
                             updateVersionText = version,
                             updateCodenameText = codename,
                             updateBuildText = build,
-                            onShowDiagnostics = { showDiagnostics() },
                             onCheckUpdate = { performUpdateCheck() },
                             onViewCurrentVersionChangelog = { showCurrentVersionChangelog() },
                             releaseDialogState = releaseDialogState,
@@ -156,10 +153,6 @@ class AboutActivity : BaseActivity() {
                 AppLogger.getInstance().log("About", "Current version changelog lookup failed: ${e.message}")
             }
         }
-    }
-
-    private fun showDiagnostics() {
-        startActivity(android.content.Intent(this, DiagnosticsActivity::class.java))
     }
 }
 
