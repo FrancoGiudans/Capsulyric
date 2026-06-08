@@ -717,13 +717,31 @@ fun CustomSettingsScreen(
                                     }
 
                                     var blockXmsfMode by remember { mutableStateOf(XmsfBypassMode.read(prefs)) }
+                                    var blockXmsfCustomDurationMs by remember {
+                                        mutableIntStateOf(XmsfBypassMode.readCustomDurationMs(prefs))
+                                    }
                                     var showBlockXmsfModeDropdown by remember { mutableStateOf(false) }
+                                    val currentBlockXmsfDurationText = stringResource(
+                                        R.string.settings_block_xmsf_duration_value,
+                                        blockXmsfCustomDurationMs
+                                    )
+                                    val currentBlockXmsfModeSummary = when (blockXmsfMode) {
+                                        XmsfBypassMode.DISABLED -> stringResource(R.string.settings_block_xmsf_mode_disabled_desc)
+                                        XmsfBypassMode.STANDARD -> stringResource(R.string.settings_block_xmsf_mode_standard_desc)
+                                        XmsfBypassMode.CUSTOM -> stringResource(
+                                            R.string.settings_block_xmsf_mode_custom_current_desc,
+                                            currentBlockXmsfDurationText
+                                        )
+                                        XmsfBypassMode.AGGRESSIVE -> stringResource(R.string.settings_block_xmsf_mode_aggressive_desc)
+                                    }
                                     SettingsCardDivider()
                                     Box(modifier = Modifier.fillMaxWidth()) {
                                         SettingsTextItem(
                                             title = stringResource(R.string.settings_block_xmsf_mode),
+                                            subtitle = currentBlockXmsfModeSummary,
                                             value = when (blockXmsfMode) {
                                                 XmsfBypassMode.STANDARD -> stringResource(R.string.settings_block_xmsf_mode_standard)
+                                                XmsfBypassMode.CUSTOM -> stringResource(R.string.settings_block_xmsf_mode_custom)
                                                 XmsfBypassMode.AGGRESSIVE -> stringResource(R.string.settings_block_xmsf_mode_aggressive)
                                                 XmsfBypassMode.DISABLED -> stringResource(R.string.settings_block_xmsf_mode_disabled)
                                             },
@@ -735,12 +753,38 @@ fun CustomSettingsScreen(
                                                 onDismissRequest = { showBlockXmsfModeDropdown = false }
                                             ) {
                                                 listOf(
-                                                    XmsfBypassMode.DISABLED to R.string.settings_block_xmsf_mode_disabled,
-                                                    XmsfBypassMode.STANDARD to R.string.settings_block_xmsf_mode_standard,
-                                                    XmsfBypassMode.AGGRESSIVE to R.string.settings_block_xmsf_mode_aggressive
-                                                ).forEach { (mode, labelRes) ->
+                                                    Triple(
+                                                        XmsfBypassMode.DISABLED,
+                                                        stringResource(R.string.settings_block_xmsf_mode_disabled),
+                                                        stringResource(R.string.settings_block_xmsf_mode_disabled_desc)
+                                                    ),
+                                                    Triple(
+                                                        XmsfBypassMode.STANDARD,
+                                                        stringResource(R.string.settings_block_xmsf_mode_standard),
+                                                        stringResource(R.string.settings_block_xmsf_mode_standard_desc)
+                                                    ),
+                                                    Triple(
+                                                        XmsfBypassMode.CUSTOM,
+                                                        stringResource(R.string.settings_block_xmsf_mode_custom),
+                                                        stringResource(R.string.settings_block_xmsf_mode_custom_desc)
+                                                    ),
+                                                    Triple(
+                                                        XmsfBypassMode.AGGRESSIVE,
+                                                        stringResource(R.string.settings_block_xmsf_mode_aggressive),
+                                                        stringResource(R.string.settings_block_xmsf_mode_aggressive_desc)
+                                                    )
+                                                ).forEach { (mode, label, summary) ->
                                                     DropdownMenuItem(
-                                                        text = { Text(stringResource(labelRes)) },
+                                                        text = {
+                                                            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                                                Text(text = label)
+                                                                Text(
+                                                                    text = summary,
+                                                                    style = MaterialTheme.typography.bodySmall,
+                                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                                )
+                                                            }
+                                                        },
                                                         onClick = {
                                                             showBlockXmsfModeDropdown = false
                                                             if (mode == XmsfBypassMode.DISABLED) {
@@ -763,6 +807,23 @@ fun CustomSettingsScreen(
                                                 }
                                             }
                                         }
+                                    }
+                                    if (blockXmsfMode == XmsfBypassMode.CUSTOM) {
+                                        MaterialXmsfBypassDurationSlider(
+                                            title = stringResource(R.string.settings_block_xmsf_custom_duration),
+                                            summary = stringResource(R.string.settings_block_xmsf_custom_duration_desc),
+                                            value = blockXmsfCustomDurationMs,
+                                            onValueChange = { newDurationMs ->
+                                                blockXmsfCustomDurationMs = newDurationMs
+                                                XmsfBypassMode.writeCustomDurationMs(prefs, newDurationMs)
+                                            }
+                                        )
+                                        Text(
+                                            text = stringResource(R.string.settings_block_xmsf_custom_duration_warning),
+                                            modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp),
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
                                     }
 
                                 }
@@ -1222,6 +1283,40 @@ private fun MaterialSuperIslandTextLimitSlider(
 }
 
 @Composable
+private fun MaterialXmsfBypassDurationSlider(
+    title: String,
+    summary: String,
+    value: Int,
+    onValueChange: (Int) -> Unit
+) {
+    val clampedValue = value.coerceIn(
+        XmsfBypassMode.MIN_CUSTOM_DURATION_MS,
+        XmsfBypassMode.MAX_CUSTOM_DURATION_MS
+    )
+    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 10.dp)) {
+        Text(
+            text = "$title: ${stringResource(R.string.settings_block_xmsf_duration_value, clampedValue)}",
+            style = MaterialTheme.typography.bodyLarge
+        )
+        Text(
+            text = summary,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Slider(
+            value = clampedValue.toFloat(),
+            onValueChange = { raw ->
+                val stepped = snapXmsfBypassDuration(raw.roundToInt())
+                onValueChange(stepped)
+            },
+            valueRange = XmsfBypassMode.MIN_CUSTOM_DURATION_MS.toFloat()..XmsfBypassMode.MAX_CUSTOM_DURATION_MS.toFloat(),
+            steps = ((XmsfBypassMode.MAX_CUSTOM_DURATION_MS - XmsfBypassMode.MIN_CUSTOM_DURATION_MS) /
+                XmsfBypassMode.CUSTOM_DURATION_STEP_MS) - 1
+        )
+    }
+}
+
+@Composable
 private fun MaterialThemeColorSection(
     color: Color,
     isEditing: Boolean,
@@ -1602,4 +1697,16 @@ private fun formatSuperIslandTextLimit(value: Float): String {
     } else {
         "%.1f".format(java.util.Locale.US, value)
     }
+}
+
+private fun snapXmsfBypassDuration(durationMs: Int): Int {
+    val clamped = durationMs.coerceIn(
+        XmsfBypassMode.MIN_CUSTOM_DURATION_MS,
+        XmsfBypassMode.MAX_CUSTOM_DURATION_MS
+    )
+    val offset = clamped - XmsfBypassMode.MIN_CUSTOM_DURATION_MS
+    val steppedOffset = ((offset.toFloat() / XmsfBypassMode.CUSTOM_DURATION_STEP_MS).roundToInt()) *
+        XmsfBypassMode.CUSTOM_DURATION_STEP_MS
+    return (XmsfBypassMode.MIN_CUSTOM_DURATION_MS + steppedOffset)
+        .coerceIn(XmsfBypassMode.MIN_CUSTOM_DURATION_MS, XmsfBypassMode.MAX_CUSTOM_DURATION_MS)
 }

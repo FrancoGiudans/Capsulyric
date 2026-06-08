@@ -49,6 +49,7 @@ import top.yukonga.miuix.kmp.preference.SwitchPreference as SuperSwitch
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.MiuixPopupUtils.Companion.MiuixPopupHost
 import com.example.islandlyrics.ui.miuix.*
+import kotlin.math.roundToInt
 
 private const val MIUIX_THEME_COLOR_SOURCE_PREF_KEY = "miuix_theme_color_source"
 
@@ -134,6 +135,7 @@ fun MiuixCustomSettingsScreen(
     }
     var cardBlurEnabled by remember { mutableStateOf(prefs.getBoolean("card_blur_enabled", false)) }
     var blockXmsfMode by remember { mutableStateOf(XmsfBypassMode.read(prefs)) }
+    var blockXmsfCustomDurationMs by remember { mutableIntStateOf(XmsfBypassMode.readCustomDurationMs(prefs)) }
 
     val isLiveUpdateSupported = remember { RomUtils.isLiveUpdateSupported() }
     val isHyperOs = remember { RomUtils.isHyperOs() }
@@ -535,41 +537,84 @@ fun MiuixCustomSettingsScreen(
                                                 )
                                             }
 
-                                            val bypassModeLabels = listOf(
-                                                stringResource(R.string.settings_block_xmsf_mode_disabled),
-                                                stringResource(R.string.settings_block_xmsf_mode_standard),
-                                                stringResource(R.string.settings_block_xmsf_mode_aggressive)
+                                            val currentBlockXmsfDurationText = stringResource(
+                                                R.string.settings_block_xmsf_duration_value,
+                                                blockXmsfCustomDurationMs
                                             )
-                                            val bypassModes = listOf(
-                                                XmsfBypassMode.DISABLED,
-                                                XmsfBypassMode.STANDARD,
-                                                XmsfBypassMode.AGGRESSIVE
+                                            val currentBlockXmsfModeSummary = when (blockXmsfMode) {
+                                                XmsfBypassMode.DISABLED -> stringResource(R.string.settings_block_xmsf_mode_disabled_desc)
+                                                XmsfBypassMode.STANDARD -> stringResource(R.string.settings_block_xmsf_mode_standard_desc)
+                                                XmsfBypassMode.CUSTOM -> stringResource(
+                                                    R.string.settings_block_xmsf_mode_custom_current_desc,
+                                                    currentBlockXmsfDurationText
+                                                )
+                                                XmsfBypassMode.AGGRESSIVE -> stringResource(R.string.settings_block_xmsf_mode_aggressive_desc)
+                                            }
+                                            val bypassOptions = listOf(
+                                                Triple(
+                                                    XmsfBypassMode.DISABLED,
+                                                    stringResource(R.string.settings_block_xmsf_mode_disabled),
+                                                    stringResource(R.string.settings_block_xmsf_mode_disabled_desc)
+                                                ),
+                                                Triple(
+                                                    XmsfBypassMode.STANDARD,
+                                                    stringResource(R.string.settings_block_xmsf_mode_standard),
+                                                    stringResource(R.string.settings_block_xmsf_mode_standard_desc)
+                                                ),
+                                                Triple(
+                                                    XmsfBypassMode.CUSTOM,
+                                                    stringResource(R.string.settings_block_xmsf_mode_custom),
+                                                    stringResource(R.string.settings_block_xmsf_mode_custom_desc)
+                                                ),
+                                                Triple(
+                                                    XmsfBypassMode.AGGRESSIVE,
+                                                    stringResource(R.string.settings_block_xmsf_mode_aggressive),
+                                                    stringResource(R.string.settings_block_xmsf_mode_aggressive_desc)
+                                                )
                                             )
-                                            val currentBypassIndex = bypassModes.indexOf(blockXmsfMode).takeIf { it >= 0 } ?: 0
 
                                             SuperDropdown(
                                                 title = stringResource(R.string.settings_block_xmsf_mode),
-                                                items = bypassModeLabels,
-                                                selectedIndex = currentBypassIndex,
-                                                onSelectedIndexChange = { index ->
-                                                    val newMode = bypassModes[index]
-                                                    if (newMode == XmsfBypassMode.DISABLED) {
-                                                        blockXmsfMode = newMode
-                                                        XmsfBypassMode.write(prefs, newMode)
-                                                    } else {
-                                                        scope.launch {
-                                                            try {
-                                                                com.example.islandlyrics.integration.shizuku.requireShizukuPermissionGranted {
-                                                                    blockXmsfMode = newMode
-                                                                    XmsfBypassMode.write(prefs, newMode)
+                                                summary = currentBlockXmsfModeSummary,
+                                                entry = DropdownEntry(
+                                                    items = bypassOptions.map { (mode, label, summary) ->
+                                                        DropdownItem(
+                                                            text = label,
+                                                            summary = summary,
+                                                            selected = blockXmsfMode == mode,
+                                                            onClick = {
+                                                                if (mode == XmsfBypassMode.DISABLED) {
+                                                                    blockXmsfMode = mode
+                                                                    XmsfBypassMode.write(prefs, mode)
+                                                                } else {
+                                                                    scope.launch {
+                                                                        try {
+                                                                            com.example.islandlyrics.integration.shizuku.requireShizukuPermissionGranted {
+                                                                                blockXmsfMode = mode
+                                                                                XmsfBypassMode.write(prefs, mode)
+                                                                            }
+                                                                        } catch (_: Exception) {
+                                                                            Toast.makeText(context, "Shizuku permission required", Toast.LENGTH_LONG).show()
+                                                                        }
+                                                                    }
                                                                 }
-                                                            } catch (e: Exception) {
-                                                                Toast.makeText(context, "Shizuku permission required", Toast.LENGTH_LONG).show()
                                                             }
-                                                        }
+                                                        )
                                                     }
-                                                }
+                                                )
                                             )
+                                            if (blockXmsfMode == XmsfBypassMode.CUSTOM) {
+                                                MiuixXmsfBypassDurationSlider(
+                                                    title = stringResource(R.string.settings_block_xmsf_custom_duration),
+                                                    summary = stringResource(R.string.settings_block_xmsf_custom_duration_desc),
+                                                    warning = stringResource(R.string.settings_block_xmsf_custom_duration_warning),
+                                                    value = blockXmsfCustomDurationMs,
+                                                    onValueChange = { newDurationMs ->
+                                                        blockXmsfCustomDurationMs = newDurationMs
+                                                        XmsfBypassMode.writeCustomDurationMs(prefs, newDurationMs)
+                                                    }
+                                                )
+                                            }
 
                                         }
                                     }
@@ -981,10 +1026,66 @@ private fun MiuixSuperIslandTextLimitSlider(
     }
 }
 
+@Composable
+private fun MiuixXmsfBypassDurationSlider(
+    title: String,
+    summary: String,
+    warning: String,
+    value: Int,
+    onValueChange: (Int) -> Unit
+) {
+    val clampedValue = value.coerceIn(
+        XmsfBypassMode.MIN_CUSTOM_DURATION_MS,
+        XmsfBypassMode.MAX_CUSTOM_DURATION_MS
+    )
+    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp)) {
+        Text(
+            text = "$title: ${stringResource(R.string.settings_block_xmsf_duration_value, clampedValue)}",
+            color = MiuixTheme.colorScheme.onSurface,
+            fontSize = 15.dp.value.sp
+        )
+        Text(
+            text = summary,
+            color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+            fontSize = 13.dp.value.sp
+        )
+        Spacer(modifier = Modifier.height(10.dp))
+        Slider(
+            value = clampedValue.toFloat(),
+            onValueChange = { raw ->
+                onValueChange(snapXmsfBypassDuration(raw.roundToInt()))
+            },
+            valueRange = XmsfBypassMode.MIN_CUSTOM_DURATION_MS.toFloat()..XmsfBypassMode.MAX_CUSTOM_DURATION_MS.toFloat(),
+            steps = ((XmsfBypassMode.MAX_CUSTOM_DURATION_MS - XmsfBypassMode.MIN_CUSTOM_DURATION_MS) /
+                XmsfBypassMode.CUSTOM_DURATION_STEP_MS) - 1,
+            hapticEffect = SliderDefaults.SliderHapticEffect.Step,
+            showKeyPoints = true
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = warning,
+            color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+            fontSize = 13.dp.value.sp
+        )
+    }
+}
+
 private fun formatSuperIslandTextLimit(value: Float): String {
     return if (value % 1f == 0f) {
         value.toInt().toString()
     } else {
         "%.1f".format(java.util.Locale.US, value)
     }
+}
+
+private fun snapXmsfBypassDuration(durationMs: Int): Int {
+    val clamped = durationMs.coerceIn(
+        XmsfBypassMode.MIN_CUSTOM_DURATION_MS,
+        XmsfBypassMode.MAX_CUSTOM_DURATION_MS
+    )
+    val offset = clamped - XmsfBypassMode.MIN_CUSTOM_DURATION_MS
+    val steppedOffset = ((offset.toFloat() / XmsfBypassMode.CUSTOM_DURATION_STEP_MS).roundToInt()) *
+        XmsfBypassMode.CUSTOM_DURATION_STEP_MS
+    return (XmsfBypassMode.MIN_CUSTOM_DURATION_MS + steppedOffset)
+        .coerceIn(XmsfBypassMode.MIN_CUSTOM_DURATION_MS, XmsfBypassMode.MAX_CUSTOM_DURATION_MS)
 }

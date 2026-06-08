@@ -10,6 +10,8 @@ public interface IConnectivityManager extends IInterface {
 
     void setUidFirewallRule(int chain, int uid, int rule) throws RemoteException;
 
+    int getUidFirewallRule(int chain, int uid) throws RemoteException;
+
     abstract class Stub extends Binder implements IConnectivityManager {
         public static IConnectivityManager asInterface(IBinder obj) {
             throw new UnsupportedOperationException();

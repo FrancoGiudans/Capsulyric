@@ -249,6 +249,7 @@ dependencies {
     // Shizuku
     implementation libs.shizuku.api
     implementation libs.shizuku.provider
+    implementation libs.hiddenapibypass
 
     debugImplementation libs.ui.tooling
     debugImplementation libs.ui.test.manifest

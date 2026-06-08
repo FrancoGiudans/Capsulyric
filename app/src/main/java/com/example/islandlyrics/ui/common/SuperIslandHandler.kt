@@ -65,14 +65,11 @@ class SuperIslandHandler(
     private var cachedSuperIslandLeftWithCoverTextWeight = SuperIslandLyricLayout.calculateWeight("六六六六六六")
     private var cachedSuperIslandLeftNoCoverTextWeight = SuperIslandLyricLayout.calculateWeight("八八八八八八八八")
     private var cachedXmsfBypassMode = XmsfBypassMode.DISABLED
+    private var cachedXmsfCustomDurationMs = XmsfBypassMode.DEFAULT_CUSTOM_DURATION_MS
 
     private var cachedContentIntent: PendingIntent? = null
     private var cachedMiPlayIntent: PendingIntent? = null
     private var networkCutJob: kotlinx.coroutines.Job? = null
-    // Keep the blind window aligned with the working InstallerX implementation.
-    // 50ms is too tight on HyperOS 3.0 / Android 16 and often expires before
-    // SystemUI finishes scanning the posted notification.
-    private val networkCutDurationMs = 100L
     private var networkCutSeq = 0L
     private val networkCutMutex = Mutex()
     private var aggressiveNetworkCutActive = false
@@ -107,6 +104,9 @@ class SuperIslandHandler(
                     restoreXmsfNetworkingAsync()
                 }
             }
+            "block_xmsf_network_custom_duration_ms" -> {
+                cachedXmsfCustomDurationMs = XmsfBypassMode.readCustomDurationMs(p)
+            }
         }
     }
 
@@ -127,6 +127,7 @@ class SuperIslandHandler(
         cachedSuperIslandFullLyricShowLeftCover = prefs.getBoolean("super_island_full_lyric_show_left_cover", true)
         loadSuperIslandTextLimits(prefs)
         cachedXmsfBypassMode = XmsfBypassMode.read(prefs)
+        cachedXmsfCustomDurationMs = XmsfBypassMode.readCustomDurationMs(prefs)
         prefs.registerOnSharedPreferenceChangeListener(prefListener)
     }
 
@@ -677,9 +678,15 @@ class SuperIslandHandler(
                     }
                 }
             }
-            XmsfBypassMode.STANDARD -> {
+            XmsfBypassMode.STANDARD,
+            XmsfBypassMode.CUSTOM -> {
             networkCutJob?.cancel()
             val seq = ++networkCutSeq
+            val cutDurationMs = if (cachedXmsfBypassMode == XmsfBypassMode.CUSTOM) {
+                cachedXmsfCustomDurationMs.toLong()
+            } else {
+                XmsfBypassMode.STANDARD_DURATION_MS.toLong()
+            }
             networkCutJob = scope.launch(Dispatchers.IO) {
                 networkCutMutex.withLock {
                     // Avoid cancelling Shizuku bind on slower devices (e.g., MTK) by running in NonCancellable.
@@ -703,7 +710,7 @@ class SuperIslandHandler(
                     // Keep offline for a brief moment; if a new send happens within this window,
                     // the previous restore will be cancelled.
                     try {
-                        kotlinx.coroutines.delay(networkCutDurationMs)
+                        kotlinx.coroutines.delay(cutDurationMs)
                     } catch (_: CancellationException) {
                         // A newer job will handle restore.
                     }
