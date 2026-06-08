@@ -53,7 +53,6 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
-import android.net.Uri
 import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.compose.setContent
@@ -88,6 +87,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.core.net.toUri
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
@@ -739,10 +739,6 @@ class MainActivity : BaseActivity() {
         }
     }
 
-    private fun showDiagnosticsFromMain() {
-        startActivity(Intent(this, com.example.islandlyrics.feature.diagnostics.DiagnosticsActivity::class.java))
-    }
-
     @Composable
     private fun MaterialAppPage(
         page: AppPage,
@@ -762,7 +758,6 @@ class MainActivity : BaseActivity() {
                 updateVersionText = getVersionNameForUi(),
                 updateCodenameText = BuildConfig.VERSION_CODENAME,
                 updateBuildText = BuildConfig.GIT_COMMIT_HASH,
-                onShowDiagnostics = { onPushPage(AppPage.Diagnostics) },
                 onCheckUpdate = { performAboutUpdateCheck() },
                 onViewCurrentVersionChangelog = { showCurrentVersionChangelogFromMain() },
                 onBack = onBack,
@@ -787,7 +782,7 @@ class MainActivity : BaseActivity() {
             AppPage.Lab -> LabScreen(onBack = onBack)
             AppPage.LogViewer -> LogViewerScreen(onBack = onBack)
             is AppPage.LocalLyricDirectory -> LocalLyricDirectoryScreen(
-                directoryUri = Uri.parse(page.directoryUri),
+                directoryUri = page.directoryUri.toUri(),
                 directoryName = page.directoryName,
                 onBack = onBack
             )
@@ -813,7 +808,6 @@ class MainActivity : BaseActivity() {
                 updateVersionText = getVersionNameForUi(),
                 updateCodenameText = BuildConfig.VERSION_CODENAME,
                 updateBuildText = BuildConfig.GIT_COMMIT_HASH,
-                onShowDiagnostics = { onPushPage(AppPage.Diagnostics) },
                 onCheckUpdate = { performAboutUpdateCheck() },
                 onViewCurrentVersionChangelog = { showCurrentVersionChangelogFromMain() },
                 onBack = onBack,
@@ -838,7 +832,7 @@ class MainActivity : BaseActivity() {
             AppPage.Lab -> MiuixLabScreen(onBack = onBack)
             AppPage.LogViewer -> MiuixLogViewerScreen(onBack = onBack)
             is AppPage.LocalLyricDirectory -> MiuixLocalLyricDirectoryScreen(
-                directoryUri = Uri.parse(page.directoryUri),
+                directoryUri = page.directoryUri.toUri(),
                 directoryName = page.directoryName,
                 onBack = onBack
             )

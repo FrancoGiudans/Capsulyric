@@ -3,7 +3,6 @@ package com.example.islandlyrics.feature.settings
 import com.example.islandlyrics.ui.common.BaseActivity
 import com.example.islandlyrics.ui.common.PageStackHost
 import com.example.islandlyrics.ui.common.PredictiveBackActivity
-import android.net.Uri
 import android.os.Bundle
 import com.example.islandlyrics.ui.miuix.isMiuixEnabled
 import com.example.islandlyrics.BuildConfig
@@ -41,6 +40,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.core.net.toUri
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
 
@@ -110,7 +110,6 @@ class SettingsActivity : BaseActivity() {
                                     onBack = ::popPage,
                                     onPushPage = ::pushPage,
                                     updateVersionText = version,
-                                    updateCodenameText = codename,
                                     updateBuildText = build
                                 )
                             }
@@ -166,7 +165,6 @@ class SettingsActivity : BaseActivity() {
                                     onBack = ::popPage,
                                     onPushPage = ::pushPage,
                                     updateVersionText = version,
-                                    updateCodenameText = codename,
                                     updateBuildText = build
                                 )
                             }
@@ -183,7 +181,6 @@ class SettingsActivity : BaseActivity() {
         onBack: () -> Unit,
         onPushPage: (SettingsPage) -> Unit,
         updateVersionText: String,
-        updateCodenameText: String,
         updateBuildText: String
     ) {
         when (page) {
@@ -197,9 +194,8 @@ class SettingsActivity : BaseActivity() {
             SettingsPage.Faq -> FAQScreen(onBack = onBack)
             SettingsPage.About -> AboutScreen(
                 updateVersionText = updateVersionText,
-                updateCodenameText = updateCodenameText,
+                updateCodenameText = BuildConfig.VERSION_CODENAME,
                 updateBuildText = updateBuildText,
-                onShowDiagnostics = { onPushPage(SettingsPage.Diagnostics) },
                 onCheckUpdate = { performAboutUpdateCheck() },
                 onViewCurrentVersionChangelog = { showCurrentVersionChangelog() },
                 onBack = onBack,
@@ -224,7 +220,7 @@ class SettingsActivity : BaseActivity() {
             SettingsPage.Lab -> LabScreen(onBack = onBack)
             SettingsPage.LogViewer -> LogViewerScreen(onBack = onBack)
             is SettingsPage.LocalLyricDirectory -> LocalLyricDirectoryScreen(
-                directoryUri = Uri.parse(page.directoryUri),
+                directoryUri = page.directoryUri.toUri(),
                 directoryName = page.directoryName,
                 onBack = onBack
             )
@@ -237,7 +233,6 @@ class SettingsActivity : BaseActivity() {
         onBack: () -> Unit,
         onPushPage: (SettingsPage) -> Unit,
         updateVersionText: String,
-        updateCodenameText: String,
         updateBuildText: String
     ) {
         when (page) {
@@ -251,9 +246,8 @@ class SettingsActivity : BaseActivity() {
             SettingsPage.Faq -> MiuixFAQScreen(onBack = onBack)
             SettingsPage.About -> MiuixAboutScreen(
                 updateVersionText = updateVersionText,
-                updateCodenameText = updateCodenameText,
+                updateCodenameText = BuildConfig.VERSION_CODENAME,
                 updateBuildText = updateBuildText,
-                onShowDiagnostics = { onPushPage(SettingsPage.Diagnostics) },
                 onCheckUpdate = { performAboutUpdateCheck() },
                 onViewCurrentVersionChangelog = { showCurrentVersionChangelog() },
                 onBack = onBack,
@@ -278,7 +272,7 @@ class SettingsActivity : BaseActivity() {
             SettingsPage.Lab -> MiuixLabScreen(onBack = onBack)
             SettingsPage.LogViewer -> MiuixLogViewerScreen(onBack = onBack)
             is SettingsPage.LocalLyricDirectory -> MiuixLocalLyricDirectoryScreen(
-                directoryUri = Uri.parse(page.directoryUri),
+                directoryUri = page.directoryUri.toUri(),
                 directoryName = page.directoryName,
                 onBack = onBack
             )

@@ -131,6 +131,7 @@
     <string name="settings_recommend_media_app">推荐当前播放应用</string>
     <string name="settings_recommend_media_app_desc">进入解析规则界面时自动推荐当前播放应用</string>
     <string name="settings_help_about_header">帮助与关于</string>
+    <string name="settings_developer_mode_header">开发者模式</string>
     <string name="community_about_title">社区动态与关于</string>
     <string name="settings_about_capsulyric">关于Capsulyric</string>
     <string name="settings_community_header">社区动态</string>
@@ -420,7 +421,7 @@
 4. 必要时连同图片缓存一起清理。\n\n
 如果在线歌词结果一直不更新，或者你已经修正了匹配信息但仍然显示旧结果，建议先删除对应歌曲的歌词缓存，再重新获取。</string>
     <string name="faq_q_access_diagnostics">Q：如何进入缓存管理页面和歌词调试页面？</string>
-    <string name="faq_a_access_diagnostics">A：通过在“关于”页面连续点击<b>“内部开发号”</b>即可唤出<b>诊断工具</b>，缓存管理和在线歌词调试页面均位于其中。其中<b>自定义匹配</b>功能位于“在线歌词调试”页面内。</string>
+    <string name="faq_a_access_diagnostics">A：通过在“关于”页面连续点击<b>“版本号”</b>或<b>“内部开发号”</b>即可在应用设置底部解锁<b>“开发者模式”</b>分类，<b>诊断工具</b>位于其中。缓存管理和在线歌词调试页面均位于诊断工具内，其中<b>自定义匹配</b>功能位于“在线歌词调试”页面内。</string>
     <string name="faq_q_offline_mode_online_lyrics">Q：完全离线模式会影响在线歌词吗？</string>
     <string name="faq_a_offline_mode_online_lyrics">A：会。开启<b>“完全离线模式”</b>后，所有在线歌词请求都会被禁用，同时也不会检查更新或加载其他需要联网的内容。\n\n
 如果你需要使用在线歌词，请先关闭“完全离线模式”。</string>
@@ -443,7 +444,7 @@
 <b>解决</b>： 请尝试前往系统设置，重新授予本应用的通知使用权。</string>
     
     <string name="faq_q_how_to_diagnostics">Q：如何打开诊断工具？</string>
-    <string name="faq_a_how_to_diagnostics">A：前往<b>“设置 → 关于”</b>页面，连续点击<b>“内部开发号”</b>或<b>“Commit Hash”</b> 7 次，即可在设置列表底部看到<b>“诊断工具”</b>入口，点击进入即可。\n\n
+    <string name="faq_a_how_to_diagnostics">A：前往<b>“设置 → 关于”</b>页面，连续点击<b>“版本号”</b>或<b>“内部开发号”</b> 7 次，即可在<b>“应用设置”</b>页面底部看到<b>“开发者模式”</b>分类，点击其中的<b>“诊断工具”</b>进入即可。\n\n
 诊断工具内包含<b>缓存管理</b>、<b>在线歌词调试</b>以及<b>实验室</b>实验性功能等多项工具。</string>
     <string name="faq_q_island_camera_overlap">Q：超级岛歌词与摄像头重叠？</string>
     <string name="faq_a_island_camera_overlap">A：当歌词文字较长时，可能会与屏幕顶部居中挖孔摄像头区域发生重叠。请按以下步骤调整：\n\n
@@ -464,7 +465,7 @@
     <string name="faq_a_get_log">A： 请参考以下标准流程：\n\n
 <b>1. 激活诊断工具</b>\n
 - <b>Debug 版本</b>： 设置页直接提供 Log Console 入口。\n
-- <b>Release 版本</b>： 导航至“设置”页面，连续点击“内部开发号”或“Commit Hash” 7 次，即可解锁“诊断工具”入口。\n\n
+- <b>Release 版本</b>： 进入“设置 → 关于”页面，连续点击“版本号”或“内部开发号” 7 次，即可在应用设置底部解锁“开发者模式”分类，并从其中进入“诊断工具”。\n\n
 <b>2. 导出 ZIP 压缩包</b>\n
 进入日志界面后，点击右上角的“分享/导出”按钮。您可以根据需求选择特定的时间跨度，App 将自动对环境上下文信息与系统日志进行打包。在提交 GitHub Issue 或填写反馈单时，请务必作为附件上传此 ZIP 文件。</string>
 
@@ -727,6 +728,7 @@
     <string name="online_lyric_debug_custom_artist">自定义匹配歌手</string>
     <string name="online_lyric_debug_save">保存到缓存</string>
     <string name="online_lyric_debug_clear_custom">清除自定义</string>
+    <string name="online_lyric_debug_import_current_playback">导入当前播放歌曲/歌手</string>
     <string name="online_lyric_debug_live_status">实时歌词状态</string>
     <string name="online_lyric_debug_lyric_source_fmt">歌词来源: %1$s / %2$s</string>
     <string name="online_lyric_debug_current_lyric_fmt">当前歌词: %1$s</string>
@@ -773,6 +775,7 @@
     <string name="online_lyric_debug_no_cached_lyric">当前歌曲暂无歌词缓存</string>
     <string name="online_lyric_debug_error_no_song">没有可用的歌曲信息</string>
     <string name="online_lyric_debug_error_empty_override">请至少填写歌名或歌手中的一项</string>
+    <string name="online_lyric_debug_imported_current_playback">已导入当前播放信息到自定义匹配输入框，点击保存到缓存后生效</string>
     <string name="online_lyric_debug_override_saved">已保存当前歌曲匹配信息，留空项会自动使用原始播放信息</string>
     <string name="online_lyric_debug_override_cleared">已清除当前歌曲自定义匹配和关联歌词缓存</string>
     <string name="online_lyric_debug_cache_hit">本次结果来自歌词缓存</string>

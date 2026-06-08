@@ -1156,12 +1156,13 @@ private fun readParserJsonFromImportUri(context: Context, uri: Uri): String {
         val rawValue = if (schemaVersion >= 2 && root.has("categories")) {
             val catObj = root.optJSONObject("categories")
             val parserBlock = catObj?.optJSONObject("parser_rules")
-            parserBlock?.optJSONObject("preferences")?.opt("parser_rules_json")
+            parserBlock?.optJSONArray("parsers")
+                ?: parserBlock?.optJSONObject("preferences")?.opt("parser_rules_json")
         } else {
             val prefsJson = root.optJSONObject("preferences") ?: root
             prefsJson.opt("parser_rules_json")
         }
-        SettingsBackupManager.unwrapStringValue(rawValue) ?: "[]"
+        SettingsBackupManager.parserRulesJsonFromBackupValue(rawValue) ?: "[]"
     } catch (_: Exception) { "[]" }
 }
 

@@ -5,7 +5,6 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
-import android.net.Uri
 import android.widget.Toast
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -30,7 +29,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import com.example.islandlyrics.BuildConfig
+import androidx.core.net.toUri
 import com.example.islandlyrics.R
 import com.example.islandlyrics.core.feed.CommunityFeed
 import com.example.islandlyrics.core.feed.CommunityFeedRepository
@@ -50,7 +49,6 @@ fun AboutScreen(
     updateVersionText: String,
     updateCodenameText: String,
     updateBuildText: String,
-    onShowDiagnostics: () -> Unit,
     onCheckUpdate: () -> Unit,
     onViewCurrentVersionChangelog: () -> Unit,
     onBack: (() -> Unit)? = null,
@@ -64,7 +62,6 @@ fun AboutScreen(
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 
     val devModeEnabled by LyricRepository.getInstance().devModeEnabled.observeAsState(false)
-    val showDiagnostics = BuildConfig.DEBUG || devModeEnabled
     var showFeedbackDialog by remember { mutableStateOf(false) }
     val offlineModeEnabled = remember { OfflineModeManager.isEnabled(context) }
     var autoUpdateEnabled by remember { mutableStateOf(UpdateChecker.isAutoUpdateEnabled(context)) }
@@ -79,6 +76,26 @@ fun AboutScreen(
     var devStepCount by remember { mutableIntStateOf(0) }
     val announcementSectionTitle = stringResource(R.string.community_announcement_title)
     val pollSectionTitle = stringResource(R.string.community_poll_title)
+    val devModeAlreadyEnabledText = stringResource(R.string.toast_dev_mode_already_enabled)
+    val devModeStepsFormat = stringResource(R.string.toast_dev_mode_steps)
+    val devModeEnabledText = stringResource(R.string.toast_dev_mode_enabled)
+    val copiedText = stringResource(R.string.toast_copied)
+    fun handleDevModeTap(): Boolean {
+        if (devModeEnabled) {
+            Toast.makeText(context, devModeAlreadyEnabledText, Toast.LENGTH_SHORT).show()
+            return true
+        }
+        devStepCount++
+        if (devStepCount in 3..6) {
+            Toast.makeText(context, String.format(devModeStepsFormat, 7 - devStepCount), Toast.LENGTH_SHORT).show()
+            return true
+        } else if (devStepCount == 7) {
+            LyricRepository.getInstance().setDevMode(context, true)
+            Toast.makeText(context, devModeEnabledText, Toast.LENGTH_SHORT).show()
+            return true
+        }
+        return false
+    }
 
     LaunchedEffect(offlineModeEnabled, feedSourcePriority) {
         communityFeedLoaded = false
@@ -277,7 +294,7 @@ fun AboutScreen(
                             summary = stringResource(R.string.summary_github),
                             icon = Icons.Filled.Link,
                             onClick = {
-                                val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/FrancoGiudans/Capsulyric"))
+                                val browserIntent = Intent(Intent.ACTION_VIEW, "https://github.com/FrancoGiudans/Capsulyric".toUri())
                                 context.startActivity(browserIntent)
                             }
                         )
@@ -290,7 +307,9 @@ fun AboutScreen(
                             val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                             val copyText = "$updateVersionText（$updateCodenameText，$updateBuildText）"
                             cm.setPrimaryClip(ClipData.newPlainText("Version", copyText))
-                            Toast.makeText(context, context.getString(R.string.toast_copied), Toast.LENGTH_SHORT).show()
+                            if (!handleDevModeTap()) {
+                                Toast.makeText(context, copiedText, Toast.LENGTH_SHORT).show()
+                            }
                         }
                     )
                     SettingsCardDivider()
@@ -302,29 +321,8 @@ fun AboutScreen(
                     SettingsValueItem(
                         title = stringResource(R.string.about_commit),
                         value = updateBuildText,
-                        onClick = {
-                            if (devModeEnabled) {
-                                Toast.makeText(context, context.getString(R.string.toast_dev_mode_already_enabled), Toast.LENGTH_SHORT).show()
-                                return@SettingsValueItem
-                            }
-                            devStepCount++
-                            if (devStepCount in 3..6) {
-                                Toast.makeText(context, context.getString(R.string.toast_dev_mode_steps, 7 - devStepCount), Toast.LENGTH_SHORT).show()
-                            } else if (devStepCount == 7) {
-                                LyricRepository.getInstance().setDevMode(context, true)
-                                Toast.makeText(context, context.getString(R.string.toast_dev_mode_enabled), Toast.LENGTH_SHORT).show()
-                            }
-                        }
+                        onClick = { handleDevModeTap() }
                     )
-                    if (showDiagnostics) {
-                        SettingsCardDivider()
-                        SettingsActionItem(
-                            title = stringResource(R.string.title_diagnostics),
-                            summary = stringResource(R.string.summary_diagnostics),
-                            icon = Icons.Filled.Info,
-                            onClick = onShowDiagnostics
-                        )
-                    }
                 }
             }
 
@@ -341,7 +339,7 @@ fun AboutScreen(
                 onDismiss = { communityDialogState = null },
                 onOpen = {
                     if (dialogState.item.hasUrl) {
-                        val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse(dialogState.item.url))
+                        val browserIntent = Intent(Intent.ACTION_VIEW, dialogState.item.url.toUri())
                         context.startActivity(browserIntent)
                     }
                     communityDialogState = null

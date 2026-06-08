@@ -42,9 +42,6 @@ class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(app
     private val _usedCleanTitleFallback = MutableLiveData(false)
     val usedCleanTitleFallback: LiveData<Boolean> = _usedCleanTitleFallback
 
-    private val _parsedLyrics = MutableLiveData<List<OnlineLyricFetcher.LyricLine>>(emptyList())
-    val parsedLyrics: LiveData<List<OnlineLyricFetcher.LyricLine>> = _parsedLyrics
-
     private val _dialogAttempt = MutableLiveData<OnlineLyricFetcher.ProviderAttempt?>(null)
     val dialogAttempt: LiveData<OnlineLyricFetcher.ProviderAttempt?> = _dialogAttempt
 
@@ -184,7 +181,6 @@ class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(app
         }
         applyResultToRepository(mediaInfo, result)
         _selectedResult.value = result
-        _parsedLyrics.value = result.parsedLines.orEmpty()
         _cacheStatus.value = cacheMessage
     }
 
@@ -218,6 +214,18 @@ class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(app
 
     fun updateCustomMatchArtist(value: String) {
         _customMatchArtist.value = value
+    }
+
+    fun importCurrentPlaybackToCustomMatch() {
+        val mediaInfo = liveMetadata.value
+        if (mediaInfo == null || (mediaInfo.title.isBlank() && mediaInfo.artist.isBlank())) {
+            _error.value = s(R.string.online_lyric_debug_error_no_song)
+            return
+        }
+        _customMatchTitle.value = mediaInfo.title.trim()
+        _customMatchArtist.value = mediaInfo.artist.trim()
+        _error.value = null
+        _cacheStatus.value = s(R.string.online_lyric_debug_imported_current_playback)
     }
 
     fun syncCurrentSongQuery() {
@@ -298,7 +306,6 @@ class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(app
         _isFetching.value = true
         _error.value = null
         _attempts.value = emptyList()
-        _parsedLyrics.value = emptyList()
         _selectedResult.value = null
         _usedCleanTitleFallback.value = false
 
@@ -331,7 +338,6 @@ class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(app
                     }
                     if (cacheHit != null) {
                         _selectedResult.value = cacheHit.result
-                        _parsedLyrics.value = cacheHit.result.withSidecars(rule)
                         _attempts.value = emptyList()
                         _cacheStatus.value = s(R.string.online_lyric_debug_cache_hit)
                         applyResultToRepository(mediaInfo, cacheHit.result, apiPath = "Online Cache")
@@ -352,7 +358,6 @@ class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(app
                 _attempts.value = outcome.attempts
                 _usedCleanTitleFallback.value = outcome.usedCleanTitleFallback
                 _selectedResult.value = outcome.bestResult
-                _parsedLyrics.value = outcome.bestResult?.withSidecars(rule) ?: emptyList()
                 if (outcome.bestResult == null) {
                     _error.value = s(R.string.online_lyric_debug_all_apis_failed)
                 } else {
