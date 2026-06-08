@@ -230,8 +230,8 @@ class OnlineLyricCacheStore(context: Context) {
             ),
             cachedAt = entry.cachedAt ?: now,
             updatedAt = now,
-            queryTitle = entry.queryTitle.orEmpty(),
-            queryArtist = entry.queryArtist.orEmpty(),
+            queryTitle = entry.queryTitle,
+            queryArtist = entry.queryArtist,
             hasCustomMatch = !entry.overrideTitle.isNullOrBlank() || !entry.overrideArtist.isNullOrBlank()
         )
     }
@@ -281,7 +281,6 @@ class OnlineLyricCacheStore(context: Context) {
         val sanitizedTitle = title.trim()
         val sanitizedArtist = artist.trim()
         val id = buildEntryId(mediaInfo)
-        val existing = readEntryFile(id)
         val now = System.currentTimeMillis()
         val merged = CacheEntry(
             id = id,
@@ -372,17 +371,6 @@ class OnlineLyricCacheStore(context: Context) {
         deleteEntryFile(entryId)
     }
 
-    fun getEntryParsedLines(entryId: String): List<OnlineLyricFetcher.LyricLine>? = synchronized(lock) {
-        ensureMigrated()
-        readEntryFile(entryId)?.parsedLines?.takeIf { it.isNotEmpty() }
-    }
-
-    fun getEntryMetadata(entryId: String): Pair<String, String>? = synchronized(lock) {
-        ensureMigrated()
-        val entry = readEntryFile(entryId) ?: return null
-        (entry.title to entry.artist)
-    }
-
     fun getEntryExportData(entryId: String): LyricCacheExportData? = synchronized(lock) {
         ensureMigrated()
         val entry = readEntryFile(entryId) ?: return null
@@ -466,7 +454,11 @@ class OnlineLyricCacheStore(context: Context) {
                     val targetFile = File(lyricsDir, relativePath.path)
                     targetFile.parentFile?.mkdirs()
                     file.copyTo(targetFile, overwrite = true)
-                    count++
+                    if (runCatching {
+                        JSONObject(file.readText(Charsets.UTF_8)).toEntry().hasLyricContent()
+                    }.getOrDefault(false)) {
+                        count++
+                    }
                 }
             }
         }
@@ -477,7 +469,8 @@ class OnlineLyricCacheStore(context: Context) {
     /**
      * Import lyric cache from [inputDir]/lyric_cache/ into the current cache.
      * Reads index.json and entry files, merging with existing cache.
-     * Entries with newer [updatedAt] overwrite existing; older entries are skipped.
+     * Entries with newer updatedAt overwrite existing; older entries are skipped.
+     * Existing entries without lyric content do not block imported lyric content.
      * Thread-safe.
      *
      * @return number of entries imported (new or updated).
@@ -504,12 +497,6 @@ class OnlineLyricCacheStore(context: Context) {
                 val importedIdxEntry = entriesJson.getJSONObject(key)
                 val importedUpdatedAt = importedIdxEntry.optLong("updatedAt", 0L)
 
-                // Merge: skip if existing entry is newer
-                val existing = existingIndex[key]
-                if (existing != null && existing.updatedAt >= importedUpdatedAt) {
-                    continue
-                }
-
                 // Read the full entry from imported lyrics dir
                 val subDir = if (key.length >= 2) key.substring(0, 2) else "xx"
                 val importedEntryFile = File(importedLyricsDir, "$subDir/$key.json")
@@ -518,10 +505,23 @@ class OnlineLyricCacheStore(context: Context) {
                 val importedEntry = runCatching {
                     JSONObject(importedEntryFile.readText(Charsets.UTF_8)).toEntry()
                 }.getOrNull() ?: continue
+                val importedHasLyrics = importedEntry.hasLyricContent()
+
+                // Merge: skip if existing lyric content is newer. A cleared cache entry may still
+                // keep custom match metadata with a fresh updatedAt, but it must not block restore.
+                val existing = existingIndex[key]
+                if (existing != null) {
+                    val shouldSkip = if (importedHasLyrics) {
+                        existing.hasLyricContent() && existing.updatedAt >= importedUpdatedAt
+                    } else {
+                        existing.updatedAt >= importedUpdatedAt
+                    }
+                    if (shouldSkip) continue
+                }
 
                 // Write entry file and update index
                 writeEntryFile(importedEntry)
-                count++
+                if (importedHasLyrics) count++
             }
         }.onFailure {
             android.util.Log.e("OnlineLyricCache", "Import failed: ${it.message}", it)
@@ -730,6 +730,10 @@ class OnlineLyricCacheStore(context: Context) {
         )
     }
 
+    private fun CacheEntry.hasLyricContent(): Boolean {
+        return cachedAt != null && !lyrics.isNullOrBlank() && parsedLines.isNotEmpty()
+    }
+
     private fun estimateEntrySize(entry: CacheEntry): Long {
         return entry.toJson().toString().toByteArray(Charsets.UTF_8).size.toLong()
     }
@@ -856,6 +860,10 @@ class OnlineLyricCacheStore(context: Context) {
     private fun JSONObject.optNullableLong(key: String): Long? {
         if (!has(key) || isNull(key)) return null
         return optLong(key)
+    }
+
+    private fun IndexEntry.hasLyricContent(): Boolean {
+        return cachedAt != null && (!queryTitle.isNullOrBlank() || !queryArtist.isNullOrBlank())
     }
 
     private fun normalizeKey(value: String): String {
