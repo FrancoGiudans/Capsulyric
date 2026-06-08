@@ -21,6 +21,7 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.SaveAlt
 import androidx.compose.material.icons.filled.SelectAll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
@@ -33,6 +34,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.islandlyrics.R
 import com.example.islandlyrics.core.cache.AppImageCacheManager
@@ -88,12 +92,23 @@ fun MiuixCacheManagementScreen(
     val filteredLyricEntries = remember(lyricEntries, searchQuery) {
         lyricEntries.filterByCacheQuery(searchQuery)
     }
+    val lifecycleOwner = LocalLifecycleOwner.current
 
     LaunchedEffect(statusMessage) {
         statusMessage?.let {
             snackbarHostState.showSnackbar(message = it)
             viewModel.consumeStatusMessage()
         }
+    }
+
+    DisposableEffect(lifecycleOwner, viewModel) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                viewModel.refresh()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
     MiuixBackHandler(enabled = isSelectionMode) {
