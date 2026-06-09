@@ -123,6 +123,8 @@
     <string name="settings_block_xmsf_custom_duration_desc">Only used in Custom mode</string>
     <string name="settings_block_xmsf_custom_duration_warning">Longer disconnect windows may increase battery usage or delay Xiaomi push messages. Raise this only if Standard still misses the whitelist timing.</string>
     <string name="settings_block_xmsf_duration_value">%1$d ms</string>
+    <string name="settings_new_playing_app_alert">New playback app alerts</string>
+    <string name="settings_new_playing_app_alert_desc">Notify when an unconfigured app starts playing, with quick actions to add or ignore it</string>
     <string name="settings_personalization_header">Personalization</string>
     <string name="page_title_personalization">Personalization Settings</string>
     <string name="tab_capsule">Capsule</string>
@@ -141,6 +143,13 @@
     <string name="channel_live_lyrics">Live Lyrics Updates</string>
     <string name="channel_live_lyrics_desc">Live notifications for status bar lyrics, supporting Capsule and Super Island modes.</string>
     <string name="channel_short_live">Live</string>
+    <string name="channel_new_playing_app_alerts">New Playback App Alerts</string>
+    <string name="channel_new_playing_app_alerts_desc">Alerts when an unconfigured app starts media playback.</string>
+    <string name="new_playing_app_notification_title">A new app is playing</string>
+    <string name="new_playing_app_notification_text_fmt">%1$s (%2$s)</string>
+    <string name="new_playing_app_action_add">Add App</string>
+    <string name="new_playing_app_action_ignore">Don’t Remind</string>
+    <string name="new_playing_app_added_to_rules">%1$s added</string>
     
     <string name="cancel">Cancel</string>
 
