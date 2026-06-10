@@ -59,6 +59,8 @@ import com.example.islandlyrics.core.settings.SettingsBackupManager
 import com.example.islandlyrics.core.settings.SettingsBackupManager.ParserConflict
 import com.example.islandlyrics.core.settings.BackupCategories
 import com.example.islandlyrics.core.settings.SettingsBackupManager.PreviewResult
+import com.example.islandlyrics.service.MediaMonitorService
+import com.example.islandlyrics.service.NewPlayingAppNotifier
 import androidx.core.net.toUri
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
@@ -144,12 +146,11 @@ fun SettingsScreen(
                 pendingImportUri = uri
                 // Build dynamic categories list (including parser rules from backup file)
                 val dynamicCategoriesList = BackupCategories.ALL_CATEGORIES.map { cat ->
-                    when {
-                        cat.id == "parser_rules" -> {
+                    when (cat.id) {
+                        "parser_rules" -> {
                             val parserJson = readParserJsonForPreview(context, uri)
                             cat.copy(subGroups = BackupCategories.parserAppSubGroupsFromJson(parserJson))
                         }
-                        cat.id == "lyric_cache" && preview.lyricCacheEntryCount != 0 -> cat
                         else -> cat
                     }
                 }
@@ -277,6 +278,7 @@ fun SettingsScreen(
         }
         var recommendMediaAppEnabled by remember { mutableStateOf(prefs.getBoolean("recommend_media_app", true)) }
         var hideRecentsEnabled by remember { mutableStateOf(prefs.getBoolean("hide_recents_enabled", false)) }
+        var newPlayingAppAlertEnabled by remember { mutableStateOf(prefs.getBoolean(NewPlayingAppNotifier.PREF_ENABLED, true)) }
 
         LazyColumn(
             modifier = Modifier
@@ -384,6 +386,21 @@ fun SettingsScreen(
                             context.startActivity(intent)
                         },
                         onCheckedChange = {}
+                    )
+                    SettingsCardDivider()
+                    SettingsSwitchItem(
+                        title = stringResource(R.string.settings_new_playing_app_alert),
+                        subtitle = stringResource(R.string.settings_new_playing_app_alert_desc),
+                        checked = newPlayingAppAlertEnabled,
+                        onCheckedChange = {
+                            newPlayingAppAlertEnabled = it
+                            prefs.edit { putBoolean(NewPlayingAppNotifier.PREF_ENABLED, it) }
+                            if (it) {
+                                MediaMonitorService.triggerRecheck()
+                            } else {
+                                NewPlayingAppNotifier.cancelAll(context)
+                            }
+                        }
                     )
                     SettingsCardDivider()
                     SettingsActionItem(
@@ -564,15 +581,14 @@ fun SettingsScreen(
         if (showImportPreviewDialog && importPreviewResult != null) {
             val preview = importPreviewResult!!
             val dynamicCategories = BackupCategories.ALL_CATEGORIES.map { cat ->
-                when {
-                    cat.id == "parser_rules" -> {
+                when (cat.id) {
+                    "parser_rules" -> {
                         val uri = pendingImportUri
                         val parserJson = if (uri != null) {
                             remember(uri) { readParserJsonForPreview(context, uri) }
                         } else null
                         cat.copy(subGroups = BackupCategories.parserAppSubGroupsFromJson(parserJson))
                     }
-                    cat.id == "lyric_cache" && preview.lyricCacheEntryCount != 0 -> cat
                     else -> cat
                 }
             }

@@ -56,6 +56,8 @@ import com.example.islandlyrics.core.settings.SettingsBackupManager.ParserConfli
 import com.example.islandlyrics.core.settings.BackupCategories
 import com.example.islandlyrics.core.settings.SettingsBackupManager.PreviewResult
 import com.example.islandlyrics.data.LyricRepository
+import com.example.islandlyrics.service.MediaMonitorService
+import com.example.islandlyrics.service.NewPlayingAppNotifier
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import top.yukonga.miuix.kmp.basic.Snackbar as MiuixSnackbar
@@ -144,12 +146,11 @@ fun MiuixSettingsScreen(
                 importPreviewResult = preview
                 pendingImportUri = uri
                 val dynamicCategoriesList = BackupCategories.ALL_CATEGORIES.map { cat ->
-                    when {
-                        cat.id == "parser_rules" -> {
+                    when (cat.id) {
+                        "parser_rules" -> {
                             val parserJson = readParserJsonForPreviewMiuix(context, uri)
                             cat.copy(subGroups = BackupCategories.parserAppSubGroupsFromJson(parserJson))
                         }
-                        cat.id == "lyric_cache" && preview.lyricCacheEntryCount != 0 -> cat
                         else -> cat
                     }
                 }
@@ -192,6 +193,7 @@ fun MiuixSettingsScreen(
 
     var notificationGranted by remember { mutableStateOf(checkNotificationPermission()) }
     var postNotificationGranted by remember { mutableStateOf(checkPostNotificationPermission()) }
+    var newPlayingAppAlertEnabled by remember { mutableStateOf(prefs.getBoolean(NewPlayingAppNotifier.PREF_ENABLED, true)) }
 
     LaunchedEffect(isHyperOsSupported) {
         if (!isHyperOsSupported) {
@@ -384,7 +386,20 @@ fun MiuixSettingsScreen(
                             context.startActivity(intent)
                         }
                     )
-                    
+                    SuperSwitch(
+                        title = stringResource(R.string.settings_new_playing_app_alert),
+                        summary = stringResource(R.string.settings_new_playing_app_alert_desc),
+                        checked = newPlayingAppAlertEnabled,
+                        onCheckedChange = {
+                            newPlayingAppAlertEnabled = it
+                            prefs.edit { putBoolean(NewPlayingAppNotifier.PREF_ENABLED, it) }
+                            if (it) {
+                                MediaMonitorService.triggerRecheck()
+                            } else {
+                                NewPlayingAppNotifier.cancelAll(context)
+                            }
+                        }
+                    )
 
 
                     SuperArrow(
@@ -540,15 +555,14 @@ fun MiuixSettingsScreen(
             show = showImportPreviewDialog && importPreviewResult != null,
             titleRes = R.string.backup_dialog_import_title,
             categories = BackupCategories.ALL_CATEGORIES.map { cat ->
-                when {
-                    cat.id == "parser_rules" -> {
+                when (cat.id) {
+                    "parser_rules" -> {
                         val uri = pendingImportUri
                         val parserJson = if (uri != null) {
                             remember(uri) { readParserJsonForPreviewMiuix(context, uri) }
                         } else null
                         cat.copy(subGroups = BackupCategories.parserAppSubGroupsFromJson(parserJson))
                     }
-                    cat.id == "lyric_cache" && (importPreviewResult?.lyricCacheEntryCount ?: 0) != 0 -> cat
                     else -> cat
                 }
             },
@@ -679,7 +693,7 @@ fun MiuixSettingsScreen(
     }
 }
 
-/** Read parser_rules_json from a backup file (ZIP or legacy JSON). */
+/** Read parser rules JSON from a ZIP archive or legacy JSON backup. */
 private fun readParserJsonForPreviewMiuix(context: Context, uri: Uri): String {
     return kotlinx.coroutines.runBlocking { readParserJsonFromFile(context, uri) }
 }

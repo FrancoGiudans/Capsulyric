@@ -2,27 +2,26 @@ package com.example.islandlyrics.service
 
 import android.content.ComponentName
 import com.example.islandlyrics.BuildConfig
-import com.example.islandlyrics.data.ServiceDiagnostics
 import com.example.islandlyrics.core.logging.AppLogger
-import com.example.islandlyrics.data.lyric.SuperLyricSource
-import com.example.islandlyrics.data.WhitelistHelper
 import com.example.islandlyrics.data.ParserRuleHelper
 import com.example.islandlyrics.data.LyricRepository
-import com.example.islandlyrics.feature.parserrule.material.ParserRuleScreen
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.SharedPreferences
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
 import android.media.MediaMetadata
 import android.media.session.MediaController
 import android.media.session.MediaSessionManager
 import android.media.session.PlaybackState
-import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
 import android.service.notification.NotificationListenerService
-import android.util.Log
+import androidx.core.content.edit
+import androidx.core.graphics.scale
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -33,11 +32,10 @@ class MediaMonitorService : NotificationListenerService() {
     private var prefs: SharedPreferences? = null
 
     private val allowedPackages = HashSet<String>()
+    private val configuredPackages = HashSet<String>()
     
-    // Explicitly use fully qualified names to avoid conflicts or ambiguity if imported
-    private val activeControllers = java.util.ArrayList<MediaController>()
-    // Fix: A Map to hold callbacks so we can unregister them later
-    private val controllerCallbacks = java.util.HashMap<MediaController, MediaController.Callback>()
+    private val activeControllers = ArrayList<MediaController>()
+    private val controllerCallbacks = HashMap<MediaController, MediaController.Callback>()
     
     // Deduplication: Track last metadata hash to avoid processing duplicates
     private var lastMetadataHash: Int = 0
@@ -55,7 +53,7 @@ class MediaMonitorService : NotificationListenerService() {
         // Debounce updates (200ms)
         handler.removeCallbacksAndMessages(updateToken)
         val r = Runnable { updateControllers(controllers) }
-        handler.postAtTime(r, updateToken, android.os.SystemClock.uptimeMillis() + 200)
+        handler.postAtTime(r, updateToken, SystemClock.uptimeMillis() + 200)
     }
 
     private val handler = Handler(Looper.getMainLooper())
@@ -75,7 +73,7 @@ class MediaMonitorService : NotificationListenerService() {
                     // Test access - this will throw if permission is revoked
                     mediaSessionManager?.getActiveSessions(componentName)
                     AppLogger.getInstance().log(TAG, "Health Check: OK")
-                } catch (e: SecurityException) {
+                } catch (_: SecurityException) {
                     AppLogger.getInstance().log(TAG, "Health Check: FAILED - Permission lost")
                     isConnected = false
                     // Request rebind
@@ -101,11 +99,17 @@ class MediaMonitorService : NotificationListenerService() {
             recheckSessions()
         } else if ("service_enabled" == key) {
             recheckSessions()
+        } else if (NewPlayingAppNotifier.PREF_ENABLED == key) {
+            if (prefs?.getBoolean(NewPlayingAppNotifier.PREF_ENABLED, true) == true) {
+                recheckSessions()
+            } else {
+                NewPlayingAppNotifier.cancelAll(this)
+            }
         }
     }
 
-    private val refreshReceiver = object : android.content.BroadcastReceiver() {
-        override fun onReceive(context: android.content.Context?, intent: android.content.Intent?) {
+    private val refreshReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
             if (LyricRepository.ACTION_REFRESH_DIAGNOSTICS == intent?.action) {
                 AppLogger.getInstance().log(TAG, "Manual diagnostic refresh requested.")
                 updateDiagnostics()
@@ -123,12 +127,8 @@ class MediaMonitorService : NotificationListenerService() {
         prefs?.registerOnSharedPreferenceChangeListener(prefListener)
 
         // Register refresh receiver
-        val filter = android.content.IntentFilter(LyricRepository.ACTION_REFRESH_DIAGNOSTICS)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            registerReceiver(refreshReceiver, filter, android.content.Context.RECEIVER_NOT_EXPORTED)
-        } else {
-            registerReceiver(refreshReceiver, filter)
-        }
+        val filter = IntentFilter(LyricRepository.ACTION_REFRESH_DIAGNOSTICS)
+        registerReceiver(refreshReceiver, filter, RECEIVER_NOT_EXPORTED)
     }
 
     override fun onListenerConnected() {
@@ -154,9 +154,9 @@ class MediaMonitorService : NotificationListenerService() {
         // CRITICAL FIX: Reload whitelist to ensure it's current
         // This prevents stale or empty whitelist after service restart
         loadWhitelist()
-        resetSessionTracking(clearControllers = false)
+        resetSessionTracking()
         
-        mediaSessionManager = getSystemService(Context.MEDIA_SESSION_SERVICE) as MediaSessionManager
+        mediaSessionManager = getSystemService(MEDIA_SESSION_SERVICE) as MediaSessionManager
         componentName = ComponentName(this, MediaMonitorService::class.java)
 
         mediaSessionManager?.addOnActiveSessionsChangedListener(sessionsChangedListener, componentName)
@@ -207,7 +207,7 @@ class MediaMonitorService : NotificationListenerService() {
             controllerCallbacks.clear()
             activeControllers.clear()
         }
-        resetSessionTracking(clearControllers = false)
+        resetSessionTracking()
         LyricRepository.getInstance().updatePlaybackStatus(false)
     }
 
@@ -220,31 +220,15 @@ class MediaMonitorService : NotificationListenerService() {
         prefs?.unregisterOnSharedPreferenceChangeListener(prefListener)
         try {
             unregisterReceiver(refreshReceiver)
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             // Ignored
-        }
-    }
-
-    /**
-     * Re-reads the MediaSession for [packageName] and updates album art in [LyricRepository].
-     */
-    private fun doRefreshAlbumArtForPackage(packageName: String) {
-        synchronized(activeControllers) {
-            val controller = activeControllers.firstOrNull { it.packageName == packageName } ?: return
-            val artBitmap = controller.metadata
-                ?.getBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART)
-                ?: controller.metadata?.getBitmap(MediaMetadata.METADATA_KEY_ART)
-            val scaledArt = scaleDownBitmap(artBitmap, MAX_ALBUM_ART_SIZE)
-            LyricRepository.getInstance().updateAlbumArt(scaledArt)
-            lastAlbumArtTrackKey = null
-            AppLogger.getInstance().d(TAG, "Album art refreshed for $packageName (active session)")
         }
     }
 
     fun recheckSessions() {
         if (mediaSessionManager != null && componentName != null) {
             try {
-                resetSessionTracking(clearControllers = false)
+                resetSessionTracking()
                 updateControllers(mediaSessionManager?.getActiveSessions(componentName))
             } catch (e: SecurityException) {
                 AppLogger.getInstance().log(TAG, "Error refreshing sessions: ${e.message}")
@@ -253,10 +237,13 @@ class MediaMonitorService : NotificationListenerService() {
     }
 
     private fun loadWhitelist() {
-        // Use ParserRuleHelper to get all enabled packages (replaces old WhitelistHelper)
-        val set = ParserRuleHelper.getEnabledPackages(this)
+        // Use ParserRuleHelper to get all configured parser rules (replaces old WhitelistHelper)
+        val rules = ParserRuleHelper.loadRules(this)
+        val set = rules.filter { it.enabled }.map { it.packageName }.toSet()
         allowedPackages.clear()
         allowedPackages.addAll(set)
+        configuredPackages.clear()
+        configuredPackages.addAll(rules.map { it.packageName })
         AppLogger.getInstance().log(TAG, "Whitelist updated: ${allowedPackages.size} enabled apps: ${allowedPackages.joinToString()}")
     }
 
@@ -266,6 +253,7 @@ class MediaMonitorService : NotificationListenerService() {
         val isServiceEnabled = prefs?.getBoolean("service_enabled", true) ?: true
         if (!isServiceEnabled) {
             AppLogger.getInstance().log(TAG, "Master Switch OFF. Ignoring updates.")
+            NewPlayingAppNotifier.cancelAll(this)
             synchronized(activeControllers) {
                 controllerCallbacks.forEach { (controller, callback) ->
                     controller.unregisterCallback(callback)
@@ -276,6 +264,8 @@ class MediaMonitorService : NotificationListenerService() {
             LyricRepository.getInstance().updatePlaybackStatus(false)
             return
         }
+
+        NewPlayingAppNotifier.maybeNotify(this, controllers ?: emptyList(), configuredPackages)
         
         // DEDUPLICATION CHECK
         val currentSignatures = controllers?.joinToString("|") { "${it.packageName}@${it.hashCode()}" } ?: "null"
@@ -293,7 +283,7 @@ class MediaMonitorService : NotificationListenerService() {
             controllerCallbacks.forEach { (controller, callback) ->
                 try {
                     controller.unregisterCallback(callback)
-                } catch (e: Exception) { /* Ignore */ }
+                } catch (_: Exception) { /* Ignore */ }
             }
             controllerCallbacks.clear()
             activeControllers.clear()
@@ -357,7 +347,7 @@ class MediaMonitorService : NotificationListenerService() {
                         controllerCallbacks[controller] = callback
                         activeControllers.add(controller)
                         
-                    } catch (e: Exception) {
+                    } catch (_: Exception) {
                         AppLogger.getInstance().e(TAG, "Failed to hook controller: ${controller.packageName}")
                     }
                 }
@@ -413,27 +403,18 @@ class MediaMonitorService : NotificationListenerService() {
         }
     }
 
-    private fun resetSessionTracking(clearControllers: Boolean) {
+    private fun resetSessionTracking() {
         lastMetadataHash = 0
         lastComputedIsPlaying = null
         lastAlbumArtTrackKey = null
         lastAlbumArtHadImage = false
         lastControllerSignatures = ""
-        if (!clearControllers) return
-
-        synchronized(activeControllers) {
-            controllerCallbacks.forEach { (controller, callback) ->
-                try {
-                    controller.unregisterCallback(callback)
-                } catch (_: Exception) {
-                }
-            }
-            controllerCallbacks.clear()
-            activeControllers.clear()
-        }
     }
 
     private fun checkServiceState() {
+        if (prefs?.getBoolean("service_enabled", true) == false) return
+        maybeNotifyNewPlayingApps()
+
         val primary = getPrimaryController()
         // STRICT: Only start service if primary is WHITELISTED
         val isWhitelisted = allowedPackages.contains(primary?.packageName)
@@ -503,6 +484,11 @@ class MediaMonitorService : NotificationListenerService() {
         synchronized(activeControllers) {
             return MediaControllerSelection.selectSuggestion(activeControllers, allowedPackages)
         }
+    }
+
+    private fun maybeNotifyNewPlayingApps() {
+        val controllers = synchronized(activeControllers) { activeControllers.toList() }
+        NewPlayingAppNotifier.maybeNotify(this, controllers, configuredPackages)
     }
 
     private fun updateMetadataForSuggestion(controller: MediaController) {
@@ -587,13 +573,11 @@ class MediaMonitorService : NotificationListenerService() {
         if (rule != null && rule.enabled) {
 
             val album = metadata.getString(MediaMetadata.METADATA_KEY_ALBUM)
-            val displayTitle = metadata.getString(MediaMetadata.METADATA_KEY_DISPLAY_TITLE)
-
             // --- Anti-False-Positive Heuristics ---
             val isInstrumental = rawTitle?.contains("Instrument", ignoreCase = true) == true ||
                                  rawTitle?.contains("纯音乐") == true ||
                                  rawTitle?.contains("伴奏") == true
-            // NOTE: We only compare against album, NOT displayTitle.
+            // NOTE: We only compare against album, not display title.
             // On many devices (Xiaomi etc.), DISPLAY_TITLE == TITLE, making the check useless.
             val isLikelyRealTitle = !album.isNullOrEmpty() && rawTitle == album
             val isFalsePositiveLyric = isInstrumental || isLikelyRealTitle
@@ -639,7 +623,7 @@ class MediaMonitorService : NotificationListenerService() {
                                     rawArtist != prevArtist &&
                                     !isFalsePositiveLyric &&
                                     (rawArtist?.startsWith(prevTitle) == true ||
-                                     rawArtist?.startsWith(prevTitle + "-") == true ||
+                                     rawArtist?.startsWith("$prevTitle-") == true ||
                                      rawArtist?.contains("$prevTitle-") == true ||
                                      rawArtist?.contains("$prevTitle ") == true)
 
@@ -689,7 +673,7 @@ class MediaMonitorService : NotificationListenerService() {
                 finalTitle  = prevTitle
                 finalArtist = prevArtist
                 finalLyric  = rawTitle
-            } else if (!isDynamicLyricMode) {
+            } else {
                 // --- STRATEGY 3: Parse-based detection (fallback for other formats) ---
                 // Case A: Title contains "Artist - Title" (e.g. bluetooth media)
                 val titleParse = ParserRuleHelper.parseWithRule(rawTitle ?: "", rule)
@@ -703,7 +687,7 @@ class MediaMonitorService : NotificationListenerService() {
                         val suspectedTitle  = artistParse.first
                         val suspectedArtist = artistParse.second
 
-                        val isRiskySeparator = rule.separatorPattern == "-" && !(rawArtist?.contains(" - ") == true)
+                        val isRiskySeparator = rule.separatorPattern == "-" && rawArtist?.contains(" - ") != true
                         val isAnomalousParse = isRiskySeparator &&
                                                suspectedTitle.contains("/") &&
                                                !suspectedArtist.contains("/")
@@ -770,7 +754,7 @@ class MediaMonitorService : NotificationListenerService() {
         title: String?,
         artist: String?,
         duration: Long,
-        artBitmap: android.graphics.Bitmap?
+        artBitmap: Bitmap?
     ) {
         val trackKey = listOf(pkg, title.orEmpty(), artist.orEmpty(), duration).joinToString("|")
         val hasImage = artBitmap != null && !artBitmap.isRecycled
@@ -782,7 +766,7 @@ class MediaMonitorService : NotificationListenerService() {
 
         lastAlbumArtTrackKey = trackKey
         lastAlbumArtHadImage = hasImage
-        val scaledArt = scaleDownBitmap(artBitmap, MAX_ALBUM_ART_SIZE)
+        val scaledArt = scaleDownBitmap(artBitmap)
         LyricRepository.getInstance().updateAlbumArt(scaledArt)
     }
 
@@ -823,7 +807,7 @@ class MediaMonitorService : NotificationListenerService() {
             finalHistory.put(newHistory.get(i))
         }
 
-        statePrefs.edit().putString(PREF_STATE_HISTORY, finalHistory.toString()).apply()
+        statePrefs.edit { putString(PREF_STATE_HISTORY, finalHistory.toString()) }
     }
 
     private fun tryRestoreParserState(pkg: String, currentArtist: String?, currentDuration: Long): Boolean {
@@ -861,22 +845,13 @@ class MediaMonitorService : NotificationListenerService() {
         return false
     }
 
-    /**
-     * Parse notification text using configurable separator and field order.
-     * @param input Raw text like "Artist-Title" or "Title | Artist"
-     * @param rule Parser rule with separator and field order
-     * @return Triple(title, artist, isSuccess)
-     */
-    // Removed private parseWithRule, use ParserRuleHelper instead
-
-
     private fun getAppName(packageName: String?): String {
         if (packageName == null) return "Music"
         return try {
             val pm = packageManager
             val info = pm.getApplicationInfo(packageName, 0)
             pm.getApplicationLabel(info).toString()
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             packageName // Fallback to package name if not found
         }
     }
@@ -886,19 +861,19 @@ class MediaMonitorService : NotificationListenerService() {
      * Even already-small source images are copied so the app does not retain
      * mutable framework/player bitmap instances longer than needed.
      */
-    private fun scaleDownBitmap(src: android.graphics.Bitmap?, maxSize: Int): android.graphics.Bitmap? {
+    private fun scaleDownBitmap(src: Bitmap?): Bitmap? {
         if (src == null) return null
         if (src.isRecycled) return null
         val w = src.width
         val h = src.height
-        val config = src.config ?: android.graphics.Bitmap.Config.ARGB_8888
-        if (w <= maxSize && h <= maxSize) {
+        val config = src.config ?: Bitmap.Config.ARGB_8888
+        if (w <= MAX_ALBUM_ART_SIZE && h <= MAX_ALBUM_ART_SIZE) {
             return src.copy(config, false)
         }
-        val scale = maxSize.toFloat() / maxOf(w, h)
+        val scale = MAX_ALBUM_ART_SIZE.toFloat() / maxOf(w, h)
         val newW = (w * scale).toInt().coerceAtLeast(1)
         val newH = (h * scale).toInt().coerceAtLeast(1)
-        return android.graphics.Bitmap.createScaledBitmap(src, newW, newH, true)
+        return src.scale(newW, newH)
     }
 
     companion object {
@@ -941,31 +916,21 @@ class MediaMonitorService : NotificationListenerService() {
         }
 
         /**
-         * Asks the running [MediaMonitorService] instance to immediately re-read the
-         * MediaSession album art for [packageName] and push it to [LyricRepository].
-         *
-         * Called by [SuperLyricSource] whenever a song change is detected via the
-         * SuperLyric API, so that album art (and Palette colour) is updated
-         * before the first lyric line arrives — eliminating the grey-capsule window.
-         */
-        fun refreshAlbumArtForPackage(@Suppress("UNUSED_PARAMETER") context: Context, packageName: String) {
-            instance?.doRefreshAlbumArtForPackage(packageName)
-                ?: AppLogger.getInstance().d(TAG, "refreshAlbumArt: no running instance")
-        }
-
-        /**
          * Triggers an immediate re-scan of active media sessions.
          * Used by UI to ensure recommendations are current.
          */
         fun triggerRecheck() {
-            instance?.recheckSessions() ?: AppLogger.getInstance().d(TAG, "triggerRecheck: no running instance")
+            instance?.let {
+                it.loadWhitelist()
+                it.recheckSessions()
+            } ?: AppLogger.getInstance().d(TAG, "triggerRecheck: no running instance")
         }
         
         fun requestRebind(context: Context) {
             val componentName = ComponentName(context, MediaMonitorService::class.java)
             AppLogger.getInstance().d(TAG, "Requesting rebind for $componentName")
             try {
-                NotificationListenerService.requestRebind(componentName)
+                requestRebind(componentName)
             } catch (e: Exception) {
                 AppLogger.getInstance().e(TAG, "Failed to request rebind: ${e.message}")
             }

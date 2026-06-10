@@ -88,6 +88,9 @@
                 <action android:name="android.service.notification.NotificationListenerService" />
             </intent-filter>
         </service>
+        <receiver
+            android:name=".service.NewPlayingAppActionReceiver"
+            android:exported="false" />
 
         <activity android:name="com.example.islandlyrics.feature.diagnostics.DiagnosticsActivity"
                   android:label="@string/title_diagnostics"

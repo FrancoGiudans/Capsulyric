@@ -123,6 +123,8 @@
     <string name="settings_block_xmsf_custom_duration_desc">仅在自定义模式下生效</string>
     <string name="settings_block_xmsf_custom_duration_warning">更长的断网窗口可能带来额外耗电，或导致小米推送消息延迟。仅在标准模式仍然抢不过白名单时再调高。</string>
     <string name="settings_block_xmsf_duration_value">%1$d ms</string>
+    <string name="settings_new_playing_app_alert">新播放应用提醒</string>
+    <string name="settings_new_playing_app_alert_desc">检测到未配置的播放应用时发送通知，可快速添加或忽略</string>
     <string name="settings_personalization_header">个性化</string>
     <string name="page_title_personalization">个性化设置</string>
     <string name="tab_capsule">胶囊</string>
@@ -140,6 +142,13 @@
     <string name="channel_live_lyrics">实时歌词更新</string>
     <string name="channel_live_lyrics_desc">用于在状态栏实时显示歌词的通知，支持胶囊和灵动岛模式。</string>
     <string name="channel_short_live">直播</string>
+    <string name="channel_new_playing_app_alerts">新播放应用提醒</string>
+    <string name="channel_new_playing_app_alerts_desc">检测到未配置的应用开始播放时发送提醒。</string>
+    <string name="new_playing_app_notification_title">有新的软件正在播放</string>
+    <string name="new_playing_app_notification_text_fmt">%1$s（%2$s）</string>
+    <string name="new_playing_app_action_add">添加应用</string>
+    <string name="new_playing_app_action_ignore">不再提醒</string>
+    <string name="new_playing_app_added_to_rules">已加入 %1$s</string>
     <string name="cancel">取消</string>
 
     <!-- OneUI Capsule Settings -->
