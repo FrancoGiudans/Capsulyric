@@ -583,14 +583,16 @@ object SettingsBackupManager {
                 "boolean" -> {
                     editor.putBoolean(key, when (value) {
                         is Boolean -> value
-                        else -> value?.toString()?.toBoolean() ?: false
+                        null -> false
+                        else -> value.toString().toBoolean()
                     })
                     true
                 }
                 "int" -> {
                     val parsed = when (value) {
                         is Number -> value.toInt()
-                        else -> value?.toString()?.toIntOrNull()
+                        null -> null
+                        else -> value.toString().toIntOrNull()
                     } ?: return false
                     editor.putInt(key, parsed)
                     true
@@ -598,7 +600,8 @@ object SettingsBackupManager {
                 "long" -> {
                     val parsed = when (value) {
                         is Number -> value.toLong()
-                        else -> value?.toString()?.toLongOrNull()
+                        null -> null
+                        else -> value.toString().toLongOrNull()
                     } ?: return false
                     editor.putLong(key, parsed)
                     true
@@ -606,7 +609,8 @@ object SettingsBackupManager {
                 "float" -> {
                     val parsed = when (value) {
                         is Number -> value.toFloat()
-                        else -> value?.toString()?.toFloatOrNull()
+                        null -> null
+                        else -> value.toString().toFloatOrNull()
                     } ?: return false
                     editor.putFloat(key, parsed)
                     true

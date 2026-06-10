@@ -481,6 +481,7 @@ class LyricDisplayManager(private val context: Context) {
             Character.UnicodeBlock.HIRAGANA,
             Character.UnicodeBlock.KATAKANA,
             Character.UnicodeBlock.HANGUL_SYLLABLES -> 2
+            null -> 1
             else -> 1
         }
     }
