@@ -100,7 +100,7 @@ class MediaMonitorService : NotificationListenerService() {
         } else if ("service_enabled" == key) {
             recheckSessions()
         } else if (NewPlayingAppNotifier.PREF_ENABLED == key) {
-            if (prefs?.getBoolean(NewPlayingAppNotifier.PREF_ENABLED, true) == true) {
+            if (prefs?.getBoolean(NewPlayingAppNotifier.PREF_ENABLED, false) == true) {
                 recheckSessions()
             } else {
                 NewPlayingAppNotifier.cancelAll(this)

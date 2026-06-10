@@ -193,7 +193,7 @@ fun MiuixSettingsScreen(
 
     var notificationGranted by remember { mutableStateOf(checkNotificationPermission()) }
     var postNotificationGranted by remember { mutableStateOf(checkPostNotificationPermission()) }
-    var newPlayingAppAlertEnabled by remember { mutableStateOf(prefs.getBoolean(NewPlayingAppNotifier.PREF_ENABLED, true)) }
+    var newPlayingAppAlertEnabled by remember { mutableStateOf(prefs.getBoolean(NewPlayingAppNotifier.PREF_ENABLED, false)) }
 
     LaunchedEffect(isHyperOsSupported) {
         if (!isHyperOsSupported) {
@@ -346,6 +346,22 @@ fun MiuixSettingsScreen(
                         }
                     )
 
+                    // New Playing App Alert — proactive extension of the above
+                    SuperSwitch(
+                        title = stringResource(R.string.settings_new_playing_app_alert),
+                        summary = stringResource(R.string.settings_new_playing_app_alert_desc),
+                        checked = newPlayingAppAlertEnabled,
+                        onCheckedChange = {
+                            newPlayingAppAlertEnabled = it
+                            prefs.edit { putBoolean(NewPlayingAppNotifier.PREF_ENABLED, it) }
+                            if (it) {
+                                MediaMonitorService.triggerRecheck()
+                            } else {
+                                NewPlayingAppNotifier.cancelAll(context)
+                            }
+                        }
+                    )
+
                     // Hide Recents
                     var hideRecentsEnabled by remember { mutableStateOf(prefs.getBoolean("hide_recents_enabled", false)) }
                     SuperSwitch(
@@ -384,20 +400,6 @@ fun MiuixSettingsScreen(
                             val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
                             intent.data = Uri.fromParts("package", context.packageName, null)
                             context.startActivity(intent)
-                        }
-                    )
-                    SuperSwitch(
-                        title = stringResource(R.string.settings_new_playing_app_alert),
-                        summary = stringResource(R.string.settings_new_playing_app_alert_desc),
-                        checked = newPlayingAppAlertEnabled,
-                        onCheckedChange = {
-                            newPlayingAppAlertEnabled = it
-                            prefs.edit { putBoolean(NewPlayingAppNotifier.PREF_ENABLED, it) }
-                            if (it) {
-                                MediaMonitorService.triggerRecheck()
-                            } else {
-                                NewPlayingAppNotifier.cancelAll(context)
-                            }
                         }
                     )
 

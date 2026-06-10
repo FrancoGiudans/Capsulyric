@@ -10,6 +10,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.media.session.MediaController
 import android.media.session.PlaybackState
+import android.os.SystemClock
 import android.widget.Toast
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
@@ -19,7 +20,6 @@ import com.example.islandlyrics.R
 import com.example.islandlyrics.core.logging.AppLogger
 import com.example.islandlyrics.data.ParserRuleHelper
 import com.example.islandlyrics.feature.main.MainActivity
-import java.util.Collections
 
 object NewPlayingAppNotifier {
     const val PREF_ENABLED = "new_playing_app_alert_enabled"
@@ -31,10 +31,11 @@ object NewPlayingAppNotifier {
     private const val TAG = "NewPlayingAppNotifier"
     private const val PREFS_NAME = "IslandLyricsPrefs"
     private const val PREF_IGNORED_PACKAGES = "new_playing_app_alert_ignored_packages"
+    private const val PREF_ALERTED_PACKAGES = "new_playing_app_alert_alerted_packages"
+    private const val PREF_LAST_NOTIFY_TIME = "new_playing_app_alert_last_notify_time"
     private const val CHANNEL_ID = "new_playing_app_alerts"
     private const val NOTIFICATION_ID = 2002
-
-    private val alertedPackages = Collections.synchronizedSet(mutableSetOf<String>())
+    private const val NOTIFY_COOLDOWN_MS = 30 * 60 * 1000L // 30 minutes
 
     fun maybeNotify(
         context: Context,
@@ -42,12 +43,18 @@ object NewPlayingAppNotifier {
         configuredPackages: Set<String>
     ) {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        if (!prefs.getBoolean(PREF_ENABLED, true)) return
+        if (!prefs.getBoolean(PREF_ENABLED, false)) return
         val notificationManager = NotificationManagerCompat.from(context)
         if (!notificationManager.areNotificationsEnabled()) return
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) return
 
+        // Cooldown: don't notify more than once per NOTIFY_COOLDOWN_MS
+        val now = SystemClock.uptimeMillis()
+        val lastNotifyTime = prefs.getLong(PREF_LAST_NOTIFY_TIME, 0L)
+        if (now - lastNotifyTime < NOTIFY_COOLDOWN_MS) return
+
         val ignoredPackages = prefs.getStringSet(PREF_IGNORED_PACKAGES, emptySet()) ?: emptySet()
+        val alertedPackages = prefs.getStringSet(PREF_ALERTED_PACKAGES, emptySet()) ?: emptySet()
         val candidate = controllers.firstOrNull { controller ->
             val packageName = controller.packageName
             packageName.isNotBlank() &&
@@ -91,7 +98,12 @@ object NewPlayingAppNotifier {
 
         try {
             notificationManager.notify(NOTIFICATION_ID, notification)
-            alertedPackages.add(packageName)
+            val updatedAlerted = (prefs.getStringSet(PREF_ALERTED_PACKAGES, emptySet()) ?: emptySet()).toMutableSet()
+            updatedAlerted.add(packageName)
+            prefs.edit {
+                putStringSet(PREF_ALERTED_PACKAGES, updatedAlerted)
+                putLong(PREF_LAST_NOTIFY_TIME, now)
+            }
             AppLogger.getInstance().log(TAG, "Prompted for unconfigured playing app: $packageName")
         } catch (e: SecurityException) {
             AppLogger.getInstance().e(TAG, "Cannot post new app prompt: ${e.message}")

@@ -278,7 +278,7 @@ fun SettingsScreen(
         }
         var recommendMediaAppEnabled by remember { mutableStateOf(prefs.getBoolean("recommend_media_app", true)) }
         var hideRecentsEnabled by remember { mutableStateOf(prefs.getBoolean("hide_recents_enabled", false)) }
-        var newPlayingAppAlertEnabled by remember { mutableStateOf(prefs.getBoolean(NewPlayingAppNotifier.PREF_ENABLED, true)) }
+        var newPlayingAppAlertEnabled by remember { mutableStateOf(prefs.getBoolean(NewPlayingAppNotifier.PREF_ENABLED, false)) }
 
         LazyColumn(
             modifier = Modifier
@@ -345,6 +345,23 @@ fun SettingsScreen(
                         }
                     )
                     SettingsCardDivider()
+                    // Extension of the above: proactive notification when an
+                    // unconfigured app is detected playing.
+                    SettingsSwitchItem(
+                        title = stringResource(R.string.settings_new_playing_app_alert),
+                        subtitle = stringResource(R.string.settings_new_playing_app_alert_desc),
+                        checked = newPlayingAppAlertEnabled,
+                        onCheckedChange = {
+                            newPlayingAppAlertEnabled = it
+                            prefs.edit { putBoolean(NewPlayingAppNotifier.PREF_ENABLED, it) }
+                            if (it) {
+                                MediaMonitorService.triggerRecheck()
+                            } else {
+                                NewPlayingAppNotifier.cancelAll(context)
+                            }
+                        }
+                    )
+                    SettingsCardDivider()
                     SettingsSwitchItem(
                         title = stringResource(R.string.settings_hide_recents),
                         subtitle = stringResource(R.string.settings_hide_recents_desc),
@@ -386,21 +403,6 @@ fun SettingsScreen(
                             context.startActivity(intent)
                         },
                         onCheckedChange = {}
-                    )
-                    SettingsCardDivider()
-                    SettingsSwitchItem(
-                        title = stringResource(R.string.settings_new_playing_app_alert),
-                        subtitle = stringResource(R.string.settings_new_playing_app_alert_desc),
-                        checked = newPlayingAppAlertEnabled,
-                        onCheckedChange = {
-                            newPlayingAppAlertEnabled = it
-                            prefs.edit { putBoolean(NewPlayingAppNotifier.PREF_ENABLED, it) }
-                            if (it) {
-                                MediaMonitorService.triggerRecheck()
-                            } else {
-                                NewPlayingAppNotifier.cancelAll(context)
-                            }
-                        }
                     )
                     SettingsCardDivider()
                     SettingsActionItem(
