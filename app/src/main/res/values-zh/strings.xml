@@ -596,6 +596,8 @@
     <string name="settings_click_action_default_desc">在前台打开本应用</string>
     <string name="settings_click_action_media">打开媒体控制弹窗</string>
     <string name="settings_click_action_media_desc">在不打开本应用的情况下展示媒体控制弹窗</string>
+    <string name="settings_click_action_open_playing_app">打开正在播放的 App</string>
+    <string name="settings_click_action_open_playing_app_desc">跳转到正在播放媒体的应用（无法打开时回到本应用）</string>
     <string name="settings_disable_scrolling">禁用歌词滚动</string>
     <string name="settings_lyric_text_display_mode">优先显示内容</string>
     <string name="settings_lyric_text_display_mode_desc">翻译/罗马音仅在对应歌词源已接收且当前歌曲提供数据时生效；否则显示原歌词。</string>

@@ -658,6 +658,8 @@ Within the log interface, select the share/export icon. You can specify a timefr
     <string name="settings_click_action_default_desc">Brings the app to foreground</string>
     <string name="settings_click_action_media">Open Media Controls</string>
     <string name="settings_click_action_media_desc">Shows a popup without opening the app</string>
+    <string name="settings_click_action_open_playing_app">Open Playing App</string>
+    <string name="settings_click_action_open_playing_app_desc">Opens the app currently playing media (falls back to this app)</string>
     <string name="oobe_btn_start">Start</string>
 
     <!-- Diagnostics Strings -->

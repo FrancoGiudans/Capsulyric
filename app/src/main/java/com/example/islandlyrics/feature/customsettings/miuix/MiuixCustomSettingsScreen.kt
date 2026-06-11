@@ -743,22 +743,34 @@ fun MiuixCustomSettingsScreen(
                                         }
                                     }
 
-                                    val clickStyles = listOf("default", "media_controls")
-                                    val clickStyleNames = listOf(
-                                        stringResource(R.string.settings_click_action_default),
-                                        stringResource(R.string.settings_click_action_media)
+                                    val clickStyles = listOf("default", "media_controls", "open_playing_app")
+                                    val clickStyleItems = listOf(
+                                        Triple("default",
+                                            stringResource(R.string.settings_click_action_default),
+                                            stringResource(R.string.settings_click_action_default_desc)),
+                                        Triple("media_controls",
+                                            stringResource(R.string.settings_click_action_media),
+                                            stringResource(R.string.settings_click_action_media_desc)),
+                                        Triple("open_playing_app",
+                                            stringResource(R.string.settings_click_action_open_playing_app),
+                                            stringResource(R.string.settings_click_action_open_playing_app_desc))
                                     )
-                                    val currentClickIndex = clickStyles.indexOf(notificationClickStyle).takeIf { it >= 0 } ?: 0
 
                                     SuperDropdown(
                                         title = stringResource(R.string.settings_click_action_title),
-                                        items = clickStyleNames,
-                                        selectedIndex = currentClickIndex,
-                                        onSelectedIndexChange = { index ->
-                                            val newStyle = clickStyles[index]
-                                            notificationClickStyle = newStyle
-                                            prefs.edit().putString("notification_click_style", newStyle).apply()
-                                        }
+                                        entry = DropdownEntry(
+                                            items = clickStyleItems.map { (styleId, name, desc) ->
+                                                DropdownItem(
+                                                    text = name,
+                                                    summary = desc,
+                                                    selected = notificationClickStyle == styleId,
+                                                    onClick = {
+                                                        notificationClickStyle = styleId
+                                                        prefs.edit().putString("notification_click_style", styleId).apply()
+                                                    }
+                                                )
+                                            }
+                                        )
                                     )
 
                                     val delayOptions = listOf(0L, 1000L, 3000L, 5000L)

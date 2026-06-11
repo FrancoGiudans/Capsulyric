@@ -858,7 +858,8 @@ fun NotificationClickDialog(
 ) {
     val styles = listOf(
         "default" to stringResource(R.string.settings_click_action_default) to stringResource(R.string.settings_click_action_default_desc),
-        "media_controls" to stringResource(R.string.settings_click_action_media) to stringResource(R.string.settings_click_action_media_desc)
+        "media_controls" to stringResource(R.string.settings_click_action_media) to stringResource(R.string.settings_click_action_media_desc),
+        "open_playing_app" to stringResource(R.string.settings_click_action_open_playing_app) to stringResource(R.string.settings_click_action_open_playing_app_desc)
     )
 
     AlertDialog(

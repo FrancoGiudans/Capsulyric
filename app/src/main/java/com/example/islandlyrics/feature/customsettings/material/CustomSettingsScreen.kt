@@ -972,11 +972,18 @@ fun CustomSettingsScreen(
                             SettingsCardDivider()
                             val clickStyleDisplay = when (notificationClickStyle) {
                                 "media_controls" -> stringResource(R.string.settings_click_action_media)
+                                "open_playing_app" -> stringResource(R.string.settings_click_action_open_playing_app)
                                 else -> stringResource(R.string.settings_click_action_default)
+                            }
+                            val clickStyleSubtitle = when (notificationClickStyle) {
+                                "media_controls" -> stringResource(R.string.settings_click_action_media_desc)
+                                "open_playing_app" -> stringResource(R.string.settings_click_action_open_playing_app_desc)
+                                else -> stringResource(R.string.settings_click_action_default_desc)
                             }
                             Box(modifier = Modifier.fillMaxWidth()) {
                                 SettingsTextItem(
                                     title = stringResource(R.string.settings_click_action_title),
+                                    subtitle = clickStyleSubtitle,
                                     value = clickStyleDisplay,
                                     onClick = { showNotificationClickDropdown = true }
                                 )
@@ -986,12 +993,22 @@ fun CustomSettingsScreen(
                                         onDismissRequest = { showNotificationClickDropdown = false }
                                     ) {
                                         val styles = listOf(
-                                            "default" to R.string.settings_click_action_default,
-                                            "media_controls" to R.string.settings_click_action_media
+                                            Triple("default", R.string.settings_click_action_default, R.string.settings_click_action_default_desc),
+                                            Triple("media_controls", R.string.settings_click_action_media, R.string.settings_click_action_media_desc),
+                                            Triple("open_playing_app", R.string.settings_click_action_open_playing_app, R.string.settings_click_action_open_playing_app_desc)
                                         )
-                                        styles.forEach { (styleId, nameId) ->
+                                        styles.forEach { (styleId, nameId, descId) ->
                                             DropdownMenuItem(
-                                                text = { Text(stringResource(nameId)) },
+                                                text = {
+                                                    Column {
+                                                        Text(stringResource(nameId))
+                                                        Text(
+                                                            text = stringResource(descId),
+                                                            style = MaterialTheme.typography.bodySmall,
+                                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                        )
+                                                    }
+                                                },
                                                 onClick = {
                                                     notificationClickStyle = styleId
                                                     prefs.edit { putString("notification_click_style", styleId) }

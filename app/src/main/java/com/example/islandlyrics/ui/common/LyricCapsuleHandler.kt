@@ -92,22 +92,26 @@ class LyricCapsuleHandler(
     private var cachedMiplayIntent: PendingIntent? = null
 
     private fun rebuildCachedIntents() {
-        cachedContentIntent = if (cachedClickStyle == "media_controls") {
-            val intent = Intent(context, MediaControlActivity::class.java).apply {
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+        cachedContentIntent = when (cachedClickStyle) {
+            "media_controls" -> {
+                val intent = Intent(context, MediaControlActivity::class.java).apply {
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                }
+                PendingIntent.getActivity(
+                    context, 0, intent,
+                    PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+                )
             }
-            PendingIntent.getActivity(
-                context, 0, intent,
-                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
-            )
-        } else {
-            val intent = Intent(context, MainActivity::class.java).apply {
-                flags = Intent.FLAG_ACTIVITY_SINGLE_TOP
+            "open_playing_app" -> createCapsuleFallbackIntent()
+            else -> {
+                val intent = Intent(context, MainActivity::class.java).apply {
+                    flags = Intent.FLAG_ACTIVITY_SINGLE_TOP
+                }
+                PendingIntent.getActivity(
+                    context, 0, intent,
+                    PendingIntent.FLAG_IMMUTABLE
+                )
             }
-            PendingIntent.getActivity(
-                context, 0, intent,
-                PendingIntent.FLAG_IMMUTABLE
-            )
         }
 
         cachedPauseIntent = PendingIntent.getService(
@@ -129,6 +133,33 @@ class LyricCapsuleHandler(
                 )
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK
             },
+            PendingIntent.FLAG_IMMUTABLE
+        )
+    }
+
+    private fun resolveCapsuleContentIntent(sourceApp: String): PendingIntent {
+        return if (sourceApp.isNotBlank()) {
+            val launchIntent = context.packageManager.getLaunchIntentForPackage(sourceApp)
+            if (launchIntent != null) {
+                launchIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                PendingIntent.getActivity(
+                    context, 0, launchIntent,
+                    PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+                )
+            } else {
+                createCapsuleFallbackIntent()
+            }
+        } else {
+            createCapsuleFallbackIntent()
+        }
+    }
+
+    private fun createCapsuleFallbackIntent(): PendingIntent {
+        val intent = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP
+        }
+        return PendingIntent.getActivity(
+            context, 0, intent,
             PendingIntent.FLAG_IMMUTABLE
         )
     }
@@ -341,6 +372,9 @@ class LyricCapsuleHandler(
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             
         builder.setContentIntent(cachedContentIntent)
+        if (cachedClickStyle == "open_playing_app") {
+            builder.setContentIntent(resolveCapsuleContentIntent(sourceApp))
+        }
         if (Build.VERSION.SDK_INT >= 36) {
             builder.setRequestPromotedOngoing(true)
         }

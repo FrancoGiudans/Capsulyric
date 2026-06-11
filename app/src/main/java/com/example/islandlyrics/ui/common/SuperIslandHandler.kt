@@ -571,6 +571,9 @@ class SuperIslandHandler(
             .setSubText(if (state.mediaPackage.isNotBlank()) state.mediaPackage else null)
             .setColor(if (cachedActionStyle == "media_controls") 0xFF757575.toInt() else accentColor)
             .addExtras(extras)
+        if (cachedClickStyle == "open_playing_app") {
+            notificationBuilder.setContentIntent(resolveContentIntent(state.mediaPackage))
+        }
         if (customExpandEnabled) {
             notificationBuilder.setStyle(Notification.DecoratedCustomViewStyle())
         }
@@ -845,23 +848,71 @@ class SuperIslandHandler(
     }
 
     private fun createContentIntent(): PendingIntent {
-        return if (cachedClickStyle == "media_controls") {
-            val intent = Intent(context, MediaControlActivity::class.java).apply {
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+        return when (cachedClickStyle) {
+            "media_controls" -> {
+                val intent = Intent(context, MediaControlActivity::class.java).apply {
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                }
+                PendingIntent.getActivity(
+                    context, 0, intent,
+                    PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+                )
             }
+            "open_playing_app" -> createFallbackIntent()
+            else -> {
+                val intent = Intent(context, MainActivity::class.java).apply {
+                    flags = Intent.FLAG_ACTIVITY_SINGLE_TOP
+                }
+                PendingIntent.getActivity(
+                    context, 0, intent,
+                    PendingIntent.FLAG_IMMUTABLE
+                )
+            }
+        }
+    }
+
+    /**
+     * Resolves the content intent dynamically based on the click style and current media package.
+     * Called during [render] to handle styles that depend on runtime state.
+     */
+    private fun resolveContentIntent(mediaPackage: String): PendingIntent {
+        return when (cachedClickStyle) {
+            "open_playing_app" -> {
+                if (mediaPackage.isNotBlank()) {
+                    createOpenAppIntent(mediaPackage)
+                } else {
+                    createFallbackIntent()
+                }
+            }
+            else -> cachedContentIntent ?: createFallbackIntent()
+        }
+    }
+
+    /**
+     * Creates a PendingIntent that opens the launcher activity of the given package.
+     * Falls back to MainActivity if the package has no launcher activity.
+     */
+    private fun createOpenAppIntent(packageName: String): PendingIntent {
+        val launchIntent = context.packageManager.getLaunchIntentForPackage(packageName)
+        return if (launchIntent != null) {
+            launchIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
             PendingIntent.getActivity(
-                context, 0, intent,
+                context, 0, launchIntent,
                 PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
             )
         } else {
-            val intent = Intent(context, MainActivity::class.java).apply {
-                flags = Intent.FLAG_ACTIVITY_SINGLE_TOP
-            }
-            PendingIntent.getActivity(
-                context, 0, intent,
-                PendingIntent.FLAG_IMMUTABLE
-            )
+            createFallbackIntent()
         }
+    }
+
+    private fun createFallbackIntent(): PendingIntent {
+        val intent = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP
+        }
+        return PendingIntent.getActivity(
+            context, 0, intent,
+            PendingIntent.FLAG_IMMUTABLE
+        )
     }
 
     private fun createFocusBroadcastAction(
