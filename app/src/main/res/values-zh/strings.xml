@@ -246,6 +246,12 @@
     <string name="parser_save_rule">保存规则</string>
     <string name="parser_add_app_fmt">添加 %s</string>
     <string name="parser_current_app">当前应用</string>
+    <string name="parser_template_title">默认规则模板</string>
+    <string name="parser_template_status_configured">已配置</string>
+    <string name="parser_template_status_not_configured">未配置</string>
+    <string name="parser_template_save">保存模板</string>
+    <string name="parser_template_clear">清除模板</string>
+    <string name="parser_template_clear_confirm">确认清除默认规则模板吗？</string>
     
     <!-- 在线歌词设置 -->
     <string name="settings_use_online_lyrics">使用在线歌词 API</string>

@@ -1,11 +1,9 @@
 package com.example.islandlyrics.feature.parserrule
 
-import android.content.Context
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.compose.setContent
 import com.example.islandlyrics.R
-import com.example.islandlyrics.data.ParserRule
 import com.example.islandlyrics.data.ParserRuleHelper
 import com.example.islandlyrics.feature.parserrule.material.ParserRuleSourceConfigScreen
 import com.example.islandlyrics.feature.parserrule.miuix.MiuixParserRuleSourceConfigScreen
@@ -35,7 +33,7 @@ class ParserRuleSourceConfigActivity : BaseActivity() {
 
         val initialRule = ParserRuleHelper.getRuleForPackage(this, packageName)
             ?: ParserRuleHelper.loadRules(this).firstOrNull { it.packageName == packageName }
-            ?: ParserRuleHelper.createDefaultRule(packageName)
+            ?: ParserRuleHelper.createDefaultRule(this, packageName)
 
         setContent {
             if (isMiuixEnabled(this@ParserRuleSourceConfigActivity)) {

@@ -21,12 +21,17 @@ class ParserRuleEditorActivity : BaseActivity() {
         super.onCreate(savedInstanceState)
         val packageName = intent.getStringExtra(EXTRA_PACKAGE_NAME)
         val suggestedName = intent.getStringExtra(EXTRA_SUGGESTED_NAME)
+        val existingRule = if (!packageName.isNullOrBlank()) {
+            ParserRuleHelper.loadRules(this).firstOrNull { it.packageName == packageName }
+        } else {
+            null
+        }
         val initialRule = when {
             !packageName.isNullOrBlank() -> {
-                ParserRuleHelper.getRuleForPackage(this, packageName)
-                    ?: ParserRuleHelper.createDefaultRule(packageName).copy(customName = suggestedName)
+                existingRule
+                    ?: ParserRuleHelper.createDefaultRule(this, packageName).copy(customName = suggestedName)
             }
-            else -> ParserRuleHelper.createDefaultRule("").copy(customName = suggestedName)
+            else -> ParserRuleHelper.createDefaultRule(this, "").copy(customName = suggestedName)
         }
 
         setContent {
@@ -37,28 +42,28 @@ class ParserRuleEditorActivity : BaseActivity() {
                         closeExitTransition = R.anim.overlay_sheet_close_exit
                     ) {
                         MiuixParserRuleEditorScreen(
-                        initialRule = initialRule,
-                        isNewRule = packageName.isNullOrBlank() || ParserRuleHelper.getRuleForPackage(this@ParserRuleEditorActivity, packageName) == null,
-                        onBack = { finish() },
-                        onDelete = { rule ->
-                            val rules = ParserRuleHelper.loadRules(this@ParserRuleEditorActivity).toMutableList()
-                            rules.removeAll { it.packageName == rule.packageName }
-                            ParserRuleHelper.saveRules(this@ParserRuleEditorActivity, rules)
-                            finish()
-                        },
-                        onSaved = { rule ->
-                            val rules = ParserRuleHelper.loadRules(this@ParserRuleEditorActivity).toMutableList()
-                            val index = rules.indexOfFirst { it.packageName == rule.packageName }
-                            if (index >= 0) {
-                                rules[index] = rule
-                            } else {
-                                rules.add(rule)
+                            initialRule = initialRule,
+                            isNewRule = packageName.isNullOrBlank() || existingRule == null,
+                            onBack = { finish() },
+                            onDelete = { rule ->
+                                val rules = ParserRuleHelper.loadRules(this@ParserRuleEditorActivity).toMutableList()
+                                rules.removeAll { it.packageName == rule.packageName }
+                                ParserRuleHelper.saveRules(this@ParserRuleEditorActivity, rules)
+                                finish()
+                            },
+                            onSaved = { rule ->
+                                val rules = ParserRuleHelper.loadRules(this@ParserRuleEditorActivity).toMutableList()
+                                val index = rules.indexOfFirst { it.packageName == rule.packageName }
+                                if (index >= 0) {
+                                    rules[index] = rule
+                                } else {
+                                    rules.add(rule)
+                                }
+                                rules.sort()
+                                ParserRuleHelper.saveRules(this@ParserRuleEditorActivity, rules)
+                                finish()
                             }
-                            rules.sort()
-                            ParserRuleHelper.saveRules(this@ParserRuleEditorActivity, rules)
-                            finish()
-                        }
-                    )
+                        )
                     }
                 }
             } else {
@@ -68,28 +73,28 @@ class ParserRuleEditorActivity : BaseActivity() {
                         closeExitTransition = R.anim.overlay_sheet_close_exit
                     ) {
                         ParserRuleEditorScreen(
-                        initialRule = initialRule,
-                        isNewRule = packageName.isNullOrBlank() || ParserRuleHelper.getRuleForPackage(this@ParserRuleEditorActivity, packageName) == null,
-                        onBack = { finish() },
-                        onDelete = { rule ->
-                            val rules = ParserRuleHelper.loadRules(this@ParserRuleEditorActivity).toMutableList()
-                            rules.removeAll { it.packageName == rule.packageName }
-                            ParserRuleHelper.saveRules(this@ParserRuleEditorActivity, rules)
-                            finish()
-                        },
-                        onSaved = { rule ->
-                            val rules = ParserRuleHelper.loadRules(this@ParserRuleEditorActivity).toMutableList()
-                            val index = rules.indexOfFirst { it.packageName == rule.packageName }
-                            if (index >= 0) {
-                                rules[index] = rule
-                            } else {
-                                rules.add(rule)
+                            initialRule = initialRule,
+                            isNewRule = packageName.isNullOrBlank() || existingRule == null,
+                            onBack = { finish() },
+                            onDelete = { rule ->
+                                val rules = ParserRuleHelper.loadRules(this@ParserRuleEditorActivity).toMutableList()
+                                rules.removeAll { it.packageName == rule.packageName }
+                                ParserRuleHelper.saveRules(this@ParserRuleEditorActivity, rules)
+                                finish()
+                            },
+                            onSaved = { rule ->
+                                val rules = ParserRuleHelper.loadRules(this@ParserRuleEditorActivity).toMutableList()
+                                val index = rules.indexOfFirst { it.packageName == rule.packageName }
+                                if (index >= 0) {
+                                    rules[index] = rule
+                                } else {
+                                    rules.add(rule)
+                                }
+                                rules.sort()
+                                ParserRuleHelper.saveRules(this@ParserRuleEditorActivity, rules)
+                                finish()
                             }
-                            rules.sort()
-                            ParserRuleHelper.saveRules(this@ParserRuleEditorActivity, rules)
-                            finish()
-                        }
-                    )
+                        )
                     }
                 }
             }

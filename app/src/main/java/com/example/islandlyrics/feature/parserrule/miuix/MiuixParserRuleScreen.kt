@@ -2,29 +2,20 @@ package com.example.islandlyrics.feature.parserrule.miuix
 
 import com.example.islandlyrics.ui.miuix.MiuixBackHandler
 import android.content.Context
-import com.example.islandlyrics.data.FieldOrder
 import com.example.islandlyrics.R
 import com.example.islandlyrics.core.network.OfflineModeManager
 import com.example.islandlyrics.data.ParserRuleHelper
 import com.example.islandlyrics.data.ParserRule
 import com.example.islandlyrics.data.LyricRepository
 import com.example.islandlyrics.data.lyric.OnlineLyricProvider
-import android.widget.Toast
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.lifecycle.Lifecycle
@@ -38,13 +29,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import top.yukonga.miuix.kmp.basic.*
 import top.yukonga.miuix.kmp.preference.ArrowPreference as SuperArrow
-import top.yukonga.miuix.kmp.preference.OverlayDropdownPreference as SuperDropdown
-import top.yukonga.miuix.kmp.preference.SwitchPreference as SuperSwitch
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.MiuixPopupUtils.Companion.MiuixPopupHost
 import com.example.islandlyrics.ui.miuix.*
 import com.example.islandlyrics.ui.common.OverlaySheetHost
-import com.example.islandlyrics.feature.parserrule.ParserRuleEditorActivity
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.delay
@@ -52,6 +40,7 @@ import kotlinx.coroutines.delay
 private data class InlineParserRuleEditorState(
     val initialRule: ParserRule,
     val isNewRule: Boolean,
+    val isTemplate: Boolean = false,
 )
 
 @Composable
@@ -67,8 +56,9 @@ fun MiuixParserRuleScreen(
     val scrollBehavior = MiuixScrollBehavior(rememberTopAppBarState())
     val listState = rememberLazyListState()
 
-    var rules by remember { mutableStateOf(ParserRuleHelper.loadRules(context)) }
-    var showDeleteDialog = remember { mutableStateOf(false) }
+    var rules by remember { mutableStateOf<List<ParserRule>>(ParserRuleHelper.loadRules(context)) }
+    var hasTemplate by remember { mutableStateOf(ParserRuleHelper.hasDefaultTemplate(context)) }
+    val showDeleteDialog = remember { mutableStateOf(false) }
     var deletingRule by remember { mutableStateOf<ParserRule?>(null) }
     var inlineEditorState by remember { mutableStateOf<InlineParserRuleEditorState?>(null) }
     var inlineEditorVisible by remember { mutableStateOf(false) }
@@ -78,6 +68,7 @@ fun MiuixParserRuleScreen(
 
     fun refreshRules() {
         rules = ParserRuleHelper.loadRules(context)
+        hasTemplate = ParserRuleHelper.hasDefaultTemplate(context)
     }
 
     DisposableEffect(lifecycleOwner, context) {
@@ -119,16 +110,31 @@ fun MiuixParserRuleScreen(
     }
 
     fun openRuleEditor(packageName: String? = null, suggestedName: String? = null) {
+        val existingRule = if (!packageName.isNullOrBlank()) {
+            ParserRuleHelper.loadRules(context).firstOrNull { it.packageName == packageName }
+        } else {
+            null
+        }
         val initialRule = when {
             !packageName.isNullOrBlank() -> {
-                ParserRuleHelper.getRuleForPackage(context, packageName)
-                    ?: ParserRuleHelper.createDefaultRule(packageName).copy(customName = suggestedName)
+                existingRule
+                    ?: ParserRuleHelper.createDefaultRule(context, packageName).copy(customName = suggestedName)
             }
-            else -> ParserRuleHelper.createDefaultRule("").copy(customName = suggestedName)
+            else -> ParserRuleHelper.createDefaultRule(context, "").copy(customName = suggestedName)
         }
         inlineEditorState = InlineParserRuleEditorState(
             initialRule = initialRule,
-            isNewRule = packageName.isNullOrBlank() || ParserRuleHelper.getRuleForPackage(context, packageName) == null
+            isNewRule = packageName.isNullOrBlank() || existingRule == null
+        )
+        inlineEditorVisible = true
+    }
+
+    fun openTemplateEditor() {
+        inlineEditorState = InlineParserRuleEditorState(
+            initialRule = ParserRuleHelper.loadDefaultTemplate(context)
+                ?: ParserRuleHelper.createDefaultRule(context, ""),
+            isNewRule = false,
+            isTemplate = true
         )
         inlineEditorVisible = true
     }
@@ -172,12 +178,11 @@ fun MiuixParserRuleScreen(
                         },
                         actions = {
                             IconButton(onClick = {
-                                val actContext = context
                                 onOpenFaq?.invoke()
-                                    ?: actContext.startActivity(android.content.Intent(actContext, com.example.islandlyrics.feature.faq.FAQActivity::class.java))
+                                    ?: context.startActivity(android.content.Intent(context, com.example.islandlyrics.feature.faq.FAQActivity::class.java))
                             }, modifier = Modifier.padding(end = 12.dp)) {
                                 Icon(
-                                    imageVector = androidx.compose.material.icons.Icons.Default.Info,
+                                    imageVector = Icons.Default.Info,
                                     contentDescription = stringResource(R.string.faq_title),
                                     tint = MiuixTheme.colorScheme.onBackground
                                 )
@@ -209,7 +214,7 @@ fun MiuixParserRuleScreen(
                                 val pm = context.packageManager
                                 val info = pm.getApplicationInfo(currentPkg, 0)
                                 pm.getApplicationLabel(info).toString()
-                            } catch (e: Exception) {
+                            } catch (_: Exception) {
                                 null
                             }
                         } else null
@@ -218,8 +223,7 @@ fun MiuixParserRuleScreen(
                     FloatingActionButton(
                         onClick = {
                             if (showRecommendation) {
-                                val pkg = currentPkg
-                                openRuleEditor(packageName = pkg, suggestedName = appLabel)
+                                openRuleEditor(packageName = currentPkg, suggestedName = appLabel)
                             } else {
                                 openRuleEditor()
                             }
@@ -261,6 +265,13 @@ fun MiuixParserRuleScreen(
                         bottom = padding.calculateBottomPadding() + 136.dp
                     )
                 ) {
+                    item {
+                        MiuixParserRuleTemplateCard(
+                            configured = hasTemplate,
+                            onClick = ::openTemplateEditor
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                    }
                     if (rules.isEmpty()) {
                         item {
                             Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
@@ -338,25 +349,36 @@ fun MiuixParserRuleScreen(
                 MiuixParserRuleEditorScreen(
                     initialRule = editorState.initialRule,
                     isNewRule = editorState.isNewRule,
+                    isTemplate = editorState.isTemplate,
                     onBack = ::closeRuleEditor,
                     onDelete = { rule ->
-                        val updatedRules = ParserRuleHelper.loadRules(context).toMutableList()
-                        updatedRules.removeAll { it.packageName == rule.packageName }
-                        ParserRuleHelper.saveRules(context, updatedRules)
-                        refreshRules()
+                        if (editorState.isTemplate) {
+                            ParserRuleHelper.clearDefaultTemplate(context)
+                            refreshRules()
+                        } else {
+                            val updatedRules = ParserRuleHelper.loadRules(context).toMutableList()
+                            updatedRules.removeAll { it.packageName == rule.packageName }
+                            ParserRuleHelper.saveRules(context, updatedRules)
+                            refreshRules()
+                        }
                         closeRuleEditor()
                     },
                     onSaved = { rule ->
-                        val updatedRules = ParserRuleHelper.loadRules(context).toMutableList()
-                        val index = updatedRules.indexOfFirst { it.packageName == rule.packageName }
-                        if (index >= 0) {
-                            updatedRules[index] = rule
+                        if (editorState.isTemplate) {
+                            ParserRuleHelper.saveDefaultTemplate(context, rule)
+                            refreshRules()
                         } else {
-                            updatedRules.add(rule)
+                            val updatedRules = ParserRuleHelper.loadRules(context).toMutableList()
+                            val index = updatedRules.indexOfFirst { it.packageName == rule.packageName }
+                            if (index >= 0) {
+                                updatedRules[index] = rule
+                            } else {
+                                updatedRules.add(rule)
+                            }
+                            updatedRules.sort()
+                            ParserRuleHelper.saveRules(context, updatedRules)
+                            refreshRules()
                         }
-                        updatedRules.sort()
-                        ParserRuleHelper.saveRules(context, updatedRules)
-                        refreshRules()
                         closeRuleEditor()
                     },
                     onOpenFaq = {
@@ -368,6 +390,23 @@ fun MiuixParserRuleScreen(
             }
         }
     )
+}
+
+@Composable
+private fun MiuixParserRuleTemplateCard(
+    configured: Boolean,
+    onClick: () -> Unit
+) {
+    Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
+        SuperArrow(
+            title = stringResource(R.string.parser_template_title),
+            summary = stringResource(
+                if (configured) R.string.parser_template_status_configured
+                else R.string.parser_template_status_not_configured
+            ),
+            onClick = onClick
+        )
+    }
 }
 
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
