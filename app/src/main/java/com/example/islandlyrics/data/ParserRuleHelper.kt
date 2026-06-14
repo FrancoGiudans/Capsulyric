@@ -1,10 +1,10 @@
 package com.example.islandlyrics.data
 
 import android.content.Context
+import androidx.core.content.edit
 import com.example.islandlyrics.data.lyric.OnlineLyricProvider
 import org.json.JSONArray
 import org.json.JSONObject
-import java.util.Collections
 
 /**
  * Helper for managing notification parser rules.
@@ -14,6 +14,8 @@ object ParserRuleHelper {
 
     private const val PREFS_NAME = "IslandLyricsPrefs"
     private const val PREF_PARSER_RULES = "parser_rules_json"
+    const val PREF_PARSER_RULE_TEMPLATE = "parser_rule_template_json"
+    private const val TEMPLATE_PACKAGE_NAME = "__parser_rule_template__"
 
     // ── In-memory cache ──
     // keyed by packageName; null value means "rule exists but is disabled".
@@ -112,7 +114,7 @@ object ParserRuleHelper {
             saveRules(context, rules)
         }
 
-        Collections.sort(rules)
+        rules.sort()
 
         // Populate cache
         ruleCache.clear()
@@ -133,32 +135,13 @@ object ParserRuleHelper {
         
         for (rule in rules) {
             try {
-                val obj = JSONObject()
-                obj.put("pkg", rule.packageName)
-                obj.put("name", rule.customName)
-                obj.put("enabled", rule.enabled)
-                obj.put("usesCarProtocol", rule.usesCarProtocol)
-                obj.put("separator", rule.separatorPattern)
-                obj.put("fieldOrder", rule.fieldOrder.name)
-                obj.put("useOnlineLyrics", rule.useOnlineLyrics)
-                obj.put("useSmartOnlineLyricSelection", rule.useSmartOnlineLyricSelection)
-                obj.put("useRawMetadataForOnlineMatching", rule.useRawMetadataForOnlineMatching)
-                obj.put("receiveOnlineTranslation", rule.receiveOnlineTranslation)
-                obj.put("receiveOnlineRomanization", rule.receiveOnlineRomanization)
-                obj.put("onlineLyricProviderOrder", JSONArray(OnlineLyricProvider.normalizeOrder(rule.onlineLyricProviderOrder).map { it.id }))
-                obj.put("useSuperLyricApi", rule.useSuperLyricApi)
-                obj.put("useLyricGetterApi", rule.useLyricGetterApi)
-                obj.put("useLyriconApi", rule.useLyriconApi)
-                obj.put("receiveLyriconTranslation", rule.receiveLyriconTranslation)
-                obj.put("receiveLyriconRomanization", rule.receiveLyriconRomanization)
-                obj.put("useLocalLyrics", rule.useLocalLyrics)
-                array.put(obj)
+                array.put(ruleToJson(rule))
             } catch (e: Exception) {
                 e.printStackTrace()
             }
         }
         
-        prefs.edit().putString(PREF_PARSER_RULES, array.toString()).apply()
+        prefs.edit { putString(PREF_PARSER_RULES, array.toString()) }
         // Rules changed on disk — invalidate cache so next access re-parses
         invalidateCache()
     }
@@ -167,7 +150,7 @@ object ParserRuleHelper {
         if (packageName.isBlank()) return null
         val rules = loadRules(context).toMutableList()
         val index = rules.indexOfFirst { it.packageName == packageName }
-        val current = if (index >= 0) rules[index] else createDefaultRule(packageName)
+        val current = if (index >= 0) rules[index] else createDefaultRule(context, packageName)
         val updated = transform(current).copy(packageName = packageName)
         if (index >= 0) {
             rules[index] = updated
@@ -231,6 +214,115 @@ object ParserRuleHelper {
      * Default to: Online Lyrics ENABLED, SuperLyric ENABLED.
      */
     fun createDefaultRule(packageName: String): ParserRule {
+        return builtInDefaultRule(packageName)
+    }
+
+    fun createDefaultRule(context: Context, packageName: String): ParserRule {
+        val base = builtInDefaultRule(packageName)
+        return applyTemplateToRule(base, loadDefaultTemplate(context))
+    }
+
+    fun loadDefaultTemplate(context: Context): ParserRule? {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val json = prefs.getString(PREF_PARSER_RULE_TEMPLATE, null) ?: return null
+        return try {
+            ruleFromJson(JSONObject(json), TEMPLATE_PACKAGE_NAME)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
+    }
+
+    fun hasDefaultTemplate(context: Context): Boolean {
+        return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .contains(PREF_PARSER_RULE_TEMPLATE)
+    }
+
+    fun saveDefaultTemplate(context: Context, template: ParserRule) {
+        val cleanTemplate = template.copy(
+            packageName = TEMPLATE_PACKAGE_NAME,
+            customName = null,
+            enabled = true
+        )
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .edit { putString(PREF_PARSER_RULE_TEMPLATE, ruleToJson(cleanTemplate).toString()) }
+    }
+
+    fun clearDefaultTemplate(context: Context) {
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .edit { remove(PREF_PARSER_RULE_TEMPLATE) }
+    }
+
+    internal fun ruleToJson(rule: ParserRule): JSONObject {
+        return JSONObject().apply {
+            put("pkg", rule.packageName)
+            put("name", rule.customName)
+            put("enabled", rule.enabled)
+            put("usesCarProtocol", rule.usesCarProtocol)
+            put("separator", rule.separatorPattern)
+            put("fieldOrder", rule.fieldOrder.name)
+            put("useOnlineLyrics", rule.useOnlineLyrics)
+            put("useSmartOnlineLyricSelection", rule.useSmartOnlineLyricSelection)
+            put("useRawMetadataForOnlineMatching", rule.useRawMetadataForOnlineMatching)
+            put("receiveOnlineTranslation", rule.receiveOnlineTranslation)
+            put("receiveOnlineRomanization", rule.receiveOnlineRomanization)
+            put(
+                "onlineLyricProviderOrder",
+                JSONArray(OnlineLyricProvider.normalizeOrder(rule.onlineLyricProviderOrder).map { it.id })
+            )
+            put("useSuperLyricApi", rule.useSuperLyricApi)
+            put("useLyricGetterApi", rule.useLyricGetterApi)
+            put("useLyriconApi", rule.useLyriconApi)
+            put("receiveLyriconTranslation", rule.receiveLyriconTranslation)
+            put("receiveLyriconRomanization", rule.receiveLyriconRomanization)
+            put("useLocalLyrics", rule.useLocalLyrics)
+        }
+    }
+
+    internal fun ruleFromJson(obj: JSONObject, fallbackPackageName: String? = null): ParserRule {
+        val pkg = obj.optString("pkg", obj.optString("package", fallbackPackageName.orEmpty()))
+        val name = if (obj.has("name") && !obj.isNull("name")) obj.getString("name") else null
+        val providerOrder = when {
+            obj.has("onlineLyricProviderOrder") -> {
+                val array = obj.optJSONArray("onlineLyricProviderOrder")
+                if (array != null) {
+                    buildList {
+                        for (index in 0 until array.length()) {
+                            add(array.optString(index))
+                        }
+                    }
+                } else {
+                    OnlineLyricProvider.defaultIdsForPackage(pkg)
+                }
+            }
+            else -> OnlineLyricProvider.defaultIdsForPackage(pkg)
+        }
+
+        return ParserRule(
+            packageName = pkg,
+            customName = name,
+            enabled = obj.optBoolean("enabled", true),
+            usesCarProtocol = obj.optBoolean("usesCarProtocol", true),
+            separatorPattern = obj.optString("separator", "-"),
+            fieldOrder = runCatching {
+                FieldOrder.valueOf(obj.optString("fieldOrder", "ARTIST_TITLE"))
+            }.getOrDefault(FieldOrder.ARTIST_TITLE),
+            useOnlineLyrics = obj.optBoolean("useOnlineLyrics", false),
+            useSmartOnlineLyricSelection = obj.optBoolean("useSmartOnlineLyricSelection", true),
+            useRawMetadataForOnlineMatching = obj.optBoolean("useRawMetadataForOnlineMatching", false),
+            receiveOnlineTranslation = obj.optBoolean("receiveOnlineTranslation", false),
+            receiveOnlineRomanization = obj.optBoolean("receiveOnlineRomanization", false),
+            onlineLyricProviderOrder = OnlineLyricProvider.normalizeOrder(providerOrder).map { it.id },
+            useSuperLyricApi = obj.optBoolean("useSuperLyricApi", false),
+            useLyricGetterApi = obj.optBoolean("useLyricGetterApi", false),
+            useLyriconApi = obj.optBoolean("useLyriconApi", false),
+            receiveLyriconTranslation = obj.optBoolean("receiveLyriconTranslation", false),
+            receiveLyriconRomanization = obj.optBoolean("receiveLyriconRomanization", false),
+            useLocalLyrics = obj.optBoolean("useLocalLyrics", false)
+        )
+    }
+
+    private fun builtInDefaultRule(packageName: String): ParserRule {
         return ParserRule(
             packageName = packageName,
             customName = null,
@@ -249,6 +341,27 @@ object ParserRuleHelper {
             useLyriconApi = false, // DISABLED BY DEFAULT
             receiveLyriconTranslation = false,
             receiveLyriconRomanization = false
+        )
+    }
+
+    private fun applyTemplateToRule(rule: ParserRule, template: ParserRule?): ParserRule {
+        if (template == null) return rule
+        return rule.copy(
+            usesCarProtocol = template.usesCarProtocol,
+            separatorPattern = template.separatorPattern,
+            fieldOrder = template.fieldOrder,
+            useLocalLyrics = template.useLocalLyrics,
+            useOnlineLyrics = template.useOnlineLyrics,
+            useSmartOnlineLyricSelection = template.useSmartOnlineLyricSelection,
+            useRawMetadataForOnlineMatching = template.useRawMetadataForOnlineMatching,
+            receiveOnlineTranslation = template.receiveOnlineTranslation,
+            receiveOnlineRomanization = template.receiveOnlineRomanization,
+            onlineLyricProviderOrder = OnlineLyricProvider.normalizeOrder(template.onlineLyricProviderOrder).map { it.id },
+            useSuperLyricApi = template.useSuperLyricApi,
+            useLyricGetterApi = template.useLyricGetterApi,
+            useLyriconApi = template.useLyriconApi,
+            receiveLyriconTranslation = template.receiveLyriconTranslation,
+            receiveLyriconRomanization = template.receiveLyriconRomanization
         )
     }
     /**

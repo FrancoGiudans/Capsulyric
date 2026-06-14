@@ -1,6 +1,7 @@
 package com.example.islandlyrics.core.settings
 
 import android.content.Context
+import androidx.core.content.edit
 import org.json.JSONArray
 
 /**
@@ -126,9 +127,9 @@ object BackupCategories {
 
     val PARSER_RULES = Category(
         id = "parser_rules",
-        keyPatterns = listOf("parser_rules_json"),
+        keyPatterns = listOf("parser_rules_json", "parser_rule_template_json"),
         subGroups = listOf(
-            SubGroup("parser_all", listOf("parser_rules_json"))
+            SubGroup("parser_all", listOf("parser_rules_json", "parser_rule_template_json"))
         )
     )
 
@@ -210,15 +211,8 @@ object BackupCategories {
         }
     }
 
-    /** Collect all patterns from the given category IDs (including sub-group patterns). */
-    fun allPatternsFor(selectedCategoryIds: Set<String>): List<String> {
-        return ALL_CATEGORIES
-            .filter { it.id in selectedCategoryIds }
-            .flatMap { cat -> cat.keyPatterns + cat.subGroups.flatMap { it.keyPatterns } }
-    }
-
     /**
-     * Like [allPatternsFor] but accepts a mix of category IDs and subGroup IDs.
+     * Collect patterns from a mix of category IDs and subGroup IDs.
      * - Category IDs: include all patterns (category + all sub-groups).
      * - SubGroup IDs: include only that sub-group's patterns.
      * - Special handling for dynamic parser IDs (parser_com_xxx).
@@ -236,9 +230,9 @@ object BackupCategories {
                 }
 
                 // Special handling for parser_rules: dynamic parser IDs (parser_com_xxx)
-                // should also include parser_rules_json
+                // should also include parser_rules_json and the default template.
                 if (cat.id == "parser_rules" && leafIds.any { it.startsWith("parser_") }) {
-                    result.addAll(cat.keyPatterns)  // Add "parser_rules_json"
+                    result.addAll(cat.keyPatterns)
                 }
             } else if (cat.id in leafIds) {
                 result.addAll(cat.keyPatterns)
@@ -253,18 +247,6 @@ object BackupCategories {
         leafIds: Set<String>
     ): Set<String> {
         val patterns = patternsForLeafIds(leafIds)
-        return allPrefKeys.filter { key ->
-            if (key in EXCLUDED_KEYS) return@filter false
-            patterns.any { pattern -> matchesPattern(key, pattern) }
-        }.toSet()
-    }
-
-    /** Collect all keys from SharedPreferences that belong to the given category IDs. */
-    fun collectKeysForCategories(
-        allPrefKeys: Set<String>,
-        selectedCategoryIds: Set<String>
-    ): Set<String> {
-        val patterns = allPatternsFor(selectedCategoryIds)
         return allPrefKeys.filter { key ->
             if (key in EXCLUDED_KEYS) return@filter false
             patterns.any { pattern -> matchesPattern(key, pattern) }
@@ -295,6 +277,7 @@ object BackupCategories {
     // ── Dynamic parser rule sub-groups ─────────────────────────────────
 
     private const val PREF_PARSER_RULES = "parser_rules_json"
+    private const val PREF_PARSER_RULE_TEMPLATE = "parser_rule_template_json"
 
     /**
      * Read current parser rules from SharedPreferences and return one SubGroup per app.
@@ -305,19 +288,22 @@ object BackupCategories {
     fun parserAppSubGroups(context: Context): List<SubGroup> {
         val prefs = context.getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE)
         val json = prefs.getString(PREF_PARSER_RULES, null) ?: return listOf(
-            SubGroup("parser_all", listOf(PREF_PARSER_RULES))
+            SubGroup("parser_all", listOf(PREF_PARSER_RULES, PREF_PARSER_RULE_TEMPLATE))
         )
         return try {
             val array = JSONArray(json)
+            if (array.length() == 0) {
+                return listOf(SubGroup("parser_all", listOf(PREF_PARSER_RULES, PREF_PARSER_RULE_TEMPLATE)))
+            }
             (0 until array.length()).map { i ->
                 val obj = array.getJSONObject(i)
                 val pkg = obj.getString("pkg")
                 val name = if (obj.has("name") && !obj.isNull("name")) obj.getString("name") else pkg
                 val subId = "parser_" + pkg.replace('.', '_')
-                SubGroup(subId, listOf(PREF_PARSER_RULES), labelOverride = name)
+                SubGroup(subId, listOf(PREF_PARSER_RULES, PREF_PARSER_RULE_TEMPLATE), labelOverride = name)
             }
         } catch (_: Exception) {
-            listOf(SubGroup("parser_all", listOf(PREF_PARSER_RULES)))
+            listOf(SubGroup("parser_all", listOf(PREF_PARSER_RULES, PREF_PARSER_RULE_TEMPLATE)))
         }
     }
 
@@ -327,20 +313,23 @@ object BackupCategories {
      */
     fun parserAppSubGroupsFromJson(jsonString: String?): List<SubGroup> {
         if (jsonString.isNullOrEmpty()) return listOf(
-            SubGroup("parser_all", listOf(PREF_PARSER_RULES))
+            SubGroup("parser_all", listOf(PREF_PARSER_RULES, PREF_PARSER_RULE_TEMPLATE))
         )
         return try {
             val array = JSONArray(jsonString)
+            if (array.length() == 0) {
+                return listOf(SubGroup("parser_all", listOf(PREF_PARSER_RULES, PREF_PARSER_RULE_TEMPLATE)))
+            }
             (0 until array.length()).map { i ->
                 val obj = array.getJSONObject(i)
                 val pkg = obj.optString("pkg", "")
-                if (pkg.isEmpty()) return@map null
+                if (pkg.isBlank()) return@map null
                 val name = if (obj.has("name") && !obj.isNull("name")) obj.getString("name") else pkg
                 val subId = "parser_" + pkg.replace('.', '_')
-                SubGroup(subId, listOf(PREF_PARSER_RULES), labelOverride = name)
+                SubGroup(subId, listOf(PREF_PARSER_RULES, PREF_PARSER_RULE_TEMPLATE), labelOverride = name)
             }.filterNotNull()
         } catch (_: Exception) {
-            listOf(SubGroup("parser_all", listOf(PREF_PARSER_RULES)))
+            listOf(SubGroup("parser_all", listOf(PREF_PARSER_RULES, PREF_PARSER_RULE_TEMPLATE)))
         }
     }
 
@@ -351,7 +340,7 @@ object BackupCategories {
     fun filterParserRulesJson(json: String, selectedLeafIds: Set<String>): String {
         val prefix = "parser_"
         val selectedPkgs = selectedLeafIds
-            .filter { it.startsWith(prefix) }
+            .filter { it.startsWith(prefix) && it != "parser_all" }
             .map { it.removePrefix(prefix).replace('_', '.') }
             .toSet()
         if (selectedPkgs.isEmpty()) return json
@@ -399,7 +388,7 @@ object BackupCategories {
                     existing.put(obj)
                 }
             }
-            prefs.edit().putString(PREF_PARSER_RULES, existing.toString()).apply()
+            prefs.edit { putString(PREF_PARSER_RULES, existing.toString()) }
         } catch (e: Exception) {
             android.util.Log.e("BackupCategories", "Failed to merge parser rules", e)
         }

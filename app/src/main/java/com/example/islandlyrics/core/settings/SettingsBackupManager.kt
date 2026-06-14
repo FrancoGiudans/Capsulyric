@@ -2,6 +2,7 @@ package com.example.islandlyrics.core.settings
 
 import android.content.Context
 import android.net.Uri
+import androidx.core.content.edit
 import com.example.islandlyrics.data.lyric.OnlineLyricCacheStore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -19,6 +20,7 @@ object SettingsBackupManager {
 
     private const val PREFS_NAME = "IslandLyricsPrefs"
     private const val PREF_PARSER_RULES = "parser_rules_json"
+    private const val PREF_PARSER_RULE_TEMPLATE = "parser_rule_template_json"
     private const val SCHEMA_VERSION = 2
     private val FILE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMdd_HH_mm_ss", Locale.US)
 
@@ -62,6 +64,7 @@ object SettingsBackupManager {
     // ── v1 (legacy, full export) ────────────────────────────────────────
 
     /** Full export as ZIP. Kept for backward compat callers. */
+    @Suppress("unused")
     suspend fun exportToUri(context: Context, uri: Uri): ExportResult {
         val allLeafIds = BackupCategories.ALL_CATEGORIES.flatMap { c ->
             if (c.subGroups.isNotEmpty()) c.subGroups.map { it.id } else listOf(c.id)
@@ -114,11 +117,11 @@ object SettingsBackupManager {
                 // 3. Create ZIP (explicit finish+flush for ContentResolver streams)
                 context.contentResolver.openOutputStream(uri)?.use { output ->
                     ZipOutputStream(output).use { zip ->
-                        addFileToZip(zip, settingsFile, "settings.json")
+                        addFileToZip(zip, settingsFile)
                         if (includeLyricCache) {
                             val cacheDir = File(tempDir, "lyric_cache")
                             if (cacheDir.exists()) {
-                                addDirToZip(zip, cacheDir, "lyric_cache")
+                                addDirToZip(zip, cacheDir)
                             }
                         }
                         zip.finish()
@@ -208,6 +211,7 @@ object SettingsBackupManager {
     }
 
     /** Export only the selected leaf items (legacy, kept for internal use). */
+    @Suppress("unused")
     suspend fun exportSelected(
         context: Context,
         uri: Uri,
@@ -291,6 +295,13 @@ object SettingsBackupManager {
                     continue
                 }
 
+                if (key == PREF_PARSER_RULE_TEMPLATE && value is String) {
+                    backupTemplateFromInternalJson(value)?.let { template ->
+                        catBlock.put("template", template)
+                    }
+                    continue
+                }
+
                 val wrapped = wrapValue(value) ?: continue
                 entries.put(key, wrapped)
             }
@@ -323,6 +334,7 @@ object SettingsBackupManager {
             count += prefsJson?.length() ?: 0
             if (catId == "parser_rules") {
                 count += catBlock.optJSONArray("parsers")?.length() ?: 0
+                if (catBlock.optJSONObject("template") != null) count += 1
             }
         }
         return count
@@ -352,9 +364,17 @@ object SettingsBackupManager {
                 while (catIter.hasNext()) {
                     val catId = catIter.next()
                     val catBlock = categoriesObj.optJSONObject(catId) ?: continue
-                    val hasStructuredParsers = catId == "parser_rules" &&
-                        catBlock.optJSONArray("parsers") != null
-                    if (catId == "parser_rules" && selectedLeafIds.any { it.startsWith("parser_") }) {
+                    val hasStructuredParsers = catBlock.optJSONArray("parsers") != null
+                    val parserRulesSelected = catId == "parser_rules" &&
+                        selectedLeafIds.any { it.startsWith("parser_") }
+                    if (parserRulesSelected) {
+                        val template = catBlock.optJSONObject("template")
+                        if (template != null) {
+                            editor.putString(PREF_PARSER_RULE_TEMPLATE, backupTemplateToInternalJson(template))
+                            count += 1
+                        }
+                    }
+                    if (parserRulesSelected) {
                         val parsers = catBlock.optJSONArray("parsers")
                         if (parsers != null) {
                             importedParserJson = BackupCategories.filterParserRulesJson(
@@ -371,9 +391,12 @@ object SettingsBackupManager {
                         if (key in BackupCategories.EXCLUDED_KEYS) continue
                         if (!allowedPatterns.any { BackupCategories.matchesPattern(key, it) }) continue
                         if (key == PREF_PARSER_RULES && hasStructuredParsers) continue
+                        if (key == PREF_PARSER_RULE_TEMPLATE &&
+                            parserRulesSelected &&
+                            catBlock.optJSONObject("template") != null
+                        ) continue
                         if (key == PREF_PARSER_RULES &&
-                            selectedLeafIds.any { it.startsWith("parser_") } &&
-                            !hasStructuredParsers
+                            parserRulesSelected
                         ) {
                             importedParserJson = BackupCategories.filterParserRulesJson(
                                 parserRulesJsonFromBackupValue(prefsJson.opt(key)) ?: "[]",
@@ -411,7 +434,7 @@ object SettingsBackupManager {
 
         editor.apply()
 
-        val conflicts = if (importedParserJson != null && importedParserJson.isNotEmpty()) {
+        val conflicts = if (!importedParserJson.isNullOrEmpty()) {
             val existingConflicts = checkParserConflicts(context, importedParserJson)
             if (existingConflicts.isEmpty()) {
                 BackupCategories.mergeParserRulesJson(context, importedParserJson)
@@ -512,6 +535,7 @@ object SettingsBackupManager {
                     var n = prefsJson?.length() ?: 0
                     if (catId == "parser_rules") {
                         n += catBlock.optJSONArray("parsers")?.length() ?: 0
+                        if (catBlock.optJSONObject("template") != null) n += 1
                     }
                     counts[catId] = n
                     total += n
@@ -531,22 +555,22 @@ object SettingsBackupManager {
     // ── ZIP I/O helpers ──────────────────────────────────────────
 
     /** Add a single file to a ZIP output stream. */
-    private fun addFileToZip(zip: ZipOutputStream, file: File, entryName: String) {
-        zip.putNextEntry(ZipEntry(entryName))
+    private fun addFileToZip(zip: ZipOutputStream, file: File) {
+        zip.putNextEntry(ZipEntry("settings.json"))
         file.inputStream().use { it.copyTo(zip) }
         zip.closeEntry()
     }
 
-    /** Recursively add a directory to a ZIP output stream under [basePath]. */
-    private fun addDirToZip(zip: ZipOutputStream, dir: File, basePath: String) {
+    /** Recursively add lyric cache files to a ZIP output stream. */
+    private fun addDirToZip(zip: ZipOutputStream, dir: File) {
         dir.walkTopDown().forEach { file ->
             val relativePath = file.relativeTo(dir).path.replace(File.separatorChar, '/')
             if (file.isDirectory) {
-                val dirEntry = if (relativePath.isEmpty()) "$basePath/" else "$basePath/$relativePath/"
+                val dirEntry = if (relativePath.isEmpty()) "lyric_cache/" else "lyric_cache/$relativePath/"
                 zip.putNextEntry(ZipEntry(dirEntry))
                 zip.closeEntry()
             } else {
-                zip.putNextEntry(ZipEntry("$basePath/$relativePath"))
+                zip.putNextEntry(ZipEntry("lyric_cache/$relativePath"))
                 file.inputStream().use { it.copyTo(zip) }
                 zip.closeEntry()
             }
@@ -694,6 +718,59 @@ object SettingsBackupManager {
         return result
     }
 
+    private fun backupTemplateFromInternalJson(json: String): JSONObject? {
+        val rule = runCatching { JSONObject(json) }.getOrNull() ?: return null
+        return JSONObject()
+            .put("car_protocol", rule.optBoolean("usesCarProtocol", true))
+            .put("separator", rule.optString("separator", "-"))
+            .put("field_order", rule.optString("fieldOrder", "ARTIST_TITLE"))
+            .put("sources", JSONObject()
+                .put("local_lyrics", rule.optBoolean("useLocalLyrics", false))
+                .put("online_lyrics", rule.optBoolean("useOnlineLyrics", false))
+                .put("smart_selection", rule.optBoolean("useSmartOnlineLyricSelection", true))
+                .put("use_raw_metadata", rule.optBoolean("useRawMetadataForOnlineMatching", false)))
+            .put("online_providers", rule.optJSONArray("onlineLyricProviderOrder") ?: JSONArray())
+            .put("apis", JSONObject()
+                .put("super_lyric", rule.optBoolean("useSuperLyricApi", false))
+                .put("lyric_getter", rule.optBoolean("useLyricGetterApi", false))
+                .put("lyricon", rule.optBoolean("useLyriconApi", false)))
+            .put("translations", JSONObject()
+                .put("online_translation", rule.optBoolean("receiveOnlineTranslation", false))
+                .put("online_romanization", rule.optBoolean("receiveOnlineRomanization", false))
+                .put("lyricon_translation", rule.optBoolean("receiveLyriconTranslation", false))
+                .put("lyricon_romanization", rule.optBoolean("receiveLyriconRomanization", false)))
+    }
+
+    private fun backupTemplateToInternalJson(template: JSONObject): String {
+        val sources = template.optJSONObject("sources") ?: JSONObject()
+        val apis = template.optJSONObject("apis") ?: JSONObject()
+        val translations = template.optJSONObject("translations") ?: JSONObject()
+        val providers = template.optJSONArray("online_providers")
+            ?: template.optJSONArray("onlineLyricProviderOrder")
+            ?: JSONArray()
+
+        return JSONObject()
+            .put("pkg", "__parser_rule_template__")
+            .put("name", JSONObject.NULL)
+            .put("enabled", true)
+            .put("usesCarProtocol", template.optBoolean("car_protocol", template.optBoolean("usesCarProtocol", true)))
+            .put("separator", template.optString("separator", "-"))
+            .put("fieldOrder", template.optString("field_order", template.optString("fieldOrder", "ARTIST_TITLE")))
+            .put("useOnlineLyrics", sources.optBoolean("online_lyrics", template.optBoolean("useOnlineLyrics", false)))
+            .put("useSmartOnlineLyricSelection", sources.optBoolean("smart_selection", template.optBoolean("useSmartOnlineLyricSelection", true)))
+            .put("useRawMetadataForOnlineMatching", sources.optBoolean("use_raw_metadata", template.optBoolean("useRawMetadataForOnlineMatching", false)))
+            .put("receiveOnlineTranslation", translations.optBoolean("online_translation", template.optBoolean("receiveOnlineTranslation", false)))
+            .put("receiveOnlineRomanization", translations.optBoolean("online_romanization", template.optBoolean("receiveOnlineRomanization", false)))
+            .put("onlineLyricProviderOrder", providers)
+            .put("useSuperLyricApi", apis.optBoolean("super_lyric", template.optBoolean("useSuperLyricApi", false)))
+            .put("useLyricGetterApi", apis.optBoolean("lyric_getter", template.optBoolean("useLyricGetterApi", false)))
+            .put("useLyriconApi", apis.optBoolean("lyricon", template.optBoolean("useLyriconApi", false)))
+            .put("receiveLyriconTranslation", translations.optBoolean("lyricon_translation", template.optBoolean("receiveLyriconTranslation", false)))
+            .put("receiveLyriconRomanization", translations.optBoolean("lyricon_romanization", template.optBoolean("receiveLyriconRomanization", false)))
+            .put("useLocalLyrics", sources.optBoolean("local_lyrics", template.optBoolean("useLocalLyrics", false)))
+            .toString()
+    }
+
     internal fun parserRulesJsonFromBackupValue(rawValue: Any?): String? {
         return when (rawValue) {
             is JSONArray -> backupParserArrayToParserRulesJson(rawValue)
@@ -798,7 +875,7 @@ object SettingsBackupManager {
                 }
             }
             conflicts
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             emptyList()
         }
     }
@@ -832,7 +909,7 @@ object SettingsBackupManager {
                     existing.put(obj)
                 }
             }
-            prefs.edit().putString(PREF_PARSER_RULES, existing.toString()).apply()
+            prefs.edit { putString(PREF_PARSER_RULES, existing.toString()) }
         } catch (_: Exception) { }
     }
 }

@@ -5,7 +5,6 @@ import android.widget.Toast
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.PaddingValues
@@ -20,7 +19,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.verticalScroll
@@ -36,6 +34,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -63,6 +62,7 @@ import com.example.islandlyrics.feature.parserrule.ParserRuleSourceConfigType
 import com.example.islandlyrics.feature.parserrule.toEditorState
 import com.example.islandlyrics.feature.parserrule.toRule
 import com.example.islandlyrics.feature.parserrule.withSourceSettingsFrom
+import com.example.islandlyrics.ui.common.PageStackHost
 import com.example.islandlyrics.ui.miuix.MiuixBlurDialog
 import com.example.islandlyrics.ui.miuix.MiuixBlurScaffold
 import com.example.islandlyrics.ui.miuix.MiuixBlurSmallTopAppBar
@@ -88,6 +88,7 @@ import kotlin.math.roundToInt
 fun MiuixParserRuleEditorScreen(
     initialRule: ParserRule,
     isNewRule: Boolean,
+    isTemplate: Boolean = false,
     onBack: () -> Unit,
     onDelete: (ParserRule) -> Unit,
     onSaved: (ParserRule) -> Unit,
@@ -95,10 +96,12 @@ fun MiuixParserRuleEditorScreen(
 ) {
     val context = LocalContext.current
     val scrollBehavior = MiuixScrollBehavior(rememberTopAppBarState())
+    val enterPkgMessage = stringResource(R.string.dialog_enter_pkg)
     var state by remember(initialRule) { mutableStateOf(initialRule.toEditorState()) }
     var showOnlineSuggestionDialog by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
-    val canPersistSourceSettings = !isNewRule && state.packageName.isNotBlank()
+    val templateConfigType = remember { mutableStateOf<ParserRuleSourceConfigType?>(null) }
+    val canPersistSourceSettings = !isTemplate && !isNewRule && state.packageName.isNotBlank()
 
     DisposableEffect(canPersistSourceSettings, state.packageName) {
         val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
@@ -141,8 +144,12 @@ fun MiuixParserRuleEditorScreen(
     }
 
     fun openSourceConfig(type: ParserRuleSourceConfigType) {
+        if (isTemplate) {
+            templateConfigType.value = type
+            return
+        }
         if (state.packageName.isBlank()) {
-            Toast.makeText(context, context.getString(R.string.dialog_enter_pkg), Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, enterPkgMessage, Toast.LENGTH_SHORT).show()
             return
         }
         context.startActivity(
@@ -153,10 +160,15 @@ fun MiuixParserRuleEditorScreen(
         )
     }
 
+    val editorContent: @Composable () -> Unit = {
     MiuixBlurScaffold(
         topBar = {
             MiuixBlurSmallTopAppBar(
-                title = if (isNewRule) stringResource(R.string.parser_add_rule) else stringResource(R.string.parser_edit),
+                title = when {
+                    isTemplate -> stringResource(R.string.parser_template_title)
+                    isNewRule -> stringResource(R.string.parser_add_rule)
+                    else -> stringResource(R.string.parser_edit)
+                },
                 scrollBehavior = scrollBehavior,
                 navigationIcon = {
                     IconButton(
@@ -171,8 +183,8 @@ fun MiuixParserRuleEditorScreen(
                 actions = {
                     IconButton(
                         onClick = {
-                            if (state.packageName.isBlank()) {
-                                Toast.makeText(context, context.getString(R.string.dialog_enter_pkg), Toast.LENGTH_SHORT).show()
+                            if (!isTemplate && state.packageName.isBlank()) {
+                                Toast.makeText(context, enterPkgMessage, Toast.LENGTH_SHORT).show()
                             } else {
                                 onSaved(state.toRule(initialRule, isNewRule))
                             }
@@ -183,14 +195,20 @@ fun MiuixParserRuleEditorScreen(
                     IconButton(
                         onClick = {
                             onOpenFaq?.invoke()
-                                ?: context.startActivity(android.content.Intent(context, com.example.islandlyrics.feature.faq.FAQActivity::class.java))
+                                ?: context.startActivity(Intent(context, com.example.islandlyrics.feature.faq.FAQActivity::class.java))
                         }
                     ) {
                         androidx.compose.material3.Icon(Icons.Default.Info, contentDescription = stringResource(R.string.faq_title), tint = MiuixTheme.colorScheme.onBackground)
                     }
-                    if (!isNewRule) {
+                    if (isTemplate || !isNewRule) {
                         IconButton(onClick = { showDeleteDialog = true }) {
-                            androidx.compose.material3.Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.parser_delete), tint = MiuixTheme.colorScheme.onBackground)
+                            androidx.compose.material3.Icon(
+                                Icons.Default.Delete,
+                                contentDescription = stringResource(
+                                    if (isTemplate) R.string.parser_template_clear else R.string.parser_delete
+                                ),
+                                tint = MiuixTheme.colorScheme.onBackground
+                            )
                         }
                     }
                 }
@@ -205,25 +223,27 @@ fun MiuixParserRuleEditorScreen(
                 .padding(top = padding.calculateTopPadding(), bottom = padding.calculateBottomPadding())
                 .verticalScroll(rememberScrollState())
         ) {
-            SmallTitle(text = stringResource(R.string.parser_app_info))
-            Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
-                TextField(
-                    value = state.customName,
-                    onValueChange = { state = state.copy(customName = it) },
-                    label = stringResource(R.string.parser_app_name),
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-                TextField(
-                    value = state.packageName,
-                    onValueChange = { state = state.copy(packageName = it) },
-                    label = stringResource(R.string.parser_package_name),
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = isNewRule
-                )
+            if (!isTemplate) {
+                SmallTitle(text = stringResource(R.string.parser_app_info))
+                Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
+                    TextField(
+                        value = state.customName,
+                        onValueChange = { state = state.copy(customName = it) },
+                        label = stringResource(R.string.parser_app_name),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    TextField(
+                        value = state.packageName,
+                        onValueChange = { state = state.copy(packageName = it) },
+                        label = stringResource(R.string.parser_package_name),
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = isNewRule
+                    )
+                }
+                Spacer(modifier = Modifier.height(16.dp))
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
             SmallTitle(text = stringResource(R.string.parser_logic_header))
             Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
                 MiuixSourceRows(
@@ -237,15 +257,15 @@ fun MiuixParserRuleEditorScreen(
             Spacer(modifier = Modifier.height(16.dp))
             Button(
                 onClick = {
-                    if (state.packageName.isBlank()) {
-                        Toast.makeText(context, context.getString(R.string.dialog_enter_pkg), Toast.LENGTH_SHORT).show()
+                    if (!isTemplate && state.packageName.isBlank()) {
+                        Toast.makeText(context, enterPkgMessage, Toast.LENGTH_SHORT).show()
                     } else {
                         onSaved(state.toRule(initialRule, isNewRule))
                     }
                 },
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)
             ) {
-                Text(stringResource(R.string.parser_save_rule))
+                Text(stringResource(if (isTemplate) R.string.parser_template_save else R.string.parser_save_rule))
             }
             Spacer(modifier = Modifier.height(24.dp))
         }
@@ -279,8 +299,12 @@ fun MiuixParserRuleEditorScreen(
 
         if (showDeleteDialog) {
             MiuixBlurDialog(
-                title = stringResource(R.string.parser_delete),
-                summary = stringResource(R.string.dialog_delete_confirm, state.customName.ifBlank { state.packageName }),
+                title = stringResource(if (isTemplate) R.string.parser_template_clear else R.string.parser_delete),
+                summary = if (isTemplate) {
+                    stringResource(R.string.parser_template_clear_confirm)
+                } else {
+                    stringResource(R.string.dialog_delete_confirm, state.customName.ifBlank { state.packageName })
+                },
                 show = true,
                 onDismissRequest = { showDeleteDialog = false }
             ) {
@@ -303,6 +327,28 @@ fun MiuixParserRuleEditorScreen(
                 }
             }
         }
+    }
+    }
+
+    if (isTemplate) {
+        val editingTemplateConfigType = templateConfigType.value
+        PageStackHost(
+            stack = listOfNotNull(editingTemplateConfigType),
+            onPop = { templateConfigType.value = null },
+            backdropColor = MiuixTheme.colorScheme.surface,
+            modifier = Modifier.fillMaxSize(),
+            backgroundContent = { editorContent() },
+            pageContent = { configType ->
+                MiuixParserRuleSourceConfigScreen(
+                    configType = configType,
+                    initialRule = state.toRule(initialRule, false),
+                    onBack = { templateConfigType.value = null },
+                    onStateChange = { state = it }
+                )
+            }
+        )
+    } else {
+        editorContent()
     }
 }
 
@@ -625,7 +671,7 @@ private fun MiuixDraggableProviderRow(
     onDragCancel: () -> Unit,
     onDragEnd: () -> Unit
 ) {
-    var dragOffset by remember { mutableStateOf(0f) }
+    var dragOffset by remember { mutableFloatStateOf(0f) }
     val currentIndex by rememberUpdatedState(index)
     val rowHeightPx = with(LocalDensity.current) { rowHeight.toPx() }
     val animatedY by animateDpAsState(

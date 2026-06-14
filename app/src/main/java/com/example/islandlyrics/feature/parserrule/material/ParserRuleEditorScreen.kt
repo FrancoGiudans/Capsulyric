@@ -52,6 +52,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -81,6 +82,7 @@ import com.example.islandlyrics.feature.parserrule.toEditorState
 import com.example.islandlyrics.feature.parserrule.toRule
 import com.example.islandlyrics.feature.parserrule.withSourceSettingsFrom
 import com.example.islandlyrics.feature.settings.material.SettingsSectionHeader
+import com.example.islandlyrics.ui.common.PageStackHost
 import com.example.islandlyrics.ui.theme.material.materialPageContainerColor
 import com.example.islandlyrics.ui.theme.material.neutralMaterialTopBarColors
 import kotlin.math.roundToInt
@@ -90,6 +92,7 @@ import kotlin.math.roundToInt
 fun ParserRuleEditorScreen(
     initialRule: ParserRule,
     isNewRule: Boolean,
+    isTemplate: Boolean = false,
     onBack: () -> Unit,
     onDelete: (ParserRule) -> Unit,
     onSaved: (ParserRule) -> Unit,
@@ -97,10 +100,12 @@ fun ParserRuleEditorScreen(
 ) {
     val context = LocalContext.current
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+    val enterPkgMessage = stringResource(R.string.dialog_enter_pkg)
     var state by remember(initialRule) { mutableStateOf(initialRule.toEditorState()) }
     var showOnlineSuggestionDialog by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
-    val canPersistSourceSettings = !isNewRule && state.packageName.isNotBlank()
+    val templateConfigType = remember { mutableStateOf<ParserRuleSourceConfigType?>(null) }
+    val canPersistSourceSettings = !isTemplate && !isNewRule && state.packageName.isNotBlank()
 
     DisposableEffect(canPersistSourceSettings, state.packageName) {
         val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
@@ -143,8 +148,12 @@ fun ParserRuleEditorScreen(
     }
 
     fun openSourceConfig(type: ParserRuleSourceConfigType) {
+        if (isTemplate) {
+            templateConfigType.value = type
+            return
+        }
         if (state.packageName.isBlank()) {
-            Toast.makeText(context, context.getString(R.string.dialog_enter_pkg), Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, enterPkgMessage, Toast.LENGTH_SHORT).show()
             return
         }
         context.startActivity(
@@ -155,13 +164,18 @@ fun ParserRuleEditorScreen(
         )
     }
 
+    val editorContent: @Composable () -> Unit = {
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             MediumTopAppBar(
                 title = {
                     Text(
-                        if (isNewRule) stringResource(R.string.parser_add_rule) else stringResource(R.string.parser_edit)
+                        when {
+                            isTemplate -> stringResource(R.string.parser_template_title)
+                            isNewRule -> stringResource(R.string.parser_add_rule)
+                            else -> stringResource(R.string.parser_edit)
+                        }
                     )
                 },
                 navigationIcon = {
@@ -173,8 +187,8 @@ fun ParserRuleEditorScreen(
                 },
                 actions = {
                     IconButton(onClick = {
-                        if (state.packageName.isBlank()) {
-                            Toast.makeText(context, context.getString(R.string.dialog_enter_pkg), Toast.LENGTH_SHORT).show()
+                        if (!isTemplate && state.packageName.isBlank()) {
+                            Toast.makeText(context, enterPkgMessage, Toast.LENGTH_SHORT).show()
                         } else {
                             onSaved(state.toRule(initialRule, isNewRule))
                         }
@@ -183,13 +197,18 @@ fun ParserRuleEditorScreen(
                     }
                     IconButton(onClick = {
                         onOpenFaq?.invoke()
-                            ?: context.startActivity(android.content.Intent(context, com.example.islandlyrics.feature.faq.FAQActivity::class.java))
+                            ?: context.startActivity(Intent(context, com.example.islandlyrics.feature.faq.FAQActivity::class.java))
                     }) {
                         Icon(Icons.Default.Info, contentDescription = stringResource(R.string.faq_title))
                     }
-                    if (!isNewRule) {
+                    if (isTemplate || !isNewRule) {
                         IconButton(onClick = { showDeleteDialog = true }) {
-                            Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.parser_delete))
+                            Icon(
+                                Icons.Default.Delete,
+                                contentDescription = stringResource(
+                                    if (isTemplate) R.string.parser_template_clear else R.string.parser_delete
+                                )
+                            )
                         }
                     }
                 },
@@ -207,25 +226,26 @@ fun ParserRuleEditorScreen(
                 .verticalScroll(rememberScrollState())
         ) {
             Spacer(modifier = Modifier.height(8.dp))
-            SettingsSectionHeader(stringResource(R.string.parser_app_info))
-            OutlinedTextField(
-                value = state.customName,
-                onValueChange = { state = state.copy(customName = it) },
-                label = { Text(stringResource(R.string.parser_app_name)) },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            OutlinedTextField(
-                value = state.packageName,
-                onValueChange = { state = state.copy(packageName = it) },
-                label = { Text(stringResource(R.string.parser_package_name)) },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                enabled = isNewRule
-            )
-
-            Spacer(modifier = Modifier.height(24.dp))
+            if (!isTemplate) {
+                SettingsSectionHeader(stringResource(R.string.parser_app_info))
+                OutlinedTextField(
+                    value = state.customName,
+                    onValueChange = { state = state.copy(customName = it) },
+                    label = { Text(stringResource(R.string.parser_app_name)) },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = state.packageName,
+                    onValueChange = { state = state.copy(packageName = it) },
+                    label = { Text(stringResource(R.string.parser_package_name)) },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    enabled = isNewRule
+                )
+                Spacer(modifier = Modifier.height(24.dp))
+            }
             SettingsSectionHeader(stringResource(R.string.parser_logic_desc))
             SourceCard {
                 MaterialSourceRows(
@@ -238,15 +258,15 @@ fun ParserRuleEditorScreen(
             Spacer(modifier = Modifier.height(16.dp))
             Button(
                 onClick = {
-                    if (state.packageName.isBlank()) {
-                        Toast.makeText(context, context.getString(R.string.dialog_enter_pkg), Toast.LENGTH_SHORT).show()
+                    if (!isTemplate && state.packageName.isBlank()) {
+                        Toast.makeText(context, enterPkgMessage, Toast.LENGTH_SHORT).show()
                     } else {
                         onSaved(state.toRule(initialRule, isNewRule))
                     }
                 },
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text(stringResource(R.string.parser_save_rule))
+                Text(stringResource(if (isTemplate) R.string.parser_template_save else R.string.parser_save_rule))
             }
             Spacer(modifier = Modifier.height(24.dp))
         }
@@ -276,8 +296,16 @@ fun ParserRuleEditorScreen(
     if (showDeleteDialog) {
         AlertDialog(
             onDismissRequest = { showDeleteDialog = false },
-            title = { Text(stringResource(R.string.parser_delete)) },
-            text = { Text(stringResource(R.string.dialog_delete_confirm, state.customName.ifBlank { state.packageName })) },
+            title = { Text(stringResource(if (isTemplate) R.string.parser_template_clear else R.string.parser_delete)) },
+            text = {
+                Text(
+                    if (isTemplate) {
+                        stringResource(R.string.parser_template_clear_confirm)
+                    } else {
+                        stringResource(R.string.dialog_delete_confirm, state.customName.ifBlank { state.packageName })
+                    }
+                )
+            },
             confirmButton = {
                 TextButton(onClick = {
                     showDeleteDialog = false
@@ -292,6 +320,28 @@ fun ParserRuleEditorScreen(
                 }
             }
         )
+    }
+    }
+
+    if (isTemplate) {
+        val editingTemplateConfigType = templateConfigType.value
+        PageStackHost(
+            stack = listOfNotNull(editingTemplateConfigType),
+            onPop = { templateConfigType.value = null },
+            backdropColor = materialPageContainerColor(),
+            modifier = Modifier.fillMaxSize(),
+            backgroundContent = { editorContent() },
+            pageContent = { configType ->
+                ParserRuleSourceConfigScreen(
+                    configType = configType,
+                    initialRule = state.toRule(initialRule, false),
+                    onBack = { templateConfigType.value = null },
+                    onStateChange = { state = it }
+                )
+            }
+        )
+    } else {
+        editorContent()
     }
 }
 
@@ -633,7 +683,7 @@ private fun DraggableProviderRow(
     onDragCancel: () -> Unit,
     onDragEnd: () -> Unit
 ) {
-    var dragOffset by remember { mutableStateOf(0f) }
+    var dragOffset by remember { mutableFloatStateOf(0f) }
     val currentIndex by rememberUpdatedState(index)
     val rowHeightPx = with(LocalDensity.current) { rowHeight.toPx() }
     val animatedY by animateDpAsState(

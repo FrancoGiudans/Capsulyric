@@ -1,7 +1,6 @@
 package com.example.islandlyrics.feature.parserrule.material
 
 import androidx.compose.foundation.clickable
-import com.example.islandlyrics.data.FieldOrder
 import com.example.islandlyrics.R
 import com.example.islandlyrics.core.network.OfflineModeManager
 import com.example.islandlyrics.data.ParserRuleHelper
@@ -11,11 +10,10 @@ import com.example.islandlyrics.data.lyric.OnlineLyricProvider
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.*
+import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.lifecycle.Lifecycle
@@ -29,9 +27,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import com.example.islandlyrics.feature.parserrule.ParserRuleEditorActivity
-import com.example.islandlyrics.feature.parserrule.toRule
 import com.example.islandlyrics.ui.common.OverlaySheetHost
 import com.example.islandlyrics.ui.theme.material.materialPageContainerColor
 import com.example.islandlyrics.ui.theme.material.neutralMaterialTopBarColors
@@ -40,6 +35,7 @@ import kotlinx.coroutines.delay
 private data class InlineParserRuleEditorState(
     val initialRule: ParserRule,
     val isNewRule: Boolean,
+    val isTemplate: Boolean = false,
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -53,16 +49,22 @@ fun ParserRuleScreen(
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val offlineModeEnabled = OfflineModeManager.isEnabled(context)
-    var rules by remember { mutableStateOf(ParserRuleHelper.loadRules(context)) }
-    var showDeleteDialog by remember { mutableStateOf<ParserRule?>(null) }
+    var rules by remember { mutableStateOf<List<ParserRule>>(ParserRuleHelper.loadRules(context)) }
+    var hasTemplate by remember { mutableStateOf(ParserRuleHelper.hasDefaultTemplate(context)) }
+    val showDeleteDialog = remember { mutableStateOf<ParserRule?>(null) }
     var inlineEditorState by remember { mutableStateOf<InlineParserRuleEditorState?>(null) }
     var inlineEditorVisible by remember { mutableStateOf(false) }
     val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
 
+    fun refreshRules() {
+        rules = ParserRuleHelper.loadRules(context)
+        hasTemplate = ParserRuleHelper.hasDefaultTemplate(context)
+    }
+
     DisposableEffect(lifecycleOwner, context) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
-                rules = ParserRuleHelper.loadRules(context)
+                refreshRules()
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -75,16 +77,31 @@ fun ParserRuleScreen(
     }
 
     fun openRuleEditor(packageName: String? = null, suggestedName: String? = null) {
+        val existingRule = if (!packageName.isNullOrBlank()) {
+            ParserRuleHelper.loadRules(context).firstOrNull { it.packageName == packageName }
+        } else {
+            null
+        }
         val initialRule = when {
             !packageName.isNullOrBlank() -> {
-                ParserRuleHelper.getRuleForPackage(context, packageName)
-                    ?: ParserRuleHelper.createDefaultRule(packageName).copy(customName = suggestedName)
+                existingRule
+                    ?: ParserRuleHelper.createDefaultRule(context, packageName).copy(customName = suggestedName)
             }
-            else -> ParserRuleHelper.createDefaultRule("").copy(customName = suggestedName)
+            else -> ParserRuleHelper.createDefaultRule(context, "").copy(customName = suggestedName)
         }
         inlineEditorState = InlineParserRuleEditorState(
             initialRule = initialRule,
-            isNewRule = packageName.isNullOrBlank() || ParserRuleHelper.getRuleForPackage(context, packageName) == null
+            isNewRule = packageName.isNullOrBlank() || existingRule == null
+        )
+        inlineEditorVisible = true
+    }
+
+    fun openTemplateEditor() {
+        inlineEditorState = InlineParserRuleEditorState(
+            initialRule = ParserRuleHelper.loadDefaultTemplate(context)
+                ?: ParserRuleHelper.createDefaultRule(context, ""),
+            isNewRule = false,
+            isTemplate = true
         )
         inlineEditorVisible = true
     }
@@ -129,12 +146,11 @@ fun ParserRuleScreen(
                         },
                         actions = {
                             IconButton(onClick = {
-                                val actContext = context
                                 onOpenFaq?.invoke()
-                                    ?: actContext.startActivity(android.content.Intent(actContext, com.example.islandlyrics.feature.faq.FAQActivity::class.java))
+                                    ?: context.startActivity(android.content.Intent(context, com.example.islandlyrics.feature.faq.FAQActivity::class.java))
                             }) {
                                 Icon(
-                                    imageVector = androidx.compose.material.icons.Icons.Default.Info,
+                                    imageVector = Icons.Default.Info,
                                     contentDescription = stringResource(R.string.faq_title)
                                 )
                             }
@@ -164,17 +180,15 @@ fun ParserRuleScreen(
                     ExtendedFloatingActionButton(
                         onClick = {
                             if (showRecommendation) {
-                                // Pre-fill dialog with current app info
-                                val pkg = currentPkg
                                 // Try to get label
                                 val label = try {
                                     val pm = context.packageManager
-                                    val info = pm.getApplicationInfo(pkg, 0)
+                                    val info = pm.getApplicationInfo(currentPkg, 0)
                                     pm.getApplicationLabel(info).toString()
-                                } catch (e: Exception) {
+                                } catch (_: Exception) {
                                     ""
                                 }
-                                openRuleEditor(packageName = pkg, suggestedName = label)
+                                openRuleEditor(packageName = currentPkg, suggestedName = label)
                             } else {
                                 openRuleEditor()
                             }
@@ -190,7 +204,7 @@ fun ParserRuleScreen(
                                         val pm = context.packageManager
                                         val info = pm.getApplicationInfo(currentPkg, 0)
                                         pm.getApplicationLabel(info).toString()
-                                    } catch (e: Exception) {
+                                    } catch (_: Exception) {
                                         null
                                     }
                                 }
@@ -214,6 +228,13 @@ fun ParserRuleScreen(
                     ),
                     verticalArrangement = Arrangement.spacedBy(0.dp)
                 ) {
+                    item {
+                        ParserRuleTemplateCard(
+                            configured = hasTemplate,
+                            onClick = ::openTemplateEditor
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                    }
                     if (rules.isEmpty()) {
                         item {
                             Card(
@@ -252,7 +273,7 @@ fun ParserRuleScreen(
                                         onEdit = {
                                             openRuleEditor(packageName = rule.packageName)
                                         },
-                                        onDelete = { showDeleteDialog = rule }
+                                        onDelete = { showDeleteDialog.value = rule }
                                     )
                                     if (index < rules.lastIndex) {
                                         HorizontalDivider(
@@ -273,25 +294,36 @@ fun ParserRuleScreen(
                 ParserRuleEditorScreen(
                     initialRule = editorState.initialRule,
                     isNewRule = editorState.isNewRule,
+                    isTemplate = editorState.isTemplate,
                     onBack = ::closeRuleEditor,
                     onDelete = { rule ->
-                        val updatedRules = ParserRuleHelper.loadRules(context).toMutableList()
-                        updatedRules.removeAll { it.packageName == rule.packageName }
-                        ParserRuleHelper.saveRules(context, updatedRules)
-                        rules = ParserRuleHelper.loadRules(context)
+                        if (editorState.isTemplate) {
+                            ParserRuleHelper.clearDefaultTemplate(context)
+                            refreshRules()
+                        } else {
+                            val updatedRules = ParserRuleHelper.loadRules(context).toMutableList()
+                            updatedRules.removeAll { it.packageName == rule.packageName }
+                            ParserRuleHelper.saveRules(context, updatedRules)
+                            refreshRules()
+                        }
                         closeRuleEditor()
                     },
                     onSaved = { rule ->
-                        val updatedRules = ParserRuleHelper.loadRules(context).toMutableList()
-                        val index = updatedRules.indexOfFirst { it.packageName == rule.packageName }
-                        if (index >= 0) {
-                            updatedRules[index] = rule
+                        if (editorState.isTemplate) {
+                            ParserRuleHelper.saveDefaultTemplate(context, rule)
+                            refreshRules()
                         } else {
-                            updatedRules.add(rule)
+                            val updatedRules = ParserRuleHelper.loadRules(context).toMutableList()
+                            val index = updatedRules.indexOfFirst { it.packageName == rule.packageName }
+                            if (index >= 0) {
+                                updatedRules[index] = rule
+                            } else {
+                                updatedRules.add(rule)
+                            }
+                            updatedRules.sort()
+                            ParserRuleHelper.saveRules(context, updatedRules)
+                            refreshRules()
                         }
-                        updatedRules.sort()
-                        ParserRuleHelper.saveRules(context, updatedRules)
-                        rules = ParserRuleHelper.loadRules(context)
                         closeRuleEditor()
                     },
                     onOpenFaq = {
@@ -304,26 +336,65 @@ fun ParserRuleScreen(
         }
     )
 
-    if (showDeleteDialog != null) {
+    if (showDeleteDialog.value != null) {
         AlertDialog(
-            onDismissRequest = { showDeleteDialog = null },
+            onDismissRequest = { showDeleteDialog.value = null },
             title = { Text(stringResource(R.string.parser_delete)) },
-            text = { Text(stringResource(R.string.dialog_delete_confirm, showDeleteDialog?.customName ?: showDeleteDialog?.packageName ?: "")) },
+            text = {
+                val deletingRule = showDeleteDialog.value
+                Text(stringResource(R.string.dialog_delete_confirm, deletingRule?.customName ?: deletingRule?.packageName ?: ""))
+            },
             confirmButton = {
                 TextButton(onClick = {
                     val newRules = rules.toMutableList()
-                    newRules.remove(showDeleteDialog)
-                    rules = newRules
-                    ParserRuleHelper.saveRules(context, rules)
-                    showDeleteDialog = null
+                    newRules.remove(showDeleteDialog.value)
+                    ParserRuleHelper.saveRules(context, newRules)
+                    refreshRules()
+                    showDeleteDialog.value = null
                 }) {
                     Text(stringResource(android.R.string.ok))
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showDeleteDialog = null }) {
+                TextButton(onClick = { showDeleteDialog.value = null }) {
                     Text(stringResource(android.R.string.cancel))
                 }
+            }
+        )
+    }
+}
+
+@Composable
+private fun ParserRuleTemplateCard(
+    configured: Boolean,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+        shape = MaterialTheme.shapes.extraLarge,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+        elevation = CardDefaults.cardElevation(0.dp)
+    ) {
+        ListItem(
+            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+            headlineContent = {
+                Text(
+                    text = stringResource(R.string.parser_template_title),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+            },
+            supportingContent = {
+                Text(
+                    text = stringResource(
+                        if (configured) R.string.parser_template_status_configured
+                        else R.string.parser_template_status_not_configured
+                    ),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         )
     }
@@ -344,6 +415,9 @@ fun ParserRuleItem(
             .joinToString(" > ") { it.displayName(context) }
     } else {
         null
+    }
+    val onlineOrderSummaryText = onlineOrderSummary?.let {
+        stringResource(R.string.parser_online_priority_summary, it)
     }
     val packageSummary = if (!rule.customName.isNullOrEmpty()) rule.packageName else null
 
@@ -370,9 +444,9 @@ fun ParserRuleItem(
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                 }
-                onlineOrderSummary?.let {
+                onlineOrderSummaryText?.let {
                     Text(
-                        text = context.getString(R.string.parser_online_priority_summary, it),
+                        text = it,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 2,

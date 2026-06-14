@@ -258,6 +258,12 @@
     <string name="parser_save_rule">Save Rule</string>
     <string name="parser_add_app_fmt">Add %s</string>
     <string name="parser_current_app">Current App</string>
+    <string name="parser_template_title">Default Rule Template</string>
+    <string name="parser_template_status_configured">Configured</string>
+    <string name="parser_template_status_not_configured">Not configured</string>
+    <string name="parser_template_save">Save Template</string>
+    <string name="parser_template_clear">Clear Template</string>
+    <string name="parser_template_clear_confirm">Clear the default rule template?</string>
     
     <!-- Online Lyrics Settings -->
     <string name="settings_use_online_lyrics">Use Online Lyrics API</string>
