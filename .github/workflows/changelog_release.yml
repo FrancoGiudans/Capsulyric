@@ -1,0 +1,366 @@
+name: Changelog Release
+
+on:
+  push:
+    paths:
+      - 'CHANGELOG.md'
+    branches:
+      - develop
+      - main
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  release:
+    if: startsWith(github.event.head_commit.message, '[release]')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: read
+
+    steps:
+      # ============================================================
+      # Step 1: Checkout
+      # ============================================================
+      - name: Checkout Code
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      # ============================================================
+      # Step 2: Parse commit message, CHANGELOG.md, and codename
+      # ============================================================
+      - name: Parse Metadata
+        id: meta
+        shell: bash
+        run: |
+          set -e
+
+          # --- Parse commit message ---
+          COMMIT_MSG="${{ github.event.head_commit.message }}"
+          RAW=$(echo "$COMMIT_MSG" | sed -E 's/^\[release\][[:space:]]*//' | xargs)
+          echo "Commit raw version input: '${RAW}'"
+
+          # Auto prefix: Version.YY.M (Shanghai timezone)
+          AUTO_PREFIX="Version.$(TZ=Asia/Shanghai date +'%y').$(TZ=Asia/Shanghai date +'%-m')"
+
+          # Defaults
+          CHANNEL="Stable"
+          VERSION_NUMS=""
+
+          if [ -z "$RAW" ]; then
+            # Bare [release] -> auto everything
+            CHANNEL="Stable"
+            VERSION_NUMS=""
+          else
+            # Check if last dot-separated segment is a channel word
+            LAST_PART=$(echo "$RAW" | grep -oE '[^.]+$' || echo "")
+            LAST_PART_LOWER=$(echo "$LAST_PART" | tr '[:upper:]' '[:lower:]')
+            case "$LAST_PART_LOWER" in
+              preview)
+                CHANNEL="Preview"
+                VERSION_NUMS="${RAW%.*}"
+                ;;
+              stable)
+                CHANNEL="Stable"
+                VERSION_NUMS="${RAW%.*}"
+                ;;
+              experiment)
+                CHANNEL="Experiment"
+                VERSION_NUMS="${RAW%.*}"
+                ;;
+              *)
+                # No channel word - entire RAW is version numbers
+                CHANNEL="Stable"
+                VERSION_NUMS="$RAW"
+                ;;
+            esac
+          fi
+
+          if [ -z "$VERSION_NUMS" ]; then
+            VERSION_PREFIX="$AUTO_PREFIX"
+          else
+            VERSION_PREFIX="Version.${VERSION_NUMS}"
+          fi
+
+          echo "version_prefix=${VERSION_PREFIX}" >> $GITHUB_OUTPUT
+          echo "channel=${CHANNEL}" >> $GITHUB_OUTPUT
+
+          # --- Determine prerelease flag ---
+          IS_PRERELEASE="false"
+          if [ "$CHANNEL" = "Preview" ] || [ "$CHANNEL" = "Experiment" ]; then
+            IS_PRERELEASE="true"
+          fi
+
+          # --- Read codename from gradle.properties ---
+          CODENAME=$(sed -n 's/^[[:space:]]*appCodename[[:space:]]*=[[:space:]]*//p' gradle.properties | tail -n 1 | tr -d '\r')
+          if [ -z "$CODENAME" ]; then
+            CODENAME="Unassigned"
+          fi
+          echo "codename=${CODENAME}" >> $GITHUB_OUTPUT
+
+          # --- Compute version name and tag ---
+          COMMIT_COUNT=$(git rev-list --count HEAD)
+          VERSION_NAME="${VERSION_PREFIX}.${CHANNEL}_C${COMMIT_COUNT}"
+          TAG_NAME="${VERSION_NAME}"
+
+          echo "version_name=${VERSION_NAME}" >> $GITHUB_OUTPUT
+          echo "tag_name=${TAG_NAME}" >> $GITHUB_OUTPUT
+          echo "commit_count=${COMMIT_COUNT}" >> $GITHUB_OUTPUT
+
+          # --- Determine build type and APK paths ---
+          if [ "$IS_PRERELEASE" = "true" ]; then
+            BUILD_TYPE="Prerelease"
+            APK_DIR="app/build/outputs/apk/prerelease"
+            SIGNED_APK="${APK_DIR}/app-prerelease-signed.apk"
+            MD5_FILE="${APK_DIR}/app-prerelease-signed.apk.md5"
+          else
+            BUILD_TYPE="Release"
+            APK_DIR="app/build/outputs/apk/release"
+            SIGNED_APK="${APK_DIR}/app-release-signed.apk"
+            MD5_FILE="${APK_DIR}/app-release-signed.apk.md5"
+          fi
+
+          echo "build_type=${BUILD_TYPE}" >> $GITHUB_OUTPUT
+          echo "apk_dir=${APK_DIR}" >> $GITHUB_OUTPUT
+          echo "signed_apk=${SIGNED_APK}" >> $GITHUB_OUTPUT
+          echo "md5_file=${MD5_FILE}" >> $GITHUB_OUTPUT
+
+          # --- Parse CHANGELOG.md ---
+          # Extract Preview flag from Release Metadata section
+          CHANGELOG_PREVIEW=$(sed -n '/^## Release Metadata/,/^## /p' CHANGELOG.md | grep -i 'preview' | grep -oE '\`(true|false)\`' | tr -d '`' | head -n 1)
+          if [ "${CHANGELOG_PREVIEW,,}" = "true" ]; then
+            echo "CHANGELOG overrides: Preview=true"
+
+            # Override channel to Preview (CHANGELOG flag always wins)
+            CHANNEL="Preview"
+            IS_PRERELEASE="true"
+            BUILD_TYPE="Prerelease"
+            APK_DIR="app/build/outputs/apk/prerelease"
+            SIGNED_APK="${APK_DIR}/app-prerelease-signed.apk"
+            MD5_FILE="${APK_DIR}/app-prerelease-signed.apk.md5"
+
+            # Recompute version name and tag with the new channel
+            VERSION_NAME="${VERSION_PREFIX}.${CHANNEL}_C${COMMIT_COUNT}"
+            TAG_NAME="${VERSION_NAME}"
+
+            echo "channel=${CHANNEL}" >> $GITHUB_OUTPUT
+            echo "version_name=${VERSION_NAME}" >> $GITHUB_OUTPUT
+            echo "tag_name=${TAG_NAME}" >> $GITHUB_OUTPUT
+            echo "build_type=${BUILD_TYPE}" >> $GITHUB_OUTPUT
+            echo "apk_dir=${APK_DIR}" >> $GITHUB_OUTPUT
+            echo "signed_apk=${SIGNED_APK}" >> $GITHUB_OUTPUT
+            echo "md5_file=${MD5_FILE}" >> $GITHUB_OUTPUT
+          fi
+          echo "is_prerelease=${IS_PRERELEASE}" >> $GITHUB_OUTPUT
+
+          # Extract CN notes (between ## 🇨🇳 更新日志 and next ## heading)
+          CN_NOTES=$(awk '/^## 🇨🇳 更新日志/{flag=1; next} /^## /{flag=0} flag' CHANGELOG.md)
+          # Extract EN notes (between ## 🇬🇧 Change Log and next ## heading)
+          EN_NOTES=$(awk '/^## 🇬🇧 Change Log/{flag=1; next} /^## /{flag=0} flag' CHANGELOG.md)
+
+          # Validate sections are non-empty
+          CN_TRIMMED=$(echo "$CN_NOTES" | sed '/^[[:space:]]*$/d')
+          EN_TRIMMED=$(echo "$EN_NOTES" | sed '/^[[:space:]]*$/d')
+
+          if [ -z "$CN_TRIMMED" ]; then
+            echo "::error::The '🇨🇳 更新日志' section in CHANGELOG.md is empty. Please fill in the Chinese changelog before pushing."
+            exit 1
+          fi
+          if [ -z "$EN_TRIMMED" ]; then
+            echo "::error::The '🇬🇧 Change Log' section in CHANGELOG.md is empty. Please fill in the English changelog before pushing."
+            exit 1
+          fi
+
+          # Save notes to temp files for later assembly
+          echo "$CN_NOTES" > /tmp/cn_notes.txt
+          echo "$EN_NOTES" > /tmp/en_notes.txt
+
+          # --- Check for tag conflicts ---
+          if git rev-parse "$TAG_NAME" >/dev/null 2>&1; then
+            echo "::error::Git tag '${TAG_NAME}' already exists. Please adjust the version in your commit message."
+            exit 1
+          fi
+
+          # --- Summary ---
+          echo "============================================"
+          echo " Version:       ${VERSION_NAME}"
+          echo " Tag:           ${TAG_NAME}"
+          echo " Channel:       ${CHANNEL}"
+          echo " Prerelease:    ${IS_PRERELEASE}"
+          echo " Build Type:    ${BUILD_TYPE}"
+          echo " Codename:      ${CODENAME}"
+          echo "============================================"
+
+      # ============================================================
+      # Step 3: Set up JDK 21
+      # ============================================================
+      - name: Set up JDK 21
+        uses: actions/setup-java@v5
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      # ============================================================
+      # Step 4: Setup Gradle
+      # ============================================================
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-read-only: false
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      # ============================================================
+      # Step 5: Build APK
+      # ============================================================
+      - name: Build ${{ steps.meta.outputs.build_type }} APK
+        run: |
+          ./gradlew :app:assemble${{ steps.meta.outputs.build_type }} \
+            -PversionName="${{ steps.meta.outputs.version_prefix }}.${{ steps.meta.outputs.channel }}" \
+            -PversionChannel="${{ steps.meta.outputs.channel }}" \
+            -PappCodename="${{ steps.meta.outputs.codename }}"
+
+      # ============================================================
+      # Step 6: Sign APK
+      # ============================================================
+      - name: Sign APK
+        env:
+          SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_STORE_PASSWORD: ${{ secrets.KEY_STORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          echo "$SIGNING_KEY" | base64 --decode > release.keystore
+
+          STD_APK=$(find ${{ steps.meta.outputs.apk_dir }} -name "*.apk" ! -name "*-signed.apk" | head -n 1)
+          echo "Signing: ${STD_APK}"
+
+          ${ANDROID_HOME}/build-tools/34.0.0/apksigner sign \
+            --ks release.keystore \
+            --ks-key-alias "$KEY_ALIAS" \
+            --ks-pass env:KEY_STORE_PASSWORD \
+            --key-pass env:KEY_PASSWORD \
+            --out ${{ steps.meta.outputs.signed_apk }} \
+            "$STD_APK"
+
+          rm release.keystore
+          echo "Signed APK: ${{ steps.meta.outputs.signed_apk }}"
+
+      # ============================================================
+      # Step 7: Generate MD5 Checksum
+      # ============================================================
+      - name: Generate MD5 Checksum
+        run: |
+          (cd ${{ steps.meta.outputs.apk_dir }} && md5sum $(basename ${{ steps.meta.outputs.signed_apk }}) > $(basename ${{ steps.meta.outputs.md5_file }}))
+
+      # ============================================================
+      # Step 8: Create Git Tag
+      # ============================================================
+      - name: Create and Push Git Tag
+        run: |
+          git tag "${{ steps.meta.outputs.tag_name }}"
+          git push origin "${{ steps.meta.outputs.tag_name }}"
+          echo "Pushed tag: ${{ steps.meta.outputs.tag_name }}"
+
+      # ============================================================
+      # Step 9: Generate "What's Changed" via GitHub API
+      # ============================================================
+      - name: Generate What's Changed
+        id: auto_notes
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Find previous non-Canary release tag for comparison
+          PREV_TAG=$(git tag --sort=-creatordate | grep -v "Canary" | grep -E "^Version\." | head -n 1)
+
+          if [ -n "$PREV_TAG" ] && [ "$PREV_TAG" != "${{ steps.meta.outputs.tag_name }}" ]; then
+            echo "Comparing against previous tag: ${PREV_TAG}"
+            AUTO_BODY=$(gh api "repos/${{ github.repository }}/releases/generate-notes" \
+              -f tag_name="${{ steps.meta.outputs.tag_name }}" \
+              -f previous_tag_name="$PREV_TAG" \
+              --jq '.body' 2>/dev/null || echo "_Unable to generate change summary._")
+          else
+            echo "No previous tag found — generating notes without comparison."
+            AUTO_BODY=$(gh api "repos/${{ github.repository }}/releases/generate-notes" \
+              -f tag_name="${{ steps.meta.outputs.tag_name }}" \
+              --jq '.body' 2>/dev/null || echo "_Unable to generate change summary._")
+          fi
+
+          # Save to file for assembly
+          echo "$AUTO_BODY" > /tmp/auto_notes.md
+          echo "Auto-generated notes saved."
+
+      # ============================================================
+      # Step 10: Assemble Release Body
+      # ============================================================
+      - name: Assemble Release Body
+        run: |
+          cat > release_body.md << 'ENDOFBODY'
+          ## 🇨🇳 更新日志
+          ENDOFBODY
+
+          cat /tmp/cn_notes.txt >> release_body.md
+
+          cat >> release_body.md << 'ENDOFBODY'
+
+          ---
+
+          ## 🇬🇧 Change Log
+          ENDOFBODY
+
+          cat /tmp/en_notes.txt >> release_body.md
+
+          cat >> release_body.md << ENDOFBODY
+
+          ---
+
+          ## Release Metadata
+          - **Version:** \`${{ steps.meta.outputs.version_name }}\`
+          - **Codename:** \`${{ steps.meta.outputs.codename }}\`
+
+          ---
+
+          ENDOFBODY
+
+          cat /tmp/auto_notes.md >> release_body.md
+
+          cat >> release_body.md << 'ENDOFBODY'
+
+          > [!NOTE]
+          > MD5 checksum file uploaded with this release.
+          ENDOFBODY
+
+          echo "=== Release body preview (first 40 lines) ==="
+          head -n 40 release_body.md
+
+      # ============================================================
+      # Step 11: Create GitHub Release
+      # ============================================================
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ steps.meta.outputs.tag_name }}
+          name: Capsulyric ${{ steps.meta.outputs.version_name }} (${{ steps.meta.outputs.codename }})
+          body_path: release_body.md
+          prerelease: ${{ steps.meta.outputs.is_prerelease }}
+          make_latest: ${{ steps.meta.outputs.is_prerelease == 'false' }}
+          files: |
+            ${{ steps.meta.outputs.signed_apk }}
+            ${{ steps.meta.outputs.md5_file }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # ============================================================
+      # Step 12: Upload Workflow Artifact
+      # ============================================================
+      - name: Upload Signed Artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: Capsulyric-${{ steps.meta.outputs.channel }}-Signed
+          path: |
+            ${{ steps.meta.outputs.signed_apk }}
+            ${{ steps.meta.outputs.md5_file }}

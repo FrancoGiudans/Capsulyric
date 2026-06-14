@@ -327,18 +327,18 @@ object ParserRuleHelper {
             packageName = packageName,
             customName = null,
             enabled = true,
-            usesCarProtocol = true, // Assume car protocol by default as it's common
+            usesCarProtocol = false,
             separatorPattern = "-",
             fieldOrder = FieldOrder.TITLE_ARTIST,
-            useOnlineLyrics = false, // DISABLED BY DEFAULT
+            useOnlineLyrics = true,
             useSmartOnlineLyricSelection = true,
             useRawMetadataForOnlineMatching = false,
             receiveOnlineTranslation = false,
             receiveOnlineRomanization = false,
             onlineLyricProviderOrder = OnlineLyricProvider.defaultIdsForPackage(packageName),
-            useSuperLyricApi = false, // DISABLED BY DEFAULT
-            useLyricGetterApi = false, // DISABLED BY DEFAULT
-            useLyriconApi = false, // DISABLED BY DEFAULT
+            useSuperLyricApi = false,
+            useLyricGetterApi = false,
+            useLyriconApi = false,
             receiveLyriconTranslation = false,
             receiveLyriconRomanization = false
         )
