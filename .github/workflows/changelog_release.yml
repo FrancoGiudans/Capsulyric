@@ -128,9 +128,54 @@ jobs:
           echo "signed_apk=${SIGNED_APK}" >> $GITHUB_OUTPUT
           echo "md5_file=${MD5_FILE}" >> $GITHUB_OUTPUT
 
-          # --- Parse CHANGELOG.md ---
-          # Extract Preview flag from Release Metadata section
-          CHANGELOG_PREVIEW=$(sed -n '/^## Release Metadata/,/^## /p' CHANGELOG.md | grep -i 'preview' | grep -oE '\`(true|false)\`' | tr -d '`' | head -n 1)
+          # --- Parse CHANGELOG.md (line-number-based, avoids awk Unicode regex issues) ---
+
+          TOTAL_LINES=$(wc -l < CHANGELOG.md)
+          echo "CHANGELOG.md has ${TOTAL_LINES} lines"
+
+          # Collect all heading line numbers (lines starting with "## ")
+          HEADING_LINES=$(grep -n '^## ' CHANGELOG.md | cut -d: -f1 || true)
+          echo "Heading lines: $(echo $HEADING_LINES | tr '\n' ' ')"
+
+          # Find specific headings by matching partial ASCII/CJK text on each heading line
+          find_heading_line() {
+            local keyword="$1"
+            for hl in $HEADING_LINES; do
+              if sed -n "${hl}p" CHANGELOG.md | grep -qF "$keyword" 2>/dev/null; then
+                echo "$hl"
+                return 0
+              fi
+            done
+            echo ""
+          }
+
+          META_LINE=$(find_heading_line "Release Metadata")
+          CN_LINE=$(find_heading_line "更新日志")
+          EN_LINE=$(find_heading_line "Change Log")
+
+          echo "Found headings: Metadata@${META_LINE:-N/A}  CN@${CN_LINE:-N/A}  EN@${EN_LINE:-N/A}"
+
+          # Helper: get the first heading line number greater than a given line
+          next_heading_after() {
+            local after="$1"
+            for hl in $HEADING_LINES; do
+              if [ "$hl" -gt "$after" ] 2>/dev/null; then
+                echo "$hl"
+                return 0
+              fi
+            done
+            echo "$((TOTAL_LINES + 1))"
+          }
+
+          # --- Parse Preview flag from Release Metadata section ---
+          CHANGELOG_PREVIEW=""
+          if [ -n "$META_LINE" ]; then
+            META_END=$(next_heading_after "$META_LINE")
+            META_SECTION=$(sed -n "${META_LINE},$((META_END - 1))p" CHANGELOG.md || true)
+            CHANGELOG_PREVIEW=$(echo "$META_SECTION" | grep -i 'preview' | grep -oE '\`(true|false)\`' | tr -d '`' | head -n 1 || true)
+          fi
+          echo "CHANGELOG Preview flag: '${CHANGELOG_PREVIEW:-not set}'"
+
           if [ "${CHANGELOG_PREVIEW,,}" = "true" ]; then
             echo "CHANGELOG overrides: Preview=true"
 
@@ -156,21 +201,33 @@ jobs:
           fi
           echo "is_prerelease=${IS_PRERELEASE}" >> $GITHUB_OUTPUT
 
-          # Extract CN notes (between ## 🇨🇳 更新日志 and next ## heading)
-          CN_NOTES=$(awk '/^## 🇨🇳 更新日志/{flag=1; next} /^## /{flag=0} flag' CHANGELOG.md)
-          # Extract EN notes (between ## 🇬🇧 Change Log and next ## heading)
-          EN_NOTES=$(awk '/^## 🇬🇧 Change Log/{flag=1; next} /^## /{flag=0} flag' CHANGELOG.md)
+          # --- Extract CN notes ---
+          CN_NOTES=""
+          if [ -n "$CN_LINE" ]; then
+            CN_END=$(next_heading_after "$CN_LINE")
+            CN_NOTES=$(sed -n "$((CN_LINE + 1)),$((CN_END - 1))p" CHANGELOG.md || true)
+          fi
 
-          # Validate sections are non-empty
-          CN_TRIMMED=$(echo "$CN_NOTES" | sed '/^[[:space:]]*$/d')
-          EN_TRIMMED=$(echo "$EN_NOTES" | sed '/^[[:space:]]*$/d')
+          # --- Extract EN notes ---
+          EN_NOTES=""
+          if [ -n "$EN_LINE" ]; then
+            EN_END=$(next_heading_after "$EN_LINE")
+            EN_NOTES=$(sed -n "$((EN_LINE + 1)),$((EN_END - 1))p" CHANGELOG.md || true)
+          fi
+
+          # Validate sections are non-empty (after stripping blank lines)
+          CN_TRIMMED=$(echo "$CN_NOTES" | sed '/^[[:space:]]*$/d' || true)
+          EN_TRIMMED=$(echo "$EN_NOTES" | sed '/^[[:space:]]*$/d' || true)
+
+          echo "CN notes: $(echo "$CN_NOTES" | wc -l) lines (${#CN_TRIMMED} non-blank chars)"
+          echo "EN notes: $(echo "$EN_NOTES" | wc -l) lines (${#EN_TRIMMED} non-blank chars)"
 
           if [ -z "$CN_TRIMMED" ]; then
-            echo "::error::The '🇨🇳 更新日志' section in CHANGELOG.md is empty. Please fill in the Chinese changelog before pushing."
+            echo "::error::The Chinese changelog section in CHANGELOG.md is empty. Please fill in content before pushing."
             exit 1
           fi
           if [ -z "$EN_TRIMMED" ]; then
-            echo "::error::The '🇬🇧 Change Log' section in CHANGELOG.md is empty. Please fill in the English changelog before pushing."
+            echo "::error::The English changelog section in CHANGELOG.md is empty. Please fill in content before pushing."
             exit 1
           fi
 
