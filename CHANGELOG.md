@@ -15,7 +15,6 @@ Set to `true` to force a pre-release build regardless of commit message.
 - **Preview**: `true`
 
 ## 🇨🇳 更新日志
-# [Capsulyric] [Version] 更新日志
 **功能更新**
 - 新增默认规则模板，新建应用时自动套用配置
 - 支持点击通知直接跳转至正在播放的应用
