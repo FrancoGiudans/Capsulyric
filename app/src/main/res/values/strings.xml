@@ -913,6 +913,8 @@ Within the log interface, select the share/export icon. You can specify a timefr
     <string name="settings_floating_follow_album_color_desc">Automatically use dominant color extracted from album art</string>
     <string name="settings_floating_text_color">Custom Color</string>
     <string name="settings_floating_text_size">Text Size</string>
+    <string name="settings_floating_position_reset">Reset Position</string>
+    <string name="settings_floating_position_reset_toast">Desktop lyrics position reset</string>
     <string name="community_loading_title">Loading Community Feed</string>
     <string name="community_loading_desc">Fetching announcements and votes from the remote feed</string>
     <string name="community_announcement_title">Announcement</string>
