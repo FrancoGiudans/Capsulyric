@@ -7,6 +7,13 @@ on:
     branches:
       - develop
       - main
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version (e.g. 26.6.1, 26.6.Preview, Preview, or empty for auto)'
+        required: false
+        type: string
+        default: ''
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -14,7 +21,9 @@ concurrency:
 
 jobs:
   release:
-    if: startsWith(github.event.head_commit.message, '[release]')
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      startsWith(github.event.head_commit.message, '[release]')
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -38,10 +47,15 @@ jobs:
         run: |
           set -e
 
-          # --- Parse commit message ---
-          COMMIT_MSG="${{ github.event.head_commit.message }}"
-          RAW=$(echo "$COMMIT_MSG" | sed -E 's/^\[release\][[:space:]]*//' | xargs)
-          echo "Commit raw version input: '${RAW}'"
+          # --- Parse commit message or workflow_dispatch input ---
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            RAW="${{ inputs.version }}"
+            echo "Manual trigger — version input: '${RAW}'"
+          else
+            COMMIT_MSG="${{ github.event.head_commit.message }}"
+            RAW=$(echo "$COMMIT_MSG" | sed -E 's/^\[release\][[:space:]]*//' | xargs)
+            echo "Commit raw version input: '${RAW}'"
+          fi
 
           # Auto prefix: Version.YY.M (Shanghai timezone)
           AUTO_PREFIX="Version.$(TZ=Asia/Shanghai date +'%y').$(TZ=Asia/Shanghai date +'%-m')"
@@ -172,7 +186,7 @@ jobs:
           if [ -n "$META_LINE" ]; then
             META_END=$(next_heading_after "$META_LINE")
             META_SECTION=$(sed -n "${META_LINE},$((META_END - 1))p" CHANGELOG.md || true)
-            CHANGELOG_PREVIEW=$(echo "$META_SECTION" | grep -i 'preview' | grep -oE '\`(true|false)\`' | tr -d '`' | head -n 1 || true)
+            CHANGELOG_PREVIEW=$(echo "$META_SECTION" | grep -i 'preview' | grep -oE '`(true|false)`' | tr -d '`' | head -n 1 || true)
           fi
           echo "CHANGELOG Preview flag: '${CHANGELOG_PREVIEW:-not set}'"
 
