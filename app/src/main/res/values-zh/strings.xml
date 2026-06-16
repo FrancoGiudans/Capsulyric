@@ -904,6 +904,8 @@
     <string name="settings_floating_follow_album_color_desc">自动从提取的专辑图调色板中获取最佳文字颜色</string>
     <string name="settings_floating_text_color">自选颜色</string>
     <string name="settings_floating_text_size">字号大小</string>
+    <string name="settings_floating_position_reset">重置位置</string>
+    <string name="settings_floating_position_reset_toast">桌面歌词位置已重置</string>
     <string name="community_loading_title">正在加载社区动态</string>
     <string name="community_loading_desc">正在从远程 feed 获取公告和投票</string>
     <string name="community_announcement_title">公告</string>

@@ -1,22 +1,22 @@
 package com.example.islandlyrics.feature.customsettings.material
 
-import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
 import android.provider.Settings
+import android.widget.Toast
+import androidx.core.content.edit
+import androidx.core.net.toUri
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.example.islandlyrics.R
 import com.example.islandlyrics.feature.settings.material.SettingsSwitchItem
 import com.example.islandlyrics.ui.common.FloatingLyricsRenderer
-import kotlinx.coroutines.launch
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -29,17 +29,16 @@ import androidx.compose.ui.graphics.Color
 @Composable
 fun FloatingLyricsSettingsSubScreen(prefs: SharedPreferences) {
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
 
     var enabled by remember { mutableStateOf(prefs.getBoolean(FloatingLyricsRenderer.PREF_KEY, false)) }
     var showAlbumArt by remember { mutableStateOf(prefs.getBoolean(FloatingLyricsRenderer.PREF_SHOW_ALBUM_ART, true)) }
     var followAlbumColor by remember { mutableStateOf(prefs.getBoolean(FloatingLyricsRenderer.PREF_FOLLOW_ALBUM_COLOR, true)) }
     var textStroke by remember { mutableStateOf(prefs.getBoolean(FloatingLyricsRenderer.PREF_TEXT_STROKE, true)) }
     var textBackground by remember { mutableStateOf(prefs.getBoolean(FloatingLyricsRenderer.PREF_TEXT_BACKGROUND, false)) }
-    var textSizeSp by remember { mutableStateOf(prefs.getFloat(FloatingLyricsRenderer.PREF_TEXT_SIZE, 15f)) }
+    var textSizeSp by remember { mutableFloatStateOf(prefs.getFloat(FloatingLyricsRenderer.PREF_TEXT_SIZE, 15f)) }
 
     var customTextColor by remember { 
-        mutableStateOf(androidx.compose.ui.graphics.Color(prefs.getInt(FloatingLyricsRenderer.PREF_TEXT_COLOR, android.graphics.Color.WHITE)))
+        mutableStateOf(Color(prefs.getInt(FloatingLyricsRenderer.PREF_TEXT_COLOR, android.graphics.Color.WHITE)))
     }
 
     // Material 3 slider for Text Size
@@ -52,11 +51,11 @@ fun FloatingLyricsSettingsSubScreen(prefs: SharedPreferences) {
                 enabled = it
                 if (it && !Settings.canDrawOverlays(context)) {
                     context.startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION).apply {
-                        data = android.net.Uri.parse("package:${context.packageName}")
+                        data = "package:${context.packageName}".toUri()
                     })
                     enabled = false
                 } else {
-                    prefs.edit().putBoolean(FloatingLyricsRenderer.PREF_KEY, it).apply()
+                    prefs.edit { putBoolean(FloatingLyricsRenderer.PREF_KEY, it) }
                 }
             }
         )
@@ -68,7 +67,7 @@ fun FloatingLyricsSettingsSubScreen(prefs: SharedPreferences) {
                 checked = showAlbumArt,
                 onCheckedChange = {
                     showAlbumArt = it
-                    prefs.edit().putBoolean(FloatingLyricsRenderer.PREF_SHOW_ALBUM_ART, it).apply()
+                    prefs.edit { putBoolean(FloatingLyricsRenderer.PREF_SHOW_ALBUM_ART, it) }
                 }
             )
         
@@ -78,7 +77,7 @@ fun FloatingLyricsSettingsSubScreen(prefs: SharedPreferences) {
             checked = textStroke,
             onCheckedChange = {
                 textStroke = it
-                prefs.edit().putBoolean(FloatingLyricsRenderer.PREF_TEXT_STROKE, it).apply()
+                prefs.edit { putBoolean(FloatingLyricsRenderer.PREF_TEXT_STROKE, it) }
             }
         )
         
@@ -88,7 +87,7 @@ fun FloatingLyricsSettingsSubScreen(prefs: SharedPreferences) {
             checked = textBackground,
             onCheckedChange = {
                 textBackground = it
-                prefs.edit().putBoolean(FloatingLyricsRenderer.PREF_TEXT_BACKGROUND, it).apply()
+                prefs.edit { putBoolean(FloatingLyricsRenderer.PREF_TEXT_BACKGROUND, it) }
             }
         )
 
@@ -98,7 +97,7 @@ fun FloatingLyricsSettingsSubScreen(prefs: SharedPreferences) {
             checked = followAlbumColor,
             onCheckedChange = {
                 followAlbumColor = it
-                prefs.edit().putBoolean(FloatingLyricsRenderer.PREF_FOLLOW_ALBUM_COLOR, it).apply()
+                prefs.edit { putBoolean(FloatingLyricsRenderer.PREF_FOLLOW_ALBUM_COLOR, it) }
             }
         )
 
@@ -135,7 +134,7 @@ fun FloatingLyricsSettingsSubScreen(prefs: SharedPreferences) {
                                 .background(color)
                                 .clickable {
                                     customTextColor = color
-                                    prefs.edit().putInt(FloatingLyricsRenderer.PREF_TEXT_COLOR, color.toArgb()).apply()
+                                    prefs.edit { putInt(FloatingLyricsRenderer.PREF_TEXT_COLOR, color.toArgb()) }
                                 }
                                 .then(borderModifier)
                         )
@@ -154,11 +153,27 @@ fun FloatingLyricsSettingsSubScreen(prefs: SharedPreferences) {
                 value = textSizeSp,
                 onValueChange = { 
                     textSizeSp = it
-                    prefs.edit().putFloat(FloatingLyricsRenderer.PREF_TEXT_SIZE, it).apply()
+                    prefs.edit { putFloat(FloatingLyricsRenderer.PREF_TEXT_SIZE, it) }
                 },
                 valueRange = 10f..32f,
                 steps = 11 // (32 - 10) / 2 - 1
             )
+        }
+
+        OutlinedButton(
+            onClick = {
+                FloatingLyricsRenderer.resetPosition(context)
+                Toast.makeText(
+                    context,
+                    R.string.settings_floating_position_reset_toast,
+                    Toast.LENGTH_SHORT
+                ).show()
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp)
+        ) {
+            Text(stringResource(R.string.settings_floating_position_reset))
         }
     }
     }

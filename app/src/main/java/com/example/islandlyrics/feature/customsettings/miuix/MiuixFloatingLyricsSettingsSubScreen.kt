@@ -1,9 +1,11 @@
 package com.example.islandlyrics.feature.customsettings.miuix
 
-import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
 import android.provider.Settings
+import android.widget.Toast
+import androidx.core.content.edit
+import androidx.core.net.toUri
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -17,14 +19,17 @@ import androidx.compose.ui.unit.sp
 import com.example.islandlyrics.R
 import com.example.islandlyrics.ui.common.FloatingLyricsRenderer
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.basic.ColorPalette
 import top.yukonga.miuix.kmp.basic.Card
+import top.yukonga.miuix.kmp.basic.ButtonDefaults
 import top.yukonga.miuix.kmp.basic.Text
+import top.yukonga.miuix.kmp.basic.TextButton
 import top.yukonga.miuix.kmp.basic.Slider
 import top.yukonga.miuix.kmp.preference.SwitchPreference as SuperSwitch
+import kotlin.math.roundToInt
 
 @Composable
+@Suppress("UNUSED_PARAMETER")
 fun MiuixFloatingLyricsSettingsSubScreen(prefs: SharedPreferences, scope: CoroutineScope) {
     val context = LocalContext.current
 
@@ -34,7 +39,7 @@ fun MiuixFloatingLyricsSettingsSubScreen(prefs: SharedPreferences, scope: Corout
     var textStroke by remember { mutableStateOf(prefs.getBoolean(FloatingLyricsRenderer.PREF_TEXT_STROKE, true)) }
     var textBackground by remember { mutableStateOf(prefs.getBoolean(FloatingLyricsRenderer.PREF_TEXT_BACKGROUND, false)) }
     
-    var textSizeSp by remember { mutableStateOf(prefs.getFloat(FloatingLyricsRenderer.PREF_TEXT_SIZE, 15f)) }
+    var textSizeSp by remember { mutableFloatStateOf(prefs.getFloat(FloatingLyricsRenderer.PREF_TEXT_SIZE, 15f)) }
     var customTextColor by remember { 
         mutableStateOf(Color(prefs.getInt(FloatingLyricsRenderer.PREF_TEXT_COLOR, android.graphics.Color.WHITE)))
     }
@@ -48,11 +53,11 @@ fun MiuixFloatingLyricsSettingsSubScreen(prefs: SharedPreferences, scope: Corout
                 enabled = it
                 if (it && !Settings.canDrawOverlays(context)) {
                     context.startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION).apply {
-                        data = android.net.Uri.parse("package:${context.packageName}")
+                        data = "package:${context.packageName}".toUri()
                     })
                     enabled = false
                 } else {
-                    prefs.edit().putBoolean(FloatingLyricsRenderer.PREF_KEY, it).apply()
+                    prefs.edit { putBoolean(FloatingLyricsRenderer.PREF_KEY, it) }
                 }
             }
         )
@@ -64,7 +69,7 @@ fun MiuixFloatingLyricsSettingsSubScreen(prefs: SharedPreferences, scope: Corout
                 checked = showAlbumArt,
                 onCheckedChange = {
                     showAlbumArt = it
-                    prefs.edit().putBoolean(FloatingLyricsRenderer.PREF_SHOW_ALBUM_ART, it).apply()
+                    prefs.edit { putBoolean(FloatingLyricsRenderer.PREF_SHOW_ALBUM_ART, it) }
                 }
             )
         
@@ -74,7 +79,7 @@ fun MiuixFloatingLyricsSettingsSubScreen(prefs: SharedPreferences, scope: Corout
             checked = textStroke,
             onCheckedChange = {
                 textStroke = it
-                prefs.edit().putBoolean(FloatingLyricsRenderer.PREF_TEXT_STROKE, it).apply()
+                prefs.edit { putBoolean(FloatingLyricsRenderer.PREF_TEXT_STROKE, it) }
             }
         )
         
@@ -84,7 +89,7 @@ fun MiuixFloatingLyricsSettingsSubScreen(prefs: SharedPreferences, scope: Corout
             checked = textBackground,
             onCheckedChange = {
                 textBackground = it
-                prefs.edit().putBoolean(FloatingLyricsRenderer.PREF_TEXT_BACKGROUND, it).apply()
+                prefs.edit { putBoolean(FloatingLyricsRenderer.PREF_TEXT_BACKGROUND, it) }
             }
         )
 
@@ -94,7 +99,7 @@ fun MiuixFloatingLyricsSettingsSubScreen(prefs: SharedPreferences, scope: Corout
             checked = followAlbumColor,
             onCheckedChange = {
                 followAlbumColor = it
-                prefs.edit().putBoolean(FloatingLyricsRenderer.PREF_FOLLOW_ALBUM_COLOR, it).apply()
+                prefs.edit { putBoolean(FloatingLyricsRenderer.PREF_FOLLOW_ALBUM_COLOR, it) }
             }
         )
         
@@ -110,7 +115,7 @@ fun MiuixFloatingLyricsSettingsSubScreen(prefs: SharedPreferences, scope: Corout
                     color = customTextColor,
                     onColorChanged = { color ->
                         customTextColor = color
-                        prefs.edit().putInt(FloatingLyricsRenderer.PREF_TEXT_COLOR, color.toArgb()).apply()
+                        prefs.edit { putInt(FloatingLyricsRenderer.PREF_TEXT_COLOR, color.toArgb()) }
                     }
                 )
             }
@@ -127,12 +132,26 @@ fun MiuixFloatingLyricsSettingsSubScreen(prefs: SharedPreferences, scope: Corout
                 value = (textSizeSp - 10f) / (32f - 10f),
                 onValueChange = { value -> 
                     val newSize = 10f + value * (32f - 10f)
-                    val steppedSize = Math.round(newSize / 2f) * 2f
+                    val steppedSize = (newSize / 2f).roundToInt() * 2f
                     textSizeSp = steppedSize
-                    prefs.edit().putFloat(FloatingLyricsRenderer.PREF_TEXT_SIZE, steppedSize).apply()
+                    prefs.edit { putFloat(FloatingLyricsRenderer.PREF_TEXT_SIZE, steppedSize) }
                 }
             )
         }
+
+        TextButton(
+            text = stringResource(R.string.settings_floating_position_reset),
+            onClick = {
+                FloatingLyricsRenderer.resetPosition(context)
+                Toast.makeText(
+                    context,
+                    R.string.settings_floating_position_reset_toast,
+                    Toast.LENGTH_SHORT
+                ).show()
+            },
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+            colors = ButtonDefaults.textButtonColorsPrimary()
+        )
         }
     }
 }

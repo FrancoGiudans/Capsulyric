@@ -21,10 +21,13 @@ import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
+import androidx.core.content.edit
+import androidx.core.graphics.toColorInt
 import com.example.islandlyrics.R
 import com.example.islandlyrics.feature.mediacontrol.MediaControlActivity
 import com.example.islandlyrics.service.LyricService
 import com.example.islandlyrics.ui.common.views.OutlineTextView
+import kotlin.math.abs
 
 /**
  * FloatingLyricsRenderer
@@ -33,7 +36,7 @@ import com.example.islandlyrics.ui.common.views.OutlineTextView
  *
  * MINIMAL  — transparent background (or dark subtle background if enabled), centered lyrics with optional album art on left.
  * EXPANDED — dark rounded pill, title/artist header, lyrics with optional album art on left, one control row:
- *   Row 1: [media] [prev] [play/pause] [next] [close]
+ *   Row 1: media, prev, play/pause, next, close
  *
  * Font size, color, stroke, background style, and album art visibility are driven by SharedPreferences.
  * Clicking empty space in EXPANDED state -> switches back to MINIMAL.
@@ -50,9 +53,21 @@ class FloatingLyricsRenderer(private val context: Context) {
         const val PREF_SHOW_ALBUM_ART  = "floating_show_album_art"
         const val PREF_TEXT_STROKE     = "floating_text_stroke"
         const val PREF_TEXT_BACKGROUND = "floating_text_background"
+        const val PREF_POS_X           = "floating_pos_x"
+        const val PREF_POS_Y           = "floating_pos_y"
 
         private const val EXPANDED_TIMEOUT_MS = 4000L
+        private const val DEFAULT_Y_DP = 140
+        private const val MIN_VISIBLE_DP = 48
         private const val SIZE_DEFAULT = 15f
+
+        fun resetPosition(context: Context) {
+            context.getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE)
+                .edit {
+                    remove(PREF_POS_X)
+                    remove(PREF_POS_Y)
+                }
+        }
     }
 
     // ── State ────────────────────────────────────────────────────────────────
@@ -107,6 +122,12 @@ class FloatingLyricsRenderer(private val context: Context) {
         val enableTextBackground: Boolean
     )
 
+    private data class WindowPosition(
+        val x: Int,
+        val y: Int,
+        val fromPrefs: Boolean
+    )
+
     private val prefChangeListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
         when (key) {
             PREF_TEXT_SIZE, PREF_TEXT_COLOR, PREF_FOLLOW_ALBUM_COLOR, 
@@ -115,6 +136,9 @@ class FloatingLyricsRenderer(private val context: Context) {
                     loadStylePrefs()
                     lastState?.let { applyState(it) }
                 }
+            }
+            PREF_POS_X, PREF_POS_Y -> {
+                mainHandler.post { moveWindowToStoredPosition() }
             }
         }
     }
@@ -130,7 +154,7 @@ class FloatingLyricsRenderer(private val context: Context) {
             prefs().registerOnSharedPreferenceChangeListener(prefChangeListener)
             loadStylePrefs()
             attachWindow()
-            switchToExpanded(scheduleCollapse = true)
+            switchToExpanded()
         }
     }
 
@@ -160,29 +184,29 @@ class FloatingLyricsRenderer(private val context: Context) {
         size += delta
         size = size.coerceIn(10f, 32f)
         textSizeSp = size
-        prefs().edit().putFloat(PREF_TEXT_SIZE, size).apply()
+        prefs().edit { putFloat(PREF_TEXT_SIZE, size) }
         lastState?.let { applyState(it) }
         resetCollapseTimer()
     }
 
-    private val PRESET_COLORS = intArrayOf(
+    private val presetColors = intArrayOf(
         Color.WHITE, 0xFFFFFFCC.toInt(), 0xFFCCFFFF.toInt(), 0xFFCCFFCC.toInt(), 0xFFFFCC99.toInt(), 0xFFFF99CC.toInt()
     )
 
     private fun cycleColor() {
         val current = prefs().getInt(PREF_TEXT_COLOR, Color.WHITE)
-        val idx = PRESET_COLORS.indexOf(current)
-        val nextIdx = if (idx == -1) 0 else (idx + 1) % PRESET_COLORS.size
-        val newColor = PRESET_COLORS[nextIdx]
+        val idx = presetColors.indexOf(current)
+        val nextIdx = if (idx == -1) 0 else (idx + 1) % presetColors.size
+        val newColor = presetColors[nextIdx]
         baseTextColor = newColor
         
         // Turn off follow album color when manually changing color from UI
         if (followAlbumColor) {
             followAlbumColor = false
-            prefs().edit().putBoolean(PREF_FOLLOW_ALBUM_COLOR, false).apply()
+            prefs().edit { putBoolean(PREF_FOLLOW_ALBUM_COLOR, false) }
         }
         
-        prefs().edit().putInt(PREF_TEXT_COLOR, newColor).apply()
+        prefs().edit { putInt(PREF_TEXT_COLOR, newColor) }
         lastState?.let { applyState(it) }
         resetCollapseTimer()
     }
@@ -218,8 +242,10 @@ class FloatingLyricsRenderer(private val context: Context) {
             PixelFormat.TRANSLUCENT
         ).apply {
             gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
-            x = 0
-            y = dpToPx(140)
+            val position = loadWindowPosition(overlayW)
+            x = position.x
+            y = position.y
+            if (position.fromPrefs) saveWindowPosition(x, y)
         }
         windowParams = params
 
@@ -228,6 +254,15 @@ class FloatingLyricsRenderer(private val context: Context) {
                 params.x += dx
                 params.y += dy
                 windowManager.updateViewLayout(rootView!!, params)
+            },
+            onDragEnd = {
+                val clampedPosition = clampWindowPosition(params.x, params.y, params.width)
+                if (params.x != clampedPosition.x || params.y != clampedPosition.y) {
+                    params.x = clampedPosition.x
+                    params.y = clampedPosition.y
+                    windowManager.updateViewLayout(rootView!!, params)
+                }
+                saveWindowPosition(params.x, params.y)
             }
         )
         rootView = root
@@ -256,6 +291,69 @@ class FloatingLyricsRenderer(private val context: Context) {
         lastAppliedSnapshot = null
         isRunning = false
         Log.i(TAG, "Floating lyrics overlay detached")
+    }
+
+    private fun defaultWindowPosition(): WindowPosition =
+        WindowPosition(0, dpToPx(DEFAULT_Y_DP), fromPrefs = false)
+
+    private fun loadWindowPosition(overlayWidth: Int): WindowPosition {
+        val p = prefs()
+        val storedPosition = if (p.contains(PREF_POS_X) && p.contains(PREF_POS_Y)) {
+            WindowPosition(
+                x = p.getInt(PREF_POS_X, 0),
+                y = p.getInt(PREF_POS_Y, dpToPx(DEFAULT_Y_DP)),
+                fromPrefs = true
+            )
+        } else {
+            defaultWindowPosition()
+        }
+
+        val clamped = clampWindowPosition(storedPosition.x, storedPosition.y, overlayWidth)
+        return storedPosition.copy(x = clamped.x, y = clamped.y)
+    }
+
+    private fun moveWindowToStoredPosition() {
+        val params = windowParams ?: return
+        val root = rootView ?: return
+        val windowManager = wm ?: return
+        val position = loadWindowPosition(params.width)
+        params.x = position.x
+        params.y = position.y
+        try {
+            windowManager.updateViewLayout(root, params)
+            if (position.fromPrefs) saveWindowPosition(params.x, params.y)
+        } catch (e: Exception) {
+            Log.w(TAG, "moveWindowToStoredPosition: ${e.message}")
+        }
+    }
+
+    private fun saveWindowPosition(x: Int, y: Int) {
+        val p = prefs()
+        if (p.contains(PREF_POS_X) && p.contains(PREF_POS_Y) &&
+            p.getInt(PREF_POS_X, 0) == x && p.getInt(PREF_POS_Y, 0) == y) {
+            return
+        }
+        p.edit {
+            putInt(PREF_POS_X, x)
+            putInt(PREF_POS_Y, y)
+        }
+    }
+
+    private fun clampWindowPosition(x: Int, y: Int, overlayWidth: Int): WindowPosition {
+        val metrics = context.resources.displayMetrics
+        val screenWidth = metrics.widthPixels
+        val screenHeight = metrics.heightPixels
+        val minVisible = dpToPx(MIN_VISIBLE_DP)
+        val overlayLeftWhenCentered = (screenWidth - overlayWidth) / 2
+        val minX = -overlayWidth + minVisible - overlayLeftWhenCentered
+        val maxX = screenWidth - minVisible - overlayLeftWhenCentered
+        val maxY = (screenHeight - minVisible).coerceAtLeast(0)
+
+        return WindowPosition(
+            x = x.coerceIn(minX, maxX),
+            y = y.coerceIn(0, maxY),
+            fromPrefs = false
+        )
     }
 
     // ── View builders ─────────────────────────────────────────────────────────
@@ -298,7 +396,7 @@ class FloatingLyricsRenderer(private val context: Context) {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_HORIZONTAL
             addView(contentRow, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT))
-            setOnClickListener { switchToExpanded(scheduleCollapse = true) }
+            setOnClickListener { switchToExpanded() }
         }
     }
 
@@ -317,7 +415,7 @@ class FloatingLyricsRenderer(private val context: Context) {
         // Title · Artist
         val title = TextView(context).apply {
             textSize = 11f
-            setTextColor(Color.parseColor("#AAFFFFFF"))
+            setTextColor("#AAFFFFFF".toColorInt())
             maxLines = 1
             gravity = Gravity.CENTER
             textAlignment = View.TEXT_ALIGNMENT_CENTER
@@ -420,15 +518,13 @@ class FloatingLyricsRenderer(private val context: Context) {
         mainHandler.removeCallbacks(collapseRunnable)
     }
 
-    private fun switchToExpanded(scheduleCollapse: Boolean) {
+    private fun switchToExpanded() {
         currentState = DisplayState.EXPANDED
         minimalContainer?.visibility  = View.GONE
         expandedContainer?.visibility = View.VISIBLE
         lastState?.let { applyState(it) }
-        if (scheduleCollapse) {
-            mainHandler.removeCallbacks(collapseRunnable)
-            mainHandler.postDelayed(collapseRunnable, EXPANDED_TIMEOUT_MS)
-        }
+        mainHandler.removeCallbacks(collapseRunnable)
+        mainHandler.postDelayed(collapseRunnable, EXPANDED_TIMEOUT_MS)
     }
 
     // ── Data binding ──────────────────────────────────────────────────────────
@@ -512,7 +608,7 @@ class FloatingLyricsRenderer(private val context: Context) {
     }
 
     private fun disableFloatingLyrics() {
-        prefs().edit().putBoolean(PREF_KEY, false).apply()
+        prefs().edit { putBoolean(PREF_KEY, false) }
         stop()
     }
 
@@ -583,15 +679,14 @@ class FloatingLyricsRenderer(private val context: Context) {
     @SuppressLint("ViewConstructor")
     private inner class DraggableFrameLayout(
         ctx: Context,
-        private val onDrag: (dx: Int, dy: Int) -> Unit
+        private val onDrag: (dx: Int, dy: Int) -> Unit,
+        private val onDragEnd: () -> Unit
     ) : FrameLayout(ctx) {
 
-        private val DRAG_THRESHOLD = dpToPx(10)
+        private val dragThreshold = dpToPx(10)
         private var startX = 0f; private var startY = 0f
         private var lastX  = 0f; private var lastY  = 0f
         private var isDragging = false
-        // Need to record if down hit empty space to fallback click handling
-        private var downEventConsumedByChild = false
 
         override fun onInterceptTouchEvent(ev: MotionEvent): Boolean = when (ev.action) {
             MotionEvent.ACTION_DOWN -> {
@@ -601,8 +696,8 @@ class FloatingLyricsRenderer(private val context: Context) {
             }
             MotionEvent.ACTION_MOVE -> {
                 if (!isDragging && (
-                            Math.abs(ev.rawX - startX) > DRAG_THRESHOLD ||
-                            Math.abs(ev.rawY - startY) > DRAG_THRESHOLD)) isDragging = true
+                            abs(ev.rawX - startX) > dragThreshold ||
+                            abs(ev.rawY - startY) > dragThreshold)) isDragging = true
                 isDragging
             }
             else -> false
@@ -617,11 +712,17 @@ class FloatingLyricsRenderer(private val context: Context) {
                     lastX = ev.rawX; lastY = ev.rawY; true
                 }
                 MotionEvent.ACTION_UP -> {
-                    if (!isDragging) {
+                    if (isDragging) {
+                        onDragEnd()
+                    } else {
                         // Forward click to root if it wasn't dragged
                         performClick()
                     }
                     isDragging = false; true 
+                }
+                MotionEvent.ACTION_CANCEL -> {
+                    if (isDragging) onDragEnd()
+                    isDragging = false; true
                 }
                 else -> super.onTouchEvent(ev)
             }
