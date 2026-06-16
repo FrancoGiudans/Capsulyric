@@ -19,6 +19,8 @@
     <string name="main_album_art_cd">专辑封面</string>
     <string name="main_lyric_source_fmt">歌词源: %1$s</string>
     <string name="main_current_lyric_title">当前歌词</string>
+    <string name="online_lyric_rematch_entry">重新匹配在线歌词</string>
+    <string name="online_lyric_rematch_entry_short">重新匹配</string>
     <string name="main_waiting_for_lyrics">正在等待歌词同步...</string>
     <string name="main_lyrics_unavailable">这个会话当前没有可用歌词。</string>
     <string name="action_previous">上一首</string>
@@ -192,6 +194,7 @@
     <string name="parser_local_lyric">本地 LRC 文件</string>
     <string name="parser_local_lyric_desc_short">从配置的目录中搜索 .lrc 文件</string>
     <string name="settings_local_lyrics_title">本地歌词</string>
+    <string name="settings_lyric_tools_header">歌词工具</string>
     <string name="settings_local_lyrics_directories">歌词目录</string>
     <string name="settings_local_lyrics_add">添加目录</string>
     <string name="settings_local_lyrics_empty">未配置目录，点击添加</string>
@@ -729,14 +732,32 @@
     <string name="diag_enabled">✅ 已开启</string>
     <string name="diag_disabled">❌ 未开启</string>
     <string name="diag_btn_refresh">刷新 API</string>
-    <string name="diag_online_lyric_debug_title">在线歌词调试</string>
-    <string name="diag_online_lyric_debug_desc">查看每个在线歌词 API 的最终结果</string>
     <string name="diag_qq_roman_debug_title">罗马音/翻译调试</string>
     <string name="diag_qq_roman_debug_desc">直接抓取并完整输出 QQ 音乐和网易云的歌词扩展字段</string>
 
     <!-- 在线歌词调试 -->
     <string name="online_lyric_debug_back">返回</string>
-    <string name="online_lyric_debug_title">在线歌词调试</string>
+    <string name="online_lyric_debug_title">在线歌词重匹配</string>
+    <string name="online_lyric_rematch_title">在线歌词重匹配</string>
+    <string name="online_lyric_rematch_settings_desc">修改当前歌曲的歌名或歌手并重新获取在线歌词</string>
+    <string name="online_lyric_rematch_current_playback">当前播放</string>
+    <string name="online_lyric_rematch_current_full_lyrics">当前完整歌词</string>
+    <string name="online_lyric_rematch_result_full_lyrics">重新获取到的完整歌词</string>
+    <string name="online_lyric_rematch_match_input">重新匹配信息</string>
+    <string name="online_lyric_rematch_song_title">歌名</string>
+    <string name="online_lyric_rematch_artist">歌手</string>
+    <string name="online_lyric_rematch_action">重新匹配</string>
+    <string name="online_lyric_rematch_result_title">重新获取到的歌词</string>
+    <string name="online_lyric_rematch_result_source_fmt">来源: %1$s</string>
+    <string name="online_lyric_rematch_effective_query_fmt">当前查询: %1$s / %2$s</string>
+    <string name="online_lyric_rematch_duration_fmt">总时长: %1$s</string>
+    <string name="online_lyric_rematch_current_line">当前句歌词</string>
+    <string name="online_lyric_rematch_no_lyrics">暂无歌词</string>
+    <string name="online_lyric_rematch_no_result">重新匹配后的歌词会显示在这里</string>
+    <string name="online_lyric_rematch_other_results">其它来源结果</string>
+    <string name="online_lyric_rematch_no_other_results">重新匹配后会在这里显示其它来源的结果</string>
+    <string name="online_lyric_rematch_selected_result">当前选中结果</string>
+    <string name="online_lyric_rematch_available_result">可选结果</string>
     <string name="online_lyric_debug_now_playing">当前播放音乐</string>
     <string name="online_lyric_debug_song_fmt">歌曲: %1$s</string>
     <string name="online_lyric_debug_artist_fmt">歌手: %1$s</string>

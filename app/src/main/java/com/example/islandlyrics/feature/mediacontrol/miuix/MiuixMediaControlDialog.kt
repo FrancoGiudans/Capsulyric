@@ -7,6 +7,7 @@ import com.example.islandlyrics.service.MediaMonitorService
 import com.example.islandlyrics.data.ParserRuleHelper
 import com.example.islandlyrics.data.LyricRepository
 import com.example.islandlyrics.feature.main.MainActivity
+import com.example.islandlyrics.feature.onlinelyricdebug.OnlineLyricDebugActivity
 import android.content.Intent
 import android.graphics.drawable.GradientDrawable
 import android.graphics.Bitmap
@@ -27,6 +28,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -109,6 +112,7 @@ fun MiuixMediaControlDialog(
     val repoMetadata by repo.liveMetadata.observeAsState()
     val repoLyric by repo.liveLyric.observeAsState()
     val repoProgress by repo.liveProgress.observeAsState()
+    val showOnlineLyricRematch = isOnlineLyricSource(repoLyric?.apiPath)
 
     val blurEnabled = remember { context.getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE).getBoolean("card_blur_enabled", false) }
 
@@ -233,6 +237,11 @@ fun MiuixMediaControlDialog(
                                         isPrimary = isPrimary,
                                         primaryLyric = if (isPrimary) repoLyric?.lyric else null,
                                         primaryProgress = if (isPrimary) repoProgress else null,
+                                        showOnlineLyricRematch = isPrimary && showOnlineLyricRematch,
+                                        onOpenOnlineLyricRematch = {
+                                            context.startActivity(Intent(context, OnlineLyricDebugActivity::class.java))
+                                            triggerDismiss()
+                                        },
                                         onOpenApp = {
                                             triggerDismiss()
                                         }
@@ -347,6 +356,8 @@ fun MiuixMediaSessionLayout(
     isPrimary: Boolean,
     primaryLyric: String?,
     primaryProgress: LyricRepository.PlaybackProgress?,
+    showOnlineLyricRematch: Boolean,
+    onOpenOnlineLyricRematch: () -> Unit,
     onOpenApp: (() -> Unit)? = null
 ) {
     var playbackState by remember(controller) { mutableStateOf(controller.playbackState) }
@@ -652,6 +663,26 @@ fun MiuixMediaSessionLayout(
                 }
             }
 
+            if (showOnlineLyricRematch) {
+                Spacer(modifier = Modifier.height(12.dp))
+                top.yukonga.miuix.kmp.basic.Button(
+                    onClick = onOpenOnlineLyricRematch,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Refresh,
+                        contentDescription = null,
+                        tint = Color.Black,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = stringResource(R.string.online_lyric_rematch_entry_short),
+                        color = Color.Black
+                    )
+                }
+            }
+
             Spacer(modifier = Modifier.height(16.dp))
 
             // Progress Bar Section
@@ -756,4 +787,8 @@ fun MiuixMediaSessionLayout(
         }
         }
     }
+}
+
+private fun isOnlineLyricSource(apiPath: String?): Boolean {
+    return apiPath == "Online API" || apiPath == "Online Cache"
 }

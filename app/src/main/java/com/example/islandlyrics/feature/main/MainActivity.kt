@@ -376,6 +376,7 @@ class MainActivity : BaseActivity() {
                             MediaMonitorService.requestRebind(this@MainActivity)
                             Toast.makeText(this@MainActivity, "Requesting Rebind...", Toast.LENGTH_SHORT).show()
                         },
+                        onOpenOnlineLyricRematch = { pushPage(AppPage.OnlineLyricDebug) },
                         extraBottomPadding = bottomPadding
                     )
 
@@ -400,6 +401,7 @@ class MainActivity : BaseActivity() {
                         onOpenLocalLyricDirectory = { uri, name ->
                             pushPage(AppPage.LocalLyricDirectory(uri.toString(), name))
                         },
+                        onOpenOnlineLyricRematch = { pushPage(AppPage.OnlineLyricDebug) },
                         showBackButton = false,
                         extraBottomPadding = bottomPadding
                     )
@@ -539,6 +541,7 @@ class MainActivity : BaseActivity() {
                                         MediaMonitorService.requestRebind(this@MainActivity)
                                         Toast.makeText(this@MainActivity, "Requesting Rebind...", Toast.LENGTH_SHORT).show()
                                     },
+                                    onOpenOnlineLyricRematch = { pushPage(AppPage.OnlineLyricDebug) },
                                     onBottomBarVisibilityChange = { bottomBarVisible = it }
                                 )
 
@@ -562,6 +565,7 @@ class MainActivity : BaseActivity() {
                                     onOpenLocalLyricDirectory = { uri, name ->
                                         pushPage(AppPage.LocalLyricDirectory(uri.toString(), name))
                                     },
+                                    onOpenOnlineLyricRematch = { pushPage(AppPage.OnlineLyricDebug) },
                                     showBackButton = false,
                                     onBottomBarVisibilityChange = { bottomBarVisible = it }
                                 )
@@ -772,7 +776,6 @@ class MainActivity : BaseActivity() {
             )
             AppPage.Diagnostics -> DiagnosticsScreen(
                 onBack = onBack,
-                onOpenOnlineLyricDebug = { onPushPage(AppPage.OnlineLyricDebug) },
                 onOpenCacheManagement = { onPushPage(AppPage.CacheManagement) },
                 onOpenLab = { onPushPage(AppPage.Lab) },
                 onOpenLogViewer = { onPushPage(AppPage.LogViewer) }
@@ -822,7 +825,6 @@ class MainActivity : BaseActivity() {
             )
             AppPage.Diagnostics -> MiuixDiagnosticsScreen(
                 onBack = onBack,
-                onOpenOnlineLyricDebug = { onPushPage(AppPage.OnlineLyricDebug) },
                 onOpenCacheManagement = { onPushPage(AppPage.CacheManagement) },
                 onOpenLab = { onPushPage(AppPage.Lab) },
                 onOpenLogViewer = { onPushPage(AppPage.LogViewer) }

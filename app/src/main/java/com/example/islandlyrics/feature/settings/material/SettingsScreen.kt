@@ -50,6 +50,7 @@ import androidx.compose.material.icons.automirrored.filled.Help
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Upload
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalLayoutDirection
 import com.example.islandlyrics.data.LyricRepository
@@ -81,6 +82,7 @@ fun SettingsScreen(
     onOpenFaq: (() -> Unit)? = null,
     onOpenAbout: (() -> Unit)? = null,
     onOpenLocalLyricDirectory: ((Uri, String) -> Unit)? = null,
+    onOpenOnlineLyricRematch: (() -> Unit)? = null,
     showBackButton: Boolean = true,
     extraBottomPadding: androidx.compose.ui.unit.Dp = 0.dp
 ) {
@@ -421,6 +423,20 @@ fun SettingsScreen(
                 com.example.islandlyrics.feature.settings.LocalLyricDirectoriesSection(
                     onOpenDirectory = onOpenLocalLyricDirectory
                 )
+            }
+            item { SettingsSectionHeader(text = stringResource(R.string.settings_lyric_tools_header)) }
+            item {
+                SettingsCard {
+                    SettingsActionItem(
+                        title = stringResource(R.string.online_lyric_rematch_title),
+                        summary = stringResource(R.string.online_lyric_rematch_settings_desc),
+                        icon = Icons.Filled.Refresh,
+                        onClick = {
+                            onOpenOnlineLyricRematch?.invoke()
+                                ?: context.startActivity(Intent(context, com.example.islandlyrics.feature.onlinelyricdebug.OnlineLyricDebugActivity::class.java))
+                        }
+                    )
+                }
             }
             item { SettingsSectionHeader(text = stringResource(R.string.settings_backup_header)) }
             item {

@@ -42,6 +42,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -115,6 +116,7 @@ fun MainScreen(
     onOpenDebug: () -> Unit,
     onOpenPromotedSettings: () -> Unit,
     onStatusCardTap: () -> Unit,
+    onOpenOnlineLyricRematch: () -> Unit,
     extraBottomPadding: androidx.compose.ui.unit.Dp = 0.dp,
 ) {
     val repo = remember { LyricRepository.getInstance() }
@@ -269,6 +271,8 @@ fun MainScreen(
                                 primaryAlbumArt = if (isPrimary) repoAlbumArt else null,
                                 primaryProgress = if (isPrimary) repoProgress else null,
                                 primaryIsPlaying = if (isPrimary) repoPlaying else null,
+                                showOnlineLyricRematch = isPrimary && isOnlineLyricSource(repoLyric?.apiPath),
+                                onOpenOnlineLyricRematch = onOpenOnlineLyricRematch,
                                 minCardHeight = minCardHeight,
                                 onHeightMeasured = { measuredHeight ->
                                     if (measuredHeight > maxCardHeightPx) {
@@ -394,6 +398,8 @@ private fun MediaSessionCard(
     primaryAlbumArt: Bitmap?,
     primaryProgress: LyricRepository.PlaybackProgress?,
     primaryIsPlaying: Boolean?,
+    showOnlineLyricRematch: Boolean,
+    onOpenOnlineLyricRematch: () -> Unit,
     minCardHeight: androidx.compose.ui.unit.Dp,
     onHeightMeasured: (Int) -> Unit
 ) {
@@ -622,6 +628,17 @@ private fun MediaSessionCard(
                     stringResource(R.string.main_lyrics_unavailable)
                 }
             )
+            if (showOnlineLyricRematch) {
+                Spacer(modifier = Modifier.height(12.dp))
+                OutlinedButton(
+                    onClick = onOpenOnlineLyricRematch,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(stringResource(R.string.online_lyric_rematch_entry))
+                }
+            }
             Spacer(modifier = Modifier.height(18.dp))
 
             var isDragging by remember { mutableStateOf(false) }
@@ -893,6 +910,10 @@ private fun formatPrimaryLyricSource(
         "Notification" -> label?.let { "$it [通知歌词]" } ?: "通知歌词"
         else -> label ?: apiPath?.trim().takeUnless { it.isNullOrBlank() }
     }
+}
+
+private fun isOnlineLyricSource(apiPath: String?): Boolean {
+    return apiPath == "Online API" || apiPath == "Online Cache"
 }
 
 private fun isPrimarySession(

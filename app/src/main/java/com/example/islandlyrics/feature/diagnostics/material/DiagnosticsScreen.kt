@@ -26,7 +26,6 @@ import com.example.islandlyrics.core.platform.RomUtils
 import com.example.islandlyrics.feature.cache.CacheManagementActivity
 import com.example.islandlyrics.feature.lab.LabActivity
 import com.example.islandlyrics.feature.logviewer.LogViewerActivity
-import com.example.islandlyrics.feature.onlinelyricdebug.OnlineLyricDebugActivity
 import com.example.islandlyrics.feature.settings.material.SettingsActionItem
 import com.example.islandlyrics.feature.settings.material.SettingsCard
 import com.example.islandlyrics.feature.settings.material.SettingsCardDivider
@@ -40,7 +39,6 @@ import com.example.islandlyrics.ui.theme.material.neutralMaterialTopBarColors
 @Composable
 fun DiagnosticsScreen(
     onBack: () -> Unit,
-    onOpenOnlineLyricDebug: (() -> Unit)? = null,
     onOpenCacheManagement: (() -> Unit)? = null,
     onOpenLab: (() -> Unit)? = null,
     onOpenLogViewer: (() -> Unit)? = null
@@ -72,20 +70,10 @@ fun DiagnosticsScreen(
                 .padding(padding),
             contentPadding = PaddingValues(bottom = 24.dp)
         ) {
-            // ── Tools ─────────────────────────────────────────────────────────
-            item { SettingsSectionHeader(text = stringResource(R.string.diag_header_debug_tools)) }
-            item {
-                SettingsCard {
-                    SettingsActionItem(
-                        title = stringResource(R.string.diag_online_lyric_debug_title),
-                        icon = Icons.Default.Terminal,
-                        onClick = {
-                            onOpenOnlineLyricDebug?.invoke()
-                                ?: context.startActivity(android.content.Intent(context, OnlineLyricDebugActivity::class.java))
-                        }
-                    )
-                    if (BuildConfig.DEBUG) {
-                        SettingsCardDivider()
+            if (BuildConfig.DEBUG) {
+                item { SettingsSectionHeader(text = stringResource(R.string.diag_header_debug_tools)) }
+                item {
+                    SettingsCard {
                         SettingsActionItem(
                             title = stringResource(R.string.diag_qq_roman_debug_title),
                             icon = Icons.Default.Terminal,

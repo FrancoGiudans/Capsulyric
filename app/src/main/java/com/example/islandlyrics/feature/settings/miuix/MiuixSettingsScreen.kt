@@ -78,6 +78,7 @@ fun MiuixSettingsScreen(
     onOpenFaq: (() -> Unit)? = null,
     onOpenAbout: (() -> Unit)? = null,
     onOpenLocalLyricDirectory: ((Uri, String) -> Unit)? = null,
+    onOpenOnlineLyricRematch: (() -> Unit)? = null,
     showBackButton: Boolean = true,
     bottomBar: @Composable () -> Unit = {},
     onBottomBarVisibilityChange: (Boolean) -> Unit = {},
@@ -422,6 +423,19 @@ fun MiuixSettingsScreen(
                     state = localLyricDirState,
                     onOpenDirectory = onOpenLocalLyricDirectory
                 )
+            }
+            item { SmallTitle(text = stringResource(R.string.settings_lyric_tools_header)) }
+            item {
+                Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
+                    SuperArrow(
+                        title = stringResource(R.string.online_lyric_rematch_title),
+                        summary = stringResource(R.string.online_lyric_rematch_settings_desc),
+                        onClick = {
+                            onOpenOnlineLyricRematch?.invoke()
+                                ?: context.startActivity(Intent(context, com.example.islandlyrics.feature.onlinelyricdebug.OnlineLyricDebugActivity::class.java))
+                        }
+                    )
+                }
             }
             item { SmallTitle(text = stringResource(R.string.settings_backup_header)) }
             item {

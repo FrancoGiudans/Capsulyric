@@ -19,6 +19,8 @@
     <string name="main_album_art_cd">Album art</string>
     <string name="main_lyric_source_fmt">Lyric source: %1$s</string>
     <string name="main_current_lyric_title">Current lyric</string>
+    <string name="online_lyric_rematch_entry">Rematch Online Lyrics</string>
+    <string name="online_lyric_rematch_entry_short">Rematch Lyrics</string>
     <string name="main_waiting_for_lyrics">Waiting for lyrics...</string>
     <string name="main_lyrics_unavailable">Lyrics are unavailable for this session.</string>
     <string name="action_previous">Previous</string>
@@ -193,6 +195,7 @@
     <string name="parser_local_lyric">Local LRC Files</string>
     <string name="parser_local_lyric_desc_short">Search configured directories for .lrc files</string>
     <string name="settings_local_lyrics_title">Local Lyrics</string>
+    <string name="settings_lyric_tools_header">Lyric Tools</string>
     <string name="settings_local_lyrics_directories">Lyrics Directories</string>
     <string name="settings_local_lyrics_add">Add Directory</string>
     <string name="settings_local_lyrics_empty">No directories configured. Tap to add one.</string>
@@ -738,14 +741,32 @@ Within the log interface, select the share/export icon. You can specify a timefr
     <string name="diag_enabled">✅ Enabled</string>
     <string name="diag_disabled">❌ Disabled</string>
     <string name="diag_btn_refresh">Refresh APIs</string>
-    <string name="diag_online_lyric_debug_title">Online Lyrics Debug</string>
-    <string name="diag_online_lyric_debug_desc">Inspect the final result from each online lyric API</string>
     <string name="diag_qq_roman_debug_title">Romanization / Translation Debug</string>
     <string name="diag_qq_roman_debug_desc">Fetch and fully dump QQ Music and Netease lyric extras</string>
 
     <!-- Online lyric debug -->
     <string name="online_lyric_debug_back">Back</string>
-    <string name="online_lyric_debug_title">Online Lyrics Debug</string>
+    <string name="online_lyric_debug_title">Online Lyrics Rematch</string>
+    <string name="online_lyric_rematch_title">Online Lyrics Rematch</string>
+    <string name="online_lyric_rematch_settings_desc">Change the current song title or artist and fetch online lyrics again</string>
+    <string name="online_lyric_rematch_current_playback">Current Playback</string>
+    <string name="online_lyric_rematch_current_full_lyrics">Current Full Lyrics</string>
+    <string name="online_lyric_rematch_result_full_lyrics">Fetched Full Lyrics</string>
+    <string name="online_lyric_rematch_match_input">Rematch Info</string>
+    <string name="online_lyric_rematch_song_title">Song Title</string>
+    <string name="online_lyric_rematch_artist">Artist</string>
+    <string name="online_lyric_rematch_action">Rematch</string>
+    <string name="online_lyric_rematch_result_title">Fetched Lyrics</string>
+    <string name="online_lyric_rematch_result_source_fmt">Source: %1$s</string>
+    <string name="online_lyric_rematch_effective_query_fmt">Current query: %1$s / %2$s</string>
+    <string name="online_lyric_rematch_duration_fmt">Duration: %1$s</string>
+    <string name="online_lyric_rematch_current_line">Current line</string>
+    <string name="online_lyric_rematch_no_lyrics">No lyrics yet</string>
+    <string name="online_lyric_rematch_no_result">Rematched lyrics will appear here</string>
+    <string name="online_lyric_rematch_other_results">Other Sources</string>
+    <string name="online_lyric_rematch_no_other_results">Other source results will appear after rematching</string>
+    <string name="online_lyric_rematch_selected_result">Selected result</string>
+    <string name="online_lyric_rematch_available_result">Available result</string>
     <string name="online_lyric_debug_now_playing">Current Playback</string>
     <string name="online_lyric_debug_song_fmt">Song: %1$s</string>
     <string name="online_lyric_debug_artist_fmt">Artist: %1$s</string>

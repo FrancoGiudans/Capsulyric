@@ -63,8 +63,24 @@ class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(app
     val liveMetadata = repo.liveMetadata
     val liveLyric = repo.liveLyric
     val liveProgress = repo.liveProgress
+    val liveAlbumArt = repo.liveAlbumArt
+    val liveParsedLyrics = repo.liveParsedLyrics
     val isPlaying = repo.isPlaying
     private fun s(id: Int, vararg args: Any): String = getApplication<Application>().getString(id, *args)
+
+    fun parsedLyricsText(lines: List<OnlineLyricFetcher.LyricLine>?): String {
+        val lyricLines = lines.orEmpty()
+            .map { it.text.trim() }
+            .filter { it.isNotBlank() }
+        return lyricLines.filterIndexed { index, text ->
+            index == 0 || text != lyricLines[index - 1]
+        }.joinToString("\n")
+    }
+
+    fun resultLyricsText(result: OnlineLyricFetcher.LyricResult?): String {
+        val parsed = parsedLyricsText(result?.parsedLines)
+        return parsed.ifBlank { result?.lyrics.orEmpty().trim() }
+    }
 
     private fun findCurrentLine(
         lines: List<OnlineLyricFetcher.LyricLine>,
@@ -291,6 +307,25 @@ class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(app
             _customMatchArtist.value = ""
             _cacheStatus.value = s(R.string.online_lyric_debug_override_cleared)
             syncCurrentSongQuery()
+        }
+    }
+
+    fun rematchLyrics() {
+        val mediaInfo = liveMetadata.value ?: run {
+            _error.value = s(R.string.online_lyric_debug_error_no_song)
+            return
+        }
+        val title = _customMatchTitle.value.orEmpty().trim()
+        val artist = _customMatchArtist.value.orEmpty().trim()
+        if (title.isBlank() && artist.isBlank()) {
+            _error.value = s(R.string.online_lyric_debug_error_empty_override)
+            return
+        }
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) {
+                cacheStore.saveMatchOverride(mediaInfo, title, artist)
+            }
+            fetchLyrics(forceRefresh = true)
         }
     }
 

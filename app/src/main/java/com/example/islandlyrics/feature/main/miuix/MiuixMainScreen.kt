@@ -26,6 +26,7 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BugReport
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.*
@@ -80,6 +81,7 @@ fun MiuixMainScreen(
     onOpenDebug: () -> Unit,
     onOpenPromotedSettings: () -> Unit,
     onStatusCardTap: () -> Unit,
+    onOpenOnlineLyricRematch: () -> Unit,
     bottomBar: @Composable () -> Unit = {},
     onBottomBarVisibilityChange: (Boolean) -> Unit = {},
     updateReleaseInfo: UpdateChecker.ReleaseInfo? = null,
@@ -294,7 +296,9 @@ fun MiuixMainScreen(
                                     null
                                 },
                                 primaryAlbumArt = if (isPrimary) repoAlbumArt else null,
-                                primaryProgress = if (isPrimary) repoProgress else null
+                                primaryProgress = if (isPrimary) repoProgress else null,
+                                showOnlineLyricRematch = isPrimary && isOnlineLyricSource(repoLyric?.apiPath),
+                                onOpenOnlineLyricRematch = onOpenOnlineLyricRematch
                             )
                         }
 
@@ -425,7 +429,9 @@ private fun MiuixMediaSessionCard(
     primaryLyric: String?,
     primaryLyricSource: String?,
     primaryAlbumArt: Bitmap?,
-    primaryProgress: LyricRepository.PlaybackProgress?
+    primaryProgress: LyricRepository.PlaybackProgress?,
+    showOnlineLyricRematch: Boolean,
+    onOpenOnlineLyricRematch: () -> Unit
 ) {
     var localMetadata by remember(controller) { mutableStateOf(controller.metadata) }
     var localPlaybackState by remember(controller) { mutableStateOf(controller.playbackState) }
@@ -627,7 +633,7 @@ private fun MiuixMediaSessionCard(
                     Text(text = appName, fontSize = 12.sp, color = animatedAccent, maxLines = 1)
                     if (isPrimary && !primaryLyricSource.isNullOrBlank()) {
                         Spacer(modifier = Modifier.height(2.dp))
-                        Text(text = "当前歌词源: $primaryLyricSource", fontSize = 11.sp, color = MiuixTheme.colorScheme.onSurfaceSecondary, maxLines = 1)
+                        Text(text = stringResource(R.string.main_lyric_source_fmt, primaryLyricSource), fontSize = 11.sp, color = MiuixTheme.colorScheme.onSurfaceSecondary, maxLines = 1)
                     }
                 }
             }
@@ -666,6 +672,22 @@ private fun MiuixMediaSessionCard(
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(text = "Lyrics unavailable", fontSize = 16.sp, fontStyle = FontStyle.Italic,
                         color = MiuixTheme.colorScheme.onSurfaceVariantSummary)
+                }
+            }
+
+            if (showOnlineLyricRematch) {
+                Spacer(modifier = Modifier.height(12.dp))
+                Button(
+                    onClick = onOpenOnlineLyricRematch,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    androidx.compose.material3.Icon(
+                        imageVector = Icons.Default.Refresh,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(stringResource(R.string.online_lyric_rematch_entry))
                 }
             }
 
@@ -785,6 +807,10 @@ private fun formatPrimaryLyricSource(
         "Notification" -> label?.let { "$it [通知歌词]" } ?: "通知歌词"
         else -> label ?: apiPath?.trim().takeUnless { it.isNullOrBlank() }
     }
+}
+
+private fun isOnlineLyricSource(apiPath: String?): Boolean {
+    return apiPath == "Online API" || apiPath == "Online Cache"
 }
 
 private fun drawableToBitmap(drawable: Drawable): Bitmap {

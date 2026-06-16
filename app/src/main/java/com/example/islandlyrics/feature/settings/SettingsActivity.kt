@@ -96,6 +96,7 @@ class SettingsActivity : BaseActivity() {
                                     onOpenLocalLyricDirectory = { uri, name ->
                                         pushPage(SettingsPage.LocalLyricDirectory(uri.toString(), name))
                                     },
+                                    onOpenOnlineLyricRematch = { pushPage(SettingsPage.OnlineLyricDebug) },
                                     updateReleaseInfo = updateReleaseInfo,
                                     onUpdateDismiss = { updateReleaseInfo = null },
                                     onUpdateIgnore = { version ->
@@ -145,7 +146,8 @@ class SettingsActivity : BaseActivity() {
                                     onOpenAbout = { pushPage(SettingsPage.About) },
                                     onOpenLocalLyricDirectory = { uri, name ->
                                         pushPage(SettingsPage.LocalLyricDirectory(uri.toString(), name))
-                                    }
+                                    },
+                                    onOpenOnlineLyricRematch = { pushPage(SettingsPage.OnlineLyricDebug) }
                                 )
 
                                 if (updateReleaseInfo != null) {
@@ -210,7 +212,6 @@ class SettingsActivity : BaseActivity() {
             )
             SettingsPage.Diagnostics -> DiagnosticsScreen(
                 onBack = onBack,
-                onOpenOnlineLyricDebug = { onPushPage(SettingsPage.OnlineLyricDebug) },
                 onOpenCacheManagement = { onPushPage(SettingsPage.CacheManagement) },
                 onOpenLab = { onPushPage(SettingsPage.Lab) },
                 onOpenLogViewer = { onPushPage(SettingsPage.LogViewer) }
@@ -262,7 +263,6 @@ class SettingsActivity : BaseActivity() {
             )
             SettingsPage.Diagnostics -> MiuixDiagnosticsScreen(
                 onBack = onBack,
-                onOpenOnlineLyricDebug = { onPushPage(SettingsPage.OnlineLyricDebug) },
                 onOpenCacheManagement = { onPushPage(SettingsPage.CacheManagement) },
                 onOpenLab = { onPushPage(SettingsPage.Lab) },
                 onOpenLogViewer = { onPushPage(SettingsPage.LogViewer) }

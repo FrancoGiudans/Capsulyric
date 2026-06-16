@@ -22,7 +22,6 @@ import com.example.islandlyrics.core.platform.RomUtils
 import com.example.islandlyrics.feature.cache.CacheManagementActivity
 import com.example.islandlyrics.feature.lab.LabActivity
 import com.example.islandlyrics.feature.logviewer.LogViewerActivity
-import com.example.islandlyrics.feature.onlinelyricdebug.OnlineLyricDebugActivity
 import androidx.compose.ui.unit.sp
 import top.yukonga.miuix.kmp.basic.*
 import top.yukonga.miuix.kmp.preference.ArrowPreference as SuperArrow
@@ -38,7 +37,6 @@ import java.util.*
 @Composable
 fun MiuixDiagnosticsScreen(
     onBack: () -> Unit,
-    onOpenOnlineLyricDebug: (() -> Unit)? = null,
     onOpenCacheManagement: (() -> Unit)? = null,
     onOpenLab: (() -> Unit)? = null,
     onOpenLogViewer: (() -> Unit)? = null
@@ -76,18 +74,10 @@ fun MiuixDiagnosticsScreen(
                 bottom = padding.calculateBottomPadding() + 24.dp + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
             )
         ) {
-            item { SmallTitle(text = stringResource(R.string.diag_header_debug_tools)) }
-            item {
-                Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
-                    SuperArrow(
-                        title = stringResource(R.string.diag_online_lyric_debug_title),
-                        summary = stringResource(R.string.diag_online_lyric_debug_desc),
-                        onClick = {
-                            onOpenOnlineLyricDebug?.invoke()
-                                ?: context.startActivity(android.content.Intent(context, OnlineLyricDebugActivity::class.java))
-                        }
-                    )
-                    if (BuildConfig.DEBUG) {
+            if (BuildConfig.DEBUG) {
+                item { SmallTitle(text = stringResource(R.string.diag_header_debug_tools)) }
+                item {
+                    Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
                         SuperArrow(
                             title = stringResource(R.string.diag_qq_roman_debug_title),
                             summary = stringResource(R.string.diag_qq_roman_debug_desc),

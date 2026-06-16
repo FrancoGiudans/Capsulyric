@@ -7,6 +7,7 @@ import com.example.islandlyrics.service.MediaMonitorService
 import com.example.islandlyrics.data.ParserRuleHelper
 import com.example.islandlyrics.data.LyricRepository
 import com.example.islandlyrics.feature.main.MainActivity
+import com.example.islandlyrics.feature.onlinelyricdebug.OnlineLyricDebugActivity
 import android.content.Intent
 import android.graphics.Bitmap
 import android.media.MediaMetadata
@@ -30,6 +31,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -109,6 +111,7 @@ fun MediaControlDialog(onDismiss: () -> Unit) {
 
     val repoLyric by repo.liveLyric.observeAsState()
     val repoProgress by repo.liveProgress.observeAsState()
+    val showOnlineLyricRematch = isOnlineLyricSource(repoLyric?.apiPath)
 
     // Transition State for Enter/Exit animations
     val visibleState = remember { MutableTransitionState(true) }
@@ -221,7 +224,12 @@ fun MediaControlDialog(onDismiss: () -> Unit) {
                                     context = context,
                                     isPrimary = isPrimary,
                                     primaryLyric = if (isPrimary) repoLyric?.lyric else null,
-                                    primaryProgress = if (isPrimary) repoProgress else null
+                                    primaryProgress = if (isPrimary) repoProgress else null,
+                                    showOnlineLyricRematch = isPrimary && showOnlineLyricRematch,
+                                    onOpenOnlineLyricRematch = {
+                                        context.startActivity(Intent(context, OnlineLyricDebugActivity::class.java))
+                                        triggerDismiss()
+                                    }
                                 )
                             }
                         }
@@ -280,7 +288,9 @@ fun MediaSessionCard(
 
     isPrimary: Boolean,
     primaryLyric: String?,
-    primaryProgress: LyricRepository.PlaybackProgress?
+    primaryProgress: LyricRepository.PlaybackProgress?,
+    showOnlineLyricRematch: Boolean,
+    onOpenOnlineLyricRematch: () -> Unit
 ) {
     var playbackState by remember(controller) { mutableStateOf(controller.playbackState) }
     var metadata by remember(controller) { mutableStateOf(controller.metadata) }
@@ -497,6 +507,17 @@ fun MediaSessionCard(
                         stringResource(R.string.main_lyrics_unavailable)
                     }
                 )
+                if (showOnlineLyricRematch) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    OutlinedButton(
+                        onClick = onOpenOnlineLyricRematch,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(stringResource(R.string.online_lyric_rematch_entry_short))
+                    }
+                }
 
                 Spacer(modifier = Modifier.height(18.dp))
                 var isDragging by remember { mutableStateOf(false) }
@@ -599,6 +620,10 @@ fun MediaSessionCard(
             }
         }
     }
+}
+
+private fun isOnlineLyricSource(apiPath: String?): Boolean {
+    return apiPath == "Online API" || apiPath == "Online Cache"
 }
 
 @Composable
