@@ -107,20 +107,19 @@ fun CapsulePreview(
     }
 
     if (superIslandEnabled) {
-        val showLeftCover = albumArt != null && (superIslandLyricMode != "full" || superIslandFullLyricShowLeftCover)
+        val showLeftCover = albumArt != null &&
+            (superIslandLyricMode != "full" || superIslandFullLyricShowLeftCover)
         val split = SuperIslandLyricLayout.splitFullLyric(currentLyric, showLeftCover)
-        val leftText = if (superIslandLyricMode == "full") {
-            split.left.ifEmpty { "♪" }
-        } else {
-            SuperIslandLyricLayout.takeByWeight(
+        val leftText = when (superIslandLyricMode) {
+            "full" -> split.left.ifEmpty { "♪" }
+            else -> SuperIslandLyricLayout.takeByWeight(
                 titleWithArtist.ifBlank { "♪" },
                 if (showLeftCover) 13 else 16
             ).ifEmpty { "♪" }
         }
-        val rightText = if (superIslandLyricMode == "full") {
-            split.right.ifEmpty { "♪" }
-        } else {
-            SuperIslandLyricLayout.takeByWeight(currentLyric.ifBlank { "♪" }, 14).ifEmpty { "♪" }
+        val rightText = when (superIslandLyricMode) {
+            "full" -> split.right.ifEmpty { "♪" }
+            else -> SuperIslandLyricLayout.takeByWeight(currentLyric.ifBlank { "♪" }, 14).ifEmpty { "♪" }
         }
         val leftAlbumArt = if (showLeftCover) albumArt else null
 
@@ -560,14 +559,15 @@ fun NotificationPreview(
                         // Middle: Metadata
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = if (superIslandLyricMode == "full") {
-                                    val split = SuperIslandLyricLayout.splitFullLyric(
-                                        currentLyric,
-                                        albumArt != null && superIslandFullLyricShowLeftCover
-                                    )
-                                    "${split.left} ${split.right}".trim().ifEmpty { currentLyric }
-                                } else {
-                                    currentLyric
+                                text = when (superIslandLyricMode) {
+                                    "full" -> {
+                                        val split = SuperIslandLyricLayout.splitFullLyric(
+                                            currentLyric,
+                                            albumArt != null && superIslandFullLyricShowLeftCover
+                                        )
+                                        "${split.left} ${split.right}".trim().ifEmpty { currentLyric }
+                                    }
+                                    else -> currentLyric
                                 },
                                 color = textColor,
                                 fontWeight = FontWeight.Bold,

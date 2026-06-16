@@ -122,6 +122,9 @@ fun CustomSettingsScreen(
     var superIslandNotificationStyle by remember { mutableStateOf(LabFeatureManager.sanitizeSuperIslandNotificationStyle(context)) }
     var superIslandAdvancedStyleLabEnabled by remember { mutableStateOf(LabFeatureManager.isSuperIslandAdvancedStyleEnabled(prefs)) }
     var superIslandTextLimitsLabEnabled by remember { mutableStateOf(LabFeatureManager.isSuperIslandTextLimitsEnabled(prefs)) }
+    var superIslandRelaxedTextLimitsLabEnabled by remember {
+        mutableStateOf(LabFeatureManager.isSuperIslandRelaxedTextLimitsEnabled(prefs))
+    }
     var showActionStyleDropdown by remember { mutableStateOf(false) }
     var showSuperIslandMediaButtonLayoutDropdown by remember { mutableStateOf(false) }
     var showSuperIslandNotificationStyleDropdown by remember { mutableStateOf(false) }
@@ -150,12 +153,14 @@ fun CustomSettingsScreen(
     var superIslandTextColorEnabled by remember { mutableStateOf(prefs.getBoolean("super_island_text_color_enabled", false)) }
     var superIslandColorSource by remember { mutableStateOf(SuperIslandColorSource.read(prefs)) }
     var superIslandCustomColor by remember { mutableStateOf(Color(SuperIslandColorSource.readCustomColor(prefs))) }
-    var superIslandRightTextChars by remember { mutableFloatStateOf(SuperIslandTextLimitConfig.rightChars(prefs)) }
+    var superIslandRightTextChars by remember {
+        mutableFloatStateOf(SuperIslandTextLimitConfig.rightChars(prefs, superIslandRelaxedTextLimitsLabEnabled))
+    }
     var superIslandLeftWithCoverTextChars by remember {
-        mutableFloatStateOf(SuperIslandTextLimitConfig.leftChars(prefs, showLeftCover = true))
+        mutableFloatStateOf(SuperIslandTextLimitConfig.leftChars(prefs, showLeftCover = true, superIslandRelaxedTextLimitsLabEnabled))
     }
     var superIslandLeftNoCoverTextChars by remember {
-        mutableFloatStateOf(SuperIslandTextLimitConfig.leftChars(prefs, showLeftCover = false))
+        mutableFloatStateOf(SuperIslandTextLimitConfig.leftChars(prefs, showLeftCover = false, superIslandRelaxedTextLimitsLabEnabled))
     }
 
     var superIslandShareEnabled by remember { mutableStateOf(prefs.getBoolean("super_island_share_enabled", true)) }
@@ -177,13 +182,15 @@ fun CustomSettingsScreen(
     }
     val superIslandEnabled = effectiveCapsuleRenderMode == CapsuleRenderMode.XIAOMI_SUPER_ISLAND
     val colorOsFluidCloudEnabled = effectiveCapsuleRenderMode == CapsuleRenderMode.COLOROS_FLUID_CLOUD
-    val forceDisableScrollingForFullSuperIsland =
+    val forceDisableScrollingForSuperIslandLyricMode =
         isHyperOs && superIslandEnabled && superIslandLyricMode == "full"
 
-    fun applyFullSuperIslandScrollForce(force: Boolean, restoreLegacyState: Boolean = false) {
-        val forcedKey = "full_super_island_forced_disable_scrolling"
-        val backupKey = "disable_lyric_scrolling_before_full_super_island"
-        val wasForced = prefs.getBoolean(forcedKey, false)
+    fun applySuperIslandScrollForce(force: Boolean, restoreLegacyState: Boolean = false) {
+        val forcedKey = "super_island_lyric_mode_forced_disable_scrolling"
+        val backupKey = "disable_lyric_scrolling_before_super_island_lyric_mode"
+        val legacyForcedKey = "full_super_island_forced_disable_scrolling"
+        val legacyBackupKey = "disable_lyric_scrolling_before_full_super_island"
+        val wasForced = prefs.getBoolean(forcedKey, false) || prefs.getBoolean(legacyForcedKey, false)
         prefs.edit {
             if (force) {
                 if (!wasForced) {
@@ -193,11 +200,17 @@ fun CustomSettingsScreen(
                 disableScrolling = true
                 putBoolean("disable_lyric_scrolling", true)
             } else if (wasForced) {
-                val restoredValue = prefs.getBoolean(backupKey, false)
+                val restoredValue = if (prefs.contains(backupKey)) {
+                    prefs.getBoolean(backupKey, false)
+                } else {
+                    prefs.getBoolean(legacyBackupKey, false)
+                }
                 disableScrolling = restoredValue
                 putBoolean("disable_lyric_scrolling", restoredValue)
                 remove(backupKey)
                 remove(forcedKey)
+                remove(legacyBackupKey)
+                remove(legacyForcedKey)
             } else if (restoreLegacyState && disableScrolling) {
                 disableScrolling = false
                 putBoolean("disable_lyric_scrolling", false)
@@ -225,11 +238,12 @@ fun CustomSettingsScreen(
         LabFeatureManager.ensureInitialized(prefs)
         superIslandAdvancedStyleLabEnabled = LabFeatureManager.isSuperIslandAdvancedStyleEnabled(prefs)
         superIslandTextLimitsLabEnabled = LabFeatureManager.isSuperIslandTextLimitsEnabled(prefs)
+        superIslandRelaxedTextLimitsLabEnabled = LabFeatureManager.isSuperIslandRelaxedTextLimitsEnabled(prefs)
         colorOsFluidCloudLabEnabled = LabFeatureManager.isColorOsFluidCloudEnabled(prefs)
         superIslandNotificationStyle = LabFeatureManager.sanitizeSuperIslandNotificationStyle(context)
     }
-    LaunchedEffect(forceDisableScrollingForFullSuperIsland) {
-        applyFullSuperIslandScrollForce(forceDisableScrollingForFullSuperIsland)
+    LaunchedEffect(forceDisableScrollingForSuperIslandLyricMode) {
+        applySuperIslandScrollForce(forceDisableScrollingForSuperIslandLyricMode)
     }
 
     // Force disable unsupported features
@@ -344,8 +358,7 @@ fun CustomSettingsScreen(
                                 oneuiCapsuleColorMode = oneuiCapsuleColorMode,
                                 superIslandEnabled = superIslandEnabled,
                                 superIslandLyricMode = superIslandLyricMode,
-                                superIslandFullLyricShowLeftCover = superIslandFullLyricShowLeftCover
-                                ,
+                                superIslandFullLyricShowLeftCover = superIslandFullLyricShowLeftCover,
                                 superIslandTextColorEnabled = superIslandTextColorEnabled,
                                 superIslandColorSource = superIslandColorSource,
                                 superIslandCustomColor = superIslandCustomColor
@@ -356,8 +369,8 @@ fun CustomSettingsScreen(
                             SettingsSwitchItem(
                                 title = stringResource(R.string.settings_disable_scrolling),
                                 subtitle = stringResource(R.string.settings_disable_scrolling_desc),
-                                checked = disableScrolling || forceDisableScrollingForFullSuperIsland,
-                                enabled = !forceDisableScrollingForFullSuperIsland,
+                                checked = disableScrolling || forceDisableScrollingForSuperIslandLyricMode,
+                                enabled = !forceDisableScrollingForSuperIslandLyricMode,
                                 onCheckedChange = {
                                     disableScrolling = it
                                     prefs.edit { putBoolean("disable_lyric_scrolling", it) }
@@ -526,18 +539,33 @@ fun CustomSettingsScreen(
                                 }
 
                                 if (superIslandEnabled) {
-                                    val lyricModes = listOf("standard", "full")
-                                    val lyricModeLabels = listOf(
-                                        stringResource(R.string.super_island_lyric_mode_standard),
-                                        stringResource(R.string.super_island_lyric_mode_full)
-                                    )
-                                    val currentLyricModeIndex = lyricModes.indexOf(superIslandLyricMode).takeIf { it >= 0 } ?: 0
+                                    val lyricModeItems = buildList {
+                                        add(Triple("standard", R.string.super_island_lyric_mode_standard, R.string.super_island_lyric_mode_standard_desc))
+                                        add(Triple("full", R.string.super_island_lyric_mode_full, R.string.super_island_lyric_mode_full_desc))
+                                    }
+                                    val currentLyricModeItem = lyricModeItems.firstOrNull { it.first == superIslandLyricMode }
+                                        ?: lyricModeItems.first()
+                                    if (currentLyricModeItem.first != superIslandLyricMode) {
+                                        superIslandLyricMode = currentLyricModeItem.first
+                                        prefs.edit { putString("super_island_lyric_mode", currentLyricModeItem.first) }
+                                    }
+                                    val lyricModeDisplay = stringResource(currentLyricModeItem.second)
+                                    val lyricModeSubtitle = stringResource(currentLyricModeItem.third)
+
+                                    fun setSuperIslandLyricMode(newMode: String) {
+                                        superIslandLyricMode = newMode
+                                        prefs.edit { putString("super_island_lyric_mode", newMode) }
+                                        if (newMode == "standard") {
+                                            applySuperIslandScrollForce(force = false, restoreLegacyState = true)
+                                        }
+                                    }
 
                                     SettingsCardDivider()
                                     Box(modifier = Modifier.fillMaxWidth()) {
                                         SettingsTextItem(
                                             title = stringResource(R.string.settings_super_island_lyric_mode),
-                                            value = lyricModeLabels[currentLyricModeIndex],
+                                            subtitle = lyricModeSubtitle,
+                                            value = lyricModeDisplay,
                                             onClick = { showSuperIslandLyricModeDropdown = true }
                                         )
                                         Box(modifier = Modifier.matchParentSize().wrapContentSize(Alignment.Center)) {
@@ -545,16 +573,20 @@ fun CustomSettingsScreen(
                                                 expanded = showSuperIslandLyricModeDropdown,
                                                 onDismissRequest = { showSuperIslandLyricModeDropdown = false }
                                             ) {
-                                                lyricModeLabels.forEachIndexed { index, label ->
+                                                lyricModeItems.forEach { (modeId, nameId, descId) ->
                                                     DropdownMenuItem(
-                                                        text = { Text(label) },
-                                                        onClick = {
-                                                            val newMode = lyricModes[index]
-                                                            superIslandLyricMode = newMode
-                                                            prefs.edit { putString("super_island_lyric_mode", newMode) }
-                                                            if (newMode == "standard") {
-                                                                applyFullSuperIslandScrollForce(force = false, restoreLegacyState = true)
+                                                        text = {
+                                                            Column {
+                                                                Text(stringResource(nameId))
+                                                                Text(
+                                                                    text = stringResource(descId),
+                                                                    style = MaterialTheme.typography.bodySmall,
+                                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                                )
                                                             }
+                                                        },
+                                                        onClick = {
+                                                            setSuperIslandLyricMode(modeId)
                                                             showSuperIslandLyricModeDropdown = false
                                                         }
                                                     )
@@ -577,10 +609,12 @@ fun CustomSettingsScreen(
                                     }
 
                                     if (superIslandTextLimitsLabEnabled) {
+                                        val rightRange = SuperIslandTextLimitConfig.RIGHT_MIN_CHARS..
+                                            SuperIslandTextLimitConfig.rightMaxChars(superIslandRelaxedTextLimitsLabEnabled)
                                         MaterialSuperIslandTextLimitSlider(
                                             title = stringResource(R.string.settings_super_island_right_text_limit),
-                                            value = superIslandRightTextChars,
-                                            valueRange = SuperIslandTextLimitConfig.RIGHT_MIN_CHARS..SuperIslandTextLimitConfig.RIGHT_MAX_CHARS,
+                                            value = superIslandRightTextChars.coerceIn(rightRange),
+                                            valueRange = rightRange,
                                             onValueChange = { value ->
                                                 superIslandRightTextChars = value
                                                 prefs.edit { putFloat(SuperIslandTextLimitConfig.KEY_RIGHT_CHARS, value) }
@@ -588,20 +622,19 @@ fun CustomSettingsScreen(
                                         )
 
                                         if (superIslandLyricMode == "full") {
-                                            val leftValue = if (superIslandFullLyricShowLeftCover) {
-                                                superIslandLeftWithCoverTextChars
-                                            } else {
-                                                superIslandLeftNoCoverTextChars
+                                            val leftValue = when {
+                                                superIslandFullLyricShowLeftCover -> superIslandLeftWithCoverTextChars
+                                                else -> superIslandLeftNoCoverTextChars
                                             }
-                                            val leftRange = if (superIslandFullLyricShowLeftCover) {
-                                                SuperIslandTextLimitConfig.LEFT_WITH_COVER_MIN_CHARS..SuperIslandTextLimitConfig.LEFT_WITH_COVER_MAX_CHARS
-                                            } else {
-                                                SuperIslandTextLimitConfig.LEFT_NO_COVER_MIN_CHARS..SuperIslandTextLimitConfig.LEFT_NO_COVER_MAX_CHARS
+                                            val leftRange = when {
+                                                superIslandFullLyricShowLeftCover -> SuperIslandTextLimitConfig.LEFT_WITH_COVER_MIN_CHARS..
+                                                    SuperIslandTextLimitConfig.leftWithCoverMaxChars(superIslandRelaxedTextLimitsLabEnabled)
+                                                else -> SuperIslandTextLimitConfig.LEFT_NO_COVER_MIN_CHARS..
+                                                    SuperIslandTextLimitConfig.leftNoCoverMaxChars(superIslandRelaxedTextLimitsLabEnabled)
                                             }
-                                            val leftKey = if (superIslandFullLyricShowLeftCover) {
-                                                SuperIslandTextLimitConfig.KEY_LEFT_WITH_COVER_CHARS
-                                            } else {
-                                                SuperIslandTextLimitConfig.KEY_LEFT_NO_COVER_CHARS
+                                            val leftKey = when {
+                                                superIslandFullLyricShowLeftCover -> SuperIslandTextLimitConfig.KEY_LEFT_WITH_COVER_CHARS
+                                                else -> SuperIslandTextLimitConfig.KEY_LEFT_NO_COVER_CHARS
                                             }
                                             MaterialSuperIslandTextLimitSlider(
                                                 title = stringResource(R.string.settings_super_island_left_text_limit),

@@ -64,6 +64,7 @@ class SuperIslandHandler(
     private var cachedSuperIslandRightTextWeight = SuperIslandLyricLayout.calculateWeight("七七七七七七七")
     private var cachedSuperIslandLeftWithCoverTextWeight = SuperIslandLyricLayout.calculateWeight("六六六六六六")
     private var cachedSuperIslandLeftNoCoverTextWeight = SuperIslandLyricLayout.calculateWeight("八八八八八八八八")
+    private var cachedSuperIslandRelaxedTextLimitsEnabled = false
     private var cachedXmsfBypassMode = XmsfBypassMode.DISABLED
     private var cachedXmsfCustomDurationMs = XmsfBypassMode.DEFAULT_CUSTOM_DURATION_MS
 
@@ -93,11 +94,14 @@ class SuperIslandHandler(
             "notification_actions_style" -> cachedActionStyle = p.getString(key, "disabled") ?: "disabled"
             "super_island_media_button_layout" -> cachedMediaButtonLayout = p.getString(key, "two_button") ?: "two_button"
             "super_island_notification_style" -> cachedSuperIslandNotificationStyle = p.getString(key, "standard") ?: "standard"
-            "super_island_lyric_mode" -> cachedSuperIslandLyricMode = p.getString(key, "standard") ?: "standard"
+            "super_island_lyric_mode" -> cachedSuperIslandLyricMode = sanitizeSuperIslandLyricMode(
+                p.getString(key, "standard")
+            )
             "super_island_full_lyric_show_left_cover" -> cachedSuperIslandFullLyricShowLeftCover = p.getBoolean(key, true)
             SuperIslandTextLimitConfig.KEY_RIGHT_CHARS,
             SuperIslandTextLimitConfig.KEY_LEFT_WITH_COVER_CHARS,
-            SuperIslandTextLimitConfig.KEY_LEFT_NO_COVER_CHARS -> loadSuperIslandTextLimits(p)
+            SuperIslandTextLimitConfig.KEY_LEFT_NO_COVER_CHARS,
+            "lab_super_island_relaxed_text_limits_enabled" -> loadSuperIslandTextLimits(p)
             "block_xmsf_network_mode", "block_xmsf_network" -> {
                 cachedXmsfBypassMode = XmsfBypassMode.read(p)
                 if (cachedXmsfBypassMode != XmsfBypassMode.AGGRESSIVE && aggressiveNetworkCutActive) {
@@ -123,7 +127,7 @@ class SuperIslandHandler(
         cachedActionStyle = prefs.getString("notification_actions_style", "disabled") ?: "disabled"
         cachedMediaButtonLayout = prefs.getString("super_island_media_button_layout", "two_button") ?: "two_button"
         cachedSuperIslandNotificationStyle = prefs.getString("super_island_notification_style", "standard") ?: "standard"
-        cachedSuperIslandLyricMode = prefs.getString("super_island_lyric_mode", "standard") ?: "standard"
+        cachedSuperIslandLyricMode = sanitizeSuperIslandLyricMode(prefs.getString("super_island_lyric_mode", "standard"))
         cachedSuperIslandFullLyricShowLeftCover = prefs.getBoolean("super_island_full_lyric_show_left_cover", true)
         loadSuperIslandTextLimits(prefs)
         cachedXmsfBypassMode = XmsfBypassMode.read(prefs)
@@ -132,16 +136,29 @@ class SuperIslandHandler(
     }
 
     private fun loadSuperIslandTextLimits(prefs: SharedPreferences) {
+        cachedSuperIslandRelaxedTextLimitsEnabled =
+            prefs.getBoolean("lab_super_island_relaxed_text_limits_enabled", false)
         cachedSuperIslandRightTextWeight = SuperIslandTextLimitConfig.weightForChars(
-            SuperIslandTextLimitConfig.rightChars(prefs)
+            SuperIslandTextLimitConfig.rightChars(prefs, cachedSuperIslandRelaxedTextLimitsEnabled)
         )
         cachedSuperIslandLeftWithCoverTextWeight = SuperIslandTextLimitConfig.weightForChars(
-            SuperIslandTextLimitConfig.leftChars(prefs, showLeftCover = true)
+            SuperIslandTextLimitConfig.leftChars(
+                prefs,
+                showLeftCover = true,
+                relaxed = cachedSuperIslandRelaxedTextLimitsEnabled
+            )
         )
         cachedSuperIslandLeftNoCoverTextWeight = SuperIslandTextLimitConfig.weightForChars(
-            SuperIslandTextLimitConfig.leftChars(prefs, showLeftCover = false)
+            SuperIslandTextLimitConfig.leftChars(
+                prefs,
+                showLeftCover = false,
+                relaxed = cachedSuperIslandRelaxedTextLimitsEnabled
+            )
         )
     }
+
+    private fun sanitizeSuperIslandLyricMode(mode: String?): String =
+        if (mode == "full") "full" else "standard"
 
     // Change detection tracking
     private var lastSentDisplayLyric = ""

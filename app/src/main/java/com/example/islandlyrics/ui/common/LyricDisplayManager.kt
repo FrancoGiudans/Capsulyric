@@ -170,7 +170,8 @@ class LyricDisplayManager(private val context: Context) {
             CapsuleRenderMode.PREF_KEY,
             "super_island_enabled",
             "super_island_lyric_mode",
-            SuperIslandTextLimitConfig.KEY_RIGHT_CHARS -> {
+            SuperIslandTextLimitConfig.KEY_RIGHT_CHARS,
+            "lab_super_island_relaxed_text_limits_enabled" -> {
                 loadSuperIslandTextPreferences(prefs)
                 forceUpdate()
             }
@@ -501,7 +502,10 @@ class LyricDisplayManager(private val context: Context) {
         capsuleRenderMode = CapsuleRenderMode.effective(prefs)
         superIslandLyricMode = prefs.getString("super_island_lyric_mode", "standard") ?: "standard"
         superIslandRightTextWeight = SuperIslandTextLimitConfig.weightForChars(
-            SuperIslandTextLimitConfig.rightChars(prefs)
+            SuperIslandTextLimitConfig.rightChars(
+                prefs,
+                relaxed = prefs.getBoolean("lab_super_island_relaxed_text_limits_enabled", false)
+            )
         )
     }
 

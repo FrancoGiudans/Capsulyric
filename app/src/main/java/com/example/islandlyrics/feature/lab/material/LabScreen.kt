@@ -46,6 +46,9 @@ fun LabScreen(onBack: () -> Unit) {
     var superIslandTextLimitsEnabled by remember {
         mutableStateOf(LabFeatureManager.isSuperIslandTextLimitsEnabled(context))
     }
+    var superIslandRelaxedTextLimitsEnabled by remember {
+        mutableStateOf(LabFeatureManager.isSuperIslandRelaxedTextLimitsEnabled(context))
+    }
     var floatingLyricsLabEnabled by remember {
         mutableStateOf(LabFeatureManager.isFloatingLyricsEnabled(context))
     }
@@ -125,6 +128,16 @@ fun LabScreen(onBack: () -> Unit) {
                             onCheckedChange = {
                                 superIslandTextLimitsEnabled = it
                                 LabFeatureManager.setSuperIslandTextLimitsEnabled(context, it)
+                            }
+                        )
+                        SettingsCardDivider()
+                        SettingsSwitchItem(
+                            title = stringResource(R.string.diag_lab_super_island_relaxed_text_limits_title),
+                            subtitle = stringResource(R.string.diag_lab_super_island_relaxed_text_limits_desc),
+                            checked = superIslandRelaxedTextLimitsEnabled,
+                            onCheckedChange = {
+                                superIslandRelaxedTextLimitsEnabled = it
+                                LabFeatureManager.setSuperIslandRelaxedTextLimitsEnabled(context, it)
                             }
                         )
                         SettingsCardDivider()
