@@ -329,6 +329,21 @@ jobs:
           (cd ${{ steps.meta.outputs.apk_dir }} && md5sum $(basename ${{ steps.meta.outputs.signed_apk }}) > $(basename ${{ steps.meta.outputs.md5_file }}))
 
       # ============================================================
+      # Step 7.5: Rename Artifacts
+      # ============================================================
+      - name: Rename Artifacts
+        id: artifacts
+        run: |
+          FINAL_APK="Capsulyric-${{ steps.meta.outputs.version_name }}.apk"
+          FINAL_MD5="${FINAL_APK}.md5"
+          mv "${{ steps.meta.outputs.signed_apk }}" "$FINAL_APK"
+          mv "${{ steps.meta.outputs.md5_file }}" "$FINAL_MD5"
+          echo "Renamed APK: ${FINAL_APK}"
+          echo "Renamed MD5: ${FINAL_MD5}"
+          echo "apk=${FINAL_APK}" >> $GITHUB_OUTPUT
+          echo "md5=${FINAL_MD5}" >> $GITHUB_OUTPUT
+
+      # ============================================================
       # Step 8: Create Git Tag
       # ============================================================
       - name: Create and Push Git Tag
@@ -345,10 +360,22 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          # Find previous non-Canary release tag for comparison
-          PREV_TAG=$(git tag --sort=-creatordate | grep -v "Canary" | grep -E "^Version\." | head -n 1)
+          # Find previous release tag for comparison:
+          #   Stable -> compare against last Stable tag only
+          #   Preview/Experiment -> compare against last Preview or Stable tag
+          CURRENT_TAG="${{ steps.meta.outputs.tag_name }}"
+          CHANNEL="${{ steps.meta.outputs.channel }}"
 
-          if [ -n "$PREV_TAG" ] && [ "$PREV_TAG" != "${{ steps.meta.outputs.tag_name }}" ]; then
+          if [ "$CHANNEL" = "Stable" ]; then
+            PREV_TAG=$(git tag --sort=-creatordate | grep -v "Canary" | grep -E "^Version\..*\.Stable_C" | grep -vxF "$CURRENT_TAG" | head -n 1)
+            echo "Stable release - searching previous Stable tags"
+          else
+            PREV_TAG=$(git tag --sort=-creatordate | grep -v "Canary" | grep -E "^Version\." | grep -vxF "$CURRENT_TAG" | head -n 1)
+            echo "Preview/Experiment release - searching any previous tag"
+          fi
+          echo "Previous tag found: ${PREV_TAG:-none}"
+
+          if [ -n "$PREV_TAG" ]; then
             echo "Comparing against previous tag: ${PREV_TAG}"
             AUTO_BODY=$(gh api "repos/${{ github.repository }}/releases/generate-notes" \
               -f tag_name="${{ steps.meta.outputs.tag_name }}" \
@@ -415,13 +442,13 @@ jobs:
         uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ steps.meta.outputs.tag_name }}
-          name: Capsulyric ${{ steps.meta.outputs.version_name }} (${{ steps.meta.outputs.codename }})
+          name: ${{ steps.meta.outputs.version_name }}
           body_path: release_body.md
           prerelease: ${{ steps.meta.outputs.is_prerelease }}
           make_latest: ${{ steps.meta.outputs.is_prerelease == 'false' }}
           files: |
-            ${{ steps.meta.outputs.signed_apk }}
-            ${{ steps.meta.outputs.md5_file }}
+            ${{ steps.artifacts.outputs.apk }}
+            ${{ steps.artifacts.outputs.md5 }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -433,5 +460,5 @@ jobs:
         with:
           name: Capsulyric-${{ steps.meta.outputs.channel }}-Signed
           path: |
-            ${{ steps.meta.outputs.signed_apk }}
-            ${{ steps.meta.outputs.md5_file }}
+            ${{ steps.artifacts.outputs.apk }}
+            ${{ steps.artifacts.outputs.md5 }}
