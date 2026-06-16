@@ -3,6 +3,7 @@ package com.example.islandlyrics.feature.customsettings.material
 import android.app.Activity
 import com.example.islandlyrics.ui.common.NotificationPreview
 import com.example.islandlyrics.ui.common.CapsulePreview
+import com.example.islandlyrics.ui.common.CapsuleRenderMode
 import com.example.islandlyrics.ui.common.LyricTextDisplayMode
 import com.example.islandlyrics.ui.common.OneUiCapsuleColorMode
 import com.example.islandlyrics.ui.common.SuperIslandColorSource
@@ -142,7 +143,8 @@ fun CustomSettingsScreen(
     var lyricTextDisplayMode by remember { mutableStateOf(LyricTextDisplayMode.read(prefs)) }
     var oneuiCapsuleColorMode by remember { mutableStateOf(OneUiCapsuleColorMode.read(prefs)) }
 
-    var superIslandEnabled by remember { mutableStateOf(prefs.getBoolean("super_island_enabled", false)) }
+    var capsuleRenderMode by remember { mutableStateOf(CapsuleRenderMode.read(prefs)) }
+    var colorOsFluidCloudLabEnabled by remember { mutableStateOf(LabFeatureManager.isColorOsFluidCloudEnabled(prefs)) }
     var superIslandLyricMode by remember { mutableStateOf(prefs.getString("super_island_lyric_mode", "standard") ?: "standard") }
     var superIslandFullLyricShowLeftCover by remember { mutableStateOf(prefs.getBoolean("super_island_full_lyric_show_left_cover", true)) }
     var superIslandTextColorEnabled by remember { mutableStateOf(prefs.getBoolean("super_island_text_color_enabled", false)) }
@@ -168,8 +170,15 @@ fun CustomSettingsScreen(
     // Check for HyperOS 3.0.300+
     val isLiveUpdateSupported = remember { RomUtils.isLiveUpdateSupported() }
     val isHyperOs = remember { RomUtils.isHyperOs() }
+    val effectiveCapsuleRenderMode = if (!isLiveUpdateSupported && capsuleRenderMode == CapsuleRenderMode.LIVE_UPDATE) {
+        CapsuleRenderMode.XIAOMI_SUPER_ISLAND
+    } else {
+        capsuleRenderMode
+    }
+    val superIslandEnabled = effectiveCapsuleRenderMode == CapsuleRenderMode.XIAOMI_SUPER_ISLAND
+    val colorOsFluidCloudEnabled = effectiveCapsuleRenderMode == CapsuleRenderMode.COLOROS_FLUID_CLOUD
     val forceDisableScrollingForFullSuperIsland =
-        isHyperOs && (superIslandEnabled || !isLiveUpdateSupported) && superIslandLyricMode == "full"
+        isHyperOs && superIslandEnabled && superIslandLyricMode == "full"
 
     fun applyFullSuperIslandScrollForce(force: Boolean, restoreLegacyState: Boolean = false) {
         val forcedKey = "full_super_island_forced_disable_scrolling"
@@ -196,22 +205,18 @@ fun CustomSettingsScreen(
         }
     }
 
-    fun setSuperIslandMode(enabled: Boolean) {
-        if (superIslandEnabled == enabled) return
+    fun setCapsuleRenderMode(mode: CapsuleRenderMode) {
+        if (capsuleRenderMode == mode) return
 
-        superIslandEnabled = enabled
-        prefs.edit { putBoolean("super_island_enabled", enabled) }
+        capsuleRenderMode = mode
+        CapsuleRenderMode.write(prefs, mode)
 
-        if (enabled && actionStyle == "miplay") {
+        if (mode != CapsuleRenderMode.LIVE_UPDATE && actionStyle == "miplay") {
             actionStyle = "disabled"
             prefs.edit { putString("notification_actions_style", "disabled") }
         }
 
-        val action = if (enabled) {
-            "ACTION_ENABLE_SUPER_ISLAND"
-        } else {
-            "ACTION_DISABLE_SUPER_ISLAND"
-        }
+        val action = "ACTION_SET_CAPSULE_RENDER_MODE"
         val intent = Intent(context, LyricService::class.java).setAction(action)
         context.startService(intent)
     }
@@ -220,6 +225,7 @@ fun CustomSettingsScreen(
         LabFeatureManager.ensureInitialized(prefs)
         superIslandAdvancedStyleLabEnabled = LabFeatureManager.isSuperIslandAdvancedStyleEnabled(prefs)
         superIslandTextLimitsLabEnabled = LabFeatureManager.isSuperIslandTextLimitsEnabled(prefs)
+        colorOsFluidCloudLabEnabled = LabFeatureManager.isColorOsFluidCloudEnabled(prefs)
         superIslandNotificationStyle = LabFeatureManager.sanitizeSuperIslandNotificationStyle(context)
     }
     LaunchedEffect(forceDisableScrollingForFullSuperIsland) {
@@ -336,7 +342,7 @@ fun CustomSettingsScreen(
                                 dynamicIconEnabled = if (superIslandEnabled) true else iconStyle != "disabled",
                                 iconStyle = previewIconStyle,
                                 oneuiCapsuleColorMode = oneuiCapsuleColorMode,
-                                superIslandEnabled = superIslandEnabled || (isHyperOs && !isLiveUpdateSupported),
+                                superIslandEnabled = superIslandEnabled,
                                 superIslandLyricMode = superIslandLyricMode,
                                 superIslandFullLyricShowLeftCover = superIslandFullLyricShowLeftCover
                                 ,
@@ -436,16 +442,25 @@ fun CustomSettingsScreen(
                                 } // end SettingsCard (OneUI)
                             }
 
-                            if (isHyperOs) {
+                            if (isHyperOs || colorOsFluidCloudLabEnabled) {
                                 Spacer(modifier = Modifier.height(8.dp))
                                 SettingsCard {
-                                if (isLiveUpdateSupported) {
-                                    val capsuleModes = listOf(false, true)
-                                    val capsuleModeLabels = listOf(
-                                        stringResource(R.string.capsule_mode_live_update),
-                                        stringResource(R.string.capsule_mode_super_island)
-                                    )
-                                    val currentCapsuleModeIndex = capsuleModes.indexOf(superIslandEnabled).takeIf { it >= 0 } ?: 0
+                                if (isLiveUpdateSupported || colorOsFluidCloudLabEnabled) {
+                                    val capsuleModeItems = buildList {
+                                        if (isLiveUpdateSupported) {
+                                            add(CapsuleRenderMode.LIVE_UPDATE to stringResource(R.string.capsule_mode_live_update))
+                                        }
+                                        if (isHyperOs) {
+                                            add(CapsuleRenderMode.XIAOMI_SUPER_ISLAND to stringResource(R.string.capsule_mode_super_island))
+                                        }
+                                        if (colorOsFluidCloudLabEnabled) {
+                                            add(CapsuleRenderMode.COLOROS_FLUID_CLOUD to stringResource(R.string.capsule_mode_fluid_cloud))
+                                        }
+                                    }
+                                    val capsuleModes = capsuleModeItems.map { it.first }
+                                    val capsuleModeLabels = capsuleModeItems.map { it.second }
+                                    val currentCapsuleModeIndex =
+                                        capsuleModes.indexOf(effectiveCapsuleRenderMode).takeIf { it >= 0 } ?: 0
 
                                     Box(modifier = Modifier.fillMaxWidth()) {
                                         SettingsTextItem(
@@ -462,7 +477,7 @@ fun CustomSettingsScreen(
                                                     DropdownMenuItem(
                                                         text = { Text(label) },
                                                         onClick = {
-                                                            setSuperIslandMode(capsuleModes[index])
+                                                            setCapsuleRenderMode(capsuleModes[index])
                                                             showCapsuleModeDropdown = false
                                                         }
                                                     )
@@ -472,7 +487,7 @@ fun CustomSettingsScreen(
                                     }
                                 }
 
-                                if (isLiveUpdateSupported && !superIslandEnabled) {
+                                if (isLiveUpdateSupported && !superIslandEnabled && !colorOsFluidCloudEnabled) {
                                     val styleDisplayName = when (iconStyle) {
                                         "advanced" -> stringResource(R.string.icon_style_advanced)
                                         "album_art" -> stringResource(R.string.icon_style_album_art)
@@ -510,7 +525,7 @@ fun CustomSettingsScreen(
                                     }
                                 }
 
-                                if (superIslandEnabled || !isLiveUpdateSupported) {
+                                if (superIslandEnabled) {
                                     val lyricModes = listOf("standard", "full")
                                     val lyricModeLabels = listOf(
                                         stringResource(R.string.super_island_lyric_mode_standard),
@@ -879,7 +894,7 @@ fun CustomSettingsScreen(
                                             "miplay" to R.string.settings_action_style_miplay
                                         )
                                         val styles = allStyles.filter { (styleId, _) ->
-                                            if (styleId == "miplay") isLiveUpdateSupported && !superIslandEnabled else true
+                                            if (styleId == "miplay") isLiveUpdateSupported && !superIslandEnabled && !colorOsFluidCloudEnabled else true
                                         }
                                         styles.forEach { (styleId, nameId) ->
                                             DropdownMenuItem(
@@ -895,7 +910,7 @@ fun CustomSettingsScreen(
                                 }
                             }
 
-                            if (actionStyle == "media_controls" && (superIslandEnabled || !isLiveUpdateSupported)) {
+                            if (actionStyle == "media_controls" && superIslandEnabled) {
                                 val notificationStyleDisplayName = when (superIslandNotificationStyle) {
                                     "advanced_beta" -> stringResource(R.string.super_island_notification_style_advanced_beta)
                                     else -> stringResource(R.string.super_island_notification_style_standard)

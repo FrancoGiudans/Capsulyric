@@ -53,6 +53,9 @@ fun MiuixLabScreen(onBack: () -> Unit) {
     var floatingLyricsLabEnabled by remember {
         mutableStateOf(LabFeatureManager.isFloatingLyricsEnabled(context))
     }
+    var colorOsFluidCloudEnabled by remember {
+        mutableStateOf(LabFeatureManager.isColorOsFluidCloudEnabled(context))
+    }
     var experimentUpdatesEnabled by remember {
         mutableStateOf(LabFeatureManager.isExperimentUpdatesEnabled(context))
     }
@@ -154,6 +157,16 @@ fun MiuixLabScreen(onBack: () -> Unit) {
                             }
                         )
                     }
+
+                    SuperSwitch(
+                        title = stringResource(R.string.diag_lab_coloros_fluid_cloud_title),
+                        summary = stringResource(R.string.diag_lab_coloros_fluid_cloud_desc),
+                        checked = colorOsFluidCloudEnabled,
+                        onCheckedChange = {
+                            colorOsFluidCloudEnabled = it
+                            LabFeatureManager.setColorOsFluidCloudEnabled(context, it)
+                        }
+                    )
 
                     SuperSwitch(
                         title = stringResource(R.string.diag_lab_floating_lyrics_title),

@@ -36,11 +36,11 @@ object BackupCategories {
 
     val CAPSULE = Category(
         id = "capsule",
-        keyPatterns = listOf("super_island_*"),
+        keyPatterns = listOf("capsule_render_mode", "super_island_*"),
         subGroups = listOf(
             SubGroup("capsule_style", listOf(
                 "super_island_notification_style", "super_island_lyric_mode",
-                "super_island_enabled"
+                "super_island_enabled", "capsule_render_mode"
             )),
             SubGroup("capsule_layout", listOf(
                 "super_island_full_lyric_show_left_cover",

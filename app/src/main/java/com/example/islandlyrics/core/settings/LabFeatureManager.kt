@@ -3,6 +3,7 @@ package com.example.islandlyrics.core.settings
 import android.content.Context
 import android.content.SharedPreferences
 import com.example.islandlyrics.core.update.UpdateChecker
+import com.example.islandlyrics.ui.common.CapsuleRenderMode
 
 object LabFeatureManager {
     private const val PREFS_NAME = "IslandLyricsPrefs"
@@ -13,6 +14,7 @@ object LabFeatureManager {
     private const val KEY_FLOATING_LYRICS_MIGRATED = "lab_floating_lyrics_migrated"
     private const val KEY_EXPERIMENT_UPDATES_ENABLED = "lab_experiment_updates_enabled"
     private const val KEY_EXPERIMENT_UPDATES_MIGRATED = "lab_experiment_updates_migrated"
+    private const val KEY_COLOROS_FLUID_CLOUD_ENABLED = "lab_coloros_fluid_cloud_enabled"
     private const val KEY_FEED_SOURCE_PRIORITY = "lab_feed_source_priority"
     const val KEY_SCROLL_END_HAPTIC_ENABLED = "lab_scroll_end_haptic_enabled"
 
@@ -112,12 +114,12 @@ object LabFeatureManager {
     fun isSuperIslandTextLimitsEnabled(context: Context): Boolean {
         val prefs = context.prefs()
         ensureInitialized(prefs)
-        return prefs.getBoolean(KEY_SUPER_ISLAND_TEXT_LIMITS_ENABLED, false)
+        return prefs.getBoolean(KEY_SUPER_ISLAND_TEXT_LIMITS_ENABLED, true)
     }
 
     fun isSuperIslandTextLimitsEnabled(prefs: SharedPreferences): Boolean {
         ensureInitialized(prefs)
-        return prefs.getBoolean(KEY_SUPER_ISLAND_TEXT_LIMITS_ENABLED, false)
+        return prefs.getBoolean(KEY_SUPER_ISLAND_TEXT_LIMITS_ENABLED, true)
     }
 
     fun setSuperIslandTextLimitsEnabled(context: Context, enabled: Boolean) {
@@ -126,6 +128,36 @@ object LabFeatureManager {
         prefs.edit()
             .putBoolean(KEY_SUPER_ISLAND_TEXT_LIMITS_ENABLED, enabled)
             .apply()
+    }
+
+    fun isColorOsFluidCloudEnabled(context: Context): Boolean {
+        val prefs = context.prefs()
+        ensureInitialized(prefs)
+        return prefs.getBoolean(KEY_COLOROS_FLUID_CLOUD_ENABLED, false)
+    }
+
+    fun isColorOsFluidCloudEnabled(prefs: SharedPreferences): Boolean {
+        ensureInitialized(prefs)
+        return prefs.getBoolean(KEY_COLOROS_FLUID_CLOUD_ENABLED, false)
+    }
+
+    fun setColorOsFluidCloudEnabled(context: Context, enabled: Boolean) {
+        val prefs = context.prefs()
+        ensureInitialized(prefs)
+        prefs.edit()
+            .putBoolean(KEY_COLOROS_FLUID_CLOUD_ENABLED, enabled)
+            .apply()
+
+        if (!enabled && CapsuleRenderMode.read(prefs) == CapsuleRenderMode.COLOROS_FLUID_CLOUD) {
+            CapsuleRenderMode.write(
+                prefs,
+                if (android.os.Build.VERSION.SDK_INT >= 36) {
+                    CapsuleRenderMode.LIVE_UPDATE
+                } else {
+                    CapsuleRenderMode.XIAOMI_SUPER_ISLAND
+                }
+            )
+        }
     }
 
     fun isFloatingLyricsEnabled(context: Context): Boolean {

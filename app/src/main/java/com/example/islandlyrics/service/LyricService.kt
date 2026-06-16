@@ -34,6 +34,8 @@ import com.example.islandlyrics.ui.common.LyricCapsuleHandler
 import com.example.islandlyrics.ui.common.LyricDisplayManager
 import com.example.islandlyrics.ui.common.FloatingLyricsRenderer
 import com.example.islandlyrics.ui.common.SuperIslandHandler
+import com.example.islandlyrics.ui.common.CapsuleRenderMode
+import com.example.islandlyrics.ui.common.ColorOsFluidCloudHandler
 
 class LyricService : Service() {
 
@@ -205,10 +207,10 @@ class LyricService : Service() {
     private var invisibleToggle = false
     private var capsuleHandler: LyricCapsuleHandler? = null
     private lateinit var superIslandHandler: SuperIslandHandler
+    private lateinit var colorOsFluidCloudHandler: ColorOsFluidCloudHandler
     private lateinit var displayManager: LyricDisplayManager
     private var floatingLyricsRenderer: FloatingLyricsRenderer? = null
-    // Live Update builds read mode from prefs; otherwise default to SuperIsland
-    private var isSuperIslandMode = !RomUtils.isLiveUpdateSupported()
+    private var capsuleRenderMode = CapsuleRenderMode.XIAOMI_SUPER_ISLAND
 
     private val mediaActionReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -234,10 +236,12 @@ class LyricService : Service() {
     }
 
     private val prefsListener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { p, key ->
-        if (key == "super_island_enabled" && RomUtils.isLiveUpdateSupported()) {
-            isSuperIslandMode = p.getBoolean(key, false)
-            AppLogger.getInstance().log(TAG, "Mode Switched via Settings -> isSuperIslandMode: $isSuperIslandMode")
-            renderModeCoordinator?.setMode(isSuperIslandMode)
+        if (key == CapsuleRenderMode.PREF_KEY ||
+            (key == "super_island_enabled" && !p.contains(CapsuleRenderMode.PREF_KEY))
+        ) {
+            capsuleRenderMode = CapsuleRenderMode.effective(p)
+            AppLogger.getInstance().log(TAG, "Mode Switched via Settings -> capsuleRenderMode: $capsuleRenderMode")
+            renderModeCoordinator?.setMode(capsuleRenderMode)
             updateActiveHandler()
         } else if (key == FloatingLyricsRenderer.PREF_KEY) {
             val enabled = p.getBoolean(FloatingLyricsRenderer.PREF_KEY, false)
@@ -259,19 +263,15 @@ class LyricService : Service() {
         super.onCreate()
         isAlive = true
         
-        // Load mode from preferences when Live Update is enabled
-        if (RomUtils.isLiveUpdateSupported()) {
-            isSuperIslandMode = getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE)
-                .getBoolean("super_island_enabled", false)
-        } else {
-            isSuperIslandMode = true
-        }
+        val prefs = getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE)
+        capsuleRenderMode = CapsuleRenderMode.effective(prefs)
 
         createNotificationChannel()
         if (RomUtils.isLiveUpdateSupported()) {
             capsuleHandler = LyricCapsuleHandler(this, this)
         }
         superIslandHandler = SuperIslandHandler(this, this)
+        colorOsFluidCloudHandler = ColorOsFluidCloudHandler(this, this)
         floatingLyricsRenderer = FloatingLyricsRenderer(this)
         displayManager = LyricDisplayManager(this).apply {
             onStateUpdated = { state ->
@@ -279,8 +279,13 @@ class LyricService : Service() {
                 floatingLyricsRenderer?.render(state)
             }
         }
-        renderModeCoordinator = RenderModeCoordinator(displayManager, capsuleHandler, superIslandHandler)
-        renderModeCoordinator!!.setMode(isSuperIslandMode)
+        renderModeCoordinator = RenderModeCoordinator(
+            displayManager,
+            capsuleHandler,
+            superIslandHandler,
+            colorOsFluidCloudHandler
+        )
+        renderModeCoordinator!!.setMode(capsuleRenderMode)
         delayedStopController = DelayedStopController(
             handler = handler,
             prefsProvider = { getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE) },
@@ -360,19 +365,14 @@ class LyricService : Service() {
         if (BuildConfig.DEBUG) {
             AppLogger.getInstance().log(
                 TAG,
-                "[NotifyTrace] onStartCommand action=$action startId=$startId isAlive=$isAlive superRunning=${superIslandHandler.isRunning} capsuleRunning=${capsuleHandler?.isRunning()}"
+                "[NotifyTrace] onStartCommand action=$action startId=$startId isAlive=$isAlive mode=$capsuleRenderMode superRunning=${superIslandHandler.isRunning} capsuleRunning=${capsuleHandler?.isRunning()} fluidRunning=${colorOsFluidCloudHandler.isRunning}"
             )
         }
 
-        // 1. Proactively sync the Super Island Mode preference
+        // 1. Proactively sync the render mode preference
         val prefs = getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE)
-        if (RomUtils.isLiveUpdateSupported()) {
-            isSuperIslandMode = prefs.getBoolean("super_island_enabled", false)
-            renderModeCoordinator?.setMode(isSuperIslandMode)
-        } else {
-            isSuperIslandMode = true
-            renderModeCoordinator?.setMode(true)
-        }
+        capsuleRenderMode = CapsuleRenderMode.effective(prefs)
+        renderModeCoordinator?.setMode(capsuleRenderMode)
         syncFloatingLyricsState(prefs)
 
         // [Fix Task 1] Immediate Foreground Promotion
@@ -385,9 +385,10 @@ class LyricService : Service() {
 
         // CRITICAL FIX: Prioritize the Rich Capsule Notification if it's already active
         // 3. Promote to foreground (avoid redundant channel creation)
-        if (isSuperIslandMode && superIslandHandler.isRunning == true) {
-            displayManager.forceUpdate()
-        } else if (RomUtils.isLiveUpdateSupported() && !isSuperIslandMode && capsuleHandler?.isRunning() == true) {
+        if (superIslandHandler.isRunning == true ||
+            colorOsFluidCloudHandler.isRunning == true ||
+            capsuleHandler?.isRunning() == true
+        ) {
             displayManager.forceUpdate()
         }
 

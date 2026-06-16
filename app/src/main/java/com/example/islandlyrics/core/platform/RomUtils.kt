@@ -162,6 +162,8 @@ object RomUtils {
 
     fun isHyperOs(): Boolean = getRomType() == "HyperOS"
 
+    fun isColorOsFamily(): Boolean = getRomType() == "ColorOS" || getRomType() == "RealmeUI"
+
     fun isXiaomi(): Boolean = android.os.Build.MANUFACTURER.equals("xiaomi", ignoreCase = true) || isHyperOs()
 
     fun isLiveUpdateSupported(): Boolean {

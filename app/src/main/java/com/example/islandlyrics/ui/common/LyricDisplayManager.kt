@@ -52,7 +52,7 @@ class LyricDisplayManager(private val context: Context) {
     // Config / Preferences
     private var disableScrolling = false
     private var lyricTextDisplayMode = LyricTextDisplayMode.LYRIC
-    private var superIslandEnabled = false
+    private var capsuleRenderMode = CapsuleRenderMode.LIVE_UPDATE
     private var superIslandLyricMode = "standard"
     private var superIslandRightTextWeight = SuperIslandTextLimitConfig.weightForChars(
         SuperIslandTextLimitConfig.RIGHT_DEFAULT_CHARS
@@ -167,7 +167,10 @@ class LyricDisplayManager(private val context: Context) {
                 lyricTextDisplayMode = LyricTextDisplayMode.read(prefs)
                 forceUpdate()
             }
-            "super_island_enabled", "super_island_lyric_mode", SuperIslandTextLimitConfig.KEY_RIGHT_CHARS -> {
+            CapsuleRenderMode.PREF_KEY,
+            "super_island_enabled",
+            "super_island_lyric_mode",
+            SuperIslandTextLimitConfig.KEY_RIGHT_CHARS -> {
                 loadSuperIslandTextPreferences(prefs)
                 forceUpdate()
             }
@@ -495,7 +498,7 @@ class LyricDisplayManager(private val context: Context) {
     }
 
     private fun loadSuperIslandTextPreferences(prefs: android.content.SharedPreferences) {
-        superIslandEnabled = prefs.getBoolean("super_island_enabled", false)
+        capsuleRenderMode = CapsuleRenderMode.effective(prefs)
         superIslandLyricMode = prefs.getString("super_island_lyric_mode", "standard") ?: "standard"
         superIslandRightTextWeight = SuperIslandTextLimitConfig.weightForChars(
             SuperIslandTextLimitConfig.rightChars(prefs)
@@ -503,11 +506,13 @@ class LyricDisplayManager(private val context: Context) {
     }
 
     private fun currentMaxDisplayWeight(): Int {
-        val isSuperIslandActive = RomUtils.isHyperOs() && (superIslandEnabled || !RomUtils.isLiveUpdateSupported())
-        return if (isSuperIslandActive && superIslandLyricMode == "standard") {
-            superIslandRightTextWeight
-        } else {
-            baseMaxDisplayWeight
+        return when {
+            capsuleRenderMode == CapsuleRenderMode.COLOROS_FLUID_CLOUD ->
+                ColorOsFluidCloudBridge.CAPSULE_TEXT_LIMIT * 2
+            RomUtils.isHyperOs() &&
+                capsuleRenderMode == CapsuleRenderMode.XIAOMI_SUPER_ISLAND &&
+                superIslandLyricMode == "standard" -> superIslandRightTextWeight
+            else -> baseMaxDisplayWeight
         }
     }
 

@@ -615,6 +615,7 @@
     <string name="settings_capsule_mode">胶囊模式</string>
     <string name="capsule_mode_live_update">Live Update</string>
     <string name="capsule_mode_super_island">小米超级岛</string>
+    <string name="capsule_mode_fluid_cloud">ColorOS流体云</string>
     <string name="settings_super_island_lyric_mode">小米超级岛歌词样式</string>
     <string name="super_island_lyric_mode_standard">标准</string>
     <string name="super_island_lyric_mode_full">全歌词</string>
@@ -676,6 +677,8 @@
     <string name="diag_lab_super_island_advanced_style_desc">开启后，个性化设置里的“通知样式”将显示“高级样式（Beta）”选项</string>
     <string name="diag_lab_super_island_text_limits_title">超级岛字数上限调节</string>
     <string name="diag_lab_super_island_text_limits_desc">开启后，个性化设置的胶囊页会显示左右两侧字数上限调节。</string>
+    <string name="diag_lab_coloros_fluid_cloud_title">ColorOS流体云</string>
+    <string name="diag_lab_coloros_fluid_cloud_desc">开启后，个性化设置的胶囊模式会显示流体云选项。检测到 SeedlingSupportSDK 时使用 OPPO 音乐模板，否则回退为普通通知。</string>
     <string name="diag_lab_experiment_updates_title">接收测试版本</string>
     <string name="diag_lab_experiment_updates_desc">显示 Experiment 通道，并接收来自测试分支的实验版本。</string>
     <string name="diag_lab_scroll_end_haptic_title">边缘滚动触感反馈</string>
