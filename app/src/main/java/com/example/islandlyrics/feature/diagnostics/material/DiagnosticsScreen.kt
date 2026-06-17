@@ -23,12 +23,9 @@ import androidx.compose.ui.unit.dp
 import com.example.islandlyrics.R
 import com.example.islandlyrics.BuildConfig
 import com.example.islandlyrics.core.platform.RomUtils
-import com.example.islandlyrics.feature.cache.CacheManagementActivity
-import com.example.islandlyrics.feature.lab.LabActivity
 import com.example.islandlyrics.feature.logviewer.LogViewerActivity
 import com.example.islandlyrics.feature.settings.material.SettingsActionItem
 import com.example.islandlyrics.feature.settings.material.SettingsCard
-import com.example.islandlyrics.feature.settings.material.SettingsCardDivider
 import com.example.islandlyrics.feature.settings.material.SettingsSectionHeader
 import java.text.SimpleDateFormat
 import java.util.*
@@ -39,8 +36,6 @@ import com.example.islandlyrics.ui.theme.material.neutralMaterialTopBarColors
 @Composable
 fun DiagnosticsScreen(
     onBack: () -> Unit,
-    onOpenCacheManagement: (() -> Unit)? = null,
-    onOpenLab: (() -> Unit)? = null,
     onOpenLogViewer: (() -> Unit)? = null
 ) {
     val context = LocalContext.current
@@ -91,29 +86,6 @@ fun DiagnosticsScreen(
                         icon = Icons.Default.Info,
                         onClick = {
                             onOpenLogViewer?.invoke() ?: LogViewerActivity.start(context)
-                        }
-                    )
-                    SettingsCardDivider()
-                    SettingsActionItem(
-                        title = stringResource(R.string.title_cache_management),
-                        icon = Icons.Default.Info,
-                        onClick = {
-                            onOpenCacheManagement?.invoke()
-                                ?: context.startActivity(android.content.Intent(context, CacheManagementActivity::class.java))
-                        }
-                    )
-                }
-            }
-
-            item { SettingsSectionHeader(text = stringResource(R.string.diag_header_feature_controls)) }
-            item {
-                SettingsCard {
-                    SettingsActionItem(
-                        title = stringResource(R.string.title_lab),
-                        icon = Icons.Default.Info,
-                        onClick = {
-                            onOpenLab?.invoke()
-                                ?: context.startActivity(android.content.Intent(context, LabActivity::class.java))
                         }
                     )
                 }

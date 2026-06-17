@@ -79,6 +79,8 @@ fun MiuixSettingsScreen(
     onOpenAbout: (() -> Unit)? = null,
     onOpenLocalLyricDirectory: ((Uri, String) -> Unit)? = null,
     onOpenOnlineLyricRematch: (() -> Unit)? = null,
+    onOpenCacheManagement: (() -> Unit)? = null,
+    onOpenLab: (() -> Unit)? = null,
     showBackButton: Boolean = true,
     bottomBar: @Composable () -> Unit = {},
     onBottomBarVisibilityChange: (Boolean) -> Unit = {},
@@ -488,6 +490,22 @@ fun MiuixSettingsScreen(
                             title = stringResource(R.string.title_diagnostics),
                             summary = stringResource(R.string.summary_diagnostics),
                             onClick = onShowDiagnostics
+                        )
+                        SuperArrow(
+                            title = stringResource(R.string.title_cache_management),
+                            summary = stringResource(R.string.settings_cache_management_desc),
+                            onClick = {
+                                onOpenCacheManagement?.invoke()
+                                    ?: context.startActivity(Intent(context, com.example.islandlyrics.feature.cache.CacheManagementActivity::class.java))
+                            }
+                        )
+                        SuperArrow(
+                            title = stringResource(R.string.title_lab),
+                            summary = stringResource(R.string.diag_lab_page_desc),
+                            onClick = {
+                                onOpenLab?.invoke()
+                                    ?: context.startActivity(Intent(context, com.example.islandlyrics.feature.lab.LabActivity::class.java))
+                            }
                         )
                     }
                 }

@@ -19,8 +19,6 @@ import androidx.compose.ui.unit.dp
 import com.example.islandlyrics.R
 import com.example.islandlyrics.BuildConfig
 import com.example.islandlyrics.core.platform.RomUtils
-import com.example.islandlyrics.feature.cache.CacheManagementActivity
-import com.example.islandlyrics.feature.lab.LabActivity
 import com.example.islandlyrics.feature.logviewer.LogViewerActivity
 import androidx.compose.ui.unit.sp
 import top.yukonga.miuix.kmp.basic.*
@@ -37,8 +35,6 @@ import java.util.*
 @Composable
 fun MiuixDiagnosticsScreen(
     onBack: () -> Unit,
-    onOpenCacheManagement: (() -> Unit)? = null,
-    onOpenLab: (() -> Unit)? = null,
     onOpenLogViewer: (() -> Unit)? = null
 ) {
     val context = LocalContext.current
@@ -97,28 +93,6 @@ fun MiuixDiagnosticsScreen(
                         summary = stringResource(R.string.summary_view_logs),
                         onClick = {
                             onOpenLogViewer?.invoke() ?: LogViewerActivity.start(context)
-                        }
-                    )
-                    SuperArrow(
-                        title = stringResource(R.string.title_cache_management),
-                        summary = stringResource(R.string.settings_cache_management_desc),
-                        onClick = {
-                            onOpenCacheManagement?.invoke()
-                                ?: context.startActivity(android.content.Intent(context, CacheManagementActivity::class.java))
-                        }
-                    )
-                }
-            }
-
-            item { SmallTitle(text = stringResource(R.string.diag_header_feature_controls)) }
-            item {
-                Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
-                    SuperArrow(
-                        title = stringResource(R.string.title_lab),
-                        summary = stringResource(R.string.diag_lab_page_desc),
-                        onClick = {
-                            onOpenLab?.invoke()
-                                ?: context.startActivity(android.content.Intent(context, LabActivity::class.java))
                         }
                     )
                 }

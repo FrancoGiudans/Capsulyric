@@ -83,6 +83,8 @@ fun SettingsScreen(
     onOpenAbout: (() -> Unit)? = null,
     onOpenLocalLyricDirectory: ((Uri, String) -> Unit)? = null,
     onOpenOnlineLyricRematch: (() -> Unit)? = null,
+    onOpenCacheManagement: (() -> Unit)? = null,
+    onOpenLab: (() -> Unit)? = null,
     showBackButton: Boolean = true,
     extraBottomPadding: androidx.compose.ui.unit.Dp = 0.dp
 ) {
@@ -493,6 +495,26 @@ fun SettingsScreen(
                             summary = stringResource(R.string.summary_diagnostics),
                             icon = Icons.Filled.Info,
                             onClick = onShowDiagnostics
+                        )
+                        SettingsCardDivider()
+                        SettingsActionItem(
+                            title = stringResource(R.string.title_cache_management),
+                            summary = stringResource(R.string.settings_cache_management_desc),
+                            icon = Icons.Filled.Info,
+                            onClick = {
+                                onOpenCacheManagement?.invoke()
+                                    ?: context.startActivity(Intent(context, com.example.islandlyrics.feature.cache.CacheManagementActivity::class.java))
+                            }
+                        )
+                        SettingsCardDivider()
+                        SettingsActionItem(
+                            title = stringResource(R.string.title_lab),
+                            summary = stringResource(R.string.diag_lab_page_desc),
+                            icon = Icons.Filled.Info,
+                            onClick = {
+                                onOpenLab?.invoke()
+                                    ?: context.startActivity(Intent(context, com.example.islandlyrics.feature.lab.LabActivity::class.java))
+                            }
                         )
                     }
                 }

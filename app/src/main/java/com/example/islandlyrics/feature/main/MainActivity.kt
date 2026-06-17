@@ -402,6 +402,8 @@ class MainActivity : BaseActivity() {
                             pushPage(AppPage.LocalLyricDirectory(uri.toString(), name))
                         },
                         onOpenOnlineLyricRematch = { pushPage(AppPage.OnlineLyricDebug) },
+                        onOpenCacheManagement = { pushPage(AppPage.CacheManagement) },
+                        onOpenLab = { pushPage(AppPage.Lab) },
                         showBackButton = false,
                         extraBottomPadding = bottomPadding
                     )
@@ -566,6 +568,8 @@ class MainActivity : BaseActivity() {
                                         pushPage(AppPage.LocalLyricDirectory(uri.toString(), name))
                                     },
                                     onOpenOnlineLyricRematch = { pushPage(AppPage.OnlineLyricDebug) },
+                                    onOpenCacheManagement = { pushPage(AppPage.CacheManagement) },
+                                    onOpenLab = { pushPage(AppPage.Lab) },
                                     showBackButton = false,
                                     onBottomBarVisibilityChange = { bottomBarVisible = it }
                                 )
@@ -776,8 +780,6 @@ class MainActivity : BaseActivity() {
             )
             AppPage.Diagnostics -> DiagnosticsScreen(
                 onBack = onBack,
-                onOpenCacheManagement = { onPushPage(AppPage.CacheManagement) },
-                onOpenLab = { onPushPage(AppPage.Lab) },
                 onOpenLogViewer = { onPushPage(AppPage.LogViewer) }
             )
             AppPage.OnlineLyricDebug -> OnlineLyricDebugScreen(onBack = onBack)
@@ -825,8 +827,6 @@ class MainActivity : BaseActivity() {
             )
             AppPage.Diagnostics -> MiuixDiagnosticsScreen(
                 onBack = onBack,
-                onOpenCacheManagement = { onPushPage(AppPage.CacheManagement) },
-                onOpenLab = { onPushPage(AppPage.Lab) },
                 onOpenLogViewer = { onPushPage(AppPage.LogViewer) }
             )
             AppPage.OnlineLyricDebug -> MiuixOnlineLyricDebugScreen(onBack = onBack)

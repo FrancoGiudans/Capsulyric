@@ -97,6 +97,8 @@ class SettingsActivity : BaseActivity() {
                                         pushPage(SettingsPage.LocalLyricDirectory(uri.toString(), name))
                                     },
                                     onOpenOnlineLyricRematch = { pushPage(SettingsPage.OnlineLyricDebug) },
+                                    onOpenCacheManagement = { pushPage(SettingsPage.CacheManagement) },
+                                    onOpenLab = { pushPage(SettingsPage.Lab) },
                                     updateReleaseInfo = updateReleaseInfo,
                                     onUpdateDismiss = { updateReleaseInfo = null },
                                     onUpdateIgnore = { version ->
@@ -147,7 +149,9 @@ class SettingsActivity : BaseActivity() {
                                     onOpenLocalLyricDirectory = { uri, name ->
                                         pushPage(SettingsPage.LocalLyricDirectory(uri.toString(), name))
                                     },
-                                    onOpenOnlineLyricRematch = { pushPage(SettingsPage.OnlineLyricDebug) }
+                                    onOpenOnlineLyricRematch = { pushPage(SettingsPage.OnlineLyricDebug) },
+                                    onOpenCacheManagement = { pushPage(SettingsPage.CacheManagement) },
+                                    onOpenLab = { pushPage(SettingsPage.Lab) }
                                 )
 
                                 if (updateReleaseInfo != null) {
@@ -212,8 +216,6 @@ class SettingsActivity : BaseActivity() {
             )
             SettingsPage.Diagnostics -> DiagnosticsScreen(
                 onBack = onBack,
-                onOpenCacheManagement = { onPushPage(SettingsPage.CacheManagement) },
-                onOpenLab = { onPushPage(SettingsPage.Lab) },
                 onOpenLogViewer = { onPushPage(SettingsPage.LogViewer) }
             )
             SettingsPage.OnlineLyricDebug -> OnlineLyricDebugScreen(onBack = onBack)
@@ -263,8 +265,6 @@ class SettingsActivity : BaseActivity() {
             )
             SettingsPage.Diagnostics -> MiuixDiagnosticsScreen(
                 onBack = onBack,
-                onOpenCacheManagement = { onPushPage(SettingsPage.CacheManagement) },
-                onOpenLab = { onPushPage(SettingsPage.Lab) },
                 onOpenLogViewer = { onPushPage(SettingsPage.LogViewer) }
             )
             SettingsPage.OnlineLyricDebug -> MiuixOnlineLyricDebugScreen(onBack = onBack)
