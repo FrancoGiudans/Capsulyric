@@ -427,7 +427,16 @@
     <string name="backup_sub_advanced_dev">Developer</string>
     <string name="backup_sub_advanced_lyric_dir">Local Lyric Directories</string>
     <string name="settings_predictive_back">Predictive Back Gesture</string>
-    <string name="settings_predictive_back_desc">Show a preview of the previous screen when swiping back. Restart to apply.</string>
+    <string name="settings_predictive_back_desc">Show a preview of the previous screen when swiping back.</string>
+    <string name="settings_predictive_back_animation">Predictive Back Animation</string>
+    <string name="settings_predictive_back_animation_desc">Choose the unified animation used by pages and sheets.</string>
+    <string name="predictive_back_animation_scale_slide">Scale slide</string>
+    <string name="predictive_back_animation_horizontal_slide">Horizontal slide</string>
+    <string name="predictive_back_animation_fade">Fade</string>
+    <string name="predictive_back_animation_vertical_slide">Vertical slide</string>
+    <string name="predictive_back_animation_zoom">Zoom</string>
+    <string name="predictive_back_animation_depth">Depth</string>
+    <string name="predictive_back_animation_flip">Flip</string>
     <string name="settings_monet_color">Monet Dynamic Color</string>
     <string name="settings_monet_color_desc">Extract accent color from your wallpaper (Android 12+). App will restart.</string>
     <string name="settings_card_blur">Media Card Blur Effect</string>

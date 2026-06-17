@@ -19,8 +19,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
+import androidx.navigationevent.NavigationEvent.Companion.EDGE_LEFT
 import androidx.navigationevent.NavigationEventInfo
 import androidx.navigationevent.NavigationEventTransitionState
 import androidx.navigationevent.compose.NavigationBackHandler
@@ -35,25 +37,49 @@ fun OverlaySheetHost(
     content: @Composable BoxScope.() -> Unit,
     sheetContent: @Composable BoxScope.() -> Unit,
 ) {
+    val context = LocalContext.current
+    val prefs = remember {
+        context.getSharedPreferences("IslandLyricsPrefs", android.content.Context.MODE_PRIVATE)
+    }
     val currentOnDismissRequest by rememberUpdatedState(onDismissRequest)
     val navEventState = rememberNavigationEventState(NavigationEventInfo.None)
+    val predictiveBackEnabled = rememberPredictiveBackEnabledState(prefs)
+    val animationStyle = rememberPredictiveBackAnimationStyleState(prefs)
     var latestGestureProgress by remember { mutableFloatStateOf(0f) }
+    var latestGestureDirection by remember { mutableFloatStateOf(1f) }
     var completedBackProgress by remember { mutableFloatStateOf(0f) }
     var closingFromBackGesture by remember { mutableStateOf(false) }
     NavigationBackHandler(
         state = navEventState,
         isBackEnabled = visible,
         onBackCompleted = {
-            completedBackProgress = latestGestureProgress.coerceIn(0f, 1f)
+            completedBackProgress = if (predictiveBackEnabled) {
+                latestGestureProgress.coerceIn(0f, 1f)
+            } else {
+                0f
+            }
+            val completedGestureEdge =
+                (navEventState.transitionState as? NavigationEventTransitionState.InProgress)
+                    ?.latestEvent
+                    ?.swipeEdge
+                    ?: EDGE_LEFT
+            latestGestureDirection = predictiveBackExitDirection(completedGestureEdge == EDGE_LEFT)
             closingFromBackGesture = true
             currentOnDismissRequest()
         }
     )
 
     val transitionState = navEventState.transitionState
-    val progressInProgress = transitionState as? NavigationEventTransitionState.InProgress
+    val progressInProgress = if (predictiveBackEnabled) {
+        transitionState as? NavigationEventTransitionState.InProgress
+    } else {
+        null
+    }
     val gestureProgress = progressInProgress?.latestEvent?.progress ?: 0f
     val isGestureActive = progressInProgress != null
+    val gestureEdge = progressInProgress?.latestEvent?.swipeEdge ?: EDGE_LEFT
+    val activeGestureDirection = predictiveBackExitDirection(gestureEdge == EDGE_LEFT)
+    val gestureDirection = if (isGestureActive) activeGestureDirection else latestGestureDirection
     LaunchedEffect(isGestureActive, gestureProgress) {
         if (isGestureActive) {
             latestGestureProgress = gestureProgress.coerceIn(0f, 1f)
@@ -86,6 +112,7 @@ fun OverlaySheetHost(
         continuingBackClose -> 1f - dismissProgress
         else -> visibilityProgress
     }.coerceIn(0f, 1f)
+    val usePredictiveAnimation = predictiveBackEnabled && (isGestureActive || continuingBackClose)
 
     Box(
         modifier = modifier
@@ -96,7 +123,15 @@ fun OverlaySheetHost(
             modifier = Modifier
                 .fillMaxSize()
                 .graphicsLayer {
-                    translationY = -backgroundShiftPx * effectiveProgress
+                    if (usePredictiveAnimation) {
+                        applyPredictiveBackUnderlayTransform(
+                            style = animationStyle,
+                            dismissProgress = dismissProgress,
+                            direction = gestureDirection
+                        )
+                    } else {
+                        translationY = -backgroundShiftPx * effectiveProgress
+                    }
                 }
         ) {
             content()
@@ -105,7 +140,15 @@ fun OverlaySheetHost(
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(scrimColor.copy(alpha = 0.08f * effectiveProgress))
+                        .background(
+                            scrimColor.copy(
+                                alpha = if (usePredictiveAnimation) {
+                                    predictiveBackUnderlayScrimAlpha(dismissProgress)
+                                } else {
+                                    0.08f * effectiveProgress
+                                }
+                            )
+                        )
                 )
             }
         }
@@ -113,28 +156,36 @@ fun OverlaySheetHost(
         if (visible || isGestureActive || visibilityProgress > 0.001f) {
             Box(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .graphicsLayer {
-                        if (isGestureActive) {
-                            val sheetShrinkProgress = gestureProgress.coerceIn(0f, 1f)
-                            val scaleXTarget = 1f - (0.12f * sheetShrinkProgress)
-                            val scaleYTarget = 1f - (0.06f * sheetShrinkProgress)
-                            scaleX = scaleXTarget
-                            scaleY = scaleYTarget
-                            translationY = size.height * 0.22f * sheetShrinkProgress
-                            alpha = 1f - (0.08f * sheetShrinkProgress)
-                        } else if (!visible) {
+                .fillMaxSize()
+                .graphicsLayer {
+                    if (isGestureActive) {
+                        applyPredictiveBackFrontTransform(
+                            style = animationStyle,
+                            progress = gestureProgress,
+                            direction = gestureDirection,
+                            pivotY = 0.5f
+                        )
+                    } else if (!visible) {
+                        if (usePredictiveAnimation) {
+                            applyPredictiveBackFrontTransform(
+                                style = animationStyle,
+                                progress = dismissProgress,
+                                direction = gestureDirection,
+                                pivotY = 0.5f
+                            )
+                        } else {
                             val slideStart = 0.22f * carriedDismissProgress
                             val slideProgress = slideStart + (1f - slideStart) * closeProgress
                             scaleX = 1f - (0.12f * dismissProgress)
                             scaleY = 1f - (0.06f * dismissProgress)
                             translationY = size.height * slideProgress
                             alpha = 1f - (0.08f * dismissProgress)
-                        } else {
-                            translationY = size.height * (1f - visibilityProgress)
-                            alpha = 0.92f + 0.08f * visibilityProgress
                         }
+                    } else {
+                        translationY = size.height * (1f - visibilityProgress)
+                        alpha = 0.92f + 0.08f * visibilityProgress
                     }
+                }
             ) {
                 sheetContent()
             }

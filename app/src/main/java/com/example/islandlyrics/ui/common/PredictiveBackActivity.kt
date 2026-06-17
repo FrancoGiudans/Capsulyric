@@ -21,7 +21,6 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalWindowInfo
@@ -50,7 +49,8 @@ fun PredictiveBackActivity(
     val prefs = remember {
         context.getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE)
     }
-    val predictiveBackEnabled = remember { prefs.getBoolean("predictive_back_enabled", true) }
+    val predictiveBackEnabled = rememberPredictiveBackEnabledState(prefs)
+    val animationStyle = rememberPredictiveBackAnimationStyleState(prefs)
 
     if (!enabled || !predictiveBackEnabled) {
         content()
@@ -80,7 +80,7 @@ fun PredictiveBackActivity(
     var isExiting by remember { mutableStateOf(false) }
     var lastEdge by remember { mutableIntStateOf(0) }
     var lastPivotY by remember { mutableFloatStateOf(0.5f) }
-    var lastScale by remember { mutableFloatStateOf(1f) }
+    var lastProgress by remember { mutableFloatStateOf(0f) }
 
     CompositionLocalProvider(
         LocalNavigationEventDispatcherOwner provides activityDispatcherOwner
@@ -111,29 +111,23 @@ fun PredictiveBackActivity(
 
         val windowInfo = LocalWindowInfo.current
         val containerHeightPx = windowInfo.containerSize.height
-        val containerWidthPx = windowInfo.containerSize.width.toFloat()
 
         val edge = progressInProgress?.latestEvent?.swipeEdge ?: 0
         val touchY = progressInProgress?.latestEvent?.touchY
         val gestureProgress = progressInProgress?.latestEvent?.progress ?: 0f
+        val isLeftEdge = edge == EDGE_LEFT
 
         if (isGestureActive) {
             lastEdge = edge
-            lastScale = 1f - (1f - 0.9f) * gestureProgress
-            lastPivotY = if (touchY != null && containerHeightPx > 0) {
-                (touchY / containerHeightPx).coerceIn(0.1f, 0.9f)
-            } else 0.5f
+            lastProgress = gestureProgress
+            lastPivotY = predictiveBackPivotY(touchY, containerHeightPx)
         }
 
-        val maxScale = 0.9f
-        val dragScale = 1f - (1f - maxScale) * gestureProgress
-        val currentPivotY = if (touchY != null && containerHeightPx > 0) {
-            (touchY / containerHeightPx).coerceIn(0.1f, 0.9f)
-        } else 0.5f
-        val currentPivotX = if (edge == EDGE_LEFT) 0.8f else 0.2f
+        val currentPivotY = predictiveBackPivotY(touchY, containerHeightPx)
 
         val exitProgress = exitAnimatable.value
-        val directionMultiplier = if (lastEdge == EDGE_LEFT) 1f else -1f
+        val gestureDirection = predictiveBackExitDirection(isLeftEdge)
+        val exitDirection = predictiveBackExitDirection(lastEdge == EDGE_LEFT)
 
         val shouldAnimate = isGestureActive || isExiting
 
@@ -142,15 +136,21 @@ fun PredictiveBackActivity(
                 .fillMaxSize()
                 .graphicsLayer {
                     if (isExiting) {
-                        val exitPivotX = if (lastEdge == EDGE_LEFT) 0.8f else 0.2f
-                        scaleX = lastScale
-                        scaleY = lastScale
-                        translationX = containerWidthPx * directionMultiplier * exitProgress
-                        transformOrigin = TransformOrigin(exitPivotX, lastPivotY)
+                        val startProgress = lastProgress.coerceIn(0f, 1f)
+                        val progress = startProgress + (1f - startProgress) * exitProgress
+                        applyPredictiveBackFrontTransform(
+                            style = animationStyle,
+                            progress = progress,
+                            direction = exitDirection,
+                            pivotY = lastPivotY
+                        )
                     } else if (isGestureActive) {
-                        scaleX = dragScale
-                        scaleY = dragScale
-                        transformOrigin = TransformOrigin(currentPivotX, currentPivotY)
+                        applyPredictiveBackFrontTransform(
+                            style = animationStyle,
+                            progress = gestureProgress,
+                            direction = gestureDirection,
+                            pivotY = currentPivotY
+                        )
                     }
                 }
                 .clip(

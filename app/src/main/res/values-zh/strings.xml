@@ -385,7 +385,7 @@
     <string name="backup_sub_advanced_dev">开发者选项</string>
     <string name="backup_sub_advanced_lyric_dir">本地歌词目录</string>
     <!-- FAQ Strings -->
-    <string name="settings_predictive_back_desc">重启应用生效</string>
+    <string name="settings_predictive_back_desc">在滑动返回时预览上一个界面。</string>
     <string name="summary_view_logs">查看日志文件</string>
     <string name="offline_mode_network_blocked">完全离线模式已开启，联网操作已被阻止</string>
     <string name="faq_title">常见问题解答</string>
@@ -647,6 +647,15 @@
     <string name="ui_style_material">Material Design</string>
     <string name="ui_style_miuix">Miuix</string>
     <string name="settings_predictive_back">预测性返回</string>
+    <string name="settings_predictive_back_animation">预测性返回动画</string>
+    <string name="settings_predictive_back_animation_desc">选择统一后用于页面和弹层的返回动画样式。</string>
+    <string name="predictive_back_animation_scale_slide">缩放滑动</string>
+    <string name="predictive_back_animation_horizontal_slide">水平滑动</string>
+    <string name="predictive_back_animation_fade">渐隐</string>
+    <string name="predictive_back_animation_vertical_slide">垂直滑动</string>
+    <string name="predictive_back_animation_zoom">缩放</string>
+    <string name="predictive_back_animation_depth">纵深</string>
+    <string name="predictive_back_animation_flip">翻转</string>
     <string name="settings_monet_color">Monet 动态取色</string>
     <string name="settings_monet_color_desc">从壁纸中提取强调色（Android 12+），应用将重启</string>
     <string name="settings_card_blur">高级材质</string>

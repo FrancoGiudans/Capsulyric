@@ -12,6 +12,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
@@ -21,6 +22,8 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.zIndex
+import androidx.navigationevent.NavigationEvent.Companion.EDGE_LEFT
+import androidx.compose.ui.platform.LocalContext
 import androidx.navigationevent.NavigationEventInfo
 import androidx.navigationevent.NavigationEventTransitionState
 import androidx.navigationevent.compose.NavigationBackHandler
@@ -37,6 +40,10 @@ fun <T> PageStackHost(
     backgroundContent: @Composable BoxScope.() -> Unit,
     pageContent: @Composable BoxScope.(T) -> Unit,
 ) {
+    val context = LocalContext.current
+    val prefs = remember {
+        context.getSharedPreferences("IslandLyricsPrefs", android.content.Context.MODE_PRIVATE)
+    }
     val displayedStack = remember { mutableStateListOf<T>() }
     val transitionProgress = remember { Animatable(1f) }
     val targetKeys = stack.map(key)
@@ -44,13 +51,23 @@ fun <T> PageStackHost(
     val scope = rememberCoroutineScope()
     val navEventState = rememberNavigationEventState(NavigationEventInfo.None)
     var latestGestureProgress by remember { mutableFloatStateOf(0f) }
+    var latestGestureDirection by remember { mutableFloatStateOf(1f) }
+    var completingBackPop by remember { mutableStateOf(false) }
+    val predictiveBackEnabled = rememberPredictiveBackEnabledState(prefs)
+    val animationStyle = rememberPredictiveBackAnimationStyleState(prefs)
     val transitionState = navEventState.transitionState
-    val gestureState = transitionState as? NavigationEventTransitionState.InProgress
+    val gestureState = if (predictiveBackEnabled) {
+        transitionState as? NavigationEventTransitionState.InProgress
+    } else {
+        null
+    }
     val gestureProgress = gestureState?.latestEvent?.progress ?: 0f
+    val gestureEdge = gestureState?.latestEvent?.swipeEdge ?: 0
 
     LaunchedEffect(targetKeys) {
         when {
             stack.size > displayedStack.size -> {
+                completingBackPop = false
                 displayedStack.addAll(stack.drop(displayedStack.size))
                 transitionProgress.snapTo(0f)
                 transitionProgress.animateTo(
@@ -68,8 +85,10 @@ fun <T> PageStackHost(
                     displayedStack.removeAt(displayedStack.lastIndex)
                 }
                 transitionProgress.snapTo(1f)
+                completingBackPop = false
             }
             targetKeys != displayedStack.map(key) -> {
+                completingBackPop = false
                 displayedStack.clear()
                 displayedStack.addAll(stack)
                 transitionProgress.snapTo(1f)
@@ -79,13 +98,24 @@ fun <T> PageStackHost(
     LaunchedEffect(gestureProgress) {
         latestGestureProgress = gestureProgress
     }
+    LaunchedEffect(gestureState, gestureEdge) {
+        if (gestureState != null) {
+            latestGestureDirection = predictiveBackExitDirection(gestureEdge == EDGE_LEFT)
+        }
+    }
 
     NavigationBackHandler(
         state = navEventState,
         isBackEnabled = displayedStack.isNotEmpty(),
         onBackCompleted = {
             scope.launch {
-                transitionProgress.snapTo((1f - latestGestureProgress).coerceIn(0f, 1f))
+                completingBackPop = true
+                val startProgress = if (predictiveBackEnabled) {
+                    (1f - latestGestureProgress).coerceIn(0f, 1f)
+                } else {
+                    1f
+                }
+                transitionProgress.snapTo(startProgress)
                 currentOnPop()
             }
         }
@@ -97,6 +127,8 @@ fun <T> PageStackHost(
         transitionProgress.value
     }.coerceIn(0f, 1f)
     val depth = displayedStack.size
+    val transitionDirection = if (gestureState != null || completingBackPop) latestGestureDirection else 1f
+    val pageStackDirection = 1f
 
     Box(
         modifier = modifier
@@ -108,7 +140,17 @@ fun <T> PageStackHost(
             zIndex = 0f,
             coverProgress = if (depth == 1) topCoverProgress else if (depth > 1) 1f else 0f,
             isUnderlay = depth > 0,
-            backdropColor = backdropColor
+            backdropColor = backdropColor,
+            usePredictiveAnimation = predictiveBackEnabled,
+            animationStyle = animationStyle,
+            direction = if (depth == 1 && (gestureState != null || completingBackPop)) {
+                transitionDirection
+            } else {
+                pageStackDirection
+            },
+            isGestureActive = gestureState != null,
+            gestureProgress = gestureProgress,
+            dismissProgress = if (depth == 1) 1f - topCoverProgress else 0f
         ) {
             backgroundContent()
         }
@@ -129,7 +171,17 @@ fun <T> PageStackHost(
                 isTop = isTop,
                 isUnderlay = isImmediateUnderlay,
                 isHiddenBelowUnderlay = index < depth - 2,
-                backdropColor = backdropColor
+                backdropColor = backdropColor,
+                usePredictiveAnimation = predictiveBackEnabled,
+                animationStyle = animationStyle,
+                direction = if ((isTop || isImmediateUnderlay) && (gestureState != null || completingBackPop)) {
+                    transitionDirection
+                } else {
+                    pageStackDirection
+                },
+                isGestureActive = isTop && gestureState != null,
+                gestureProgress = if (isTop) gestureProgress else 0f,
+                dismissProgress = 1f - pageProgress
             ) {
                 pageContent(page)
             }
@@ -145,6 +197,12 @@ private fun PageStackLayer(
     isUnderlay: Boolean = false,
     isHiddenBelowUnderlay: Boolean = false,
     backdropColor: Color,
+    usePredictiveAnimation: Boolean,
+    animationStyle: PredictiveBackAnimationStyle,
+    direction: Float,
+    isGestureActive: Boolean,
+    gestureProgress: Float,
+    dismissProgress: Float,
     content: @Composable BoxScope.() -> Unit,
 ) {
     Box(
@@ -152,18 +210,41 @@ private fun PageStackLayer(
             .fillMaxSize()
             .zIndex(zIndex)
             .graphicsLayer {
-                val width = size.width
                 when {
                     isTop -> {
-                        translationX = width * (1f - coverProgress)
-                        alpha = 0.96f + 0.04f * coverProgress
+                        if (!usePredictiveAnimation) {
+                            val width = size.width
+                            translationX = width * (1f - coverProgress)
+                            alpha = 0.96f + 0.04f * coverProgress
+                        } else if (isGestureActive) {
+                            applyPredictiveBackFrontTransform(
+                                style = animationStyle,
+                                progress = gestureProgress,
+                                direction = direction
+                            )
+                        } else {
+                            applyPredictiveBackFrontTransform(
+                                style = animationStyle,
+                                progress = 1f - coverProgress,
+                                direction = direction
+                            )
+                        }
                     }
                     isUnderlay -> {
-                        translationX = -width * 0.105f * coverProgress
-                        val scale = 1f - 0.035f * coverProgress
-                        scaleX = scale
-                        scaleY = scale
-                        alpha = 1f - 0.04f * coverProgress
+                        if (usePredictiveAnimation) {
+                            applyPredictiveBackUnderlayTransform(
+                                style = animationStyle,
+                                dismissProgress = dismissProgress,
+                                direction = direction
+                            )
+                        } else {
+                            val width = size.width
+                            translationX = -width * 0.105f * coverProgress
+                            val scale = 1f - 0.035f * coverProgress
+                            scaleX = scale
+                            scaleY = scale
+                            alpha = 1f - 0.04f * coverProgress
+                        }
                     }
                     isHiddenBelowUnderlay -> {
                         alpha = 0f
@@ -174,10 +255,15 @@ private fun PageStackLayer(
     ) {
         content()
         if (isUnderlay && coverProgress > 0f) {
+            val scrimAlpha = if (usePredictiveAnimation) {
+                predictiveBackUnderlayScrimAlpha(dismissProgress)
+            } else {
+                0.06f * coverProgress
+            }
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.06f * coverProgress))
+                    .background(Color.Black.copy(alpha = scrimAlpha))
             )
         }
     }

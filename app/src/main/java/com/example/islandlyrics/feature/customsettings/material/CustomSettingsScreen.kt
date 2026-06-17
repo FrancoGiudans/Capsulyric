@@ -6,6 +6,8 @@ import com.example.islandlyrics.ui.common.CapsulePreview
 import com.example.islandlyrics.ui.common.CapsuleRenderMode
 import com.example.islandlyrics.ui.common.LyricTextDisplayMode
 import com.example.islandlyrics.ui.common.OneUiCapsuleColorMode
+import com.example.islandlyrics.ui.common.PREF_PREDICTIVE_BACK_ENABLED
+import com.example.islandlyrics.ui.common.PredictiveBackAnimationStyle
 import com.example.islandlyrics.ui.common.SuperIslandColorSource
 import com.example.islandlyrics.ui.common.SuperIslandTextLimitConfig
 import com.example.islandlyrics.R
@@ -166,11 +168,13 @@ fun CustomSettingsScreen(
     var superIslandShareEnabled by remember { mutableStateOf(prefs.getBoolean("super_island_share_enabled", true)) }
     var superIslandShareFormat by remember { mutableStateOf(prefs.getString("super_island_share_format", "format_1") ?: "format_1") }
     var miuixEnabled by remember { mutableStateOf(prefs.getBoolean("ui_use_miuix", true)) }
-    var predictiveBackEnabled by remember { mutableStateOf(prefs.getBoolean("predictive_back_enabled", true)) }
+    var predictiveBackEnabled by remember { mutableStateOf(prefs.getBoolean(PREF_PREDICTIVE_BACK_ENABLED, true)) }
+    var predictiveBackAnimationStyle by remember { mutableStateOf(PredictiveBackAnimationStyle.read(prefs)) }
 
 
     // Dialog State for UI Style
     var showUiStyleDropdown by remember { mutableStateOf(false) }
+    var showPredictiveBackAnimationDropdown by remember { mutableStateOf(false) }
 
     // Check for HyperOS 3.0.300+
     val isLiveUpdateSupported = remember { RomUtils.isLiveUpdateSupported() }
@@ -1277,9 +1281,40 @@ fun CustomSettingsScreen(
                                     checked = predictiveBackEnabled,
                                     onCheckedChange = {
                                         predictiveBackEnabled = it
-                                        prefs.edit { putBoolean("predictive_back_enabled", it) }
+                                        prefs.edit { putBoolean(PREF_PREDICTIVE_BACK_ENABLED, it) }
                                     }
                                 )
+                                SettingsCardDivider()
+                                Box(modifier = Modifier.fillMaxWidth()) {
+                                    val predictiveBackStyles = PredictiveBackAnimationStyle.options
+                                    val predictiveBackStyleLabels = predictiveBackStyles.map { stringResource(it.labelRes) }
+                                    val currentPredictiveBackStyleIndex =
+                                        predictiveBackStyles.indexOf(predictiveBackAnimationStyle).takeIf { it >= 0 } ?: 0
+
+                                    SettingsTextItem(
+                                        title = stringResource(R.string.settings_predictive_back_animation),
+                                        subtitle = stringResource(R.string.settings_predictive_back_animation_desc),
+                                        value = predictiveBackStyleLabels[currentPredictiveBackStyleIndex],
+                                        onClick = { showPredictiveBackAnimationDropdown = true }
+                                    )
+                                    Box(modifier = Modifier.matchParentSize().wrapContentSize(Alignment.Center)) {
+                                        DropdownMenu(
+                                            expanded = showPredictiveBackAnimationDropdown,
+                                            onDismissRequest = { showPredictiveBackAnimationDropdown = false }
+                                        ) {
+                                            predictiveBackStyles.forEachIndexed { index, style ->
+                                                DropdownMenuItem(
+                                                    text = { Text(predictiveBackStyleLabels[index]) },
+                                                    onClick = {
+                                                        predictiveBackAnimationStyle = style
+                                                        PredictiveBackAnimationStyle.write(prefs, style)
+                                                        showPredictiveBackAnimationDropdown = false
+                                                    }
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
                             }
                         }
                         floatingLyricsPageIndex -> {
