@@ -620,6 +620,7 @@
     <string name="capsule_mode_super_island">小米超级岛</string>
     <string name="capsule_mode_fluid_cloud">ColorOS流体云</string>
     <string name="settings_super_island_lyric_mode">小米超级岛歌词样式</string>
+    <string name="settings_fluid_cloud_lyric_mode">流体云歌词样式</string>
     <string name="super_island_lyric_mode_standard">标准</string>
     <string name="super_island_lyric_mode_standard_desc">左侧显示播放信息，右侧显示当前歌词。适合常规中置摄像头设备。</string>
     <string name="super_island_lyric_mode_full">全歌词</string>
@@ -630,6 +631,7 @@
     <string name="settings_super_island_left_text_limit">左侧歌词字数上限</string>
     <string name="settings_super_island_colorize">为胶囊内容着色</string>
     <string name="settings_super_island_colorize_desc">为超级岛中的歌词、播放信息、胶囊边缘和进度条着色。</string>
+    <string name="settings_fluid_cloud_colorize_desc">将专辑封面取色或自定义颜色应用到流体云通知内容。</string>
     <string name="settings_super_island_color_source">取色来源</string>
     <string name="settings_super_island_color_source_desc">选择胶囊颜色使用专辑封面取色还是自定义取色。</string>
     <string name="settings_super_island_color_source_album_art">专辑封面取色</string>

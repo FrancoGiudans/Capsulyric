@@ -182,8 +182,9 @@ fun CustomSettingsScreen(
     }
     val superIslandEnabled = effectiveCapsuleRenderMode == CapsuleRenderMode.XIAOMI_SUPER_ISLAND
     val colorOsFluidCloudEnabled = effectiveCapsuleRenderMode == CapsuleRenderMode.COLOROS_FLUID_CLOUD
+    val islandStyleCapsuleEnabled = superIslandEnabled || colorOsFluidCloudEnabled
     val forceDisableScrollingForSuperIslandLyricMode =
-        isHyperOs && superIslandEnabled && superIslandLyricMode == "full"
+        islandStyleCapsuleEnabled && superIslandLyricMode == "full"
 
     fun applySuperIslandScrollForce(force: Boolean, restoreLegacyState: Boolean = false) {
         val forcedKey = "super_island_lyric_mode_forced_disable_scrolling"
@@ -538,7 +539,7 @@ fun CustomSettingsScreen(
                                     }
                                 }
 
-                                if (superIslandEnabled) {
+                                if (islandStyleCapsuleEnabled) {
                                     val lyricModeItems = buildList {
                                         add(Triple("standard", R.string.super_island_lyric_mode_standard, R.string.super_island_lyric_mode_standard_desc))
                                         add(Triple("full", R.string.super_island_lyric_mode_full, R.string.super_island_lyric_mode_full_desc))
@@ -563,7 +564,13 @@ fun CustomSettingsScreen(
                                     SettingsCardDivider()
                                     Box(modifier = Modifier.fillMaxWidth()) {
                                         SettingsTextItem(
-                                            title = stringResource(R.string.settings_super_island_lyric_mode),
+                                            title = stringResource(
+                                                if (colorOsFluidCloudEnabled) {
+                                                    R.string.settings_fluid_cloud_lyric_mode
+                                                } else {
+                                                    R.string.settings_super_island_lyric_mode
+                                                }
+                                            ),
                                             subtitle = lyricModeSubtitle,
                                             value = lyricModeDisplay,
                                             onClick = { showSuperIslandLyricModeDropdown = true }
@@ -608,7 +615,7 @@ fun CustomSettingsScreen(
                                         )
                                     }
 
-                                    if (superIslandTextLimitsLabEnabled) {
+                                    if (superIslandEnabled && superIslandTextLimitsLabEnabled) {
                                         val rightRange = SuperIslandTextLimitConfig.RIGHT_MIN_CHARS..
                                             SuperIslandTextLimitConfig.rightMaxChars(superIslandRelaxedTextLimitsLabEnabled)
                                         MaterialSuperIslandTextLimitSlider(
@@ -655,7 +662,13 @@ fun CustomSettingsScreen(
                                     SettingsCardDivider()
                                     SettingsSwitchItem(
                                         title = stringResource(R.string.settings_super_island_colorize),
-                                        subtitle = stringResource(R.string.settings_super_island_colorize_desc),
+                                        subtitle = stringResource(
+                                            if (colorOsFluidCloudEnabled) {
+                                                R.string.settings_fluid_cloud_colorize_desc
+                                            } else {
+                                                R.string.settings_super_island_colorize_desc
+                                            }
+                                        ),
                                         checked = superIslandTextColorEnabled,
                                         onCheckedChange = {
                                             superIslandTextColorEnabled = it
@@ -715,163 +728,165 @@ fun CustomSettingsScreen(
                                         }
                                     }
 
-                                    SettingsCardDivider()
-                                    SettingsSwitchItem(
-                                        title = stringResource(R.string.settings_super_island_share),
-                                        subtitle = stringResource(R.string.settings_super_island_share_desc),
-                                        checked = superIslandShareEnabled,
-                                        onCheckedChange = {
-                                            superIslandShareEnabled = it
-                                            prefs.edit { putBoolean("super_island_share_enabled", it) }
-                                        }
-                                    )
+                                    if (superIslandEnabled) {
+                                        SettingsCardDivider()
+                                        SettingsSwitchItem(
+                                            title = stringResource(R.string.settings_super_island_share),
+                                            subtitle = stringResource(R.string.settings_super_island_share_desc),
+                                            checked = superIslandShareEnabled,
+                                            onCheckedChange = {
+                                                superIslandShareEnabled = it
+                                                prefs.edit { putBoolean("super_island_share_enabled", it) }
+                                            }
+                                        )
 
-                                    if (superIslandShareEnabled) {
-                                        val formatDisplayName = when (superIslandShareFormat) {
-                                            "format_2" -> stringResource(R.string.share_format_2)
-                                            "format_3" -> stringResource(R.string.share_format_3)
-                                            else -> stringResource(R.string.share_format_1)
+                                        if (superIslandShareEnabled) {
+                                            val formatDisplayName = when (superIslandShareFormat) {
+                                                "format_2" -> stringResource(R.string.share_format_2)
+                                                "format_3" -> stringResource(R.string.share_format_3)
+                                                else -> stringResource(R.string.share_format_1)
+                                            }
+                                            SettingsCardDivider()
+                                            Box(modifier = Modifier.fillMaxWidth()) {
+                                                SettingsTextItem(
+                                                    title = stringResource(R.string.settings_super_island_share_format),
+                                                    value = formatDisplayName,
+                                                    onClick = { showShareFormatDropdown = true }
+                                                )
+                                                Box(modifier = Modifier.matchParentSize().wrapContentSize(Alignment.Center)) {
+                                                    DropdownMenu(
+                                                        expanded = showShareFormatDropdown,
+                                                        onDismissRequest = { showShareFormatDropdown = false }
+                                                    ) {
+                                                        val formats = listOf(
+                                                            "format_1" to R.string.share_format_1,
+                                                            "format_2" to R.string.share_format_2,
+                                                            "format_3" to R.string.share_format_3
+                                                        )
+                                                        formats.forEach { (formatId, nameId) ->
+                                                            DropdownMenuItem(
+                                                                text = { Text(stringResource(nameId)) },
+                                                                onClick = {
+                                                                    superIslandShareFormat = formatId
+                                                                    prefs.edit { putString("super_island_share_format", formatId) }
+                                                                    showShareFormatDropdown = false
+                                                                }
+                                                            )
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+
+                                        var blockXmsfMode by remember { mutableStateOf(XmsfBypassMode.read(prefs)) }
+                                        var blockXmsfCustomDurationMs by remember {
+                                            mutableIntStateOf(XmsfBypassMode.readCustomDurationMs(prefs))
+                                        }
+                                        var showBlockXmsfModeDropdown by remember { mutableStateOf(false) }
+                                        val currentBlockXmsfDurationText = stringResource(
+                                            R.string.settings_block_xmsf_duration_value,
+                                            blockXmsfCustomDurationMs
+                                        )
+                                        val currentBlockXmsfModeSummary = when (blockXmsfMode) {
+                                            XmsfBypassMode.DISABLED -> stringResource(R.string.settings_block_xmsf_mode_disabled_desc)
+                                            XmsfBypassMode.STANDARD -> stringResource(R.string.settings_block_xmsf_mode_standard_desc)
+                                            XmsfBypassMode.CUSTOM -> stringResource(
+                                                R.string.settings_block_xmsf_mode_custom_current_desc,
+                                                currentBlockXmsfDurationText
+                                            )
+                                            XmsfBypassMode.AGGRESSIVE -> stringResource(R.string.settings_block_xmsf_mode_aggressive_desc)
                                         }
                                         SettingsCardDivider()
                                         Box(modifier = Modifier.fillMaxWidth()) {
                                             SettingsTextItem(
-                                                title = stringResource(R.string.settings_super_island_share_format),
-                                                value = formatDisplayName,
-                                                onClick = { showShareFormatDropdown = true }
+                                                title = stringResource(R.string.settings_block_xmsf_mode),
+                                                subtitle = currentBlockXmsfModeSummary,
+                                                value = when (blockXmsfMode) {
+                                                    XmsfBypassMode.STANDARD -> stringResource(R.string.settings_block_xmsf_mode_standard)
+                                                    XmsfBypassMode.CUSTOM -> stringResource(R.string.settings_block_xmsf_mode_custom)
+                                                    XmsfBypassMode.AGGRESSIVE -> stringResource(R.string.settings_block_xmsf_mode_aggressive)
+                                                    XmsfBypassMode.DISABLED -> stringResource(R.string.settings_block_xmsf_mode_disabled)
+                                                },
+                                                onClick = { showBlockXmsfModeDropdown = true }
                                             )
                                             Box(modifier = Modifier.matchParentSize().wrapContentSize(Alignment.Center)) {
                                                 DropdownMenu(
-                                                    expanded = showShareFormatDropdown,
-                                                    onDismissRequest = { showShareFormatDropdown = false }
+                                                    expanded = showBlockXmsfModeDropdown,
+                                                    onDismissRequest = { showBlockXmsfModeDropdown = false }
                                                 ) {
-                                                    val formats = listOf(
-                                                        "format_1" to R.string.share_format_1,
-                                                        "format_2" to R.string.share_format_2,
-                                                        "format_3" to R.string.share_format_3
-                                                    )
-                                                    formats.forEach { (formatId, nameId) ->
+                                                    listOf(
+                                                        Triple(
+                                                            XmsfBypassMode.DISABLED,
+                                                            stringResource(R.string.settings_block_xmsf_mode_disabled),
+                                                            stringResource(R.string.settings_block_xmsf_mode_disabled_desc)
+                                                        ),
+                                                        Triple(
+                                                            XmsfBypassMode.STANDARD,
+                                                            stringResource(R.string.settings_block_xmsf_mode_standard),
+                                                            stringResource(R.string.settings_block_xmsf_mode_standard_desc)
+                                                        ),
+                                                        Triple(
+                                                            XmsfBypassMode.CUSTOM,
+                                                            stringResource(R.string.settings_block_xmsf_mode_custom),
+                                                            stringResource(R.string.settings_block_xmsf_mode_custom_desc)
+                                                        ),
+                                                        Triple(
+                                                            XmsfBypassMode.AGGRESSIVE,
+                                                            stringResource(R.string.settings_block_xmsf_mode_aggressive),
+                                                            stringResource(R.string.settings_block_xmsf_mode_aggressive_desc)
+                                                        )
+                                                    ).forEach { (mode, label, summary) ->
                                                         DropdownMenuItem(
-                                                            text = { Text(stringResource(nameId)) },
+                                                            text = {
+                                                                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                                                    Text(text = label)
+                                                                    Text(
+                                                                        text = summary,
+                                                                        style = MaterialTheme.typography.bodySmall,
+                                                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                                    )
+                                                                }
+                                                            },
                                                             onClick = {
-                                                                superIslandShareFormat = formatId
-                                                                prefs.edit { putString("super_island_share_format", formatId) }
-                                                                showShareFormatDropdown = false
+                                                                showBlockXmsfModeDropdown = false
+                                                                if (mode == XmsfBypassMode.DISABLED) {
+                                                                    blockXmsfMode = mode
+                                                                    XmsfBypassMode.write(prefs, mode)
+                                                                } else {
+                                                                    scope.launch {
+                                                                        try {
+                                                                            com.example.islandlyrics.integration.shizuku.requireShizukuPermissionGranted {
+                                                                                blockXmsfMode = mode
+                                                                                XmsfBypassMode.write(prefs, mode)
+                                                                            }
+                                                                        } catch (_: Exception) {
+                                                                            Toast.makeText(context, "Shizuku permission required", Toast.LENGTH_LONG).show()
+                                                                        }
+                                                                    }
+                                                                }
                                                             }
                                                         )
                                                     }
                                                 }
                                             }
                                         }
-                                    }
-
-                                    var blockXmsfMode by remember { mutableStateOf(XmsfBypassMode.read(prefs)) }
-                                    var blockXmsfCustomDurationMs by remember {
-                                        mutableIntStateOf(XmsfBypassMode.readCustomDurationMs(prefs))
-                                    }
-                                    var showBlockXmsfModeDropdown by remember { mutableStateOf(false) }
-                                    val currentBlockXmsfDurationText = stringResource(
-                                        R.string.settings_block_xmsf_duration_value,
-                                        blockXmsfCustomDurationMs
-                                    )
-                                    val currentBlockXmsfModeSummary = when (blockXmsfMode) {
-                                        XmsfBypassMode.DISABLED -> stringResource(R.string.settings_block_xmsf_mode_disabled_desc)
-                                        XmsfBypassMode.STANDARD -> stringResource(R.string.settings_block_xmsf_mode_standard_desc)
-                                        XmsfBypassMode.CUSTOM -> stringResource(
-                                            R.string.settings_block_xmsf_mode_custom_current_desc,
-                                            currentBlockXmsfDurationText
-                                        )
-                                        XmsfBypassMode.AGGRESSIVE -> stringResource(R.string.settings_block_xmsf_mode_aggressive_desc)
-                                    }
-                                    SettingsCardDivider()
-                                    Box(modifier = Modifier.fillMaxWidth()) {
-                                        SettingsTextItem(
-                                            title = stringResource(R.string.settings_block_xmsf_mode),
-                                            subtitle = currentBlockXmsfModeSummary,
-                                            value = when (blockXmsfMode) {
-                                                XmsfBypassMode.STANDARD -> stringResource(R.string.settings_block_xmsf_mode_standard)
-                                                XmsfBypassMode.CUSTOM -> stringResource(R.string.settings_block_xmsf_mode_custom)
-                                                XmsfBypassMode.AGGRESSIVE -> stringResource(R.string.settings_block_xmsf_mode_aggressive)
-                                                XmsfBypassMode.DISABLED -> stringResource(R.string.settings_block_xmsf_mode_disabled)
-                                            },
-                                            onClick = { showBlockXmsfModeDropdown = true }
-                                        )
-                                        Box(modifier = Modifier.matchParentSize().wrapContentSize(Alignment.Center)) {
-                                            DropdownMenu(
-                                                expanded = showBlockXmsfModeDropdown,
-                                                onDismissRequest = { showBlockXmsfModeDropdown = false }
-                                            ) {
-                                                listOf(
-                                                    Triple(
-                                                        XmsfBypassMode.DISABLED,
-                                                        stringResource(R.string.settings_block_xmsf_mode_disabled),
-                                                        stringResource(R.string.settings_block_xmsf_mode_disabled_desc)
-                                                    ),
-                                                    Triple(
-                                                        XmsfBypassMode.STANDARD,
-                                                        stringResource(R.string.settings_block_xmsf_mode_standard),
-                                                        stringResource(R.string.settings_block_xmsf_mode_standard_desc)
-                                                    ),
-                                                    Triple(
-                                                        XmsfBypassMode.CUSTOM,
-                                                        stringResource(R.string.settings_block_xmsf_mode_custom),
-                                                        stringResource(R.string.settings_block_xmsf_mode_custom_desc)
-                                                    ),
-                                                    Triple(
-                                                        XmsfBypassMode.AGGRESSIVE,
-                                                        stringResource(R.string.settings_block_xmsf_mode_aggressive),
-                                                        stringResource(R.string.settings_block_xmsf_mode_aggressive_desc)
-                                                    )
-                                                ).forEach { (mode, label, summary) ->
-                                                    DropdownMenuItem(
-                                                        text = {
-                                                            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                                                                Text(text = label)
-                                                                Text(
-                                                                    text = summary,
-                                                                    style = MaterialTheme.typography.bodySmall,
-                                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                                                )
-                                                            }
-                                                        },
-                                                        onClick = {
-                                                            showBlockXmsfModeDropdown = false
-                                                            if (mode == XmsfBypassMode.DISABLED) {
-                                                                blockXmsfMode = mode
-                                                                XmsfBypassMode.write(prefs, mode)
-                                                            } else {
-                                                                scope.launch {
-                                                                    try {
-                                                                        com.example.islandlyrics.integration.shizuku.requireShizukuPermissionGranted {
-                                                                            blockXmsfMode = mode
-                                                                            XmsfBypassMode.write(prefs, mode)
-                                                                        }
-                                                                    } catch (_: Exception) {
-                                                                        Toast.makeText(context, "Shizuku permission required", Toast.LENGTH_LONG).show()
-                                                                    }
-                                                                }
-                                                            }
-                                                        }
-                                                    )
+                                        if (blockXmsfMode == XmsfBypassMode.CUSTOM) {
+                                            MaterialXmsfBypassDurationSlider(
+                                                title = stringResource(R.string.settings_block_xmsf_custom_duration),
+                                                summary = stringResource(R.string.settings_block_xmsf_custom_duration_desc),
+                                                value = blockXmsfCustomDurationMs,
+                                                onValueChange = { newDurationMs ->
+                                                    blockXmsfCustomDurationMs = newDurationMs
+                                                    XmsfBypassMode.writeCustomDurationMs(prefs, newDurationMs)
                                                 }
-                                            }
+                                            )
+                                            Text(
+                                                text = stringResource(R.string.settings_block_xmsf_custom_duration_warning),
+                                                modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp),
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
                                         }
-                                    }
-                                    if (blockXmsfMode == XmsfBypassMode.CUSTOM) {
-                                        MaterialXmsfBypassDurationSlider(
-                                            title = stringResource(R.string.settings_block_xmsf_custom_duration),
-                                            summary = stringResource(R.string.settings_block_xmsf_custom_duration_desc),
-                                            value = blockXmsfCustomDurationMs,
-                                            onValueChange = { newDurationMs ->
-                                                blockXmsfCustomDurationMs = newDurationMs
-                                                XmsfBypassMode.writeCustomDurationMs(prefs, newDurationMs)
-                                            }
-                                        )
-                                        Text(
-                                            text = stringResource(R.string.settings_block_xmsf_custom_duration_warning),
-                                            modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp),
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
                                     }
 
                                 }

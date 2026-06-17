@@ -341,6 +341,7 @@
     <string name="capsule_mode_super_island">Xiaomi Super Island</string>
     <string name="capsule_mode_fluid_cloud">ColorOS Fluid Cloud</string>
     <string name="settings_super_island_lyric_mode">Super Island Lyric Style</string>
+    <string name="settings_fluid_cloud_lyric_mode">Fluid Cloud Lyric Style</string>
     <string name="super_island_lyric_mode_standard">Standard</string>
     <string name="super_island_lyric_mode_standard_desc">Shows playback info on the left and the current lyric on the right. Best for centered camera cutouts.</string>
     <string name="super_island_lyric_mode_full">Full Lyrics</string>
@@ -357,6 +358,7 @@
     <string name="settings_disable_scrolling_desc">Displays static text only. Prevents ALL scrolling, regardless of lyric type.</string>
     <string name="settings_super_island_colorize">Colorize Capsule Content</string>
     <string name="settings_super_island_colorize_desc">Apply color to Super Island lyrics, playback info, capsule edge, and progress bar.</string>
+    <string name="settings_fluid_cloud_colorize_desc">Apply the selected album-art or custom color to Fluid Cloud notification content.</string>
     <string name="settings_super_island_color_source">Color Source</string>
     <string name="settings_super_island_color_source_desc">Choose whether capsule colors come from album art or a custom color.</string>
     <string name="settings_super_island_color_source_album_art">Album Art Color</string>

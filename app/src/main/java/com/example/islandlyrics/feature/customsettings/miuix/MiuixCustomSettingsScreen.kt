@@ -153,8 +153,9 @@ fun MiuixCustomSettingsScreen(
     }
     val superIslandEnabled = effectiveCapsuleRenderMode == CapsuleRenderMode.XIAOMI_SUPER_ISLAND
     val colorOsFluidCloudEnabled = effectiveCapsuleRenderMode == CapsuleRenderMode.COLOROS_FLUID_CLOUD
+    val islandStyleCapsuleEnabled = superIslandEnabled || colorOsFluidCloudEnabled
     val forceDisableScrollingForSuperIslandLyricMode =
-        isHyperOs && superIslandEnabled && superIslandLyricMode == "full"
+        islandStyleCapsuleEnabled && superIslandLyricMode == "full"
 
     fun applySuperIslandScrollForce(force: Boolean, restoreLegacyState: Boolean = false) {
         val forcedKey = "super_island_lyric_mode_forced_disable_scrolling"
@@ -398,7 +399,7 @@ fun MiuixCustomSettingsScreen(
                                                 }
                                             )
                                         }
-                                        if (superIslandEnabled || !isLiveUpdateSupported) {
+                                        if (islandStyleCapsuleEnabled) {
                                             val lyricModeItems = buildList {
                                                 add(Triple("standard", R.string.super_island_lyric_mode_standard, R.string.super_island_lyric_mode_standard_desc))
                                                 add(Triple("full", R.string.super_island_lyric_mode_full, R.string.super_island_lyric_mode_full_desc))
@@ -413,7 +414,13 @@ fun MiuixCustomSettingsScreen(
                                             }
 
                                             SuperDropdown(
-                                                title = stringResource(R.string.settings_super_island_lyric_mode),
+                                                title = stringResource(
+                                                    if (colorOsFluidCloudEnabled) {
+                                                        R.string.settings_fluid_cloud_lyric_mode
+                                                    } else {
+                                                        R.string.settings_super_island_lyric_mode
+                                                    }
+                                                ),
                                                 entry = DropdownEntry(
                                                     items = lyricModeItems.map { (modeId, nameId, descId) ->
                                                         DropdownItem(
@@ -446,7 +453,7 @@ fun MiuixCustomSettingsScreen(
                                                 )
                                             }
 
-                                            if (superIslandTextLimitsLabEnabled) {
+                                            if (superIslandEnabled && superIslandTextLimitsLabEnabled) {
                                                 val rightRange = SuperIslandTextLimitConfig.RIGHT_MIN_CHARS..
                                                     SuperIslandTextLimitConfig.rightMaxChars(superIslandRelaxedTextLimitsLabEnabled)
                                                 MiuixSuperIslandTextLimitSlider(
@@ -494,7 +501,13 @@ fun MiuixCustomSettingsScreen(
 
                                             SuperSwitch(
                                                 title = stringResource(R.string.settings_super_island_colorize),
-                                                summary = stringResource(R.string.settings_super_island_colorize_desc),
+                                                summary = stringResource(
+                                                    if (colorOsFluidCloudEnabled) {
+                                                        R.string.settings_fluid_cloud_colorize_desc
+                                                    } else {
+                                                        R.string.settings_super_island_colorize_desc
+                                                    }
+                                                ),
                                                 checked = superIslandTextColorEnabled,
                                                 onCheckedChange = {
                                                     superIslandTextColorEnabled = it
@@ -548,17 +561,18 @@ fun MiuixCustomSettingsScreen(
                                                 }
                                             }
 
-                                            SuperSwitch(
-                                                title = stringResource(R.string.settings_super_island_share),
-                                                summary = stringResource(R.string.settings_super_island_share_desc),
-                                                checked = superIslandShareEnabled,
-                                                onCheckedChange = {
-                                                    superIslandShareEnabled = it
-                                                    prefs.edit().putBoolean("super_island_share_enabled", it).apply()
-                                                }
-                                            )
+                                            if (superIslandEnabled) {
+                                                SuperSwitch(
+                                                    title = stringResource(R.string.settings_super_island_share),
+                                                    summary = stringResource(R.string.settings_super_island_share_desc),
+                                                    checked = superIslandShareEnabled,
+                                                    onCheckedChange = {
+                                                        superIslandShareEnabled = it
+                                                        prefs.edit().putBoolean("super_island_share_enabled", it).apply()
+                                                    }
+                                                )
 
-                                            if (superIslandShareEnabled) {
+                                                if (superIslandShareEnabled) {
                                                 val shareFormats = listOf("format_1", "format_2", "format_3")
                                                 val shareFormatNames = listOf(
                                                     stringResource(R.string.share_format_1),
@@ -579,7 +593,7 @@ fun MiuixCustomSettingsScreen(
                                                 )
                                             }
 
-                                            val currentBlockXmsfDurationText = stringResource(
+                                                val currentBlockXmsfDurationText = stringResource(
                                                 R.string.settings_block_xmsf_duration_value,
                                                 blockXmsfCustomDurationMs
                                             )
@@ -656,6 +670,7 @@ fun MiuixCustomSettingsScreen(
                                                         XmsfBypassMode.writeCustomDurationMs(prefs, newDurationMs)
                                                     }
                                                 )
+                                            }
                                             }
 
                                         }
