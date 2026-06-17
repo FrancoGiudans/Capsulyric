@@ -26,8 +26,8 @@
 *   **CN:** 要求 **Android 16+**。针对小米设备，需要 **HyperOS 3.0.300+** 版本。
 
 ### 2. Xiaomi Super Island (小米超级岛)
-*   **EN:** Requires **HyperOS 3.0** & **Android 15+**. System requires **Root access** or **Shizuku**.
-*   **CN:** 要求 **HyperOS 3.0** 且 **Android 15+**。系统需要 **Root 权限** 或 **Shizuku** 环境。
+*   **EN:** Requires **HyperOS 3.0**. System requires **Root access** or **Shizuku**.
+*   **CN:** 要求 **HyperOS 3.0**。系统需要 **Root 权限** 或 **Shizuku** 环境。
 
 ---
 
@@ -36,14 +36,16 @@
 | Method / 方式 | Description / 说明 |
 | :--- | :--- |
 | **Media Notification** | Detects lyrics from standard notifications. / 从标准通知栏提取。 |
-| **Online Lyrics** | Fetches from online servers. / 从互联网服务器获取。 |
+| **Online Lyrics** | Fetches from online servers. Supports translations & romanization. / 从互联网服务器获取，支持翻译与罗马音。 |
 | **Superlyric API** | High accuracy (Root/LSPosed required). / 准确度高（需 Root/LSPosed）。 |
 | **Lyric Getter** | Supports Meizu & LSPatch (non-root). / 支持魅族状态栏歌词及免 Root 注入。 |
+| **Lyricon API** | Root/LSPosed required. / 需 Root/LSPosed。 |
+| **Local Lyric** | Based on local .lrc files with auto-matching. / 基于本地 .lrc 歌词文件，支持自动匹配。 |
 
 ---
 
 ## Screenshots (效果展示)
-*(展示机型：Xiaomi 15 | 系统版本：HyperOS 3.0.300.7 Beta)*
+*(展示机型：Xiaomi 15 | 系统版本：HyperOS 3.0.300.7 Beta | 展示应用版本：Version.26.6.2.Stable_C488)*
 
 ### App UI (界面风格)
 <p align="center">
@@ -61,8 +63,8 @@
 ### Notification (通知形态)
 <p align="center">
   <b>Live Update (实况通知)</b> &nbsp;&nbsp;vs&nbsp;&nbsp; <b>Xiaomi Super Island (小米超级岛)</b><br><br>
-  <img src="screenshots/2.png" width="45%" />
-  <img src="screenshots/miuix-2.png" width="45%" />
+  <img src="screenshots/2.jpg" width="45%" />
+  <img src="screenshots/miuix-2.jpg" width="45%" />
 </p>
 
 ### Capsule (胶囊形态)
@@ -124,7 +126,15 @@
 </details>
 
 <details>
-<summary><b>Q5: 如何反馈问题？ (How to submit feedback?)</b></summary>
+<summary><b>Q5: 如何备份/恢复设置？ (How to backup/restore settings?)</b></summary>
+
+> **CN:** 前往 设置 → 备份与恢复，支持按类别（胶囊、通知、外观、通用、解析规则、高级等）选择导出或导入。
+>
+> **EN:** Go to Settings → Backup & Restore. Supports granular category selection (Capsule, Notifications, Appearance, General, Parser Rules, Advanced, etc.) for export/import.
+</details>
+
+<details>
+<summary><b>Q6: 如何反馈问题？ (How to submit feedback?)</b></summary>
 
 > **CN:** 请前往 [GitHub Issues](https://github.com/FrancoGiudans/Capsulyric/issues/new?template=bug_report.yml) 提交反馈，并附带通过点击版本号唤出的 **Log Console** 日志。
 >
@@ -135,8 +145,27 @@
 
 ## Privacy (隐私说明)
 
-*   **Offline Mode**: No data transmission. / 不传输任何数据。
-*   **Online Mode**: Only playback info sent for lyrics. / 仅发送播放信息以获取歌词。
+This app needs to read notifications to get lyrics and playback information.
+
+We only read media playback notification content, including: album art, artist, song title, album name, and the package name of the app currently playing media.
+The above information is used solely for:
+- Reading and displaying playback information
+- Extracting lyrics from media notifications
+- Matching online lyrics when Online Lyrics is enabled
+- App self-logging for diagnostics
+
+We do NOT read chat messages, verification codes, emails, or any non-media notifications. No personal data is collected or transmitted. All processing is done locally on your device.
+
+本应用需要读取通知以获取歌词与播放信息。
+
+我们仅会读取媒体播放通知的内容，包括：专辑图片、歌手、歌名、专辑名，以及正在播放媒体的应用包名。
+上述信息仅用于以下用途：
+- 播放信息的读取和显示
+- 媒体通知歌词的提取
+- 开启在线歌词后用以匹配在线歌词
+- 应用记录自身日志
+
+我们不会读取您的聊天消息、验证码、邮件等非媒体类通知，也不会收集或上传您的任何个人数据。所有处理均在本地完成。
 
 ---
 
