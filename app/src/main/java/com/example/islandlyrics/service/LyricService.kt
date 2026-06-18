@@ -35,7 +35,6 @@ import com.example.islandlyrics.ui.common.LyricDisplayManager
 import com.example.islandlyrics.ui.common.FloatingLyricsRenderer
 import com.example.islandlyrics.ui.common.SuperIslandHandler
 import com.example.islandlyrics.ui.common.CapsuleRenderMode
-import com.example.islandlyrics.ui.common.ColorOsFluidCloudHandler
 
 class LyricService : Service() {
 
@@ -207,7 +206,6 @@ class LyricService : Service() {
     private var invisibleToggle = false
     private var capsuleHandler: LyricCapsuleHandler? = null
     private lateinit var superIslandHandler: SuperIslandHandler
-    private lateinit var colorOsFluidCloudHandler: ColorOsFluidCloudHandler
     private lateinit var displayManager: LyricDisplayManager
     private var floatingLyricsRenderer: FloatingLyricsRenderer? = null
     private var capsuleRenderMode = CapsuleRenderMode.XIAOMI_SUPER_ISLAND
@@ -271,7 +269,6 @@ class LyricService : Service() {
             capsuleHandler = LyricCapsuleHandler(this, this)
         }
         superIslandHandler = SuperIslandHandler(this, this)
-        colorOsFluidCloudHandler = ColorOsFluidCloudHandler(this, this)
         floatingLyricsRenderer = FloatingLyricsRenderer(this)
         displayManager = LyricDisplayManager(this).apply {
             onStateUpdated = { state ->
@@ -282,8 +279,7 @@ class LyricService : Service() {
         renderModeCoordinator = RenderModeCoordinator(
             displayManager,
             capsuleHandler,
-            superIslandHandler,
-            colorOsFluidCloudHandler
+            superIslandHandler
         )
         renderModeCoordinator!!.setMode(capsuleRenderMode)
         delayedStopController = DelayedStopController(
@@ -365,7 +361,7 @@ class LyricService : Service() {
         if (BuildConfig.DEBUG) {
             AppLogger.getInstance().log(
                 TAG,
-                "[NotifyTrace] onStartCommand action=$action startId=$startId isAlive=$isAlive mode=$capsuleRenderMode superRunning=${superIslandHandler.isRunning} capsuleRunning=${capsuleHandler?.isRunning()} fluidRunning=${colorOsFluidCloudHandler.isRunning}"
+                "[NotifyTrace] onStartCommand action=$action startId=$startId isAlive=$isAlive mode=$capsuleRenderMode superRunning=${superIslandHandler.isRunning} capsuleRunning=${capsuleHandler?.isRunning()}"
             )
         }
 
@@ -386,7 +382,6 @@ class LyricService : Service() {
         // CRITICAL FIX: Prioritize the Rich Capsule Notification if it's already active
         // 3. Promote to foreground (avoid redundant channel creation)
         if (superIslandHandler.isRunning == true ||
-            colorOsFluidCloudHandler.isRunning == true ||
             capsuleHandler?.isRunning() == true
         ) {
             displayManager.forceUpdate()

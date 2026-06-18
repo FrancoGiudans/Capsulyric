@@ -339,9 +339,7 @@
     <string name="settings_capsule_mode">Capsule Mode</string>
     <string name="capsule_mode_live_update">Live Update</string>
     <string name="capsule_mode_super_island">Xiaomi Super Island</string>
-    <string name="capsule_mode_fluid_cloud">ColorOS Fluid Cloud</string>
     <string name="settings_super_island_lyric_mode">Super Island Lyric Style</string>
-    <string name="settings_fluid_cloud_lyric_mode">Fluid Cloud Lyric Style</string>
     <string name="super_island_lyric_mode_standard">Standard</string>
     <string name="super_island_lyric_mode_standard_desc">Shows playback info on the left and the current lyric on the right. Best for centered camera cutouts.</string>
     <string name="super_island_lyric_mode_full">Full Lyrics</string>
@@ -358,7 +356,6 @@
     <string name="settings_disable_scrolling_desc">Displays static text only. Prevents ALL scrolling, regardless of lyric type.</string>
     <string name="settings_super_island_colorize">Colorize Capsule Content</string>
     <string name="settings_super_island_colorize_desc">Apply color to Super Island lyrics, playback info, capsule edge, and progress bar.</string>
-    <string name="settings_fluid_cloud_colorize_desc">Apply the selected album-art or custom color to Fluid Cloud notification content.</string>
     <string name="settings_super_island_color_source">Color Source</string>
     <string name="settings_super_island_color_source_desc">Choose whether capsule colors come from album art or a custom color.</string>
     <string name="settings_super_island_color_source_album_art">Album Art Color</string>
@@ -695,8 +692,6 @@ Within the log interface, select the share/export icon. You can specify a timefr
     <string name="diag_lab_super_island_text_limits_desc">Show controls for tuning the left and right Super Island text limits in Personalization.</string>
     <string name="diag_lab_super_island_relaxed_text_limits_title">Relax Super Island Text Limits</string>
     <string name="diag_lab_super_island_relaxed_text_limits_desc">Allow larger ranges in Super Island text limit controls. Intended for testing on devices without a centered cutout.</string>
-    <string name="diag_lab_coloros_fluid_cloud_title">ColorOS Fluid Cloud</string>
-    <string name="diag_lab_coloros_fluid_cloud_desc">Show the ColorOS Fluid Cloud option in Capsule Mode. Uses the OPPO media template when SeedlingSupportSDK is available; otherwise falls back to a normal notification.</string>
     <string name="diag_lab_experiment_updates_title">Receive Test Builds</string>
     <string name="diag_lab_experiment_updates_desc">Show the Experiment channel and receive experimental builds from the testing branch.</string>
     <string name="diag_lab_scroll_end_haptic_title">Scroll End Haptic</string>

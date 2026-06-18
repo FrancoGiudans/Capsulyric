@@ -147,7 +147,6 @@ fun CustomSettingsScreen(
     var oneuiCapsuleColorMode by remember { mutableStateOf(OneUiCapsuleColorMode.read(prefs)) }
 
     var capsuleRenderMode by remember { mutableStateOf(CapsuleRenderMode.read(prefs)) }
-    var colorOsFluidCloudLabEnabled by remember { mutableStateOf(LabFeatureManager.isColorOsFluidCloudEnabled(prefs)) }
     var superIslandLyricMode by remember { mutableStateOf(prefs.getString("super_island_lyric_mode", "standard") ?: "standard") }
     var superIslandFullLyricShowLeftCover by remember { mutableStateOf(prefs.getBoolean("super_island_full_lyric_show_left_cover", true)) }
     var superIslandTextColorEnabled by remember { mutableStateOf(prefs.getBoolean("super_island_text_color_enabled", false)) }
@@ -181,8 +180,7 @@ fun CustomSettingsScreen(
         capsuleRenderMode
     }
     val superIslandEnabled = effectiveCapsuleRenderMode == CapsuleRenderMode.XIAOMI_SUPER_ISLAND
-    val colorOsFluidCloudEnabled = effectiveCapsuleRenderMode == CapsuleRenderMode.COLOROS_FLUID_CLOUD
-    val islandStyleCapsuleEnabled = superIslandEnabled || colorOsFluidCloudEnabled
+    val islandStyleCapsuleEnabled = superIslandEnabled
     val forceDisableScrollingForSuperIslandLyricMode =
         islandStyleCapsuleEnabled && superIslandLyricMode == "full"
 
@@ -240,7 +238,6 @@ fun CustomSettingsScreen(
         superIslandAdvancedStyleLabEnabled = LabFeatureManager.isSuperIslandAdvancedStyleEnabled(prefs)
         superIslandTextLimitsLabEnabled = LabFeatureManager.isSuperIslandTextLimitsEnabled(prefs)
         superIslandRelaxedTextLimitsLabEnabled = LabFeatureManager.isSuperIslandRelaxedTextLimitsEnabled(prefs)
-        colorOsFluidCloudLabEnabled = LabFeatureManager.isColorOsFluidCloudEnabled(prefs)
         superIslandNotificationStyle = LabFeatureManager.sanitizeSuperIslandNotificationStyle(context)
     }
     LaunchedEffect(forceDisableScrollingForSuperIslandLyricMode) {
@@ -456,19 +453,14 @@ fun CustomSettingsScreen(
                                 } // end SettingsCard (OneUI)
                             }
 
-                            if (isHyperOs || colorOsFluidCloudLabEnabled) {
+                            if (isHyperOs) {
                                 Spacer(modifier = Modifier.height(8.dp))
                                 SettingsCard {
-                                if (isLiveUpdateSupported || colorOsFluidCloudLabEnabled) {
+                                if (isLiveUpdateSupported) {
                                     val capsuleModeItems = buildList {
-                                        if (isLiveUpdateSupported) {
-                                            add(CapsuleRenderMode.LIVE_UPDATE to stringResource(R.string.capsule_mode_live_update))
-                                        }
+                                        add(CapsuleRenderMode.LIVE_UPDATE to stringResource(R.string.capsule_mode_live_update))
                                         if (isHyperOs) {
                                             add(CapsuleRenderMode.XIAOMI_SUPER_ISLAND to stringResource(R.string.capsule_mode_super_island))
-                                        }
-                                        if (colorOsFluidCloudLabEnabled) {
-                                            add(CapsuleRenderMode.COLOROS_FLUID_CLOUD to stringResource(R.string.capsule_mode_fluid_cloud))
                                         }
                                     }
                                     val capsuleModes = capsuleModeItems.map { it.first }
@@ -501,7 +493,7 @@ fun CustomSettingsScreen(
                                     }
                                 }
 
-                                if (isLiveUpdateSupported && !superIslandEnabled && !colorOsFluidCloudEnabled) {
+                                if (isLiveUpdateSupported && !superIslandEnabled) {
                                     val styleDisplayName = when (iconStyle) {
                                         "advanced" -> stringResource(R.string.icon_style_advanced)
                                         "album_art" -> stringResource(R.string.icon_style_album_art)
@@ -564,13 +556,7 @@ fun CustomSettingsScreen(
                                     SettingsCardDivider()
                                     Box(modifier = Modifier.fillMaxWidth()) {
                                         SettingsTextItem(
-                                            title = stringResource(
-                                                if (colorOsFluidCloudEnabled) {
-                                                    R.string.settings_fluid_cloud_lyric_mode
-                                                } else {
-                                                    R.string.settings_super_island_lyric_mode
-                                                }
-                                            ),
+                                            title = stringResource(R.string.settings_super_island_lyric_mode),
                                             subtitle = lyricModeSubtitle,
                                             value = lyricModeDisplay,
                                             onClick = { showSuperIslandLyricModeDropdown = true }
@@ -662,13 +648,7 @@ fun CustomSettingsScreen(
                                     SettingsCardDivider()
                                     SettingsSwitchItem(
                                         title = stringResource(R.string.settings_super_island_colorize),
-                                        subtitle = stringResource(
-                                            if (colorOsFluidCloudEnabled) {
-                                                R.string.settings_fluid_cloud_colorize_desc
-                                            } else {
-                                                R.string.settings_super_island_colorize_desc
-                                            }
-                                        ),
+                                        subtitle = stringResource(R.string.settings_super_island_colorize_desc),
                                         checked = superIslandTextColorEnabled,
                                         onCheckedChange = {
                                             superIslandTextColorEnabled = it
@@ -942,7 +922,7 @@ fun CustomSettingsScreen(
                                             "miplay" to R.string.settings_action_style_miplay
                                         )
                                         val styles = allStyles.filter { (styleId, _) ->
-                                            if (styleId == "miplay") isLiveUpdateSupported && !superIslandEnabled && !colorOsFluidCloudEnabled else true
+                                            if (styleId == "miplay") isLiveUpdateSupported && !superIslandEnabled else true
                                         }
                                         styles.forEach { (styleId, nameId) ->
                                             DropdownMenuItem(

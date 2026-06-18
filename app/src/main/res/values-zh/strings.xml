@@ -618,9 +618,7 @@
     <string name="settings_capsule_mode">胶囊模式</string>
     <string name="capsule_mode_live_update">Live Update</string>
     <string name="capsule_mode_super_island">小米超级岛</string>
-    <string name="capsule_mode_fluid_cloud">ColorOS流体云</string>
     <string name="settings_super_island_lyric_mode">小米超级岛歌词样式</string>
-    <string name="settings_fluid_cloud_lyric_mode">流体云歌词样式</string>
     <string name="super_island_lyric_mode_standard">标准</string>
     <string name="super_island_lyric_mode_standard_desc">左侧显示播放信息，右侧显示当前歌词。适合常规中置摄像头设备。</string>
     <string name="super_island_lyric_mode_full">全歌词</string>
@@ -631,7 +629,6 @@
     <string name="settings_super_island_left_text_limit">左侧歌词字数上限</string>
     <string name="settings_super_island_colorize">为胶囊内容着色</string>
     <string name="settings_super_island_colorize_desc">为超级岛中的歌词、播放信息、胶囊边缘和进度条着色。</string>
-    <string name="settings_fluid_cloud_colorize_desc">将专辑封面取色或自定义颜色应用到流体云通知内容。</string>
     <string name="settings_super_island_color_source">取色来源</string>
     <string name="settings_super_island_color_source_desc">选择胶囊颜色使用专辑封面取色还是自定义取色。</string>
     <string name="settings_super_island_color_source_album_art">专辑封面取色</string>
@@ -686,8 +683,6 @@
     <string name="diag_lab_super_island_text_limits_desc">开启后，个性化设置的胶囊页会显示左右两侧字数上限调节。</string>
     <string name="diag_lab_super_island_relaxed_text_limits_title">超级岛字数上限放宽</string>
     <string name="diag_lab_super_island_relaxed_text_limits_desc">开启后，超级岛字数上限调节可使用更大的范围。适合无中置遮挡设备自行测试。</string>
-    <string name="diag_lab_coloros_fluid_cloud_title">ColorOS流体云</string>
-    <string name="diag_lab_coloros_fluid_cloud_desc">开启后，个性化设置的胶囊模式会显示流体云选项。检测到 SeedlingSupportSDK 时使用 OPPO 音乐模板，否则回退为普通通知。</string>
     <string name="diag_lab_experiment_updates_title">接收测试版本</string>
     <string name="diag_lab_experiment_updates_desc">显示 Experiment 通道，并接收来自测试分支的实验版本。</string>
     <string name="diag_lab_scroll_end_haptic_title">边缘滚动触感反馈</string>

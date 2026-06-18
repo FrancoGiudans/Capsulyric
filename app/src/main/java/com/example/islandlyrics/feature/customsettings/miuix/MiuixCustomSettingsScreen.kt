@@ -102,7 +102,6 @@ fun MiuixCustomSettingsScreen(
     var oneuiCapsuleColorMode by remember { mutableStateOf(OneUiCapsuleColorMode.read(prefs)) }
 
     var capsuleRenderMode by remember { mutableStateOf(CapsuleRenderMode.read(prefs)) }
-    var colorOsFluidCloudLabEnabled by remember { mutableStateOf(LabFeatureManager.isColorOsFluidCloudEnabled(prefs)) }
     var superIslandLyricMode by remember { mutableStateOf(prefs.getString("super_island_lyric_mode", "standard") ?: "standard") }
     var superIslandFullLyricShowLeftCover by remember { mutableStateOf(prefs.getBoolean("super_island_full_lyric_show_left_cover", true)) }
     var superIslandTextColorEnabled by remember { mutableStateOf(prefs.getBoolean("super_island_text_color_enabled", false)) }
@@ -152,8 +151,7 @@ fun MiuixCustomSettingsScreen(
         capsuleRenderMode
     }
     val superIslandEnabled = effectiveCapsuleRenderMode == CapsuleRenderMode.XIAOMI_SUPER_ISLAND
-    val colorOsFluidCloudEnabled = effectiveCapsuleRenderMode == CapsuleRenderMode.COLOROS_FLUID_CLOUD
-    val islandStyleCapsuleEnabled = superIslandEnabled || colorOsFluidCloudEnabled
+    val islandStyleCapsuleEnabled = superIslandEnabled
     val forceDisableScrollingForSuperIslandLyricMode =
         islandStyleCapsuleEnabled && superIslandLyricMode == "full"
 
@@ -214,7 +212,6 @@ fun MiuixCustomSettingsScreen(
         superIslandTextLimitsLabEnabled = LabFeatureManager.isSuperIslandTextLimitsEnabled(prefs)
         superIslandRelaxedTextLimitsLabEnabled = LabFeatureManager.isSuperIslandRelaxedTextLimitsEnabled(prefs)
         floatingLyricsLabEnabled = LabFeatureManager.isFloatingLyricsEnabled(prefs)
-        colorOsFluidCloudLabEnabled = LabFeatureManager.isColorOsFluidCloudEnabled(prefs)
         superIslandNotificationStyle = LabFeatureManager.sanitizeSuperIslandNotificationStyle(context)
     }
     LaunchedEffect(forceDisableScrollingForSuperIslandLyricMode) {
@@ -372,17 +369,12 @@ fun MiuixCustomSettingsScreen(
                                             }
                                         )
                                     }
-                                    if (isHyperOs || colorOsFluidCloudLabEnabled) {
-                                        if (isLiveUpdateSupported || colorOsFluidCloudLabEnabled) {
+                                    if (isHyperOs) {
+                                        if (isLiveUpdateSupported) {
                                             val capsuleModeItems = buildList {
-                                                if (isLiveUpdateSupported) {
-                                                    add(CapsuleRenderMode.LIVE_UPDATE to stringResource(R.string.capsule_mode_live_update))
-                                                }
+                                                add(CapsuleRenderMode.LIVE_UPDATE to stringResource(R.string.capsule_mode_live_update))
                                                 if (isHyperOs) {
                                                     add(CapsuleRenderMode.XIAOMI_SUPER_ISLAND to stringResource(R.string.capsule_mode_super_island))
-                                                }
-                                                if (colorOsFluidCloudLabEnabled) {
-                                                    add(CapsuleRenderMode.COLOROS_FLUID_CLOUD to stringResource(R.string.capsule_mode_fluid_cloud))
                                                 }
                                             }
                                             val capsuleModes = capsuleModeItems.map { it.first }
@@ -414,13 +406,7 @@ fun MiuixCustomSettingsScreen(
                                             }
 
                                             SuperDropdown(
-                                                title = stringResource(
-                                                    if (colorOsFluidCloudEnabled) {
-                                                        R.string.settings_fluid_cloud_lyric_mode
-                                                    } else {
-                                                        R.string.settings_super_island_lyric_mode
-                                                    }
-                                                ),
+                                                title = stringResource(R.string.settings_super_island_lyric_mode),
                                                 entry = DropdownEntry(
                                                     items = lyricModeItems.map { (modeId, nameId, descId) ->
                                                         DropdownItem(
@@ -501,13 +487,7 @@ fun MiuixCustomSettingsScreen(
 
                                             SuperSwitch(
                                                 title = stringResource(R.string.settings_super_island_colorize),
-                                                summary = stringResource(
-                                                    if (colorOsFluidCloudEnabled) {
-                                                        R.string.settings_fluid_cloud_colorize_desc
-                                                    } else {
-                                                        R.string.settings_super_island_colorize_desc
-                                                    }
-                                                ),
+                                                summary = stringResource(R.string.settings_super_island_colorize_desc),
                                                 checked = superIslandTextColorEnabled,
                                                 onCheckedChange = {
                                                     superIslandTextColorEnabled = it
@@ -675,7 +655,7 @@ fun MiuixCustomSettingsScreen(
 
                                         }
                                     }
-                                    if (isLiveUpdateSupported && !superIslandEnabled && !colorOsFluidCloudEnabled) {
+                                    if (isLiveUpdateSupported && !superIslandEnabled) {
                                         val iconStyles = buildList {
                                             add("disabled")
                                             if (isHyperOs) add("advanced")
@@ -736,7 +716,7 @@ fun MiuixCustomSettingsScreen(
                                         stringResource(R.string.settings_action_style_off),
                                         stringResource(R.string.settings_action_style_media)
                                     )
-                                    if (isLiveUpdateSupported && !superIslandEnabled && !colorOsFluidCloudEnabled) {
+                                    if (isLiveUpdateSupported && !superIslandEnabled) {
                                         actionStyles.add("miplay")
                                         actionStyleNames.add(stringResource(R.string.settings_action_style_miplay))
                                     }

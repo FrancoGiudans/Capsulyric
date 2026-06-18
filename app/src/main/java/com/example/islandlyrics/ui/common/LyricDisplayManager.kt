@@ -511,8 +511,6 @@ class LyricDisplayManager(private val context: Context) {
 
     private fun currentMaxDisplayWeight(): Int {
         return when {
-            capsuleRenderMode == CapsuleRenderMode.COLOROS_FLUID_CLOUD ->
-                ColorOsFluidCloudBridge.CAPSULE_TEXT_LIMIT * 2
             RomUtils.isHyperOs() &&
                 capsuleRenderMode == CapsuleRenderMode.XIAOMI_SUPER_ISLAND &&
                 superIslandLyricMode == "standard" -> superIslandRightTextWeight
