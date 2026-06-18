@@ -6,6 +6,9 @@ import com.example.islandlyrics.ui.common.CapsulePreview
 import com.example.islandlyrics.ui.common.CapsuleRenderMode
 import com.example.islandlyrics.ui.common.LyricTextDisplayMode
 import com.example.islandlyrics.ui.common.OneUiCapsuleColorMode
+import com.example.islandlyrics.ui.common.PREF_PREDICTIVE_BACK_ENABLED
+import com.example.islandlyrics.ui.common.PredictiveBackAnimationMode
+import com.example.islandlyrics.ui.common.PredictiveBackAnimationStyle
 import com.example.islandlyrics.ui.common.SuperIslandColorSource
 import com.example.islandlyrics.ui.common.SuperIslandTextLimitConfig
 import com.example.islandlyrics.R
@@ -17,9 +20,6 @@ import com.example.islandlyrics.service.LyricService
 import com.example.islandlyrics.feature.main.MainActivity
 import android.content.Context
 import android.content.Intent
-import android.net.Uri
-import android.os.Build
-import android.provider.Settings
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -39,22 +39,22 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.app.NotificationManagerCompat
-import androidx.core.content.ContextCompat
+import androidx.core.content.edit
 import androidx.compose.ui.Alignment
 import kotlinx.coroutines.launch
+import java.util.Locale
 import top.yukonga.miuix.kmp.basic.*
 import top.yukonga.miuix.kmp.basic.ButtonDefaults
 import top.yukonga.miuix.kmp.preference.OverlayDropdownPreference as SuperDropdown
 import top.yukonga.miuix.kmp.preference.SwitchPreference as SuperSwitch
 import top.yukonga.miuix.kmp.theme.MiuixTheme
-import top.yukonga.miuix.kmp.utils.MiuixPopupUtils.Companion.MiuixPopupHost
 import com.example.islandlyrics.ui.miuix.*
 import kotlin.math.roundToInt
 
 private const val MIUIX_THEME_COLOR_SOURCE_PREF_KEY = "miuix_theme_color_source"
 
 @Composable
+@Suppress("UNUSED_PARAMETER")
 fun MiuixCustomSettingsScreen(
     onBack: () -> Unit,
     onCheckUpdate: () -> Unit,
@@ -108,19 +108,21 @@ fun MiuixCustomSettingsScreen(
     var superIslandColorSource by remember { mutableStateOf(SuperIslandColorSource.read(prefs)) }
     var superIslandCustomColor by remember { mutableStateOf(Color(SuperIslandColorSource.readCustomColor(prefs))) }
     var superIslandRightTextChars by remember {
-        mutableStateOf(SuperIslandTextLimitConfig.rightChars(prefs, superIslandRelaxedTextLimitsLabEnabled))
+        mutableFloatStateOf(SuperIslandTextLimitConfig.rightChars(prefs, superIslandRelaxedTextLimitsLabEnabled))
     }
     var superIslandLeftWithCoverTextChars by remember {
-        mutableStateOf(SuperIslandTextLimitConfig.leftChars(prefs, showLeftCover = true, superIslandRelaxedTextLimitsLabEnabled))
+        mutableFloatStateOf(SuperIslandTextLimitConfig.leftChars(prefs, showLeftCover = true, superIslandRelaxedTextLimitsLabEnabled))
     }
     var superIslandLeftNoCoverTextChars by remember {
-        mutableStateOf(SuperIslandTextLimitConfig.leftChars(prefs, showLeftCover = false, superIslandRelaxedTextLimitsLabEnabled))
+        mutableFloatStateOf(SuperIslandTextLimitConfig.leftChars(prefs, showLeftCover = false, superIslandRelaxedTextLimitsLabEnabled))
     }
 
     var superIslandShareEnabled by remember { mutableStateOf(prefs.getBoolean("super_island_share_enabled", true)) }
     var superIslandShareFormat by remember { mutableStateOf(prefs.getString("super_island_share_format", "format_1") ?: "format_1") }
     var miuixEnabled by remember { mutableStateOf(prefs.getBoolean("ui_use_miuix", true)) }
-    var predictiveBackEnabled by remember { mutableStateOf(prefs.getBoolean("predictive_back_enabled", true)) }
+    var predictiveBackEnabled by remember { mutableStateOf(prefs.getBoolean(PREF_PREDICTIVE_BACK_ENABLED, true)) }
+    var predictiveBackAnimationMode by remember { mutableStateOf(PredictiveBackAnimationMode.read(prefs)) }
+    var predictiveBackAnimationStyle by remember { mutableStateOf(PredictiveBackAnimationStyle.read(prefs)) }
     var monetEnabled by remember { mutableStateOf(prefs.getBoolean("theme_dynamic_color", true)) }
     var customThemeGlobalTintEnabled by remember {
         mutableStateOf(prefs.getBoolean("theme_custom_color_global_tint", false))
@@ -161,33 +163,31 @@ fun MiuixCustomSettingsScreen(
         val legacyForcedKey = "full_super_island_forced_disable_scrolling"
         val legacyBackupKey = "disable_lyric_scrolling_before_full_super_island"
         val wasForced = prefs.getBoolean(forcedKey, false) || prefs.getBoolean(legacyForcedKey, false)
-        val editor = prefs.edit()
-
-        if (force) {
-            if (!wasForced) {
-                editor.putBoolean(backupKey, disableScrolling)
-                editor.putBoolean(forcedKey, true)
+        prefs.edit {
+            if (force) {
+                if (!wasForced) {
+                    putBoolean(backupKey, disableScrolling)
+                    putBoolean(forcedKey, true)
+                }
+                disableScrolling = true
+                putBoolean("disable_lyric_scrolling", true)
+            } else if (wasForced) {
+                val restoredValue = if (prefs.contains(backupKey)) {
+                    prefs.getBoolean(backupKey, false)
+                } else {
+                    prefs.getBoolean(legacyBackupKey, false)
+                }
+                disableScrolling = restoredValue
+                putBoolean("disable_lyric_scrolling", restoredValue)
+                remove(backupKey)
+                remove(forcedKey)
+                remove(legacyBackupKey)
+                remove(legacyForcedKey)
+            } else if (restoreLegacyState && disableScrolling) {
+                disableScrolling = false
+                putBoolean("disable_lyric_scrolling", false)
             }
-            disableScrolling = true
-            editor.putBoolean("disable_lyric_scrolling", true)
-        } else if (wasForced) {
-            val restoredValue = if (prefs.contains(backupKey)) {
-                prefs.getBoolean(backupKey, false)
-            } else {
-                prefs.getBoolean(legacyBackupKey, false)
-            }
-            disableScrolling = restoredValue
-            editor.putBoolean("disable_lyric_scrolling", restoredValue)
-            editor.remove(backupKey)
-            editor.remove(forcedKey)
-            editor.remove(legacyBackupKey)
-            editor.remove(legacyForcedKey)
-        } else if (restoreLegacyState && disableScrolling) {
-            disableScrolling = false
-            editor.putBoolean("disable_lyric_scrolling", false)
         }
-
-        editor.apply()
     }
 
     fun setCapsuleRenderMode(mode: CapsuleRenderMode) {
@@ -198,7 +198,7 @@ fun MiuixCustomSettingsScreen(
 
         if (mode != CapsuleRenderMode.LIVE_UPDATE && actionStyle == "miplay") {
             actionStyle = "disabled"
-            prefs.edit().putString("notification_actions_style", "disabled").apply()
+            prefs.edit { putString("notification_actions_style", "disabled") }
         }
 
         val action = "ACTION_SET_CAPSULE_RENDER_MODE"
@@ -212,6 +212,7 @@ fun MiuixCustomSettingsScreen(
         superIslandTextLimitsLabEnabled = LabFeatureManager.isSuperIslandTextLimitsEnabled(prefs)
         superIslandRelaxedTextLimitsLabEnabled = LabFeatureManager.isSuperIslandRelaxedTextLimitsEnabled(prefs)
         floatingLyricsLabEnabled = LabFeatureManager.isFloatingLyricsEnabled(prefs)
+        colorOsFluidCloudLabEnabled = LabFeatureManager.isColorOsFluidCloudEnabled(prefs)
         superIslandNotificationStyle = LabFeatureManager.sanitizeSuperIslandNotificationStyle(context)
     }
     LaunchedEffect(forceDisableScrollingForSuperIslandLyricMode) {
@@ -221,16 +222,16 @@ fun MiuixCustomSettingsScreen(
         if (!isLiveUpdateSupported) {
             if (iconStyle != "disabled") {
                 iconStyle = "disabled"
-                prefs.edit().putString("dynamic_icon_style", "disabled").apply()
+                prefs.edit { putString("dynamic_icon_style", "disabled") }
             }
             if (actionStyle == "miplay") {
                 actionStyle = "disabled"
-                prefs.edit().putString("notification_actions_style", "disabled").apply()
+                prefs.edit { putString("notification_actions_style", "disabled") }
             }
         } else if (!isHyperOs && iconStyle == "advanced") {
             // Advanced style is HyperOS-only; reset to classic on other ROMs
             iconStyle = "disabled"
-            prefs.edit().putString("dynamic_icon_style", "disabled").apply()
+            prefs.edit { putString("dynamic_icon_style", "disabled") }
         }
     }
 
@@ -327,7 +328,7 @@ fun MiuixCustomSettingsScreen(
                                         enabled = !forceDisableScrollingForSuperIslandLyricMode,
                                         onCheckedChange = {
                                             disableScrolling = it
-                                            prefs.edit().putBoolean("disable_lyric_scrolling", it).apply()
+                                            prefs.edit { putBoolean("disable_lyric_scrolling", it) }
                                         }
                                     )
                                     val lyricTextModes = LyricTextDisplayMode.values
@@ -400,9 +401,7 @@ fun MiuixCustomSettingsScreen(
                                                 ?: lyricModeItems.first()
                                             if (currentLyricModeItem.first != superIslandLyricMode) {
                                                 superIslandLyricMode = currentLyricModeItem.first
-                                                prefs.edit()
-                                                    .putString("super_island_lyric_mode", currentLyricModeItem.first)
-                                                    .apply()
+                                                prefs.edit { putString("super_island_lyric_mode", currentLyricModeItem.first) }
                                             }
 
                                             SuperDropdown(
@@ -415,9 +414,7 @@ fun MiuixCustomSettingsScreen(
                                                             selected = superIslandLyricMode == modeId,
                                                             onClick = {
                                                                 superIslandLyricMode = modeId
-                                                                prefs.edit()
-                                                                    .putString("super_island_lyric_mode", modeId)
-                                                                    .apply()
+                                                                prefs.edit { putString("super_island_lyric_mode", modeId) }
                                                                 if (modeId == "standard") {
                                                                     applySuperIslandScrollForce(force = false, restoreLegacyState = true)
                                                                 }
@@ -434,7 +431,7 @@ fun MiuixCustomSettingsScreen(
                                                     checked = superIslandFullLyricShowLeftCover,
                                                     onCheckedChange = {
                                                         superIslandFullLyricShowLeftCover = it
-                                                        prefs.edit().putBoolean("super_island_full_lyric_show_left_cover", it).apply()
+                                                        prefs.edit { putBoolean("super_island_full_lyric_show_left_cover", it) }
                                                     }
                                                 )
                                             }
@@ -448,9 +445,7 @@ fun MiuixCustomSettingsScreen(
                                                     valueRange = rightRange,
                                                     onValueChange = { value ->
                                                         superIslandRightTextChars = value
-                                                        prefs.edit()
-                                                            .putFloat(SuperIslandTextLimitConfig.KEY_RIGHT_CHARS, value)
-                                                            .apply()
+                                                        prefs.edit { putFloat(SuperIslandTextLimitConfig.KEY_RIGHT_CHARS, value) }
                                                     }
                                                 )
 
@@ -479,7 +474,7 @@ fun MiuixCustomSettingsScreen(
                                                             } else {
                                                                 superIslandLeftNoCoverTextChars = value
                                                             }
-                                                            prefs.edit().putFloat(leftKey, value).apply()
+                                                            prefs.edit { putFloat(leftKey, value) }
                                                         }
                                                     )
                                                 }
@@ -492,8 +487,10 @@ fun MiuixCustomSettingsScreen(
                                                 onCheckedChange = {
                                                     superIslandTextColorEnabled = it
                                                     progressColorEnabled = it
-                                                    prefs.edit().putBoolean("super_island_text_color_enabled", it).apply()
-                                                    prefs.edit().putBoolean("progress_bar_color_enabled", it).apply()
+                                                    prefs.edit {
+                                                        putBoolean("super_island_text_color_enabled", it)
+                                                        putBoolean("progress_bar_color_enabled", it)
+                                                    }
                                                 }
                                             )
 
@@ -548,7 +545,7 @@ fun MiuixCustomSettingsScreen(
                                                     checked = superIslandShareEnabled,
                                                     onCheckedChange = {
                                                         superIslandShareEnabled = it
-                                                        prefs.edit().putBoolean("super_island_share_enabled", it).apply()
+                                                        prefs.edit { putBoolean("super_island_share_enabled", it) }
                                                     }
                                                 )
 
@@ -568,7 +565,7 @@ fun MiuixCustomSettingsScreen(
                                                     onSelectedIndexChange = { index ->
                                                         val newFormat = shareFormats[index]
                                                         superIslandShareFormat = newFormat
-                                                        prefs.edit().putString("super_island_share_format", newFormat).apply()
+                                                        prefs.edit { putString("super_island_share_format", newFormat) }
                                                     }
                                                 )
                                             }
@@ -675,7 +672,7 @@ fun MiuixCustomSettingsScreen(
                                             onSelectedIndexChange = { index ->
                                                 val newStyle = iconStyles[index]
                                                 iconStyle = newStyle
-                                                prefs.edit().putString("dynamic_icon_style", newStyle).apply()
+                                                prefs.edit { putString("dynamic_icon_style", newStyle) }
                                             }
                                         )
                                     }
@@ -706,7 +703,7 @@ fun MiuixCustomSettingsScreen(
                                             checked = progressColorEnabled,
                                             onCheckedChange = {
                                                 progressColorEnabled = it
-                                                prefs.edit().putBoolean("progress_bar_color_enabled", it).apply()
+                                                prefs.edit { putBoolean("progress_bar_color_enabled", it) }
                                             }
                                         )
                                     }
@@ -729,7 +726,7 @@ fun MiuixCustomSettingsScreen(
                                         onSelectedIndexChange = { index ->
                                             val newStyle = actionStyles[index]
                                             actionStyle = newStyle
-                                            prefs.edit().putString("notification_actions_style", newStyle).apply()
+                                            prefs.edit { putString("notification_actions_style", newStyle) }
                                         }
                                     )
 
@@ -755,7 +752,7 @@ fun MiuixCustomSettingsScreen(
                                             onSelectedIndexChange = { index ->
                                                 val newStyle = notificationStyles[index]
                                                 superIslandNotificationStyle = newStyle
-                                                prefs.edit().putString("super_island_notification_style", newStyle).apply()
+                                                prefs.edit { putString("super_island_notification_style", newStyle) }
                                             }
                                         )
 
@@ -774,13 +771,12 @@ fun MiuixCustomSettingsScreen(
                                                 onSelectedIndexChange = { index ->
                                                     val newLayout = buttonLayouts[index]
                                                     superIslandMediaButtonLayout = newLayout
-                                                    prefs.edit().putString("super_island_media_button_layout", newLayout).apply()
+                                                    prefs.edit { putString("super_island_media_button_layout", newLayout) }
                                                 }
                                             )
                                         }
                                     }
 
-                                    val clickStyles = listOf("default", "media_controls", "open_playing_app")
                                     val clickStyleItems = listOf(
                                         Triple("default",
                                             stringResource(R.string.settings_click_action_default),
@@ -803,7 +799,7 @@ fun MiuixCustomSettingsScreen(
                                                     selected = notificationClickStyle == styleId,
                                                     onClick = {
                                                         notificationClickStyle = styleId
-                                                        prefs.edit().putString("notification_click_style", styleId).apply()
+                                                        prefs.edit { putString("notification_click_style", styleId) }
                                                     }
                                                 )
                                             }
@@ -826,7 +822,7 @@ fun MiuixCustomSettingsScreen(
                                         onSelectedIndexChange = { index ->
                                             val newDelay = delayOptions[index]
                                             dismissDelay = newDelay
-                                            prefs.edit().putLong("notification_dismiss_delay", newDelay).apply()
+                                            prefs.edit { putLong("notification_dismiss_delay", newDelay) }
                                         }
                                     )
                                 }
@@ -849,7 +845,7 @@ fun MiuixCustomSettingsScreen(
                                         onSelectedIndexChange = { index ->
                                             val newStyle = uiStyles[index]
                                             miuixEnabled = newStyle
-                                            prefs.edit().putBoolean("ui_use_miuix", newStyle).apply()
+                                            prefs.edit { putBoolean("ui_use_miuix", newStyle) }
                                             val restartIntent = Intent(context, MainActivity::class.java)
                                             restartIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
                                             context.startActivity(restartIntent)
@@ -879,9 +875,43 @@ fun MiuixCustomSettingsScreen(
                                         checked = predictiveBackEnabled,
                                         onCheckedChange = {
                                             predictiveBackEnabled = it
-                                            prefs.edit().putBoolean("predictive_back_enabled", it).apply()
+                                            prefs.edit { putBoolean(PREF_PREDICTIVE_BACK_ENABLED, it) }
                                         }
                                     )
+                                    val predictiveBackModes = PredictiveBackAnimationMode.options
+                                    val predictiveBackModeLabels = predictiveBackModes.map { stringResource(it.labelRes) }
+                                    val currentPredictiveBackModeIndex =
+                                        predictiveBackModes.indexOf(predictiveBackAnimationMode).takeIf { it >= 0 } ?: 0
+
+                                    SuperDropdown(
+                                        title = stringResource(R.string.settings_predictive_back_animation_mode),
+                                        summary = stringResource(R.string.settings_predictive_back_animation_mode_desc),
+                                        items = predictiveBackModeLabels,
+                                        selectedIndex = currentPredictiveBackModeIndex,
+                                        onSelectedIndexChange = { index ->
+                                            val mode = predictiveBackModes[index]
+                                            predictiveBackAnimationMode = mode
+                                            PredictiveBackAnimationMode.write(prefs, mode)
+                                        }
+                                    )
+                                    if (predictiveBackAnimationMode == PredictiveBackAnimationMode.Consistent) {
+                                        val predictiveBackStyles = PredictiveBackAnimationStyle.options
+                                        val predictiveBackStyleLabels = predictiveBackStyles.map { stringResource(it.labelRes) }
+                                        val currentPredictiveBackStyleIndex =
+                                            predictiveBackStyles.indexOf(predictiveBackAnimationStyle).takeIf { it >= 0 } ?: 0
+
+                                        SuperDropdown(
+                                            title = stringResource(R.string.settings_predictive_back_animation),
+                                            summary = stringResource(R.string.settings_predictive_back_animation_desc),
+                                            items = predictiveBackStyleLabels,
+                                            selectedIndex = currentPredictiveBackStyleIndex,
+                                            onSelectedIndexChange = { index ->
+                                                val style = predictiveBackStyles[index]
+                                                predictiveBackAnimationStyle = style
+                                                PredictiveBackAnimationStyle.write(prefs, style)
+                                            }
+                                        )
+                                    }
                                     SuperSwitch(
                                         title = stringResource(R.string.settings_theme_dynamic_color),
                                         summary = stringResource(R.string.settings_theme_dynamic_color_desc),
@@ -913,9 +943,7 @@ fun MiuixCustomSettingsScreen(
                                                     miuixThemeColorEditing = false
                                                 }
                                                 miuixThemeColorSource = themeColorSources[index]
-                                                prefs.edit()
-                                                    .putString(MIUIX_THEME_COLOR_SOURCE_PREF_KEY, miuixThemeColorSource)
-                                                    .apply()
+                                                prefs.edit { putString(MIUIX_THEME_COLOR_SOURCE_PREF_KEY, miuixThemeColorSource) }
                                             }
                                         )
 
@@ -952,7 +980,7 @@ fun MiuixCustomSettingsScreen(
                                                         horizontalArrangement = Arrangement.spacedBy(10.dp),
                                                         verticalAlignment = Alignment.CenterVertically
                                                     ) {
-                                                        top.yukonga.miuix.kmp.basic.TextButton(
+                                                        TextButton(
                                                             text = stringResource(R.string.dialog_btn_cancel),
                                                             onClick = {
                                                                 customThemeColor = miuixThemeColorSnapshot
@@ -960,27 +988,25 @@ fun MiuixCustomSettingsScreen(
                                                             },
                                                             modifier = Modifier.weight(1f)
                                                         )
-                                                        top.yukonga.miuix.kmp.basic.TextButton(
+                                                        TextButton(
                                                             text = stringResource(R.string.settings_theme_color_source_default),
                                                             onClick = {
                                                                 customThemeColor = miuixThemeColorSnapshot
                                                                 miuixThemeColorSource = ThemeHelper.MATERIAL_THEME_COLOR_SOURCE_DEFAULT
-                                                                prefs.edit()
-                                                                    .putString(
+                                                                prefs.edit {
+                                                                    putString(
                                                                         MIUIX_THEME_COLOR_SOURCE_PREF_KEY,
                                                                         ThemeHelper.MATERIAL_THEME_COLOR_SOURCE_DEFAULT
                                                                     )
-                                                                    .apply()
+                                                                }
                                                                 miuixThemeColorEditing = false
                                                             },
                                                             modifier = Modifier.weight(1f)
                                                         )
-                                                        top.yukonga.miuix.kmp.basic.TextButton(
+                                                        TextButton(
                                                             text = stringResource(R.string.apply),
                                                             onClick = {
-                                                                prefs.edit()
-                                                                    .putInt("theme_custom_color", customThemeColor.toArgb())
-                                                                    .apply()
+                                                                prefs.edit { putInt("theme_custom_color", customThemeColor.toArgb()) }
                                                                 miuixThemeColorEditing = false
                                                             },
                                                             modifier = Modifier.weight(1f),
@@ -988,7 +1014,7 @@ fun MiuixCustomSettingsScreen(
                                                         )
                                                     }
                                                 } else {
-                                                    top.yukonga.miuix.kmp.basic.TextButton(
+                                                    TextButton(
                                                         text = stringResource(R.string.parser_edit),
                                                         onClick = {
                                                             miuixThemeColorSnapshot = customThemeColor
@@ -1017,7 +1043,7 @@ fun MiuixCustomSettingsScreen(
                                                 checked = customThemeGlobalTintEnabled,
                                                 onCheckedChange = { enabled ->
                                                     customThemeGlobalTintEnabled = enabled
-                                                    prefs.edit().putBoolean("theme_custom_color_global_tint", enabled).apply()
+                                                    prefs.edit { putBoolean("theme_custom_color_global_tint", enabled) }
                                                 }
                                             )
                                         }
@@ -1028,7 +1054,7 @@ fun MiuixCustomSettingsScreen(
                                         checked = cardBlurEnabled,
                                         onCheckedChange = {
                                             cardBlurEnabled = it
-                                            prefs.edit().putBoolean("card_blur_enabled", it).apply()
+                                            prefs.edit { putBoolean("card_blur_enabled", it) }
                                         }
                                     )
                                 }
@@ -1123,7 +1149,7 @@ private fun formatSuperIslandTextLimit(value: Float): String {
     return if (value % 1f == 0f) {
         value.toInt().toString()
     } else {
-        "%.1f".format(java.util.Locale.US, value)
+        "%.1f".format(Locale.US, value)
     }
 }
 
