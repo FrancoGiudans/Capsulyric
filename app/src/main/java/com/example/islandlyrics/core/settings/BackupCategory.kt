@@ -105,7 +105,8 @@ object BackupCategories {
         id = "general",
         keyPatterns = listOf(
             "language_code", "recommend_media_app",
-            "hide_recents_enabled", "predictive_back_enabled", "predictive_back_animation_style",
+            "hide_recents_enabled", "predictive_back_enabled", "predictive_back_animation_mode",
+            "predictive_back_animation_style",
             "service_enabled",
             "lyric_text_display_mode", "disable_lyric_scrolling"
         ),
@@ -113,7 +114,8 @@ object BackupCategories {
             SubGroup("general_language", listOf("language_code")),
             SubGroup("general_behavior", listOf(
                 "recommend_media_app", "hide_recents_enabled",
-                "predictive_back_enabled", "predictive_back_animation_style", "service_enabled"
+                "predictive_back_enabled", "predictive_back_animation_mode",
+                "predictive_back_animation_style", "service_enabled"
             )),
             SubGroup("general_lyric_display", listOf(
                 "lyric_text_display_mode", "disable_lyric_scrolling"

@@ -7,6 +7,7 @@ import com.example.islandlyrics.ui.common.CapsuleRenderMode
 import com.example.islandlyrics.ui.common.LyricTextDisplayMode
 import com.example.islandlyrics.ui.common.OneUiCapsuleColorMode
 import com.example.islandlyrics.ui.common.PREF_PREDICTIVE_BACK_ENABLED
+import com.example.islandlyrics.ui.common.PredictiveBackAnimationMode
 import com.example.islandlyrics.ui.common.PredictiveBackAnimationStyle
 import com.example.islandlyrics.ui.common.SuperIslandColorSource
 import com.example.islandlyrics.ui.common.SuperIslandTextLimitConfig
@@ -169,11 +170,13 @@ fun CustomSettingsScreen(
     var superIslandShareFormat by remember { mutableStateOf(prefs.getString("super_island_share_format", "format_1") ?: "format_1") }
     var miuixEnabled by remember { mutableStateOf(prefs.getBoolean("ui_use_miuix", true)) }
     var predictiveBackEnabled by remember { mutableStateOf(prefs.getBoolean(PREF_PREDICTIVE_BACK_ENABLED, true)) }
+    var predictiveBackAnimationMode by remember { mutableStateOf(PredictiveBackAnimationMode.read(prefs)) }
     var predictiveBackAnimationStyle by remember { mutableStateOf(PredictiveBackAnimationStyle.read(prefs)) }
 
 
     // Dialog State for UI Style
     var showUiStyleDropdown by remember { mutableStateOf(false) }
+    var showPredictiveBackAnimationModeDropdown by remember { mutableStateOf(false) }
     var showPredictiveBackAnimationDropdown by remember { mutableStateOf(false) }
 
     // Check for HyperOS 3.0.300+
@@ -1286,31 +1289,67 @@ fun CustomSettingsScreen(
                                 )
                                 SettingsCardDivider()
                                 Box(modifier = Modifier.fillMaxWidth()) {
-                                    val predictiveBackStyles = PredictiveBackAnimationStyle.options
-                                    val predictiveBackStyleLabels = predictiveBackStyles.map { stringResource(it.labelRes) }
-                                    val currentPredictiveBackStyleIndex =
-                                        predictiveBackStyles.indexOf(predictiveBackAnimationStyle).takeIf { it >= 0 } ?: 0
+                                    val predictiveBackModes = PredictiveBackAnimationMode.options
+                                    val predictiveBackModeLabels = predictiveBackModes.map { stringResource(it.labelRes) }
+                                    val currentPredictiveBackModeIndex =
+                                        predictiveBackModes.indexOf(predictiveBackAnimationMode).takeIf { it >= 0 } ?: 0
 
                                     SettingsTextItem(
-                                        title = stringResource(R.string.settings_predictive_back_animation),
-                                        subtitle = stringResource(R.string.settings_predictive_back_animation_desc),
-                                        value = predictiveBackStyleLabels[currentPredictiveBackStyleIndex],
-                                        onClick = { showPredictiveBackAnimationDropdown = true }
+                                        title = stringResource(R.string.settings_predictive_back_animation_mode),
+                                        subtitle = stringResource(R.string.settings_predictive_back_animation_mode_desc),
+                                        value = predictiveBackModeLabels[currentPredictiveBackModeIndex],
+                                        onClick = { showPredictiveBackAnimationModeDropdown = true }
                                     )
                                     Box(modifier = Modifier.matchParentSize().wrapContentSize(Alignment.Center)) {
                                         DropdownMenu(
-                                            expanded = showPredictiveBackAnimationDropdown,
-                                            onDismissRequest = { showPredictiveBackAnimationDropdown = false }
+                                            expanded = showPredictiveBackAnimationModeDropdown,
+                                            onDismissRequest = { showPredictiveBackAnimationModeDropdown = false }
                                         ) {
-                                            predictiveBackStyles.forEachIndexed { index, style ->
+                                            predictiveBackModes.forEachIndexed { index, mode ->
                                                 DropdownMenuItem(
-                                                    text = { Text(predictiveBackStyleLabels[index]) },
+                                                    text = { Text(predictiveBackModeLabels[index]) },
                                                     onClick = {
-                                                        predictiveBackAnimationStyle = style
-                                                        PredictiveBackAnimationStyle.write(prefs, style)
-                                                        showPredictiveBackAnimationDropdown = false
+                                                        predictiveBackAnimationMode = mode
+                                                        PredictiveBackAnimationMode.write(prefs, mode)
+                                                        if (mode != PredictiveBackAnimationMode.Consistent) {
+                                                            showPredictiveBackAnimationDropdown = false
+                                                        }
+                                                        showPredictiveBackAnimationModeDropdown = false
                                                     }
                                                 )
+                                            }
+                                        }
+                                    }
+                                }
+                                if (predictiveBackAnimationMode == PredictiveBackAnimationMode.Consistent) {
+                                    SettingsCardDivider()
+                                    Box(modifier = Modifier.fillMaxWidth()) {
+                                        val predictiveBackStyles = PredictiveBackAnimationStyle.options
+                                        val predictiveBackStyleLabels = predictiveBackStyles.map { stringResource(it.labelRes) }
+                                        val currentPredictiveBackStyleIndex =
+                                            predictiveBackStyles.indexOf(predictiveBackAnimationStyle).takeIf { it >= 0 } ?: 0
+
+                                        SettingsTextItem(
+                                            title = stringResource(R.string.settings_predictive_back_animation),
+                                            subtitle = stringResource(R.string.settings_predictive_back_animation_desc),
+                                            value = predictiveBackStyleLabels[currentPredictiveBackStyleIndex],
+                                            onClick = { showPredictiveBackAnimationDropdown = true }
+                                        )
+                                        Box(modifier = Modifier.matchParentSize().wrapContentSize(Alignment.Center)) {
+                                            DropdownMenu(
+                                                expanded = showPredictiveBackAnimationDropdown,
+                                                onDismissRequest = { showPredictiveBackAnimationDropdown = false }
+                                            ) {
+                                                predictiveBackStyles.forEachIndexed { index, style ->
+                                                    DropdownMenuItem(
+                                                        text = { Text(predictiveBackStyleLabels[index]) },
+                                                        onClick = {
+                                                            predictiveBackAnimationStyle = style
+                                                            PredictiveBackAnimationStyle.write(prefs, style)
+                                                            showPredictiveBackAnimationDropdown = false
+                                                        }
+                                                    )
+                                                }
                                             }
                                         }
                                     }

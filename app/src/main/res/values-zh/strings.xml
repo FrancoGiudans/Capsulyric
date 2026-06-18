@@ -647,8 +647,13 @@
     <string name="ui_style_material">Material Design</string>
     <string name="ui_style_miuix">Miuix</string>
     <string name="settings_predictive_back">预测性返回</string>
-    <string name="settings_predictive_back_animation">预测性返回动画</string>
-    <string name="settings_predictive_back_animation_desc">选择统一后用于页面和弹层的返回动画样式。</string>
+    <string name="settings_predictive_back_animation_mode">返回动画模式</string>
+    <string name="settings_predictive_back_animation_mode_desc">选择页面预测式返回样式。</string>
+    <string name="predictive_back_animation_mode_page_specific">页面独立动画</string>
+    <string name="predictive_back_animation_mode_consistent">所有页面保持一致</string>
+    <string name="settings_predictive_back_animation">一致动画样式</string>
+    <string name="settings_predictive_back_animation_desc">选择所有页面保持一致时使用的返回动画样式。</string>
+    <string name="predictive_back_animation_edge_shrink">边缘收缩</string>
     <string name="predictive_back_animation_scale_slide">缩放滑动</string>
     <string name="predictive_back_animation_horizontal_slide">水平滑动</string>
     <string name="predictive_back_animation_fade">渐隐</string>

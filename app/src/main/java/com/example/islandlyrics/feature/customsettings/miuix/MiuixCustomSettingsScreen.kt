@@ -7,6 +7,7 @@ import com.example.islandlyrics.ui.common.CapsuleRenderMode
 import com.example.islandlyrics.ui.common.LyricTextDisplayMode
 import com.example.islandlyrics.ui.common.OneUiCapsuleColorMode
 import com.example.islandlyrics.ui.common.PREF_PREDICTIVE_BACK_ENABLED
+import com.example.islandlyrics.ui.common.PredictiveBackAnimationMode
 import com.example.islandlyrics.ui.common.PredictiveBackAnimationStyle
 import com.example.islandlyrics.ui.common.SuperIslandColorSource
 import com.example.islandlyrics.ui.common.SuperIslandTextLimitConfig
@@ -121,6 +122,7 @@ fun MiuixCustomSettingsScreen(
     var superIslandShareFormat by remember { mutableStateOf(prefs.getString("super_island_share_format", "format_1") ?: "format_1") }
     var miuixEnabled by remember { mutableStateOf(prefs.getBoolean("ui_use_miuix", true)) }
     var predictiveBackEnabled by remember { mutableStateOf(prefs.getBoolean(PREF_PREDICTIVE_BACK_ENABLED, true)) }
+    var predictiveBackAnimationMode by remember { mutableStateOf(PredictiveBackAnimationMode.read(prefs)) }
     var predictiveBackAnimationStyle by remember { mutableStateOf(PredictiveBackAnimationStyle.read(prefs)) }
     var monetEnabled by remember { mutableStateOf(prefs.getBoolean("theme_dynamic_color", true)) }
     var customThemeGlobalTintEnabled by remember {
@@ -879,22 +881,40 @@ fun MiuixCustomSettingsScreen(
                                             prefs.edit { putBoolean(PREF_PREDICTIVE_BACK_ENABLED, it) }
                                         }
                                     )
-                                    val predictiveBackStyles = PredictiveBackAnimationStyle.options
-                                    val predictiveBackStyleLabels = predictiveBackStyles.map { stringResource(it.labelRes) }
-                                    val currentPredictiveBackStyleIndex =
-                                        predictiveBackStyles.indexOf(predictiveBackAnimationStyle).takeIf { it >= 0 } ?: 0
+                                    val predictiveBackModes = PredictiveBackAnimationMode.options
+                                    val predictiveBackModeLabels = predictiveBackModes.map { stringResource(it.labelRes) }
+                                    val currentPredictiveBackModeIndex =
+                                        predictiveBackModes.indexOf(predictiveBackAnimationMode).takeIf { it >= 0 } ?: 0
 
                                     SuperDropdown(
-                                        title = stringResource(R.string.settings_predictive_back_animation),
-                                        summary = stringResource(R.string.settings_predictive_back_animation_desc),
-                                        items = predictiveBackStyleLabels,
-                                        selectedIndex = currentPredictiveBackStyleIndex,
+                                        title = stringResource(R.string.settings_predictive_back_animation_mode),
+                                        summary = stringResource(R.string.settings_predictive_back_animation_mode_desc),
+                                        items = predictiveBackModeLabels,
+                                        selectedIndex = currentPredictiveBackModeIndex,
                                         onSelectedIndexChange = { index ->
-                                            val style = predictiveBackStyles[index]
-                                            predictiveBackAnimationStyle = style
-                                            PredictiveBackAnimationStyle.write(prefs, style)
+                                            val mode = predictiveBackModes[index]
+                                            predictiveBackAnimationMode = mode
+                                            PredictiveBackAnimationMode.write(prefs, mode)
                                         }
                                     )
+                                    if (predictiveBackAnimationMode == PredictiveBackAnimationMode.Consistent) {
+                                        val predictiveBackStyles = PredictiveBackAnimationStyle.options
+                                        val predictiveBackStyleLabels = predictiveBackStyles.map { stringResource(it.labelRes) }
+                                        val currentPredictiveBackStyleIndex =
+                                            predictiveBackStyles.indexOf(predictiveBackAnimationStyle).takeIf { it >= 0 } ?: 0
+
+                                        SuperDropdown(
+                                            title = stringResource(R.string.settings_predictive_back_animation),
+                                            summary = stringResource(R.string.settings_predictive_back_animation_desc),
+                                            items = predictiveBackStyleLabels,
+                                            selectedIndex = currentPredictiveBackStyleIndex,
+                                            onSelectedIndexChange = { index ->
+                                                val style = predictiveBackStyles[index]
+                                                predictiveBackAnimationStyle = style
+                                                PredictiveBackAnimationStyle.write(prefs, style)
+                                            }
+                                        )
+                                    }
                                     SuperSwitch(
                                         title = stringResource(R.string.settings_theme_dynamic_color),
                                         summary = stringResource(R.string.settings_theme_dynamic_color_desc),

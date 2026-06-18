@@ -50,7 +50,9 @@ fun PredictiveBackActivity(
         context.getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE)
     }
     val predictiveBackEnabled = rememberPredictiveBackEnabledState(prefs)
+    val animationMode = rememberPredictiveBackAnimationModeState(prefs)
     val animationStyle = rememberPredictiveBackAnimationStyleState(prefs)
+    val useConsistentAnimation = animationMode == PredictiveBackAnimationMode.Consistent
 
     if (!enabled || !predictiveBackEnabled) {
         content()
@@ -96,11 +98,19 @@ fun PredictiveBackActivity(
                         animationSpec = tween(durationMillis = 150, easing = LinearEasing)
                     )
                     activity?.finish()
-                    activity?.overrideActivityTransition(
-                        Activity.OVERRIDE_TRANSITION_CLOSE,
-                        closeEnterTransition,
-                        closeExitTransition
-                    )
+                    if (useConsistentAnimation) {
+                        activity?.overrideActivityTransition(
+                            Activity.OVERRIDE_TRANSITION_CLOSE,
+                            R.anim.page_close_enter,
+                            R.anim.page_close_enter
+                        )
+                    } else {
+                        activity?.overrideActivityTransition(
+                            Activity.OVERRIDE_TRANSITION_CLOSE,
+                            closeEnterTransition,
+                            closeExitTransition
+                        )
+                    }
                 }
             }
         )
@@ -137,16 +147,30 @@ fun PredictiveBackActivity(
                 .graphicsLayer {
                     if (isExiting) {
                         val startProgress = lastProgress.coerceIn(0f, 1f)
-                        val progress = startProgress + (1f - startProgress) * exitProgress
-                        applyPredictiveBackFrontTransform(
-                            style = animationStyle,
-                            progress = progress,
-                            direction = exitDirection,
-                            pivotY = lastPivotY
-                        )
+                        if (useConsistentAnimation && animationStyle != PredictiveBackAnimationStyle.EdgeShrink) {
+                            val progress = startProgress + (1f - startProgress) * exitProgress
+                            applyPredictiveBackFrontTransform(
+                                style = animationStyle,
+                                progress = progress,
+                                direction = exitDirection,
+                                pivotY = lastPivotY
+                            )
+                        } else {
+                            applyPredictiveBackFrontTransform(
+                                style = PredictiveBackAnimationStyle.EdgeShrink,
+                                progress = startProgress,
+                                direction = exitDirection,
+                                pivotY = lastPivotY,
+                                completionProgress = exitProgress
+                            )
+                        }
                     } else if (isGestureActive) {
                         applyPredictiveBackFrontTransform(
-                            style = animationStyle,
+                            style = if (useConsistentAnimation) {
+                                animationStyle
+                            } else {
+                                PredictiveBackAnimationStyle.EdgeShrink
+                            },
                             progress = gestureProgress,
                             direction = gestureDirection,
                             pivotY = currentPivotY

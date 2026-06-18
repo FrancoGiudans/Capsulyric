@@ -428,8 +428,13 @@
     <string name="backup_sub_advanced_lyric_dir">Local Lyric Directories</string>
     <string name="settings_predictive_back">Predictive Back Gesture</string>
     <string name="settings_predictive_back_desc">Show a preview of the previous screen when swiping back.</string>
-    <string name="settings_predictive_back_animation">Predictive Back Animation</string>
-    <string name="settings_predictive_back_animation_desc">Choose the unified animation used by pages and sheets.</string>
+    <string name="settings_predictive_back_animation_mode">Back Animation Mode</string>
+    <string name="settings_predictive_back_animation_mode_desc">Choose whether each page keeps its own animation or all pages use one style.</string>
+    <string name="predictive_back_animation_mode_page_specific">Page-specific animations</string>
+    <string name="predictive_back_animation_mode_consistent">Keep all pages consistent</string>
+    <string name="settings_predictive_back_animation">Consistent Animation Style</string>
+    <string name="settings_predictive_back_animation_desc">Choose the animation used when all pages are kept consistent.</string>
+    <string name="predictive_back_animation_edge_shrink">Edge shrink</string>
     <string name="predictive_back_animation_scale_slide">Scale slide</string>
     <string name="predictive_back_animation_horizontal_slide">Horizontal slide</string>
     <string name="predictive_back_animation_fade">Fade</string>

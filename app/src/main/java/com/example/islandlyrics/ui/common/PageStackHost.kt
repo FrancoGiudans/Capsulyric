@@ -54,7 +54,9 @@ fun <T> PageStackHost(
     var latestGestureDirection by remember { mutableFloatStateOf(1f) }
     var completingBackPop by remember { mutableStateOf(false) }
     val predictiveBackEnabled = rememberPredictiveBackEnabledState(prefs)
+    val animationMode = rememberPredictiveBackAnimationModeState(prefs)
     val animationStyle = rememberPredictiveBackAnimationStyleState(prefs)
+    val useConsistentAnimation = predictiveBackEnabled && animationMode == PredictiveBackAnimationMode.Consistent
     val transitionState = navEventState.transitionState
     val gestureState = if (predictiveBackEnabled) {
         transitionState as? NavigationEventTransitionState.InProgress
@@ -141,7 +143,7 @@ fun <T> PageStackHost(
             coverProgress = if (depth == 1) topCoverProgress else if (depth > 1) 1f else 0f,
             isUnderlay = depth > 0,
             backdropColor = backdropColor,
-            usePredictiveAnimation = predictiveBackEnabled,
+            usePredictiveAnimation = useConsistentAnimation,
             animationStyle = animationStyle,
             direction = if (depth == 1 && (gestureState != null || completingBackPop)) {
                 transitionDirection
@@ -150,6 +152,8 @@ fun <T> PageStackHost(
             },
             isGestureActive = gestureState != null,
             gestureProgress = gestureProgress,
+            isCompletingBack = completingBackPop,
+            completedGestureProgress = latestGestureProgress,
             dismissProgress = if (depth == 1) 1f - topCoverProgress else 0f
         ) {
             backgroundContent()
@@ -172,7 +176,7 @@ fun <T> PageStackHost(
                 isUnderlay = isImmediateUnderlay,
                 isHiddenBelowUnderlay = index < depth - 2,
                 backdropColor = backdropColor,
-                usePredictiveAnimation = predictiveBackEnabled,
+                usePredictiveAnimation = useConsistentAnimation,
                 animationStyle = animationStyle,
                 direction = if ((isTop || isImmediateUnderlay) && (gestureState != null || completingBackPop)) {
                     transitionDirection
@@ -181,6 +185,8 @@ fun <T> PageStackHost(
                 },
                 isGestureActive = isTop && gestureState != null,
                 gestureProgress = if (isTop) gestureProgress else 0f,
+                isCompletingBack = completingBackPop,
+                completedGestureProgress = latestGestureProgress,
                 dismissProgress = 1f - pageProgress
             ) {
                 pageContent(page)
@@ -202,6 +208,8 @@ private fun PageStackLayer(
     direction: Float,
     isGestureActive: Boolean,
     gestureProgress: Float,
+    isCompletingBack: Boolean,
+    completedGestureProgress: Float,
     dismissProgress: Float,
     content: @Composable BoxScope.() -> Unit,
 ) {
@@ -223,10 +231,26 @@ private fun PageStackLayer(
                                 direction = direction
                             )
                         } else {
+                            val progress = 1f - coverProgress
+                            val completionProgress = if (
+                                animationStyle == PredictiveBackAnimationStyle.EdgeShrink &&
+                                isCompletingBack
+                            ) {
+                                val startProgress = completedGestureProgress.coerceIn(0f, 1f)
+                                val startCoverProgress = (1f - startProgress).coerceAtLeast(0.001f)
+                                (1f - coverProgress / startCoverProgress).coerceIn(0f, 1f)
+                            } else {
+                                null
+                            }
                             applyPredictiveBackFrontTransform(
                                 style = animationStyle,
-                                progress = 1f - coverProgress,
-                                direction = direction
+                                progress = if (completionProgress != null) {
+                                    completedGestureProgress.coerceIn(0f, 1f)
+                                } else {
+                                    progress
+                                },
+                                direction = direction,
+                                completionProgress = completionProgress
                             )
                         }
                     }
