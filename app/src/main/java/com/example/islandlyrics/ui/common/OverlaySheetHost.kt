@@ -109,12 +109,19 @@ fun OverlaySheetHost(
         !visible -> carriedDismissProgress + (1f - carriedDismissProgress) * closeProgress
         else -> 0f
     }.coerceIn(0f, 1f)
+    val openingDismissProgress = (1f - visibilityProgress).coerceIn(0f, 1f)
+    val predictiveDismissProgress = when {
+        isGestureActive -> gestureProgress
+        !visible -> dismissProgress
+        else -> openingDismissProgress
+    }.coerceIn(0f, 1f)
     val effectiveProgress = when {
         isGestureActive -> 1f - gestureProgress
         continuingBackClose -> 1f - dismissProgress
         else -> visibilityProgress
     }.coerceIn(0f, 1f)
-    val usePredictiveAnimation = useConsistentAnimation && (isGestureActive || continuingBackClose)
+    val usePredictiveAnimation = useConsistentAnimation && (visible || isGestureActive || visibilityProgress > 0.001f)
+    val animationDirection = if (isGestureActive || continuingBackClose) gestureDirection else 1f
 
     Box(
         modifier = modifier
@@ -128,8 +135,8 @@ fun OverlaySheetHost(
                     if (usePredictiveAnimation) {
                         applyPredictiveBackUnderlayTransform(
                             style = animationStyle,
-                            dismissProgress = dismissProgress,
-                            direction = gestureDirection
+                            dismissProgress = predictiveDismissProgress,
+                            direction = animationDirection
                         )
                     } else {
                         translationY = -backgroundShiftPx * effectiveProgress
@@ -165,7 +172,7 @@ fun OverlaySheetHost(
                                 applyPredictiveBackFrontTransform(
                                     style = animationStyle,
                                     progress = gestureProgress,
-                                    direction = gestureDirection,
+                                    direction = animationDirection,
                                     pivotY = 0.5f
                                 )
                             } else {
@@ -177,27 +184,11 @@ fun OverlaySheetHost(
                             }
                         } else if (!visible) {
                             if (usePredictiveAnimation) {
-                                val completionProgress = if (
-                                    animationStyle == PredictiveBackAnimationStyle.EdgeShrink &&
-                                    continuingBackClose
-                                ) {
-                                    val startProgress = carriedDismissProgress.coerceIn(0f, 1f)
-                                    ((dismissProgress - startProgress) / (1f - startProgress).coerceAtLeast(0.001f))
-                                        .coerceIn(0f, 1f)
-                                } else {
-                                    null
-                                }
                                 applyPredictiveBackFrontTransform(
                                     style = animationStyle,
-                                    progress = if (completionProgress != null) {
-                                        val startP = carriedDismissProgress.coerceIn(0f, 1f)
-                                        startP + (1f - startP) * completionProgress
-                                    } else {
-                                        dismissProgress
-                                    },
-                                    direction = gestureDirection,
-                                    pivotY = 0.5f,
-                                    completionProgress = completionProgress
+                                    progress = dismissProgress,
+                                    direction = animationDirection,
+                                    pivotY = 0.5f
                                 )
                             } else {
                                 val slideStart = 0.22f * carriedDismissProgress
@@ -208,8 +199,17 @@ fun OverlaySheetHost(
                                 alpha = 1f - (0.08f * dismissProgress)
                             }
                         } else {
-                            translationY = size.height * (1f - visibilityProgress)
-                            alpha = 0.92f + 0.08f * visibilityProgress
+                            if (usePredictiveAnimation) {
+                                applyPredictiveBackFrontTransform(
+                                    style = animationStyle,
+                                    progress = openingDismissProgress,
+                                    direction = animationDirection,
+                                    pivotY = 0.5f
+                                )
+                            } else {
+                                translationY = size.height * (1f - visibilityProgress)
+                                alpha = 0.92f + 0.08f * visibilityProgress
+                            }
                         }
                     }
             ) {

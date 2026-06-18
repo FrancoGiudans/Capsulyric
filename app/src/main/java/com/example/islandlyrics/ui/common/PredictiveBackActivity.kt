@@ -147,29 +147,23 @@ fun PredictiveBackActivity(
                 .graphicsLayer {
                     if (isExiting) {
                         val startProgress = lastProgress.coerceIn(0f, 1f)
-                        if (useConsistentAnimation && animationStyle != PredictiveBackAnimationStyle.EdgeShrink) {
-                            val progress = startProgress + (1f - startProgress) * exitProgress
-                            applyPredictiveBackFrontTransform(
-                                style = animationStyle,
-                                progress = progress,
-                                direction = exitDirection,
-                                pivotY = lastPivotY
-                            )
-                        } else {
-                            applyPredictiveBackFrontTransform(
-                                style = PredictiveBackAnimationStyle.EdgeShrink,
-                                progress = startProgress,
-                                direction = exitDirection,
-                                pivotY = lastPivotY,
-                                completionProgress = exitProgress
-                            )
-                        }
+                        val progress = startProgress + (1f - startProgress) * exitProgress
+                        applyPredictiveBackFrontTransform(
+                            style = if (useConsistentAnimation) {
+                                animationStyle
+                            } else {
+                                PredictiveBackAnimationStyle.ScaleSlide
+                            },
+                            progress = progress,
+                            direction = exitDirection,
+                            pivotY = lastPivotY
+                        )
                     } else if (isGestureActive) {
                         applyPredictiveBackFrontTransform(
                             style = if (useConsistentAnimation) {
                                 animationStyle
                             } else {
-                                PredictiveBackAnimationStyle.EdgeShrink
+                                PredictiveBackAnimationStyle.ScaleSlide
                             },
                             progress = gestureProgress,
                             direction = gestureDirection,

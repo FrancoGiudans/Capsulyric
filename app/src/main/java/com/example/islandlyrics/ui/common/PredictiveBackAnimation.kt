@@ -46,7 +46,6 @@ enum class PredictiveBackAnimationStyle(
     val prefValue: String,
     @param:StringRes val labelRes: Int
 ) {
-    EdgeShrink("edge_shrink", R.string.predictive_back_animation_edge_shrink),
     ScaleSlide("scale_slide", R.string.predictive_back_animation_scale_slide),
     HorizontalSlide("horizontal_slide", R.string.predictive_back_animation_horizontal_slide),
     Fade("fade", R.string.predictive_back_animation_fade),
@@ -57,7 +56,7 @@ enum class PredictiveBackAnimationStyle(
 
     companion object {
         val options: List<PredictiveBackAnimationStyle> = entries
-        val default: PredictiveBackAnimationStyle = EdgeShrink
+        val default: PredictiveBackAnimationStyle = ScaleSlide
 
         fun fromPrefValue(value: String?): PredictiveBackAnimationStyle {
             return entries.firstOrNull { it.prefValue == value } ?: default
@@ -140,11 +139,9 @@ internal fun GraphicsLayerScope.applyPredictiveBackFrontTransform(
     style: PredictiveBackAnimationStyle,
     progress: Float,
     direction: Float,
-    pivotY: Float = 0.5f,
-    completionProgress: Float? = null
+    pivotY: Float = 0.5f
 ) {
     val p = progress.coerceIn(0f, 1f)
-    val completion = completionProgress?.coerceIn(0f, 1f)
     val width = size.width
     val height = size.height
     val pivotX = if (direction >= 0f) 0.8f else 0.2f
@@ -159,14 +156,6 @@ internal fun GraphicsLayerScope.applyPredictiveBackFrontTransform(
     transformOrigin = TransformOrigin(pivotX, pivotY)
 
     when (style) {
-        PredictiveBackAnimationStyle.EdgeShrink -> {
-            val scale = 1f - 0.1f * p
-            scaleX = scale
-            scaleY = scale
-            completion?.let {
-                translationX = direction * width * it
-            }
-        }
         PredictiveBackAnimationStyle.ScaleSlide -> {
             val scale = 1f - 0.1f * p
             scaleX = scale
@@ -229,9 +218,6 @@ internal fun GraphicsLayerScope.applyPredictiveBackUnderlayTransform(
     transformOrigin = TransformOrigin.Center
 
     when (style) {
-        PredictiveBackAnimationStyle.EdgeShrink -> {
-            alpha = 1f - 0.04f * coveredProgress
-        }
         PredictiveBackAnimationStyle.ScaleSlide -> {
             translationX = -direction * width * 0.105f * coveredProgress
             val scale = 1f - 0.035f * coveredProgress
