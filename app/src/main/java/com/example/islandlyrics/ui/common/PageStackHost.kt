@@ -245,7 +245,8 @@ private fun PageStackLayer(
                             applyPredictiveBackFrontTransform(
                                 style = animationStyle,
                                 progress = if (completionProgress != null) {
-                                    completedGestureProgress.coerceIn(0f, 1f)
+                                    val startP = completedGestureProgress.coerceIn(0f, 1f)
+                                    startP + (1f - startP) * completionProgress
                                 } else {
                                     progress
                                 },

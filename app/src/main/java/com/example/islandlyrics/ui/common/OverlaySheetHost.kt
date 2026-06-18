@@ -190,7 +190,8 @@ fun OverlaySheetHost(
                                 applyPredictiveBackFrontTransform(
                                     style = animationStyle,
                                     progress = if (completionProgress != null) {
-                                        carriedDismissProgress.coerceIn(0f, 1f)
+                                        val startP = carriedDismissProgress.coerceIn(0f, 1f)
+                                        startP + (1f - startP) * completionProgress
                                     } else {
                                         dismissProgress
                                     },
