@@ -152,8 +152,6 @@ fun <T> PageStackHost(
             },
             isGestureActive = gestureState != null,
             gestureProgress = gestureProgress,
-            isCompletingBack = completingBackPop,
-            completedGestureProgress = latestGestureProgress,
             dismissProgress = if (depth == 1) 1f - topCoverProgress else 0f
         ) {
             backgroundContent()
@@ -185,8 +183,6 @@ fun <T> PageStackHost(
                 },
                 isGestureActive = isTop && gestureState != null,
                 gestureProgress = if (isTop) gestureProgress else 0f,
-                isCompletingBack = completingBackPop,
-                completedGestureProgress = latestGestureProgress,
                 dismissProgress = 1f - pageProgress
             ) {
                 pageContent(page)
@@ -208,8 +204,6 @@ private fun PageStackLayer(
     direction: Float,
     isGestureActive: Boolean,
     gestureProgress: Float,
-    isCompletingBack: Boolean,
-    completedGestureProgress: Float,
     dismissProgress: Float,
     content: @Composable BoxScope.() -> Unit,
 ) {
@@ -232,26 +226,10 @@ private fun PageStackLayer(
                             )
                         } else {
                             val progress = 1f - coverProgress
-                            val completionProgress = if (
-                                animationStyle == PredictiveBackAnimationStyle.EdgeShrink &&
-                                isCompletingBack
-                            ) {
-                                val startProgress = completedGestureProgress.coerceIn(0f, 1f)
-                                val startCoverProgress = (1f - startProgress).coerceAtLeast(0.001f)
-                                (1f - coverProgress / startCoverProgress).coerceIn(0f, 1f)
-                            } else {
-                                null
-                            }
                             applyPredictiveBackFrontTransform(
                                 style = animationStyle,
-                                progress = if (completionProgress != null) {
-                                    val startP = completedGestureProgress.coerceIn(0f, 1f)
-                                    startP + (1f - startP) * completionProgress
-                                } else {
-                                    progress
-                                },
-                                direction = direction,
-                                completionProgress = completionProgress
+                                progress = progress,
+                                direction = direction
                             )
                         }
                     }
