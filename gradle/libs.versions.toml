@@ -21,7 +21,6 @@ palette = "1.0.0"
 okhttp = "5.3.2"
 coroutines = "1.11.0"
 navigationEvent = "1.1.0"
-composeMultiplatform = "1.11.1"
 lifecycle = "2.10.0"
 androidxTestExtJunit = "1.3.0"
 androidxTestCore = "1.7.0"
@@ -60,9 +59,6 @@ coil = { group = "io.coil-kt", name = "coil", version.ref = "coil" }
 miuix-ui = { group = "top.yukonga.miuix.kmp", name = "miuix-ui-android", version.ref = "miuix" }
 miuix-preference = { group = "top.yukonga.miuix.kmp", name = "miuix-preference-android", version.ref = "miuix" }
 miuix-blur = { group = "top.yukonga.miuix.kmp", name = "miuix-blur-android", version.ref = "miuixBlur" }
-miuix-ui-common = { group = "top.yukonga.miuix.kmp", name = "miuix-ui", version.ref = "miuix" }
-miuix-preference-common = { group = "top.yukonga.miuix.kmp", name = "miuix-preference", version.ref = "miuix" }
-miuix-icons-common = { group = "top.yukonga.miuix.kmp", name = "miuix-icons", version.ref = "miuix" }
 
 # Shizuku
 shizuku-api = { group = "dev.rikka.shizuku", name = "api", version.ref = "shizuku" }
@@ -86,6 +82,4 @@ android-application = { id = "com.android.application", version.ref = "agp" }
 android-library = { id = "com.android.library", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
-kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
-compose-multiplatform = { id = "org.jetbrains.compose", version.ref = "composeMultiplatform" }
 

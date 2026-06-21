@@ -14,44 +14,8 @@ dependencyResolutionManagement {
         google()
         mavenCentral()
         maven { url = 'https://jitpack.io' }
-        ivy {
-            name = 'Node.js Distributions'
-            url = 'https://nodejs.org/dist'
-            patternLayout {
-                artifact 'v[revision]/[artifact](-v[revision]-[classifier]).[ext]'
-            }
-            metadataSources {
-                artifact()
-            }
-            content {
-                includeModule('org.nodejs', 'node')
-            }
-        }
-        ivy {
-            name = 'Yarn Distributions'
-            url = 'https://github.com/yarnpkg/yarn/releases/download'
-            patternLayout {
-                artifact 'v[revision]/[artifact](-v[revision]).[ext]'
-            }
-            metadataSources {
-                artifact()
-            }
-            content {
-                includeModule('com.yarnpkg', 'yarn')
-            }
-        }
     }
 }
 rootProject.name = "Capsulyric"
 include ':app'
 include ':hidden-api'
-
-def includeIfPresent = { String modulePath ->
-    def moduleDir = modulePath.startsWith(':') ? modulePath.substring(1) : modulePath
-    if (file(moduleDir).isDirectory()) {
-        include modulePath
-    }
-}
-
-includeIfPresent(':autobuild')
-includeIfPresent(':autobuild-ui')
