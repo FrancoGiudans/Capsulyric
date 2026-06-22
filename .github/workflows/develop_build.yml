@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - develop
-      - Zeitlind/release
+      - sunday/release
     tags: [ "v*" ]
     paths-ignore:
       - '**.md'

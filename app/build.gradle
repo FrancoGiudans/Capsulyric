@@ -38,7 +38,6 @@ dependencies {
     
     // Kotlin Coroutines for concurrent API calls
     implementation libs.kotlinx.coroutines.android
-    implementation libs.kotlinx.coroutines.core
     
     // Markdown
     implementation libs.markwon.core

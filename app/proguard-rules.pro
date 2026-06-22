@@ -6,26 +6,7 @@
 -keep class cn.lyric.getter.api.API { *; }
 
 
-# Kotlin Coroutines
--keepnames class kotlinx.coroutines.internal.MainDispatcherFactory {}
--keepnames class kotlinx.coroutines.CoroutineExceptionHandler {}
--keepclassmembers class kotlinx.coroutines.** {
-    volatile <fields>;
-}
--keepclassmembers class kotlin.coroutines.SafeContinuation {
-    volatile <fields>;
-}
--dontwarn kotlinx.coroutines.**
--keep class kotlin.coroutines.** { *; }
--keep class kotlinx.coroutines.** { *; }
-
-# ServiceLoader support
--keepnames class kotlinx.coroutines.internal.MainDispatcherFactory {}
--keepnames class kotlinx.coroutines.CoroutineExceptionHandler {}
-
-# Prevent stripping of internal coroutines classes
--keep class kotlin.coroutines.jvm.internal.** { *; }
--keep class kotlinx.coroutines.internal.** { *; }
+# Kotlin Coroutines rules are supplied by kotlinx-coroutines-core/android consumer rules.
 
 # Strip logs in release builds
 -assumenosideeffects class android.util.Log {
