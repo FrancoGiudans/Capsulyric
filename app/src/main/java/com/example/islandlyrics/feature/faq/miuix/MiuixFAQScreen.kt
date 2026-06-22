@@ -21,9 +21,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.islandlyrics.ui.miuix.MiuixBlurScaffold
-import com.example.islandlyrics.ui.miuix.MiuixBlurTopAppBar
-import com.example.islandlyrics.ui.miuix.miuixPageScroll
+import com.example.islandlyrics.ui.miuix.blur.MiuixBlurScaffold
+import com.example.islandlyrics.ui.miuix.blur.MiuixBlurTopAppBar
+import com.example.islandlyrics.ui.miuix.effects.miuixPageScroll
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
@@ -165,3 +165,5 @@ private fun MiuixFAQItem(question: CharSequence, answer: CharSequence) {
         }
     }
 }
+
+

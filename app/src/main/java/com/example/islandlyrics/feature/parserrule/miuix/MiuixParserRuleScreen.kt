@@ -1,13 +1,14 @@
 package com.example.islandlyrics.feature.parserrule.miuix
 
-import com.example.islandlyrics.ui.miuix.MiuixBackHandler
+import com.example.islandlyrics.ui.miuix.navigation.MiuixBackHandler
 import android.content.Context
 import com.example.islandlyrics.R
 import com.example.islandlyrics.core.network.OfflineModeManager
-import com.example.islandlyrics.data.ParserRuleHelper
-import com.example.islandlyrics.data.ParserRule
-import com.example.islandlyrics.data.LyricRepository
-import com.example.islandlyrics.data.lyric.OnlineLyricProvider
+import com.example.islandlyrics.core.settings.AppPreferences
+import com.example.islandlyrics.rules.ParserRuleHelper
+import com.example.islandlyrics.rules.ParserRule
+import com.example.islandlyrics.lyrics.state.LyricRepository
+import com.example.islandlyrics.lyrics.online.provider.OnlineLyricProvider
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -31,8 +32,11 @@ import top.yukonga.miuix.kmp.basic.*
 import top.yukonga.miuix.kmp.preference.ArrowPreference as SuperArrow
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.MiuixPopupUtils.Companion.MiuixPopupHost
-import com.example.islandlyrics.ui.miuix.*
-import com.example.islandlyrics.ui.common.OverlaySheetHost
+import com.example.islandlyrics.ui.miuix.blur.MiuixBlurDialog
+import com.example.islandlyrics.ui.miuix.blur.MiuixBlurScaffold
+import com.example.islandlyrics.ui.miuix.blur.MiuixBlurTopAppBar
+import com.example.islandlyrics.ui.miuix.effects.miuixPageScroll
+import com.example.islandlyrics.ui.navigation.OverlaySheetHost
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.delay
@@ -106,7 +110,7 @@ fun MiuixParserRuleScreen(
 
     // Refresh recommendations on enter
     LaunchedEffect(Unit) {
-        com.example.islandlyrics.service.MediaMonitorService.triggerRecheck()
+        com.example.islandlyrics.runtime.service.MediaMonitorService.triggerRecheck()
     }
 
     fun openRuleEditor(packageName: String? = null, suggestedName: String? = null) {
@@ -194,8 +198,8 @@ fun MiuixParserRuleScreen(
                 floatingActionButton = {
                     // Recommendation Logic
                     val recommendEnabled = remember {
-                        context.getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE)
-                            .getBoolean("recommend_media_app", true)
+                        AppPreferences.of(context)
+                            .getBoolean(AppPreferences.Keys.RECOMMEND_MEDIA_APP, true)
                     }
 
                     val metadata by LyricRepository.getInstance().liveSuggestionMetadata.observeAsState()
@@ -485,4 +489,5 @@ fun MiuixStatusBadge(active: Boolean, label: String) {
         color = if (active) MiuixTheme.colorScheme.primary else MiuixTheme.colorScheme.onSurfaceVariantActions.copy(alpha = 0.5f)
     )
 }
+
 

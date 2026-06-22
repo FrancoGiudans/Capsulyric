@@ -1,6 +1,7 @@
 package com.example.islandlyrics.data.lyric
 
 import com.example.islandlyrics.core.logging.AppLogger
+import com.example.islandlyrics.lyrics.online.crypto.QqQrcDecrypter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.FormBody
@@ -281,3 +282,4 @@ class QqRomanFetcher {
         private const val MAX_PREVIEW_CHARS = 12000
     }
 }
+

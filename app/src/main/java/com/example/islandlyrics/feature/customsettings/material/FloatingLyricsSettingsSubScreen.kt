@@ -16,7 +16,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.example.islandlyrics.R
 import com.example.islandlyrics.feature.settings.material.SettingsSwitchItem
-import com.example.islandlyrics.ui.common.FloatingLyricsRenderer
+import com.example.islandlyrics.ui.overlay.floating.FloatingLyricsRenderer
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable

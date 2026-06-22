@@ -1,0 +1,30 @@
+def localProperties = new Properties()
+def localPropertiesFile = rootProject.file('local.properties')
+if (localPropertiesFile.exists()) {
+    localPropertiesFile.withInputStream { localProperties.load(it) }
+}
+
+def keystorePath = localProperties.getProperty('store.file')
+def hasCustomKeystore = keystorePath != null && project.file(keystorePath).exists()
+
+ext.appSigning = [
+    localProperties: localProperties,
+    keystorePath: keystorePath,
+    hasCustomKeystore: hasCustomKeystore
+]
+
+android {
+    signingConfigs {
+        if (hasCustomKeystore) {
+            release {
+                storeFile project.file(keystorePath)
+                storePassword localProperties.getProperty('store.password')
+                keyAlias localProperties.getProperty('key.alias')
+                keyPassword localProperties.getProperty('key.password')
+                enableV1Signing = true
+                enableV2Signing = true
+                enableV3Signing = true
+            }
+        }
+    }
+}

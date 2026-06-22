@@ -1,6 +1,6 @@
 package com.example.islandlyrics.feature.update.miuix
 
-import com.example.islandlyrics.ui.miuix.MiuixBackHandler
+import com.example.islandlyrics.ui.miuix.navigation.MiuixBackHandler
 import com.example.islandlyrics.BuildConfig
 import com.example.islandlyrics.R
 import com.example.islandlyrics.core.update.UpdateChecker
@@ -25,7 +25,7 @@ import com.example.islandlyrics.feature.update.UpdateParser
 import top.yukonga.miuix.kmp.basic.ButtonDefaults
 import top.yukonga.miuix.kmp.basic.TextButton
 import top.yukonga.miuix.kmp.theme.MiuixTheme
-import com.example.islandlyrics.ui.miuix.MiuixBlurDialog
+import com.example.islandlyrics.ui.miuix.blur.MiuixBlurDialog
 
 @Composable
 fun MiuixUpdateDialog(
@@ -147,3 +147,4 @@ fun MiuixUpdateDialog(
         }
     }
 }
+

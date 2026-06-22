@@ -3,8 +3,9 @@ package com.example.islandlyrics.ui.theme.material
 import android.app.Activity
 import android.content.Context
 import android.os.Build
+import com.example.islandlyrics.core.settings.AppPreferences
 import com.example.islandlyrics.core.theme.ThemeHelper
-import com.example.islandlyrics.ui.common.BaseActivity
+import com.example.islandlyrics.ui.navigation.BaseActivity
 import androidx.activity.ComponentActivity
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -123,7 +124,7 @@ fun AppTheme(
 @Composable
 fun IslandLyricsMaterialTheme(content: @Composable () -> Unit) {
     val context = LocalContext.current
-    val prefs = remember { context.getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE) }
+    val prefs = remember { AppPreferences.of(context) }
     var followSystem by remember { mutableStateOf(ThemeHelper.getFollowSystem(context)) }
     var darkMode by remember { mutableStateOf(ThemeHelper.getDarkMode(context)) }
     var pureBlack by remember { mutableStateOf(ThemeHelper.getMaterialPureBlack(context)) }
@@ -136,12 +137,12 @@ fun IslandLyricsMaterialTheme(content: @Composable () -> Unit) {
     DisposableEffect(prefs) {
         val listener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
             when (key) {
-                "material_theme_follow_system" -> followSystem = ThemeHelper.getFollowSystem(context)
-                "material_theme_dark_mode" -> darkMode = ThemeHelper.getDarkMode(context)
-                "material_theme_pure_black" -> pureBlack = ThemeHelper.getMaterialPureBlack(context)
-                "material_theme_dynamic_color" -> dynamicColor = ThemeHelper.getMaterialDynamicColor(context)
-                "material_theme_custom_color" -> customThemeColorArgb = ThemeHelper.getMaterialCustomColor(context)
-                "material_theme_custom_color_global_tint" -> {
+                AppPreferences.Keys.MATERIAL_THEME_FOLLOW_SYSTEM -> followSystem = ThemeHelper.getFollowSystem(context)
+                AppPreferences.Keys.MATERIAL_THEME_DARK_MODE -> darkMode = ThemeHelper.getDarkMode(context)
+                AppPreferences.Keys.MATERIAL_THEME_PURE_BLACK -> pureBlack = ThemeHelper.getMaterialPureBlack(context)
+                AppPreferences.Keys.MATERIAL_THEME_DYNAMIC_COLOR -> dynamicColor = ThemeHelper.getMaterialDynamicColor(context)
+                AppPreferences.Keys.MATERIAL_THEME_CUSTOM_COLOR -> customThemeColorArgb = ThemeHelper.getMaterialCustomColor(context)
+                AppPreferences.Keys.MATERIAL_THEME_CUSTOM_COLOR_GLOBAL_TINT -> {
                     customThemeGlobalTintEnabled = ThemeHelper.isMaterialCustomColorGlobalTintEnabled(context)
                 }
             }

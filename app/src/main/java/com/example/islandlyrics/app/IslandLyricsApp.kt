@@ -4,6 +4,7 @@ import android.app.Application
 import android.os.Build
 import com.example.islandlyrics.core.logging.AppLogger
 import com.example.islandlyrics.core.settings.LabFeatureManager
+import com.example.islandlyrics.core.settings.AppPreferences
 import com.example.islandlyrics.core.theme.ThemeHelper
 import com.example.islandlyrics.core.platform.RomUtils
 import com.google.android.material.color.DynamicColors
@@ -21,15 +22,15 @@ class IslandLyricsApp : Application() {
         AppLogger.getInstance().init(this)
         
         // Initialise repository state
-        com.example.islandlyrics.data.LyricRepository.getInstance().init(this)
+        com.example.islandlyrics.lyrics.state.LyricRepository.getInstance().init(this)
 
         // Apply saved theme preferences (Mode, Language)
         ThemeHelper.applyTheme(this)
         LabFeatureManager.ensureInitialized(this)
         
         // Debug override
-        val prefs = getSharedPreferences("IslandLyricsPrefs", android.content.Context.MODE_PRIVATE)
-        val forcedType = prefs.getString("debug_forced_rom_type", null)
+        val prefs = AppPreferences.of(this)
+        val forcedType = prefs.getString(AppPreferences.Keys.DEBUG_FORCED_ROM_TYPE, null)
         if (!forcedType.isNullOrEmpty()) {
             RomUtils.forcedRomType = forcedType
         }

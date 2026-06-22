@@ -1,12 +1,12 @@
 package com.example.islandlyrics.feature.customsettings
 
-import com.example.islandlyrics.ui.common.BaseActivity
-import com.example.islandlyrics.ui.common.PredictiveBackActivity
+import com.example.islandlyrics.ui.navigation.BaseActivity
+import com.example.islandlyrics.ui.navigation.PredictiveBackActivity
 import android.os.Bundle
-import com.example.islandlyrics.ui.miuix.isMiuixEnabled
+import com.example.islandlyrics.ui.miuix.theme.isMiuixEnabled
 import com.example.islandlyrics.core.update.UpdateChecker
 import com.example.islandlyrics.feature.customsettings.miuix.MiuixCustomSettingsScreen
-import com.example.islandlyrics.ui.miuix.MiuixAppTheme
+import com.example.islandlyrics.ui.miuix.theme.MiuixAppTheme
 import com.example.islandlyrics.feature.customsettings.material.CustomSettingsScreen
 import com.example.islandlyrics.ui.theme.material.IslandLyricsMaterialTheme
 import androidx.activity.compose.setContent
@@ -45,3 +45,5 @@ class CustomSettingsActivity : BaseActivity() {
         }
     }
 }
+
+

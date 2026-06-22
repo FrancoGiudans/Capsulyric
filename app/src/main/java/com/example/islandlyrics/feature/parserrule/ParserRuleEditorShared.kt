@@ -1,8 +1,8 @@
 package com.example.islandlyrics.feature.parserrule
 
-import com.example.islandlyrics.data.FieldOrder
-import com.example.islandlyrics.data.ParserRule
-import com.example.islandlyrics.data.lyric.OnlineLyricProvider
+import com.example.islandlyrics.rules.FieldOrder
+import com.example.islandlyrics.rules.ParserRule
+import com.example.islandlyrics.lyrics.online.provider.OnlineLyricProvider
 
 enum class ParserRuleSourceConfigType {
     NOTIFICATION,
@@ -88,3 +88,4 @@ fun ParserRuleEditorState.toRule(previousRule: ParserRule?, isNewRule: Boolean):
     receiveLyriconTranslation = receiveLyriconTranslation,
     receiveLyriconRomanization = receiveLyriconRomanization
 )
+

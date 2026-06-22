@@ -6,6 +6,7 @@ import android.content.Intent
 import android.util.Log
 import androidx.core.content.FileProvider
 import com.example.islandlyrics.core.platform.RomUtils
+import com.example.islandlyrics.core.settings.AppPreferences
 import java.io.BufferedReader
 import java.io.File
 import java.io.FileReader
@@ -88,8 +89,8 @@ class LogManager private constructor() {
 
     private fun cleanOldLogs(context: Context) {
         try {
-            val prefs = context.getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE)
-            val lastCleanup = prefs.getLong("last_log_cleanup_time", 0)
+            val prefs = AppPreferences.of(context)
+            val lastCleanup = prefs.getLong(AppPreferences.Keys.LAST_LOG_CLEANUP_TIME, 0)
             val now = System.currentTimeMillis()
 
             // Run once every 24 hours
@@ -98,7 +99,7 @@ class LogManager private constructor() {
             }
 
             // Update cleanup time immediately
-            prefs.edit().putLong("last_log_cleanup_time", now).apply()
+            prefs.edit().putLong(AppPreferences.Keys.LAST_LOG_CLEANUP_TIME, now).apply()
 
             if (logFile == null || !logFile!!.exists()) return
 
@@ -501,7 +502,7 @@ class LogManager private constructor() {
         // Since we are in LogManager, properly accessing all settings might be invasive, but we can dump SharedPreferences
         sb.append("=== App Settings ===\n")
         try {
-            val prefs = context.getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE)
+            val prefs = AppPreferences.of(context)
             val allEntries = prefs.all
             for ((key, value) in allEntries) {
                  sb.append("$key: $value\n")

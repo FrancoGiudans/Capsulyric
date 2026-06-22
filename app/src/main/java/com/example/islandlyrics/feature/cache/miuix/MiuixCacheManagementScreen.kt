@@ -40,14 +40,14 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.islandlyrics.R
 import com.example.islandlyrics.core.cache.AppImageCacheManager
-import com.example.islandlyrics.data.lyric.LocalLyricDirectoryManager
-import com.example.islandlyrics.data.lyric.OnlineLyricCacheStore
+import com.example.islandlyrics.lyrics.local.LocalLyricDirectoryManager
+import com.example.islandlyrics.lyrics.cache.OnlineLyricCacheStore
 import com.example.islandlyrics.feature.cache.CacheManagementViewModel
 import com.example.islandlyrics.feature.cache.filterByCacheQuery
-import com.example.islandlyrics.ui.miuix.MiuixBackHandler
-import com.example.islandlyrics.ui.miuix.MiuixBlurScaffold
-import com.example.islandlyrics.ui.miuix.MiuixBlurTopAppBar
-import com.example.islandlyrics.ui.miuix.miuixPageScroll
+import com.example.islandlyrics.ui.miuix.navigation.MiuixBackHandler
+import com.example.islandlyrics.ui.miuix.blur.MiuixBlurScaffold
+import com.example.islandlyrics.ui.miuix.blur.MiuixBlurTopAppBar
+import com.example.islandlyrics.ui.miuix.effects.miuixPageScroll
 import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.Checkbox
@@ -366,3 +366,5 @@ private fun formatTimestamp(emptyValue: String, timestamp: Long?): String {
     if (timestamp == null || timestamp <= 0L) return emptyValue
     return SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date(timestamp))
 }
+
+

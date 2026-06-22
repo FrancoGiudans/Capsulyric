@@ -2,7 +2,7 @@ package com.example.islandlyrics.feature.lyric
 
 import android.content.Context
 import com.example.islandlyrics.R
-import com.example.islandlyrics.data.lyric.LyricExporter
+import com.example.islandlyrics.lyrics.export.LyricExporter
 
 fun LyricExporter.ExportResult.toUserMessage(context: Context): String {
     return when {

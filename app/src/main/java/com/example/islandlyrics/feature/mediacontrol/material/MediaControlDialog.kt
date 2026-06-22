@@ -3,9 +3,9 @@ package com.example.islandlyrics.feature.mediacontrol.material
 import android.content.Context
 import com.example.islandlyrics.R
 import com.example.islandlyrics.core.platform.RomUtils
-import com.example.islandlyrics.service.MediaMonitorService
-import com.example.islandlyrics.data.ParserRuleHelper
-import com.example.islandlyrics.data.LyricRepository
+import com.example.islandlyrics.runtime.service.MediaMonitorService
+import com.example.islandlyrics.rules.ParserRuleHelper
+import com.example.islandlyrics.lyrics.state.LyricRepository
 import com.example.islandlyrics.feature.main.MainActivity
 import com.example.islandlyrics.feature.onlinelyricdebug.OnlineLyricDebugActivity
 import android.content.Intent

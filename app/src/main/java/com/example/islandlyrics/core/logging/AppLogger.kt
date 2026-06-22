@@ -3,6 +3,7 @@ package com.example.islandlyrics.core.logging
 import android.content.Context
 import android.util.Log
 import com.example.islandlyrics.BuildConfig
+import com.example.islandlyrics.core.settings.AppPreferences
 
 /**
  * Unified logging facade for the app.
@@ -29,10 +30,10 @@ class AppLogger private constructor() {
     fun init(context: Context) {
         appContext = context.applicationContext
         
-        val prefs = context.getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE)
-        val isDevMode = prefs.getBoolean("dev_mode_enabled", false)
+        val prefs = AppPreferences.of(context)
+        val isDevMode = AppPreferences.isDevModeEnabled(prefs)
         isLogEnabled = BuildConfig.DEBUG || isDevMode
-        minimumLevel = LogLevel.fromPreference(prefs.getString(PREF_LOG_RECORD_LEVEL, null))
+        minimumLevel = LogLevel.fromPreference(prefs.getString(AppPreferences.Keys.LOG_RECORD_LEVEL, null))
     }
 
     fun enableLogging(enable: Boolean) {
@@ -107,7 +108,6 @@ class AppLogger private constructor() {
     }
 
     companion object {
-        const val PREF_LOG_RECORD_LEVEL = "log_record_level"
         @Volatile private var instance: AppLogger? = null
 
         @Synchronized

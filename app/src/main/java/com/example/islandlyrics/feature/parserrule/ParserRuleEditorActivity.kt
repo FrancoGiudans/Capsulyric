@@ -2,14 +2,14 @@ package com.example.islandlyrics.feature.parserrule
 
 import android.os.Bundle
 import androidx.activity.compose.setContent
-import com.example.islandlyrics.data.ParserRuleHelper
+import com.example.islandlyrics.rules.ParserRuleHelper
 import com.example.islandlyrics.feature.parserrule.material.ParserRuleEditorScreen
 import com.example.islandlyrics.feature.parserrule.miuix.MiuixParserRuleEditorScreen
-import com.example.islandlyrics.ui.common.ActivityTransitionStyle
-import com.example.islandlyrics.ui.common.BaseActivity
-import com.example.islandlyrics.ui.common.PredictiveBackActivity
-import com.example.islandlyrics.ui.miuix.MiuixAppTheme
-import com.example.islandlyrics.ui.miuix.isMiuixEnabled
+import com.example.islandlyrics.ui.navigation.ActivityTransitionStyle
+import com.example.islandlyrics.ui.navigation.BaseActivity
+import com.example.islandlyrics.ui.navigation.PredictiveBackActivity
+import com.example.islandlyrics.ui.miuix.theme.MiuixAppTheme
+import com.example.islandlyrics.ui.miuix.theme.isMiuixEnabled
 import com.example.islandlyrics.ui.theme.material.IslandLyricsMaterialTheme
 import com.example.islandlyrics.R
 
@@ -106,3 +106,5 @@ class ParserRuleEditorActivity : BaseActivity() {
         const val EXTRA_SUGGESTED_NAME = "suggested_name"
     }
 }
+
+

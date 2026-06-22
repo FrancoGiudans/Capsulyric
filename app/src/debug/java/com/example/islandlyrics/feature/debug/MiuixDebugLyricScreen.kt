@@ -15,8 +15,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.text.withStyle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.islandlyrics.DebugLyricViewModel
-import com.example.islandlyrics.data.ParserRuleHelper
-import com.example.islandlyrics.data.lyric.OnlineLyricProvider
+import com.example.islandlyrics.rules.ParserRuleHelper
+import com.example.islandlyrics.lyrics.online.provider.OnlineLyricProvider
 import top.yukonga.miuix.kmp.basic.*
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
@@ -208,7 +208,7 @@ fun MiuixDebugLyricScreen(
 
 @Composable
 fun MiuixSyllablePreview(
-    parsedLyrics: List<com.example.islandlyrics.data.lyric.OnlineLyricFetcher.LyricLine>,
+    parsedLyrics: List<com.example.islandlyrics.lyrics.online.OnlineLyricFetcher.LyricLine>,
     currentPosition: Long
 ) {
     // Similar to SyllablePreview in Material 3 version but with Miuix styling
@@ -275,7 +275,7 @@ fun MiuixSyllablePreview(
 }
 
 // Logic helpers (replicated from Material 3 version for self-containment or could be moved to a Utils file)
-private fun findCurrentLine(lyrics: List<com.example.islandlyrics.data.lyric.OnlineLyricFetcher.LyricLine>, position: Long): com.example.islandlyrics.data.lyric.OnlineLyricFetcher.LyricLine? {
+private fun findCurrentLine(lyrics: List<com.example.islandlyrics.lyrics.online.OnlineLyricFetcher.LyricLine>, position: Long): com.example.islandlyrics.lyrics.online.OnlineLyricFetcher.LyricLine? {
     if (lyrics.isEmpty()) return null
     var left = 0
     var right = lyrics.size - 1
@@ -295,3 +295,4 @@ private fun formatTime(ms: Long): String {
     val seconds = totalSeconds % 60
     return "%02d:%02d".format(minutes, seconds)
 }
+

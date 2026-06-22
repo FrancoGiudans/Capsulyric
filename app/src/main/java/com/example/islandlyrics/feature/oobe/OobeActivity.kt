@@ -3,10 +3,11 @@ package com.example.islandlyrics.feature.oobe
 import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.core.content.edit
-import com.example.islandlyrics.ui.common.BaseActivity
+import com.example.islandlyrics.core.settings.AppPreferences
+import com.example.islandlyrics.ui.navigation.BaseActivity
 import com.example.islandlyrics.feature.main.MainActivity
 import com.example.islandlyrics.feature.oobe.miuix.MiuixOobeScreen
-import com.example.islandlyrics.ui.miuix.MiuixAppTheme
+import com.example.islandlyrics.ui.miuix.theme.MiuixAppTheme
 
 import android.content.Intent
 
@@ -15,10 +16,10 @@ class OobeActivity : BaseActivity() {
         super.onCreate(savedInstanceState)
         
         setContent {
-            val prefs = getSharedPreferences("IslandLyricsPrefs", MODE_PRIVATE)
+            val prefs = AppPreferences.of(this)
             val onFinish: () -> Unit = {
                 // Mark OOBE as completed
-                prefs.edit { putBoolean("is_setup_complete", true) }
+                prefs.edit { putBoolean(AppPreferences.Keys.IS_SETUP_COMPLETE, true) }
                 
                 // Navigate to Main
                 val intent = Intent(this, MainActivity::class.java)
@@ -26,7 +27,7 @@ class OobeActivity : BaseActivity() {
                 finish()
             }
             val onImportAndFinish: (String) -> Unit = { snackbarMessage ->
-                prefs.edit { putBoolean("is_setup_complete", true) }
+                prefs.edit { putBoolean(AppPreferences.Keys.IS_SETUP_COMPLETE, true) }
 
                 val intent = Intent(this, MainActivity::class.java).apply {
                     putExtra(MainActivity.EXTRA_STARTUP_SNACKBAR_MESSAGE, snackbarMessage)
@@ -35,8 +36,8 @@ class OobeActivity : BaseActivity() {
                 finish()
             }
 
-            if (!prefs.contains("ui_use_miuix")) {
-                prefs.edit { putBoolean("ui_use_miuix", true) }
+            if (!prefs.contains(AppPreferences.Keys.UI_USE_MIUIX)) {
+                prefs.edit { putBoolean(AppPreferences.Keys.UI_USE_MIUIX, true) }
             }
 
             MiuixAppTheme {
@@ -48,3 +49,4 @@ class OobeActivity : BaseActivity() {
         }
     }
 }
+

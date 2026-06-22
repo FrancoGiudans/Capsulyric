@@ -5,15 +5,15 @@ import android.net.Uri
 import android.provider.Settings
 import com.example.islandlyrics.core.update.UpdateChecker
 import com.example.islandlyrics.core.platform.RomUtils
-import com.example.islandlyrics.service.LyricService
-import com.example.islandlyrics.data.LyricRepository
+import com.example.islandlyrics.runtime.service.LyricService
+import com.example.islandlyrics.lyrics.state.LyricRepository
 import com.example.islandlyrics.feature.update.miuix.MiuixUpdateDialog
 import com.example.islandlyrics.feature.mediacontrol.miuix.MiuixMediaControlDialog
 import com.example.islandlyrics.feature.oobe.OobeActivity
 import com.example.islandlyrics.feature.main.MainActivity
 import com.example.islandlyrics.feature.logviewer.LogViewerActivity
 import com.example.islandlyrics.feature.customsettings.CustomSettingsActivity
-import com.example.islandlyrics.ui.common.FloatingLyricsRenderer
+import com.example.islandlyrics.ui.overlay.floating.FloatingLyricsRenderer
 import android.content.Context
 import android.content.Intent
 import android.widget.Toast
@@ -37,9 +37,9 @@ import top.yukonga.miuix.kmp.preference.OverlayDropdownPreference as SuperDropdo
 import top.yukonga.miuix.kmp.preference.SwitchPreference as SuperSwitch
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.MiuixPopupUtils.Companion.MiuixPopupHost
-import com.example.islandlyrics.ui.miuix.MiuixBlurDialog
-import com.example.islandlyrics.ui.miuix.MiuixBlurScaffold
-import com.example.islandlyrics.ui.miuix.MiuixBlurTopAppBar
+import com.example.islandlyrics.ui.miuix.blur.MiuixBlurDialog
+import com.example.islandlyrics.ui.miuix.blur.MiuixBlurScaffold
+import com.example.islandlyrics.ui.miuix.blur.MiuixBlurTopAppBar
 
 @Composable
 fun MiuixDebugCenterScreen(
@@ -396,3 +396,4 @@ fun MiuixDebugCenterScreen(
         }
     }
 }
+

@@ -1,11 +1,7 @@
 package com.example.islandlyrics.feature.logviewer.material
 
-import android.content.Context
 import com.example.islandlyrics.core.logging.AppLogger
 import com.example.islandlyrics.core.logging.LogManager
-import android.content.Intent
-import android.widget.Toast
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -27,6 +23,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.islandlyrics.R
+import com.example.islandlyrics.core.settings.AppPreferences
 import com.example.islandlyrics.ui.theme.material.materialPageContainerColor
 import com.example.islandlyrics.ui.theme.material.neutralMaterialTopBarColors
 import kotlinx.coroutines.Dispatchers
@@ -49,8 +46,7 @@ fun LogViewerScreen(
     var recordLevel by remember {
         mutableStateOf(
             AppLogger.LogLevel.fromPreference(
-                context.getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE)
-                    .getString(AppLogger.PREF_LOG_RECORD_LEVEL, null)
+                AppPreferences.of(context).getString(AppPreferences.Keys.LOG_RECORD_LEVEL, null)
             )
         )
     }
@@ -219,9 +215,9 @@ fun LogViewerScreen(
                                 text = { Text(label) },
                                 onClick = {
                                     recordLevel = level
-                                    context.getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE)
+                                    AppPreferences.of(context)
                                         .edit()
-                                        .putString(AppLogger.PREF_LOG_RECORD_LEVEL, level.preferenceValue)
+                                        .putString(AppPreferences.Keys.LOG_RECORD_LEVEL, level.preferenceValue)
                                         .apply()
                                     AppLogger.getInstance().setMinimumLevel(level)
                                     showRecordLevelMenu = false

@@ -6,10 +6,10 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.islandlyrics.core.logging.AppLogger
-import com.example.islandlyrics.data.LyricRepository
-import com.example.islandlyrics.data.lyric.OnlineLyricFetcher
-import com.example.islandlyrics.data.ParserRuleHelper
-import com.example.islandlyrics.data.lyric.OnlineLyricProvider
+import com.example.islandlyrics.lyrics.state.LyricRepository
+import com.example.islandlyrics.lyrics.online.OnlineLyricFetcher
+import com.example.islandlyrics.rules.ParserRuleHelper
+import com.example.islandlyrics.lyrics.online.provider.OnlineLyricProvider
 import kotlinx.coroutines.launch
 
 class DebugLyricViewModel(application: Application) : AndroidViewModel(application) {
@@ -111,3 +111,4 @@ class DebugLyricViewModel(application: Application) : AndroidViewModel(applicati
         }
     }
 }
+

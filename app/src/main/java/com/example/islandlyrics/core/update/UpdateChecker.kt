@@ -4,6 +4,7 @@ import android.content.Context
 import com.example.islandlyrics.BuildConfig
 import com.example.islandlyrics.core.logging.AppLogger
 import com.example.islandlyrics.core.network.OfflineModeManager
+import com.example.islandlyrics.core.settings.AppPreferences
 import com.example.islandlyrics.feature.update.UpdateParser
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -19,13 +20,6 @@ object UpdateChecker {
 
     private const val TAG = "UpdateChecker"
     private const val GITHUB_API_URL = "https://api.github.com/repos/FrancoGiudans/Capsulyric/releases/latest"
-    private const val PREFS_NAME = "IslandLyricsPrefs"
-    private const val KEY_IGNORED_VERSION = "ignored_update_version"
-    private const val KEY_AUTO_UPDATE = "auto_check_updates"
-    private const val KEY_LAST_CHECK = "last_update_check_time"
-    private const val KEY_PRERELEASE_UPDATES = "allow_prerelease_updates"
-    private const val KEY_PRERELEASE_CHANNEL = "prerelease_channel" // Legacy: Alpha, Beta, Pre, Canary
-    private const val KEY_UPDATE_CHANNEL = "update_channel" // Stable, Preview, Experiment
     private val VERSION_IN_TITLE_REGEX = Regex("""Version\.\d{2}\.\d+(?:\.[A-Za-z0-9]+)?_C\d+""")
     private val VERSION_IN_BODY_REGEX = Regex("""(?im)^\s*[-*]\s*\*\*Version:\*\*\s*`(Version\.\d{2}\.\d+(?:\.[A-Za-z0-9]+)?_C\d+)`""")
 
@@ -48,13 +42,13 @@ object UpdateChecker {
     )
 
     fun isAutoUpdateEnabled(context: Context): Boolean {
-        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        return prefs.getBoolean(KEY_AUTO_UPDATE, true)
+        val prefs = AppPreferences.of(context)
+        return prefs.getBoolean(AppPreferences.Keys.AUTO_CHECK_UPDATES, true)
     }
 
     fun setAutoUpdateEnabled(context: Context, enabled: Boolean) {
-        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        prefs.edit().putBoolean(KEY_AUTO_UPDATE, enabled).apply()
+        val prefs = AppPreferences.of(context)
+        prefs.edit().putBoolean(AppPreferences.Keys.AUTO_CHECK_UPDATES, enabled).apply()
     }
 
     fun isPrereleaseEnabled(context: Context): Boolean {
@@ -90,14 +84,14 @@ object UpdateChecker {
     }
 
     fun getUpdateChannel(context: Context): String {
-        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        val newChannel = prefs.getString(KEY_UPDATE_CHANNEL, null)
+        val prefs = AppPreferences.of(context)
+        val newChannel = prefs.getString(AppPreferences.Keys.UPDATE_CHANNEL, null)
         if (!newChannel.isNullOrBlank()) {
             return normalizeChannel(newChannel)
         }
 
-        val prereleaseEnabled = prefs.getBoolean(KEY_PRERELEASE_UPDATES, false)
-        val legacyChannel = prefs.getString(KEY_PRERELEASE_CHANNEL, LEGACY_CHANNEL_ALPHA).orEmpty()
+        val prereleaseEnabled = prefs.getBoolean(AppPreferences.Keys.ALLOW_PRERELEASE_UPDATES, false)
+        val legacyChannel = prefs.getString(AppPreferences.Keys.PRERELEASE_CHANNEL, LEGACY_CHANNEL_ALPHA).orEmpty()
         return if (!prereleaseEnabled) {
             CHANNEL_STABLE
         } else {
@@ -110,7 +104,7 @@ object UpdateChecker {
     }
 
     fun setUpdateChannel(context: Context, channel: String) {
-        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val prefs = AppPreferences.of(context)
         val normalizedChannel = normalizeChannel(channel)
         val legacyChannel = when (normalizedChannel) {
             CHANNEL_EXPERIMENT -> LEGACY_CHANNEL_CANARY
@@ -118,15 +112,15 @@ object UpdateChecker {
             else -> LEGACY_CHANNEL_PRE
         }
         prefs.edit()
-            .putString(KEY_UPDATE_CHANNEL, normalizedChannel)
-            .putBoolean(KEY_PRERELEASE_UPDATES, normalizedChannel != CHANNEL_STABLE)
-            .putString(KEY_PRERELEASE_CHANNEL, legacyChannel)
+            .putString(AppPreferences.Keys.UPDATE_CHANNEL, normalizedChannel)
+            .putBoolean(AppPreferences.Keys.ALLOW_PRERELEASE_UPDATES, normalizedChannel != CHANNEL_STABLE)
+            .putString(AppPreferences.Keys.PRERELEASE_CHANNEL, legacyChannel)
             .apply()
     }
 
     fun getIgnoredVersion(context: Context): String? {
-        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        val ignored = prefs.getString(KEY_IGNORED_VERSION, null)
+        val prefs = AppPreferences.of(context)
+        val ignored = prefs.getString(AppPreferences.Keys.IGNORED_UPDATE_VERSION, null)
         if (ignored != null) {
             val currentVersion = BuildConfig.VERSION_NAME
             if (compareVersions(currentVersion, ignored) >= 0) {
@@ -138,23 +132,23 @@ object UpdateChecker {
     }
 
     fun setIgnoredVersion(context: Context, version: String) {
-        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        prefs.edit().putString(KEY_IGNORED_VERSION, version).apply()
+        val prefs = AppPreferences.of(context)
+        prefs.edit().putString(AppPreferences.Keys.IGNORED_UPDATE_VERSION, version).apply()
     }
 
     fun clearIgnoredVersion(context: Context) {
-        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        prefs.edit().remove(KEY_IGNORED_VERSION).apply()
+        val prefs = AppPreferences.of(context)
+        prefs.edit().remove(AppPreferences.Keys.IGNORED_UPDATE_VERSION).apply()
     }
 
     fun getLastCheckTime(context: Context): Long {
-        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        return prefs.getLong(KEY_LAST_CHECK, 0)
+        val prefs = AppPreferences.of(context)
+        return prefs.getLong(AppPreferences.Keys.LAST_UPDATE_CHECK_TIME, 0)
     }
 
     private fun updateLastCheckTime(context: Context) {
-        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        prefs.edit().putLong(KEY_LAST_CHECK, System.currentTimeMillis()).apply()
+        val prefs = AppPreferences.of(context)
+        prefs.edit().putLong(AppPreferences.Keys.LAST_UPDATE_CHECK_TIME, System.currentTimeMillis()).apply()
     }
 
     suspend fun fetchAbsoluteLatestRelease(context: Context, currentVersionOverride: String? = null): ReleaseInfo? = withContext(Dispatchers.IO) {

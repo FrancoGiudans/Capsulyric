@@ -22,11 +22,11 @@ import com.example.islandlyrics.core.network.OfflineModeManager
 import com.example.islandlyrics.core.platform.RomUtils
 import com.example.islandlyrics.core.settings.LabFeatureManager
 import com.example.islandlyrics.feature.customsettings.CustomSettingsActivity
-import com.example.islandlyrics.ui.miuix.MiuixBackHandler
-import com.example.islandlyrics.ui.miuix.MiuixBlurDialog
-import com.example.islandlyrics.ui.miuix.MiuixBlurScaffold
-import com.example.islandlyrics.ui.miuix.MiuixBlurTopAppBar
-import com.example.islandlyrics.ui.miuix.miuixPageScroll
+import com.example.islandlyrics.ui.miuix.navigation.MiuixBackHandler
+import com.example.islandlyrics.ui.miuix.blur.MiuixBlurDialog
+import com.example.islandlyrics.ui.miuix.blur.MiuixBlurScaffold
+import com.example.islandlyrics.ui.miuix.blur.MiuixBlurTopAppBar
+import com.example.islandlyrics.ui.miuix.effects.miuixPageScroll
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
 import top.yukonga.miuix.kmp.basic.ButtonDefaults
 import top.yukonga.miuix.kmp.basic.Card
@@ -232,3 +232,5 @@ fun MiuixLabScreen(onBack: () -> Unit) {
         }
     }
 }
+
+

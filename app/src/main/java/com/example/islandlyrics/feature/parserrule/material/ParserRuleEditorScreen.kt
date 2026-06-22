@@ -71,10 +71,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import com.example.islandlyrics.R
 import com.example.islandlyrics.core.network.OfflineModeManager
-import com.example.islandlyrics.data.FieldOrder
-import com.example.islandlyrics.data.ParserRule
-import com.example.islandlyrics.data.ParserRuleHelper
-import com.example.islandlyrics.data.lyric.OnlineLyricProvider
+import com.example.islandlyrics.rules.FieldOrder
+import com.example.islandlyrics.rules.ParserRule
+import com.example.islandlyrics.rules.ParserRuleHelper
+import com.example.islandlyrics.lyrics.online.provider.OnlineLyricProvider
 import com.example.islandlyrics.feature.parserrule.ParserRuleEditorState
 import com.example.islandlyrics.feature.parserrule.ParserRuleSourceConfigActivity
 import com.example.islandlyrics.feature.parserrule.ParserRuleSourceConfigType
@@ -82,7 +82,7 @@ import com.example.islandlyrics.feature.parserrule.toEditorState
 import com.example.islandlyrics.feature.parserrule.toRule
 import com.example.islandlyrics.feature.parserrule.withSourceSettingsFrom
 import com.example.islandlyrics.feature.settings.material.SettingsSectionHeader
-import com.example.islandlyrics.ui.common.PageStackHost
+import com.example.islandlyrics.ui.navigation.PageStackHost
 import com.example.islandlyrics.ui.theme.material.materialPageContainerColor
 import com.example.islandlyrics.ui.theme.material.neutralMaterialTopBarColors
 import kotlin.math.roundToInt
@@ -767,3 +767,4 @@ private fun <T> List<T>.moveItem(from: Int, to: Int): List<T> {
         add(to, item)
     }
 }
+

@@ -1,6 +1,6 @@
 package com.example.islandlyrics.feature.cache
 
-import com.example.islandlyrics.data.lyric.OnlineLyricCacheStore
+import com.example.islandlyrics.lyrics.cache.OnlineLyricCacheStore
 
 internal fun List<OnlineLyricCacheStore.LyricCacheEntrySummary>.filterByCacheQuery(
     query: String

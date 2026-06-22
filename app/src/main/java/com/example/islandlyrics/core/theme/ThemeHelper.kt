@@ -3,33 +3,33 @@ package com.example.islandlyrics.core.theme
 import android.content.Context
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.os.LocaleListCompat
+import com.example.islandlyrics.core.settings.AppPreferences
 
 object ThemeHelper {
 
-    private const val PREFS_NAME = "IslandLyricsPrefs"
-    private const val KEY_LANGUAGE = "language_code" // "" (system), "en", "zh-CN"
-    private const val KEY_UI_USE_MIUIX = "ui_use_miuix"
+    private const val KEY_LANGUAGE = AppPreferences.Keys.LANGUAGE_CODE // "" (system), "en", "zh-CN"
+    private const val KEY_UI_USE_MIUIX = AppPreferences.Keys.UI_USE_MIUIX
 
-    private const val KEY_MIUIX_FOLLOW_SYSTEM = "theme_follow_system"
-    private const val KEY_MIUIX_DARK_MODE = "theme_dark_mode"
-    private const val KEY_MIUIX_PURE_BLACK = "theme_pure_black"
-    private const val KEY_MIUIX_DYNAMIC_COLOR = "theme_dynamic_color"
-    private const val KEY_MIUIX_CUSTOM_COLOR = "theme_custom_color"
-    private const val KEY_MIUIX_CUSTOM_COLOR_GLOBAL_TINT = "theme_custom_color_global_tint"
+    private const val KEY_MIUIX_FOLLOW_SYSTEM = AppPreferences.Keys.THEME_FOLLOW_SYSTEM
+    private const val KEY_MIUIX_DARK_MODE = AppPreferences.Keys.THEME_DARK_MODE
+    private const val KEY_MIUIX_PURE_BLACK = AppPreferences.Keys.THEME_PURE_BLACK
+    private const val KEY_MIUIX_DYNAMIC_COLOR = AppPreferences.Keys.THEME_DYNAMIC_COLOR
+    private const val KEY_MIUIX_CUSTOM_COLOR = AppPreferences.Keys.THEME_CUSTOM_COLOR
+    private const val KEY_MIUIX_CUSTOM_COLOR_GLOBAL_TINT = AppPreferences.Keys.THEME_CUSTOM_COLOR_GLOBAL_TINT
 
-    private const val KEY_MATERIAL_FOLLOW_SYSTEM = "material_theme_follow_system"
-    private const val KEY_MATERIAL_DARK_MODE = "material_theme_dark_mode"
-    private const val KEY_MATERIAL_PURE_BLACK = "material_theme_pure_black"
-    private const val KEY_MATERIAL_DYNAMIC_COLOR = "material_theme_dynamic_color"
-    private const val KEY_MATERIAL_THEME_COLOR_SOURCE = "material_theme_color_source"
-    private const val KEY_MATERIAL_CUSTOM_COLOR = "material_theme_custom_color"
-    private const val KEY_MATERIAL_CUSTOM_COLOR_GLOBAL_TINT = "material_theme_custom_color_global_tint"
+    private const val KEY_MATERIAL_FOLLOW_SYSTEM = AppPreferences.Keys.MATERIAL_THEME_FOLLOW_SYSTEM
+    private const val KEY_MATERIAL_DARK_MODE = AppPreferences.Keys.MATERIAL_THEME_DARK_MODE
+    private const val KEY_MATERIAL_PURE_BLACK = AppPreferences.Keys.MATERIAL_THEME_PURE_BLACK
+    private const val KEY_MATERIAL_DYNAMIC_COLOR = AppPreferences.Keys.MATERIAL_THEME_DYNAMIC_COLOR
+    private const val KEY_MATERIAL_THEME_COLOR_SOURCE = AppPreferences.Keys.MATERIAL_THEME_COLOR_SOURCE
+    private const val KEY_MATERIAL_CUSTOM_COLOR = AppPreferences.Keys.MATERIAL_THEME_CUSTOM_COLOR
+    private const val KEY_MATERIAL_CUSTOM_COLOR_GLOBAL_TINT = AppPreferences.Keys.MATERIAL_THEME_CUSTOM_COLOR_GLOBAL_TINT
 
     const val MATERIAL_THEME_COLOR_SOURCE_DEFAULT = "default"
     const val MATERIAL_THEME_COLOR_SOURCE_CUSTOM = "custom"
 
     fun applyTheme(context: Context) {
-        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val prefs = prefs(context)
 
         // 1. Language
         val lang = prefs.getString(KEY_LANGUAGE, "")
@@ -58,8 +58,7 @@ object ThemeHelper {
 
     fun isPureBlackEnabled(context: Context): Boolean {
         return if (isMiuixEnabled(context)) {
-            val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            prefs.getBoolean(KEY_MIUIX_PURE_BLACK, false)
+            prefs(context).getBoolean(KEY_MIUIX_PURE_BLACK, false)
         } else {
             getMaterialPureBlack(context)
         }
@@ -67,7 +66,7 @@ object ThemeHelper {
 
     // Setters
     fun setLanguage(context: Context, langCode: String) {
-        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        prefs(context)
             .edit().putString(KEY_LANGUAGE, langCode).apply()
         if (langCode.isEmpty()) {
             AppCompatDelegate.setApplicationLocales(LocaleListCompat.getEmptyLocaleList())
@@ -77,7 +76,7 @@ object ThemeHelper {
     }
 
     fun setFollowSystem(context: Context, follow: Boolean) {
-        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val prefs = prefs(context)
         prefs.edit().putBoolean(activeFollowSystemKey(context), follow).apply()
         // Re-apply immediately
         if (follow) {
@@ -89,7 +88,7 @@ object ThemeHelper {
     }
 
     fun setDarkMode(context: Context, enable: Boolean) {
-        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val prefs = prefs(context)
         prefs.edit().putBoolean(activeDarkModeKey(context), enable).apply()
         if (!getFollowSystem(context)) {
             AppCompatDelegate.setDefaultNightMode(if (enable) AppCompatDelegate.MODE_NIGHT_YES else AppCompatDelegate.MODE_NIGHT_NO)
@@ -97,19 +96,19 @@ object ThemeHelper {
     }
 
     fun setPureBlack(context: Context, enable: Boolean) {
-        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        prefs(context)
             .edit().putBoolean(activePureBlackKey(context), enable).apply()
         // Activity needs recreation to pick this up in onCreate
     }
 
     fun setDynamicColor(context: Context, enable: Boolean) {
-        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        prefs(context)
             .edit().putBoolean(activeDynamicColorKey(context), enable).apply()
         // Requires App restart or Activity recreation logic
     }
 
     fun getFollowSystem(context: Context): Boolean {
-        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val prefs = prefs(context)
         return if (isMiuixEnabled(context)) {
             prefs.getBoolean(KEY_MIUIX_FOLLOW_SYSTEM, true)
         } else {
@@ -118,7 +117,7 @@ object ThemeHelper {
     }
 
     fun getDarkMode(context: Context): Boolean {
-        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val prefs = prefs(context)
         return if (isMiuixEnabled(context)) {
             prefs.getBoolean(KEY_MIUIX_DARK_MODE, false)
         } else {
@@ -127,41 +126,40 @@ object ThemeHelper {
     }
 
     fun getMaterialPureBlack(context: Context): Boolean {
-        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val prefs = prefs(context)
         return readBooleanWithFallback(prefs, KEY_MATERIAL_PURE_BLACK, KEY_MIUIX_PURE_BLACK, false)
     }
 
     fun getMaterialDynamicColor(context: Context): Boolean {
-        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val prefs = prefs(context)
         return readBooleanWithFallback(prefs, KEY_MATERIAL_DYNAMIC_COLOR, KEY_MIUIX_DYNAMIC_COLOR, false)
     }
 
     fun getMaterialCustomColor(context: Context): Int {
-        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val prefs = prefs(context)
         return readIntWithFallback(prefs, KEY_MATERIAL_CUSTOM_COLOR, KEY_MIUIX_CUSTOM_COLOR, 0xFF3482FF.toInt())
     }
 
     fun getMaterialThemeColorSource(context: Context): String {
-        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val prefs = prefs(context)
         val stored = prefs.getString(KEY_MATERIAL_THEME_COLOR_SOURCE, MATERIAL_THEME_COLOR_SOURCE_DEFAULT)
         return stored.takeIf { it == MATERIAL_THEME_COLOR_SOURCE_DEFAULT || it == MATERIAL_THEME_COLOR_SOURCE_CUSTOM }
             ?: MATERIAL_THEME_COLOR_SOURCE_DEFAULT
     }
 
     fun isMaterialCustomColorGlobalTintEnabled(context: Context): Boolean {
-        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         return getMaterialThemeColorSource(context) == MATERIAL_THEME_COLOR_SOURCE_CUSTOM
     }
 
     fun setMaterialCustomColor(context: Context, argb: Int) {
-        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        prefs(context)
             .edit()
             .putInt(KEY_MATERIAL_CUSTOM_COLOR, argb)
             .apply()
     }
 
     fun setMaterialCustomColorGlobalTint(context: Context, enabled: Boolean) {
-        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        prefs(context)
             .edit()
             .putBoolean(KEY_MATERIAL_CUSTOM_COLOR_GLOBAL_TINT, enabled)
             .apply()
@@ -172,7 +170,7 @@ object ThemeHelper {
             MATERIAL_THEME_COLOR_SOURCE_CUSTOM -> MATERIAL_THEME_COLOR_SOURCE_CUSTOM
             else -> MATERIAL_THEME_COLOR_SOURCE_DEFAULT
         }
-        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        prefs(context)
             .edit()
             .putString(KEY_MATERIAL_THEME_COLOR_SOURCE, normalized)
             .putBoolean(KEY_MATERIAL_CUSTOM_COLOR_GLOBAL_TINT, normalized == MATERIAL_THEME_COLOR_SOURCE_CUSTOM)
@@ -180,9 +178,12 @@ object ThemeHelper {
     }
 
     private fun isMiuixEnabled(context: Context): Boolean {
-        return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        return prefs(context)
             .getBoolean(KEY_UI_USE_MIUIX, true)
     }
+
+    private fun prefs(context: Context) =
+        AppPreferences.of(context)
 
     private fun activeFollowSystemKey(context: Context): String {
         return if (isMiuixEnabled(context)) KEY_MIUIX_FOLLOW_SYSTEM else KEY_MATERIAL_FOLLOW_SYSTEM

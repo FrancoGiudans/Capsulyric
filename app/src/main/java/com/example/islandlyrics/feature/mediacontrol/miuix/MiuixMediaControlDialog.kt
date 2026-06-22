@@ -2,10 +2,11 @@ package com.example.islandlyrics.feature.mediacontrol.miuix
 
 import android.content.Context
 import com.example.islandlyrics.R
+import com.example.islandlyrics.core.settings.AppPreferences
 import com.example.islandlyrics.core.platform.RomUtils
-import com.example.islandlyrics.service.MediaMonitorService
-import com.example.islandlyrics.data.ParserRuleHelper
-import com.example.islandlyrics.data.LyricRepository
+import com.example.islandlyrics.runtime.service.MediaMonitorService
+import com.example.islandlyrics.rules.ParserRuleHelper
+import com.example.islandlyrics.lyrics.state.LyricRepository
 import com.example.islandlyrics.feature.main.MainActivity
 import com.example.islandlyrics.feature.onlinelyricdebug.OnlineLyricDebugActivity
 import android.content.Intent
@@ -114,7 +115,9 @@ fun MiuixMediaControlDialog(
     val repoProgress by repo.liveProgress.observeAsState()
     val showOnlineLyricRematch = isOnlineLyricSource(repoLyric?.apiPath)
 
-    val blurEnabled = remember { context.getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE).getBoolean("card_blur_enabled", false) }
+    val blurEnabled = remember {
+        AppPreferences.of(context).getBoolean(AppPreferences.Keys.CARD_BLUR_ENABLED, false)
+    }
 
     var visibleState by remember { mutableStateOf(false) }
     var dismissRequested by remember { mutableStateOf(false) }

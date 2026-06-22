@@ -52,22 +52,22 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import com.example.islandlyrics.R
 import com.example.islandlyrics.core.network.OfflineModeManager
-import com.example.islandlyrics.data.FieldOrder
-import com.example.islandlyrics.data.ParserRule
-import com.example.islandlyrics.data.ParserRuleHelper
-import com.example.islandlyrics.data.lyric.OnlineLyricProvider
+import com.example.islandlyrics.rules.FieldOrder
+import com.example.islandlyrics.rules.ParserRule
+import com.example.islandlyrics.rules.ParserRuleHelper
+import com.example.islandlyrics.lyrics.online.provider.OnlineLyricProvider
 import com.example.islandlyrics.feature.parserrule.ParserRuleEditorState
 import com.example.islandlyrics.feature.parserrule.ParserRuleSourceConfigActivity
 import com.example.islandlyrics.feature.parserrule.ParserRuleSourceConfigType
 import com.example.islandlyrics.feature.parserrule.toEditorState
 import com.example.islandlyrics.feature.parserrule.toRule
 import com.example.islandlyrics.feature.parserrule.withSourceSettingsFrom
-import com.example.islandlyrics.ui.common.PageStackHost
-import com.example.islandlyrics.ui.miuix.MiuixBlurDialog
-import com.example.islandlyrics.ui.miuix.MiuixBlurScaffold
-import com.example.islandlyrics.ui.miuix.MiuixBlurSmallTopAppBar
-import com.example.islandlyrics.ui.miuix.MiuixBlurTopAppBar
-import com.example.islandlyrics.ui.miuix.miuixPageScroll
+import com.example.islandlyrics.ui.navigation.PageStackHost
+import com.example.islandlyrics.ui.miuix.blur.MiuixBlurDialog
+import com.example.islandlyrics.ui.miuix.blur.MiuixBlurScaffold
+import com.example.islandlyrics.ui.miuix.blur.MiuixBlurSmallTopAppBar
+import com.example.islandlyrics.ui.miuix.blur.MiuixBlurTopAppBar
+import com.example.islandlyrics.ui.miuix.effects.miuixPageScroll
 import top.yukonga.miuix.kmp.basic.BasicComponent
 import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.basic.Card
@@ -755,3 +755,5 @@ private fun <T> List<T>.moveItem(from: Int, to: Int): List<T> {
         add(to, item)
     }
 }
+
+

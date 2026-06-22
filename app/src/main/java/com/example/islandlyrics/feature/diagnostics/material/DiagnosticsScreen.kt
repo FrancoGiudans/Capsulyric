@@ -11,7 +11,7 @@ import androidx.compose.material.icons.filled.Terminal
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
-import com.example.islandlyrics.data.LyricRepository
+import com.example.islandlyrics.lyrics.state.LyricRepository
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.input.nestedscroll.nestedScroll

@@ -44,12 +44,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.islandlyrics.R
-import com.example.islandlyrics.data.lyric.OnlineLyricFetcher
+import com.example.islandlyrics.lyrics.online.OnlineLyricFetcher
 import com.example.islandlyrics.feature.onlinelyricdebug.OnlineLyricDebugViewModel
-import com.example.islandlyrics.ui.miuix.MiuixBlurDialog
-import com.example.islandlyrics.ui.miuix.MiuixBlurScaffold
-import com.example.islandlyrics.ui.miuix.MiuixBlurTopAppBar
-import com.example.islandlyrics.ui.miuix.miuixPageScroll
+import com.example.islandlyrics.ui.miuix.blur.MiuixBlurDialog
+import com.example.islandlyrics.ui.miuix.blur.MiuixBlurScaffold
+import com.example.islandlyrics.ui.miuix.blur.MiuixBlurTopAppBar
+import com.example.islandlyrics.ui.miuix.effects.miuixPageScroll
 import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.IconButton
@@ -490,3 +490,5 @@ private fun AttemptResultDialog(
         }
     }
 }
+
+

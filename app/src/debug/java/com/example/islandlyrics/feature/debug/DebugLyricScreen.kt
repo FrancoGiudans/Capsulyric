@@ -30,9 +30,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.graphics.SolidColor
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.islandlyrics.DebugLyricViewModel
-import com.example.islandlyrics.data.ParserRuleHelper
-import com.example.islandlyrics.data.lyric.OnlineLyricFetcher
-import com.example.islandlyrics.data.lyric.OnlineLyricProvider
+import com.example.islandlyrics.rules.ParserRuleHelper
+import com.example.islandlyrics.lyrics.online.OnlineLyricFetcher
+import com.example.islandlyrics.lyrics.online.provider.OnlineLyricProvider
 import com.example.islandlyrics.ui.theme.material.MaterialPrimaryLight
 import com.example.islandlyrics.ui.theme.material.materialPageContainerColor
 import kotlinx.coroutines.delay
@@ -406,3 +406,4 @@ private fun formatTime(ms: Long): String {
     val seconds = totalSeconds % 60
     return "%02d:%02d".format(minutes, seconds)
 }
+

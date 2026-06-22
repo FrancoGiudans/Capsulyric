@@ -36,7 +36,7 @@ import com.example.islandlyrics.core.feed.CommunityFeedRepository
 import com.example.islandlyrics.core.network.OfflineModeManager
 import com.example.islandlyrics.core.settings.LabFeatureManager
 import com.example.islandlyrics.core.update.UpdateChecker
-import com.example.islandlyrics.data.LyricRepository
+import com.example.islandlyrics.lyrics.state.LyricRepository
 import com.example.islandlyrics.feature.settings.CommunityDialogState
 import com.example.islandlyrics.feature.settings.ReleaseDialogState
 import com.example.islandlyrics.feature.update.material.UpdateDialog

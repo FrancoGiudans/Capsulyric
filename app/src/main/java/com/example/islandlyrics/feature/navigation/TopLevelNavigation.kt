@@ -51,8 +51,8 @@ import com.example.islandlyrics.R
 import com.example.islandlyrics.feature.main.MainActivity
 import com.example.islandlyrics.feature.parserrule.ParserRuleActivity
 import com.example.islandlyrics.feature.settings.SettingsActivity
-import com.example.islandlyrics.ui.miuix.LocalMiuixBlurBackdrop
-import com.example.islandlyrics.ui.miuix.LocalMiuixBlurEnabled
+import com.example.islandlyrics.ui.miuix.blur.LocalMiuixBlurBackdrop
+import com.example.islandlyrics.ui.miuix.blur.LocalMiuixBlurEnabled
 import top.yukonga.miuix.kmp.basic.FloatingNavigationBar
 import top.yukonga.miuix.kmp.basic.FloatingNavigationBarItem
 import top.yukonga.miuix.kmp.blur.BlendColorEntry
@@ -231,3 +231,4 @@ fun MiuixTopLevelFloatingNavigationBar(
         }
     }
 }
+

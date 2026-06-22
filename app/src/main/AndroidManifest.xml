@@ -80,7 +80,7 @@
             android:parentActivityName="com.example.islandlyrics.feature.parserrule.ParserRuleEditorActivity" />
 
         <service 
-            android:name=".service.LyricService"
+            android:name=".runtime.service.LyricService"
             android:enabled="true"
             android:exported="false"
             android:foregroundServiceType="specialUse">
@@ -88,7 +88,7 @@
                       android:value="Live rendering of lyrics for third-party media applications"/>
         </service>
         <service 
-            android:name=".service.MediaMonitorService"
+            android:name=".runtime.service.MediaMonitorService"
             android:label="@string/app_name"
             android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE"
             android:exported="true">
@@ -97,7 +97,7 @@
             </intent-filter>
         </service>
         <receiver
-            android:name=".service.NewPlayingAppActionReceiver"
+            android:name=".runtime.playingapp.NewPlayingAppActionReceiver"
             android:exported="false" />
 
         <activity android:name="com.example.islandlyrics.feature.diagnostics.DiagnosticsActivity"

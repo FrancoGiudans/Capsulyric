@@ -89,9 +89,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.example.islandlyrics.R
-import com.example.islandlyrics.data.LyricRepository
-import com.example.islandlyrics.data.ParserRuleHelper
-import com.example.islandlyrics.service.MediaMonitorService
+import com.example.islandlyrics.lyrics.state.LyricRepository
+import com.example.islandlyrics.rules.ParserRuleHelper
+import com.example.islandlyrics.runtime.service.MediaMonitorService
 import com.example.islandlyrics.ui.theme.material.materialPageContainerColor
 import com.example.islandlyrics.ui.theme.material.neutralMaterialTopBarColors
 import com.google.android.material.progressindicator.LinearProgressIndicator

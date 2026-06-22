@@ -1,12 +1,12 @@
 package com.example.islandlyrics.feature.logviewer
 
 import android.content.Context
-import com.example.islandlyrics.ui.miuix.isMiuixEnabled
+import com.example.islandlyrics.ui.miuix.theme.isMiuixEnabled
 import com.example.islandlyrics.feature.logviewer.miuix.MiuixLogViewerScreen
-import com.example.islandlyrics.ui.miuix.MiuixAppTheme
+import com.example.islandlyrics.ui.miuix.theme.MiuixAppTheme
 import com.example.islandlyrics.feature.logviewer.material.LogViewerScreen
 import com.example.islandlyrics.ui.theme.material.AppTheme
-import com.example.islandlyrics.ui.common.PredictiveBackActivity
+import com.example.islandlyrics.ui.navigation.PredictiveBackActivity
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.compose.setContent
@@ -45,3 +45,5 @@ class LogViewerActivity : AppCompatActivity() {
         }
     }
 }
+
+

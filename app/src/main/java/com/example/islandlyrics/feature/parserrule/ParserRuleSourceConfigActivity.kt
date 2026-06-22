@@ -4,13 +4,13 @@ import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.compose.setContent
 import com.example.islandlyrics.R
-import com.example.islandlyrics.data.ParserRuleHelper
+import com.example.islandlyrics.rules.ParserRuleHelper
 import com.example.islandlyrics.feature.parserrule.material.ParserRuleSourceConfigScreen
 import com.example.islandlyrics.feature.parserrule.miuix.MiuixParserRuleSourceConfigScreen
-import com.example.islandlyrics.ui.common.BaseActivity
-import com.example.islandlyrics.ui.common.PredictiveBackActivity
-import com.example.islandlyrics.ui.miuix.MiuixAppTheme
-import com.example.islandlyrics.ui.miuix.isMiuixEnabled
+import com.example.islandlyrics.ui.navigation.BaseActivity
+import com.example.islandlyrics.ui.navigation.PredictiveBackActivity
+import com.example.islandlyrics.ui.miuix.theme.MiuixAppTheme
+import com.example.islandlyrics.ui.miuix.theme.isMiuixEnabled
 import com.example.islandlyrics.ui.theme.material.IslandLyricsMaterialTheme
 
 class ParserRuleSourceConfigActivity : BaseActivity() {
@@ -85,3 +85,5 @@ class ParserRuleSourceConfigActivity : BaseActivity() {
         const val EXTRA_CONFIG_TYPE = "config_type"
     }
 }
+
+

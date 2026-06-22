@@ -2,7 +2,8 @@
 
 package com.example.islandlyrics.feature.settings.miuix
 
-import com.example.islandlyrics.ui.miuix.MiuixBackHandler
+import com.example.islandlyrics.ui.miuix.theme.rememberIslandLyricsMiuixThemeController
+import com.example.islandlyrics.ui.miuix.navigation.MiuixBackHandler
 import android.annotation.SuppressLint
 import android.app.Activity
 import com.example.islandlyrics.R
@@ -14,6 +15,7 @@ import com.example.islandlyrics.feature.faq.FAQActivity
 import com.example.islandlyrics.feature.settings.AboutActivity
 import com.example.islandlyrics.feature.settings.CommunityDialogState
 import com.example.islandlyrics.feature.settings.CommunityMarkdownBody
+import com.example.islandlyrics.feature.settings.ParserBackupPreviewReader
 import com.example.islandlyrics.feature.settings.buildCommunityMarkdown
 import android.content.Intent
 import android.content.Context
@@ -37,27 +39,28 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.dp
+import com.example.islandlyrics.ui.miuix.blur.MiuixBlurDialog
+import com.example.islandlyrics.ui.miuix.blur.MiuixBlurScaffold
+import com.example.islandlyrics.ui.miuix.blur.MiuixBlurTopAppBar
+import com.example.islandlyrics.ui.miuix.effects.miuixPageScroll
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.edit
 import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import top.yukonga.miuix.kmp.basic.*
 import top.yukonga.miuix.kmp.preference.ArrowPreference as SuperArrow
 import top.yukonga.miuix.kmp.preference.OverlayDropdownPreference as SuperDropdown
 import top.yukonga.miuix.kmp.preference.SwitchPreference as SuperSwitch
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import com.example.islandlyrics.feature.update.miuix.MiuixUpdateDialog
-import com.example.islandlyrics.ui.miuix.*
 import com.example.islandlyrics.core.settings.SettingsBackupManager
 import com.example.islandlyrics.core.settings.SettingsBackupManager.ParserConflict
 import com.example.islandlyrics.core.settings.BackupCategories
 import com.example.islandlyrics.core.settings.SettingsBackupManager.PreviewResult
-import com.example.islandlyrics.data.LyricRepository
-import com.example.islandlyrics.service.MediaMonitorService
-import com.example.islandlyrics.service.NewPlayingAppNotifier
+import com.example.islandlyrics.lyrics.state.LyricRepository
+import com.example.islandlyrics.runtime.service.MediaMonitorService
+import com.example.islandlyrics.runtime.playingapp.NewPlayingAppNotifier
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import top.yukonga.miuix.kmp.basic.Snackbar as MiuixSnackbar
@@ -151,7 +154,7 @@ fun MiuixSettingsScreen(
                 val dynamicCategoriesList = BackupCategories.ALL_CATEGORIES.map { cat ->
                     when (cat.id) {
                         "parser_rules" -> {
-                            val parserJson = readParserJsonForPreviewMiuix(context, uri)
+                            val parserJson = ParserBackupPreviewReader.readBlocking(context, uri)
                             cat.copy(subGroups = BackupCategories.parserAppSubGroupsFromJson(parserJson))
                         }
                         else -> cat
@@ -593,7 +596,7 @@ fun MiuixSettingsScreen(
                     "parser_rules" -> {
                         val uri = pendingImportUri
                         val parserJson = if (uri != null) {
-                            remember(uri) { readParserJsonForPreviewMiuix(context, uri) }
+                            remember(uri) { ParserBackupPreviewReader.readBlocking(context, uri) }
                         } else null
                         cat.copy(subGroups = BackupCategories.parserAppSubGroupsFromJson(parserJson))
                     }
@@ -707,7 +710,7 @@ fun MiuixSettingsScreen(
                                 showParserConflictDialog = false
                                 val uri = pendingConflictImportUri ?: return@TextButton
                                 coroutineScope.launch {
-                                    val parserJson = readParserJsonFromFile(context, uri)
+                                    val parserJson = ParserBackupPreviewReader.read(context, uri)
                                     val allConflictPkgs = parserConflicts.map { it.packageName }.toSet()
                                     val packagesToKeep = allConflictPkgs - conflictKeepExisting
                                     SettingsBackupManager.resolveParserConflicts(context, parserJson, packagesToKeep)
@@ -725,72 +728,6 @@ fun MiuixSettingsScreen(
             }
         }
     }
-}
-
-/** Read parser rules JSON from a ZIP archive or legacy JSON backup. */
-private fun readParserJsonForPreviewMiuix(context: Context, uri: Uri): String {
-    return kotlinx.coroutines.runBlocking { readParserJsonFromFile(context, uri) }
-}
-
-private suspend fun readParserJsonFromFile(context: Context, uri: Uri): String = withContext(Dispatchers.IO) {
-    try {
-        // Check if ZIP
-        val header = ByteArray(4)
-        val isZip = context.contentResolver.openInputStream(uri)?.use { input ->
-            if (input.read(header) == 4) {
-                header[0] == 0x50.toByte() && header[1] == 0x4B.toByte() &&
-                    header[2] == 0x03.toByte() && header[3] == 0x04.toByte()
-            } else false
-        } ?: false
-
-        if (isZip) {
-            val tempDir = java.io.File(context.cacheDir, "parser_preview_${System.currentTimeMillis()}")
-            tempDir.mkdirs()
-            try {
-                context.contentResolver.openInputStream(uri)?.use { input ->
-                    java.util.zip.ZipInputStream(input).use { zip ->
-                        var entry = zip.nextEntry
-                        while (entry != null) {
-                            if (entry.name == "settings.json" && !entry.isDirectory) {
-                                val targetFile = java.io.File(tempDir, "settings.json")
-                                targetFile.outputStream().use { fileOut -> zip.copyTo(fileOut) }
-                                break
-                            }
-                            zip.closeEntry()
-                            entry = zip.nextEntry
-                        }
-                    }
-                }
-                val settingsFile = java.io.File(tempDir, "settings.json")
-                if (settingsFile.exists()) {
-                    val text = settingsFile.readText(Charsets.UTF_8)
-                    return@withContext extractParserJsonMiuix(text)
-                }
-            } finally {
-                tempDir.deleteRecursively()
-            }
-        } else {
-            val text = context.contentResolver.openInputStream(uri)?.bufferedReader(Charsets.UTF_8)?.readText()
-                ?: return@withContext "[]"
-            return@withContext extractParserJsonMiuix(text)
-        }
-        "[]"
-    } catch (_: Exception) { "[]" }
-}
-
-private fun extractParserJsonMiuix(text: String): String {
-    val root = org.json.JSONObject(text)
-    val schemaVersion = root.optInt("schema_version", 1)
-    val rawValue = if (schemaVersion >= 2 && root.has("categories")) {
-        val catObj = root.optJSONObject("categories")
-        val parserBlock = catObj?.optJSONObject("parser_rules")
-        parserBlock?.optJSONArray("parsers")
-            ?: parserBlock?.optJSONObject("preferences")?.opt("parser_rules_json")
-    } else {
-        val prefsJson = root.optJSONObject("preferences") ?: root
-        prefsJson.opt("parser_rules_json")
-    }
-    return SettingsBackupManager.parserRulesJsonFromBackupValue(rawValue) ?: "[]"
 }
 
 @Composable
@@ -877,3 +814,6 @@ fun CommunityDetailsDialog(
         }
     }
 }
+
+
+

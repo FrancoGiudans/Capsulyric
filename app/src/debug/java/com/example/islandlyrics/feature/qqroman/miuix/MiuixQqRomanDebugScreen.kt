@@ -22,12 +22,12 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.islandlyrics.data.LyricRepository
+import com.example.islandlyrics.lyrics.state.LyricRepository
 import com.example.islandlyrics.data.lyric.NeteaseRomanFetcher
 import com.example.islandlyrics.data.lyric.QqRomanFetcher
 import com.example.islandlyrics.feature.qqroman.QqRomanDebugViewModel
-import com.example.islandlyrics.ui.miuix.MiuixBlurScaffold
-import com.example.islandlyrics.ui.miuix.MiuixBlurTopAppBar
+import com.example.islandlyrics.ui.miuix.blur.MiuixBlurScaffold
+import com.example.islandlyrics.ui.miuix.blur.MiuixBlurTopAppBar
 import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.IconButton
@@ -271,7 +271,7 @@ private fun SuperLyricRawCard(info: LyricRepository.SuperLyricDebugInfo?) {
 @Composable
 private fun RealtimeSourceCard(
     sourceName: String,
-    liveLyric: com.example.islandlyrics.data.LyricRepository.LyricInfo?
+    liveLyric: com.example.islandlyrics.lyrics.state.LyricRepository.LyricInfo?
 ) {
     Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -359,3 +359,4 @@ private fun TextDumpInner(text: String) {
         fontSize = 12.sp
     )
 }
+

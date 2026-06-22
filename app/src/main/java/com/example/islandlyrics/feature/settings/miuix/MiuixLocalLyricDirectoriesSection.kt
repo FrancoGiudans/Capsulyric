@@ -13,9 +13,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.example.islandlyrics.R
-import com.example.islandlyrics.data.lyric.LocalLyricDirectoryManager
+import com.example.islandlyrics.lyrics.local.LocalLyricDirectoryManager
 import com.example.islandlyrics.feature.locallyrics.LocalLyricDirectoryActivity
-import com.example.islandlyrics.ui.miuix.MiuixBlurDialog
+import com.example.islandlyrics.ui.miuix.blur.MiuixBlurDialog
 import top.yukonga.miuix.kmp.basic.ButtonDefaults
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.SmallTitle
@@ -141,3 +141,4 @@ fun MiuixLocalLyricDirectoriesDialog(state: MiuixLocalLyricDirectoriesState) {
         }
     }
 }
+

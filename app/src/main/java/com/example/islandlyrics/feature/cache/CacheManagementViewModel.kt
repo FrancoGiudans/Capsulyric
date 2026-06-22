@@ -7,8 +7,8 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
 import com.example.islandlyrics.R
 import com.example.islandlyrics.core.cache.AppImageCacheManager
-import com.example.islandlyrics.data.lyric.LyricExporter
-import com.example.islandlyrics.data.lyric.OnlineLyricCacheStore
+import com.example.islandlyrics.lyrics.export.LyricExporter
+import com.example.islandlyrics.lyrics.cache.OnlineLyricCacheStore
 import com.example.islandlyrics.feature.lyric.toUserMessage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch

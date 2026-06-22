@@ -278,8 +278,8 @@ object BackupCategories {
 
     // ── Dynamic parser rule sub-groups ─────────────────────────────────
 
-    private const val PREF_PARSER_RULES = "parser_rules_json"
-    private const val PREF_PARSER_RULE_TEMPLATE = "parser_rule_template_json"
+    private const val PREF_PARSER_RULES = AppPreferences.Keys.PARSER_RULES_JSON
+    private const val PREF_PARSER_RULE_TEMPLATE = AppPreferences.Keys.PARSER_RULE_TEMPLATE_JSON
 
     /**
      * Read current parser rules from SharedPreferences and return one SubGroup per app.
@@ -288,7 +288,7 @@ object BackupCategories {
      * at the JSON value level in [SettingsBackupManager].
      */
     fun parserAppSubGroups(context: Context): List<SubGroup> {
-        val prefs = context.getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE)
+        val prefs = AppPreferences.of(context)
         val json = prefs.getString(PREF_PARSER_RULES, null) ?: return listOf(
             SubGroup("parser_all", listOf(PREF_PARSER_RULES, PREF_PARSER_RULE_TEMPLATE))
         )
@@ -366,7 +366,7 @@ object BackupCategories {
      * Imported apps replace existing ones with the same package name.
      */
     fun mergeParserRulesJson(context: Context, importedJson: String) {
-        val prefs = context.getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE)
+        val prefs = AppPreferences.of(context)
         val existingJson = prefs.getString(PREF_PARSER_RULES, "[]") ?: "[]"
         try {
             val existing = JSONArray(existingJson)

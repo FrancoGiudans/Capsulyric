@@ -39,7 +39,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.islandlyrics.data.LyricRepository
+import com.example.islandlyrics.lyrics.state.LyricRepository
 import com.example.islandlyrics.data.lyric.NeteaseRomanFetcher
 import com.example.islandlyrics.data.lyric.QqRomanFetcher
 import com.example.islandlyrics.feature.qqroman.QqRomanDebugViewModel
@@ -244,7 +244,7 @@ private fun SuperLyricRawBlock(info: LyricRepository.SuperLyricDebugInfo?) {
 @Composable
 private fun RealtimeSourceBlock(
     sourceName: String,
-    liveLyric: com.example.islandlyrics.data.LyricRepository.LyricInfo?
+    liveLyric: com.example.islandlyrics.lyrics.state.LyricRepository.LyricInfo?
 ) {
     val matched = liveLyric?.apiPath.equals(sourceName, ignoreCase = true)
     if (!matched) {

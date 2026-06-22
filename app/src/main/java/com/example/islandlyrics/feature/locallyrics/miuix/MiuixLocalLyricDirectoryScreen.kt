@@ -17,14 +17,14 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.islandlyrics.R
-import com.example.islandlyrics.data.lyric.LyricExporter
-import com.example.islandlyrics.data.lyric.LocalLyricDirectoryManager
-import com.example.islandlyrics.data.lyric.LocalLyricDirectoryManager.LrcFileInfo
+import com.example.islandlyrics.lyrics.export.LyricExporter
+import com.example.islandlyrics.lyrics.local.LocalLyricDirectoryManager
+import com.example.islandlyrics.lyrics.local.LocalLyricDirectoryManager.LrcFileInfo
 import com.example.islandlyrics.feature.lyric.toUserMessage
-import com.example.islandlyrics.ui.miuix.MiuixBlurDialog
-import com.example.islandlyrics.ui.miuix.MiuixBlurScaffold
-import com.example.islandlyrics.ui.miuix.MiuixBlurTopAppBar
-import com.example.islandlyrics.ui.miuix.miuixPageScroll
+import com.example.islandlyrics.ui.miuix.blur.MiuixBlurDialog
+import com.example.islandlyrics.ui.miuix.blur.MiuixBlurScaffold
+import com.example.islandlyrics.ui.miuix.blur.MiuixBlurTopAppBar
+import com.example.islandlyrics.ui.miuix.effects.miuixPageScroll
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -291,3 +291,5 @@ private fun MiuixFileInfoRow(label: String, value: String) {
     }
     Spacer(modifier = Modifier.height(4.dp))
 }
+
+

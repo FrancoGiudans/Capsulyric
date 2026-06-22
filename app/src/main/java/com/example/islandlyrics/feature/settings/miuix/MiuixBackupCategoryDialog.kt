@@ -13,7 +13,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.example.islandlyrics.R
 import com.example.islandlyrics.core.settings.BackupCategories
-import com.example.islandlyrics.ui.miuix.MiuixBlurDialog
+import com.example.islandlyrics.ui.miuix.blur.MiuixBlurDialog
 import top.yukonga.miuix.kmp.basic.*
 import top.yukonga.miuix.kmp.preference.CheckboxPreference
 import top.yukonga.miuix.kmp.theme.MiuixTheme
@@ -243,3 +243,4 @@ fun miuixSubGroupLabel(subId: String): String {
         else -> subId
     }
 }
+

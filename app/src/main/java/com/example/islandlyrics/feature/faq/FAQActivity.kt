@@ -1,10 +1,10 @@
 package com.example.islandlyrics.feature.faq
 
-import com.example.islandlyrics.ui.common.BaseActivity
-import com.example.islandlyrics.ui.common.PredictiveBackActivity
-import com.example.islandlyrics.ui.miuix.isMiuixEnabled
+import com.example.islandlyrics.ui.navigation.BaseActivity
+import com.example.islandlyrics.ui.navigation.PredictiveBackActivity
+import com.example.islandlyrics.ui.miuix.theme.isMiuixEnabled
 import com.example.islandlyrics.feature.faq.miuix.MiuixFAQScreen
-import com.example.islandlyrics.ui.miuix.MiuixAppTheme
+import com.example.islandlyrics.ui.miuix.theme.MiuixAppTheme
 import com.example.islandlyrics.feature.faq.material.FAQScreen
 import com.example.islandlyrics.ui.theme.material.IslandLyricsMaterialTheme
 import android.os.Bundle
@@ -31,3 +31,5 @@ class FAQActivity : BaseActivity() {
         }
     }
 }
+
+

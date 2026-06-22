@@ -18,9 +18,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.example.islandlyrics.R
-import com.example.islandlyrics.data.lyric.LyricExporter
-import com.example.islandlyrics.data.lyric.LocalLyricDirectoryManager
-import com.example.islandlyrics.data.lyric.LocalLyricDirectoryManager.LrcFileInfo
+import com.example.islandlyrics.lyrics.export.LyricExporter
+import com.example.islandlyrics.lyrics.local.LocalLyricDirectoryManager
+import com.example.islandlyrics.lyrics.local.LocalLyricDirectoryManager.LrcFileInfo
 import com.example.islandlyrics.feature.lyric.toUserMessage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch

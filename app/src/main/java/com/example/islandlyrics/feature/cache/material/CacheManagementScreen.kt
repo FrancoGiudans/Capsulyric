@@ -59,8 +59,8 @@ import androidx.navigationevent.compose.NavigationBackHandler
 import androidx.navigationevent.compose.rememberNavigationEventState
 import com.example.islandlyrics.R
 import com.example.islandlyrics.core.cache.AppImageCacheManager
-import com.example.islandlyrics.data.lyric.LocalLyricDirectoryManager
-import com.example.islandlyrics.data.lyric.OnlineLyricCacheStore
+import com.example.islandlyrics.lyrics.local.LocalLyricDirectoryManager
+import com.example.islandlyrics.lyrics.cache.OnlineLyricCacheStore
 import com.example.islandlyrics.feature.cache.CacheManagementViewModel
 import com.example.islandlyrics.feature.cache.filterByCacheQuery
 import com.example.islandlyrics.feature.settings.material.SettingsCardDivider

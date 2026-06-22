@@ -1,0 +1,87 @@
+import java.time.ZoneId
+import java.time.ZonedDateTime
+import java.time.format.DateTimeFormatter
+
+static def getGitCommitHash() {
+    try {
+        return 'git rev-parse --short HEAD'.execute().text.trim()
+    } catch (Exception ignored) {
+        return "Dev"
+    }
+}
+
+static def getGitCommitCount(project = null) {
+    def overrideValue = project?.findProperty('commitCountOverride')
+    if (overrideValue == null || overrideValue.toString().trim().isEmpty()) {
+        overrideValue = System.getProperty('org.gradle.project.commitCountOverride')
+    }
+    if (overrideValue == null || overrideValue.toString().trim().isEmpty()) {
+        overrideValue = System.getenv('APP_COMMIT_COUNT_OVERRIDE')
+    }
+    overrideValue = overrideValue?.toString()?.trim()
+    if (overrideValue) {
+        try {
+            return overrideValue.toInteger()
+        } catch (Exception ignored) {
+        }
+    }
+    try {
+        return 'git rev-list --count HEAD'.execute().text.trim().toInteger()
+    } catch (Exception ignored) {
+        return 1
+    }
+}
+
+static def getBuildMetadata(project, propertyName, envName, fallbackValue) {
+    def value = project.findProperty(propertyName)
+    if (value == null || value.toString().trim().isEmpty()) {
+        value = System.getenv(envName)
+    }
+    value = value?.toString()?.trim()
+    return value ? value : fallbackValue
+}
+
+static def getDefaultVersionPrefix() {
+    def now = ZonedDateTime.now(ZoneId.of("Asia/Shanghai"))
+    return now.format(DateTimeFormatter.ofPattern("'Version.'yy.M"))
+}
+
+static def normalizeVersionChannel(String value) {
+    def normalized = value?.toString()?.trim()?.toLowerCase()
+    switch (normalized) {
+        case "stable":
+            return "Stable"
+        case "preview":
+            return "Preview"
+        case "experiment":
+            return "Experiment"
+        default:
+            return ""
+    }
+}
+
+static def getDefaultBaseVersion(String versionPrefix, String versionChannel) {
+    switch (normalizeVersionChannel(versionChannel)) {
+        case "Stable":
+            return "${versionPrefix}.Stable"
+        case "Preview":
+            return "${versionPrefix}.Preview"
+        case "Experiment":
+            return "${versionPrefix}.Experiment"
+        default:
+            return "${versionPrefix}.Preview"
+    }
+}
+
+static def escapeForBuildConfig(String value) {
+    return value.replace("\\", "\\\\").replace("\"", "\\\"")
+}
+
+ext.appVersioning = [
+    gitCommitHash: this.&getGitCommitHash,
+    gitCommitCount: this.&getGitCommitCount,
+    buildMetadata: this.&getBuildMetadata,
+    defaultVersionPrefix: this.&getDefaultVersionPrefix,
+    defaultBaseVersion: this.&getDefaultBaseVersion,
+    escapeForBuildConfig: this.&escapeForBuildConfig
+]

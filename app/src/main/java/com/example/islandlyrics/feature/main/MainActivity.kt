@@ -1,13 +1,14 @@
 package com.example.islandlyrics.feature.main
 
-import com.example.islandlyrics.ui.common.BaseActivity
-import com.example.islandlyrics.ui.miuix.isMiuixEnabled
+import com.example.islandlyrics.ui.navigation.BaseActivity
+import com.example.islandlyrics.ui.miuix.theme.isMiuixEnabled
 import com.example.islandlyrics.BuildConfig
 import com.example.islandlyrics.R
 import com.example.islandlyrics.core.update.UpdateChecker
 import com.example.islandlyrics.core.logging.AppLogger
 import com.example.islandlyrics.core.network.OfflineModeManager
-import com.example.islandlyrics.service.MediaMonitorService
+import com.example.islandlyrics.core.settings.AppPreferences
+import com.example.islandlyrics.runtime.service.MediaMonitorService
 import com.example.islandlyrics.feature.cache.material.CacheManagementScreen
 import com.example.islandlyrics.feature.cache.miuix.MiuixCacheManagementScreen
 import com.example.islandlyrics.feature.customsettings.material.CustomSettingsScreen
@@ -37,13 +38,13 @@ import com.example.islandlyrics.feature.settings.material.AboutScreen
 import com.example.islandlyrics.feature.settings.material.SettingsScreen
 import com.example.islandlyrics.feature.settings.miuix.MiuixAboutScreen
 import com.example.islandlyrics.feature.settings.miuix.MiuixSettingsScreen
-import com.example.islandlyrics.ui.miuix.MiuixAppTheme
-import com.example.islandlyrics.ui.miuix.LocalMiuixBlurBackdrop
-import com.example.islandlyrics.ui.miuix.LocalMiuixBlurEnabled
+import com.example.islandlyrics.ui.miuix.theme.MiuixAppTheme
+import com.example.islandlyrics.ui.miuix.blur.LocalMiuixBlurBackdrop
+import com.example.islandlyrics.ui.miuix.blur.LocalMiuixBlurEnabled
 import com.example.islandlyrics.feature.update.material.UpdateDialog
 import com.example.islandlyrics.feature.update.miuix.MiuixUpdateDialog
 import com.example.islandlyrics.feature.main.material.MainScreen
-import com.example.islandlyrics.ui.common.PageStackHost
+import com.example.islandlyrics.ui.navigation.PageStackHost
 import com.example.islandlyrics.ui.theme.material.IslandLyricsMaterialTheme
 import android.content.Intent
 import android.content.SharedPreferences
@@ -119,8 +120,8 @@ class MainActivity : BaseActivity() {
         super.onCreate(savedInstanceState)
 
         // OOBE Check
-        val prefs = getSharedPreferences("IslandLyricsPrefs", MODE_PRIVATE)
-        if (!prefs.getBoolean("is_setup_complete", false)) {
+        val prefs = AppPreferences.of(this)
+        if (!prefs.getBoolean(AppPreferences.Keys.IS_SETUP_COMPLETE, false)) {
             startActivity(Intent(this, OobeActivity::class.java))
             finish()
             return
@@ -456,15 +457,15 @@ class MainActivity : BaseActivity() {
             drawRect(backdropBackground)
             drawContent()
         }
-        val prefs = remember { getSharedPreferences("IslandLyricsPrefs", MODE_PRIVATE) }
-        var blurEnabled by remember { mutableStateOf(prefs.getBoolean("card_blur_enabled", false)) }
+        val prefs = remember { AppPreferences.of(this) }
+        var blurEnabled by remember { mutableStateOf(prefs.getBoolean(AppPreferences.Keys.CARD_BLUR_ENABLED, false)) }
 
         androidx.compose.runtime.LaunchedEffect(pagerState.currentPage) {
             if (pageStack.isEmpty()) bottomBarVisible = true
         }
         DisposableEffect(prefs) {
             val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
-                if (key == "card_blur_enabled") {
+                if (key == AppPreferences.Keys.CARD_BLUR_ENABLED) {
                     blurEnabled = prefs.getBoolean(key, false)
                 }
             }
@@ -856,3 +857,5 @@ private sealed class AppPage {
         val directoryName: String
     ) : AppPage()
 }
+
+

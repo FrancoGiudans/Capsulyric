@@ -5,7 +5,6 @@ import android.content.SharedPreferences
 import com.example.islandlyrics.core.update.UpdateChecker
 
 object LabFeatureManager {
-    private const val PREFS_NAME = "IslandLyricsPrefs"
     private const val KEY_SUPER_ISLAND_ADVANCED_STYLE_ENABLED = "lab_super_island_advanced_style_enabled"
     private const val KEY_SUPER_ISLAND_ADVANCED_STYLE_MIGRATED = "lab_super_island_advanced_style_migrated"
     private const val KEY_SUPER_ISLAND_TEXT_LIMITS_ENABLED = "lab_super_island_text_limits_enabled"
@@ -32,7 +31,7 @@ object LabFeatureManager {
 
         if (!prefs.getBoolean(KEY_SUPER_ISLAND_ADVANCED_STYLE_MIGRATED, false)) {
             val advancedSelected =
-                prefs.getString("super_island_notification_style", SUPER_ISLAND_STYLE_STANDARD) == SUPER_ISLAND_STYLE_ADVANCED
+                AppPreferences.superIslandNotificationStyle(prefs) == SUPER_ISLAND_STYLE_ADVANCED
             editor.putBoolean(KEY_SUPER_ISLAND_ADVANCED_STYLE_ENABLED, advancedSelected)
             editor.putBoolean(KEY_SUPER_ISLAND_ADVANCED_STYLE_MIGRATED, true)
             changed = true
@@ -78,8 +77,7 @@ object LabFeatureManager {
         ensureInitialized(prefs)
 
         val currentStyle =
-            prefs.getString("super_island_notification_style", SUPER_ISLAND_STYLE_STANDARD)
-                ?: SUPER_ISLAND_STYLE_STANDARD
+            AppPreferences.superIslandNotificationStyle(prefs)
         val revertedToStandard = !enabled && currentStyle == SUPER_ISLAND_STYLE_ADVANCED
 
         prefs.edit()
@@ -87,7 +85,7 @@ object LabFeatureManager {
             .putBoolean(KEY_SUPER_ISLAND_ADVANCED_STYLE_MIGRATED, true)
             .apply {
                 if (revertedToStandard) {
-                    putString("super_island_notification_style", SUPER_ISLAND_STYLE_STANDARD)
+                    putString(AppPreferences.Keys.SUPER_ISLAND_NOTIFICATION_STYLE, SUPER_ISLAND_STYLE_STANDARD)
                 }
             }
             .apply()
@@ -100,11 +98,12 @@ object LabFeatureManager {
         ensureInitialized(prefs)
 
         val currentStyle =
-            prefs.getString("super_island_notification_style", SUPER_ISLAND_STYLE_STANDARD)
-                ?: SUPER_ISLAND_STYLE_STANDARD
+            AppPreferences.superIslandNotificationStyle(prefs)
         val advancedEnabled = prefs.getBoolean(KEY_SUPER_ISLAND_ADVANCED_STYLE_ENABLED, false)
         if (currentStyle == SUPER_ISLAND_STYLE_ADVANCED && !advancedEnabled) {
-            prefs.edit().putString("super_island_notification_style", SUPER_ISLAND_STYLE_STANDARD).apply()
+            prefs.edit()
+                .putString(AppPreferences.Keys.SUPER_ISLAND_NOTIFICATION_STYLE, SUPER_ISLAND_STYLE_STANDARD)
+                .apply()
             return SUPER_ISLAND_STYLE_STANDARD
         }
         return currentStyle
@@ -237,5 +236,5 @@ object LabFeatureManager {
     }
 
     private fun Context.prefs(): SharedPreferences =
-        getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        AppPreferences.of(this)
 }

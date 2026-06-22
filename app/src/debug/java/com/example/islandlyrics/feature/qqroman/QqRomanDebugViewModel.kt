@@ -5,7 +5,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
-import com.example.islandlyrics.data.LyricRepository
+import com.example.islandlyrics.lyrics.state.LyricRepository
 import com.example.islandlyrics.data.lyric.NeteaseRomanFetcher
 import com.example.islandlyrics.data.lyric.QqRomanFetcher
 import kotlinx.coroutines.async

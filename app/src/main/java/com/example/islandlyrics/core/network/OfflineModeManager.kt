@@ -1,20 +1,17 @@
 package com.example.islandlyrics.core.network
 
 import android.content.Context
+import com.example.islandlyrics.core.settings.AppPreferences
 
 object OfflineModeManager {
-    private const val PREFS_NAME = "IslandLyricsPrefs"
-    const val KEY_FULLY_OFFLINE_MODE = "fully_offline_mode"
+    const val KEY_FULLY_OFFLINE_MODE = AppPreferences.Keys.FULLY_OFFLINE_MODE
 
     fun isEnabled(context: Context): Boolean {
-        return context.applicationContext
-            .getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            .getBoolean(KEY_FULLY_OFFLINE_MODE, false)
+        return AppPreferences.isOfflineModeEnabled(AppPreferences.of(context.applicationContext))
     }
 
     fun setEnabled(context: Context, enabled: Boolean) {
-        context.applicationContext
-            .getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        AppPreferences.of(context.applicationContext)
             .edit()
             .putBoolean(KEY_FULLY_OFFLINE_MODE, enabled)
             .apply()

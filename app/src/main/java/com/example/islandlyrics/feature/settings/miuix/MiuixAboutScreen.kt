@@ -1,5 +1,10 @@
 package com.example.islandlyrics.feature.settings.miuix
 
+import com.example.islandlyrics.ui.miuix.theme.rememberIslandLyricsMiuixThemeController
+import com.example.islandlyrics.ui.miuix.effects.miuixPageScroll
+import com.example.islandlyrics.ui.miuix.blur.MiuixBlurTopAppBar
+import com.example.islandlyrics.ui.miuix.blur.MiuixBlurScaffold
+import com.example.islandlyrics.ui.miuix.blur.MiuixBlurDialog
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Intent
@@ -22,11 +27,10 @@ import com.example.islandlyrics.core.feed.CommunityFeedRepository
 import com.example.islandlyrics.core.network.OfflineModeManager
 import com.example.islandlyrics.core.settings.LabFeatureManager
 import com.example.islandlyrics.core.update.UpdateChecker
-import com.example.islandlyrics.data.LyricRepository
+import com.example.islandlyrics.lyrics.state.LyricRepository
 import com.example.islandlyrics.feature.settings.CommunityDialogState
 import com.example.islandlyrics.feature.settings.ReleaseDialogState
 import com.example.islandlyrics.feature.update.miuix.MiuixUpdateDialog
-import com.example.islandlyrics.ui.miuix.*
 import top.yukonga.miuix.kmp.basic.*
 import top.yukonga.miuix.kmp.overlay.OverlayListPopup as SuperListPopup
 import top.yukonga.miuix.kmp.preference.ArrowPreference as SuperArrow
@@ -368,3 +372,5 @@ fun MiuixAboutScreen(
         }
     }
 }
+
+

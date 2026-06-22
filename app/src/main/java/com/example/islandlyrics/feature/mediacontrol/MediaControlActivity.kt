@@ -2,9 +2,9 @@ package com.example.islandlyrics.feature.mediacontrol
 
 import android.content.Intent
 import android.os.Bundle
-import com.example.islandlyrics.ui.miuix.isMiuixEnabled
+import com.example.islandlyrics.ui.miuix.theme.isMiuixEnabled
 import com.example.islandlyrics.feature.mediacontrol.miuix.MiuixMediaControlDialog
-import com.example.islandlyrics.ui.miuix.MiuixAppTheme
+import com.example.islandlyrics.ui.miuix.theme.MiuixAppTheme
 import com.example.islandlyrics.feature.mediacontrol.material.MediaControlDialog
 import androidx.activity.compose.setContent
 import androidx.appcompat.app.AppCompatActivity
@@ -63,3 +63,5 @@ class MediaControlActivity : AppCompatActivity() {
         // Basic edge-to-edge logic if needed, but the Theme.Transparent handles most.
     }
 }
+
+

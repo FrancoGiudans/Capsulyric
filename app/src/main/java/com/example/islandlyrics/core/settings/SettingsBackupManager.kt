@@ -3,7 +3,7 @@ package com.example.islandlyrics.core.settings
 import android.content.Context
 import android.net.Uri
 import androidx.core.content.edit
-import com.example.islandlyrics.data.lyric.OnlineLyricCacheStore
+import com.example.islandlyrics.lyrics.cache.OnlineLyricCacheStore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
@@ -18,9 +18,8 @@ import java.util.zip.ZipOutputStream
 
 object SettingsBackupManager {
 
-    private const val PREFS_NAME = "IslandLyricsPrefs"
-    private const val PREF_PARSER_RULES = "parser_rules_json"
-    private const val PREF_PARSER_RULE_TEMPLATE = "parser_rule_template_json"
+    private const val PREF_PARSER_RULES = AppPreferences.Keys.PARSER_RULES_JSON
+    private const val PREF_PARSER_RULE_TEMPLATE = AppPreferences.Keys.PARSER_RULE_TEMPLATE_JSON
     private const val SCHEMA_VERSION = 2
     private val FILE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMdd_HH_mm_ss", Locale.US)
 
@@ -262,7 +261,7 @@ object SettingsBackupManager {
 
     /** Build the settings.json JSONObject from SharedPreferences filtered by leaf IDs. */
     private fun buildSettingsJson(context: Context, selectedLeafIds: Set<String>): JSONObject {
-        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val prefs = AppPreferences.of(context)
         val all = prefs.all
         val selectedKeys = BackupCategories.collectKeysForLeafIds(all.keys, selectedLeafIds)
 
@@ -350,7 +349,7 @@ object SettingsBackupManager {
         selectedLeafIds: Set<String>
     ): ImportResult {
         val root = JSONObject(text)
-        val editor = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit()
+        val editor = AppPreferences.of(context).edit()
         val schemaVersion = root.optInt("schema_version", 1)
 
         var count = 0
@@ -857,7 +856,7 @@ object SettingsBackupManager {
      * Returns list of conflicting package names with display names.
      */
     private fun checkParserConflicts(context: Context, importedJson: String): List<ParserConflict> {
-        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val prefs = AppPreferences.of(context)
         val existingJson = prefs.getString(PREF_PARSER_RULES, null) ?: return emptyList()
         return try {
             val existing = JSONArray(existingJson)
@@ -889,7 +888,7 @@ object SettingsBackupManager {
         importedJson: String,
         keepExistingPkgs: Set<String>
     ) {
-        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val prefs = AppPreferences.of(context)
         val existingJson = prefs.getString(PREF_PARSER_RULES, "[]") ?: "[]"
         try {
             val existing = JSONArray(existingJson)

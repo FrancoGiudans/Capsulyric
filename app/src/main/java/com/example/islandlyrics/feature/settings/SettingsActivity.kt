@@ -1,10 +1,10 @@
 package com.example.islandlyrics.feature.settings
 
-import com.example.islandlyrics.ui.common.BaseActivity
-import com.example.islandlyrics.ui.common.PageStackHost
-import com.example.islandlyrics.ui.common.PredictiveBackActivity
+import com.example.islandlyrics.ui.navigation.BaseActivity
+import com.example.islandlyrics.ui.navigation.PageStackHost
+import com.example.islandlyrics.ui.navigation.PredictiveBackActivity
 import android.os.Bundle
-import com.example.islandlyrics.ui.miuix.isMiuixEnabled
+import com.example.islandlyrics.ui.miuix.theme.isMiuixEnabled
 import com.example.islandlyrics.BuildConfig
 import com.example.islandlyrics.R
 import com.example.islandlyrics.core.update.UpdateChecker
@@ -27,7 +27,7 @@ import com.example.islandlyrics.feature.logviewer.miuix.MiuixLogViewerScreen
 import com.example.islandlyrics.feature.onlinelyricdebug.material.OnlineLyricDebugScreen
 import com.example.islandlyrics.feature.onlinelyricdebug.miuix.MiuixOnlineLyricDebugScreen
 import com.example.islandlyrics.feature.settings.miuix.MiuixSettingsScreen
-import com.example.islandlyrics.ui.miuix.MiuixAppTheme
+import com.example.islandlyrics.ui.miuix.theme.MiuixAppTheme
 import com.example.islandlyrics.feature.update.material.UpdateDialog
 import com.example.islandlyrics.feature.settings.material.SettingsScreen
 import com.example.islandlyrics.feature.settings.material.AboutScreen
@@ -411,4 +411,6 @@ private sealed class SettingsPage {
         val directoryName: String
     ) : SettingsPage()
 }
+
+
 

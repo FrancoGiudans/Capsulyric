@@ -10,10 +10,10 @@ import com.example.islandlyrics.core.network.OfflineModeManager
 import com.example.islandlyrics.core.update.UpdateChecker
 import com.example.islandlyrics.feature.settings.material.AboutScreen
 import com.example.islandlyrics.feature.settings.miuix.MiuixAboutScreen
-import com.example.islandlyrics.ui.common.BaseActivity
-import com.example.islandlyrics.ui.common.PredictiveBackActivity
-import com.example.islandlyrics.ui.miuix.MiuixAppTheme
-import com.example.islandlyrics.ui.miuix.isMiuixEnabled
+import com.example.islandlyrics.ui.navigation.BaseActivity
+import com.example.islandlyrics.ui.navigation.PredictiveBackActivity
+import com.example.islandlyrics.ui.miuix.theme.MiuixAppTheme
+import com.example.islandlyrics.ui.miuix.theme.isMiuixEnabled
 import com.example.islandlyrics.ui.theme.material.IslandLyricsMaterialTheme
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -165,3 +165,5 @@ enum class ReleaseDialogMode {
     UPDATE_AVAILABLE,
     CURRENT_VERSION_CHANGELOG
 }
+
+

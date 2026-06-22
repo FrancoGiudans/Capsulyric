@@ -3,10 +3,11 @@ package com.example.islandlyrics.feature.parserrule.material
 import androidx.compose.foundation.clickable
 import com.example.islandlyrics.R
 import com.example.islandlyrics.core.network.OfflineModeManager
-import com.example.islandlyrics.data.ParserRuleHelper
-import com.example.islandlyrics.data.ParserRule
-import com.example.islandlyrics.data.LyricRepository
-import com.example.islandlyrics.data.lyric.OnlineLyricProvider
+import com.example.islandlyrics.core.settings.AppPreferences
+import com.example.islandlyrics.rules.ParserRuleHelper
+import com.example.islandlyrics.rules.ParserRule
+import com.example.islandlyrics.lyrics.state.LyricRepository
+import com.example.islandlyrics.lyrics.online.provider.OnlineLyricProvider
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -27,7 +28,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.example.islandlyrics.ui.common.OverlaySheetHost
+import com.example.islandlyrics.ui.navigation.OverlaySheetHost
 import com.example.islandlyrics.ui.theme.material.materialPageContainerColor
 import com.example.islandlyrics.ui.theme.material.neutralMaterialTopBarColors
 import kotlinx.coroutines.delay
@@ -73,7 +74,7 @@ fun ParserRuleScreen(
 
     // Refresh recommendations on enter
     LaunchedEffect(Unit) {
-        com.example.islandlyrics.service.MediaMonitorService.triggerRecheck()
+        com.example.islandlyrics.runtime.service.MediaMonitorService.triggerRecheck()
     }
 
     fun openRuleEditor(packageName: String? = null, suggestedName: String? = null) {
@@ -162,8 +163,8 @@ fun ParserRuleScreen(
                 floatingActionButton = {
                     // Recommendation Logic
                     val recommendEnabled = remember {
-                        context.getSharedPreferences("IslandLyricsPrefs", android.content.Context.MODE_PRIVATE)
-                            .getBoolean("recommend_media_app", true)
+                        AppPreferences.of(context)
+                            .getBoolean(AppPreferences.Keys.RECOMMEND_MEDIA_APP, true)
                     }
 
                     val metadata by LyricRepository.getInstance().liveSuggestionMetadata.observeAsState()
@@ -511,3 +512,4 @@ fun SwitchRow(
         Switch(checked = checked, onCheckedChange = onCheckedChange)
     }
 }
+

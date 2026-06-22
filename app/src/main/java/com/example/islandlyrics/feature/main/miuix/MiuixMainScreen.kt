@@ -1,10 +1,15 @@
 package com.example.islandlyrics.feature.main.miuix
 
+import com.example.islandlyrics.ui.miuix.theme.rememberIslandLyricsMiuixThemeController
+import com.example.islandlyrics.ui.miuix.effects.miuixPageScroll
+import com.example.islandlyrics.ui.miuix.blur.MiuixBlurTopAppBar
+import com.example.islandlyrics.ui.miuix.blur.MiuixBlurScaffold
+import com.example.islandlyrics.ui.miuix.blur.MiuixBlurDialog
 import android.graphics.Bitmap
 import com.example.islandlyrics.R
-import com.example.islandlyrics.service.MediaMonitorService
-import com.example.islandlyrics.data.ParserRuleHelper
-import com.example.islandlyrics.data.LyricRepository
+import com.example.islandlyrics.runtime.service.MediaMonitorService
+import com.example.islandlyrics.rules.ParserRuleHelper
+import com.example.islandlyrics.lyrics.state.LyricRepository
 import android.media.MediaMetadata
 import android.media.session.MediaController
 import android.media.session.MediaSessionManager
@@ -56,9 +61,9 @@ import top.yukonga.miuix.kmp.basic.*
 import top.yukonga.miuix.kmp.preference.ArrowPreference as SuperArrow
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.MiuixPopupUtils.Companion.MiuixPopupHost
+import com.example.islandlyrics.core.settings.AppPreferences
 import com.example.islandlyrics.core.update.UpdateChecker
 import com.example.islandlyrics.feature.update.miuix.MiuixUpdateDialog
-import com.example.islandlyrics.ui.miuix.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -92,8 +97,8 @@ fun MiuixMainScreen(
     val context = LocalContext.current
     val scrollBehavior = MiuixScrollBehavior(rememberTopAppBarState())
     val listState = rememberLazyListState()
-    val prefs = remember { context.getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE) }
-    var dynamicThemeEnabled by remember { mutableStateOf(prefs.getBoolean("theme_dynamic_color", true)) }
+    val prefs = remember { AppPreferences.of(context) }
+    var dynamicThemeEnabled by remember { mutableStateOf(prefs.getBoolean(AppPreferences.Keys.THEME_DYNAMIC_COLOR, true)) }
 
     val repoPlaying by repo.isPlaying.observeAsState(false)
     val repoMetadata by repo.liveMetadata.observeAsState()
@@ -106,8 +111,8 @@ fun MiuixMainScreen(
 
     DisposableEffect(prefs) {
         val listener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
-            if (key == "theme_dynamic_color") {
-                dynamicThemeEnabled = prefs.getBoolean("theme_dynamic_color", true)
+            if (key == AppPreferences.Keys.THEME_DYNAMIC_COLOR) {
+                dynamicThemeEnabled = prefs.getBoolean(AppPreferences.Keys.THEME_DYNAMIC_COLOR, true)
             }
         }
         prefs.registerOnSharedPreferenceChangeListener(listener)
@@ -822,3 +827,5 @@ private fun drawableToBitmap(drawable: Drawable): Bitmap {
     drawable.draw(canvas)
     return bitmap
 }
+
+

@@ -1,9 +1,7 @@
 package com.example.islandlyrics.feature.logviewer.miuix
 
-import com.example.islandlyrics.ui.miuix.MiuixBackHandler
-import android.content.Context
+import com.example.islandlyrics.ui.miuix.navigation.MiuixBackHandler
 import com.example.islandlyrics.core.logging.AppLogger
-import android.content.Intent
 import com.example.islandlyrics.core.logging.LogManager
 import android.widget.Toast
 import androidx.compose.foundation.background
@@ -35,6 +33,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.islandlyrics.R
+import com.example.islandlyrics.core.settings.AppPreferences
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -42,9 +41,9 @@ import top.yukonga.miuix.kmp.basic.*
 import top.yukonga.miuix.kmp.preference.OverlayDropdownPreference as SuperDropdown
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.MiuixPopupUtils.Companion.MiuixPopupHost
-import com.example.islandlyrics.ui.miuix.MiuixBlurDialog
-import com.example.islandlyrics.ui.miuix.MiuixBlurScaffold
-import com.example.islandlyrics.ui.miuix.MiuixBlurTopAppBar
+import com.example.islandlyrics.ui.miuix.blur.MiuixBlurDialog
+import com.example.islandlyrics.ui.miuix.blur.MiuixBlurScaffold
+import com.example.islandlyrics.ui.miuix.blur.MiuixBlurTopAppBar
 
 private enum class LogAction { SHARE, SAVE }
 
@@ -62,8 +61,7 @@ fun MiuixLogViewerScreen(
     var recordLevel by remember {
         mutableStateOf(
             AppLogger.LogLevel.fromPreference(
-                context.getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE)
-                    .getString(AppLogger.PREF_LOG_RECORD_LEVEL, null)
+                AppPreferences.of(context).getString(AppPreferences.Keys.LOG_RECORD_LEVEL, null)
             )
         )
     }
@@ -230,9 +228,9 @@ fun MiuixLogViewerScreen(
                         onSelectedIndexChange = { index ->
                             val level = recordLevelOptions[index].first
                             recordLevel = level
-                            context.getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE)
+                            AppPreferences.of(context)
                                 .edit()
-                                .putString(AppLogger.PREF_LOG_RECORD_LEVEL, level.preferenceValue)
+                                .putString(AppPreferences.Keys.LOG_RECORD_LEVEL, level.preferenceValue)
                                 .apply()
                             AppLogger.getInstance().setMinimumLevel(level)
                         }
@@ -434,4 +432,5 @@ private fun MiuixLogItem(entry: LogManager.LogEntry) {
         )
     }
 }
+
 

@@ -82,6 +82,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.example.islandlyrics.R
 import com.example.islandlyrics.core.platform.RomUtils
+import com.example.islandlyrics.core.settings.AppPreferences
 import com.example.islandlyrics.core.settings.SettingsBackupManager
 import com.example.islandlyrics.core.theme.ThemeHelper
 import com.example.islandlyrics.feature.customsettings.CustomSettingsActivity
@@ -89,10 +90,10 @@ import com.example.islandlyrics.feature.faq.FAQActivity
 import com.example.islandlyrics.feature.faq.material.FormattedText
 import com.example.islandlyrics.feature.parserrule.ParserRuleActivity
 import com.example.islandlyrics.feature.settings.SettingsActivity
-import com.example.islandlyrics.ui.miuix.MiuixBlurDialog
-import com.example.islandlyrics.ui.miuix.MiuixBlurScaffold
-import com.example.islandlyrics.ui.miuix.MiuixBlurTopAppBar
-import com.example.islandlyrics.ui.miuix.miuixPageScroll
+import com.example.islandlyrics.ui.miuix.blur.MiuixBlurDialog
+import com.example.islandlyrics.ui.miuix.blur.MiuixBlurScaffold
+import com.example.islandlyrics.ui.miuix.blur.MiuixBlurTopAppBar
+import com.example.islandlyrics.ui.miuix.effects.miuixPageScroll
 import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.basic.ButtonDefaults
 import top.yukonga.miuix.kmp.basic.Card
@@ -172,8 +173,8 @@ fun MiuixOobeScreen(
                     )
                 }
                 // Apply imported language before finishing OOBE
-                val prefs = context.getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE)
-                val langCode = prefs.getString("language_code", "") ?: ""
+                val prefs = AppPreferences.of(context)
+                val langCode = prefs.getString(AppPreferences.Keys.LANGUAGE_CODE, "") ?: ""
                 if (langCode.isNotEmpty()) {
                     ThemeHelper.setLanguage(context, langCode)
                 }
@@ -1167,3 +1168,5 @@ private fun readParserJsonFromImportUri(context: Context, uri: Uri): String {
 }
 
 private const val OOBE_LAST_STEP = 5
+
+

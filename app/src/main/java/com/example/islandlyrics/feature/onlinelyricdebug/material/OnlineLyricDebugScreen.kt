@@ -58,7 +58,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.islandlyrics.R
-import com.example.islandlyrics.data.lyric.OnlineLyricFetcher
+import com.example.islandlyrics.lyrics.online.OnlineLyricFetcher
 import com.example.islandlyrics.feature.onlinelyricdebug.OnlineLyricDebugViewModel
 import com.example.islandlyrics.ui.theme.material.materialPageContainerColor
 import com.example.islandlyrics.ui.theme.material.neutralMaterialTopBarColors

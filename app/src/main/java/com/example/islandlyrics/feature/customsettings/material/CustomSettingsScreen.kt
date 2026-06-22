@@ -1,22 +1,22 @@
 package com.example.islandlyrics.feature.customsettings.material
 
 import android.app.Activity
-import com.example.islandlyrics.ui.common.NotificationPreview
-import com.example.islandlyrics.ui.common.CapsulePreview
-import com.example.islandlyrics.ui.common.CapsuleRenderMode
-import com.example.islandlyrics.ui.common.LyricTextDisplayMode
-import com.example.islandlyrics.ui.common.OneUiCapsuleColorMode
-import com.example.islandlyrics.ui.common.PREF_PREDICTIVE_BACK_ENABLED
-import com.example.islandlyrics.ui.common.PredictiveBackAnimationMode
-import com.example.islandlyrics.ui.common.PredictiveBackAnimationStyle
-import com.example.islandlyrics.ui.common.SuperIslandColorSource
-import com.example.islandlyrics.ui.common.SuperIslandTextLimitConfig
+import com.example.islandlyrics.ui.preview.NotificationPreview
+import com.example.islandlyrics.ui.preview.CapsulePreview
+import com.example.islandlyrics.ui.overlay.config.CapsuleRenderMode
+import com.example.islandlyrics.ui.overlay.config.LyricTextDisplayMode
+import com.example.islandlyrics.ui.overlay.config.OneUiCapsuleColorMode
+import com.example.islandlyrics.ui.navigation.PREF_PREDICTIVE_BACK_ENABLED
+import com.example.islandlyrics.ui.navigation.PredictiveBackAnimationMode
+import com.example.islandlyrics.ui.navigation.PredictiveBackAnimationStyle
+import com.example.islandlyrics.ui.overlay.superisland.config.SuperIslandColorSource
+import com.example.islandlyrics.ui.overlay.superisland.config.SuperIslandTextLimitConfig
 import com.example.islandlyrics.R
 import com.example.islandlyrics.core.platform.XmsfBypassMode
 import com.example.islandlyrics.core.settings.LabFeatureManager
 import com.example.islandlyrics.core.theme.ThemeHelper
 import com.example.islandlyrics.core.platform.RomUtils
-import com.example.islandlyrics.service.LyricService
+import com.example.islandlyrics.runtime.service.LyricService
 import com.example.islandlyrics.ui.theme.material.AppTheme
 import com.example.islandlyrics.ui.theme.material.materialPageContainerColor
 import com.example.islandlyrics.feature.settings.material.LanguageSelectionDialog
@@ -25,6 +25,8 @@ import com.example.islandlyrics.feature.settings.material.SettingsTextItem
 import com.example.islandlyrics.feature.settings.material.SettingsCard
 import com.example.islandlyrics.feature.settings.material.SettingsCardDivider
 import com.example.islandlyrics.feature.main.MainActivity
+import com.example.islandlyrics.feature.customsettings.CustomSettingsAction
+import com.example.islandlyrics.feature.customsettings.CustomSettingsViewModel
 import android.content.Context
 import android.content.Intent
 import android.graphics.Color as AndroidColor
@@ -65,6 +67,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.core.content.edit
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.islandlyrics.ui.theme.material.neutralMaterialTopBarColors
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
@@ -77,12 +80,16 @@ fun CustomSettingsScreen(
     onCheckUpdate: () -> Unit,
     onShowLogs: () -> Unit,
     updateVersionText: String,
-    updateBuildText: String
+    updateBuildText: String,
+    viewModel: CustomSettingsViewModel = viewModel()
 ) {
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE) }
+    val uiState by viewModel.uiState.collectAsState()
     val scope = rememberCoroutineScope()
-    var floatingLyricsLabEnabled by remember { mutableStateOf(LabFeatureManager.isFloatingLyricsEnabled(prefs)) }
+    var floatingLyricsLabEnabled by remember(uiState.floatingLyricsLabEnabled) {
+        mutableStateOf(uiState.floatingLyricsLabEnabled)
+    }
     
     val tabs = buildList {
         add(stringResource(R.string.tab_capsule))
@@ -98,15 +105,17 @@ fun CustomSettingsScreen(
     // --- State Duplication ---
 
     // Theme State
-    var followSystem by remember { mutableStateOf(ThemeHelper.getFollowSystem(context)) }
-    var darkMode by remember { mutableStateOf(ThemeHelper.getDarkMode(context)) }
-    var pureBlack by remember { mutableStateOf(ThemeHelper.getMaterialPureBlack(context)) }
-    var dynamicColor by remember { mutableStateOf(ThemeHelper.getMaterialDynamicColor(context)) }
-    var materialThemeColorSource by remember { mutableStateOf(ThemeHelper.getMaterialThemeColorSource(context)) }
-    var customThemeColor by remember { mutableStateOf(Color(ThemeHelper.getMaterialCustomColor(context))) }
+    var followSystem by remember(uiState.followSystem) { mutableStateOf(uiState.followSystem) }
+    var darkMode by remember(uiState.darkMode) { mutableStateOf(uiState.darkMode) }
+    var pureBlack by remember(uiState.pureBlack) { mutableStateOf(uiState.pureBlack) }
+    var dynamicColor by remember(uiState.dynamicColor) { mutableStateOf(uiState.dynamicColor) }
+    var materialThemeColorSource by remember(uiState.materialThemeColorSource) {
+        mutableStateOf(uiState.materialThemeColorSource)
+    }
+    var customThemeColor by remember(uiState.customThemeColor) { mutableStateOf(Color(uiState.customThemeColor)) }
     var materialThemeColorEditing by remember { mutableStateOf(false) }
     var materialThemeColorSnapshot by remember { mutableStateOf(customThemeColor) }
-    var iconStyle by remember { mutableStateOf(prefs.getString("dynamic_icon_style", "disabled") ?: "disabled") }
+    var iconStyle by remember(uiState.iconStyle) { mutableStateOf(uiState.iconStyle) }
     
     // Dialog State
     var showLanguageDialog by remember { mutableStateOf(false) }
@@ -120,13 +129,21 @@ fun CustomSettingsScreen(
     var showPrivacyDialog by remember { mutableStateOf(false) }
 
     // Notification Action Style State
-    var actionStyle by remember { mutableStateOf(prefs.getString("notification_actions_style", "disabled") ?: "disabled") }
-    var superIslandMediaButtonLayout by remember { mutableStateOf(prefs.getString("super_island_media_button_layout", "two_button") ?: "two_button") }
-    var superIslandNotificationStyle by remember { mutableStateOf(LabFeatureManager.sanitizeSuperIslandNotificationStyle(context)) }
-    var superIslandAdvancedStyleLabEnabled by remember { mutableStateOf(LabFeatureManager.isSuperIslandAdvancedStyleEnabled(prefs)) }
-    var superIslandTextLimitsLabEnabled by remember { mutableStateOf(LabFeatureManager.isSuperIslandTextLimitsEnabled(prefs)) }
-    var superIslandRelaxedTextLimitsLabEnabled by remember {
-        mutableStateOf(LabFeatureManager.isSuperIslandRelaxedTextLimitsEnabled(prefs))
+    var actionStyle by remember(uiState.actionStyle) { mutableStateOf(uiState.actionStyle) }
+    var superIslandMediaButtonLayout by remember(uiState.superIslandMediaButtonLayout) {
+        mutableStateOf(uiState.superIslandMediaButtonLayout)
+    }
+    var superIslandNotificationStyle by remember(uiState.superIslandNotificationStyle) {
+        mutableStateOf(uiState.superIslandNotificationStyle)
+    }
+    var superIslandAdvancedStyleLabEnabled by remember(uiState.superIslandAdvancedStyleLabEnabled) {
+        mutableStateOf(uiState.superIslandAdvancedStyleLabEnabled)
+    }
+    var superIslandTextLimitsLabEnabled by remember(uiState.superIslandTextLimitsLabEnabled) {
+        mutableStateOf(uiState.superIslandTextLimitsLabEnabled)
+    }
+    var superIslandRelaxedTextLimitsLabEnabled by remember(uiState.superIslandRelaxedTextLimitsLabEnabled) {
+        mutableStateOf(uiState.superIslandRelaxedTextLimitsLabEnabled)
     }
     var showActionStyleDropdown by remember { mutableStateOf(false) }
     var showSuperIslandMediaButtonLayoutDropdown by remember { mutableStateOf(false) }
@@ -136,25 +153,35 @@ fun CustomSettingsScreen(
     var showShareFormatDropdown by remember { mutableStateOf(false) }
 
     // Notification Click Action State
-    var notificationClickStyle by remember { mutableStateOf(prefs.getString("notification_click_style", "default") ?: "default") }
+    var notificationClickStyle by remember(uiState.notificationClickStyle) {
+        mutableStateOf(uiState.notificationClickStyle)
+    }
     var showNotificationClickDropdown by remember { mutableStateOf(false) }
 
     // Dismiss Delay State
-    var dismissDelay by remember { mutableLongStateOf(prefs.getLong("notification_dismiss_delay", 0L)) }
+    var dismissDelay by remember(uiState.dismissDelayMs) { mutableLongStateOf(uiState.dismissDelayMs) }
     var showDismissDelayDropdown by remember { mutableStateOf(false) }
 
     // Other Setup
-    var progressColorEnabled by remember { mutableStateOf(prefs.getBoolean("progress_bar_color_enabled", false)) }
-    var disableScrolling by remember { mutableStateOf(prefs.getBoolean("disable_lyric_scrolling", false)) }
-    var lyricTextDisplayMode by remember { mutableStateOf(LyricTextDisplayMode.read(prefs)) }
-    var oneuiCapsuleColorMode by remember { mutableStateOf(OneUiCapsuleColorMode.read(prefs)) }
+    var progressColorEnabled by remember(uiState.progressColorEnabled) { mutableStateOf(uiState.progressColorEnabled) }
+    var disableScrolling by remember(uiState.disableScrolling) { mutableStateOf(uiState.disableScrolling) }
+    var lyricTextDisplayMode by remember(uiState.lyricTextDisplayMode) { mutableStateOf(uiState.lyricTextDisplayMode) }
+    var oneuiCapsuleColorMode by remember(uiState.oneuiCapsuleColorMode) { mutableStateOf(uiState.oneuiCapsuleColorMode) }
 
-    var capsuleRenderMode by remember { mutableStateOf(CapsuleRenderMode.read(prefs)) }
-    var superIslandLyricMode by remember { mutableStateOf(prefs.getString("super_island_lyric_mode", "standard") ?: "standard") }
-    var superIslandFullLyricShowLeftCover by remember { mutableStateOf(prefs.getBoolean("super_island_full_lyric_show_left_cover", true)) }
-    var superIslandTextColorEnabled by remember { mutableStateOf(prefs.getBoolean("super_island_text_color_enabled", false)) }
-    var superIslandColorSource by remember { mutableStateOf(SuperIslandColorSource.read(prefs)) }
-    var superIslandCustomColor by remember { mutableStateOf(Color(SuperIslandColorSource.readCustomColor(prefs))) }
+    var capsuleRenderMode by remember(uiState.capsuleRenderMode) { mutableStateOf(uiState.capsuleRenderMode) }
+    var superIslandLyricMode by remember(uiState.superIslandLyricMode) { mutableStateOf(uiState.superIslandLyricMode) }
+    var superIslandFullLyricShowLeftCover by remember(uiState.superIslandFullLyricShowLeftCover) {
+        mutableStateOf(uiState.superIslandFullLyricShowLeftCover)
+    }
+    var superIslandTextColorEnabled by remember(uiState.superIslandTextColorEnabled) {
+        mutableStateOf(uiState.superIslandTextColorEnabled)
+    }
+    var superIslandColorSource by remember(uiState.superIslandColorSource) {
+        mutableStateOf(uiState.superIslandColorSource)
+    }
+    var superIslandCustomColor by remember(uiState.superIslandCustomColor) {
+        mutableStateOf(Color(uiState.superIslandCustomColor))
+    }
     var superIslandRightTextChars by remember {
         mutableFloatStateOf(SuperIslandTextLimitConfig.rightChars(prefs, superIslandRelaxedTextLimitsLabEnabled))
     }
@@ -165,12 +192,22 @@ fun CustomSettingsScreen(
         mutableFloatStateOf(SuperIslandTextLimitConfig.leftChars(prefs, showLeftCover = false, superIslandRelaxedTextLimitsLabEnabled))
     }
 
-    var superIslandShareEnabled by remember { mutableStateOf(prefs.getBoolean("super_island_share_enabled", true)) }
-    var superIslandShareFormat by remember { mutableStateOf(prefs.getString("super_island_share_format", "format_1") ?: "format_1") }
-    var miuixEnabled by remember { mutableStateOf(prefs.getBoolean("ui_use_miuix", true)) }
-    var predictiveBackEnabled by remember { mutableStateOf(prefs.getBoolean(PREF_PREDICTIVE_BACK_ENABLED, true)) }
-    var predictiveBackAnimationMode by remember { mutableStateOf(PredictiveBackAnimationMode.read(prefs)) }
-    var predictiveBackAnimationStyle by remember { mutableStateOf(PredictiveBackAnimationStyle.read(prefs)) }
+    var superIslandShareEnabled by remember(uiState.superIslandShareEnabled) {
+        mutableStateOf(uiState.superIslandShareEnabled)
+    }
+    var superIslandShareFormat by remember(uiState.superIslandShareFormat) {
+        mutableStateOf(uiState.superIslandShareFormat)
+    }
+    var miuixEnabled by remember(uiState.miuixEnabled) { mutableStateOf(uiState.miuixEnabled) }
+    var predictiveBackEnabled by remember(uiState.predictiveBackEnabled) {
+        mutableStateOf(uiState.predictiveBackEnabled)
+    }
+    var predictiveBackAnimationMode by remember(uiState.predictiveBackAnimationMode) {
+        mutableStateOf(uiState.predictiveBackAnimationMode)
+    }
+    var predictiveBackAnimationStyle by remember(uiState.predictiveBackAnimationStyle) {
+        mutableStateOf(uiState.predictiveBackAnimationStyle)
+    }
 
 
     // Dialog State for UI Style
@@ -192,47 +229,42 @@ fun CustomSettingsScreen(
         islandStyleCapsuleEnabled && superIslandLyricMode == "full"
 
     fun applySuperIslandScrollForce(force: Boolean, restoreLegacyState: Boolean = false) {
+        val currentDisableScrolling = disableScrolling
         val forcedKey = "super_island_lyric_mode_forced_disable_scrolling"
-        val backupKey = "disable_lyric_scrolling_before_super_island_lyric_mode"
         val legacyForcedKey = "full_super_island_forced_disable_scrolling"
-        val legacyBackupKey = "disable_lyric_scrolling_before_full_super_island"
         val wasForced = prefs.getBoolean(forcedKey, false) || prefs.getBoolean(legacyForcedKey, false)
-        prefs.edit {
-            if (force) {
-                if (!wasForced) {
-                    putBoolean(backupKey, disableScrolling)
-                    putBoolean(forcedKey, true)
-                }
-                disableScrolling = true
-                putBoolean("disable_lyric_scrolling", true)
-            } else if (wasForced) {
-                val restoredValue = if (prefs.contains(backupKey)) {
+        disableScrolling = when {
+            force -> true
+            wasForced -> {
+                val backupKey = "disable_lyric_scrolling_before_super_island_lyric_mode"
+                val legacyBackupKey = "disable_lyric_scrolling_before_full_super_island"
+                if (prefs.contains(backupKey)) {
                     prefs.getBoolean(backupKey, false)
                 } else {
                     prefs.getBoolean(legacyBackupKey, false)
                 }
-                disableScrolling = restoredValue
-                putBoolean("disable_lyric_scrolling", restoredValue)
-                remove(backupKey)
-                remove(forcedKey)
-                remove(legacyBackupKey)
-                remove(legacyForcedKey)
-            } else if (restoreLegacyState && disableScrolling) {
-                disableScrolling = false
-                putBoolean("disable_lyric_scrolling", false)
             }
+            restoreLegacyState && currentDisableScrolling -> false
+            else -> currentDisableScrolling
         }
+        viewModel.dispatch(
+            CustomSettingsAction.ApplySuperIslandScrollForce(
+                force = force,
+                restoreLegacyState = restoreLegacyState,
+                currentDisableScrolling = currentDisableScrolling
+            )
+        )
     }
 
     fun setCapsuleRenderMode(mode: CapsuleRenderMode) {
         if (capsuleRenderMode == mode) return
 
         capsuleRenderMode = mode
-        CapsuleRenderMode.write(prefs, mode)
+        viewModel.dispatch(CustomSettingsAction.SetCapsuleRenderMode(mode))
 
         if (mode != CapsuleRenderMode.LIVE_UPDATE && actionStyle == "miplay") {
             actionStyle = "disabled"
-            prefs.edit { putString("notification_actions_style", "disabled") }
+            viewModel.dispatch(CustomSettingsAction.SetNotificationActionsStyle("disabled"))
         }
 
         val action = "ACTION_SET_CAPSULE_RENDER_MODE"
@@ -256,16 +288,16 @@ fun CustomSettingsScreen(
         if (!isLiveUpdateSupported) {
             if (iconStyle != "disabled") {
                 iconStyle = "disabled"
-                prefs.edit { putString("dynamic_icon_style", "disabled") }
+                viewModel.dispatch(CustomSettingsAction.SetDynamicIconStyle("disabled"))
             }
             if (actionStyle == "miplay") {
                 actionStyle = "disabled"
-                prefs.edit { putString("notification_actions_style", "disabled") }
+                viewModel.dispatch(CustomSettingsAction.SetNotificationActionsStyle("disabled"))
             }
         } else if (!isHyperOs && iconStyle == "advanced") {
             // Advanced style is HyperOS-only; reset to classic on other ROMs
             iconStyle = "disabled"
-            prefs.edit { putString("dynamic_icon_style", "disabled") }
+            viewModel.dispatch(CustomSettingsAction.SetDynamicIconStyle("disabled"))
         }
     }
 
@@ -378,7 +410,7 @@ fun CustomSettingsScreen(
                                 enabled = !forceDisableScrollingForSuperIslandLyricMode,
                                 onCheckedChange = {
                                     disableScrolling = it
-                                    prefs.edit { putBoolean("disable_lyric_scrolling", it) }
+                                    viewModel.dispatch(CustomSettingsAction.SetDisableScrolling(it))
                                 }
                             )
 
@@ -409,7 +441,7 @@ fun CustomSettingsScreen(
                                                     text = { Text(label) },
                                                     onClick = {
                                                         lyricTextDisplayMode = lyricTextModes[index]
-                                                        LyricTextDisplayMode.write(prefs, lyricTextDisplayMode)
+                                                        viewModel.dispatch(CustomSettingsAction.SetLyricTextDisplayMode(lyricTextDisplayMode))
                                                         showLyricTextDisplayModeDropdown = false
                                                     }
                                                 )
@@ -449,7 +481,7 @@ fun CustomSettingsScreen(
                                                     text = { Text(label) },
                                                     onClick = {
                                                         oneuiCapsuleColorMode = mode
-                                                        OneUiCapsuleColorMode.write(prefs, mode)
+                                                        viewModel.dispatch(CustomSettingsAction.SetOneUiCapsuleColorMode(mode))
                                                         showOneUiCapsuleColorDropdown = false
                                                     }
                                                 )
@@ -528,7 +560,7 @@ fun CustomSettingsScreen(
                                                         text = { Text(stringResource(nameId)) },
                                                         onClick = {
                                                             iconStyle = styleId
-                                                            prefs.edit { putString("dynamic_icon_style", styleId) }
+                                                            viewModel.dispatch(CustomSettingsAction.SetDynamicIconStyle(styleId))
                                                             showIconStyleDropdown = false
                                                         }
                                                     )
@@ -547,14 +579,14 @@ fun CustomSettingsScreen(
                                         ?: lyricModeItems.first()
                                     if (currentLyricModeItem.first != superIslandLyricMode) {
                                         superIslandLyricMode = currentLyricModeItem.first
-                                        prefs.edit { putString("super_island_lyric_mode", currentLyricModeItem.first) }
+                                        viewModel.dispatch(CustomSettingsAction.SetSuperIslandLyricMode(currentLyricModeItem.first))
                                     }
                                     val lyricModeDisplay = stringResource(currentLyricModeItem.second)
                                     val lyricModeSubtitle = stringResource(currentLyricModeItem.third)
 
                                     fun setSuperIslandLyricMode(newMode: String) {
                                         superIslandLyricMode = newMode
-                                        prefs.edit { putString("super_island_lyric_mode", newMode) }
+                                        viewModel.dispatch(CustomSettingsAction.SetSuperIslandLyricMode(newMode))
                                         if (newMode == "standard") {
                                             applySuperIslandScrollForce(force = false, restoreLegacyState = true)
                                         }
@@ -603,7 +635,7 @@ fun CustomSettingsScreen(
                                             checked = superIslandFullLyricShowLeftCover,
                                             onCheckedChange = {
                                                 superIslandFullLyricShowLeftCover = it
-                                                prefs.edit { putBoolean("super_island_full_lyric_show_left_cover", it) }
+                                                viewModel.dispatch(CustomSettingsAction.SetSuperIslandFullLyricShowLeftCover(it))
                                             }
                                         )
                                     }
@@ -617,7 +649,7 @@ fun CustomSettingsScreen(
                                             valueRange = rightRange,
                                             onValueChange = { value ->
                                                 superIslandRightTextChars = value
-                                                prefs.edit { putFloat(SuperIslandTextLimitConfig.KEY_RIGHT_CHARS, value) }
+                                                viewModel.dispatch(CustomSettingsAction.SetSuperIslandTextLimit(SuperIslandTextLimitConfig.KEY_RIGHT_CHARS, value))
                                             }
                                         )
 
@@ -646,7 +678,7 @@ fun CustomSettingsScreen(
                                                     } else {
                                                         superIslandLeftNoCoverTextChars = value
                                                     }
-                                                    prefs.edit { putFloat(leftKey, value) }
+                                                    viewModel.dispatch(CustomSettingsAction.SetSuperIslandTextLimit(leftKey, value))
                                                 }
                                             )
                                         }
@@ -660,8 +692,8 @@ fun CustomSettingsScreen(
                                         onCheckedChange = {
                                             superIslandTextColorEnabled = it
                                             progressColorEnabled = it
-                                            prefs.edit { putBoolean("super_island_text_color_enabled", it) }
-                                            prefs.edit { putBoolean("progress_bar_color_enabled", it) }
+                                            viewModel.dispatch(CustomSettingsAction.SetSuperIslandTextColorEnabled(it))
+                                            viewModel.dispatch(CustomSettingsAction.SetProgressColorEnabled(it))
                                         }
                                     )
 
@@ -693,7 +725,7 @@ fun CustomSettingsScreen(
                                                             onClick = {
                                                                 val newSource = colorSources[index]
                                                                 superIslandColorSource = newSource
-                                                                SuperIslandColorSource.write(prefs, newSource)
+                                                                viewModel.dispatch(CustomSettingsAction.SetSuperIslandColorSource(newSource))
                                                                 showSuperIslandColorSourceDropdown = false
                                                             }
                                                         )
@@ -709,7 +741,7 @@ fun CustomSettingsScreen(
                                                 color = superIslandCustomColor,
                                                 onColorChanged = { color ->
                                                     superIslandCustomColor = color
-                                                    SuperIslandColorSource.writeCustomColor(prefs, color.toArgb())
+                                                    viewModel.dispatch(CustomSettingsAction.SetSuperIslandCustomColor(color.toArgb()))
                                                 }
                                             )
                                         }
@@ -723,7 +755,7 @@ fun CustomSettingsScreen(
                                             checked = superIslandShareEnabled,
                                             onCheckedChange = {
                                                 superIslandShareEnabled = it
-                                                prefs.edit { putBoolean("super_island_share_enabled", it) }
+                                                viewModel.dispatch(CustomSettingsAction.SetSuperIslandShareEnabled(it))
                                             }
                                         )
 
@@ -755,7 +787,7 @@ fun CustomSettingsScreen(
                                                                 text = { Text(stringResource(nameId)) },
                                                                 onClick = {
                                                                     superIslandShareFormat = formatId
-                                                                    prefs.edit { putString("super_island_share_format", formatId) }
+                                                                    viewModel.dispatch(CustomSettingsAction.SetSuperIslandShareFormat(formatId))
                                                                     showShareFormatDropdown = false
                                                                 }
                                                             )
@@ -838,13 +870,13 @@ fun CustomSettingsScreen(
                                                                 showBlockXmsfModeDropdown = false
                                                                 if (mode == XmsfBypassMode.DISABLED) {
                                                                     blockXmsfMode = mode
-                                                                    XmsfBypassMode.write(prefs, mode)
+                                                                    viewModel.dispatch(CustomSettingsAction.SetXmsfBypassMode(mode))
                                                                 } else {
                                                                     scope.launch {
                                                                         try {
                                                                             com.example.islandlyrics.integration.shizuku.requireShizukuPermissionGranted {
                                                                                 blockXmsfMode = mode
-                                                                                XmsfBypassMode.write(prefs, mode)
+                                                                                viewModel.dispatch(CustomSettingsAction.SetXmsfBypassMode(mode))
                                                                             }
                                                                         } catch (_: Exception) {
                                                                             Toast.makeText(context, "Shizuku permission required", Toast.LENGTH_LONG).show()
@@ -864,7 +896,7 @@ fun CustomSettingsScreen(
                                                 value = blockXmsfCustomDurationMs,
                                                 onValueChange = { newDurationMs ->
                                                     blockXmsfCustomDurationMs = newDurationMs
-                                                    XmsfBypassMode.writeCustomDurationMs(prefs, newDurationMs)
+                                                    viewModel.dispatch(CustomSettingsAction.SetXmsfCustomDurationMs(newDurationMs))
                                                 }
                                             )
                                             Text(
@@ -901,7 +933,7 @@ fun CustomSettingsScreen(
                                     checked = progressColorEnabled,
                                     onCheckedChange = {
                                         progressColorEnabled = it
-                                        prefs.edit { putBoolean("progress_bar_color_enabled", it) }
+                                        viewModel.dispatch(CustomSettingsAction.SetProgressColorEnabled(it))
                                     }
                                 )
                                 SettingsCardDivider()
@@ -936,7 +968,7 @@ fun CustomSettingsScreen(
                                                 text = { Text(stringResource(nameId)) },
                                                 onClick = {
                                                     actionStyle = styleId
-                                                    prefs.edit { putString("notification_actions_style", styleId) }
+                                                    viewModel.dispatch(CustomSettingsAction.SetNotificationActionsStyle(styleId))
                                                     showActionStyleDropdown = false
                                                 }
                                             )
@@ -973,7 +1005,7 @@ fun CustomSettingsScreen(
                                                     text = { Text(stringResource(nameId)) },
                                                     onClick = {
                                                         superIslandNotificationStyle = styleId
-                                                        prefs.edit { putString("super_island_notification_style", styleId) }
+                                                        viewModel.dispatch(CustomSettingsAction.SetSuperIslandNotificationStyle(styleId))
                                                         showSuperIslandNotificationStyleDropdown = false
                                                     }
                                                 )
@@ -1008,7 +1040,7 @@ fun CustomSettingsScreen(
                                                         text = { Text(stringResource(nameId)) },
                                                         onClick = {
                                                             superIslandMediaButtonLayout = layoutId
-                                                            prefs.edit { putString("super_island_media_button_layout", layoutId) }
+                                                            viewModel.dispatch(CustomSettingsAction.SetSuperIslandMediaButtonLayout(layoutId))
                                                             showSuperIslandMediaButtonLayoutDropdown = false
                                                         }
                                                     )
@@ -1061,7 +1093,7 @@ fun CustomSettingsScreen(
                                                 },
                                                 onClick = {
                                                     notificationClickStyle = styleId
-                                                    prefs.edit { putString("notification_click_style", styleId) }
+                                                    viewModel.dispatch(CustomSettingsAction.SetNotificationClickStyle(styleId))
                                                     showNotificationClickDropdown = false
                                                 }
                                             )
@@ -1100,7 +1132,7 @@ fun CustomSettingsScreen(
                                                 text = { Text(stringResource(labelRes)) },
                                                 onClick = {
                                                     dismissDelay = delay
-                                                    prefs.edit { putLong("notification_dismiss_delay", delay) }
+                                                    viewModel.dispatch(CustomSettingsAction.SetDismissDelay(delay))
                                                     showDismissDelayDropdown = false
                                                 }
                                             )
@@ -1134,7 +1166,7 @@ fun CustomSettingsScreen(
                                                     showUiStyleDropdown = false
                                                     if (miuixEnabled) {
                                                         miuixEnabled = false
-                                                        prefs.edit { putBoolean("ui_use_miuix", false) }
+                                                        viewModel.dispatch(CustomSettingsAction.SetMiuixEnabled(false))
                                                         val restartIntent = Intent(context, MainActivity::class.java)
                                                         restartIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
                                                         context.startActivity(restartIntent)
@@ -1148,7 +1180,7 @@ fun CustomSettingsScreen(
                                                     showUiStyleDropdown = false
                                                     if (!miuixEnabled) {
                                                         miuixEnabled = true
-                                                        prefs.edit { putBoolean("ui_use_miuix", true) }
+                                                        viewModel.dispatch(CustomSettingsAction.SetMiuixEnabled(true))
                                                         val restartIntent = Intent(context, MainActivity::class.java)
                                                         restartIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
                                                         context.startActivity(restartIntent)
@@ -1165,7 +1197,7 @@ fun CustomSettingsScreen(
                                     checked = followSystem,
                                     onCheckedChange = {
                                         followSystem = it
-                                        ThemeHelper.setFollowSystem(context, it)
+                                        viewModel.dispatch(CustomSettingsAction.SetFollowSystem(it))
                                     }
                                 )
                                 SettingsCardDivider()
@@ -1175,7 +1207,7 @@ fun CustomSettingsScreen(
                                     enabled = !followSystem,
                                     onCheckedChange = {
                                         darkMode = it
-                                        ThemeHelper.setDarkMode(context, it)
+                                        viewModel.dispatch(CustomSettingsAction.SetDarkMode(it))
                                     }
                                 )
                                 SettingsCardDivider()
@@ -1186,7 +1218,7 @@ fun CustomSettingsScreen(
                                     enabled = useDarkTheme,
                                     onCheckedChange = {
                                         pureBlack = it
-                                        ThemeHelper.setPureBlack(context, it)
+                                        viewModel.dispatch(CustomSettingsAction.SetPureBlack(it))
                                     }
                                 )
                                 SettingsCardDivider()
@@ -1196,7 +1228,7 @@ fun CustomSettingsScreen(
                                     checked = dynamicColor,
                                     onCheckedChange = {
                                         dynamicColor = it
-                                        ThemeHelper.setDynamicColor(context, it)
+                                        viewModel.dispatch(CustomSettingsAction.SetDynamicColor(it))
                                     }
                                 )
                                 if (!dynamicColor) {
@@ -1232,7 +1264,7 @@ fun CustomSettingsScreen(
                                                                 materialThemeColorEditing = false
                                                             }
                                                             materialThemeColorSource = themeColorSources[index]
-                                                            ThemeHelper.setMaterialThemeColorSource(context, materialThemeColorSource)
+                                                            viewModel.dispatch(CustomSettingsAction.SetMaterialThemeColorSource(materialThemeColorSource))
                                                             showThemeColorSourceDropdown = false
                                                         }
                                                     )
@@ -1253,7 +1285,7 @@ fun CustomSettingsScreen(
                                                 customThemeColor = color
                                             },
                                             onApply = {
-                                                ThemeHelper.setMaterialCustomColor(context, customThemeColor.toArgb())
+                                                viewModel.dispatch(CustomSettingsAction.SetMaterialCustomColor(customThemeColor.toArgb()))
                                                 materialThemeColorEditing = false
                                             },
                                             onCancel = {
@@ -1263,10 +1295,7 @@ fun CustomSettingsScreen(
                                             onUseDefault = {
                                                 customThemeColor = materialThemeColorSnapshot
                                                 materialThemeColorSource = ThemeHelper.MATERIAL_THEME_COLOR_SOURCE_DEFAULT
-                                                ThemeHelper.setMaterialThemeColorSource(
-                                                    context,
-                                                    ThemeHelper.MATERIAL_THEME_COLOR_SOURCE_DEFAULT
-                                                )
+                                                viewModel.dispatch(CustomSettingsAction.SetMaterialThemeColorSource(ThemeHelper.MATERIAL_THEME_COLOR_SOURCE_DEFAULT))
                                                 materialThemeColorEditing = false
                                             }
                                         )
@@ -1279,7 +1308,7 @@ fun CustomSettingsScreen(
                                     checked = predictiveBackEnabled,
                                     onCheckedChange = {
                                         predictiveBackEnabled = it
-                                        prefs.edit { putBoolean(PREF_PREDICTIVE_BACK_ENABLED, it) }
+                                        viewModel.dispatch(CustomSettingsAction.SetPredictiveBackEnabled(it))
                                     }
                                 )
                                 SettingsCardDivider()
@@ -1305,7 +1334,7 @@ fun CustomSettingsScreen(
                                                     text = { Text(predictiveBackModeLabels[index]) },
                                                     onClick = {
                                                         predictiveBackAnimationMode = mode
-                                                        PredictiveBackAnimationMode.write(prefs, mode)
+                                                        viewModel.dispatch(CustomSettingsAction.SetPredictiveBackAnimationMode(mode))
                                                         if (mode != PredictiveBackAnimationMode.Consistent) {
                                                             showPredictiveBackAnimationDropdown = false
                                                         }
@@ -1337,13 +1366,13 @@ fun CustomSettingsScreen(
                                             ) {
                                                 predictiveBackStyles.forEachIndexed { index, style ->
                                                     DropdownMenuItem(
-                                                        text = { Text(predictiveBackStyleLabels[index]) },
-                                                        onClick = {
-                                                            predictiveBackAnimationStyle = style
-                                                            PredictiveBackAnimationStyle.write(prefs, style)
-                                                            showPredictiveBackAnimationDropdown = false
-                                                        }
-                                                    )
+                                                            text = { Text(predictiveBackStyleLabels[index]) },
+                                                            onClick = {
+                                                                predictiveBackAnimationStyle = style
+                                                                viewModel.dispatch(CustomSettingsAction.SetPredictiveBackAnimationStyle(style))
+                                                                showPredictiveBackAnimationDropdown = false
+                                                            }
+                                                        )
                                                 }
                                             }
                                         }
