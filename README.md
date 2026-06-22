@@ -167,6 +167,38 @@ We do NOT read chat messages, verification codes, emails, or any non-media notif
 
 我们不会读取您的聊天消息、验证码、邮件等非媒体类通知，也不会收集或上传您的任何个人数据。所有处理均在本地完成。
 
+## Project Structure (项目结构)
+
+The Android app is organized by responsibility rather than by a single flat feature folder. The main package groups are:
+
+项目主体按职责拆分，主要包职责如下：
+
+```text
+app/
+  core/         Shared platform utilities, settings, logging, cache, update, and theme helpers.
+                通用平台能力、设置、日志、缓存、更新与主题辅助。
+  lyrics/       Lyric sources, online fetching, parsing, scoring, local lyrics, cache, export, and repository state.
+                歌词来源、在线获取、解析、评分、本地歌词、缓存、导出与仓库状态。
+  runtime/      Foreground services, media-session monitoring, notification control, and playing-app integration.
+                前台服务、媒体会话监听、通知控制与播放应用集成。
+  feature/      Screen-level business features such as settings, parser rules, diagnostics, cache management, and OOBE.
+                页面级业务功能，例如设置、解析规则、诊断、缓存管理和首次引导。
+  ui/           Reusable UI, Material/Miuix themes, overlay renderers, capsule, and Super Island display logic.
+                可复用 UI、Material/Miuix 主题、悬浮层渲染、胶囊和超级岛展示逻辑。
+  integration/  Bridges to privileged or external APIs, including Shizuku and system-level integrations.
+                Shizuku 等特权/外部 API 与系统级集成入口。
+  rules/        Parser-rule models, matching helpers, and rule-management support.
+                解析规则模型、匹配辅助与规则管理支撑。
+```
+
+Build configuration is split between `app/build.gradle` and reusable scripts under `gradle/scripts/`, keeping versioning, signing, and Android app options separate.
+
+构建配置由 `app/build.gradle` 与 `gradle/scripts/` 下的脚本共同维护，用于拆分版本号、签名和 Android 应用配置。
+
+For package boundaries and runtime data flow, see [Architecture](docs/ARCHITECTURE.md).
+
+更详细的包边界与运行时数据流说明见 [Architecture](docs/ARCHITECTURE.md)。
+
 ---
 
 ## Build (构建)
