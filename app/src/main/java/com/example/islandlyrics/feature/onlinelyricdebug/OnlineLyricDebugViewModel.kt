@@ -244,6 +244,27 @@ class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(app
         _cacheStatus.value = s(R.string.online_lyric_debug_imported_current_playback)
     }
 
+    fun rematchWithCurrentPlayback() {
+        val mediaInfo = liveMetadata.value
+        if (mediaInfo == null || (mediaInfo.title.isBlank() && mediaInfo.artist.isBlank())) {
+            _error.value = s(R.string.online_lyric_debug_error_no_song)
+            return
+        }
+        _customMatchTitle.value = mediaInfo.title.trim()
+        _customMatchArtist.value = mediaInfo.artist.trim()
+        _error.value = null
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) {
+                cacheStore.saveMatchOverride(
+                    mediaInfo = mediaInfo,
+                    title = mediaInfo.title.trim(),
+                    artist = mediaInfo.artist.trim()
+                )
+            }
+            fetchLyrics(forceRefresh = true)
+        }
+    }
+
     fun syncCurrentSongQuery() {
         val mediaInfo = liveMetadata.value ?: return
         val rule = ParserRuleHelper.getRuleForPackage(getApplication(), mediaInfo.packageName)

@@ -146,6 +146,16 @@ fun OnlineLyricDebugScreen(
                     duration = duration,
                     currentLyric = liveLyric?.lyric.orEmpty()
                 )
+                Spacer(modifier = Modifier.height(14.dp))
+                Button(
+                    onClick = { viewModel.rematchWithCurrentPlayback() },
+                    enabled = !isFetching,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.size(8.dp))
+                    Text(stringResource(R.string.online_lyric_rematch_current_playback_action))
+                }
             }
 
             ToolCard(title = stringResource(R.string.online_lyric_rematch_match_input)) {

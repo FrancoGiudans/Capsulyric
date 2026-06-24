@@ -762,6 +762,7 @@
     <string name="online_lyric_rematch_song_title">歌名</string>
     <string name="online_lyric_rematch_artist">歌手</string>
     <string name="online_lyric_rematch_action">重新匹配</string>
+    <string name="online_lyric_rematch_current_playback_action">使用当前播放信息重新匹配</string>
     <string name="online_lyric_rematch_result_title">重新获取到的歌词</string>
     <string name="online_lyric_rematch_result_source_fmt">来源: %1$s</string>
     <string name="online_lyric_rematch_effective_query_fmt">当前查询: %1$s / %2$s</string>
