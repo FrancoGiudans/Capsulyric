@@ -33,13 +33,11 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
@@ -136,6 +134,8 @@ fun MiuixCustomSettingsScreen(
     var superIslandCustomColor by remember(uiState.superIslandCustomColor) {
         mutableStateOf(Color(uiState.superIslandCustomColor))
     }
+    var superIslandColorEditing by remember { mutableStateOf(false) }
+    var superIslandColorSnapshot by remember { mutableStateOf(superIslandCustomColor) }
     var superIslandRightTextChars by remember {
         mutableFloatStateOf(SuperIslandTextLimitConfig.rightChars(prefs, superIslandRelaxedTextLimitsLabEnabled))
     }
@@ -518,6 +518,10 @@ fun MiuixCustomSettingsScreen(
                                                 summary = stringResource(R.string.settings_super_island_colorize_desc),
                                                 checked = superIslandTextColorEnabled,
                                                 onCheckedChange = {
+                                                    if (!it && superIslandColorEditing) {
+                                                        superIslandCustomColor = superIslandColorSnapshot
+                                                        superIslandColorEditing = false
+                                                    }
                                                     superIslandTextColorEnabled = it
                                                     progressColorEnabled = it
                                                     viewModel.dispatch(CustomSettingsAction.SetSuperIslandTextColorEnabled(it))
@@ -540,6 +544,10 @@ fun MiuixCustomSettingsScreen(
                                                     items = colorSourceLabels,
                                                     selectedIndex = currentColorSourceIndex,
                                                     onSelectedIndexChange = { index ->
+                                                        if (superIslandColorEditing) {
+                                                            superIslandCustomColor = superIslandColorSnapshot
+                                                            superIslandColorEditing = false
+                                                        }
                                                         val newSource = colorSources[index]
                                                         superIslandColorSource = newSource
                                                         viewModel.dispatch(CustomSettingsAction.SetSuperIslandColorSource(newSource))
@@ -547,25 +555,34 @@ fun MiuixCustomSettingsScreen(
                                                 )
 
                                                 if (superIslandColorSource == SuperIslandColorSource.CUSTOM) {
-                                                    Column(
-                                                        modifier = Modifier
-                                                            .fillMaxWidth()
-                                                            .padding(horizontal = 16.dp, vertical = 10.dp)
-                                                    ) {
-                                                        Text(
-                                                            text = stringResource(R.string.settings_super_island_custom_color),
-                                                            color = MiuixTheme.colorScheme.onSurface,
-                                                            fontSize = 15.dp.value.sp
-                                                        )
-                                                        Spacer(modifier = Modifier.height(12.dp))
-                                                        ColorPalette(
-                                                            color = superIslandCustomColor,
-                                                            onColorChanged = { color ->
-                                                                superIslandCustomColor = color
-                                                                viewModel.dispatch(CustomSettingsAction.SetSuperIslandCustomColor(color.toArgb()))
-                                                            }
-                                                        )
-                                                    }
+                                                    MiuixEditableColorSection(
+                                                        title = stringResource(R.string.settings_super_island_custom_color),
+                                                        color = superIslandCustomColor,
+                                                        isEditing = superIslandColorEditing,
+                                                        defaultActionText = stringResource(R.string.settings_color_default),
+                                                        onStartEditing = {
+                                                            superIslandColorSnapshot = superIslandCustomColor
+                                                            superIslandColorEditing = true
+                                                        },
+                                                        onColorChanged = { color ->
+                                                            superIslandCustomColor = color
+                                                        },
+                                                        onApply = {
+                                                            viewModel.dispatch(CustomSettingsAction.SetSuperIslandCustomColor(superIslandCustomColor.toArgb()))
+                                                            superIslandColorEditing = false
+                                                        },
+                                                        onCancel = {
+                                                            superIslandCustomColor = superIslandColorSnapshot
+                                                            superIslandColorEditing = false
+                                                        },
+                                                        onUseDefault = {
+                                                            val defaultColor = Color(SuperIslandColorSource.DEFAULT_CUSTOM_COLOR)
+                                                            superIslandCustomColor = defaultColor
+                                                            superIslandColorSnapshot = defaultColor
+                                                            viewModel.dispatch(CustomSettingsAction.SetSuperIslandCustomColor(defaultColor.toArgb()))
+                                                            superIslandColorEditing = false
+                                                        }
+                                                    )
                                                 }
                                             }
 
@@ -979,90 +996,33 @@ fun MiuixCustomSettingsScreen(
                                         )
 
                                         if (miuixThemeColorSource == ThemeHelper.MATERIAL_THEME_COLOR_SOURCE_CUSTOM) {
-                                            Column(
-                                                modifier = Modifier
-                                                    .fillMaxWidth()
-                                                    .padding(horizontal = 16.dp, vertical = 10.dp)
-                                            ) {
-                                                Text(
-                                                    text = stringResource(R.string.settings_theme_custom_color),
-                                                    color = MiuixTheme.colorScheme.onSurface,
-                                                    fontSize = 15.dp.value.sp
-                                                )
-                                                Spacer(modifier = Modifier.height(12.dp))
-                                                Box(
-                                                    modifier = Modifier
-                                                        .fillMaxWidth()
-                                                        .height(14.dp)
-                                                        .clip(RoundedCornerShape(7.dp))
-                                                        .background(customThemeColor)
-                                                )
-                                                Spacer(modifier = Modifier.height(6.dp))
-                                                if (miuixThemeColorEditing) {
-                                                    ColorPalette(
-                                                        color = customThemeColor,
-                                                        onColorChanged = { color ->
-                                                            customThemeColor = color
-                                                        }
-                                                    )
-                                                    Spacer(modifier = Modifier.height(10.dp))
-                                                    Row(
-                                                        modifier = Modifier.fillMaxWidth(),
-                                                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                                                        verticalAlignment = Alignment.CenterVertically
-                                                    ) {
-                                                        TextButton(
-                                                            text = stringResource(R.string.dialog_btn_cancel),
-                                                            onClick = {
-                                                                customThemeColor = miuixThemeColorSnapshot
-                                                                miuixThemeColorEditing = false
-                                                            },
-                                                            modifier = Modifier.weight(1f)
-                                                        )
-                                                        TextButton(
-                                                            text = stringResource(R.string.settings_theme_color_source_default),
-                                                            onClick = {
-                                                                customThemeColor = miuixThemeColorSnapshot
-                                                                miuixThemeColorSource = ThemeHelper.MATERIAL_THEME_COLOR_SOURCE_DEFAULT
-                                                                viewModel.dispatch(CustomSettingsAction.SetMiuixThemeColorSource(ThemeHelper.MATERIAL_THEME_COLOR_SOURCE_DEFAULT))
-                                                                miuixThemeColorEditing = false
-                                                            },
-                                                            modifier = Modifier.weight(1f)
-                                                        )
-                                                        TextButton(
-                                                            text = stringResource(R.string.apply),
-                                                            onClick = {
-                                                                viewModel.dispatch(CustomSettingsAction.SetMiuixThemeCustomColor(customThemeColor.toArgb()))
-                                                                miuixThemeColorEditing = false
-                                                            },
-                                                            modifier = Modifier.weight(1f),
-                                                            colors = ButtonDefaults.textButtonColorsPrimary()
-                                                        )
-                                                    }
-                                                } else {
-                                                    TextButton(
-                                                        text = stringResource(R.string.parser_edit),
-                                                        onClick = {
-                                                            miuixThemeColorSnapshot = customThemeColor
-                                                            miuixThemeColorEditing = true
-                                                        },
-                                                        modifier = Modifier.align(Alignment.End),
-                                                        colors = ButtonDefaults.textButtonColorsPrimary()
-                                                    )
+                                            MiuixEditableColorSection(
+                                                title = stringResource(R.string.settings_theme_custom_color),
+                                                color = customThemeColor,
+                                                isEditing = miuixThemeColorEditing,
+                                                defaultActionText = stringResource(R.string.settings_theme_color_source_default),
+                                                onStartEditing = {
+                                                    miuixThemeColorSnapshot = customThemeColor
+                                                    miuixThemeColorEditing = true
+                                                },
+                                                onColorChanged = { color ->
+                                                    customThemeColor = color
+                                                },
+                                                onApply = {
+                                                    viewModel.dispatch(CustomSettingsAction.SetMiuixThemeCustomColor(customThemeColor.toArgb()))
+                                                    miuixThemeColorEditing = false
+                                                },
+                                                onCancel = {
+                                                    customThemeColor = miuixThemeColorSnapshot
+                                                    miuixThemeColorEditing = false
+                                                },
+                                                onUseDefault = {
+                                                    customThemeColor = miuixThemeColorSnapshot
+                                                    miuixThemeColorSource = ThemeHelper.MATERIAL_THEME_COLOR_SOURCE_DEFAULT
+                                                    viewModel.dispatch(CustomSettingsAction.SetMiuixThemeColorSource(ThemeHelper.MATERIAL_THEME_COLOR_SOURCE_DEFAULT))
+                                                    miuixThemeColorEditing = false
                                                 }
-                                                Spacer(modifier = Modifier.height(6.dp))
-                                                Text(
-                                                    text = stringResource(
-                                                        if (miuixThemeColorEditing) {
-                                                            R.string.settings_theme_color_editing_hint
-                                                        } else {
-                                                            R.string.settings_theme_color_edit_hint
-                                                        }
-                                                    ),
-                                                    color = MiuixTheme.colorScheme.onSurfaceSecondary,
-                                                    fontSize = 13.dp.value.sp
-                                                )
-                                            }
+                                            )
                                             SuperSwitch(
                                                 title = stringResource(R.string.settings_theme_custom_color_global_tint),
                                                 summary = stringResource(R.string.settings_theme_custom_color_global_tint_desc),

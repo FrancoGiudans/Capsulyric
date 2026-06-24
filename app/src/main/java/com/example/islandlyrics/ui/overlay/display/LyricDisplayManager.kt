@@ -5,6 +5,7 @@ import com.example.islandlyrics.ui.overlay.config.CapsuleRenderMode
 import com.example.islandlyrics.ui.overlay.capsule.LyricCapsuleHandler
 import com.example.islandlyrics.ui.overlay.config.OverlayRenderDefaults
 import com.example.islandlyrics.ui.overlay.model.UIState
+import com.example.islandlyrics.ui.overlay.model.LyricPresentation
 import android.content.Context
 import com.example.islandlyrics.core.platform.RomUtils
 import com.example.islandlyrics.lyrics.online.OnlineLyricFetcher
@@ -219,6 +220,7 @@ class LyricDisplayManager(private val context: Context) {
         var fullLyricForDisplay = currentLyric
         var preferMetadataLayout = false
         var isTimingGapPlaceholder = false
+        var isTimingGapAnimated = false
         var isStatic = false
         timingGapActive = false
         timingGapNextDelayMs = 0L
@@ -237,6 +239,7 @@ class LyricDisplayManager(private val context: Context) {
                     fullLyricForDisplay = gapDisplay.fullLyric
                     preferMetadataLayout = gapDisplay.preferMetadataLayout
                     isTimingGapPlaceholder = gapDisplay.isTimingGapPlaceholder
+                    isTimingGapAnimated = gapDisplay.isAnimated
                     timingGapActive = true
                     timingGapNextDelayMs = gapDisplay.nextDelayMs
                 } else {
@@ -273,6 +276,7 @@ class LyricDisplayManager(private val context: Context) {
                     fullLyricForDisplay = gapDisplay.fullLyric
                     preferMetadataLayout = gapDisplay.preferMetadataLayout
                     isTimingGapPlaceholder = gapDisplay.isTimingGapPlaceholder
+                    isTimingGapAnimated = gapDisplay.isAnimated
                     timingGapActive = true
                     timingGapNextDelayMs = gapDisplay.nextDelayMs
                 } else {
@@ -312,6 +316,7 @@ class LyricDisplayManager(private val context: Context) {
                     fullLyricForDisplay = gapDisplay.fullLyric
                     preferMetadataLayout = gapDisplay.preferMetadataLayout
                     isTimingGapPlaceholder = gapDisplay.isTimingGapPlaceholder
+                    isTimingGapAnimated = gapDisplay.isAnimated
                     timingGapActive = true
                     timingGapNextDelayMs = gapDisplay.nextDelayMs
                 } else {
@@ -332,6 +337,13 @@ class LyricDisplayManager(private val context: Context) {
         }
         
         val progressPercent = if (duration > 0) ((currentPosition.toFloat() / duration.toFloat()) * 100).toInt() else -1
+        val lyricPresentation = buildLyricPresentation(
+            lyricInfo = lyricInfo,
+            position = currentPosition,
+            gapDisplayText = displayLyric,
+            useGapContext = timingGapActive,
+            useGapIndicatorLine = timingGapActive && (isTimingGapPlaceholder || isTimingGapAnimated)
+        )
         
         val state = UIState(
             isPlaying = isPlaying,
@@ -348,11 +360,102 @@ class LyricDisplayManager(private val context: Context) {
             albumColor = albumArtColorExtractor.currentColor,
             useSyllableScrolling = parsedLyricState.useSyllableScrolling,
             syllableLines = parsedLyricState.lines,
-            currentLineIndex = -1,
+            currentLineIndex = lyricPresentation.currentLineIndex,
+            lyricPresentation = lyricPresentation,
             mediaPackage = metaInfo?.packageName ?: "",
             albumArt = repo.liveAlbumArt.value
         )
         onStateUpdated?.invoke(state)
+    }
+
+    private fun buildLyricPresentation(
+        lyricInfo: LyricRepository.LyricInfo?,
+        position: Long,
+        gapDisplayText: String,
+        useGapContext: Boolean,
+        useGapIndicatorLine: Boolean
+    ): LyricPresentation {
+        val currentIndex = parsedLyricState.currentLineIndex(position)
+        val parsedCurrentLine = parsedLyricState.lines?.getOrNull(currentIndex)
+        val isCompleteTimeline = parsedLyricState.timelineCapability == LyricRepository.TimelineCapability.MULTI_LINE
+        val beforeIndex = if (parsedCurrentLine == null && isCompleteTimeline) {
+            parsedLyricState.lineIndexBefore(position)
+        } else {
+            -1
+        }
+        val afterIndex = if (parsedCurrentLine == null && isCompleteTimeline) {
+            parsedLyricState.lineIndexAfter(position)
+        } else {
+            -1
+        }
+        val lines = parsedLyricState.lines
+        val canUseLiveLyricFallback =
+            parsedLyricState.timelineCapability != LyricRepository.TimelineCapability.MULTI_LINE
+        val currentLine = parsedCurrentLine
+            ?.toDisplayLine()
+            ?: buildGapDisplayLine(gapDisplayText).takeIf { isCompleteTimeline && useGapIndicatorLine }
+            ?: lines?.getOrNull(beforeIndex)?.toDisplayLine().takeIf { isCompleteTimeline && useGapContext }
+            ?: lyricInfo?.takeIf { canUseLiveLyricFallback && it.lyric.isNotBlank() }?.let {
+                LyricPresentation.DisplayLine(
+                    text = it.lyric,
+                    romanization = it.roma?.takeIf(String::isNotBlank),
+                    translation = it.translation?.takeIf(String::isNotBlank)
+                )
+            }
+
+        return LyricPresentation(
+            currentLine = currentLine,
+            previousLine = when {
+                parsedCurrentLine != null -> parsedLyricState.previousLine(currentIndex)?.toDisplayLine()
+                currentLine != null && isCompleteTimeline && afterIndex < 0 -> lines?.getOrNull(beforeIndex - 1)?.toDisplayLine()
+                isCompleteTimeline -> lines?.getOrNull(beforeIndex)?.toDisplayLine()
+                else -> null
+            },
+            nextLine = when {
+                parsedCurrentLine != null -> parsedLyricState.nextLine(currentIndex)?.toDisplayLine()
+                isCompleteTimeline -> lines?.getOrNull(afterIndex)?.toDisplayLine()
+                else -> null
+            },
+            currentLineIndex = currentIndex,
+            timelineCapability = parsedLyricState.timelineCapability,
+            wordProgress = buildWordProgress(parsedCurrentLine, position)
+        )
+    }
+
+    private fun buildGapDisplayLine(text: String): LyricPresentation.DisplayLine {
+        val normalizedText = text.takeUnless { it.isBlank() || it == "♪" } ?: "●●●"
+        return LyricPresentation.DisplayLine(text = normalizedText)
+    }
+
+    private fun OnlineLyricFetcher.LyricLine.toDisplayLine(): LyricPresentation.DisplayLine {
+        return LyricPresentation.DisplayLine(
+            text = text,
+            romanization = roma?.takeIf(String::isNotBlank),
+            translation = translation?.takeIf(String::isNotBlank),
+            startTime = startTime,
+            endTime = endTime,
+            syllables = syllables
+        )
+    }
+
+    private fun buildWordProgress(
+        line: OnlineLyricFetcher.LyricLine?,
+        position: Long
+    ): LyricPresentation.WordProgress? {
+        val syllables = line?.syllables?.takeIf { it.isNotEmpty() } ?: return null
+        val sungSyllables = syllables.filter { it.startTime <= position }
+        val lineDuration = line.endTime - line.startTime
+        val lineProgress = if (lineDuration > 0) {
+            ((position - line.startTime).toFloat() / lineDuration.toFloat()).coerceIn(0f, 1f)
+        } else {
+            0f
+        }
+        return LyricPresentation.WordProgress(
+            sungText = sungSyllables.joinToString("") { it.text },
+            sungSyllableCount = sungSyllables.size,
+            totalSyllableCount = syllables.size,
+            lineProgress = lineProgress
+        )
     }
 
     private fun computeNextFrameDelay(): Long {

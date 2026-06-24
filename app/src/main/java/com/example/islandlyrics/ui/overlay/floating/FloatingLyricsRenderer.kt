@@ -1,13 +1,14 @@
 package com.example.islandlyrics.ui.overlay.floating
 import com.example.islandlyrics.ui.overlay.model.UIState
 import android.content.Context
-import android.content.Intent
 import android.content.SharedPreferences
 import android.graphics.Color
 import android.graphics.PixelFormat
+import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.GradientDrawable
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
 import android.provider.Settings
 import android.util.Log
 import android.view.Gravity
@@ -17,12 +18,13 @@ import android.view.WindowManager
 import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.LinearLayout
+import android.widget.PopupWindow
+import android.widget.ScrollView
 import android.widget.TextView
 import androidx.core.content.edit
-import androidx.core.graphics.toColorInt
 import com.example.islandlyrics.R
 import com.example.islandlyrics.core.settings.AppPreferences
-import com.example.islandlyrics.ui.overlay.views.OutlineTextView
+import com.example.islandlyrics.lyrics.state.LyricRepository
 
 /**
  * FloatingLyricsRenderer
@@ -48,10 +50,22 @@ class FloatingLyricsRenderer(private val context: Context) {
         const val PREF_SHOW_ALBUM_ART  = FloatingLyricsStyleStore.KEY_SHOW_ALBUM_ART
         const val PREF_TEXT_STROKE     = FloatingLyricsStyleStore.KEY_TEXT_STROKE
         const val PREF_TEXT_BACKGROUND = FloatingLyricsStyleStore.KEY_TEXT_BACKGROUND
+        const val PREF_DISPLAY_MODE = FloatingLyricsDisplayConfig.KEY_DISPLAY_MODE
+        const val PREF_NEIGHBOR_ALIGNMENT = FloatingLyricsDisplayConfig.KEY_NEIGHBOR_ALIGNMENT
+        const val PREF_WORD_HIGHLIGHT = FloatingLyricsDisplayConfig.KEY_WORD_HIGHLIGHT
         const val PREF_POS_X           = FloatingLyricsWindowPositionStore.KEY_POS_X
         const val PREF_POS_Y           = FloatingLyricsWindowPositionStore.KEY_POS_Y
 
         private const val EXPANDED_TIMEOUT_MS = 4000L
+        private const val POPUP_DISMISS_DEBOUNCE_MS = 250L
+        private val POPUP_TEXT_COLORS = intArrayOf(
+            Color.WHITE,
+            0xFFFFFFCC.toInt(),
+            0xFFCCFFFF.toInt(),
+            0xFFCCFFCC.toInt(),
+            0xFFFFCC99.toInt(),
+            0xFFFF99CC.toInt()
+        )
 
         fun resetPosition(context: Context) {
             AppPreferences.of(context)
@@ -69,6 +83,8 @@ class FloatingLyricsRenderer(private val context: Context) {
     private var wm: WindowManager? = null
     private var rootView: FloatingLyricsDraggableFrameLayout? = null
     private var windowParams: WindowManager.LayoutParams? = null
+    private var settingsPopup: PopupWindow? = null
+    private var settingsPopupDismissedAtMs: Long = 0L
 
     private val styleStore = FloatingLyricsStyleStore(context)
     private val positionStore = FloatingLyricsWindowPositionStore(context)
@@ -79,9 +95,10 @@ class FloatingLyricsRenderer(private val context: Context) {
     )
 
     // View refs
-    private var minimalLyricTv: OutlineTextView? = null
+    private var minimalContentView: FloatingLyricsContentView? = null
     private var expandedTitleTv: TextView? = null
-    private var expandedLyricTv: OutlineTextView? = null
+    private var expandedArtistTv: TextView? = null
+    private var expandedContentView: FloatingLyricsContentView? = null
     private var btnPlayPause: ImageButton? = null
     
     // Album Art ImageViews
@@ -95,6 +112,8 @@ class FloatingLyricsRenderer(private val context: Context) {
     private var currentState = DisplayState.MINIMAL
     private var lastState: UIState? = null
     private var lastAppliedSnapshot: ViewSnapshot? = null
+    private var displayConfig = FloatingLyricsDisplayConfig.from(prefs())
+    private var chrome = FloatingLyricsChrome.from(prefs())
 
     var isRunning = false
         private set
@@ -111,15 +130,19 @@ class FloatingLyricsRenderer(private val context: Context) {
         val showAlbumArt: Boolean,
         val albumArtHash: Int,
         val enableTextStroke: Boolean,
-        val enableTextBackground: Boolean
+        val enableTextBackground: Boolean,
+        val displayConfig: FloatingLyricsDisplayConfig,
+        val presentationHash: Int
     )
 
     private val prefChangeListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
         when (key) {
             PREF_TEXT_SIZE, PREF_TEXT_COLOR, PREF_FOLLOW_ALBUM_COLOR, 
-            PREF_SHOW_ALBUM_ART, PREF_TEXT_STROKE, PREF_TEXT_BACKGROUND -> {
+            PREF_SHOW_ALBUM_ART, PREF_TEXT_STROKE, PREF_TEXT_BACKGROUND,
+            PREF_DISPLAY_MODE, PREF_NEIGHBOR_ALIGNMENT,
+            PREF_WORD_HIGHLIGHT -> {
                 mainHandler.post {
-                    loadStylePrefs()
+                    loadPrefs()
                     lastState?.let { applyState(it) }
                 }
             }
@@ -138,7 +161,7 @@ class FloatingLyricsRenderer(private val context: Context) {
         }
         mainHandler.post {
             prefs().registerOnSharedPreferenceChangeListener(prefChangeListener)
-            styleStore.reload()
+            loadPrefs()
             attachWindow()
             switchToExpanded()
         }
@@ -163,22 +186,10 @@ class FloatingLyricsRenderer(private val context: Context) {
     private fun prefs() =
         AppPreferences.of(context)
 
-    // ── Quick Settings logic ──────────────────────────────────────────────────
-
-    private fun adjustTextSize(delta: Float) {
-        styleStore.adjustTextSize(delta)
-        lastState?.let { applyState(it) }
-        resetCollapseTimer()
-    }
-
-    private fun cycleColor() {
-        styleStore.cycleColor()
-        lastState?.let { applyState(it) }
-        resetCollapseTimer()
-    }
-
-    private fun loadStylePrefs() {
+    private fun loadPrefs() {
         styleStore.reload()
+        displayConfig = FloatingLyricsDisplayConfig.from(prefs())
+        chrome = FloatingLyricsChrome.from(prefs())
     }
 
     // ── Window ────────────────────────────────────────────────────────────────
@@ -228,7 +239,6 @@ class FloatingLyricsRenderer(private val context: Context) {
             }
         )
         rootView = root
-
         val minimal  = buildMinimalView();  minimalContainer  = minimal
         val expanded = buildExpandedView(); expandedContainer = expanded
 
@@ -242,10 +252,12 @@ class FloatingLyricsRenderer(private val context: Context) {
 
     private fun detachWindow() {
         mainHandler.removeCallbacks(collapseRunnable)
+        settingsPopup?.dismiss()
         try { rootView?.let { wm?.removeView(it) } } catch (_: Exception) {}
         rootView = null; wm = null; windowParams = null
-        minimalLyricTv = null; expandedTitleTv = null
-        expandedLyricTv = null; btnPlayPause = null
+        settingsPopup = null
+        minimalContentView = null; expandedTitleTv = null; expandedArtistTv = null
+        expandedContentView = null; btnPlayPause = null
         minimalAlbumArtIv = null; expandedAlbumArtIv = null
         minimalContainer = null; expandedContainer = null
         minimalTextBackgroundContainer = null
@@ -277,39 +289,39 @@ class FloatingLyricsRenderer(private val context: Context) {
         val contentRow = LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER
-            setPadding(dpToPx(12), dpToPx(6), dpToPx(12), dpToPx(6))
+            setPadding(
+                dpToPx(chrome.minimalHorizontalPaddingDp),
+                dpToPx(chrome.minimalVerticalPaddingDp),
+                dpToPx(chrome.minimalHorizontalPaddingDp),
+                dpToPx(chrome.minimalVerticalPaddingDp)
+            )
         }
         minimalTextBackgroundContainer = contentRow
         
         // Album Art
         minimalAlbumArtIv = ImageView(context).apply {
-            layoutParams = LinearLayout.LayoutParams(dpToPx(32), dpToPx(32)).apply {
+            layoutParams = LinearLayout.LayoutParams(dpToPx(chrome.albumArtSizeDp), dpToPx(chrome.albumArtSizeDp)).apply {
                 marginEnd = dpToPx(8)
             }
             scaleType = ImageView.ScaleType.CENTER_CROP
             clipToOutline = true
             outlineProvider = object : android.view.ViewOutlineProvider() {
                 override fun getOutline(view: View, outline: android.graphics.Outline) {
-                    outline.setRoundRect(0, 0, view.width, view.height, dpToPx(6).toFloat())
+                    outline.setRoundRect(0, 0, view.width, view.height, dpToPx(chrome.albumArtRadiusDp).toFloat())
                 }
             }
             visibility = View.GONE
         }
         
-        // Lyric Text
-        minimalLyricTv = OutlineTextView(context).apply {
-            gravity = Gravity.CENTER
-            textAlignment = View.TEXT_ALIGNMENT_CENTER
-            maxLines = 8
-        }
+        minimalContentView = FloatingLyricsContentView(context)
 
         contentRow.addView(minimalAlbumArtIv)
-        contentRow.addView(minimalLyricTv)
+        contentRow.addView(minimalContentView, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
 
         return LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_HORIZONTAL
-            addView(contentRow, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+            addView(contentRow, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
             setOnClickListener { switchToExpanded() }
         }
     }
@@ -318,7 +330,12 @@ class FloatingLyricsRenderer(private val context: Context) {
         val box = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_HORIZONTAL
-            setPadding(dpToPx(14), dpToPx(10), dpToPx(14), dpToPx(10))
+            setPadding(
+                dpToPx(chrome.expandedHorizontalPaddingDp),
+                dpToPx(chrome.expandedVerticalPaddingDp),
+                dpToPx(chrome.expandedHorizontalPaddingDp),
+                dpToPx(chrome.expandedVerticalPaddingDp)
+            )
             background = buildPillBackground()
             visibility = View.GONE
             
@@ -326,78 +343,72 @@ class FloatingLyricsRenderer(private val context: Context) {
             setOnClickListener { switchToMinimal() }
         }
 
-        // Title · Artist
-        val title = TextView(context).apply {
-            textSize = 11f
-            setTextColor("#AAFFFFFF".toColorInt())
-            maxLines = 1
-            gravity = Gravity.CENTER
-            textAlignment = View.TEXT_ALIGNMENT_CENTER
-            ellipsize = android.text.TextUtils.TruncateAt.END
-        }
-        expandedTitleTv = title
-        box.addView(title, matchW())
-
-        // Lyric row (Album Art + Text)
-        val lyricRow = LinearLayout(context).apply {
+        val mediaRow = LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER
-            setPadding(0, dpToPx(4), 0, dpToPx(6))
+            gravity = Gravity.CENTER_VERTICAL
         }
 
         expandedAlbumArtIv = ImageView(context).apply {
-            layoutParams = LinearLayout.LayoutParams(dpToPx(32), dpToPx(32)).apply {
-                marginEnd = dpToPx(8)
+            layoutParams = LinearLayout.LayoutParams(dpToPx(chrome.expandedAlbumArtSizeDp), dpToPx(chrome.expandedAlbumArtSizeDp)).apply {
+                marginEnd = dpToPx(12)
             }
             scaleType = ImageView.ScaleType.CENTER_CROP
             clipToOutline = true
-            outlineProvider = object : android.view.ViewOutlineProvider() {
-                override fun getOutline(view: View, outline: android.graphics.Outline) {
-                    outline.setRoundRect(0, 0, view.width, view.height, dpToPx(6).toFloat())
-                }
-            }
+            outlineProvider = roundedOutline(chrome.expandedAlbumArtRadiusDp)
             visibility = View.GONE
         }
 
-        val lyric = OutlineTextView(context).apply {
+        val titleColumn = LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        val title = TextView(context).apply {
+            textSize = 14f
+            setTextColor(Color.WHITE)
+            typeface = android.graphics.Typeface.DEFAULT_BOLD
+            maxLines = 1
+            gravity = Gravity.START
+            textAlignment = View.TEXT_ALIGNMENT_GRAVITY
+            ellipsize = android.text.TextUtils.TruncateAt.END
+        }
+        val artist = TextView(context).apply {
+            textSize = 12f
+            setTextColor(0xB3FFFFFF.toInt())
+            maxLines = 1
+            gravity = Gravity.START
+            textAlignment = View.TEXT_ALIGNMENT_GRAVITY
+            ellipsize = android.text.TextUtils.TruncateAt.END
+        }
+        expandedTitleTv = title
+        expandedArtistTv = artist
+        titleColumn.addView(title, matchW())
+        titleColumn.addView(artist, matchW())
+        val settingsButton = makeSettingsButton()
+        mediaRow.addView(expandedAlbumArtIv)
+        mediaRow.addView(titleColumn, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        mediaRow.addView(settingsButton)
+        box.addView(mediaRow, matchW())
+
+        val lyricPanel = LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
-            textAlignment = View.TEXT_ALIGNMENT_CENTER
-            maxLines = 8
+            setPadding(dpToPx(10), dpToPx(14), dpToPx(10), dpToPx(12))
+            background = roundedRect(0x21FFFFFF, chrome.innerPanelRadiusDp)
         }
-        expandedLyricTv = lyric
+
+        expandedContentView = FloatingLyricsContentView(context)
+        lyricPanel.addView(expandedContentView, matchW())
+
+        mediaRow.setOnClickListener { switchToMinimal() }
+        lyricPanel.setOnClickListener { switchToMinimal() }
+        title.setOnClickListener { switchToMinimal() }
+        artist.setOnClickListener { switchToMinimal() }
         
-        lyricRow.addView(expandedAlbumArtIv)
-        lyricRow.addView(expandedLyricTv)
+        box.addView(lyricPanel, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+            topMargin = dpToPx(12)
+        })
 
-        val resetTimer = View.OnClickListener {
-            mainHandler.removeCallbacks(collapseRunnable)
-            mainHandler.postDelayed(collapseRunnable, EXPANDED_TIMEOUT_MS)
-        }
-        lyricRow.setOnClickListener(resetTimer)
-        title.setOnClickListener(resetTimer)
-        
-        box.addView(lyricRow, matchW())
-
-        // Quick Settings Row (A-, Color, A+)
-        val quickSettingsRow = LinearLayout(context).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER
-            setPadding(0, dpToPx(2), 0, dpToPx(4))
-        }
-        val btnVMinus = makeTextButton("A-") { adjustTextSize(-2f) }
-        val btnColor  = makeTextButton("●") { cycleColor() }
-        val btnVPlus  = makeTextButton("A+") { adjustTextSize(2f) }
-        
-        quickSettingsRow.addView(btnVMinus)
-        quickSettingsRow.addView(hSpace(8))
-        quickSettingsRow.addView(btnColor)
-        quickSettingsRow.addView(hSpace(8))
-        quickSettingsRow.addView(btnVPlus)
-
-        box.addView(quickSettingsRow, centerRow())
-
-        // Row 1: media controls
-        box.addView(buildControlsRow(), centerRow())
+        box.addView(buildControlsRow(), centerRow(topMarginDp = 2))
 
         return box
     }
@@ -406,6 +417,7 @@ class FloatingLyricsRenderer(private val context: Context) {
         val row = LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER
+            setOnClickListener { resetCollapseTimer() }
         }
         val btnMedia = makeIconButton(R.drawable.ic_music_note) { actionController.openMediaControl() }
         val btnPrev  = makeIconButton(R.drawable.ic_skip_previous) { actionController.sendMediaAction("ACTION_MEDIA_PREV") }
@@ -423,9 +435,442 @@ class FloatingLyricsRenderer(private val context: Context) {
         return row
     }
 
+    private fun makeSettingsButton(): ImageButton {
+        return ImageButton(context).apply {
+            setImageResource(R.drawable.ic_settings)
+            setColorFilter(Color.WHITE)
+            background = roundedRect(0x1FFFFFFF, 14)
+            contentDescription = context.getString(R.string.settings_floating_lyrics)
+            val p = dpToPx(8)
+            setPadding(p, p, p, p)
+            layoutParams = LinearLayout.LayoutParams(dpToPx(38), dpToPx(38)).apply {
+                marginStart = dpToPx(10)
+            }
+            setOnClickListener {
+                resetCollapseTimer()
+                toggleSettingsPopup(this)
+            }
+        }
+    }
+
+    private fun toggleSettingsPopup(anchor: View) {
+        if (settingsPopup?.isShowing == true) {
+            dismissSettingsPopup()
+            return
+        }
+        if (SystemClock.uptimeMillis() - settingsPopupDismissedAtMs < POPUP_DISMISS_DEBOUNCE_MS) {
+            return
+        }
+        showSettingsPopup(anchor)
+    }
+
+    private fun showSettingsPopup(anchor: View) {
+        val width = settingsPopupWidth()
+        val popup = PopupWindow(buildSettingsPopupContent(anchor), width, ViewGroup.LayoutParams.WRAP_CONTENT, false).apply {
+            isOutsideTouchable = true
+            setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+            elevation = dpToPx(10).toFloat()
+            setOnDismissListener {
+                settingsPopupDismissedAtMs = SystemClock.uptimeMillis()
+                if (settingsPopup === this) settingsPopup = null
+            }
+        }
+        settingsPopup = popup
+        popup.showAsDropDown(anchor, 0, dpToPx(6), Gravity.END)
+    }
+
+    private fun refreshSettingsPopup(anchor: View) {
+        val popup = settingsPopup ?: return
+        if (!popup.isShowing) return
+        val width = settingsPopupWidth()
+        val previousScrollY = (popup.contentView as? ScrollView)?.scrollY ?: 0
+        popup.contentView = buildSettingsPopupContent(anchor).apply {
+            post { (this as? ScrollView)?.scrollTo(0, previousScrollY) }
+        }
+        popup.width = width
+        popup.height = ViewGroup.LayoutParams.WRAP_CONTENT
+        popup.update(width, ViewGroup.LayoutParams.WRAP_CONTENT)
+    }
+
+    private fun dismissSettingsPopup() {
+        settingsPopup?.dismiss()
+        settingsPopup = null
+        settingsPopupDismissedAtMs = SystemClock.uptimeMillis()
+    }
+
+    private fun buildSettingsPopupContent(anchor: View): View {
+        val list = LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(0, dpToPx(6), 0, dpToPx(6))
+            background = roundedRect(0xF21D1D1F.toInt(), 16)
+        }
+        addSettingsPopupRow(list, buildColorPopupRow(anchor))
+        addSettingsPopupRow(list, buildBooleanPopupRow(
+            title = context.getString(R.string.settings_floating_show_album_art),
+            currentValue = { styleStore.style.showAlbumArt },
+            onToggle = { value -> prefs().edit { putBoolean(PREF_SHOW_ALBUM_ART, value) } },
+            anchor = anchor
+        ))
+        addSettingsPopupRow(list, buildBooleanPopupRow(
+            title = context.getString(R.string.settings_floating_text_background),
+            currentValue = { styleStore.style.enableTextBackground },
+            onToggle = { value -> prefs().edit { putBoolean(PREF_TEXT_BACKGROUND, value) } },
+            anchor = anchor
+        ))
+        addSettingsPopupRow(list, buildDisplayModePopupRow(anchor))
+        if (displayConfig.displayMode == FloatingLyricsDisplayMode.NEIGHBOR_LINE) {
+            addSettingsPopupRow(list, buildNeighborAlignmentPopupRow(anchor))
+        }
+        addSettingsPopupRow(list, buildBooleanPopupRow(
+            title = context.getString(R.string.settings_floating_word_highlight),
+            currentValue = { displayConfig.wordHighlight },
+            onToggle = { value -> prefs().edit { putBoolean(PREF_WORD_HIGHLIGHT, value) } },
+            anchor = anchor
+        ))
+        addSettingsPopupRow(list, buildBooleanPopupRow(
+            title = context.getString(R.string.settings_floating_text_stroke),
+            currentValue = { styleStore.style.enableTextStroke },
+            onToggle = { value -> prefs().edit { putBoolean(PREF_TEXT_STROKE, value) } },
+            anchor = anchor
+        ))
+        addSettingsPopupRow(list, buildTextSizePopupRow(anchor))
+        addSettingsPopupRow(list, buildResetPositionPopupRow())
+        return ScrollView(context).apply {
+            isFillViewport = false
+            overScrollMode = View.OVER_SCROLL_NEVER
+            addView(list, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+        }
+    }
+
+    private fun addSettingsPopupRow(list: LinearLayout, row: View) {
+        if (list.childCount > 0) {
+            list.addView(buildSettingsPopupDivider(), LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 1))
+        }
+        list.addView(row, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+    }
+
+    private fun buildColorPopupRow(anchor: View): View {
+        val style = styleStore.style
+        return LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            minimumHeight = dpToPx(70)
+            setPadding(dpToPx(16), dpToPx(10), dpToPx(16), dpToPx(10))
+
+            addView(buildSettingsPopupTitle(context.getString(R.string.settings_floating_text_color)), matchW())
+
+            val controls = LinearLayout(context).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+            }
+            controls.addView(buildPopupChip(
+                text = context.getString(R.string.floating_settings_color_album),
+                selected = style.followAlbumColor,
+                onClick = {
+                    applyPopupSetting(anchor) {
+                        prefs().edit { putBoolean(PREF_FOLLOW_ALBUM_COLOR, true) }
+                    }
+                }
+            ))
+            controls.addView(hSpace(8))
+            POPUP_TEXT_COLORS.forEach { color ->
+                controls.addView(buildColorSwatch(
+                    color = color,
+                    selected = !style.followAlbumColor && style.baseTextColor == color,
+                    onClick = {
+                        applyPopupSetting(anchor) {
+                            prefs().edit {
+                                putBoolean(PREF_FOLLOW_ALBUM_COLOR, false)
+                                putInt(PREF_TEXT_COLOR, color)
+                            }
+                        }
+                    }
+                ), LinearLayout.LayoutParams(dpToPx(28), dpToPx(28)).apply {
+                    marginEnd = dpToPx(6)
+                })
+            }
+            addView(controls, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+                topMargin = dpToPx(8)
+            })
+        }
+    }
+
+    private fun buildBooleanPopupRow(
+        title: String,
+        currentValue: () -> Boolean,
+        onToggle: (Boolean) -> Unit,
+        anchor: View
+    ): View {
+        return LinearLayout(context).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            minimumHeight = dpToPx(44)
+            setPadding(dpToPx(16), 0, dpToPx(16), 0)
+            isClickable = true
+            setOnClickListener {
+                loadPrefs()
+                val nextValue = !currentValue()
+                applyPopupSetting(anchor) {
+                    onToggle(nextValue)
+                }
+            }
+
+            addView(TextView(context).apply {
+                text = title
+                setTextColor(Color.WHITE)
+                textSize = 14f
+                maxLines = 1
+                ellipsize = android.text.TextUtils.TruncateAt.END
+                gravity = Gravity.CENTER_VERTICAL
+            }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f))
+
+            addView(buildPopupValuePill(onOffLabel(currentValue()), currentValue()), LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dpToPx(28)).apply {
+                marginStart = dpToPx(16)
+            })
+        }
+    }
+
+    private fun buildDisplayModePopupRow(anchor: View): View {
+        return LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            minimumHeight = dpToPx(96)
+            setPadding(dpToPx(16), dpToPx(10), dpToPx(16), dpToPx(10))
+
+            addView(buildSettingsPopupTitle(context.getString(R.string.settings_floating_display_mode)), matchW())
+
+            val modeRows = LinearLayout(context).apply {
+                orientation = LinearLayout.VERTICAL
+            }
+            FloatingLyricsDisplayMode.entries.chunked(2).forEach { modes ->
+                val row = LinearLayout(context).apply {
+                    orientation = LinearLayout.HORIZONTAL
+                    gravity = Gravity.CENTER_VERTICAL
+                }
+                modes.forEach { mode ->
+                    row.addView(buildPopupChip(
+                        text = displayModeLabel(mode),
+                        selected = displayConfig.displayMode == mode,
+                        onClick = {
+                            applyPopupSetting(anchor) {
+                                prefs().edit { putString(PREF_DISPLAY_MODE, mode.value) }
+                            }
+                        }
+                    ), LinearLayout.LayoutParams(0, dpToPx(34), 1f).apply {
+                        marginEnd = dpToPx(8)
+                    })
+                }
+                modeRows.addView(row, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dpToPx(38)))
+            }
+            addView(modeRows, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+                topMargin = dpToPx(8)
+            })
+        }
+    }
+
+    private fun buildNeighborAlignmentPopupRow(anchor: View): View {
+        return LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            minimumHeight = dpToPx(58)
+            setPadding(dpToPx(16), dpToPx(10), dpToPx(16), dpToPx(10))
+
+            addView(buildSettingsPopupTitle(context.getString(R.string.settings_floating_neighbor_alignment)), matchW())
+
+            val row = LinearLayout(context).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+            }
+            FloatingLyricsNeighborAlignment.entries.forEach { alignment ->
+                row.addView(buildPopupChip(
+                    text = neighborAlignmentLabel(alignment),
+                    selected = displayConfig.neighborAlignment == alignment,
+                    onClick = {
+                        applyPopupSetting(anchor) {
+                            prefs().edit { putString(PREF_NEIGHBOR_ALIGNMENT, alignment.value) }
+                        }
+                    }
+                ), LinearLayout.LayoutParams(0, dpToPx(34), 1f).apply {
+                    marginEnd = dpToPx(8)
+                })
+            }
+            addView(row, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+                topMargin = dpToPx(8)
+            })
+        }
+    }
+
+    private fun buildTextSizePopupRow(anchor: View): View {
+        val style = styleStore.style
+        return LinearLayout(context).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            minimumHeight = dpToPx(52)
+            setPadding(dpToPx(16), 0, dpToPx(16), 0)
+
+            addView(TextView(context).apply {
+                text = context.getString(R.string.settings_floating_text_size)
+                setTextColor(Color.WHITE)
+                textSize = 14f
+                maxLines = 1
+                ellipsize = android.text.TextUtils.TruncateAt.END
+                gravity = Gravity.CENTER_VERTICAL
+            }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f))
+
+            addView(buildPopupStepButton("-", enabled = style.textSizeSp > 10f) {
+                applyPopupSetting(anchor) { styleStore.adjustTextSize(-2f) }
+            })
+            addView(TextView(context).apply {
+                text = context.getString(R.string.floating_settings_text_size_value, style.textSizeSp.toInt())
+                setTextColor(Color.WHITE)
+                textSize = 13f
+                gravity = Gravity.CENTER
+            }, LinearLayout.LayoutParams(dpToPx(58), ViewGroup.LayoutParams.MATCH_PARENT))
+            addView(buildPopupStepButton("+", enabled = style.textSizeSp < 32f) {
+                applyPopupSetting(anchor) { styleStore.adjustTextSize(2f) }
+            })
+        }
+    }
+
+    private fun buildResetPositionPopupRow(): View {
+        return LinearLayout(context).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            minimumHeight = dpToPx(44)
+            setPadding(dpToPx(16), 0, dpToPx(16), 0)
+            isClickable = true
+            setOnClickListener {
+                resetPosition(context)
+                moveWindowToStoredPosition()
+                android.widget.Toast
+                    .makeText(context, R.string.settings_floating_position_reset_toast, android.widget.Toast.LENGTH_SHORT)
+                    .show()
+                resetCollapseTimer()
+                dismissSettingsPopup()
+            }
+
+            addView(TextView(context).apply {
+                text = context.getString(R.string.settings_floating_position_reset)
+                setTextColor(Color.WHITE)
+                textSize = 14f
+                gravity = Gravity.CENTER_VERTICAL
+            }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f))
+        }
+    }
+
+    private fun buildSettingsPopupDivider(): View {
+        return View(context).apply {
+            setBackgroundColor(0x1FFFFFFF)
+        }
+    }
+
+    private fun settingsPopupWidth(): Int {
+        val screenWidth = context.resources.displayMetrics.widthPixels
+        return minOf(dpToPx(320), screenWidth - dpToPx(48))
+    }
+
+    private fun applyPopupSetting(anchor: View, block: () -> Unit) {
+        block()
+        loadPrefs()
+        lastAppliedSnapshot = null
+        lastState?.let { applyState(it) }
+        resetCollapseTimer()
+        refreshSettingsPopup(anchor)
+    }
+
+    private fun buildSettingsPopupTitle(title: String): TextView {
+        return TextView(context).apply {
+            text = title
+            setTextColor(Color.WHITE)
+            textSize = 14f
+            maxLines = 1
+            ellipsize = android.text.TextUtils.TruncateAt.END
+            gravity = Gravity.CENTER_VERTICAL
+        }
+    }
+
+    private fun buildPopupChip(text: String, selected: Boolean, onClick: () -> Unit): TextView {
+        return TextView(context).apply {
+            this.text = text
+            setTextColor(if (selected) Color.WHITE else 0xCCFFFFFF.toInt())
+            textSize = 12f
+            gravity = Gravity.CENTER
+            maxLines = 1
+            ellipsize = android.text.TextUtils.TruncateAt.END
+            setPadding(dpToPx(10), 0, dpToPx(10), 0)
+            background = popupControlBackground(selected)
+            isClickable = true
+            setOnClickListener { onClick() }
+        }
+    }
+
+    private fun buildPopupValuePill(text: String, enabled: Boolean): TextView {
+        return TextView(context).apply {
+            this.text = text
+            setTextColor(if (enabled) Color.WHITE else 0x99FFFFFF.toInt())
+            textSize = 12f
+            gravity = Gravity.CENTER
+            setPadding(dpToPx(12), 0, dpToPx(12), 0)
+            background = popupControlBackground(enabled)
+        }
+    }
+
+    private fun buildPopupStepButton(text: String, enabled: Boolean, onClick: () -> Unit): TextView {
+        return TextView(context).apply {
+            this.text = text
+            isEnabled = enabled
+            setTextColor(if (enabled) Color.WHITE else 0x66FFFFFF)
+            textSize = 20f
+            gravity = Gravity.CENTER
+            background = popupControlBackground(false)
+            isClickable = enabled
+            setOnClickListener { if (enabled) onClick() }
+            layoutParams = LinearLayout.LayoutParams(dpToPx(34), dpToPx(34))
+        }
+    }
+
+    private fun buildColorSwatch(color: Int, selected: Boolean, onClick: () -> Unit): View {
+        return View(context).apply {
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.OVAL
+                setColor(color)
+                setStroke(dpToPx(if (selected) 3 else 1), if (selected) Color.WHITE else 0x66FFFFFF)
+            }
+            isClickable = true
+            setOnClickListener { onClick() }
+        }
+    }
+
+    private fun popupControlBackground(selected: Boolean): GradientDrawable {
+        return GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            cornerRadius = dpToPx(12).toFloat()
+            setColor(if (selected) 0x33FFFFFF else 0x14FFFFFF)
+            setStroke(dpToPx(1), if (selected) Color.WHITE else 0x2EFFFFFF)
+        }
+    }
+
+    private fun onOffLabel(value: Boolean): String {
+        return context.getString(if (value) R.string.floating_settings_on else R.string.floating_settings_off)
+    }
+
+    private fun displayModeLabel(mode: FloatingLyricsDisplayMode): String {
+        return when (mode) {
+            FloatingLyricsDisplayMode.SINGLE_LINE -> context.getString(R.string.settings_floating_mode_single)
+            FloatingLyricsDisplayMode.ROMANIZATION -> context.getString(R.string.settings_floating_mode_romanization)
+            FloatingLyricsDisplayMode.TRANSLATION -> context.getString(R.string.settings_floating_mode_translation)
+            FloatingLyricsDisplayMode.NEIGHBOR_LINE -> context.getString(R.string.settings_floating_mode_neighbor)
+        }
+    }
+
+    private fun neighborAlignmentLabel(alignment: FloatingLyricsNeighborAlignment): String {
+        return when (alignment) {
+            FloatingLyricsNeighborAlignment.CENTER -> context.getString(R.string.settings_floating_alignment_center)
+            FloatingLyricsNeighborAlignment.SPLIT_START_END -> context.getString(R.string.settings_floating_alignment_split)
+        }
+    }
+
     // ── State switching ───────────────────────────────────────────────────────
 
     private fun switchToMinimal() {
+        dismissSettingsPopup()
         currentState = DisplayState.MINIMAL
         minimalContainer?.visibility  = View.VISIBLE
         expandedContainer?.visibility = View.GONE
@@ -444,7 +889,7 @@ class FloatingLyricsRenderer(private val context: Context) {
     // ── Data binding ──────────────────────────────────────────────────────────
 
     private fun applyState(state: UIState) {
-        val lyric = state.fullLyric.ifBlank { state.displayLyric.ifBlank { "♪" } }
+        val lyric = resolveFloatingFallbackLyric(state)
         val style = styleStore.style
         val actualColor = style.textColor(state.albumColor)
         val snapshot = ViewSnapshot(
@@ -457,29 +902,20 @@ class FloatingLyricsRenderer(private val context: Context) {
             showAlbumArt = style.showAlbumArt,
             albumArtHash = state.albumArt?.hashCode() ?: 0,
             enableTextStroke = style.enableTextStroke,
-            enableTextBackground = style.enableTextBackground
+            enableTextBackground = style.enableTextBackground,
+            displayConfig = displayConfig,
+            presentationHash = state.lyricPresentation.hashCode()
         )
         if (snapshot == lastAppliedSnapshot) {
             return
         }
         lastAppliedSnapshot = snapshot
 
-        // Apply to minimal
-        minimalLyricTv?.text = lyric
-        minimalLyricTv?.textSize = style.textSizeSp
-        minimalLyricTv?.setTextColor(actualColor)
-        minimalLyricTv?.setStroke(style.enableTextStroke)
+        minimalContentView?.render(state, style, displayConfig, actualColor, lyric)
+        expandedContentView?.render(state, style, displayConfig, actualColor, lyric)
 
-        // Apply to expanded
-        expandedLyricTv?.text = lyric
-        expandedLyricTv?.textSize = style.textSizeSp
-        expandedLyricTv?.setTextColor(actualColor)
-        expandedLyricTv?.setStroke(style.enableTextStroke)
-
-        expandedTitleTv?.text = buildString {
-            append(state.title)
-            if (state.artist.isNotBlank()) append(" · ${state.artist}")
-        }
+        expandedTitleTv?.text = state.title.ifBlank { context.getString(R.string.media_control_unknown_title) }
+        expandedArtistTv?.text = state.artist.ifBlank { context.getString(R.string.media_control_unknown_artist) }
         
         // Album art check
         val hasArt = state.albumArt != null && style.showAlbumArt
@@ -498,7 +934,12 @@ class FloatingLyricsRenderer(private val context: Context) {
             minimalTextBackgroundContainer?.background = buildMinimalTextBackground()
         } else {
             minimalTextBackgroundContainer?.background = null
-            minimalTextBackgroundContainer?.setPadding(dpToPx(4), dpToPx(2), dpToPx(4), dpToPx(2)) // default padding if no bg
+            minimalTextBackgroundContainer?.setPadding(
+                dpToPx(chrome.minimalHorizontalPaddingDp),
+                dpToPx(chrome.minimalVerticalPaddingDp),
+                dpToPx(chrome.minimalHorizontalPaddingDp),
+                dpToPx(chrome.minimalVerticalPaddingDp)
+            )
         }
 
         val isPlaying = state.isPlaying
@@ -506,6 +947,18 @@ class FloatingLyricsRenderer(private val context: Context) {
         btnPlayPause?.setOnClickListener {
             actionController.sendMediaAction(if (isPlaying) "ACTION_MEDIA_PAUSE" else "ACTION_MEDIA_PLAY")
         }
+    }
+
+    private fun resolveFloatingFallbackLyric(state: UIState): String {
+        if (state.timelineCapability == LyricRepository.TimelineCapability.MULTI_LINE &&
+            state.lyricPresentation.currentLine == null &&
+            state.isTimingGapPlaceholder &&
+            state.preferMetadataLayout
+        ) {
+            return "●●●"
+        }
+
+        return state.fullLyric.ifBlank { state.displayLyric.ifBlank { "♪" } }
     }
 
     private fun resetCollapseTimer() {
@@ -519,24 +972,10 @@ class FloatingLyricsRenderer(private val context: Context) {
         return ImageButton(context).apply {
             setImageResource(drawableRes)
             setColorFilter(Color.WHITE)
-            setBackgroundColor(Color.TRANSPARENT)
-            val p = dpToPx(8)
+            background = roundedRect(0x1FFFFFFF, 14)
+            val p = dpToPx(chrome.iconButtonPaddingDp)
             setPadding(p, p, p, p)
-            layoutParams = LinearLayout.LayoutParams(dpToPx(40), dpToPx(40))
-            setOnClickListener { onClick() }
-        }
-    }
-
-    private fun makeTextButton(text: String, onClick: () -> Unit): TextView {
-        return TextView(context).apply {
-            this.text = text
-            setTextColor(Color.WHITE)
-            textSize = 14f
-            gravity = Gravity.CENTER
-            setBackgroundColor(Color.TRANSPARENT)
-            val p = dpToPx(8)
-            setPadding(p, p, p, p)
-            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dpToPx(36))
+            layoutParams = LinearLayout.LayoutParams(dpToPx(chrome.iconButtonSizeDp), dpToPx(chrome.iconButtonSizeDp))
             setOnClickListener { onClick() }
         }
     }
@@ -546,22 +985,37 @@ class FloatingLyricsRenderer(private val context: Context) {
     }
 
     private fun matchW() = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-    private fun centerRow() = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).also {
+    private fun centerRow(topMarginDp: Int = 0) = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).also {
         it.gravity = Gravity.CENTER_HORIZONTAL
+        it.topMargin = dpToPx(topMarginDp)
     }
 
     private fun buildPillBackground(): GradientDrawable = GradientDrawable().apply {
         shape        = GradientDrawable.RECTANGLE
-        cornerRadius = dpToPx(20).toFloat()
-        setColor(0xCC111111.toInt())
+        cornerRadius = dpToPx(chrome.expandedRadiusDp).toFloat()
+        setColor(chrome.expandedBackgroundColor)
+    }
+
+    private fun roundedRect(color: Int, radiusDp: Int): GradientDrawable = GradientDrawable().apply {
+        shape = GradientDrawable.RECTANGLE
+        cornerRadius = dpToPx(radiusDp).toFloat()
+        setColor(color)
+    }
+
+    private fun roundedOutline(radiusDp: Int): android.view.ViewOutlineProvider {
+        return object : android.view.ViewOutlineProvider() {
+            override fun getOutline(view: View, outline: android.graphics.Outline) {
+                outline.setRoundRect(0, 0, view.width, view.height, dpToPx(radiusDp).toFloat())
+            }
+        }
     }
     
     private fun buildMinimalTextBackground(): GradientDrawable = GradientDrawable().apply {
         shape        = GradientDrawable.RECTANGLE
-        cornerRadius = dpToPx(12).toFloat()
-        setColor(0x88000000.toInt()) // subtle dark gray background
+        cornerRadius = dpToPx(chrome.minimalBackgroundRadiusDp).toFloat()
+        setColor(chrome.minimalBackgroundColor)
     }
 
-    private fun dpToPx(dp: Int): Int =
+private fun dpToPx(dp: Int): Int =
         (dp * context.resources.displayMetrics.density).toInt()
 }

@@ -8,7 +8,7 @@ object SuperIslandColorSource {
     const val ALBUM_ART = "album_art"
     const val CUSTOM = "custom"
 
-    private const val DEFAULT_CUSTOM_COLOR = 0xFF3482FF.toInt()
+    const val DEFAULT_CUSTOM_COLOR = 0xFF3482FF.toInt()
 
     val values = listOf(ALBUM_ART, CUSTOM)
 

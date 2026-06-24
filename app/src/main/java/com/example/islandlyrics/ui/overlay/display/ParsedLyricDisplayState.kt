@@ -18,10 +18,45 @@ internal data class ParsedLyricDisplayState(
         return if (timelineCapability == LyricRepository.TimelineCapability.ACTIVE_LINE_ONLY) {
             currentLines.firstOrNull()
         } else {
-            currentLines.firstOrNull { line ->
+            currentLineIndex(position).takeIf { it >= 0 }?.let(currentLines::get)
+        }
+    }
+
+    fun currentLineIndex(position: Long): Int {
+        val currentLines = lines ?: return -1
+        return if (timelineCapability == LyricRepository.TimelineCapability.ACTIVE_LINE_ONLY) {
+            if (currentLines.isNotEmpty()) 0 else -1
+        } else {
+            currentLines.indexOfFirst { line ->
                 position >= line.startTime && position < line.endTime
             }
         }
+    }
+
+    fun previousLine(index: Int): OnlineLyricFetcher.LyricLine? {
+        val currentLines = lines ?: return null
+        if (index < 0) return null
+        if (timelineCapability != LyricRepository.TimelineCapability.MULTI_LINE) return null
+        return currentLines.getOrNull(index - 1)
+    }
+
+    fun nextLine(index: Int): OnlineLyricFetcher.LyricLine? {
+        val currentLines = lines ?: return null
+        if (index < 0) return null
+        if (timelineCapability != LyricRepository.TimelineCapability.MULTI_LINE) return null
+        return currentLines.getOrNull(index + 1)
+    }
+
+    fun lineIndexBefore(position: Long): Int {
+        val currentLines = lines ?: return -1
+        if (timelineCapability != LyricRepository.TimelineCapability.MULTI_LINE) return -1
+        return currentLines.indexOfLast { line -> position >= line.endTime }
+    }
+
+    fun lineIndexAfter(position: Long): Int {
+        val currentLines = lines ?: return -1
+        if (timelineCapability != LyricRepository.TimelineCapability.MULTI_LINE) return -1
+        return currentLines.indexOfFirst { line -> position < line.startTime }
     }
 
     enum class ScrollingMode {

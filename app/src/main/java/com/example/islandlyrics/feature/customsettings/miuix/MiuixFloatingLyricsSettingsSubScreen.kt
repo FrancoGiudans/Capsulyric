@@ -17,14 +17,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.islandlyrics.R
+import com.example.islandlyrics.ui.overlay.floating.FloatingLyricsDisplayMode
+import com.example.islandlyrics.ui.overlay.floating.FloatingLyricsNeighborAlignment
 import com.example.islandlyrics.ui.overlay.floating.FloatingLyricsRenderer
 import kotlinx.coroutines.CoroutineScope
-import top.yukonga.miuix.kmp.basic.ColorPalette
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.ButtonDefaults
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TextButton
 import top.yukonga.miuix.kmp.basic.Slider
+import top.yukonga.miuix.kmp.preference.RadioButtonPreference as SuperRadio
 import top.yukonga.miuix.kmp.preference.SwitchPreference as SuperSwitch
 import kotlin.math.roundToInt
 
@@ -38,11 +40,28 @@ fun MiuixFloatingLyricsSettingsSubScreen(prefs: SharedPreferences, scope: Corout
     var followAlbumColor by remember { mutableStateOf(prefs.getBoolean(FloatingLyricsRenderer.PREF_FOLLOW_ALBUM_COLOR, true)) }
     var textStroke by remember { mutableStateOf(prefs.getBoolean(FloatingLyricsRenderer.PREF_TEXT_STROKE, true)) }
     var textBackground by remember { mutableStateOf(prefs.getBoolean(FloatingLyricsRenderer.PREF_TEXT_BACKGROUND, false)) }
+    var displayMode by remember {
+        mutableStateOf(
+            FloatingLyricsDisplayMode.from(
+                prefs.getString(FloatingLyricsRenderer.PREF_DISPLAY_MODE, FloatingLyricsDisplayMode.SINGLE_LINE.value)
+            )
+        )
+    }
+    var neighborAlignment by remember {
+        mutableStateOf(
+            FloatingLyricsNeighborAlignment.from(
+                prefs.getString(FloatingLyricsRenderer.PREF_NEIGHBOR_ALIGNMENT, FloatingLyricsNeighborAlignment.CENTER.value)
+            )
+        )
+    }
+    var wordHighlight by remember { mutableStateOf(prefs.getBoolean(FloatingLyricsRenderer.PREF_WORD_HIGHLIGHT, true)) }
     
     var textSizeSp by remember { mutableFloatStateOf(prefs.getFloat(FloatingLyricsRenderer.PREF_TEXT_SIZE, 15f)) }
     var customTextColor by remember { 
         mutableStateOf(Color(prefs.getInt(FloatingLyricsRenderer.PREF_TEXT_COLOR, android.graphics.Color.WHITE)))
     }
+    var floatingTextColorEditing by remember { mutableStateOf(false) }
+    var floatingTextColorSnapshot by remember { mutableStateOf(customTextColor) }
 
     Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
         SuperSwitch(
@@ -93,32 +112,76 @@ fun MiuixFloatingLyricsSettingsSubScreen(prefs: SharedPreferences, scope: Corout
             }
         )
 
+        FloatingDisplayModeSelector(
+            selectedMode = displayMode,
+            onModeSelected = {
+                displayMode = it
+                prefs.edit { putString(FloatingLyricsRenderer.PREF_DISPLAY_MODE, it.value) }
+            }
+        )
+
+        if (displayMode == FloatingLyricsDisplayMode.NEIGHBOR_LINE) {
+            FloatingNeighborAlignmentSelector(
+                selectedAlignment = neighborAlignment,
+                onAlignmentSelected = {
+                    neighborAlignment = it
+                    prefs.edit { putString(FloatingLyricsRenderer.PREF_NEIGHBOR_ALIGNMENT, it.value) }
+                }
+            )
+        }
+
+        SuperSwitch(
+            title = stringResource(R.string.settings_floating_word_highlight),
+            summary = stringResource(R.string.settings_floating_word_highlight_desc),
+            checked = wordHighlight,
+            onCheckedChange = {
+                wordHighlight = it
+                prefs.edit { putBoolean(FloatingLyricsRenderer.PREF_WORD_HIGHLIGHT, it) }
+            }
+        )
+
         SuperSwitch(
             title = stringResource(R.string.settings_floating_follow_album_color),
             summary = stringResource(R.string.settings_floating_follow_album_color_desc),
             checked = followAlbumColor,
             onCheckedChange = {
+                if (it && floatingTextColorEditing) {
+                    customTextColor = floatingTextColorSnapshot
+                    floatingTextColorEditing = false
+                }
                 followAlbumColor = it
                 prefs.edit { putBoolean(FloatingLyricsRenderer.PREF_FOLLOW_ALBUM_COLOR, it) }
             }
         )
         
         if (!followAlbumColor) {
-            Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
-                Text(
-                    text = stringResource(R.string.settings_floating_text_color),
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.Medium
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-                ColorPalette(
-                    color = customTextColor,
-                    onColorChanged = { color ->
-                        customTextColor = color
-                        prefs.edit { putInt(FloatingLyricsRenderer.PREF_TEXT_COLOR, color.toArgb()) }
-                    }
-                )
-            }
+            MiuixEditableColorSection(
+                title = stringResource(R.string.settings_floating_text_color),
+                color = customTextColor,
+                isEditing = floatingTextColorEditing,
+                defaultActionText = stringResource(R.string.settings_color_default),
+                onStartEditing = {
+                    floatingTextColorSnapshot = customTextColor
+                    floatingTextColorEditing = true
+                },
+                onColorChanged = { color ->
+                    customTextColor = color
+                },
+                onApply = {
+                    prefs.edit { putInt(FloatingLyricsRenderer.PREF_TEXT_COLOR, customTextColor.toArgb()) }
+                    floatingTextColorEditing = false
+                },
+                onCancel = {
+                    customTextColor = floatingTextColorSnapshot
+                    floatingTextColorEditing = false
+                },
+                onUseDefault = {
+                    customTextColor = Color.White
+                    floatingTextColorSnapshot = Color.White
+                    prefs.edit { putInt(FloatingLyricsRenderer.PREF_TEXT_COLOR, Color.White.toArgb()) }
+                    floatingTextColorEditing = false
+                }
+            )
         }
 
         Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
@@ -154,4 +217,81 @@ fun MiuixFloatingLyricsSettingsSubScreen(prefs: SharedPreferences, scope: Corout
         )
         }
     }
+}
+
+@Composable
+private fun FloatingDisplayModeSelector(
+    selectedMode: FloatingLyricsDisplayMode,
+    onModeSelected: (FloatingLyricsDisplayMode) -> Unit
+) {
+    Text(
+        text = stringResource(R.string.settings_floating_display_mode),
+        fontSize = 15.sp,
+        fontWeight = FontWeight.Medium,
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp)
+    )
+    FloatingModeRadio(
+        title = stringResource(R.string.settings_floating_mode_single),
+        summary = stringResource(R.string.settings_floating_mode_single_desc),
+        selected = selectedMode == FloatingLyricsDisplayMode.SINGLE_LINE,
+        onClick = { onModeSelected(FloatingLyricsDisplayMode.SINGLE_LINE) }
+    )
+    FloatingModeRadio(
+        title = stringResource(R.string.settings_floating_mode_romanization),
+        summary = stringResource(R.string.settings_floating_mode_romanization_desc),
+        selected = selectedMode == FloatingLyricsDisplayMode.ROMANIZATION,
+        onClick = { onModeSelected(FloatingLyricsDisplayMode.ROMANIZATION) }
+    )
+    FloatingModeRadio(
+        title = stringResource(R.string.settings_floating_mode_translation),
+        summary = stringResource(R.string.settings_floating_mode_translation_desc),
+        selected = selectedMode == FloatingLyricsDisplayMode.TRANSLATION,
+        onClick = { onModeSelected(FloatingLyricsDisplayMode.TRANSLATION) }
+    )
+    FloatingModeRadio(
+        title = stringResource(R.string.settings_floating_mode_neighbor),
+        summary = stringResource(R.string.settings_floating_mode_neighbor_desc),
+        selected = selectedMode == FloatingLyricsDisplayMode.NEIGHBOR_LINE,
+        onClick = { onModeSelected(FloatingLyricsDisplayMode.NEIGHBOR_LINE) }
+    )
+}
+
+@Composable
+private fun FloatingNeighborAlignmentSelector(
+    selectedAlignment: FloatingLyricsNeighborAlignment,
+    onAlignmentSelected: (FloatingLyricsNeighborAlignment) -> Unit
+) {
+    Text(
+        text = stringResource(R.string.settings_floating_neighbor_alignment),
+        fontSize = 15.sp,
+        fontWeight = FontWeight.Medium,
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp)
+    )
+    FloatingModeRadio(
+        title = stringResource(R.string.settings_floating_alignment_center),
+        summary = stringResource(R.string.settings_floating_alignment_center_desc),
+        selected = selectedAlignment == FloatingLyricsNeighborAlignment.CENTER,
+        onClick = { onAlignmentSelected(FloatingLyricsNeighborAlignment.CENTER) }
+    )
+    FloatingModeRadio(
+        title = stringResource(R.string.settings_floating_alignment_split),
+        summary = stringResource(R.string.settings_floating_alignment_split_desc),
+        selected = selectedAlignment == FloatingLyricsNeighborAlignment.SPLIT_START_END,
+        onClick = { onAlignmentSelected(FloatingLyricsNeighborAlignment.SPLIT_START_END) }
+    )
+}
+
+@Composable
+private fun FloatingModeRadio(
+    title: String,
+    summary: String,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    SuperRadio(
+        title = title,
+        summary = summary,
+        selected = selected,
+        onClick = onClick
+    )
 }

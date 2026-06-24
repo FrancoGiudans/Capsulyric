@@ -24,6 +24,7 @@ data class UIState(
     val useSyllableScrolling: Boolean = false,
     val syllableLines: List<OnlineLyricFetcher.LyricLine>? = null,
     val currentLineIndex: Int = -1,
+    val lyricPresentation: LyricPresentation = LyricPresentation(),
     val mediaPackage: String = "",
     val albumArt: Bitmap? = null
 )
