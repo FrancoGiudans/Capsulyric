@@ -1,10 +1,8 @@
 package com.example.islandlyrics.feature.main.miuix
 
-import com.example.islandlyrics.ui.miuix.theme.rememberIslandLyricsMiuixThemeController
 import com.example.islandlyrics.ui.miuix.effects.miuixPageScroll
 import com.example.islandlyrics.ui.miuix.blur.MiuixBlurTopAppBar
 import com.example.islandlyrics.ui.miuix.blur.MiuixBlurScaffold
-import com.example.islandlyrics.ui.miuix.blur.MiuixBlurDialog
 import android.graphics.Bitmap
 import com.example.islandlyrics.R
 import com.example.islandlyrics.runtime.service.MediaMonitorService
@@ -17,13 +15,13 @@ import android.media.session.PlaybackState
 import android.os.SystemClock
 import android.provider.Settings
 import android.widget.Toast
+import androidx.core.graphics.createBitmap
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -44,8 +42,10 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import android.content.ClipData
 import android.content.ClipboardManager
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.SharedPreferences
 import android.graphics.Canvas
 import android.graphics.drawable.Drawable
 import androidx.palette.graphics.Palette
@@ -58,10 +58,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import top.yukonga.miuix.kmp.basic.*
-import top.yukonga.miuix.kmp.preference.ArrowPreference as SuperArrow
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.MiuixPopupUtils.Companion.MiuixPopupHost
 import com.example.islandlyrics.core.settings.AppPreferences
+import com.example.islandlyrics.feature.main.HomeLyricPreviewDisplay
 import com.example.islandlyrics.core.update.UpdateChecker
 import com.example.islandlyrics.feature.update.miuix.MiuixUpdateDialog
 import kotlinx.coroutines.delay
@@ -77,6 +77,7 @@ private const val SeekSyncThresholdMs = 250L
 private const val SeekFallbackTimeoutMs = 4000L
 
 @Composable
+@Suppress("UNUSED_PARAMETER")
 fun MiuixMainScreen(
     versionText: String,
     isDebugBuild: Boolean,
@@ -99,6 +100,9 @@ fun MiuixMainScreen(
     val listState = rememberLazyListState()
     val prefs = remember { AppPreferences.of(context) }
     var dynamicThemeEnabled by remember { mutableStateOf(prefs.getBoolean(AppPreferences.Keys.THEME_DYNAMIC_COLOR, true)) }
+    var homeLyricPreviewDisplayModes by remember {
+        mutableStateOf(HomeLyricPreviewDisplay.read(prefs))
+    }
 
     val repoPlaying by repo.isPlaying.observeAsState(false)
     val repoMetadata by repo.liveMetadata.observeAsState()
@@ -106,13 +110,17 @@ fun MiuixMainScreen(
     val repoAlbumArt by repo.liveAlbumArt.observeAsState()
     val repoProgress by repo.liveProgress.observeAsState()
     val repoParsedLyrics by repo.liveParsedLyrics.observeAsState()
+    val repoCurrentLine by repo.liveCurrentLine.observeAsState()
 
     var activeControllers by remember { mutableStateOf<List<MediaController>>(emptyList()) }
 
     DisposableEffect(prefs) {
-        val listener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+        val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
             if (key == AppPreferences.Keys.THEME_DYNAMIC_COLOR) {
                 dynamicThemeEnabled = prefs.getBoolean(AppPreferences.Keys.THEME_DYNAMIC_COLOR, true)
+            }
+            if (key == AppPreferences.Keys.HOME_LYRIC_PREVIEW_DISPLAY_MODES) {
+                homeLyricPreviewDisplayModes = HomeLyricPreviewDisplay.read(prefs)
             }
         }
         prefs.registerOnSharedPreferenceChangeListener(listener)
@@ -153,8 +161,8 @@ fun MiuixMainScreen(
     }
 
     DisposableEffect(Unit) {
-        val mediaSessionManager = context.getSystemService(android.content.Context.MEDIA_SESSION_SERVICE) as MediaSessionManager
-        val componentName = android.content.ComponentName(context, MediaMonitorService::class.java)
+        val mediaSessionManager = context.getSystemService(Context.MEDIA_SESSION_SERVICE) as MediaSessionManager
+        val componentName = ComponentName(context, MediaMonitorService::class.java)
         val listener = MediaSessionManager.OnActiveSessionsChangedListener { controllers ->
             activeControllers = controllers ?: emptyList()
         }
@@ -210,8 +218,8 @@ fun MiuixMainScreen(
                 navigationIcon = {
                     val appIconBitmap = remember {
                         val drawable = context.packageManager.getApplicationIcon(context.packageName)
-                        val bmp = Bitmap.createBitmap(128, 128, Bitmap.Config.ARGB_8888)
-                        val canvas = android.graphics.Canvas(bmp)
+                        val bmp = createBitmap(128, 128)
+                        val canvas = Canvas(bmp)
                         drawable.setBounds(0, 0, 128, 128)
                         drawable.draw(canvas)
                         bmp
@@ -290,7 +298,15 @@ fun MiuixMainScreen(
                                 isPrimary = isPrimary,
                                 dynamicThemeEnabled = dynamicThemeEnabled,
                                 primaryMetadata = if (isPrimary) repoMetadata else null,
-                                primaryLyric = if (isPrimary) repoLyric?.lyric else null,
+                                primaryLyric = if (isPrimary) {
+                                    HomeLyricPreviewDisplay.previewText(
+                                        modes = homeLyricPreviewDisplayModes,
+                                        currentLine = repoCurrentLine,
+                                        lyricInfo = repoLyric
+                                    )
+                                } else {
+                                    null
+                                },
                                 primaryLyricSource = if (isPrimary) {
                                     formatPrimaryLyricSource(
                                         apiPath = repoLyric?.apiPath,
@@ -485,8 +501,19 @@ private fun MiuixMediaSessionCard(
             null
         }
     }
+    val displayName = appName.ifBlank { controller.packageName }
+    val sessionFailedFallbackText = stringResource(
+        R.string.media_control_cannot_open_session_failed_fallback,
+        displayName
+    )
+    val launchFailedTextPrefix = stringResource(
+        R.string.media_control_cannot_open_launch_failed,
+        displayName,
+        ""
+    )
+    val noEntryText = stringResource(R.string.media_control_cannot_open_no_entry, displayName)
+    val copiedText = stringResource(R.string.toast_copied)
     val openApp = {
-        val displayName = appName.ifBlank { controller.packageName }
         val sessionActivity = controller.sessionActivity
         val launchIntent = context.packageManager
             .getLaunchIntentForPackage(controller.packageName)
@@ -503,7 +530,7 @@ private fun MiuixMediaSessionCard(
                         if (fallbackResult.isSuccess) {
                             Toast.makeText(
                                 context,
-                                context.getString(R.string.media_control_cannot_open_session_failed_fallback, displayName),
+                                sessionFailedFallbackText,
                                 Toast.LENGTH_SHORT
                             ).show()
                         } else {
@@ -512,7 +539,7 @@ private fun MiuixMediaSessionCard(
                                 ?: "unknown"
                             Toast.makeText(
                                 context,
-                                context.getString(R.string.media_control_cannot_open_launch_failed, displayName, reason),
+                                launchFailedTextPrefix + reason,
                                 Toast.LENGTH_SHORT
                             ).show()
                         }
@@ -520,7 +547,7 @@ private fun MiuixMediaSessionCard(
                         val reason = sessionLaunchResult.exceptionOrNull()?.localizedMessage ?: "unknown"
                         Toast.makeText(
                             context,
-                            context.getString(R.string.media_control_cannot_open_launch_failed, displayName, reason),
+                            launchFailedTextPrefix + reason,
                             Toast.LENGTH_SHORT
                         ).show()
                     }
@@ -532,7 +559,7 @@ private fun MiuixMediaSessionCard(
                     val reason = launchResult.exceptionOrNull()?.localizedMessage ?: "unknown"
                     Toast.makeText(
                         context,
-                        context.getString(R.string.media_control_cannot_open_launch_failed, displayName, reason),
+                        launchFailedTextPrefix + reason,
                         Toast.LENGTH_SHORT
                     ).show()
                 }
@@ -540,7 +567,7 @@ private fun MiuixMediaSessionCard(
             else -> {
                 Toast.makeText(
                     context,
-                    context.getString(R.string.media_control_cannot_open_no_entry, displayName),
+                    noEntryText,
                     Toast.LENGTH_SHORT
                 ).show()
             }
@@ -651,7 +678,7 @@ private fun MiuixMediaSessionCard(
                     lyric?.let {
                         val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                         cm.setPrimaryClip(ClipData.newPlainText("Lyric", it))
-                        Toast.makeText(context, context.getString(R.string.toast_copied), Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, copiedText, Toast.LENGTH_SHORT).show()
                     }
                 }
             ) {
@@ -821,7 +848,7 @@ private fun isOnlineLyricSource(apiPath: String?): Boolean {
 private fun drawableToBitmap(drawable: Drawable): Bitmap {
     val width = drawable.intrinsicWidth.takeIf { it > 0 } ?: 128
     val height = drawable.intrinsicHeight.takeIf { it > 0 } ?: 128
-    val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+    val bitmap = createBitmap(width, height)
     val canvas = Canvas(bitmap)
     drawable.setBounds(0, 0, canvas.width, canvas.height)
     drawable.draw(canvas)

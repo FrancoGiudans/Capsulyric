@@ -8,6 +8,7 @@ import com.example.islandlyrics.core.settings.AppPreferences
 import com.example.islandlyrics.core.settings.LabFeatureManager
 import com.example.islandlyrics.core.theme.ThemeHelper
 import com.example.islandlyrics.core.platform.XmsfBypassMode
+import com.example.islandlyrics.feature.main.HomeLyricPreviewDisplay
 import com.example.islandlyrics.ui.overlay.config.CapsuleRenderMode
 import com.example.islandlyrics.ui.overlay.config.LyricTextDisplayMode
 import com.example.islandlyrics.ui.overlay.config.OneUiCapsuleColorMode
@@ -111,6 +112,8 @@ class CustomSettingsViewModel(application: Application) : AndroidViewModel(appli
                 PredictiveBackAnimationMode.write(prefs, action.value)
             is CustomSettingsAction.SetPredictiveBackAnimationStyle ->
                 PredictiveBackAnimationStyle.write(prefs, action.value)
+            is CustomSettingsAction.SetHomeLyricPreviewDisplayModes ->
+                HomeLyricPreviewDisplay.write(prefs, action.value)
         }
         refresh()
     }
@@ -160,6 +163,7 @@ class CustomSettingsViewModel(application: Application) : AndroidViewModel(appli
             predictiveBackEnabled = prefs.getBoolean(PREF_PREDICTIVE_BACK_ENABLED, true),
             predictiveBackAnimationMode = PredictiveBackAnimationMode.read(prefs),
             predictiveBackAnimationStyle = PredictiveBackAnimationStyle.read(prefs),
+            homeLyricPreviewDisplayModes = HomeLyricPreviewDisplay.read(prefs),
             monetEnabled = prefs.getBoolean(AppPreferences.Keys.THEME_DYNAMIC_COLOR, true),
             customThemeGlobalTintEnabled = prefs.getBoolean(AppPreferences.Keys.THEME_CUSTOM_COLOR_GLOBAL_TINT, false),
             cardBlurEnabled = prefs.getBoolean(AppPreferences.Keys.CARD_BLUR_ENABLED, false)
