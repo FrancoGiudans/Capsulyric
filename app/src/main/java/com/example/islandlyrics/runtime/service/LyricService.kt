@@ -111,11 +111,14 @@ class LyricService : Service() {
         if (playing) {
             updateActiveHandler()
             progressSyncController.start()
+            syncFloatingLyricsState(AppPreferences.of(this))
             // After the renderer is started (or confirmed running), immediately push
             // a display update so the notification appears without waiting for the
             // next visualizerLoop tick. This is especially important when resuming
             // after a background pause where the loop was idle.
             displayManager.forceUpdate()
+        } else {
+            syncFloatingLyricsState(AppPreferences.of(this))
         }
         delayedStopController?.onPlaybackChanged(playing)
     }
@@ -198,11 +201,7 @@ class LyricService : Service() {
         } else if (key == FloatingLyricsRenderer.PREF_KEY) {
             val enabled = p.getBoolean(FloatingLyricsRenderer.PREF_KEY, false)
             AppLogger.getInstance().log(TAG, "Floating lyrics toggled -> enabled: $enabled")
-            if (enabled) {
-                floatingLyricsRenderer?.start()
-            } else {
-                floatingLyricsRenderer?.stop()
-            }
+            syncFloatingLyricsState(p)
         } else if (key == OfflineModeManager.KEY_FULLY_OFFLINE_MODE && p.getBoolean(key, false)) {
             AppLogger.getInstance().log(TAG, "Offline mode enabled -> cancelling online lyric requests")
             onlineLyricSource.cancel()
@@ -297,9 +296,10 @@ class LyricService : Service() {
 
     private fun syncFloatingLyricsState(prefs: android.content.SharedPreferences) {
         val enabled = prefs.getBoolean(FloatingLyricsRenderer.PREF_KEY, false)
-        if (enabled && !floatingLyricsRenderer!!.isRunning) {
+        val shouldRun = enabled && LyricRepository.getInstance().isPlaying.value == true
+        if (shouldRun && floatingLyricsRenderer?.isRunning != true) {
             floatingLyricsRenderer?.start()
-        } else if (!enabled && floatingLyricsRenderer!!.isRunning) {
+        } else if (!shouldRun && floatingLyricsRenderer?.isRunning == true) {
             floatingLyricsRenderer?.stop()
         }
     }
