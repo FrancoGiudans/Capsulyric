@@ -11,7 +11,6 @@ import com.example.islandlyrics.ui.preview.CapsulePreview
 import com.example.islandlyrics.ui.overlay.config.CapsuleRenderMode
 import com.example.islandlyrics.ui.overlay.config.LyricTextDisplayMode
 import com.example.islandlyrics.ui.overlay.config.OneUiCapsuleColorMode
-import com.example.islandlyrics.ui.navigation.PREF_PREDICTIVE_BACK_ENABLED
 import com.example.islandlyrics.ui.navigation.PredictiveBackAnimationMode
 import com.example.islandlyrics.ui.navigation.PredictiveBackAnimationStyle
 import com.example.islandlyrics.ui.overlay.superisland.config.SuperIslandColorSource
@@ -22,13 +21,13 @@ import com.example.islandlyrics.core.settings.LabFeatureManager
 import com.example.islandlyrics.core.theme.ThemeHelper
 import com.example.islandlyrics.core.platform.RomUtils
 import com.example.islandlyrics.runtime.service.LyricService
+import com.example.islandlyrics.feature.main.HomeLyricPreviewDisplay
 import com.example.islandlyrics.feature.main.MainActivity
 import com.example.islandlyrics.feature.customsettings.CustomSettingsAction
 import com.example.islandlyrics.feature.customsettings.CustomSettingsViewModel
 import android.content.Context
 import android.content.Intent
 import android.widget.Toast
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.pager.HorizontalPager
@@ -44,13 +43,13 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.content.edit
-import androidx.compose.ui.Alignment
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.launch
 import java.util.Locale
 import top.yukonga.miuix.kmp.basic.*
 import top.yukonga.miuix.kmp.basic.ButtonDefaults
+import top.yukonga.miuix.kmp.preference.CheckboxPreference
+import top.yukonga.miuix.kmp.preference.ArrowPreference as SuperArrow
 import top.yukonga.miuix.kmp.preference.OverlayDropdownPreference as SuperDropdown
 import top.yukonga.miuix.kmp.preference.SwitchPreference as SuperSwitch
 import top.yukonga.miuix.kmp.theme.MiuixTheme
@@ -162,6 +161,9 @@ fun MiuixCustomSettingsScreen(
     var predictiveBackAnimationStyle by remember(uiState.predictiveBackAnimationStyle) {
         mutableStateOf(uiState.predictiveBackAnimationStyle)
     }
+    var homeLyricPreviewDisplayModes by remember(uiState.homeLyricPreviewDisplayModes) {
+        mutableStateOf(uiState.homeLyricPreviewDisplayModes)
+    }
     var monetEnabled by remember(uiState.monetEnabled) { mutableStateOf(uiState.monetEnabled) }
     var customThemeGlobalTintEnabled by remember(uiState.customThemeGlobalTintEnabled) {
         mutableStateOf(uiState.customThemeGlobalTintEnabled)
@@ -183,6 +185,7 @@ fun MiuixCustomSettingsScreen(
     var cardBlurEnabled by remember(uiState.cardBlurEnabled) { mutableStateOf(uiState.cardBlurEnabled) }
     var blockXmsfMode by remember { mutableStateOf(XmsfBypassMode.read(prefs)) }
     var blockXmsfCustomDurationMs by remember { mutableIntStateOf(XmsfBypassMode.readCustomDurationMs(prefs)) }
+    var showHomeLyricPreviewDialog by remember { mutableStateOf(false) }
 
     val isLiveUpdateSupported = remember { RomUtils.isLiveUpdateSupported() }
     val isHyperOs = remember { RomUtils.isHyperOs() }
@@ -191,6 +194,7 @@ fun MiuixCustomSettingsScreen(
     } else {
         capsuleRenderMode
     }
+    val homeLyricPreviewKeepOneText = stringResource(R.string.settings_home_lyric_preview_keep_one)
     val superIslandEnabled = effectiveCapsuleRenderMode == CapsuleRenderMode.XIAOMI_SUPER_ISLAND
     val islandStyleCapsuleEnabled = superIslandEnabled
     val forceDisableScrollingForSuperIslandLyricMode =
@@ -240,12 +244,25 @@ fun MiuixCustomSettingsScreen(
         context.startService(intent)
     }
 
+    fun setHomeLyricPreviewDisplayMode(mode: String, checked: Boolean) {
+        val nextModes = HomeLyricPreviewDisplay.toggledModes(homeLyricPreviewDisplayModes, mode, checked)
+        if (nextModes == null) {
+            Toast.makeText(
+                context,
+                homeLyricPreviewKeepOneText,
+                Toast.LENGTH_SHORT
+            ).show()
+            return
+        }
+        homeLyricPreviewDisplayModes = nextModes
+        viewModel.dispatch(CustomSettingsAction.SetHomeLyricPreviewDisplayModes(nextModes))
+    }
+
     LaunchedEffect(Unit) {
         LabFeatureManager.ensureInitialized(prefs)
         superIslandAdvancedStyleLabEnabled = LabFeatureManager.isSuperIslandAdvancedStyleEnabled(prefs)
         superIslandTextLimitsLabEnabled = LabFeatureManager.isSuperIslandTextLimitsEnabled(prefs)
         superIslandRelaxedTextLimitsLabEnabled = LabFeatureManager.isSuperIslandRelaxedTextLimitsEnabled(prefs)
-        floatingLyricsLabEnabled = LabFeatureManager.isFloatingLyricsEnabled(prefs)
         superIslandNotificationStyle = LabFeatureManager.sanitizeSuperIslandNotificationStyle(context)
     }
     LaunchedEffect(forceDisableScrollingForSuperIslandLyricMode) {
@@ -407,9 +424,7 @@ fun MiuixCustomSettingsScreen(
                                         if (isLiveUpdateSupported) {
                                             val capsuleModeItems = buildList {
                                                 add(CapsuleRenderMode.LIVE_UPDATE to stringResource(R.string.capsule_mode_live_update))
-                                                if (isHyperOs) {
-                                                    add(CapsuleRenderMode.XIAOMI_SUPER_ISLAND to stringResource(R.string.capsule_mode_super_island))
-                                                }
+                                                add(CapsuleRenderMode.XIAOMI_SUPER_ISLAND to stringResource(R.string.capsule_mode_super_island))
                                             }
                                             val capsuleModes = capsuleModeItems.map { it.first }
                                             val capsuleModeLabels = capsuleModeItems.map { it.second }
@@ -469,7 +484,7 @@ fun MiuixCustomSettingsScreen(
                                                 )
                                             }
 
-                                            if (superIslandEnabled && superIslandTextLimitsLabEnabled) {
+                                            if (superIslandTextLimitsLabEnabled) {
                                                 val rightRange = SuperIslandTextLimitConfig.RIGHT_MIN_CHARS..
                                                     SuperIslandTextLimitConfig.rightMaxChars(superIslandRelaxedTextLimitsLabEnabled)
                                                 MiuixSuperIslandTextLimitSlider(
@@ -586,16 +601,15 @@ fun MiuixCustomSettingsScreen(
                                                 }
                                             }
 
-                                            if (superIslandEnabled) {
-                                                SuperSwitch(
-                                                    title = stringResource(R.string.settings_super_island_share),
-                                                    summary = stringResource(R.string.settings_super_island_share_desc),
-                                                    checked = superIslandShareEnabled,
-                                                    onCheckedChange = {
-                                                        superIslandShareEnabled = it
-                                                        viewModel.dispatch(CustomSettingsAction.SetSuperIslandShareEnabled(it))
-                                                    }
-                                                )
+                                            SuperSwitch(
+                                                title = stringResource(R.string.settings_super_island_share),
+                                                summary = stringResource(R.string.settings_super_island_share_desc),
+                                                checked = superIslandShareEnabled,
+                                                onCheckedChange = {
+                                                    superIslandShareEnabled = it
+                                                    viewModel.dispatch(CustomSettingsAction.SetSuperIslandShareEnabled(it))
+                                                }
+                                            )
 
                                                 if (superIslandShareEnabled) {
                                                 val shareFormats = listOf("format_1", "format_2", "format_3")
@@ -696,19 +710,18 @@ fun MiuixCustomSettingsScreen(
                                                     }
                                                 )
                                             }
-                                            }
 
                                         }
                                     }
                                     if (isLiveUpdateSupported && !superIslandEnabled) {
                                         val iconStyles = buildList {
                                             add("disabled")
-                                            if (isHyperOs) add("advanced")
+                                            add("advanced")
                                             add("album_art")
                                         }
                                         val iconStyleNames = buildList {
                                             add(stringResource(R.string.icon_style_classic))
-                                            if (isHyperOs) add(stringResource(R.string.icon_style_advanced))
+                                            add(stringResource(R.string.icon_style_advanced))
                                             add(stringResource(R.string.icon_style_album_art))
                                         }
                                         val currentIconIndex = iconStyles.indexOf(iconStyle).takeIf { it >= 0 } ?: 0
@@ -900,6 +913,14 @@ fun MiuixCustomSettingsScreen(
                                             (context as? Activity)?.finish()
                                         }
                                     )
+                                    SuperArrow(
+                                        title = stringResource(R.string.settings_home_lyric_preview_title),
+                                        summary = stringResource(
+                                            R.string.settings_home_lyric_preview_summary_fmt,
+                                            homeLyricPreviewDisplayModes.labelForHomeLyricPreview()
+                                        ),
+                                        onClick = { showHomeLyricPreviewDialog = true }
+                                    )
                                     SuperSwitch(
                                         title = stringResource(R.string.settings_theme_follow_system),
                                         checked = followSystem,
@@ -1055,6 +1076,44 @@ fun MiuixCustomSettingsScreen(
                 }
             }
         }
+        if (showHomeLyricPreviewDialog) {
+            MiuixBlurDialog(
+                show = true,
+                title = stringResource(R.string.settings_home_lyric_preview_title),
+                onDismissRequest = { showHomeLyricPreviewDialog = false }
+            ) {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    CheckboxPreference(
+                        title = stringResource(R.string.lyric_text_display_mode_lyric),
+                        checked = HomeLyricPreviewDisplay.LYRIC in homeLyricPreviewDisplayModes,
+                        onCheckedChange = {
+                            setHomeLyricPreviewDisplayMode(HomeLyricPreviewDisplay.LYRIC, it)
+                        }
+                    )
+                    CheckboxPreference(
+                        title = stringResource(R.string.lyric_text_display_mode_translation),
+                        checked = HomeLyricPreviewDisplay.TRANSLATION in homeLyricPreviewDisplayModes,
+                        onCheckedChange = {
+                            setHomeLyricPreviewDisplayMode(HomeLyricPreviewDisplay.TRANSLATION, it)
+                        }
+                    )
+                    CheckboxPreference(
+                        title = stringResource(R.string.lyric_text_display_mode_romanization),
+                        checked = HomeLyricPreviewDisplay.ROMANIZATION in homeLyricPreviewDisplayModes,
+                        onCheckedChange = {
+                            setHomeLyricPreviewDisplayMode(HomeLyricPreviewDisplay.ROMANIZATION, it)
+                        }
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    TextButton(
+                        text = stringResource(R.string.backup_dialog_confirm),
+                        onClick = { showHomeLyricPreviewDialog = false },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.textButtonColorsPrimary()
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -1149,6 +1208,24 @@ private fun snapXmsfBypassDuration(durationMs: Int): Int {
         XmsfBypassMode.CUSTOM_DURATION_STEP_MS
     return (XmsfBypassMode.MIN_CUSTOM_DURATION_MS + steppedOffset)
         .coerceIn(XmsfBypassMode.MIN_CUSTOM_DURATION_MS, XmsfBypassMode.MAX_CUSTOM_DURATION_MS)
+}
+
+@Composable
+private fun Set<String>.labelForHomeLyricPreview(): String {
+    val labels = buildList {
+        if (HomeLyricPreviewDisplay.LYRIC in this@labelForHomeLyricPreview) {
+            add(stringResource(R.string.lyric_text_display_mode_lyric))
+        }
+        if (HomeLyricPreviewDisplay.TRANSLATION in this@labelForHomeLyricPreview) {
+            add(stringResource(R.string.lyric_text_display_mode_translation))
+        }
+        if (HomeLyricPreviewDisplay.ROMANIZATION in this@labelForHomeLyricPreview) {
+            add(stringResource(R.string.lyric_text_display_mode_romanization))
+        }
+    }
+    return labels.ifEmpty {
+        listOf(stringResource(R.string.lyric_text_display_mode_lyric))
+    }.joinToString(" / ")
 }
 
 

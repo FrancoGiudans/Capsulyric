@@ -597,7 +597,7 @@
     <string name="media_control_unknown_artist">未知歌手</string>
     <string name="media_control_open_app">打开 %1$s</string>
     <string name="media_control_miplay_failed">启动小米妙播失败：%1$s</string>
-    <string name="media_control_cannot_open">无法启动应用：</string>
+    <string name="media_control_cannot_open">无法启动应用：%1$s</string>
     <string name="media_control_cannot_open_no_entry">无法打开 %1$s：当前媒体会话没有提供可跳转入口，且系统也找不到可启动的桌面入口。</string>
     <string name="media_control_cannot_open_session_failed_fallback">无法通过媒体会话直接打开 %1$s，已改为尝试进入应用首页。</string>
     <string name="media_control_cannot_open_launch_failed">无法打开 %1$s：已找到应用入口，但启动失败：%2$s</string>
@@ -643,6 +643,9 @@
     <string name="share_format_3">歌词    歌手，歌名</string>
     <string name="settings_app_ui_style">App 界面风格</string>
     <string name="settings_app_ui_style_desc">在 Material Design 和 Miuix UI 之间切换。应用将会重启。</string>
+    <string name="settings_home_lyric_preview_title">首页歌词类型</string>
+    <string name="settings_home_lyric_preview_summary_fmt">当前：%1$s</string>
+    <string name="settings_home_lyric_preview_keep_one">至少要保留一种歌词哦~</string>
     <string name="dialog_ui_style_title">选择 App 界面风格</string>
     <string name="ui_style_material">Material Design</string>
     <string name="ui_style_miuix">Miuix</string>

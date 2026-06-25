@@ -2,9 +2,12 @@ package com.example.islandlyrics.feature.main.material
 
 import android.content.ClipData
 import android.content.ClipboardManager
+import android.content.ComponentName
 import android.content.Context
+import android.content.SharedPreferences
 import android.graphics.Bitmap
 import android.graphics.Canvas
+import android.graphics.drawable.BitmapDrawable
 import android.media.MediaMetadata
 import android.media.session.MediaController
 import android.media.session.MediaSessionManager
@@ -13,6 +16,7 @@ import android.os.SystemClock
 import android.provider.Settings
 import android.view.ContextThemeWrapper
 import android.widget.Toast
+import androidx.core.graphics.createBitmap
 import androidx.compose.foundation.Canvas as ComposeCanvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -59,6 +63,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableFloatStateOf
@@ -70,7 +75,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.toArgb
@@ -86,6 +90,7 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.example.islandlyrics.R
@@ -99,6 +104,8 @@ import androidx.palette.graphics.Palette
 import kotlinx.coroutines.delay
 import kotlin.math.abs
 import kotlin.math.roundToInt
+import com.example.islandlyrics.core.settings.AppPreferences
+import com.example.islandlyrics.feature.main.HomeLyricPreviewDisplay
 
 private val StatusActive = Color(0xFF2E7D32)
 private val StatusInactive = Color(0xFFC62828)
@@ -107,6 +114,7 @@ private const val SeekFallbackTimeoutMs = 4000L
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
+@Suppress("UNUSED_PARAMETER")
 fun MainScreen(
     versionText: String,
     isDebugBuild: Boolean,
@@ -117,7 +125,7 @@ fun MainScreen(
     onOpenPromotedSettings: () -> Unit,
     onStatusCardTap: () -> Unit,
     onOpenOnlineLyricRematch: () -> Unit,
-    extraBottomPadding: androidx.compose.ui.unit.Dp = 0.dp,
+    extraBottomPadding: Dp = 0.dp,
 ) {
     val repo = remember { LyricRepository.getInstance() }
     val context = LocalContext.current
@@ -130,11 +138,25 @@ fun MainScreen(
     val repoParsedLyrics by repo.liveParsedLyrics.observeAsState()
     val repoCurrentLine by repo.liveCurrentLine.observeAsState()
 
+    val prefs = remember { AppPreferences.of(context) }
+    var homeLyricPreviewDisplayModes by remember {
+        mutableStateOf(HomeLyricPreviewDisplay.read(prefs))
+    }
     var activeControllers by remember { mutableStateOf<List<MediaController>>(emptyList()) }
+
+    DisposableEffect(prefs) {
+        val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+            if (key == AppPreferences.Keys.HOME_LYRIC_PREVIEW_DISPLAY_MODES) {
+                homeLyricPreviewDisplayModes = HomeLyricPreviewDisplay.read(prefs)
+            }
+        }
+        prefs.registerOnSharedPreferenceChangeListener(listener)
+        onDispose { prefs.unregisterOnSharedPreferenceChangeListener(listener) }
+    }
 
     DisposableEffect(Unit) {
         val mediaSessionManager = context.getSystemService(Context.MEDIA_SESSION_SERVICE) as MediaSessionManager
-        val componentName = android.content.ComponentName(context, MediaMonitorService::class.java)
+        val componentName = ComponentName(context, MediaMonitorService::class.java)
         val listener = MediaSessionManager.OnActiveSessionsChangedListener { controllers ->
             activeControllers = controllers ?: emptyList()
         }
@@ -257,7 +279,11 @@ fun MainScreen(
                                 isPrimary = isPrimary,
                                 primaryMetadata = if (isPrimary) repoMetadata else null,
                                 primaryLyric = if (isPrimary) {
-                                    repoCurrentLine?.text ?: repoLyric?.lyric?.takeIf { it.isNotBlank() }
+                                    HomeLyricPreviewDisplay.previewText(
+                                        modes = homeLyricPreviewDisplayModes,
+                                        currentLine = repoCurrentLine,
+                                        lyricInfo = repoLyric
+                                    )
                                 } else {
                                     null
                                 },
@@ -400,7 +426,7 @@ private fun MediaSessionCard(
     primaryIsPlaying: Boolean?,
     showOnlineLyricRematch: Boolean,
     onOpenOnlineLyricRematch: () -> Unit,
-    minCardHeight: androidx.compose.ui.unit.Dp,
+    minCardHeight: Dp,
     onHeightMeasured: (Int) -> Unit
 ) {
     var localMetadata by remember(controller) { mutableStateOf(controller.metadata) }
@@ -492,6 +518,8 @@ private fun MediaSessionCard(
         ) {
         Column(modifier = Modifier.padding(20.dp)) {
             val context = LocalContext.current
+            val cannotOpenText = stringResource(R.string.media_control_cannot_open, controller.packageName)
+            val mediaControlErrorPrefix = stringResource(R.string.media_control_error_prefix, "")
             val appName = remember(controller.packageName) {
                 ParserRuleHelper.getAppNameForPackage(context, controller.packageName)
             }
@@ -499,8 +527,8 @@ private fun MediaSessionCard(
                 try {
                     val pm = context.packageManager
                     val drawable = pm.getApplicationIcon(controller.packageName)
-                    (drawable as? android.graphics.drawable.BitmapDrawable)?.bitmap ?: run {
-                        val bmp = Bitmap.createBitmap(drawable.intrinsicWidth, drawable.intrinsicHeight, Bitmap.Config.ARGB_8888)
+                    (drawable as? BitmapDrawable)?.bitmap ?: run {
+                        val bmp = createBitmap(drawable.intrinsicWidth, drawable.intrinsicHeight)
                         val canvas = Canvas(bmp)
                         drawable.setBounds(0, 0, canvas.width, canvas.height)
                         drawable.draw(canvas)
@@ -518,14 +546,14 @@ private fun MediaSessionCard(
                     } else {
                         Toast.makeText(
                             context,
-                            context.getString(R.string.media_control_cannot_open, controller.packageName),
+                            cannotOpenText,
                             Toast.LENGTH_SHORT
                         ).show()
                     }
                 } catch (e: Exception) {
                     Toast.makeText(
                         context,
-                        context.getString(R.string.media_control_error_prefix, e.message),
+                        mediaControlErrorPrefix + e.message.orEmpty(),
                         Toast.LENGTH_SHORT
                     ).show()
                 }
@@ -742,6 +770,7 @@ private fun LyricPanel(
     emptyText: String,
 ) {
     val context = LocalContext.current
+    val copiedText = stringResource(R.string.toast_copied)
 
     Surface(
         shape = RoundedCornerShape(18.dp),
@@ -753,7 +782,7 @@ private fun LyricPanel(
                 lyric?.let {
                     val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                     cm.setPrimaryClip(ClipData.newPlainText("Lyric", it))
-                    Toast.makeText(context, context.getString(R.string.toast_copied), Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, copiedText, Toast.LENGTH_SHORT).show()
                 }
             }
     ) {
@@ -846,7 +875,7 @@ private fun MediaProgressBar(
         val clamped = value.coerceIn(0f, 1f)
         val width = maxWidth
         val thumbSize = if (isDragging && enabled) 12.dp else 0.dp
-        androidx.compose.runtime.key(showWavyIndicator) {
+        key(showWavyIndicator) {
             AndroidView(
                 factory = { context ->
                     val themedContext = ContextThemeWrapper(
@@ -942,7 +971,7 @@ private fun calculatePlaybackPosition(
     if (state == null) return 0L
     var currentPos = state.position
     if (state.state == PlaybackState.STATE_PLAYING) {
-        val timeDelta = android.os.SystemClock.elapsedRealtime() - state.lastPositionUpdateTime
+        val timeDelta = SystemClock.elapsedRealtime() - state.lastPositionUpdateTime
         currentPos += (timeDelta * state.playbackSpeed).toLong()
     }
     if (duration > 0 && currentPos > duration) currentPos = duration

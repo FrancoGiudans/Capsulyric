@@ -89,11 +89,11 @@ object BackupCategories {
 
     val APPEARANCE = Category(
         id = "appearance",
-        keyPatterns = listOf("theme_*", "card_blur_enabled", "ui_use_miuix"),
+        keyPatterns = listOf("theme_*", "card_blur_enabled", "ui_use_miuix", "home_lyric_preview_display_modes"),
         subGroups = listOf(
             SubGroup("appearance_theme", listOf("theme_*")),
             SubGroup("appearance_blur", listOf("card_blur_enabled")),
-            SubGroup("appearance_ui_style", listOf("ui_use_miuix"))
+            SubGroup("appearance_ui_style", listOf("ui_use_miuix", "home_lyric_preview_display_modes"))
         )
     )
 

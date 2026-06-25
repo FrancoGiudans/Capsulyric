@@ -351,6 +351,9 @@
     <string name="settings_super_island_left_text_limit">Left-side lyric limit</string>
     <string name="settings_app_ui_style">App UI Style</string>
     <string name="settings_app_ui_style_desc">Switch between Material Design and Miuix UI. App will restart.</string>
+    <string name="settings_home_lyric_preview_title">Home lyric preview</string>
+    <string name="settings_home_lyric_preview_summary_fmt">Current: %1$s</string>
+    <string name="settings_home_lyric_preview_keep_one">Select at least one lyric preview type.</string>
     <string name="dialog_ui_style_title">Select App UI Style</string>
     <string name="ui_style_material">Material Design</string>
     <string name="ui_style_miuix">Miuix</string>
