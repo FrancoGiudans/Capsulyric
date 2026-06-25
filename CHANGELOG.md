@@ -12,9 +12,11 @@ Set to `true` to force a pre-release build regardless of commit message.
 -->
 
 ## Release Metadata
-- **Preview**: `true`
+- **Preview**: `false`
 
 ## 🇨🇳 更新日志
+<img width="850" height="327" alt="26.6.4" src="https://github.com/user-attachments/assets/dd4c7ce7-2678-4400-be33-a616cab43254" />
+
 **功能更新**
 - 新增预测式返回动画样式切换选项
 
@@ -26,6 +28,8 @@ Set to `true` to force a pre-release build regardless of commit message.
 - 移除无法实现的项目配置
 
 ## 🇬🇧 Change Log
+<img width="850" height="327" alt="26.6.4" src="https://github.com/user-attachments/assets/dd4c7ce7-2678-4400-be33-a616cab43254" />
+
 **Feature Updates**
 - Added predictive back animation style toggle
 
