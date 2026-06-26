@@ -1,6 +1,6 @@
 *.iml
 .gradle/
-.gradlew-user-home/
+.gradle-user-home/
 .idea/
 .vscode/
 .claude/
