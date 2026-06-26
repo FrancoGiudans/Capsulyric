@@ -27,9 +27,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.FormatListBulleted
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.automirrored.filled.FormatListBulleted as MaterialFormatListBulleted
+import androidx.compose.material.icons.filled.Home as MaterialHome
+import androidx.compose.material.icons.filled.Settings as MaterialSettings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -59,15 +59,28 @@ import top.yukonga.miuix.kmp.blur.BlendColorEntry
 import top.yukonga.miuix.kmp.blur.BlurColors
 import top.yukonga.miuix.kmp.blur.highlight.Highlight
 import top.yukonga.miuix.kmp.blur.textureBlur
+import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.extended.Notes
+import top.yukonga.miuix.kmp.icon.extended.NotesFill
+import top.yukonga.miuix.kmp.icon.extended.Playlist
+import top.yukonga.miuix.kmp.icon.extended.Settings
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 enum class TopLevelDestination(
     val labelRes: Int,
-    val icon: ImageVector,
+    val materialIcon: ImageVector,
 ) {
-    HOME(R.string.tab_home, Icons.Filled.Home),
-    PARSER_RULES(R.string.tab_rules, Icons.AutoMirrored.Filled.FormatListBulleted),
-    SETTINGS(R.string.tab_settings, Icons.Filled.Settings),
+    HOME(R.string.tab_home, Icons.Filled.MaterialHome),
+    PARSER_RULES(R.string.tab_rules, Icons.AutoMirrored.Filled.MaterialFormatListBulleted),
+    SETTINGS(R.string.tab_settings, Icons.Filled.MaterialSettings),
+}
+
+private fun TopLevelDestination.miuixIcon(selected: Boolean): ImageVector {
+    return when (this) {
+        TopLevelDestination.HOME -> if (selected) MiuixIcons.NotesFill else MiuixIcons.Notes
+        TopLevelDestination.PARSER_RULES -> if (selected) MiuixIcons.Demibold.Playlist else MiuixIcons.Playlist
+        TopLevelDestination.SETTINGS -> if (selected) MiuixIcons.Demibold.Settings else MiuixIcons.Settings
+    }
 }
 
 fun Context.createTopLevelIntent(destination: TopLevelDestination): Intent {
@@ -139,7 +152,7 @@ fun MaterialTopLevelNavigationBar(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
-                            imageVector = destination.icon,
+                            imageVector = destination.materialIcon,
                             contentDescription = label,
                             tint = itemTint
                         )
@@ -220,10 +233,11 @@ fun MiuixTopLevelFloatingNavigationBar(
             shadowElevation = 0.dp
         ) {
             TopLevelDestination.entries.forEach { destination ->
+                val selected = currentDestination == destination
                 FloatingNavigationBarItem(
-                    selected = currentDestination == destination,
+                    selected = selected,
                     onClick = { onNavigate(destination) },
-                    icon = destination.icon,
+                    icon = destination.miuixIcon(selected),
                     label = stringResource(destination.labelRes),
                     modifier = Modifier.width(itemWidth)
                 )

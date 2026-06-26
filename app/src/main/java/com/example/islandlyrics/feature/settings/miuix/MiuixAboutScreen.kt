@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Modifier
@@ -31,6 +30,7 @@ import com.example.islandlyrics.lyrics.state.LyricRepository
 import com.example.islandlyrics.feature.settings.CommunityDialogState
 import com.example.islandlyrics.feature.settings.ReleaseDialogState
 import com.example.islandlyrics.feature.update.miuix.MiuixUpdateDialog
+import com.example.islandlyrics.ui.miuix.navigation.MiuixBackIcon
 import top.yukonga.miuix.kmp.basic.*
 import top.yukonga.miuix.kmp.overlay.OverlayListPopup as SuperListPopup
 import top.yukonga.miuix.kmp.preference.ArrowPreference as SuperArrow
@@ -110,11 +110,7 @@ fun MiuixAboutScreen(
                         onClick = { onBack?.invoke() ?: (context as? android.app.Activity)?.finish() },
                         modifier = Modifier.padding(start = 12.dp)
                     ) {
-                        androidx.compose.material3.Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
-                            tint = MiuixTheme.colorScheme.onBackground
-                        )
+                        MiuixBackIcon(contentDescription = "Back")
                     }
                 }
             )

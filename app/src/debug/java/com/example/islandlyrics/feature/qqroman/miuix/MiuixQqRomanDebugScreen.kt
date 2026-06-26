@@ -11,8 +11,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -28,6 +26,7 @@ import com.example.islandlyrics.data.lyric.QqRomanFetcher
 import com.example.islandlyrics.feature.qqroman.QqRomanDebugViewModel
 import com.example.islandlyrics.ui.miuix.blur.MiuixBlurScaffold
 import com.example.islandlyrics.ui.miuix.blur.MiuixBlurTopAppBar
+import com.example.islandlyrics.ui.miuix.navigation.MiuixBackIcon
 import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.IconButton
@@ -63,11 +62,7 @@ fun MiuixQqRomanDebugScreen(
                 scrollBehavior = scrollBehavior,
                 navigationIcon = {
                     IconButton(onClick = onBack, modifier = Modifier.padding(start = 12.dp)) {
-                        androidx.compose.material3.Icon(
-                            Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "返回",
-                            tint = MiuixTheme.colorScheme.onBackground
-                        )
+                        MiuixBackIcon(contentDescription = "返回")
                     }
                 }
             )

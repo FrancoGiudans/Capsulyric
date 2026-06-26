@@ -10,8 +10,6 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -24,6 +22,7 @@ import androidx.compose.ui.unit.sp
 import com.example.islandlyrics.ui.miuix.blur.MiuixBlurScaffold
 import com.example.islandlyrics.ui.miuix.blur.MiuixBlurTopAppBar
 import com.example.islandlyrics.ui.miuix.effects.miuixPageScroll
+import com.example.islandlyrics.ui.miuix.navigation.MiuixBackIcon
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
@@ -92,11 +91,7 @@ fun MiuixFAQScreen(onBack: () -> Unit) {
                 scrollBehavior = scrollBehavior,
                 navigationIcon = {
                     IconButton(onClick = onBack, modifier = Modifier.padding(start = 12.dp)) {
-                        androidx.compose.material3.Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
-                            tint = MiuixTheme.colorScheme.onBackground
-                        )
+                        MiuixBackIcon(contentDescription = "Back")
                     }
                 }
             )

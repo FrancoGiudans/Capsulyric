@@ -4,7 +4,6 @@ import android.os.Build
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
@@ -29,6 +28,7 @@ import com.example.islandlyrics.ui.miuix.blur.MiuixBlurDialog
 import com.example.islandlyrics.ui.miuix.blur.MiuixBlurScaffold
 import com.example.islandlyrics.ui.miuix.blur.MiuixBlurTopAppBar
 import com.example.islandlyrics.ui.miuix.effects.miuixPageScroll
+import com.example.islandlyrics.ui.miuix.navigation.MiuixBackIcon
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -50,11 +50,7 @@ fun MiuixDiagnosticsScreen(
                 scrollBehavior = scrollBehavior,
                 navigationIcon = {
                     IconButton(onClick = onBack, modifier = Modifier.padding(start = 12.dp)) {
-                        androidx.compose.material3.Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = stringResource(R.string.online_lyric_debug_back),
-                            tint = MiuixTheme.colorScheme.onBackground
-                        )
+                        MiuixBackIcon(contentDescription = stringResource(R.string.online_lyric_debug_back))
                     }
                 }
             )

@@ -29,7 +29,6 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BugReport
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.*
@@ -58,6 +57,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import top.yukonga.miuix.kmp.basic.*
+import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.extended.Refresh
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.MiuixPopupUtils.Companion.MiuixPopupHost
 import com.example.islandlyrics.core.settings.AppPreferences
@@ -713,8 +714,8 @@ private fun MiuixMediaSessionCard(
                     onClick = onOpenOnlineLyricRematch,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    androidx.compose.material3.Icon(
-                        imageVector = Icons.Default.Refresh,
+                    Icon(
+                        imageVector = MiuixIcons.Refresh,
                         contentDescription = null,
                         modifier = Modifier.size(18.dp)
                     )

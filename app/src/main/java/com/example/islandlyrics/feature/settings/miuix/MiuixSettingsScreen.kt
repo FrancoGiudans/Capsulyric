@@ -30,7 +30,6 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
@@ -43,6 +42,7 @@ import com.example.islandlyrics.ui.miuix.blur.MiuixBlurDialog
 import com.example.islandlyrics.ui.miuix.blur.MiuixBlurScaffold
 import com.example.islandlyrics.ui.miuix.blur.MiuixBlurTopAppBar
 import com.example.islandlyrics.ui.miuix.effects.miuixPageScroll
+import com.example.islandlyrics.ui.miuix.navigation.MiuixBackIcon
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.edit
 import androidx.core.content.ContextCompat
@@ -266,11 +266,7 @@ fun MiuixSettingsScreen(
                 navigationIcon = if (showBackButton) {
                     {
                         IconButton(onClick = { (context as? Activity)?.finish() }, modifier = Modifier.padding(start = 12.dp)) {
-                            androidx.compose.material3.Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = "Back",
-                                tint = MiuixTheme.colorScheme.onBackground
-                            )
+                            MiuixBackIcon(contentDescription = "Back")
                         }
                     }
                 } else {

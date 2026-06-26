@@ -20,9 +20,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -50,14 +47,18 @@ import com.example.islandlyrics.ui.miuix.blur.MiuixBlurDialog
 import com.example.islandlyrics.ui.miuix.blur.MiuixBlurScaffold
 import com.example.islandlyrics.ui.miuix.blur.MiuixBlurTopAppBar
 import com.example.islandlyrics.ui.miuix.effects.miuixPageScroll
+import com.example.islandlyrics.ui.miuix.navigation.MiuixBackIcon
 import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.basic.Card
+import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.SmallTitle
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TextField
 import top.yukonga.miuix.kmp.basic.rememberTopAppBarState
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
+import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.extended.Refresh
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.MiuixPopupUtils.Companion.MiuixPopupHost
 
@@ -111,11 +112,7 @@ fun MiuixOnlineLyricDebugScreen(
                 scrollBehavior = scrollBehavior,
                 navigationIcon = {
                     IconButton(onClick = onBack, modifier = Modifier.padding(start = 12.dp)) {
-                        androidx.compose.material3.Icon(
-                            Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = stringResource(R.string.online_lyric_debug_back),
-                            tint = MiuixTheme.colorScheme.onBackground
-                        )
+                        MiuixBackIcon(contentDescription = stringResource(R.string.online_lyric_debug_back))
                     }
                 }
             )
@@ -157,8 +154,8 @@ fun MiuixOnlineLyricDebugScreen(
                             enabled = !isFetching,
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            androidx.compose.material3.Icon(
-                                Icons.Default.Refresh,
+                            Icon(
+                                imageVector = MiuixIcons.Refresh,
                                 contentDescription = null,
                                 modifier = Modifier.size(18.dp)
                             )
@@ -192,8 +189,8 @@ fun MiuixOnlineLyricDebugScreen(
                             enabled = !isFetching,
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            androidx.compose.material3.Icon(
-                                Icons.Default.Refresh,
+                            Icon(
+                                imageVector = MiuixIcons.Refresh,
                                 contentDescription = null,
                                 modifier = Modifier.size(18.dp)
                             )

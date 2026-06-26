@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.FolderSpecial
 import androidx.compose.material.icons.filled.SaveAlt
 import androidx.compose.runtime.*
@@ -25,6 +24,7 @@ import com.example.islandlyrics.ui.miuix.blur.MiuixBlurDialog
 import com.example.islandlyrics.ui.miuix.blur.MiuixBlurScaffold
 import com.example.islandlyrics.ui.miuix.blur.MiuixBlurTopAppBar
 import com.example.islandlyrics.ui.miuix.effects.miuixPageScroll
+import com.example.islandlyrics.ui.miuix.navigation.MiuixBackIcon
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -68,11 +68,7 @@ fun MiuixLocalLyricDirectoryScreen(
                 scrollBehavior = scrollBehavior,
                 navigationIcon = {
                     IconButton(onClick = onBack, modifier = Modifier.padding(start = 12.dp)) {
-                        androidx.compose.material3.Icon(
-                            Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
-                            tint = MiuixTheme.colorScheme.onBackground
-                        )
+                        MiuixBackIcon(contentDescription = "Back")
                     }
                 },
                 actions = {

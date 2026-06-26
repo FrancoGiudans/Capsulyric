@@ -13,13 +13,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.SaveAlt
-import androidx.compose.material.icons.filled.SelectAll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -51,6 +44,7 @@ import com.example.islandlyrics.ui.miuix.effects.miuixPageScroll
 import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.Checkbox
+import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.InputField
 import top.yukonga.miuix.kmp.basic.Snackbar as MiuixSnackbar
@@ -62,6 +56,13 @@ import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TextButton
 import top.yukonga.miuix.kmp.basic.rememberTopAppBarState
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
+import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.extended.Back
+import top.yukonga.miuix.kmp.icon.extended.Close
+import top.yukonga.miuix.kmp.icon.extended.Delete
+import top.yukonga.miuix.kmp.icon.extended.Download
+import top.yukonga.miuix.kmp.icon.extended.Refresh
+import top.yukonga.miuix.kmp.icon.extended.SelectAll
 import top.yukonga.miuix.kmp.preference.SwitchPreference as SuperSwitch
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.MiuixPopupUtils.Companion.MiuixPopupHost
@@ -132,28 +133,28 @@ fun MiuixCacheManagementScreen(
                 navigationIcon = {
                     if (isSelectionMode) {
                         IconButton(onClick = { viewModel.exitSelectionMode() }, modifier = Modifier.padding(start = 12.dp)) {
-                            androidx.compose.material3.Icon(Icons.Default.Close, contentDescription = stringResource(R.string.cache_management_deselect), tint = MiuixTheme.colorScheme.onBackground)
+                            Icon(MiuixIcons.Close, contentDescription = stringResource(R.string.cache_management_deselect), tint = MiuixTheme.colorScheme.onBackground)
                         }
                     } else {
                         IconButton(onClick = onBack, modifier = Modifier.padding(start = 12.dp)) {
-                            androidx.compose.material3.Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.cache_management_back), tint = MiuixTheme.colorScheme.onBackground)
+                            Icon(MiuixIcons.Back, contentDescription = stringResource(R.string.cache_management_back), tint = MiuixTheme.colorScheme.onBackground)
                         }
                     }
                 },
                 actions = {
                     if (isSelectionMode) {
                         IconButton(onClick = { viewModel.selectAll() }) {
-                            androidx.compose.material3.Icon(Icons.Default.SelectAll, contentDescription = stringResource(R.string.cache_management_select_all), tint = MiuixTheme.colorScheme.onBackground)
+                            Icon(MiuixIcons.SelectAll, contentDescription = stringResource(R.string.cache_management_select_all), tint = MiuixTheme.colorScheme.onBackground)
                         }
                         IconButton(onClick = { viewModel.exportSelected() }) {
-                            androidx.compose.material3.Icon(Icons.Default.SaveAlt, contentDescription = stringResource(R.string.cache_management_export_selected), tint = MiuixTheme.colorScheme.onBackground)
+                            Icon(MiuixIcons.Download, contentDescription = stringResource(R.string.cache_management_export_selected), tint = MiuixTheme.colorScheme.onBackground)
                         }
                         IconButton(onClick = { viewModel.deleteSelected() }) {
-                            androidx.compose.material3.Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.cache_management_delete_selected), tint = MiuixTheme.colorScheme.error)
+                            Icon(MiuixIcons.Delete, contentDescription = stringResource(R.string.cache_management_delete_selected), tint = MiuixTheme.colorScheme.error)
                         }
                     } else {
                         IconButton(onClick = { viewModel.refresh() }) {
-                            androidx.compose.material3.Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.cache_management_refresh), tint = MiuixTheme.colorScheme.onBackground)
+                            Icon(MiuixIcons.Refresh, contentDescription = stringResource(R.string.cache_management_refresh), tint = MiuixTheme.colorScheme.onBackground)
                         }
                     }
                 }

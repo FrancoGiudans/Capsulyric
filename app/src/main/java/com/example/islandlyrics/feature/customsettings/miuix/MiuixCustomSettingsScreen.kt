@@ -5,6 +5,7 @@ import com.example.islandlyrics.ui.miuix.effects.miuixPageScroll
 import com.example.islandlyrics.ui.miuix.blur.MiuixBlurTopAppBar
 import com.example.islandlyrics.ui.miuix.blur.MiuixBlurScaffold
 import com.example.islandlyrics.ui.miuix.blur.MiuixBlurDialog
+import com.example.islandlyrics.ui.miuix.navigation.MiuixBackIcon
 import android.app.Activity
 import com.example.islandlyrics.ui.preview.NotificationPreview
 import com.example.islandlyrics.ui.preview.CapsulePreview
@@ -33,7 +34,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -306,11 +306,7 @@ fun MiuixCustomSettingsScreen(
                             onClick = onBack,
                             modifier = Modifier.padding(start = 12.dp)
                         ) {
-                            androidx.compose.material3.Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = "Back",
-                                tint = MiuixTheme.colorScheme.onBackground
-                            )
+                            MiuixBackIcon(contentDescription = "Back")
                         }
                     },
                     bottomContent = {

@@ -23,11 +23,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -71,6 +69,7 @@ import com.example.islandlyrics.ui.miuix.effects.miuixPageScroll
 import top.yukonga.miuix.kmp.basic.BasicComponent
 import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.basic.Card
+import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.SmallTitle
 import top.yukonga.miuix.kmp.basic.Switch
@@ -78,6 +77,9 @@ import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TextField
 import top.yukonga.miuix.kmp.basic.rememberTopAppBarState
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
+import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.extended.Back
+import top.yukonga.miuix.kmp.icon.extended.Help
 import top.yukonga.miuix.kmp.preference.OverlayDropdownPreference as SuperDropdown
 import top.yukonga.miuix.kmp.preference.SwitchPreference as SuperSwitch
 import top.yukonga.miuix.kmp.theme.MiuixTheme
@@ -177,7 +179,7 @@ fun MiuixParserRuleEditorScreen(
                         },
                         modifier = Modifier.padding(start = 12.dp)
                     ) {
-                        androidx.compose.material3.Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回", tint = MiuixTheme.colorScheme.onBackground)
+                        Icon(MiuixIcons.Back, contentDescription = "返回", tint = MiuixTheme.colorScheme.onBackground)
                     }
                 },
                 actions = {
@@ -198,7 +200,7 @@ fun MiuixParserRuleEditorScreen(
                                 ?: context.startActivity(Intent(context, com.example.islandlyrics.feature.faq.FAQActivity::class.java))
                         }
                     ) {
-                        androidx.compose.material3.Icon(Icons.Default.Info, contentDescription = stringResource(R.string.faq_title), tint = MiuixTheme.colorScheme.onBackground)
+                        Icon(MiuixIcons.Help, contentDescription = stringResource(R.string.faq_title), tint = MiuixTheme.colorScheme.onBackground)
                     }
                     if (isTemplate || !isNewRule) {
                         IconButton(onClick = { showDeleteDialog = true }) {
@@ -445,7 +447,7 @@ fun MiuixParserRuleSourceConfigScreen(
                         onClick = onBack,
                         modifier = Modifier.padding(start = 12.dp)
                     ) {
-                        androidx.compose.material3.Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回", tint = MiuixTheme.colorScheme.onBackground)
+                        Icon(MiuixIcons.Back, contentDescription = "返回", tint = MiuixTheme.colorScheme.onBackground)
                     }
                 }
             )

@@ -6,8 +6,6 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.Text
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -23,6 +21,7 @@ import com.example.islandlyrics.core.platform.RomUtils
 import com.example.islandlyrics.core.settings.LabFeatureManager
 import com.example.islandlyrics.feature.customsettings.CustomSettingsActivity
 import com.example.islandlyrics.ui.miuix.navigation.MiuixBackHandler
+import com.example.islandlyrics.ui.miuix.navigation.MiuixBackIcon
 import com.example.islandlyrics.ui.miuix.blur.MiuixBlurDialog
 import com.example.islandlyrics.ui.miuix.blur.MiuixBlurScaffold
 import com.example.islandlyrics.ui.miuix.blur.MiuixBlurTopAppBar
@@ -76,11 +75,7 @@ fun MiuixLabScreen(onBack: () -> Unit) {
                 scrollBehavior = scrollBehavior,
                 navigationIcon = {
                     IconButton(onClick = onBack, modifier = Modifier.padding(start = 12.dp)) {
-                        androidx.compose.material3.Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = stringResource(R.string.online_lyric_debug_back),
-                            tint = MiuixTheme.colorScheme.onBackground
-                        )
+                        MiuixBackIcon(contentDescription = stringResource(R.string.online_lyric_debug_back))
                     }
                 }
             )

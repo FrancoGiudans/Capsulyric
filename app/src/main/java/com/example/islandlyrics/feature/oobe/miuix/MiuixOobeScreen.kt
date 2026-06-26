@@ -50,7 +50,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Settings
@@ -94,6 +93,7 @@ import com.example.islandlyrics.ui.miuix.blur.MiuixBlurDialog
 import com.example.islandlyrics.ui.miuix.blur.MiuixBlurScaffold
 import com.example.islandlyrics.ui.miuix.blur.MiuixBlurTopAppBar
 import com.example.islandlyrics.ui.miuix.effects.miuixPageScroll
+import com.example.islandlyrics.ui.miuix.navigation.MiuixBackIcon
 import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.basic.ButtonDefaults
 import top.yukonga.miuix.kmp.basic.Card
@@ -360,11 +360,7 @@ private fun LandingPage(
                     .align(Alignment.TopStart)
                     .padding(start = 12.dp, top = 12.dp)
             ) {
-                androidx.compose.material3.Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = null,
-                    tint = MiuixTheme.colorScheme.onBackground
-                )
+                MiuixBackIcon(contentDescription = null)
             }
         }
 
@@ -447,11 +443,7 @@ private fun StandardStepPage(
                             onClick = onBack,
                             modifier = Modifier.padding(start = 12.dp)
                         ) {
-                            androidx.compose.material3.Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = null,
-                                tint = MiuixTheme.colorScheme.onBackground
-                            )
+                            MiuixBackIcon(contentDescription = null)
                         }
                     }
                 }

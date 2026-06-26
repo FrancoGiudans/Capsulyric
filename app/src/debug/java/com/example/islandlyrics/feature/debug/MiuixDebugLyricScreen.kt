@@ -3,7 +3,6 @@ package com.example.islandlyrics.feature.debug
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Refresh
@@ -17,6 +16,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.islandlyrics.DebugLyricViewModel
 import com.example.islandlyrics.rules.ParserRuleHelper
 import com.example.islandlyrics.lyrics.online.provider.OnlineLyricProvider
+import com.example.islandlyrics.ui.miuix.navigation.MiuixBackIcon
 import top.yukonga.miuix.kmp.basic.*
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
@@ -57,11 +57,7 @@ fun MiuixDebugLyricScreen(
                 scrollBehavior = scrollBehavior,
                 navigationIcon = {
                     IconButton(onClick = onBack, modifier = Modifier.padding(start = 12.dp)) {
-                        androidx.compose.material3.Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "返回",
-                            tint = MiuixTheme.colorScheme.onBackground
-                        )
+                        MiuixBackIcon(contentDescription = "返回")
                     }
                 }
             )

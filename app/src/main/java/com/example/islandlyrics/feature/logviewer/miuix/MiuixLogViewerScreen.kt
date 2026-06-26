@@ -12,10 +12,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Share
-import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.FilterList
@@ -38,6 +34,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import top.yukonga.miuix.kmp.basic.*
+import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.extended.Back
+import top.yukonga.miuix.kmp.icon.extended.Delete
+import top.yukonga.miuix.kmp.icon.extended.Download
+import top.yukonga.miuix.kmp.icon.extended.Share
 import top.yukonga.miuix.kmp.preference.OverlayDropdownPreference as SuperDropdown
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.MiuixPopupUtils.Companion.MiuixPopupHost
@@ -115,7 +116,7 @@ fun MiuixLogViewerScreen(
                 navigationIcon = {
                     IconButton(onClick = onBack, modifier = Modifier.padding(start = 12.dp)) {
                         Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            imageVector = MiuixIcons.Back,
                             contentDescription = stringResource(R.string.log_viewer_back),
                             tint = MiuixTheme.colorScheme.onBackground
                         )
@@ -131,7 +132,7 @@ fun MiuixLogViewerScreen(
                         modifier = Modifier.padding(end = 4.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Filled.Share,
+                            imageVector = MiuixIcons.Share,
                             contentDescription = stringResource(R.string.log_viewer_export),
                             tint = MiuixTheme.colorScheme.onBackground
                         )
@@ -145,7 +146,7 @@ fun MiuixLogViewerScreen(
                         modifier = Modifier.padding(end = 4.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Filled.Download,
+                            imageVector = MiuixIcons.Download,
                             contentDescription = stringResource(R.string.log_viewer_save),
                             tint = MiuixTheme.colorScheme.onBackground
                         )
@@ -156,7 +157,7 @@ fun MiuixLogViewerScreen(
                         modifier = Modifier.padding(end = 12.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Filled.Delete,
+                            imageVector = MiuixIcons.Delete,
                             contentDescription = stringResource(R.string.log_viewer_clear),
                             tint = MiuixTheme.colorScheme.onBackground
                         )

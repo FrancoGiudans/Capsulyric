@@ -14,9 +14,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Info
 import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.lifecycle.Lifecycle
@@ -29,6 +27,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import top.yukonga.miuix.kmp.basic.*
+import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.extended.Back
+import top.yukonga.miuix.kmp.icon.extended.Help
 import top.yukonga.miuix.kmp.preference.ArrowPreference as SuperArrow
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.MiuixPopupUtils.Companion.MiuixPopupHost
@@ -171,7 +172,7 @@ fun MiuixParserRuleScreen(
                             {
                                 IconButton(onClick = onBack, modifier = Modifier.padding(start = 12.dp)) {
                                     Icon(
-                                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                        imageVector = MiuixIcons.Back,
                                         contentDescription = "Back",
                                         tint = MiuixTheme.colorScheme.onBackground
                                     )
@@ -186,7 +187,7 @@ fun MiuixParserRuleScreen(
                                     ?: context.startActivity(android.content.Intent(context, com.example.islandlyrics.feature.faq.FAQActivity::class.java))
                             }, modifier = Modifier.padding(end = 12.dp)) {
                                 Icon(
-                                    imageVector = Icons.Default.Info,
+                                    imageVector = MiuixIcons.Help,
                                     contentDescription = stringResource(R.string.faq_title),
                                     tint = MiuixTheme.colorScheme.onBackground
                                 )
