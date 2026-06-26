@@ -891,6 +891,10 @@
     <string name="cache_management_selected_count">已选中 %1$d 条</string>
     <string name="cache_management_export_selected">导出选中</string>
     <string name="cache_management_delete_selected">删除选中</string>
+    <string name="cache_management_delete_confirm_title">删除缓存条目？</string>
+    <string name="cache_management_delete_confirm_message">确定删除 %1$s 的歌词缓存吗？此操作无法撤销。</string>
+    <string name="cache_management_delete_selected_confirm_title">删除选中条目？</string>
+    <string name="cache_management_delete_selected_confirm_message">确定删除已选中的 %1$d 条歌词缓存吗？此操作无法撤销。</string>
     <string name="local_lyric_set_export_dir">设为导出目录</string>
     <string name="local_lyric_export_dir_set">已设为导出目录</string>
     <string name="local_lyric_export_dir_badge">导出目录</string>

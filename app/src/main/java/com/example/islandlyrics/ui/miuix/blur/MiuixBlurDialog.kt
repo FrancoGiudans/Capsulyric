@@ -28,11 +28,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalDensity
@@ -78,7 +79,18 @@ fun MiuixBlurDialog(
     val backdrop = LocalMiuixBlurBackdrop.current
     val blurEnabled = LocalMiuixBlurEnabled.current
     val shouldUseBlur = blurEnabled && backdrop != null
+    val colorScheme = MiuixTheme.colorScheme
     val panelColor = MiuixTheme.colorScheme.surface
+    val isLightPanel = panelColor.luminance() > 0.5f
+    val dialogContentColors = if (isLightPanel) {
+        val secondaryVariant = lerp(panelColor, Color.Black, 0.08f)
+        colorScheme.copy(
+            secondaryVariant = secondaryVariant,
+            disabledSecondaryVariant = secondaryVariant.copy(alpha = 0.72f)
+        )
+    } else {
+        colorScheme
+    }
     val currentOnDismissRequest by rememberUpdatedState(onDismissRequest)
     val windowInfo = LocalWindowInfo.current
     val isLargeScreen = remember(windowInfo.containerDpSize) {
@@ -90,7 +102,7 @@ fun MiuixBlurDialog(
     val topInset = remember(statusBarPadding, captionBarPadding, displayCutoutPadding) {
         maxOf(statusBarPadding, captionBarPadding, displayCutoutPadding)
     }
-    val borderColor = if (panelColor.luminance() > 0.5f) {
+    val borderColor = if (isLightPanel) {
         Color.White
     } else {
         MiuixTheme.colorScheme.onSurface
@@ -189,7 +201,11 @@ fun MiuixBlurDialog(
                     .pointerInput(Unit) {
                         detectTapGestures { }
                     }
-                    .clip(BlurDialogShape)
+                    .graphicsLayer {
+                        shape = BlurDialogShape
+                        clip = true
+                        compositingStrategy = CompositingStrategy.Offscreen
+                    }
                     .miuixSurfaceBlur(
                         enabled = shouldUseBlur,
                         backdrop = backdrop,
@@ -206,28 +222,30 @@ fun MiuixBlurDialog(
                     )
 
                 Box(modifier = panelModifier) {
-                    Column {
-                        if (!title.isNullOrBlank()) {
-                            Text(
-                                text = title,
-                                color = MiuixTheme.colorScheme.onSurface,
-                                fontSize = MiuixTheme.textStyles.title3.fontSize
-                            )
-                        }
-                        if (!summary.isNullOrBlank()) {
+                    MiuixTheme(colors = dialogContentColors) {
+                        Column {
                             if (!title.isNullOrBlank()) {
-                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    text = title,
+                                    color = MiuixTheme.colorScheme.onSurface,
+                                    fontSize = MiuixTheme.textStyles.title3.fontSize
+                                )
                             }
-                            Text(
-                                text = summary,
-                                color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-                                fontSize = MiuixTheme.textStyles.body2.fontSize
-                            )
+                            if (!summary.isNullOrBlank()) {
+                                if (!title.isNullOrBlank()) {
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                }
+                                Text(
+                                    text = summary,
+                                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                                    fontSize = MiuixTheme.textStyles.body2.fontSize
+                                )
+                            }
+                            if (!title.isNullOrBlank() || !summary.isNullOrBlank()) {
+                                Spacer(modifier = Modifier.height(20.dp))
+                            }
+                            content()
                         }
-                        if (!title.isNullOrBlank() || !summary.isNullOrBlank()) {
-                            Spacer(modifier = Modifier.height(20.dp))
-                        }
-                        content()
                     }
                 }
             }

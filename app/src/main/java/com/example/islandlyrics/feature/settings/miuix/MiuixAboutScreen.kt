@@ -344,12 +344,11 @@ fun MiuixAboutScreen(
         if (releaseLookupMessage != null) {
             MiuixBlurDialog(
                 title = stringResource(R.string.update_current_version_changelog_unavailable_title),
+                summary = releaseLookupMessage,
                 show = true,
                 onDismissRequest = onReleaseLookupMessageDismiss
             ) {
                 Column(modifier = Modifier.fillMaxWidth()) {
-                    Text(text = releaseLookupMessage)
-                    Spacer(modifier = Modifier.height(24.dp))
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()

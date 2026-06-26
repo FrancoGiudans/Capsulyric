@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
@@ -38,10 +39,12 @@ import com.example.islandlyrics.lyrics.cache.OnlineLyricCacheStore
 import com.example.islandlyrics.feature.cache.CacheManagementViewModel
 import com.example.islandlyrics.feature.cache.filterByCacheQuery
 import com.example.islandlyrics.ui.miuix.navigation.MiuixBackHandler
+import com.example.islandlyrics.ui.miuix.blur.MiuixBlurDialog
 import com.example.islandlyrics.ui.miuix.blur.MiuixBlurScaffold
 import com.example.islandlyrics.ui.miuix.blur.MiuixBlurTopAppBar
 import com.example.islandlyrics.ui.miuix.effects.miuixPageScroll
 import top.yukonga.miuix.kmp.basic.Button
+import top.yukonga.miuix.kmp.basic.ButtonDefaults
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.Checkbox
 import top.yukonga.miuix.kmp.basic.Icon
@@ -90,8 +93,13 @@ fun MiuixCacheManagementScreen(
     val snackbarHostState = remember { MiuixSnackbarHostState() }
     var searchQuery by remember { mutableStateOf("") }
     var searchExpanded by remember { mutableStateOf(false) }
+    var pendingDeleteEntryId by remember { mutableStateOf<String?>(null) }
+    var showDeleteSelectedDialog by remember { mutableStateOf(false) }
     val filteredLyricEntries = remember(lyricEntries, searchQuery) {
         lyricEntries.filterByCacheQuery(searchQuery)
+    }
+    val pendingDeleteEntry = remember(lyricEntries, pendingDeleteEntryId) {
+        lyricEntries.firstOrNull { it.id == pendingDeleteEntryId }
     }
     val lifecycleOwner = LocalLifecycleOwner.current
 
@@ -149,7 +157,10 @@ fun MiuixCacheManagementScreen(
                         IconButton(onClick = { viewModel.exportSelected() }) {
                             Icon(MiuixIcons.Download, contentDescription = stringResource(R.string.cache_management_export_selected), tint = MiuixTheme.colorScheme.onBackground)
                         }
-                        IconButton(onClick = { viewModel.deleteSelected() }) {
+                        IconButton(
+                            onClick = { if (selectedIds.isNotEmpty()) showDeleteSelectedDialog = true },
+                            enabled = selectedIds.isNotEmpty() && !busy
+                        ) {
                             Icon(MiuixIcons.Delete, contentDescription = stringResource(R.string.cache_management_delete_selected), tint = MiuixTheme.colorScheme.error)
                         }
                     } else {
@@ -251,6 +262,7 @@ fun MiuixCacheManagementScreen(
                     onExpandedChange = { searchExpanded = it }
                 ) {}
             }
+            item { Spacer(modifier = Modifier.height(8.dp)) }
             if (lyricEntries.isEmpty()) {
                 item {
                     Text(
@@ -300,14 +312,14 @@ fun MiuixCacheManagementScreen(
                                     Text(entry.packageName, color = MiuixTheme.colorScheme.onSurfaceSecondary)
                                 }
                                 if (!isSelectionMode) {
-                                    Row {
+                                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                                         TextButton(
                                             text = stringResource(R.string.cache_management_export),
                                             onClick = { viewModel.exportEntry(entry.id) }
                                         )
                                         TextButton(
                                             text = stringResource(R.string.cache_management_delete),
-                                            onClick = { viewModel.deleteLyricEntry(entry.id) }
+                                            onClick = { pendingDeleteEntryId = entry.id }
                                         )
                                     }
                                 }
@@ -326,7 +338,92 @@ fun MiuixCacheManagementScreen(
                 }
             }
         }
+
+        pendingDeleteEntryId?.let { entryId ->
+            MiuixBlurDialog(
+                title = stringResource(R.string.cache_management_delete_confirm_title),
+                summary = stringResource(
+                    R.string.cache_management_delete_confirm_message,
+                    pendingDeleteEntry?.displayName() ?: stringResource(R.string.cache_management_unknown)
+                ),
+                show = true,
+                renderInRootScaffold = false,
+                onDismissRequest = { pendingDeleteEntryId = null }
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    TextButton(
+                        text = stringResource(android.R.string.cancel),
+                        onClick = { pendingDeleteEntryId = null },
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.textButtonColors(
+                            textColor = MiuixTheme.colorScheme.onSurfaceVariantActions
+                        )
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    TextButton(
+                        text = stringResource(R.string.cache_management_delete),
+                        onClick = {
+                            pendingDeleteEntryId = null
+                            viewModel.deleteLyricEntry(entryId)
+                        },
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.textButtonColors(
+                            textColor = MiuixTheme.colorScheme.error
+                        )
+                    )
+                }
+            }
+        }
+
+        if (showDeleteSelectedDialog) {
+            MiuixBlurDialog(
+                title = stringResource(R.string.cache_management_delete_selected_confirm_title),
+                summary = stringResource(
+                    R.string.cache_management_delete_selected_confirm_message,
+                    selectedIds.size
+                ),
+                show = true,
+                renderInRootScaffold = false,
+                onDismissRequest = { showDeleteSelectedDialog = false }
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    TextButton(
+                        text = stringResource(android.R.string.cancel),
+                        onClick = { showDeleteSelectedDialog = false },
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.textButtonColors(
+                            textColor = MiuixTheme.colorScheme.onSurfaceVariantActions
+                        )
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    TextButton(
+                        text = stringResource(R.string.cache_management_delete),
+                        onClick = {
+                            showDeleteSelectedDialog = false
+                            viewModel.deleteSelected()
+                        },
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.textButtonColors(
+                            textColor = MiuixTheme.colorScheme.error
+                        )
+                    )
+                }
+            }
+        }
     }
+}
+
+private fun OnlineLyricCacheStore.LyricCacheEntrySummary.displayName(): String {
+    return listOf(title, artist)
+        .filter { it.isNotBlank() }
+        .joinToString(" - ")
+        .ifBlank { packageName.ifBlank { id } }
 }
 
 @Composable

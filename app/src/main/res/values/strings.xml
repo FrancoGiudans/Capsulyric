@@ -900,6 +900,10 @@ Within the log interface, select the share/export icon. You can specify a timefr
     <string name="cache_management_selected_count">%1$d selected</string>
     <string name="cache_management_export_selected">Export Selected</string>
     <string name="cache_management_delete_selected">Delete Selected</string>
+    <string name="cache_management_delete_confirm_title">Delete Cache Entry?</string>
+    <string name="cache_management_delete_confirm_message">Delete cached lyrics for %1$s? This cannot be undone.</string>
+    <string name="cache_management_delete_selected_confirm_title">Delete Selected Entries?</string>
+    <string name="cache_management_delete_selected_confirm_message">Delete %1$d selected lyric cache entries? This cannot be undone.</string>
     <string name="local_lyric_set_export_dir">Set as export directory</string>
     <string name="local_lyric_export_dir_set">Export directory set</string>
     <string name="local_lyric_export_dir_badge">Export directory</string>

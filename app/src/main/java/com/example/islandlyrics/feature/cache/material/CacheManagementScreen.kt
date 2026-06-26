@@ -27,6 +27,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -34,6 +35,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -90,8 +92,13 @@ fun CacheManagementScreen(
     var exportMatchInfoEnabled by remember { mutableStateOf(dirManager.isExportMatchSyncEnabled()) }
     val snackbarHostState = remember { SnackbarHostState() }
     var searchQuery by remember { mutableStateOf("") }
+    var pendingDeleteEntryId by remember { mutableStateOf<String?>(null) }
+    var showDeleteSelectedDialog by remember { mutableStateOf(false) }
     val filteredLyricEntries = remember(lyricEntries, searchQuery) {
         lyricEntries.filterByCacheQuery(searchQuery)
+    }
+    val pendingDeleteEntry = remember(lyricEntries, pendingDeleteEntryId) {
+        lyricEntries.firstOrNull { it.id == pendingDeleteEntryId }
     }
     val navEventState = rememberNavigationEventState(NavigationEventInfo.None)
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -151,7 +158,10 @@ fun CacheManagementScreen(
                         IconButton(onClick = { viewModel.exportSelected() }) {
                             Icon(Icons.Default.SaveAlt, contentDescription = stringResource(R.string.cache_management_export_selected))
                         }
-                        IconButton(onClick = { viewModel.deleteSelected() }) {
+                        IconButton(
+                            onClick = { if (selectedIds.isNotEmpty()) showDeleteSelectedDialog = true },
+                            enabled = selectedIds.isNotEmpty() && !busy
+                        ) {
                             Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.cache_management_delete_selected), tint = MaterialTheme.colorScheme.error)
                         }
                     } else {
@@ -257,6 +267,7 @@ fun CacheManagementScreen(
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true
                     )
+                    Spacer(modifier = Modifier.height(8.dp))
                 }
             }
 
@@ -307,11 +318,11 @@ fun CacheManagementScreen(
                                     Text(entry.packageName, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 }
                                 if (!isSelectionMode) {
-                                    Row {
+                                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                         IconButton(onClick = { viewModel.exportEntry(entry.id) }, enabled = !busy) {
                                             Icon(Icons.Default.SaveAlt, contentDescription = stringResource(R.string.cache_management_export))
                                         }
-                                        IconButton(onClick = { viewModel.deleteLyricEntry(entry.id) }, enabled = !busy) {
+                                        IconButton(onClick = { pendingDeleteEntryId = entry.id }, enabled = !busy) {
                                             Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.cache_management_delete))
                                         }
                                     }
@@ -332,6 +343,73 @@ fun CacheManagementScreen(
             }
         }
     }
+
+    pendingDeleteEntryId?.let { entryId ->
+        AlertDialog(
+            onDismissRequest = { pendingDeleteEntryId = null },
+            title = { Text(stringResource(R.string.cache_management_delete_confirm_title)) },
+            text = {
+                Text(
+                    stringResource(
+                        R.string.cache_management_delete_confirm_message,
+                        pendingDeleteEntry?.displayName() ?: stringResource(R.string.cache_management_unknown)
+                    )
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        pendingDeleteEntryId = null
+                        viewModel.deleteLyricEntry(entryId)
+                    }
+                ) {
+                    Text(stringResource(R.string.cache_management_delete), color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingDeleteEntryId = null }) {
+                    Text(stringResource(android.R.string.cancel))
+                }
+            }
+        )
+    }
+
+    if (showDeleteSelectedDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteSelectedDialog = false },
+            title = { Text(stringResource(R.string.cache_management_delete_selected_confirm_title)) },
+            text = {
+                Text(
+                    stringResource(
+                        R.string.cache_management_delete_selected_confirm_message,
+                        selectedIds.size
+                    )
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showDeleteSelectedDialog = false
+                        viewModel.deleteSelected()
+                    }
+                ) {
+                    Text(stringResource(R.string.cache_management_delete), color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteSelectedDialog = false }) {
+                    Text(stringResource(android.R.string.cancel))
+                }
+            }
+        )
+    }
+}
+
+private fun OnlineLyricCacheStore.LyricCacheEntrySummary.displayName(): String {
+    return listOf(title, artist)
+        .filter { it.isNotBlank() }
+        .joinToString(" - ")
+        .ifBlank { packageName.ifBlank { id } }
 }
 
 @Composable
