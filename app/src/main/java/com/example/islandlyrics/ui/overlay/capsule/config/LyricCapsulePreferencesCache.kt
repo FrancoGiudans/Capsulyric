@@ -3,6 +3,7 @@ package com.example.islandlyrics.ui.overlay.capsule.config
 import android.content.Context
 import android.content.SharedPreferences
 import com.example.islandlyrics.core.settings.AppPreferences
+import com.example.islandlyrics.core.settings.LabFeatureManager
 import com.example.islandlyrics.ui.overlay.config.OneUiCapsuleColorMode
 
 internal class LyricCapsulePreferencesCache(
@@ -21,6 +22,10 @@ internal class LyricCapsulePreferencesCache(
     var clickStyle = "default"
         private set
     var oneUiCapsuleColorMode = OneUiCapsuleColorMode.BLACK
+        private set
+    var liveUpdateTextLimitsEnabled = false
+        private set
+    var liveUpdateTextWeight = LiveUpdateTextLimitConfig.defaultWeight()
         private set
 
     private val prefs by lazy { AppPreferences.of(context) }
@@ -46,6 +51,13 @@ internal class LyricCapsulePreferencesCache(
             OneUiCapsuleColorMode.PREF_KEY -> {
                 oneUiCapsuleColorMode = OneUiCapsuleColorMode.read(p)
             }
+            LabFeatureManager.KEY_LIVE_UPDATE_TEXT_LIMITS_ENABLED,
+            LiveUpdateTextLimitConfig.KEY_CHARS -> {
+                liveUpdateTextLimitsEnabled = LabFeatureManager.isLiveUpdateTextLimitsEnabled(p)
+                liveUpdateTextWeight = LiveUpdateTextLimitConfig.weightForChars(
+                    LiveUpdateTextLimitConfig.chars(p)
+                )
+            }
         }
     }
 
@@ -65,5 +77,9 @@ internal class LyricCapsulePreferencesCache(
         useDynamicIcon = iconStyle != "disabled"
         clickStyle = AppPreferences.notificationClickStyle(prefs)
         oneUiCapsuleColorMode = OneUiCapsuleColorMode.read(prefs)
+        liveUpdateTextLimitsEnabled = LabFeatureManager.isLiveUpdateTextLimitsEnabled(prefs)
+        liveUpdateTextWeight = LiveUpdateTextLimitConfig.weightForChars(
+            LiveUpdateTextLimitConfig.chars(prefs)
+        )
     }
 }

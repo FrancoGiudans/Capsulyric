@@ -7,11 +7,13 @@ import androidx.core.app.NotificationCompat
 import com.example.islandlyrics.R
 import com.example.islandlyrics.core.logging.LogManager
 import com.example.islandlyrics.core.platform.RomUtils
+import com.example.islandlyrics.ui.overlay.capsule.config.LiveUpdateTextLimitConfig
 import com.example.islandlyrics.ui.overlay.capsule.config.LyricCapsulePreferencesCache
 import com.example.islandlyrics.ui.overlay.capsule.intent.LyricCapsuleIntentFactory
 import com.example.islandlyrics.ui.overlay.capsule.intent.LyricCapsuleIntents
 import com.example.islandlyrics.ui.overlay.config.OneUiCapsuleColorMode
 import com.example.islandlyrics.ui.overlay.config.OverlayRenderDefaults
+import com.example.islandlyrics.ui.overlay.superisland.config.SuperIslandLyricLayout
 
 internal class LyricCapsuleNotificationBuilder(
     private val context: Context,
@@ -120,7 +122,15 @@ internal class LyricCapsuleNotificationBuilder(
                     builder.setStyle(progressStyle)
                 }
 
-                builder.setShortCriticalText(shortText)
+                val shortCriticalText = SuperIslandLyricLayout.takeByWeight(
+                    text = shortText,
+                    maxWeight = if (preferences.liveUpdateTextLimitsEnabled) {
+                        preferences.liveUpdateTextWeight
+                    } else {
+                        LiveUpdateTextLimitConfig.defaultWeight()
+                    }
+                ).ifEmpty { shortText }
+                builder.setShortCriticalText(shortCriticalText)
             }
         } catch (e: Exception) {
             LogManager.getInstance().e(context, TAG, "ProgressStyle failed: $e")

@@ -20,6 +20,8 @@ data class CustomSettingsUiState(
     val superIslandAdvancedStyleLabEnabled: Boolean = false,
     val superIslandTextLimitsLabEnabled: Boolean = false,
     val superIslandRelaxedTextLimitsLabEnabled: Boolean = false,
+    val liveUpdateTextLimitsLabEnabled: Boolean = false,
+    val liveUpdateTextChars: Float = 5f,
     val notificationClickStyle: String = "default",
     val dismissDelayMs: Long = 0L,
     val progressColorEnabled: Boolean = false,
@@ -68,6 +70,7 @@ sealed interface CustomSettingsAction {
     data class SetSuperIslandLyricMode(val value: String) : CustomSettingsAction
     data class SetSuperIslandFullLyricShowLeftCover(val value: Boolean) : CustomSettingsAction
     data class SetSuperIslandTextLimit(val key: String, val value: Float) : CustomSettingsAction
+    data class SetLiveUpdateTextLimit(val value: Float) : CustomSettingsAction
     data class SetSuperIslandTextColorEnabled(val value: Boolean) : CustomSettingsAction
     data class SetSuperIslandColorSource(val value: String) : CustomSettingsAction
     data class SetSuperIslandCustomColor(val value: Int) : CustomSettingsAction

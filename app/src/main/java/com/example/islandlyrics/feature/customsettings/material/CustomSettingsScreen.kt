@@ -6,6 +6,7 @@ import com.example.islandlyrics.ui.preview.CapsulePreview
 import com.example.islandlyrics.ui.overlay.config.CapsuleRenderMode
 import com.example.islandlyrics.ui.overlay.config.LyricTextDisplayMode
 import com.example.islandlyrics.ui.overlay.config.OneUiCapsuleColorMode
+import com.example.islandlyrics.ui.overlay.capsule.config.LiveUpdateTextLimitConfig
 import com.example.islandlyrics.ui.navigation.PredictiveBackAnimationMode
 import com.example.islandlyrics.ui.navigation.PredictiveBackAnimationStyle
 import com.example.islandlyrics.ui.overlay.superisland.config.SuperIslandColorSource
@@ -127,6 +128,9 @@ fun CustomSettingsScreen(
     var superIslandRelaxedTextLimitsLabEnabled by remember(uiState.superIslandRelaxedTextLimitsLabEnabled) {
         mutableStateOf(uiState.superIslandRelaxedTextLimitsLabEnabled)
     }
+    var liveUpdateTextLimitsLabEnabled by remember(uiState.liveUpdateTextLimitsLabEnabled) {
+        mutableStateOf(uiState.liveUpdateTextLimitsLabEnabled)
+    }
     var showActionStyleDropdown by remember { mutableStateOf(false) }
     var showSuperIslandMediaButtonLayoutDropdown by remember { mutableStateOf(false) }
     var showSuperIslandNotificationStyleDropdown by remember { mutableStateOf(false) }
@@ -174,6 +178,9 @@ fun CustomSettingsScreen(
     }
     var superIslandLeftNoCoverTextChars by remember {
         mutableFloatStateOf(SuperIslandTextLimitConfig.leftChars(prefs, showLeftCover = false, superIslandRelaxedTextLimitsLabEnabled))
+    }
+    var liveUpdateTextChars by remember(uiState.liveUpdateTextChars) {
+        mutableFloatStateOf(uiState.liveUpdateTextChars)
     }
 
     var superIslandShareEnabled by remember(uiState.superIslandShareEnabled) {
@@ -280,6 +287,8 @@ fun CustomSettingsScreen(
         superIslandAdvancedStyleLabEnabled = LabFeatureManager.isSuperIslandAdvancedStyleEnabled(prefs)
         superIslandTextLimitsLabEnabled = LabFeatureManager.isSuperIslandTextLimitsEnabled(prefs)
         superIslandRelaxedTextLimitsLabEnabled = LabFeatureManager.isSuperIslandRelaxedTextLimitsEnabled(prefs)
+        liveUpdateTextLimitsLabEnabled = LabFeatureManager.isLiveUpdateTextLimitsEnabled(prefs)
+        liveUpdateTextChars = LiveUpdateTextLimitConfig.chars(prefs)
         superIslandNotificationStyle = LabFeatureManager.sanitizeSuperIslandNotificationStyle(context)
     }
     LaunchedEffect(forceDisableScrollingForSuperIslandLyricMode) {
@@ -569,6 +578,26 @@ fun CustomSettingsScreen(
                                             }
                                         }
                                     }
+                                }
+
+                                if (isLiveUpdateSupported &&
+                                    effectiveCapsuleRenderMode == CapsuleRenderMode.LIVE_UPDATE &&
+                                    liveUpdateTextLimitsLabEnabled
+                                ) {
+                                    SettingsCardDivider()
+                                    MaterialSuperIslandTextLimitSlider(
+                                        title = stringResource(R.string.settings_live_update_text_limit),
+                                        value = liveUpdateTextChars.coerceIn(
+                                            LiveUpdateTextLimitConfig.MIN_CHARS..
+                                                LiveUpdateTextLimitConfig.MAX_CHARS
+                                        ),
+                                        valueRange = LiveUpdateTextLimitConfig.MIN_CHARS..
+                                            LiveUpdateTextLimitConfig.MAX_CHARS,
+                                        onValueChange = { value ->
+                                            liveUpdateTextChars = value
+                                            viewModel.dispatch(CustomSettingsAction.SetLiveUpdateTextLimit(value))
+                                        }
+                                    )
                                 }
 
                                 if (islandStyleCapsuleEnabled) {

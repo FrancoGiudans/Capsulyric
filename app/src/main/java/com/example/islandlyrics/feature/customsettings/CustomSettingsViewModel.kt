@@ -12,6 +12,7 @@ import com.example.islandlyrics.feature.main.HomeLyricPreviewDisplay
 import com.example.islandlyrics.ui.overlay.config.CapsuleRenderMode
 import com.example.islandlyrics.ui.overlay.config.LyricTextDisplayMode
 import com.example.islandlyrics.ui.overlay.config.OneUiCapsuleColorMode
+import com.example.islandlyrics.ui.overlay.capsule.config.LiveUpdateTextLimitConfig
 import com.example.islandlyrics.ui.navigation.PREF_PREDICTIVE_BACK_ENABLED
 import com.example.islandlyrics.ui.navigation.PredictiveBackAnimationMode
 import com.example.islandlyrics.ui.navigation.PredictiveBackAnimationStyle
@@ -78,6 +79,8 @@ class CustomSettingsViewModel(application: Application) : AndroidViewModel(appli
                 prefs.edit { putBoolean(AppPreferences.Keys.SUPER_ISLAND_FULL_LYRIC_SHOW_LEFT_COVER, action.value) }
             is CustomSettingsAction.SetSuperIslandTextLimit ->
                 prefs.edit { putFloat(action.key, action.value) }
+            is CustomSettingsAction.SetLiveUpdateTextLimit ->
+                prefs.edit { putFloat(LiveUpdateTextLimitConfig.KEY_CHARS, action.value) }
             is CustomSettingsAction.SetSuperIslandTextColorEnabled ->
                 prefs.edit { putBoolean(AppPreferences.Keys.SUPER_ISLAND_TEXT_COLOR_ENABLED, action.value) }
             is CustomSettingsAction.SetSuperIslandColorSource ->
@@ -145,6 +148,8 @@ class CustomSettingsViewModel(application: Application) : AndroidViewModel(appli
             superIslandAdvancedStyleLabEnabled = LabFeatureManager.isSuperIslandAdvancedStyleEnabled(prefs),
             superIslandTextLimitsLabEnabled = LabFeatureManager.isSuperIslandTextLimitsEnabled(prefs),
             superIslandRelaxedTextLimitsLabEnabled = LabFeatureManager.isSuperIslandRelaxedTextLimitsEnabled(prefs),
+            liveUpdateTextLimitsLabEnabled = LabFeatureManager.isLiveUpdateTextLimitsEnabled(prefs),
+            liveUpdateTextChars = LiveUpdateTextLimitConfig.chars(prefs),
             notificationClickStyle = AppPreferences.notificationClickStyle(prefs),
             dismissDelayMs = prefs.getLong("notification_dismiss_delay", 0L),
             progressColorEnabled = AppPreferences.isProgressBarColorEnabled(prefs),

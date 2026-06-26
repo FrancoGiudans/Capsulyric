@@ -2,6 +2,7 @@ package com.example.islandlyrics.ui.overlay.display
 import com.example.islandlyrics.ui.overlay.superisland.config.SuperIslandTextLimitConfig
 import com.example.islandlyrics.ui.overlay.config.LyricTextDisplayMode
 import com.example.islandlyrics.ui.overlay.config.CapsuleRenderMode
+import com.example.islandlyrics.ui.overlay.capsule.config.LiveUpdateTextLimitConfig
 import com.example.islandlyrics.ui.overlay.capsule.LyricCapsuleHandler
 import com.example.islandlyrics.ui.overlay.config.OverlayRenderDefaults
 import com.example.islandlyrics.ui.overlay.model.UIState
@@ -12,6 +13,7 @@ import com.example.islandlyrics.lyrics.online.OnlineLyricFetcher
 import com.example.islandlyrics.lyrics.state.LyricRepository
 import com.example.islandlyrics.core.logging.LogManager
 import com.example.islandlyrics.core.settings.AppPreferences
+import com.example.islandlyrics.core.settings.LabFeatureManager
 import android.graphics.Bitmap
 import android.os.Handler
 import android.os.Looper
@@ -96,7 +98,9 @@ class LyricDisplayManager(private val context: Context) {
             AppPreferences.Keys.SUPER_ISLAND_ENABLED_LEGACY,
             AppPreferences.Keys.SUPER_ISLAND_LYRIC_MODE,
             SuperIslandTextLimitConfig.KEY_RIGHT_CHARS,
-            OverlayDisplayConfig.KEY_SUPER_ISLAND_RELAXED_TEXT_LIMITS -> {
+            OverlayDisplayConfig.KEY_SUPER_ISLAND_RELAXED_TEXT_LIMITS,
+            LabFeatureManager.KEY_LIVE_UPDATE_TEXT_LIMITS_ENABLED,
+            LiveUpdateTextLimitConfig.KEY_CHARS -> {
                 displayConfig = OverlayDisplayConfig.from(prefs)
                 forceUpdate()
             }

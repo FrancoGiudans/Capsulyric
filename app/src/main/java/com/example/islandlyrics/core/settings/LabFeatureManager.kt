@@ -9,6 +9,7 @@ object LabFeatureManager {
     private const val KEY_SUPER_ISLAND_ADVANCED_STYLE_MIGRATED = "lab_super_island_advanced_style_migrated"
     private const val KEY_SUPER_ISLAND_TEXT_LIMITS_ENABLED = "lab_super_island_text_limits_enabled"
     private const val KEY_SUPER_ISLAND_RELAXED_TEXT_LIMITS_ENABLED = "lab_super_island_relaxed_text_limits_enabled"
+    const val KEY_LIVE_UPDATE_TEXT_LIMITS_ENABLED = "lab_live_update_text_limits_enabled"
     private const val KEY_FLOATING_LYRICS_ENABLED = "lab_floating_lyrics_enabled"
     private const val KEY_FLOATING_LYRICS_MIGRATED = "lab_floating_lyrics_migrated"
     private const val KEY_EXPERIMENT_UPDATES_ENABLED = "lab_experiment_updates_enabled"
@@ -144,6 +145,25 @@ object LabFeatureManager {
         ensureInitialized(prefs)
         prefs.edit()
             .putBoolean(KEY_SUPER_ISLAND_RELAXED_TEXT_LIMITS_ENABLED, enabled)
+            .apply()
+    }
+
+    fun isLiveUpdateTextLimitsEnabled(context: Context): Boolean {
+        val prefs = context.prefs()
+        ensureInitialized(prefs)
+        return prefs.getBoolean(KEY_LIVE_UPDATE_TEXT_LIMITS_ENABLED, false)
+    }
+
+    fun isLiveUpdateTextLimitsEnabled(prefs: SharedPreferences): Boolean {
+        ensureInitialized(prefs)
+        return prefs.getBoolean(KEY_LIVE_UPDATE_TEXT_LIMITS_ENABLED, false)
+    }
+
+    fun setLiveUpdateTextLimitsEnabled(context: Context, enabled: Boolean) {
+        val prefs = context.prefs()
+        ensureInitialized(prefs)
+        prefs.edit()
+            .putBoolean(KEY_LIVE_UPDATE_TEXT_LIMITS_ENABLED, enabled)
             .apply()
     }
 

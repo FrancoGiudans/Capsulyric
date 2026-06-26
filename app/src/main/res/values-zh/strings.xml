@@ -628,6 +628,7 @@
     <string name="settings_super_island_full_lyric_show_left_cover_desc">全歌词模式下保留左侧岛区域的专辑封面。</string>
     <string name="settings_super_island_right_text_limit">右侧歌词字数上限</string>
     <string name="settings_super_island_left_text_limit">左侧歌词字数上限</string>
+    <string name="settings_live_update_text_limit">Live Update 歌词字数上限</string>
     <string name="settings_super_island_colorize">为胶囊内容着色</string>
     <string name="settings_super_island_colorize_desc">为超级岛中的歌词、播放信息、胶囊边缘和进度条着色。</string>
     <string name="settings_super_island_color_source">取色来源</string>
@@ -700,6 +701,8 @@
     <string name="diag_lab_super_island_text_limits_desc">开启后，个性化设置的胶囊页会显示左右两侧字数上限调节。</string>
     <string name="diag_lab_super_island_relaxed_text_limits_title">超级岛字数上限放宽</string>
     <string name="diag_lab_super_island_relaxed_text_limits_desc">开启后，超级岛字数上限调节可使用更大的范围。适合无中置遮挡设备自行测试。</string>
+    <string name="diag_lab_live_update_text_limits_title">Live Update 字数上限调节</string>
+    <string name="diag_lab_live_update_text_limits_desc">开启后，个性化设置的胶囊页会显示 Live Update 歌词字数上限调节。</string>
     <string name="diag_lab_experiment_updates_title">接收测试版本</string>
     <string name="diag_lab_experiment_updates_desc">显示 Experiment 通道，并接收来自测试分支的实验版本。</string>
     <string name="diag_lab_scroll_end_haptic_title">边缘滚动触感反馈</string>
@@ -713,6 +716,9 @@
     <string name="diag_lab_super_island_dialog_title">开启高级样式实验功能？</string>
     <string name="diag_lab_super_island_dialog_message">该样式仍处于实验阶段，部分设备可能需要 Root 环境才能正常显示。开启后，请前往“个性化设置”中的通知页自行切换到“高级样式（Beta）”。</string>
     <string name="diag_lab_super_island_dialog_confirm">前往个性化设置</string>
+    <string name="diag_lab_live_update_text_limits_dialog_title">开启 Live Update 字数上限调节？</string>
+    <string name="diag_lab_live_update_text_limits_dialog_message">Live Update 似乎存在系统规定的字数限制。如果文本超过系统规定上限，通知可能无法被提升为胶囊态。请仅在愿意自行测试并回退数值时开启。</string>
+    <string name="diag_lab_live_update_text_limits_dialog_confirm">开启</string>
     
     <string name="diag_label_connection">连接状态</string>
     <string name="diag_label_controllers">总控制器数</string>

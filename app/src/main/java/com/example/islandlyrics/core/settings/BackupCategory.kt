@@ -45,7 +45,8 @@ object BackupCategories {
             SubGroup("capsule_layout", listOf(
                 "super_island_full_lyric_show_left_cover",
                 "super_island_media_button_layout",
-                "super_island_text_limit_*"
+                "super_island_text_limit_*",
+                "live_update_text_limit_chars"
             )),
             SubGroup("capsule_color_share", listOf(
                 "super_island_text_color_enabled",

@@ -349,6 +349,7 @@
     <string name="settings_super_island_full_lyric_show_left_cover_desc">Keep the album cover in the left island area in Full Lyrics mode.</string>
     <string name="settings_super_island_right_text_limit">Right-side lyric limit</string>
     <string name="settings_super_island_left_text_limit">Left-side lyric limit</string>
+    <string name="settings_live_update_text_limit">Live Update lyric limit</string>
     <string name="settings_app_ui_style">App UI Style</string>
     <string name="settings_app_ui_style_desc">Switch between Material Design and Miuix UI. App will restart.</string>
     <string name="settings_home_lyric_preview_title">Home lyric preview</string>
@@ -709,6 +710,8 @@ Within the log interface, select the share/export icon. You can specify a timefr
     <string name="diag_lab_super_island_text_limits_desc">Show controls for tuning the left and right Super Island text limits in Personalization.</string>
     <string name="diag_lab_super_island_relaxed_text_limits_title">Relax Super Island Text Limits</string>
     <string name="diag_lab_super_island_relaxed_text_limits_desc">Allow larger ranges in Super Island text limit controls. Intended for testing on devices without a centered cutout.</string>
+    <string name="diag_lab_live_update_text_limits_title">Live Update Text Limits</string>
+    <string name="diag_lab_live_update_text_limits_desc">Show a control for tuning the Live Update lyric text limit in Personalization.</string>
     <string name="diag_lab_experiment_updates_title">Receive Test Builds</string>
     <string name="diag_lab_experiment_updates_desc">Show the Experiment channel and receive experimental builds from the testing branch.</string>
     <string name="diag_lab_scroll_end_haptic_title">Scroll End Haptic</string>
@@ -722,6 +725,9 @@ Within the log interface, select the share/export icon. You can specify a timefr
     <string name="diag_lab_super_island_dialog_title">Enable the advanced style experiment?</string>
     <string name="diag_lab_super_island_dialog_message">This style is still experimental, and some devices may require root to display it properly. After enabling it, go to Personalization Settings and switch the notification style to Advanced Style (Beta) yourself.</string>
     <string name="diag_lab_super_island_dialog_confirm">Open Personalization</string>
+    <string name="diag_lab_live_update_text_limits_dialog_title">Enable Live Update text limit tuning?</string>
+    <string name="diag_lab_live_update_text_limits_dialog_message">Live Update appears to have system-specific text limits. If the text exceeds the system-defined limit, the notification may fail to be promoted to capsule state. Enable this only if you are willing to test and roll back the value.</string>
+    <string name="diag_lab_live_update_text_limits_dialog_confirm">Enable</string>
     
     <string name="diag_label_connection">Connection Status</string>
     <string name="diag_label_controllers">Total Controllers</string>

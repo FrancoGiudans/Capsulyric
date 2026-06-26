@@ -52,6 +52,9 @@ fun MiuixLabScreen(onBack: () -> Unit) {
     var superIslandRelaxedTextLimitsEnabled by remember {
         mutableStateOf(LabFeatureManager.isSuperIslandRelaxedTextLimitsEnabled(context))
     }
+    var liveUpdateTextLimitsEnabled by remember {
+        mutableStateOf(LabFeatureManager.isLiveUpdateTextLimitsEnabled(context))
+    }
     var floatingLyricsLabEnabled by remember {
         mutableStateOf(LabFeatureManager.isFloatingLyricsEnabled(context))
     }
@@ -62,9 +65,11 @@ fun MiuixLabScreen(onBack: () -> Unit) {
         mutableStateOf(LabFeatureManager.isScrollEndHapticEnabled(context))
     }
     val showAdvancedStyleDialog = remember { mutableStateOf(false) }
+    val showLiveUpdateTextLimitsDialog = remember { mutableStateOf(false) }
 
-    MiuixBackHandler(enabled = showAdvancedStyleDialog.value) {
+    MiuixBackHandler(enabled = showAdvancedStyleDialog.value || showLiveUpdateTextLimitsDialog.value) {
         showAdvancedStyleDialog.value = false
+        showLiveUpdateTextLimitsDialog.value = false
     }
 
     MiuixBlurScaffold(
@@ -165,6 +170,20 @@ fun MiuixLabScreen(onBack: () -> Unit) {
                     }
 
                     SuperSwitch(
+                        title = stringResource(R.string.diag_lab_live_update_text_limits_title),
+                        summary = stringResource(R.string.diag_lab_live_update_text_limits_desc),
+                        checked = liveUpdateTextLimitsEnabled,
+                        onCheckedChange = { enabled ->
+                            if (enabled) {
+                                showLiveUpdateTextLimitsDialog.value = true
+                            } else {
+                                LabFeatureManager.setLiveUpdateTextLimitsEnabled(context, false)
+                                liveUpdateTextLimitsEnabled = false
+                            }
+                        }
+                    )
+
+                    SuperSwitch(
                         title = stringResource(R.string.diag_lab_floating_lyrics_title),
                         summary = stringResource(R.string.diag_lab_floating_lyrics_desc),
                         checked = floatingLyricsLabEnabled,
@@ -219,6 +238,38 @@ fun MiuixLabScreen(onBack: () -> Unit) {
                         superIslandAdvancedStyleEnabled = true
                         showAdvancedStyleDialog.value = false
                         context.startActivity(Intent(context, CustomSettingsActivity::class.java))
+                    },
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.textButtonColorsPrimary()
+                )
+            }
+        }
+
+        MiuixBlurDialog(
+            title = stringResource(R.string.diag_lab_live_update_text_limits_dialog_title),
+            summary = stringResource(R.string.diag_lab_live_update_text_limits_dialog_message),
+            show = showLiveUpdateTextLimitsDialog.value,
+            onDismissRequest = { showLiveUpdateTextLimitsDialog.value = false }
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                TextButton(
+                    text = stringResource(android.R.string.cancel),
+                    onClick = { showLiveUpdateTextLimitsDialog.value = false },
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.textButtonColors(
+                        textColor = MiuixTheme.colorScheme.onSurfaceVariantActions
+                    )
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                TextButton(
+                    text = stringResource(R.string.diag_lab_live_update_text_limits_dialog_confirm),
+                    onClick = {
+                        LabFeatureManager.setLiveUpdateTextLimitsEnabled(context, true)
+                        liveUpdateTextLimitsEnabled = true
+                        showLiveUpdateTextLimitsDialog.value = false
                     },
                     modifier = Modifier.weight(1f),
                     colors = ButtonDefaults.textButtonColorsPrimary()

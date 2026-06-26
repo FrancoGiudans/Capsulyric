@@ -49,6 +49,9 @@ fun LabScreen(onBack: () -> Unit) {
     var superIslandRelaxedTextLimitsEnabled by remember {
         mutableStateOf(LabFeatureManager.isSuperIslandRelaxedTextLimitsEnabled(context))
     }
+    var liveUpdateTextLimitsEnabled by remember {
+        mutableStateOf(LabFeatureManager.isLiveUpdateTextLimitsEnabled(context))
+    }
     var floatingLyricsLabEnabled by remember {
         mutableStateOf(LabFeatureManager.isFloatingLyricsEnabled(context))
     }
@@ -56,6 +59,7 @@ fun LabScreen(onBack: () -> Unit) {
         mutableStateOf(LabFeatureManager.isExperimentUpdatesEnabled(context))
     }
     var showAdvancedStyleDialog by remember { mutableStateOf(false) }
+    var showLiveUpdateTextLimitsDialog by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -140,6 +144,20 @@ fun LabScreen(onBack: () -> Unit) {
                         SettingsCardDivider()
                     }
                     SettingsSwitchItem(
+                        title = stringResource(R.string.diag_lab_live_update_text_limits_title),
+                        subtitle = stringResource(R.string.diag_lab_live_update_text_limits_desc),
+                        checked = liveUpdateTextLimitsEnabled,
+                        onCheckedChange = { enabled ->
+                            if (enabled) {
+                                showLiveUpdateTextLimitsDialog = true
+                            } else {
+                                LabFeatureManager.setLiveUpdateTextLimitsEnabled(context, false)
+                                liveUpdateTextLimitsEnabled = false
+                            }
+                        }
+                    )
+                    SettingsCardDivider()
+                    SettingsSwitchItem(
                         title = stringResource(R.string.diag_lab_floating_lyrics_title),
                         subtitle = stringResource(R.string.diag_lab_floating_lyrics_desc),
                         checked = floatingLyricsLabEnabled,
@@ -187,6 +205,30 @@ fun LabScreen(onBack: () -> Unit) {
             },
             dismissButton = {
                 TextButton(onClick = { showAdvancedStyleDialog = false }) {
+                    Text(stringResource(android.R.string.cancel))
+                }
+            }
+        )
+    }
+
+    if (showLiveUpdateTextLimitsDialog) {
+        AlertDialog(
+            onDismissRequest = { showLiveUpdateTextLimitsDialog = false },
+            title = { Text(stringResource(R.string.diag_lab_live_update_text_limits_dialog_title)) },
+            text = { Text(stringResource(R.string.diag_lab_live_update_text_limits_dialog_message)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        LabFeatureManager.setLiveUpdateTextLimitsEnabled(context, true)
+                        liveUpdateTextLimitsEnabled = true
+                        showLiveUpdateTextLimitsDialog = false
+                    }
+                ) {
+                    Text(stringResource(R.string.diag_lab_live_update_text_limits_dialog_confirm))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showLiveUpdateTextLimitsDialog = false }) {
                     Text(stringResource(android.R.string.cancel))
                 }
             }
