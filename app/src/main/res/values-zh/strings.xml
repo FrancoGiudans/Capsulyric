@@ -112,7 +112,7 @@
     <string name="settings_block_xmsf">绕过小米超级岛白名单</string>
     <string name="settings_block_xmsf_desc">发送通知时临时断开 XMSF 网络以绕过系统白名单限制（需要 Shizuku 环境）</string>
     <string name="settings_block_xmsf_mode">绕过模式</string>
-    <string name="settings_block_xmsf_mode_desc">选择绕过小米超级岛白名单时 XMSF 的断网时长（需要 Shizuku 环境）</string>
+    <string name="settings_block_xmsf_mode_desc">设备未 Root 时，需要开启绕过模式，让小米超级岛能够呈现不在小米白名单内的通知。需要 Shizuku 授权。</string>
     <string name="settings_block_xmsf_mode_disabled">关闭</string>
     <string name="settings_block_xmsf_mode_disabled_desc">不调整 XMSF 网络连接状态</string>
     <string name="settings_block_xmsf_mode_standard">标准模式</string>
@@ -502,8 +502,10 @@
     <string name="super_island_notification_style_standard">标准小米超级岛样式</string>
     <string name="super_island_notification_style_advanced_beta">高级样式（Beta）</string>
     <string name="settings_super_island_media_button_layout">播放按键布局</string>
-    <string name="super_island_media_button_layout_two">双按键（播放/暂停、下一首）</string>
-    <string name="super_island_media_button_layout_three">三按键（上一首、播放/暂停、下一首）</string>
+    <string name="super_island_media_button_layout_two">双按键</string>
+    <string name="super_island_media_button_layout_two_desc">播放/暂停、下一首</string>
+    <string name="super_island_media_button_layout_three">三按键</string>
+    <string name="super_island_media_button_layout_three_desc">上一首、播放/暂停、下一首</string>
     <string name="settings_super_island_custom_expand_test">测试自定义展开布局</string>
     <string name="settings_super_island_custom_expand_test_desc">使用自定义超级岛展开态布局进行测试，包含横向进度条和三个播放控制按键。</string>
     <string name="settings_progress_color">为进度条着色</string>

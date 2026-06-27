@@ -859,24 +859,11 @@ fun CustomSettingsScreen(
                                             mutableIntStateOf(XmsfBypassMode.readCustomDurationMs(prefs))
                                         }
                                         var showBlockXmsfModeDropdown by remember { mutableStateOf(false) }
-                                        val currentBlockXmsfDurationText = stringResource(
-                                            R.string.settings_block_xmsf_duration_value,
-                                            blockXmsfCustomDurationMs
-                                        )
-                                        val currentBlockXmsfModeSummary = when (blockXmsfMode) {
-                                            XmsfBypassMode.DISABLED -> stringResource(R.string.settings_block_xmsf_mode_disabled_desc)
-                                            XmsfBypassMode.STANDARD -> stringResource(R.string.settings_block_xmsf_mode_standard_desc)
-                                            XmsfBypassMode.CUSTOM -> stringResource(
-                                                R.string.settings_block_xmsf_mode_custom_current_desc,
-                                                currentBlockXmsfDurationText
-                                            )
-                                            XmsfBypassMode.AGGRESSIVE -> stringResource(R.string.settings_block_xmsf_mode_aggressive_desc)
-                                        }
                                         SettingsCardDivider()
                                         Box(modifier = Modifier.fillMaxWidth()) {
                                             SettingsTextItem(
                                                 title = stringResource(R.string.settings_block_xmsf_mode),
-                                                subtitle = currentBlockXmsfModeSummary,
+                                                subtitle = stringResource(R.string.settings_block_xmsf_mode_desc),
                                                 value = when (blockXmsfMode) {
                                                     XmsfBypassMode.STANDARD -> stringResource(R.string.settings_block_xmsf_mode_standard)
                                                     XmsfBypassMode.CUSTOM -> stringResource(R.string.settings_block_xmsf_mode_custom)
@@ -1088,12 +1075,29 @@ fun CustomSettingsScreen(
                                                 onDismissRequest = { showSuperIslandMediaButtonLayoutDropdown = false }
                                             ) {
                                                 val layoutOptions = listOf(
-                                                    "two_button" to R.string.super_island_media_button_layout_two,
-                                                    "three_button" to R.string.super_island_media_button_layout_three
+                                                    Triple(
+                                                        "two_button",
+                                                        R.string.super_island_media_button_layout_two,
+                                                        R.string.super_island_media_button_layout_two_desc
+                                                    ),
+                                                    Triple(
+                                                        "three_button",
+                                                        R.string.super_island_media_button_layout_three,
+                                                        R.string.super_island_media_button_layout_three_desc
+                                                    )
                                                 )
-                                                layoutOptions.forEach { (layoutId, nameId) ->
+                                                layoutOptions.forEach { (layoutId, nameId, descId) ->
                                                     DropdownMenuItem(
-                                                        text = { Text(stringResource(nameId)) },
+                                                        text = {
+                                                            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                                                Text(stringResource(nameId))
+                                                                Text(
+                                                                    text = stringResource(descId),
+                                                                    style = MaterialTheme.typography.bodySmall,
+                                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                                )
+                                                            }
+                                                        },
                                                         onClick = {
                                                             superIslandMediaButtonLayout = layoutId
                                                             viewModel.dispatch(CustomSettingsAction.SetSuperIslandMediaButtonLayout(layoutId))
@@ -1113,15 +1117,9 @@ fun CustomSettingsScreen(
                                 "open_playing_app" -> stringResource(R.string.settings_click_action_open_playing_app)
                                 else -> stringResource(R.string.settings_click_action_default)
                             }
-                            val clickStyleSubtitle = when (notificationClickStyle) {
-                                "media_controls" -> stringResource(R.string.settings_click_action_media_desc)
-                                "open_playing_app" -> stringResource(R.string.settings_click_action_open_playing_app_desc)
-                                else -> stringResource(R.string.settings_click_action_default_desc)
-                            }
                             Box(modifier = Modifier.fillMaxWidth()) {
                                 SettingsTextItem(
                                     title = stringResource(R.string.settings_click_action_title),
-                                    subtitle = clickStyleSubtitle,
                                     value = clickStyleDisplay,
                                     onClick = { showNotificationClickDropdown = true }
                                 )
@@ -1138,7 +1136,7 @@ fun CustomSettingsScreen(
                                         styles.forEach { (styleId, nameId, descId) ->
                                             DropdownMenuItem(
                                                 text = {
-                                                    Column {
+                                                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                                                         Text(stringResource(nameId))
                                                         Text(
                                                             text = stringResource(descId),

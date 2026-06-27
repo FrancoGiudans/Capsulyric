@@ -48,10 +48,14 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.automirrored.filled.Help
+import androidx.compose.material.icons.filled.BugReport
+import androidx.compose.material.icons.filled.BatterySaver
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Upload
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Science
+import androidx.compose.material.icons.filled.Storage
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalLayoutDirection
 import com.example.islandlyrics.lyrics.state.LyricRepository
@@ -410,7 +414,7 @@ fun SettingsScreen(
                     SettingsCardDivider()
                     SettingsActionItem(
                         title = stringResource(R.string.settings_general_battery),
-                        icon = Icons.Filled.MusicNote,
+                        icon = Icons.Filled.BatterySaver,
                         onClick = {
                             val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
                             intent.data = "package:${context.packageName}".toUri()
@@ -492,14 +496,14 @@ fun SettingsScreen(
                         SettingsActionItem(
                             title = stringResource(R.string.title_diagnostics),
                             summary = stringResource(R.string.summary_diagnostics),
-                            icon = Icons.Filled.Info,
+                            icon = Icons.Filled.BugReport,
                             onClick = onShowDiagnostics
                         )
                         SettingsCardDivider()
                         SettingsActionItem(
                             title = stringResource(R.string.title_cache_management),
                             summary = stringResource(R.string.settings_cache_management_desc),
-                            icon = Icons.Filled.Info,
+                            icon = Icons.Filled.Storage,
                             onClick = {
                                 onOpenCacheManagement?.invoke()
                                     ?: context.startActivity(Intent(context, com.example.islandlyrics.feature.cache.CacheManagementActivity::class.java))
@@ -509,7 +513,7 @@ fun SettingsScreen(
                         SettingsActionItem(
                             title = stringResource(R.string.title_lab),
                             summary = stringResource(R.string.diag_lab_page_desc),
-                            icon = Icons.Filled.Info,
+                            icon = Icons.Filled.Science,
                             onClick = {
                                 onOpenLab?.invoke()
                                     ?: context.startActivity(Intent(context, com.example.islandlyrics.feature.lab.LabActivity::class.java))

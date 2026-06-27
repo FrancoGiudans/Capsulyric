@@ -10,9 +10,12 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Article
 import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.Campaign
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Link
+import androidx.compose.material.icons.filled.Poll
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -177,7 +180,7 @@ fun AboutScreen(
                         SettingsActionItem(
                             title = stringResource(R.string.community_loading_title),
                             summary = stringResource(R.string.community_loading_desc),
-                            icon = Icons.Filled.Info,
+                            icon = Icons.Filled.Campaign,
                             onClick = {}
                         )
                     }
@@ -194,7 +197,7 @@ fun AboutScreen(
                                     title = announcementSectionTitle,
                                     item = announcement,
                                     fallbackSummary = stringResource(R.string.community_open_in_browser),
-                                    icon = Icons.Filled.Info,
+                                    icon = Icons.Filled.Campaign,
                                     onClick = { communityDialogState = CommunityDialogState(announcementSectionTitle, announcement) }
                                 )
                             }
@@ -205,7 +208,7 @@ fun AboutScreen(
                                     title = pollSectionTitle,
                                     item = poll,
                                     fallbackSummary = stringResource(R.string.community_open_in_browser),
-                                    icon = Icons.Filled.Link,
+                                    icon = Icons.Filled.Poll,
                                     onClick = { communityDialogState = CommunityDialogState(pollSectionTitle, poll) }
                                 )
                             }
@@ -270,7 +273,7 @@ fun AboutScreen(
                         SettingsActionItem(
                             title = stringResource(R.string.update_current_version_changelog_title_short),
                             summary = stringResource(R.string.summary_view_current_version_changelog),
-                            icon = Icons.Filled.Info,
+                            icon = Icons.AutoMirrored.Filled.Article,
                             onClick = onViewCurrentVersionChangelog
                         )
                     }

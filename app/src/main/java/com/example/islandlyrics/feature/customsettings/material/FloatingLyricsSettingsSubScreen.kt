@@ -15,6 +15,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.example.islandlyrics.R
+import com.example.islandlyrics.feature.settings.material.SettingsCard
+import com.example.islandlyrics.feature.settings.material.SettingsCardDivider
 import com.example.islandlyrics.feature.settings.material.SettingsSwitchItem
 import com.example.islandlyrics.ui.overlay.floating.FloatingLyricsDisplayMode
 import com.example.islandlyrics.ui.overlay.floating.FloatingLyricsNeighborAlignment
@@ -57,8 +59,7 @@ fun FloatingLyricsSettingsSubScreen(prefs: SharedPreferences) {
     var floatingTextColorEditing by remember { mutableStateOf(false) }
     var floatingTextColorSnapshot by remember { mutableStateOf(customTextColor) }
 
-    // Material 3 slider for Text Size
-    Column(modifier = Modifier.fillMaxWidth()) {
+    SettingsCard {
         SettingsSwitchItem(
             title = stringResource(R.string.settings_floating_lyrics_enabled),
             subtitle = stringResource(R.string.settings_floating_lyrics_enabled_desc),
@@ -77,6 +78,7 @@ fun FloatingLyricsSettingsSubScreen(prefs: SharedPreferences) {
         )
 
         if (enabled) {
+            SettingsCardDivider()
             SettingsSwitchItem(
                 title = stringResource(R.string.settings_floating_show_album_art),
                 subtitle = stringResource(R.string.settings_floating_show_album_art_desc),
@@ -86,132 +88,142 @@ fun FloatingLyricsSettingsSubScreen(prefs: SharedPreferences) {
                     prefs.edit { putBoolean(FloatingLyricsRenderer.PREF_SHOW_ALBUM_ART, it) }
                 }
             )
-        
-        SettingsSwitchItem(
-            title = stringResource(R.string.settings_floating_text_stroke),
-            subtitle = stringResource(R.string.settings_floating_text_stroke_desc),
-            checked = textStroke,
-            onCheckedChange = {
-                textStroke = it
-                prefs.edit { putBoolean(FloatingLyricsRenderer.PREF_TEXT_STROKE, it) }
-            }
-        )
-        
-        SettingsSwitchItem(
-            title = stringResource(R.string.settings_floating_text_background),
-            subtitle = stringResource(R.string.settings_floating_text_background_desc),
-            checked = textBackground,
-            onCheckedChange = {
-                textBackground = it
-                prefs.edit { putBoolean(FloatingLyricsRenderer.PREF_TEXT_BACKGROUND, it) }
-            }
-        )
 
-        FloatingDisplayModeSelector(
-            selectedMode = displayMode,
-            onModeSelected = {
-                displayMode = it
-                prefs.edit { putString(FloatingLyricsRenderer.PREF_DISPLAY_MODE, it.value) }
-            }
-        )
-
-        if (displayMode == FloatingLyricsDisplayMode.NEIGHBOR_LINE) {
-            FloatingNeighborAlignmentSelector(
-                selectedAlignment = neighborAlignment,
-                onAlignmentSelected = {
-                    neighborAlignment = it
-                    prefs.edit { putString(FloatingLyricsRenderer.PREF_NEIGHBOR_ALIGNMENT, it.value) }
+            SettingsCardDivider()
+            SettingsSwitchItem(
+                title = stringResource(R.string.settings_floating_text_stroke),
+                subtitle = stringResource(R.string.settings_floating_text_stroke_desc),
+                checked = textStroke,
+                onCheckedChange = {
+                    textStroke = it
+                    prefs.edit { putBoolean(FloatingLyricsRenderer.PREF_TEXT_STROKE, it) }
                 }
             )
-        }
 
-        SettingsSwitchItem(
-            title = stringResource(R.string.settings_floating_word_highlight),
-            subtitle = stringResource(R.string.settings_floating_word_highlight_desc),
-            checked = wordHighlight,
-            onCheckedChange = {
-                wordHighlight = it
-                prefs.edit { putBoolean(FloatingLyricsRenderer.PREF_WORD_HIGHLIGHT, it) }
-            }
-        )
-
-        SettingsSwitchItem(
-            title = stringResource(R.string.settings_floating_follow_album_color),
-            subtitle = stringResource(R.string.settings_floating_follow_album_color_desc),
-            checked = followAlbumColor,
-            onCheckedChange = {
-                if (it && floatingTextColorEditing) {
-                    customTextColor = floatingTextColorSnapshot
-                    floatingTextColorEditing = false
-                }
-                followAlbumColor = it
-                prefs.edit { putBoolean(FloatingLyricsRenderer.PREF_FOLLOW_ALBUM_COLOR, it) }
-            }
-        )
-
-        if (!followAlbumColor) {
-            MaterialEditableColorSection(
-                title = stringResource(R.string.settings_floating_text_color),
-                color = customTextColor,
-                isEditing = floatingTextColorEditing,
-                defaultActionText = stringResource(R.string.settings_color_default),
-                onStartEditing = {
-                    floatingTextColorSnapshot = customTextColor
-                    floatingTextColorEditing = true
-                },
-                onColorChanged = { color ->
-                    customTextColor = color
-                },
-                onApply = {
-                    prefs.edit { putInt(FloatingLyricsRenderer.PREF_TEXT_COLOR, customTextColor.toArgb()) }
-                    floatingTextColorEditing = false
-                },
-                onCancel = {
-                    customTextColor = floatingTextColorSnapshot
-                    floatingTextColorEditing = false
-                },
-                onUseDefault = {
-                    customTextColor = Color.White
-                    floatingTextColorSnapshot = Color.White
-                    prefs.edit { putInt(FloatingLyricsRenderer.PREF_TEXT_COLOR, Color.White.toArgb()) }
-                    floatingTextColorEditing = false
+            SettingsCardDivider()
+            SettingsSwitchItem(
+                title = stringResource(R.string.settings_floating_text_background),
+                subtitle = stringResource(R.string.settings_floating_text_background_desc),
+                checked = textBackground,
+                onCheckedChange = {
+                    textBackground = it
+                    prefs.edit { putBoolean(FloatingLyricsRenderer.PREF_TEXT_BACKGROUND, it) }
                 }
             )
-        }
 
-        // Custom size slider
-        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
-            Text(
-                text = stringResource(R.string.settings_floating_text_size) + ": ${textSizeSp.toInt()}sp",
-                style = MaterialTheme.typography.titleMedium
+            SettingsCardDivider()
+            FloatingDisplayModeSelector(
+                selectedMode = displayMode,
+                onModeSelected = {
+                    displayMode = it
+                    prefs.edit { putString(FloatingLyricsRenderer.PREF_DISPLAY_MODE, it.value) }
+                }
             )
-            Slider(
-                value = textSizeSp,
-                onValueChange = { 
-                    textSizeSp = it
-                    prefs.edit { putFloat(FloatingLyricsRenderer.PREF_TEXT_SIZE, it) }
+
+            if (displayMode == FloatingLyricsDisplayMode.NEIGHBOR_LINE) {
+                SettingsCardDivider()
+                FloatingNeighborAlignmentSelector(
+                    selectedAlignment = neighborAlignment,
+                    onAlignmentSelected = {
+                        neighborAlignment = it
+                        prefs.edit { putString(FloatingLyricsRenderer.PREF_NEIGHBOR_ALIGNMENT, it.value) }
+                    }
+                )
+            }
+
+            SettingsCardDivider()
+            SettingsSwitchItem(
+                title = stringResource(R.string.settings_floating_word_highlight),
+                subtitle = stringResource(R.string.settings_floating_word_highlight_desc),
+                checked = wordHighlight,
+                onCheckedChange = {
+                    wordHighlight = it
+                    prefs.edit { putBoolean(FloatingLyricsRenderer.PREF_WORD_HIGHLIGHT, it) }
+                }
+            )
+
+            SettingsCardDivider()
+            SettingsSwitchItem(
+                title = stringResource(R.string.settings_floating_follow_album_color),
+                subtitle = stringResource(R.string.settings_floating_follow_album_color_desc),
+                checked = followAlbumColor,
+                onCheckedChange = {
+                    if (it && floatingTextColorEditing) {
+                        customTextColor = floatingTextColorSnapshot
+                        floatingTextColorEditing = false
+                    }
+                    followAlbumColor = it
+                    prefs.edit { putBoolean(FloatingLyricsRenderer.PREF_FOLLOW_ALBUM_COLOR, it) }
+                }
+            )
+
+            if (!followAlbumColor) {
+                SettingsCardDivider()
+                MaterialEditableColorSection(
+                    title = stringResource(R.string.settings_floating_text_color),
+                    color = customTextColor,
+                    isEditing = floatingTextColorEditing,
+                    defaultActionText = stringResource(R.string.settings_color_default),
+                    onStartEditing = {
+                        floatingTextColorSnapshot = customTextColor
+                        floatingTextColorEditing = true
+                    },
+                    onColorChanged = { color ->
+                        customTextColor = color
+                    },
+                    onApply = {
+                        prefs.edit { putInt(FloatingLyricsRenderer.PREF_TEXT_COLOR, customTextColor.toArgb()) }
+                        floatingTextColorEditing = false
+                    },
+                    onCancel = {
+                        customTextColor = floatingTextColorSnapshot
+                        floatingTextColorEditing = false
+                    },
+                    onUseDefault = {
+                        customTextColor = Color.White
+                        floatingTextColorSnapshot = Color.White
+                        prefs.edit { putInt(FloatingLyricsRenderer.PREF_TEXT_COLOR, Color.White.toArgb()) }
+                        floatingTextColorEditing = false
+                    }
+                )
+            }
+
+            SettingsCardDivider()
+            Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
+                Text(
+                    text = stringResource(R.string.settings_floating_text_size) + ": ${textSizeSp.toInt()}sp",
+                    style = MaterialTheme.typography.bodyLarge
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Slider(
+                    value = textSizeSp,
+                    onValueChange = {
+                        textSizeSp = it
+                        prefs.edit { putFloat(FloatingLyricsRenderer.PREF_TEXT_SIZE, it) }
+                    },
+                    valueRange = 10f..32f,
+                    steps = 10
+                )
+            }
+
+            SettingsCardDivider()
+            TextButton(
+                onClick = {
+                    FloatingLyricsRenderer.resetPosition(context)
+                    Toast.makeText(
+                        context,
+                        R.string.settings_floating_position_reset_toast,
+                        Toast.LENGTH_SHORT
+                    ).show()
                 },
-                valueRange = 10f..32f,
-                steps = 11 // (32 - 10) / 2 - 1
-            )
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                    .height(48.dp)
+            ) {
+                Text(stringResource(R.string.settings_floating_position_reset))
+            }
         }
-
-        OutlinedButton(
-            onClick = {
-                FloatingLyricsRenderer.resetPosition(context)
-                Toast.makeText(
-                    context,
-                    R.string.settings_floating_position_reset_toast,
-                    Toast.LENGTH_SHORT
-                ).show()
-            },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp)
-        ) {
-            Text(stringResource(R.string.settings_floating_position_reset))
-        }
-    }
     }
 }
 

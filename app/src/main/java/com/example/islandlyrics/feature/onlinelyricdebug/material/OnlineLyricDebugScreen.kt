@@ -4,10 +4,9 @@ import android.graphics.Bitmap
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -16,6 +15,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -31,11 +31,12 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MediumTopAppBar
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -48,6 +49,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -60,6 +62,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.islandlyrics.R
 import com.example.islandlyrics.lyrics.online.OnlineLyricFetcher
 import com.example.islandlyrics.feature.onlinelyricdebug.OnlineLyricDebugViewModel
+import com.example.islandlyrics.feature.settings.material.SettingsCard
+import com.example.islandlyrics.feature.settings.material.SettingsSectionHeader
 import com.example.islandlyrics.ui.theme.material.materialPageContainerColor
 import com.example.islandlyrics.ui.theme.material.neutralMaterialTopBarColors
 
@@ -105,10 +109,12 @@ fun OnlineLyricDebugScreen(
     val duration = liveProgress?.duration?.takeIf { it > 0 } ?: mediaInfo?.duration ?: 0L
     val currentFullLyricsTitle = stringResource(R.string.online_lyric_rematch_current_full_lyrics)
     val resultFullLyricsTitle = stringResource(R.string.online_lyric_rematch_result_full_lyrics)
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 
     Scaffold(
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
-            TopAppBar(
+            MediumTopAppBar(
                 title = { Text(stringResource(R.string.online_lyric_rematch_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
@@ -118,166 +124,192 @@ fun OnlineLyricDebugScreen(
                         )
                     }
                 },
-                colors = neutralMaterialTopBarColors()
+                colors = neutralMaterialTopBarColors(),
+                scrollBehavior = scrollBehavior
             )
         },
         containerColor = materialPageContainerColor()
     ) { padding ->
-        Column(
+        LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
-                .padding(horizontal = 24.dp)
-                .verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(18.dp)
+                .padding(padding),
+            contentPadding = PaddingValues(bottom = 24.dp)
         ) {
-            Spacer(modifier = Modifier.height(1.dp))
-            ToolCard(
-                title = stringResource(R.string.online_lyric_rematch_current_playback),
-                modifier = Modifier.clickable(enabled = currentFullLyrics.isNotBlank() || !liveLyric?.lyric.isNullOrBlank()) {
-                    dialogTitle = currentFullLyricsTitle
-                    dialogText = currentFullLyrics.ifBlank { liveLyric?.lyric.orEmpty() }
-                }
-            ) {
-                CurrentPlaybackContent(
-                    albumArt = albumArt,
-                    title = mediaInfo?.title.orEmpty(),
-                    artist = mediaInfo?.artist.orEmpty(),
-                    duration = duration,
-                    currentLyric = liveLyric?.lyric.orEmpty()
+            item {
+                SettingsSectionHeader(
+                    text = stringResource(R.string.online_lyric_rematch_current_playback),
+                    marginTop = 0.dp
                 )
-                Spacer(modifier = Modifier.height(14.dp))
-                Button(
-                    onClick = { viewModel.rematchWithCurrentPlayback() },
-                    enabled = !isFetching,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(modifier = Modifier.size(8.dp))
-                    Text(stringResource(R.string.online_lyric_rematch_current_playback_action))
-                }
             }
-
-            ToolCard(title = stringResource(R.string.online_lyric_rematch_match_input)) {
-                OutlinedTextField(
-                    value = customMatchTitle,
-                    onValueChange = viewModel::updateCustomMatchTitle,
-                    label = { Text(stringResource(R.string.online_lyric_rematch_song_title)) },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-                OutlinedTextField(
-                    value = customMatchArtist,
-                    onValueChange = viewModel::updateCustomMatchArtist,
-                    label = { Text(stringResource(R.string.online_lyric_rematch_artist)) },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
-                )
-                Spacer(modifier = Modifier.height(14.dp))
-                Button(
-                    onClick = { viewModel.rematchLyrics() },
-                    enabled = !isFetching,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    if (isFetching) {
-                        CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
-                    } else {
-                        Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(modifier = Modifier.size(8.dp))
-                        Text(stringResource(R.string.online_lyric_rematch_action))
+            item {
+                SettingsCard {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable(enabled = currentFullLyrics.isNotBlank() || !liveLyric?.lyric.isNullOrBlank()) {
+                                dialogTitle = currentFullLyricsTitle
+                                dialogText = currentFullLyrics.ifBlank { liveLyric?.lyric.orEmpty() }
+                            }
+                            .padding(16.dp)
+                    ) {
+                        CurrentPlaybackContent(
+                            albumArt = albumArt,
+                            title = mediaInfo?.title.orEmpty(),
+                            artist = mediaInfo?.artist.orEmpty(),
+                            duration = duration,
+                            currentLyric = liveLyric?.lyric.orEmpty()
+                        )
+                        Spacer(modifier = Modifier.height(14.dp))
+                        Button(
+                            onClick = { viewModel.rematchWithCurrentPlayback() },
+                            enabled = !isFetching,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.size(8.dp))
+                            Text(stringResource(R.string.online_lyric_rematch_current_playback_action))
+                        }
                     }
                 }
-                Spacer(modifier = Modifier.height(10.dp))
-                Text(
-                    text = stringResource(
-                        R.string.online_lyric_rematch_effective_query_fmt,
-                        effectiveQuery.first.ifBlank { stringResource(R.string.online_lyric_debug_none) },
-                        effectiveQuery.second.ifBlank { stringResource(R.string.online_lyric_debug_none) }
-                    ),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                if (querySourceLabel.isNotBlank()) {
-                    Text(
-                        text = querySourceLabel,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                cacheStatus?.let {
-                    Text(
-                        text = it,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                }
-                error?.let {
-                    Text(
-                        text = it,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.padding(top = 4.dp)
-                    )
+            }
+
+            item { SettingsSectionHeader(text = stringResource(R.string.online_lyric_rematch_match_input)) }
+            item {
+                SettingsCard {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        OutlinedTextField(
+                            value = customMatchTitle,
+                            onValueChange = viewModel::updateCustomMatchTitle,
+                            label = { Text(stringResource(R.string.online_lyric_rematch_song_title)) },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        OutlinedTextField(
+                            value = customMatchArtist,
+                            onValueChange = viewModel::updateCustomMatchArtist,
+                            label = { Text(stringResource(R.string.online_lyric_rematch_artist)) },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true
+                        )
+                        Spacer(modifier = Modifier.height(14.dp))
+                        Button(
+                            onClick = { viewModel.rematchLyrics() },
+                            enabled = !isFetching,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            if (isFetching) {
+                                CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                            } else {
+                                Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Spacer(modifier = Modifier.size(8.dp))
+                                Text(stringResource(R.string.online_lyric_rematch_action))
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Text(
+                            text = stringResource(
+                                R.string.online_lyric_rematch_effective_query_fmt,
+                                effectiveQuery.first.ifBlank { stringResource(R.string.online_lyric_debug_none) },
+                                effectiveQuery.second.ifBlank { stringResource(R.string.online_lyric_debug_none) }
+                            ),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        if (querySourceLabel.isNotBlank()) {
+                            Text(
+                                text = querySourceLabel,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        cacheStatus?.let {
+                            Text(
+                                text = it,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                        error?.let {
+                            Text(
+                                text = it,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.padding(top = 4.dp)
+                            )
+                        }
+                    }
                 }
             }
 
-            ToolCard(
-                title = stringResource(R.string.online_lyric_rematch_result_title),
-                modifier = Modifier.clickable(enabled = rematchedLyrics.isNotBlank()) {
-                    dialogTitle = resultFullLyricsTitle
-                    dialogText = rematchedLyrics
-                }
-            ) {
-                if (selectedResult != null) {
-                    Text(
-                        text = stringResource(R.string.online_lyric_rematch_result_source_fmt, selectedResult?.api.orEmpty()),
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                }
-                Text(
-                    text = rematchedLyrics.ifBlank { stringResource(R.string.online_lyric_rematch_no_result) },
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = if (rematchedLyrics.isBlank()) {
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                    } else {
-                        MaterialTheme.colorScheme.onSurface
-                    },
-                    maxLines = 10,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-
-            ToolCard(title = stringResource(R.string.online_lyric_rematch_other_results)) {
-                if (attempts.isEmpty()) {
-                    Text(
-                        text = stringResource(R.string.online_lyric_rematch_no_other_results),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                } else {
-                    attempts.forEach { attempt ->
-                        val result = attempt.result
-                        val preview = viewModel.resultLyricsText(result)
-                        SourceResultRow(
-                            title = attempt.provider.displayName(context),
-                            subtitle = when {
-                                result == null -> stringResource(R.string.online_lyric_debug_no_result)
-                                result.error != null -> stringResource(R.string.online_lyric_debug_error_fmt, result.error)
-                                result == selectedResult -> stringResource(R.string.online_lyric_rematch_selected_result)
-                                else -> stringResource(R.string.online_lyric_rematch_available_result)
+            item { SettingsSectionHeader(text = stringResource(R.string.online_lyric_rematch_result_title)) }
+            item {
+                SettingsCard {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable(enabled = rematchedLyrics.isNotBlank()) {
+                                dialogTitle = resultFullLyricsTitle
+                                dialogText = rematchedLyrics
+                            }
+                            .padding(16.dp)
+                    ) {
+                        if (selectedResult != null) {
+                            Text(
+                                text = stringResource(R.string.online_lyric_rematch_result_source_fmt, selectedResult?.api.orEmpty()),
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                        }
+                        Text(
+                            text = rematchedLyrics.ifBlank { stringResource(R.string.online_lyric_rematch_no_result) },
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = if (rematchedLyrics.isBlank()) {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            } else {
+                                MaterialTheme.colorScheme.onSurface
                             },
-                            preview = preview.ifBlank { result?.error.orEmpty() },
-                            enabled = result != null,
-                            selected = result == selectedResult,
-                            onClick = { viewModel.openAttempt(attempt) }
+                            maxLines = 10,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
                 }
             }
-            Spacer(modifier = Modifier.height(24.dp))
+
+            item { SettingsSectionHeader(text = stringResource(R.string.online_lyric_rematch_other_results)) }
+            item {
+                SettingsCard {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        if (attempts.isEmpty()) {
+                            Text(
+                                text = stringResource(R.string.online_lyric_rematch_no_other_results),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        } else {
+                            attempts.forEach { attempt ->
+                                val result = attempt.result
+                                val preview = viewModel.resultLyricsText(result)
+                                SourceResultRow(
+                                    title = attempt.provider.displayName(context),
+                                    subtitle = when {
+                                        result == null -> stringResource(R.string.online_lyric_debug_no_result)
+                                        result.error != null -> stringResource(R.string.online_lyric_debug_error_fmt, result.error)
+                                        result == selectedResult -> stringResource(R.string.online_lyric_rematch_selected_result)
+                                        else -> stringResource(R.string.online_lyric_rematch_available_result)
+                                    },
+                                    preview = preview.ifBlank { result?.error.orEmpty() },
+                                    enabled = result != null,
+                                    selected = result == selectedResult,
+                                    onClick = { viewModel.openAttempt(attempt) }
+                                )
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -370,31 +402,6 @@ private fun CurrentPlaybackContent(
         style = MaterialTheme.typography.titleMedium,
         color = MaterialTheme.colorScheme.primary
     )
-}
-
-@Composable
-private fun ToolCard(
-    title: String,
-    modifier: Modifier = Modifier,
-    content: @Composable ColumnScope.() -> Unit
-) {
-    Card(
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-        border = CardDefaults.outlinedCardBorder()
-    ) {
-        Column(modifier = Modifier.padding(20.dp)) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(bottom = 12.dp)
-            )
-            content()
-        }
-    }
 }
 
 @Composable

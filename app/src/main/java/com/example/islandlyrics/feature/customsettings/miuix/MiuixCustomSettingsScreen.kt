@@ -659,15 +659,6 @@ fun MiuixCustomSettingsScreen(
                                                 R.string.settings_block_xmsf_duration_value,
                                                 blockXmsfCustomDurationMs
                                             )
-                                            val currentBlockXmsfModeSummary = when (blockXmsfMode) {
-                                                XmsfBypassMode.DISABLED -> stringResource(R.string.settings_block_xmsf_mode_disabled_desc)
-                                                XmsfBypassMode.STANDARD -> stringResource(R.string.settings_block_xmsf_mode_standard_desc)
-                                                XmsfBypassMode.CUSTOM -> stringResource(
-                                                    R.string.settings_block_xmsf_mode_custom_current_desc,
-                                                    currentBlockXmsfDurationText
-                                                )
-                                                XmsfBypassMode.AGGRESSIVE -> stringResource(R.string.settings_block_xmsf_mode_aggressive_desc)
-                                            }
                                             val bypassOptions = listOf(
                                                 Triple(
                                                     XmsfBypassMode.DISABLED,
@@ -693,7 +684,7 @@ fun MiuixCustomSettingsScreen(
 
                                             SuperDropdown(
                                                 title = stringResource(R.string.settings_block_xmsf_mode),
-                                                summary = currentBlockXmsfModeSummary,
+                                                summary = stringResource(R.string.settings_block_xmsf_mode_desc),
                                                 entry = DropdownEntry(
                                                     items = bypassOptions.map { (mode, label, summary) ->
                                                         DropdownItem(
@@ -841,22 +832,34 @@ fun MiuixCustomSettingsScreen(
                                         )
 
                                         if (superIslandNotificationStyle != "advanced_beta") {
-                                            val buttonLayouts = listOf("two_button", "three_button")
-                                            val buttonLayoutNames = listOf(
-                                                stringResource(R.string.super_island_media_button_layout_two),
-                                                stringResource(R.string.super_island_media_button_layout_three)
+                                            val buttonLayoutItems = listOf(
+                                                Triple(
+                                                    "two_button",
+                                                    stringResource(R.string.super_island_media_button_layout_two),
+                                                    stringResource(R.string.super_island_media_button_layout_two_desc)
+                                                ),
+                                                Triple(
+                                                    "three_button",
+                                                    stringResource(R.string.super_island_media_button_layout_three),
+                                                    stringResource(R.string.super_island_media_button_layout_three_desc)
+                                                )
                                             )
-                                            val currentButtonLayoutIndex = buttonLayouts.indexOf(superIslandMediaButtonLayout).takeIf { it >= 0 } ?: 0
 
                                             SuperDropdown(
                                                 title = stringResource(R.string.settings_super_island_media_button_layout),
-                                                items = buttonLayoutNames,
-                                                selectedIndex = currentButtonLayoutIndex,
-                                                onSelectedIndexChange = { index ->
-                                                    val newLayout = buttonLayouts[index]
-                                                    superIslandMediaButtonLayout = newLayout
-                                                    viewModel.dispatch(CustomSettingsAction.SetSuperIslandMediaButtonLayout(newLayout))
-                                                }
+                                                entry = DropdownEntry(
+                                                    items = buttonLayoutItems.map { (layoutId, name, desc) ->
+                                                        DropdownItem(
+                                                            text = name,
+                                                            summary = desc,
+                                                            selected = superIslandMediaButtonLayout == layoutId,
+                                                            onClick = {
+                                                                superIslandMediaButtonLayout = layoutId
+                                                                viewModel.dispatch(CustomSettingsAction.SetSuperIslandMediaButtonLayout(layoutId))
+                                                            }
+                                                        )
+                                                    }
+                                                )
                                             )
                                         }
                                     }

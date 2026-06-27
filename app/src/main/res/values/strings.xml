@@ -112,7 +112,7 @@
     <string name="settings_block_xmsf">Bypass Super Island Whitelist</string>
     <string name="settings_block_xmsf_desc">Temporarily disconnects XMSF network when sending notifications to bypass the system whitelist (Requires Shizuku)</string>
     <string name="settings_block_xmsf_mode">Bypass Mode</string>
-    <string name="settings_block_xmsf_mode_desc">Choose how long XMSF stays offline when bypassing the Super Island whitelist (Requires Shizuku)</string>
+    <string name="settings_block_xmsf_mode_desc">If the device is not rooted, enable a bypass mode to let Xiaomi Super Island render notifications outside the Xiaomi whitelist. Requires Shizuku.</string>
     <string name="settings_block_xmsf_mode_disabled">Off</string>
     <string name="settings_block_xmsf_mode_disabled_desc">Do not modify XMSF networking</string>
     <string name="settings_block_xmsf_mode_standard">Standard</string>
@@ -582,8 +582,10 @@ Within the log interface, select the share/export icon. You can specify a timefr
     <string name="super_island_notification_style_standard">Standard Xiaomi Super Island</string>
     <string name="super_island_notification_style_advanced_beta">Advanced Style (Beta)</string>
     <string name="settings_super_island_media_button_layout">Playback Button Layout</string>
-    <string name="super_island_media_button_layout_two">2 Buttons (Play/Pause, Next)</string>
-    <string name="super_island_media_button_layout_three">3 Buttons (Previous, Play/Pause, Next)</string>
+    <string name="super_island_media_button_layout_two">2 Buttons</string>
+    <string name="super_island_media_button_layout_two_desc">Play/Pause, Next</string>
+    <string name="super_island_media_button_layout_three">3 Buttons</string>
+    <string name="super_island_media_button_layout_three_desc">Previous, Play/Pause, Next</string>
     <string name="settings_super_island_custom_expand_test">Custom Expand Layout Test</string>
     <string name="settings_super_island_custom_expand_test_desc">Use a custom Super Island expanded layout with a horizontal progress bar and three media controls for testing.</string>
     <string name="settings_progress_color">Colorize Progress Bar</string>
