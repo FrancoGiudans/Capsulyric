@@ -82,6 +82,7 @@ object AppPreferences {
         const val NEW_PLAYING_APP_ALERT_IGNORED_PACKAGES = "new_playing_app_alert_ignored_packages"
         const val NEW_PLAYING_APP_ALERT_ALERTED_PACKAGES = "new_playing_app_alert_alerted_packages"
         const val NEW_PLAYING_APP_ALERT_LAST_NOTIFY_TIME = "new_playing_app_alert_last_notify_time"
+        const val LASTFM_ENABLED = "lastfm_enabled"
     }
 
     object Defaults {
@@ -145,4 +146,7 @@ object AppPreferences {
 
     fun isOfflineModeEnabled(prefs: SharedPreferences): Boolean =
         prefs.getBoolean(Keys.FULLY_OFFLINE_MODE, false)
+
+    fun isLastFmEnabled(prefs: SharedPreferences): Boolean =
+        prefs.getBoolean(Keys.LASTFM_ENABLED, false)
 }

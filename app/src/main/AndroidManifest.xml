@@ -44,6 +44,11 @@
             android:theme="@style/Theme.IslandLyrics.Translucent"
             android:parentActivityName="com.example.islandlyrics.feature.main.MainActivity" />
         <activity
+            android:name="com.example.islandlyrics.feature.lastfm.LastFmSettingsActivity"
+            android:label="@string/lastfm_title"
+            android:theme="@style/Theme.IslandLyrics.Translucent"
+            android:parentActivityName="com.example.islandlyrics.feature.settings.SettingsActivity" />
+        <activity
             android:name="com.example.islandlyrics.feature.settings.AboutActivity"
             android:label="@string/community_about_title"
             android:theme="@style/Theme.IslandLyrics.Translucent"

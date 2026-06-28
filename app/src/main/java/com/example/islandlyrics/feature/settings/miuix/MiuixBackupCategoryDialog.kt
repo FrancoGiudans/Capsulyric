@@ -236,6 +236,7 @@ fun miuixSubGroupLabel(subId: String): String {
         "general_language" -> stringResource(R.string.backup_sub_general_language)
         "general_behavior" -> stringResource(R.string.backup_sub_general_behavior)
         "general_lyric_display" -> stringResource(R.string.backup_sub_general_lyric_display)
+        "general_lastfm" -> stringResource(R.string.backup_sub_general_lastfm)
         "advanced_lab" -> stringResource(R.string.backup_sub_advanced_lab)
         "advanced_offline" -> stringResource(R.string.backup_sub_advanced_offline)
         "advanced_lyric_dir" -> stringResource(R.string.backup_sub_advanced_lyric_dir)

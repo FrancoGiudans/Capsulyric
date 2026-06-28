@@ -9,6 +9,7 @@ import com.example.islandlyrics.core.feed.CommunityFeedItem
 import com.example.islandlyrics.core.theme.ThemeHelper
 import com.example.islandlyrics.core.platform.RomUtils
 import com.example.islandlyrics.feature.faq.FAQActivity
+import com.example.islandlyrics.feature.lastfm.LastFmSettingsActivity
 import com.example.islandlyrics.feature.settings.AboutActivity
 import com.example.islandlyrics.feature.settings.CommunityDialogState
 import com.example.islandlyrics.feature.settings.CommunityMarkdownBody
@@ -53,6 +54,7 @@ import androidx.compose.material.icons.filled.BatterySaver
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Upload
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Science
 import androidx.compose.material.icons.filled.Storage
@@ -86,6 +88,7 @@ fun SettingsScreen(
     onOpenAbout: (() -> Unit)? = null,
     onOpenLocalLyricDirectory: ((Uri, String) -> Unit)? = null,
     onOpenOnlineLyricRematch: (() -> Unit)? = null,
+    onOpenLastFm: (() -> Unit)? = null,
     onOpenCacheManagement: (() -> Unit)? = null,
     onOpenLab: (() -> Unit)? = null,
     showBackButton: Boolean = true,
@@ -439,6 +442,16 @@ fun SettingsScreen(
                         onClick = {
                             onOpenOnlineLyricRematch?.invoke()
                                 ?: context.startActivity(Intent(context, com.example.islandlyrics.feature.onlinelyricdebug.OnlineLyricDebugActivity::class.java))
+                        }
+                    )
+                    SettingsCardDivider()
+                    SettingsActionItem(
+                        title = stringResource(R.string.lastfm_title),
+                        summary = stringResource(R.string.lastfm_settings_summary),
+                        icon = Icons.Filled.Link,
+                        onClick = {
+                            onOpenLastFm?.invoke()
+                                ?: context.startActivity(Intent(context, LastFmSettingsActivity::class.java))
                         }
                     )
                 }

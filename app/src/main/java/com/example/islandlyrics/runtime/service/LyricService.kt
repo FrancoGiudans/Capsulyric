@@ -18,6 +18,7 @@ import com.example.islandlyrics.core.logging.AppLogger
 import com.example.islandlyrics.core.logging.LogManager
 import com.example.islandlyrics.core.network.OfflineModeManager
 import com.example.islandlyrics.core.settings.AppPreferences
+import com.example.islandlyrics.integration.lastfm.LastFmScrobbleManager
 import com.example.islandlyrics.lyrics.state.LyricRepository
 import com.example.islandlyrics.rules.ParserRuleHelper
 import com.example.islandlyrics.lyrics.source.LyricGetterSource
@@ -53,6 +54,7 @@ class LyricService : Service() {
     private lateinit var lyriconSource: LyriconSource
 
     private lateinit var progressSyncController: ProgressSyncController
+    private lateinit var lastFmScrobbleManager: LastFmScrobbleManager
     private lateinit var mediaActionController: MediaActionController
     private lateinit var mediaCommandRouter: LyricMediaCommandRouter
     private lateinit var appNameResolver: AppNameResolver
@@ -109,6 +111,7 @@ class LyricService : Service() {
             )
         }
         if (playing) {
+            lastFmScrobbleManager.onPlaybackChanged(true)
             updateActiveHandler()
             progressSyncController.start()
             syncFloatingLyricsState(AppPreferences.of(this))
@@ -118,6 +121,7 @@ class LyricService : Service() {
             // after a background pause where the loop was idle.
             displayManager.forceUpdate()
         } else {
+            lastFmScrobbleManager.onPlaybackChanged(false)
             syncFloatingLyricsState(AppPreferences.of(this))
         }
         delayedStopController?.onPlaybackChanged(playing)
@@ -140,6 +144,7 @@ class LyricService : Service() {
             if (trackChanged) {
                 resetForTrackChange(info)
             }
+            lastFmScrobbleManager.onMetadataChanged(info)
 
             metadataLyricFetchCoordinator.onMetadataChanged(info, trackChanged)
             
@@ -256,6 +261,7 @@ class LyricService : Service() {
             mediaSessionManagerProvider = { cachedMediaSessionManager },
             mediaComponentProvider = { cachedMediaComponent }
         )
+        lastFmScrobbleManager = LastFmScrobbleManager(this)
         mediaActionController = MediaActionController(
             mediaSessionManagerProvider = { cachedMediaSessionManager },
             mediaComponentProvider = { cachedMediaComponent },
@@ -292,6 +298,11 @@ class LyricService : Service() {
         repo.liveLyric.observeForever(lyricObserver)
         repo.isPlaying.observeForever(playbackObserver)  // Controls capsule lifecycle + progress tracking
         repo.liveMetadata.observeForever(metadataObserver)
+        repo.liveProgress.observeForever(progressObserver)
+    }
+
+    private val progressObserver = Observer<LyricRepository.PlaybackProgress?> { progress ->
+        lastFmScrobbleManager.onProgressChanged(progress)
     }
 
     private fun syncFloatingLyricsState(prefs: android.content.SharedPreferences) {
@@ -389,6 +400,7 @@ class LyricService : Service() {
         repo.liveLyric.removeObserver(lyricObserver)
         repo.isPlaying.removeObserver(playbackObserver)
         repo.liveMetadata.removeObserver(metadataObserver)
+        repo.liveProgress.removeObserver(progressObserver)
         
         try {
             mediaCommandRouter.unregister()

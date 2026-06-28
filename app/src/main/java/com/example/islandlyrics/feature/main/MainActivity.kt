@@ -19,6 +19,8 @@ import com.example.islandlyrics.feature.faq.material.FAQScreen
 import com.example.islandlyrics.feature.faq.miuix.MiuixFAQScreen
 import com.example.islandlyrics.feature.lab.material.LabScreen
 import com.example.islandlyrics.feature.lab.miuix.MiuixLabScreen
+import com.example.islandlyrics.feature.lastfm.material.LastFmSettingsScreen
+import com.example.islandlyrics.feature.lastfm.miuix.MiuixLastFmSettingsScreen
 import com.example.islandlyrics.feature.locallyrics.material.LocalLyricDirectoryScreen
 import com.example.islandlyrics.feature.locallyrics.miuix.MiuixLocalLyricDirectoryScreen
 import com.example.islandlyrics.feature.logviewer.material.LogViewerScreen
@@ -403,6 +405,7 @@ class MainActivity : BaseActivity() {
                             pushPage(AppPage.LocalLyricDirectory(uri.toString(), name))
                         },
                         onOpenOnlineLyricRematch = { pushPage(AppPage.OnlineLyricDebug) },
+                        onOpenLastFm = { pushPage(AppPage.LastFm) },
                         onOpenCacheManagement = { pushPage(AppPage.CacheManagement) },
                         onOpenLab = { pushPage(AppPage.Lab) },
                         showBackButton = false,
@@ -569,6 +572,7 @@ class MainActivity : BaseActivity() {
                                         pushPage(AppPage.LocalLyricDirectory(uri.toString(), name))
                                     },
                                     onOpenOnlineLyricRematch = { pushPage(AppPage.OnlineLyricDebug) },
+                                    onOpenLastFm = { pushPage(AppPage.LastFm) },
                                     onOpenCacheManagement = { pushPage(AppPage.CacheManagement) },
                                     onOpenLab = { pushPage(AppPage.Lab) },
                                     showBackButton = false,
@@ -784,6 +788,7 @@ class MainActivity : BaseActivity() {
                 onOpenLogViewer = { onPushPage(AppPage.LogViewer) }
             )
             AppPage.OnlineLyricDebug -> OnlineLyricDebugScreen(onBack = onBack)
+            AppPage.LastFm -> LastFmSettingsScreen(onBack = onBack)
             AppPage.CacheManagement -> CacheManagementScreen(onBack = onBack)
             AppPage.Lab -> LabScreen(onBack = onBack)
             AppPage.LogViewer -> LogViewerScreen(onBack = onBack)
@@ -831,6 +836,7 @@ class MainActivity : BaseActivity() {
                 onOpenLogViewer = { onPushPage(AppPage.LogViewer) }
             )
             AppPage.OnlineLyricDebug -> MiuixOnlineLyricDebugScreen(onBack = onBack)
+            AppPage.LastFm -> MiuixLastFmSettingsScreen(onBack = onBack)
             AppPage.CacheManagement -> MiuixCacheManagementScreen(onBack = onBack)
             AppPage.Lab -> MiuixLabScreen(onBack = onBack)
             AppPage.LogViewer -> MiuixLogViewerScreen(onBack = onBack)
@@ -849,6 +855,7 @@ private sealed class AppPage {
     data object About : AppPage()
     data object Diagnostics : AppPage()
     data object OnlineLyricDebug : AppPage()
+    data object LastFm : AppPage()
     data object CacheManagement : AppPage()
     data object Lab : AppPage()
     data object LogViewer : AppPage()

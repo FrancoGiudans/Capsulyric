@@ -274,6 +274,30 @@
     <string name="settings_use_online_lyrics_desc">Fetch timestamped lyrics from multiple online sources (Kugou/Netease/LrcApi)</string>
     <string name="settings_use_superlyric_api">Use SuperLyric API</string>
     <string name="settings_use_superlyric_api_desc">(Reserved) Enhanced lyric API integration</string>
+    <string name="lastfm_title">Last.fm</string>
+    <string name="lastfm_settings_summary">Scrobble whitelisted music apps with your own Last.fm API credentials</string>
+    <string name="lastfm_description">Capsulyric only scrobbles enabled parser-rule apps. API credentials and session keys are encrypted on this device and are not included in backups.</string>
+    <string name="lastfm_setup_title">Setup guide</string>
+    <string name="lastfm_setup_steps">1. Create a Last.fm API account and copy the API key and shared secret.\n2. Paste both credentials here and save them.\n3. Open Last.fm authorization, approve Capsulyric in the browser, then return and finish the connection.</string>
+    <string name="lastfm_create_api_key">Create Last.fm API key</string>
+    <string name="lastfm_enable">Enable Last.fm scrobbling</string>
+    <string name="lastfm_enable_desc">Send now playing and scrobble records for whitelisted players</string>
+    <string name="lastfm_api_key">API key</string>
+    <string name="lastfm_api_secret">Shared secret</string>
+    <string name="lastfm_save_credentials">Save credentials</string>
+    <string name="lastfm_open_auth">Open Last.fm authorization</string>
+    <string name="lastfm_reauthorize">Reauthorize Last.fm</string>
+    <string name="lastfm_finish_connect">Finish connection</string>
+    <string name="lastfm_disconnect">Disconnect and clear credentials</string>
+    <string name="lastfm_connected_note">Capsulyric is ready to scrobble enabled parser-rule apps. Reauthorize only if Last.fm stops accepting the connection or you want to switch accounts.</string>
+    <string name="lastfm_connected_as">Connected as %1$s</string>
+    <string name="lastfm_not_connected">Not connected</string>
+    <string name="lastfm_saved">Last.fm credentials saved</string>
+    <string name="lastfm_missing_credentials">Enter API key and shared secret first</string>
+    <string name="lastfm_auth_opened">Authorize Capsulyric in the browser, then return and tap Finish connection</string>
+    <string name="lastfm_connect_success">Last.fm connected</string>
+    <string name="lastfm_connect_failed">Last.fm connection failed</string>
+    <string name="lastfm_disconnected">Last.fm disconnected</string>
 
     <!-- About & Update Checker -->
     <string name="about_title">About</string>
@@ -425,6 +449,7 @@
     <string name="backup_sub_general_language">Language</string>
     <string name="backup_sub_general_behavior">Behavior</string>
     <string name="backup_sub_general_lyric_display">Lyric Display</string>
+    <string name="backup_sub_general_lastfm">Last.fm preference</string>
     <string name="backup_sub_parser_all">All Rules</string>
     <string name="backup_sub_advanced_lab">Lab Features</string>
     <string name="backup_sub_advanced_offline">Offline Mode</string>
@@ -1003,6 +1028,10 @@ Within the log interface, select the share/export icon. You can specify a timefr
     <string name="settings_floating_position_reset_toast">Desktop lyrics position reset</string>
     <string name="community_loading_title">Loading Community Feed</string>
     <string name="community_loading_desc">Fetching announcements and votes from the remote feed</string>
+    <string name="community_empty_title">No new announcements or votes</string>
+    <string name="community_empty_desc">There is nothing new in the community feed right now.</string>
+    <string name="community_unavailable_title">Unable to connect to the community feed</string>
+    <string name="community_unavailable_desc">Check your network connection or switch the announcement source.</string>
     <string name="community_announcement_title">Announcement</string>
     <string name="community_poll_title">Vote</string>
     <string name="community_open_in_browser">Open in browser</string>

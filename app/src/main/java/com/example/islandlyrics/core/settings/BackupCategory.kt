@@ -109,7 +109,8 @@ object BackupCategories {
             "hide_recents_enabled", "predictive_back_enabled", "predictive_back_animation_mode",
             "predictive_back_animation_style",
             "service_enabled",
-            "lyric_text_display_mode", "disable_lyric_scrolling"
+            "lyric_text_display_mode", "disable_lyric_scrolling",
+            AppPreferences.Keys.LASTFM_ENABLED
         ),
         subGroups = listOf(
             SubGroup("general_language", listOf("language_code")),
@@ -120,7 +121,8 @@ object BackupCategories {
             )),
             SubGroup("general_lyric_display", listOf(
                 "lyric_text_display_mode", "disable_lyric_scrolling"
-            ))
+            )),
+            SubGroup("general_lastfm", listOf(AppPreferences.Keys.LASTFM_ENABLED))
         )
     )
 

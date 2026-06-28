@@ -20,6 +20,8 @@ import com.example.islandlyrics.feature.faq.material.FAQScreen
 import com.example.islandlyrics.feature.faq.miuix.MiuixFAQScreen
 import com.example.islandlyrics.feature.lab.material.LabScreen
 import com.example.islandlyrics.feature.lab.miuix.MiuixLabScreen
+import com.example.islandlyrics.feature.lastfm.material.LastFmSettingsScreen
+import com.example.islandlyrics.feature.lastfm.miuix.MiuixLastFmSettingsScreen
 import com.example.islandlyrics.feature.locallyrics.material.LocalLyricDirectoryScreen
 import com.example.islandlyrics.feature.locallyrics.miuix.MiuixLocalLyricDirectoryScreen
 import com.example.islandlyrics.feature.logviewer.material.LogViewerScreen
@@ -97,6 +99,7 @@ class SettingsActivity : BaseActivity() {
                                         pushPage(SettingsPage.LocalLyricDirectory(uri.toString(), name))
                                     },
                                     onOpenOnlineLyricRematch = { pushPage(SettingsPage.OnlineLyricDebug) },
+                                    onOpenLastFm = { pushPage(SettingsPage.LastFm) },
                                     onOpenCacheManagement = { pushPage(SettingsPage.CacheManagement) },
                                     onOpenLab = { pushPage(SettingsPage.Lab) },
                                     updateReleaseInfo = updateReleaseInfo,
@@ -150,6 +153,7 @@ class SettingsActivity : BaseActivity() {
                                         pushPage(SettingsPage.LocalLyricDirectory(uri.toString(), name))
                                     },
                                     onOpenOnlineLyricRematch = { pushPage(SettingsPage.OnlineLyricDebug) },
+                                    onOpenLastFm = { pushPage(SettingsPage.LastFm) },
                                     onOpenCacheManagement = { pushPage(SettingsPage.CacheManagement) },
                                     onOpenLab = { pushPage(SettingsPage.Lab) }
                                 )
@@ -219,6 +223,7 @@ class SettingsActivity : BaseActivity() {
                 onOpenLogViewer = { onPushPage(SettingsPage.LogViewer) }
             )
             SettingsPage.OnlineLyricDebug -> OnlineLyricDebugScreen(onBack = onBack)
+            SettingsPage.LastFm -> LastFmSettingsScreen(onBack = onBack)
             SettingsPage.CacheManagement -> CacheManagementScreen(onBack = onBack)
             SettingsPage.Lab -> LabScreen(onBack = onBack)
             SettingsPage.LogViewer -> LogViewerScreen(onBack = onBack)
@@ -268,6 +273,7 @@ class SettingsActivity : BaseActivity() {
                 onOpenLogViewer = { onPushPage(SettingsPage.LogViewer) }
             )
             SettingsPage.OnlineLyricDebug -> MiuixOnlineLyricDebugScreen(onBack = onBack)
+            SettingsPage.LastFm -> MiuixLastFmSettingsScreen(onBack = onBack)
             SettingsPage.CacheManagement -> MiuixCacheManagementScreen(onBack = onBack)
             SettingsPage.Lab -> MiuixLabScreen(onBack = onBack)
             SettingsPage.LogViewer -> MiuixLogViewerScreen(onBack = onBack)
@@ -403,6 +409,7 @@ private sealed class SettingsPage {
     data object About : SettingsPage()
     data object Diagnostics : SettingsPage()
     data object OnlineLyricDebug : SettingsPage()
+    data object LastFm : SettingsPage()
     data object CacheManagement : SettingsPage()
     data object Lab : SettingsPage()
     data object LogViewer : SettingsPage()
