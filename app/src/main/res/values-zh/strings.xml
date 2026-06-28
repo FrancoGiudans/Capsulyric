@@ -19,9 +19,11 @@
     <string name="main_album_art_cd">专辑封面</string>
     <string name="main_lyric_source_fmt">歌词源: %1$s</string>
     <string name="main_current_lyric_title">当前歌词</string>
+    <string name="main_instrumental_marked">已标记为纯音乐</string>
     <string name="online_lyric_rematch_entry">重新匹配在线歌词</string>
     <string name="online_lyric_rematch_entry_short">重新匹配</string>
     <string name="main_waiting_for_lyrics">正在等待歌词同步...</string>
+    <string name="main_no_lyrics">暂无歌词</string>
     <string name="main_lyrics_unavailable">这个会话当前没有可用歌词。</string>
     <string name="action_previous">上一首</string>
     <string name="action_play">播放</string>
@@ -799,6 +801,8 @@
     <string name="online_lyric_rematch_artist">歌手</string>
     <string name="online_lyric_rematch_action">重新匹配</string>
     <string name="online_lyric_rematch_current_playback_action">使用当前播放信息重新匹配</string>
+    <string name="online_lyric_rematch_mark_instrumental">这首歌是纯音乐</string>
+    <string name="online_lyric_rematch_clear_instrumental">取消纯音乐标记</string>
     <string name="online_lyric_rematch_result_title">重新获取到的歌词</string>
     <string name="online_lyric_rematch_result_source_fmt">来源: %1$s</string>
     <string name="online_lyric_rematch_effective_query_fmt">当前查询: %1$s / %2$s</string>
@@ -871,6 +875,9 @@
     <string name="online_lyric_debug_imported_current_playback">已导入当前播放信息到自定义匹配输入框，点击保存到缓存后生效</string>
     <string name="online_lyric_debug_override_saved">已保存当前歌曲匹配信息，留空项会自动使用原始播放信息</string>
     <string name="online_lyric_debug_override_cleared">已清除当前歌曲自定义匹配和关联歌词缓存</string>
+    <string name="online_lyric_debug_instrumental_status">当前歌曲已标记为纯音乐，将跳过在线歌词匹配</string>
+    <string name="online_lyric_debug_instrumental_marked">已将当前歌曲标记为纯音乐，并采用无歌词处理</string>
+    <string name="online_lyric_debug_instrumental_cleared">已取消纯音乐标记</string>
     <string name="online_lyric_debug_cache_hit">本次结果来自歌词缓存</string>
     <string name="online_lyric_debug_all_apis_failed">所有API都未返回结果</string>
     <string name="online_lyric_debug_cache_switched_fmt">已切换到 %1$s 并刷新歌词缓存</string>

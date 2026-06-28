@@ -36,6 +36,7 @@ import androidx.core.net.toUri
 import com.example.islandlyrics.R
 import com.example.islandlyrics.core.feed.CommunityFeed
 import com.example.islandlyrics.core.feed.CommunityFeedRepository
+import com.example.islandlyrics.core.feed.CommunityFeedStatus
 import com.example.islandlyrics.core.network.OfflineModeManager
 import com.example.islandlyrics.core.settings.LabFeatureManager
 import com.example.islandlyrics.core.update.UpdateChecker
@@ -212,6 +213,28 @@ fun AboutScreen(
                                     onClick = { communityDialogState = CommunityDialogState(pollSectionTitle, poll) }
                                 )
                             }
+                        }
+                    }
+                } else if (communityFeed?.status == CommunityFeedStatus.UNAVAILABLE) {
+                    item {
+                        SettingsCard {
+                            SettingsActionItem(
+                                title = stringResource(R.string.community_unavailable_title),
+                                summary = stringResource(R.string.community_unavailable_desc),
+                                icon = Icons.Filled.Info,
+                                onClick = {}
+                            )
+                        }
+                    }
+                } else {
+                    item {
+                        SettingsCard {
+                            SettingsActionItem(
+                                title = stringResource(R.string.community_empty_title),
+                                summary = stringResource(R.string.community_empty_desc),
+                                icon = Icons.Filled.Info,
+                                onClick = {}
+                            )
                         }
                     }
                 }

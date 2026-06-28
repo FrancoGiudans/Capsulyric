@@ -44,22 +44,25 @@ class OnlineLyricSource(private val context: Context) {
         packageName: String,
         fallbackTitle: String,
         fallbackArtist: String
-    ): Pair<String, String> {
+    ): OnlineLyricCacheStore.CurrentSongCacheState? {
         val rule = ParserRuleHelper.getRuleForPackage(context, packageName)
             ?: ParserRuleHelper.createDefaultRule(packageName)
         val liveMetadata = LyricRepository.getInstance().liveMetadata.value
         val metadata = if (liveMetadata?.packageName == packageName) liveMetadata else null
         return if (metadata != null) {
-            cacheStore.resolveQuery(
+            cacheStore.getCurrentSongState(
                 mediaInfo = metadata,
                 fallbackTitle = fallbackTitle,
                 fallbackArtist = fallbackArtist,
                 useRawMetadata = rule.useRawMetadataForOnlineMatching
             )
-        } else if (rule.useRawMetadataForOnlineMatching) {
-            fallbackTitle to fallbackArtist
         } else {
-            fallbackTitle to fallbackArtist
+            OnlineLyricCacheStore.CurrentSongCacheState(
+                effectiveTitle = fallbackTitle,
+                effectiveArtist = fallbackArtist,
+                querySource = OnlineLyricCacheStore.QuerySource.DEFAULT_METADATA,
+                matchOverride = null
+            )
         }
     }
 
@@ -82,7 +85,22 @@ class OnlineLyricSource(private val context: Context) {
             return
         }
 
-        val (queryTitle, queryArtist) = resolveQuery(packageName, title, artist)
+        val currentSongState = resolveQuery(packageName, title, artist) ?: return
+        if (currentSongState.isInstrumental) {
+            AppLogger.getInstance().i(TAG, "[$packageName] Marked instrumental — using no-lyrics state")
+            cancel()
+            LyricRepository.getInstance().updateLyric("", packageName, "System")
+            LyricRepository.getInstance().updateParsedLyrics(
+                lines = emptyList(),
+                hasSyllable = false,
+                timelineCapability = LyricRepository.TimelineCapability.NONE
+            )
+            LyricRepository.getInstance().updateCurrentLine(null)
+            return
+        }
+
+        val queryTitle = currentSongState.effectiveTitle
+        val queryArtist = currentSongState.effectiveArtist
 
         if (queryTitle.isBlank() || queryArtist.isBlank()) {
             AppLogger.getInstance().log(TAG, "Missing title/artist — cannot fetch")
@@ -150,7 +168,11 @@ class OnlineLyricSource(private val context: Context) {
                 } else {
                     null
                 }
-                if (currentQuery?.first != pendingTitle || currentQuery.second != pendingArtist) {
+                if (currentQuery?.isInstrumental == true) {
+                    AppLogger.getInstance().i(TAG, "⚠️ Stale fetch discarded (track is marked instrumental)")
+                    return@launch
+                }
+                if (currentQuery?.effectiveTitle != pendingTitle || currentQuery.effectiveArtist != pendingArtist) {
                     AppLogger.getInstance().i(TAG,
                         "⚠️ Stale fetch discarded (song changed). Expected: $pendingTitle")
                     return@launch

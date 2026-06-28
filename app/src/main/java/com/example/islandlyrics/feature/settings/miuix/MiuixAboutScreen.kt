@@ -23,6 +23,7 @@ import androidx.core.net.toUri
 import com.example.islandlyrics.R
 import com.example.islandlyrics.core.feed.CommunityFeed
 import com.example.islandlyrics.core.feed.CommunityFeedRepository
+import com.example.islandlyrics.core.feed.CommunityFeedStatus
 import com.example.islandlyrics.core.network.OfflineModeManager
 import com.example.islandlyrics.core.settings.LabFeatureManager
 import com.example.islandlyrics.core.update.UpdateChecker
@@ -178,6 +179,22 @@ fun MiuixAboutScreen(
                                 item = poll,
                                 fallbackSummary = stringResource(R.string.community_open_in_browser),
                                 onClick = { showCommunityDialog.value = CommunityDialogState(pollSectionTitle, poll) }
+                            )
+                        }
+
+                        if (communityFeed?.hasContent != true) {
+                            SuperArrow(
+                                title = if (communityFeed?.status == CommunityFeedStatus.UNAVAILABLE) {
+                                    stringResource(R.string.community_unavailable_title)
+                                } else {
+                                    stringResource(R.string.community_empty_title)
+                                },
+                                summary = if (communityFeed?.status == CommunityFeedStatus.UNAVAILABLE) {
+                                    stringResource(R.string.community_unavailable_desc)
+                                } else {
+                                    stringResource(R.string.community_empty_desc)
+                                },
+                                onClick = {}
                             )
                         }
                     }

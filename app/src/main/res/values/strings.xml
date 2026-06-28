@@ -19,9 +19,11 @@
     <string name="main_album_art_cd">Album art</string>
     <string name="main_lyric_source_fmt">Lyric source: %1$s</string>
     <string name="main_current_lyric_title">Current lyric</string>
+    <string name="main_instrumental_marked">Marked as instrumental</string>
     <string name="online_lyric_rematch_entry">Rematch Online Lyrics</string>
     <string name="online_lyric_rematch_entry_short">Rematch Lyrics</string>
     <string name="main_waiting_for_lyrics">Waiting for lyrics...</string>
+    <string name="main_no_lyrics">No lyrics yet</string>
     <string name="main_lyrics_unavailable">Lyrics are unavailable for this session.</string>
     <string name="action_previous">Previous</string>
     <string name="action_play">Play</string>
@@ -808,6 +810,8 @@ Within the log interface, select the share/export icon. You can specify a timefr
     <string name="online_lyric_rematch_artist">Artist</string>
     <string name="online_lyric_rematch_action">Rematch</string>
     <string name="online_lyric_rematch_current_playback_action">Use Current Playback and Rematch</string>
+    <string name="online_lyric_rematch_mark_instrumental">This Song Is Instrumental</string>
+    <string name="online_lyric_rematch_clear_instrumental">Clear Instrumental Mark</string>
     <string name="online_lyric_rematch_result_title">Fetched Lyrics</string>
     <string name="online_lyric_rematch_result_source_fmt">Source: %1$s</string>
     <string name="online_lyric_rematch_effective_query_fmt">Current query: %1$s / %2$s</string>
@@ -880,6 +884,9 @@ Within the log interface, select the share/export icon. You can specify a timefr
     <string name="online_lyric_debug_imported_current_playback">Imported current playback info into the custom match fields. Tap Save to Cache to apply it</string>
     <string name="online_lyric_debug_override_saved">Saved current song match info. Blank fields will automatically fall back to the original playback info</string>
     <string name="online_lyric_debug_override_cleared">Cleared the current song\'s custom match and related lyric cache</string>
+    <string name="online_lyric_debug_instrumental_status">Current song is marked instrumental. Online lyrics will be skipped</string>
+    <string name="online_lyric_debug_instrumental_marked">Marked current song as instrumental and switched to no-lyrics state</string>
+    <string name="online_lyric_debug_instrumental_cleared">Cleared the instrumental mark</string>
     <string name="online_lyric_debug_cache_hit">This result came from lyric cache</string>
     <string name="online_lyric_debug_all_apis_failed">All APIs returned no result</string>
     <string name="online_lyric_debug_cache_switched_fmt">Switched to %1$s and refreshed lyric cache</string>

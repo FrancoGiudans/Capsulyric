@@ -29,10 +29,17 @@ data class CommunityFeedItem(
 
 data class CommunityFeed(
     val announcements: List<CommunityFeedItem> = emptyList(),
-    val polls: List<CommunityFeedItem> = emptyList()
+    val polls: List<CommunityFeedItem> = emptyList(),
+    val status: CommunityFeedStatus = CommunityFeedStatus.EMPTY
 ) {
     val hasContent: Boolean
         get() = announcements.isNotEmpty() || polls.isNotEmpty()
+}
+
+enum class CommunityFeedStatus {
+    AVAILABLE,
+    EMPTY,
+    UNAVAILABLE
 }
 
 object CommunityFeedRepository {
@@ -50,13 +57,25 @@ object CommunityFeedRepository {
         }
         val announcements = fetchItemsCached(context, ANNOUNCEMENTS_PATH)
         val polls = fetchItemsCached(context, POLLS_PATH)
+        val hasContent = announcements.items.isNotEmpty() || polls.items.isNotEmpty()
+        val hasRemoteResponse = announcements.remoteAvailable || polls.remoteAvailable
         CommunityFeed(
-            announcements = announcements,
-            polls = polls
+            announcements = announcements.items,
+            polls = polls.items,
+            status = when {
+                hasContent -> CommunityFeedStatus.AVAILABLE
+                hasRemoteResponse -> CommunityFeedStatus.EMPTY
+                else -> CommunityFeedStatus.UNAVAILABLE
+            }
         )
     }
 
-    private fun fetchItemsCached(context: Context, relativePath: String): List<CommunityFeedItem> {
+    private data class FetchItemsResult(
+        val items: List<CommunityFeedItem>,
+        val remoteAvailable: Boolean
+    )
+
+    private fun fetchItemsCached(context: Context, relativePath: String): FetchItemsResult {
         val cacheFile = java.io.File(context.cacheDir, "feed_${relativePath.replace('/', '_')}")
 
         val response = buildBaseUrls(context)
@@ -66,14 +85,17 @@ object CommunityFeedRepository {
             ?.second
             ?: return if (cacheFile.exists()) {
                 // Network failed — serve stale cache as fallback
-                try { parseItems(cacheFile.readText(), context) } catch (_: Exception) { emptyList() }
+                FetchItemsResult(
+                    items = try { parseItems(cacheFile.readText(), context) } catch (_: Exception) { emptyList() },
+                    remoteAvailable = false
+                )
             } else {
-                emptyList()
+                FetchItemsResult(items = emptyList(), remoteAvailable = false)
             }
 
         // Save to cache
         try { cacheFile.writeText(response) } catch (_: Exception) { }
-        return parseItems(response, context)
+        return FetchItemsResult(items = parseItems(response, context), remoteAvailable = true)
     }
 
     private fun buildFeedUrl(baseUrl: String, relativePath: String): String {

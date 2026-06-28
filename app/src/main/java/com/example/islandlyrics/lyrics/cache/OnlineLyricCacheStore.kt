@@ -63,7 +63,8 @@ class OnlineLyricCacheStore(context: Context) {
         val querySource: QuerySource,
         val matchOverride: MatchOverride?,
         val cachedLyricUpdatedAt: Long? = null,
-        val cachedProviderLabel: String? = null
+        val cachedProviderLabel: String? = null,
+        val isInstrumental: Boolean = false
     )
 
     enum class QuerySource {
@@ -87,6 +88,8 @@ class OnlineLyricCacheStore(context: Context) {
         val overrideTitle: String?,
         val overrideArtist: String?,
         val overrideUpdatedAt: Long?,
+        val instrumental: Boolean,
+        val instrumentalUpdatedAt: Long?,
         val cachedAt: Long?,
         val updatedAt: Long,
         val sizeBytes: Long
@@ -104,6 +107,8 @@ class OnlineLyricCacheStore(context: Context) {
         val overrideTitle: String? = null,
         val overrideArtist: String? = null,
         val overrideUpdatedAt: Long? = null,
+        val instrumental: Boolean = false,
+        val instrumentalUpdatedAt: Long? = null,
         val queryTitle: String? = null,
         val queryArtist: String? = null,
         val api: String? = null,
@@ -187,14 +192,19 @@ class OnlineLyricCacheStore(context: Context) {
             else -> Triple(fallbackTitle, fallbackArtist, QuerySource.DEFAULT_METADATA)
         }
 
-        val hasCachedLyric = entry != null && !entry.lyrics.isNullOrBlank() && entry.parsedLines.isNotEmpty()
+        val cacheEntry = entry
+        val canUseCachedLyric = cacheEntry != null &&
+            !cacheEntry.instrumental &&
+            !cacheEntry.lyrics.isNullOrBlank() &&
+            cacheEntry.parsedLines.isNotEmpty()
         return CurrentSongCacheState(
             effectiveTitle = effective.first,
             effectiveArtist = effective.second,
             querySource = effective.third,
             matchOverride = matchOverride,
-            cachedLyricUpdatedAt = if (hasCachedLyric) entry.cachedAt else null,
-            cachedProviderLabel = if (hasCachedLyric) entry.api else null
+            cachedLyricUpdatedAt = if (canUseCachedLyric) cacheEntry.cachedAt else null,
+            cachedProviderLabel = if (canUseCachedLyric) cacheEntry.api else null,
+            isInstrumental = cacheEntry?.instrumental == true
         )
     }
 
@@ -211,6 +221,7 @@ class OnlineLyricCacheStore(context: Context) {
             else if (index.containsKey(legacyId)) legacyId
             else return null
         val entry = readEntryFile(matchId) ?: return null
+        if (entry.instrumental) return null
         if (entry.queryTitle != queryTitle || entry.queryArtist != queryArtist) return null
         if (entry.lyrics.isNullOrBlank() || entry.parsedLines.isEmpty()) return null
 
@@ -259,6 +270,8 @@ class OnlineLyricCacheStore(context: Context) {
             overrideTitle = existing?.overrideTitle,
             overrideArtist = existing?.overrideArtist,
             overrideUpdatedAt = existing?.overrideUpdatedAt,
+            instrumental = false,
+            instrumentalUpdatedAt = null,
             queryTitle = queryTitle,
             queryArtist = queryArtist,
             api = result.api,
@@ -295,9 +308,44 @@ class OnlineLyricCacheStore(context: Context) {
             overrideTitle = sanitizedTitle,
             overrideArtist = sanitizedArtist,
             overrideUpdatedAt = now,
+            instrumental = false,
+            instrumentalUpdatedAt = null,
             updatedAt = now
         )
         writeEntryFile(merged)
+    }
+
+    fun markInstrumental(mediaInfo: LyricRepository.MediaInfo) = synchronized(lock) {
+        ensureMigrated()
+        val id = buildEntryId(mediaInfo)
+        val now = System.currentTimeMillis()
+        val merged = CacheEntry(
+            id = id,
+            packageName = mediaInfo.packageName,
+            title = mediaInfo.title,
+            artist = mediaInfo.artist,
+            rawTitle = mediaInfo.rawTitle,
+            rawArtist = mediaInfo.rawArtist,
+            duration = mediaInfo.duration,
+            instrumental = true,
+            instrumentalUpdatedAt = now,
+            updatedAt = now
+        )
+        writeEntryFile(merged)
+    }
+
+    fun clearInstrumentalMarker(mediaInfo: LyricRepository.MediaInfo) {
+        synchronized(lock) {
+            ensureMigrated()
+            val id = buildEntryId(mediaInfo)
+            val existing = readEntryFile(id) ?: return
+            val cleared = existing.copy(
+                instrumental = false,
+                instrumentalUpdatedAt = null,
+                updatedAt = System.currentTimeMillis()
+            )
+            writeEntryFile(cleared)
+        }
     }
 
     fun clearMatchOverride(mediaInfo: LyricRepository.MediaInfo) {
@@ -335,6 +383,7 @@ class OnlineLyricCacheStore(context: Context) {
         index.entries
             .filter { (_, ie) ->
                 ie.cachedAt != null ||
+                    ie.instrumental ||
                     !ie.overrideTitle.isNullOrBlank() ||
                     !ie.overrideArtist.isNullOrBlank()
             }
@@ -392,7 +441,7 @@ class OnlineLyricCacheStore(context: Context) {
         val index = readIndex()
         val idsToDelete = mutableListOf<String>()
         for ((id, ie) in index) {
-            if (ie.overrideTitle.isNullOrBlank() && ie.overrideArtist.isNullOrBlank()) {
+            if (ie.overrideTitle.isNullOrBlank() && ie.overrideArtist.isNullOrBlank() && !ie.instrumental) {
                 // Fully delete: remove entry file
                 entryFile(id).delete()
                 idsToDelete.add(id)
@@ -595,6 +644,8 @@ class OnlineLyricCacheStore(context: Context) {
                     overrideTitle = obj.optNullableString("overrideTitle"),
                     overrideArtist = obj.optNullableString("overrideArtist"),
                     overrideUpdatedAt = obj.optNullableLong("overrideUpdatedAt"),
+                    instrumental = obj.optBoolean("instrumental", false),
+                    instrumentalUpdatedAt = obj.optNullableLong("instrumentalUpdatedAt"),
                     cachedAt = obj.optNullableLong("cachedAt"),
                     updatedAt = obj.optLong("updatedAt", System.currentTimeMillis()),
                     sizeBytes = obj.optLong("sizeBytes", 0L)
@@ -622,6 +673,8 @@ class OnlineLyricCacheStore(context: Context) {
                 ie.overrideTitle?.let { put("overrideTitle", it) }
                 ie.overrideArtist?.let { put("overrideArtist", it) }
                 ie.overrideUpdatedAt?.let { put("overrideUpdatedAt", it) }
+                if (ie.instrumental) put("instrumental", true)
+                ie.instrumentalUpdatedAt?.let { put("instrumentalUpdatedAt", it) }
                 ie.cachedAt?.let { put("cachedAt", it) }
                 put("updatedAt", ie.updatedAt)
                 put("sizeBytes", ie.sizeBytes)
@@ -715,6 +768,8 @@ class OnlineLyricCacheStore(context: Context) {
             overrideTitle = overrideTitle,
             overrideArtist = overrideArtist,
             overrideUpdatedAt = overrideUpdatedAt,
+            instrumental = instrumental,
+            instrumentalUpdatedAt = instrumentalUpdatedAt,
             cachedAt = cachedAt,
             updatedAt = updatedAt,
             sizeBytes = estimateEntrySize(this)
@@ -753,6 +808,8 @@ class OnlineLyricCacheStore(context: Context) {
         put("overrideTitle", overrideTitle)
         put("overrideArtist", overrideArtist)
         put("overrideUpdatedAt", overrideUpdatedAt)
+        put("instrumental", instrumental)
+        put("instrumentalUpdatedAt", instrumentalUpdatedAt)
         put("queryTitle", queryTitle)
         put("queryArtist", queryArtist)
         put("api", api)
@@ -836,6 +893,8 @@ class OnlineLyricCacheStore(context: Context) {
             overrideTitle = optNullableString("overrideTitle"),
             overrideArtist = optNullableString("overrideArtist"),
             overrideUpdatedAt = optNullableLong("overrideUpdatedAt"),
+            instrumental = optBoolean("instrumental", false),
+            instrumentalUpdatedAt = optNullableLong("instrumentalUpdatedAt"),
             queryTitle = optNullableString("queryTitle"),
             queryArtist = optNullableString("queryArtist"),
             api = optNullableString("api"),

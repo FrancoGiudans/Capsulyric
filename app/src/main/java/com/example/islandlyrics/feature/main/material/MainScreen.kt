@@ -94,6 +94,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.example.islandlyrics.R
+import com.example.islandlyrics.lyrics.cache.OnlineLyricCacheStore
 import com.example.islandlyrics.lyrics.state.LyricRepository
 import com.example.islandlyrics.rules.ParserRuleHelper
 import com.example.islandlyrics.runtime.service.MediaMonitorService
@@ -101,7 +102,9 @@ import com.example.islandlyrics.ui.theme.material.materialPageContainerColor
 import com.example.islandlyrics.ui.theme.material.neutralMaterialTopBarColors
 import com.google.android.material.progressindicator.LinearProgressIndicator
 import androidx.palette.graphics.Palette
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 import kotlin.math.abs
 import kotlin.math.roundToInt
 import com.example.islandlyrics.core.settings.AppPreferences
@@ -139,9 +142,11 @@ fun MainScreen(
     val repoCurrentLine by repo.liveCurrentLine.observeAsState()
 
     val prefs = remember { AppPreferences.of(context) }
+    val onlineLyricCacheStore = remember(context) { OnlineLyricCacheStore(context) }
     var homeLyricPreviewDisplayModes by remember {
         mutableStateOf(HomeLyricPreviewDisplay.read(prefs))
     }
+    var isCurrentTrackInstrumental by remember { mutableStateOf(false) }
     var activeControllers by remember { mutableStateOf<List<MediaController>>(emptyList()) }
 
     DisposableEffect(prefs) {
@@ -152,6 +157,32 @@ fun MainScreen(
         }
         prefs.registerOnSharedPreferenceChangeListener(listener)
         onDispose { prefs.unregisterOnSharedPreferenceChangeListener(listener) }
+    }
+
+    LaunchedEffect(
+        repoMetadata?.packageName,
+        repoMetadata?.title,
+        repoMetadata?.artist,
+        repoMetadata?.rawTitle,
+        repoMetadata?.rawArtist,
+        repoLyric?.apiPath,
+        repoLyric?.lyric
+    ) {
+        val mediaInfo = repoMetadata
+        isCurrentTrackInstrumental = if (mediaInfo == null) {
+            false
+        } else {
+            withContext(Dispatchers.IO) {
+                val rule = ParserRuleHelper.getRuleForPackage(context, mediaInfo.packageName)
+                    ?: ParserRuleHelper.createDefaultRule(mediaInfo.packageName)
+                onlineLyricCacheStore.getCurrentSongState(
+                    mediaInfo = mediaInfo,
+                    fallbackTitle = mediaInfo.title,
+                    fallbackArtist = mediaInfo.artist,
+                    useRawMetadata = rule.useRawMetadataForOnlineMatching
+                ).isInstrumental
+            }
+        }
     }
 
     DisposableEffect(Unit) {
@@ -294,10 +325,12 @@ fun MainScreen(
                                         sourceApp = repoLyric?.sourceApp
                                     )
                                 } else null,
+                                primaryIsInstrumental = isPrimary && isCurrentTrackInstrumental,
                                 primaryAlbumArt = if (isPrimary) repoAlbumArt else null,
                                 primaryProgress = if (isPrimary) repoProgress else null,
                                 primaryIsPlaying = if (isPrimary) repoPlaying else null,
-                                showOnlineLyricRematch = isPrimary && isOnlineLyricSource(repoLyric?.apiPath),
+                                showOnlineLyricRematch = isPrimary &&
+                                    (isCurrentTrackInstrumental || isOnlineLyricSource(repoLyric?.apiPath)),
                                 onOpenOnlineLyricRematch = onOpenOnlineLyricRematch,
                                 minCardHeight = minCardHeight,
                                 onHeightMeasured = { measuredHeight ->
@@ -421,6 +454,7 @@ private fun MediaSessionCard(
     primaryMetadata: LyricRepository.MediaInfo?,
     primaryLyric: String?,
     primaryLyricSource: String?,
+    primaryIsInstrumental: Boolean,
     primaryAlbumArt: Bitmap?,
     primaryProgress: LyricRepository.PlaybackProgress?,
     primaryIsPlaying: Boolean?,
@@ -636,10 +670,17 @@ private fun MediaSessionCard(
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
-                    if (isPrimary && !primaryLyricSource.isNullOrBlank()) {
+                    val primaryStatus = when {
+                        isPrimary && primaryIsInstrumental -> stringResource(R.string.main_instrumental_marked)
+                        isPrimary && !primaryLyricSource.isNullOrBlank() -> {
+                            stringResource(R.string.main_lyric_source_fmt, primaryLyricSource)
+                        }
+                        else -> null
+                    }
+                    if (primaryStatus != null) {
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = stringResource(R.string.main_lyric_source_fmt, primaryLyricSource),
+                            text = primaryStatus,
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.primary
                         )
@@ -651,7 +692,11 @@ private fun MediaSessionCard(
             LyricPanel(
                 lyric = lyric,
                 emptyText = if (isPrimary) {
-                    stringResource(R.string.main_waiting_for_lyrics)
+                    if (primaryIsInstrumental) {
+                        stringResource(R.string.main_no_lyrics)
+                    } else {
+                        stringResource(R.string.main_waiting_for_lyrics)
+                    }
                 } else {
                     stringResource(R.string.main_lyrics_unavailable)
                 }

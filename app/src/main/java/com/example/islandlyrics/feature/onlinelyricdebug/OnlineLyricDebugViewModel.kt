@@ -60,6 +60,9 @@ class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(app
     private val _cacheStatus = MutableLiveData<String?>(null)
     val cacheStatus: LiveData<String?> = _cacheStatus
 
+    private val _isInstrumental = MutableLiveData(false)
+    val isInstrumental: LiveData<Boolean> = _isInstrumental
+
     val liveMetadata = repo.liveMetadata
     val liveLyric = repo.liveLyric
     val liveProgress = repo.liveProgress
@@ -128,6 +131,18 @@ class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(app
             "OnlineLyricDebug",
             "Applied ${result.api}: lines=${lines.size}, translation=${displayLine?.translation != null}, roma=${displayLine?.roma != null}"
         )
+    }
+
+    private fun applyNoLyricsState(mediaInfo: LyricRepository.MediaInfo) {
+        repo.updateLyric("", mediaInfo.packageName, "System")
+        repo.updateParsedLyrics(
+            lines = emptyList(),
+            hasSyllable = false,
+            timelineCapability = LyricRepository.TimelineCapability.NONE
+        )
+        repo.updateCurrentLine(null)
+        _selectedResult.value = null
+        _attempts.value = emptyList()
     }
 
     private fun OnlineLyricFetcher.LyricResult.withSidecars(rule: ParserRule): List<OnlineLyricFetcher.LyricLine> {
@@ -281,12 +296,14 @@ class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(app
             _customMatchTitle.value = state.matchOverride?.title.orEmpty()
             _customMatchArtist.value = state.matchOverride?.artist.orEmpty()
             _effectiveQuery.value = state.effectiveTitle to state.effectiveArtist
+            _isInstrumental.value = state.isInstrumental
             _querySourceLabel.value = when (state.querySource) {
                 OnlineLyricCacheStore.QuerySource.CUSTOM_OVERRIDE -> s(R.string.online_lyric_debug_query_source_custom)
                 OnlineLyricCacheStore.QuerySource.RAW_METADATA -> s(R.string.online_lyric_debug_query_source_raw)
                 OnlineLyricCacheStore.QuerySource.DEFAULT_METADATA -> s(R.string.online_lyric_debug_query_source_default)
             }
             _cacheStatus.value = when {
+                state.isInstrumental -> s(R.string.online_lyric_debug_instrumental_status)
                 state.cachedLyricUpdatedAt != null -> {
                     s(
                         R.string.online_lyric_debug_cached_provider_fmt,
@@ -327,6 +344,37 @@ class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(app
             _customMatchTitle.value = ""
             _customMatchArtist.value = ""
             _cacheStatus.value = s(R.string.online_lyric_debug_override_cleared)
+            syncCurrentSongQuery()
+        }
+    }
+
+    fun markCurrentSongInstrumental() {
+        val mediaInfo = liveMetadata.value ?: run {
+            _error.value = s(R.string.online_lyric_debug_error_no_song)
+            return
+        }
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) {
+                cacheStore.markInstrumental(mediaInfo)
+            }
+            _error.value = null
+            _customMatchTitle.value = ""
+            _customMatchArtist.value = ""
+            _isInstrumental.value = true
+            applyNoLyricsState(mediaInfo)
+            _cacheStatus.value = s(R.string.online_lyric_debug_instrumental_marked)
+            syncCurrentSongQuery()
+        }
+    }
+
+    fun clearCurrentSongInstrumentalMarker() {
+        val mediaInfo = liveMetadata.value ?: return
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) {
+                cacheStore.clearInstrumentalMarker(mediaInfo)
+            }
+            _isInstrumental.value = false
+            _cacheStatus.value = s(R.string.online_lyric_debug_instrumental_cleared)
             syncCurrentSongQuery()
         }
     }
@@ -378,10 +426,16 @@ class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(app
                 val queryTitle = currentSongState.effectiveTitle
                 val queryArtist = currentSongState.effectiveArtist
                 _effectiveQuery.value = queryTitle to queryArtist
+                _isInstrumental.value = currentSongState.isInstrumental
                 _querySourceLabel.value = when (currentSongState.querySource) {
                     OnlineLyricCacheStore.QuerySource.CUSTOM_OVERRIDE -> s(R.string.online_lyric_debug_query_source_custom)
                     OnlineLyricCacheStore.QuerySource.RAW_METADATA -> s(R.string.online_lyric_debug_query_source_raw)
                     OnlineLyricCacheStore.QuerySource.DEFAULT_METADATA -> s(R.string.online_lyric_debug_query_source_default)
+                }
+                if (currentSongState.isInstrumental) {
+                    applyNoLyricsState(mediaInfo)
+                    _cacheStatus.value = s(R.string.online_lyric_debug_instrumental_status)
+                    return@launch
                 }
                 if (queryTitle.isBlank() || queryArtist.isBlank()) {
                     _error.value = s(R.string.online_lyric_debug_error_no_song)

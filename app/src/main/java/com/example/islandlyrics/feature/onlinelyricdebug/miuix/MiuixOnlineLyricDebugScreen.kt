@@ -84,6 +84,7 @@ fun MiuixOnlineLyricDebugScreen(
     val effectiveQuery by viewModel.effectiveQuery.observeAsState("" to "")
     val querySourceLabel by viewModel.querySourceLabel.observeAsState("")
     val cacheStatus by viewModel.cacheStatus.observeAsState()
+    val isInstrumental by viewModel.isInstrumental.observeAsState(false)
 
     var dialogTitle by remember { mutableStateOf<String?>(null) }
     var dialogText by remember { mutableStateOf("") }
@@ -161,6 +162,28 @@ fun MiuixOnlineLyricDebugScreen(
                             )
                             Spacer(modifier = Modifier.size(8.dp))
                             Text(stringResource(R.string.online_lyric_rematch_current_playback_action))
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Button(
+                            onClick = {
+                                if (isInstrumental) {
+                                    viewModel.clearCurrentSongInstrumentalMarker()
+                                } else {
+                                    viewModel.markCurrentSongInstrumental()
+                                }
+                            },
+                            enabled = !isFetching,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                stringResource(
+                                    if (isInstrumental) {
+                                        R.string.online_lyric_rematch_clear_instrumental
+                                    } else {
+                                        R.string.online_lyric_rematch_mark_instrumental
+                                    }
+                                )
+                            )
                         }
                     }
                 }
