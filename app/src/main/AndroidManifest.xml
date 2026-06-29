@@ -28,6 +28,8 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.IslandLyrics"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/backup_rules"
         android:enableOnBackInvokedCallback="true">
         <activity
             android:name="com.example.islandlyrics.feature.main.MainActivity"
@@ -53,6 +55,11 @@
             android:label="@string/community_about_title"
             android:theme="@style/Theme.IslandLyrics.Translucent"
             android:parentActivityName="com.example.islandlyrics.feature.settings.SettingsActivity" />
+        <activity
+            android:name="com.example.islandlyrics.feature.licenses.OpenSourceLicensesActivity"
+            android:label="@string/open_source_licenses_title"
+            android:theme="@style/Theme.IslandLyrics.Translucent"
+            android:parentActivityName="com.example.islandlyrics.feature.settings.AboutActivity" />
         <activity
             android:name="com.example.islandlyrics.feature.customsettings.CustomSettingsActivity"
             android:label="@string/page_title_personalization"

@@ -38,7 +38,7 @@
     <string name="summary_diagnostics">View logs, service status, and system info</string>
     <string name="btn_disable_diagnostics">Disable Diagnostics Tool</string>
     <string name="dialog_disable_diagnostics_title">Disable Diagnostics Tool?</string>
-    <string name="dialog_disable_diagnostics_message">This will hide the entry point and stop recording debug logs. You can re-enable it by tapping the version number 7 times again.</string>
+    <string name="dialog_disable_diagnostics_message">This will hide the entry point and stop recording debug logs. You can re-enable it by opening Settings → About and tapping the header image 7 times again.</string>
     <string name="tap_to_copy_hint">(Tap to copy lyrics)</string>
     <string name="app_version_fmt">App Version: %1$s\nApp Channel: %2$s</string>
     
@@ -76,7 +76,7 @@
     <string name="dialog_btn_cancel">Cancel</string>
     <string name="dialog_delete_confirm">Confirm delete %s ?</string>
     <string name="dialog_privacy_title">Permission Scope</string>
-    <string name="dialog_privacy_message">This app needs to read notifications to get lyrics and playback information.\n\nWe only read media playback notification content, including: album art, artist, song title, album name, and the package name of the app currently playing media.\n\nThe above information is used solely for:\n• Reading and displaying playback information\n• Extracting lyrics from media notifications\n• Matching online lyrics when Online Lyrics is enabled\n• App self-logging for diagnostics\n\nWe do NOT read chat messages, verification codes, emails, or any non-media notifications. No personal data is collected or transmitted. All processing is done locally on your device.</string>
+    <string name="dialog_privacy_message">This app needs to read notifications to get lyrics and playback information.\n\nWe only read media playback notification content, including: album art, artist, song title, album name, and the package name of the app currently playing media.\n\nThe above information is used solely for:\n• Reading and displaying playback information\n• Extracting lyrics from media notifications\n• Matching online lyrics when Online Lyrics is enabled\n• Sending now playing and scrobble records to Last.fm when you enable Last.fm\n• App self-logging for diagnostics\n\nWe do NOT read chat messages, verification codes, emails, or any non-media notifications. Processing stays on your device by default. Network requests are only made for features you explicitly enable, such as Online Lyrics or Last.fm.</string>
     <string name="dialog_btn_understand">I Understand &amp; Grant</string>
     <string name="dialog_block_xmsf_title">Warning</string>
     <string name="dialog_block_xmsf_message">Enabling this may increase battery usage and cause message delays. Continue?</string>
@@ -142,6 +142,20 @@
     <string name="community_about_title">Community &amp; About</string>
     <string name="settings_about_capsulyric">About Capsulyric</string>
     <string name="settings_community_header">Community</string>
+    <string name="open_source_licenses_header">Open Source</string>
+    <string name="open_source_licenses_title">Open Source Licenses</string>
+    <string name="open_source_licenses_summary">View third-party libraries and licenses</string>
+    <string name="open_source_licenses_page_desc">Capsulyric is built with open-source libraries. License data is generated from the app dependency graph at build time.</string>
+    <string name="open_source_licenses_loading">Loading library list...</string>
+    <string name="open_source_licenses_count_format">%1$d libraries included</string>
+    <string name="open_source_licenses_libraries">Libraries</string>
+    <string name="open_source_licenses_version">Version</string>
+    <string name="open_source_licenses_license">License</string>
+    <string name="open_source_licenses_authors">Authors</string>
+    <string name="open_source_licenses_project">Project</string>
+    <string name="open_source_licenses_license_text">License Text</string>
+    <string name="open_source_licenses_open_project">Open Project</string>
+    <string name="open_source_licenses_unknown">Unknown</string>
     <string name="settings_dynamic_icon_desc">Show song/artist, only for HyperOS 3.0.300+</string>
 
     
@@ -278,7 +292,7 @@
     <string name="settings_use_superlyric_api_desc">(Reserved) Enhanced lyric API integration</string>
     <string name="lastfm_title">Last.fm</string>
     <string name="lastfm_settings_summary">Scrobble whitelisted music apps with your own Last.fm API credentials</string>
-    <string name="lastfm_description">Capsulyric only scrobbles enabled parser-rule apps. API credentials and session keys are encrypted on this device and are not included in backups.</string>
+    <string name="lastfm_description">Capsulyric only scrobbles enabled parser-rule apps. Track title, artist, album, duration, and timestamp may be sent to Last.fm. API credentials and session keys are encrypted on this device and are excluded from app exports and Android backups.</string>
     <string name="lastfm_setup_title">Setup guide</string>
     <string name="lastfm_setup_steps">1. Create a Last.fm API account and copy the API key and shared secret.\n2. Paste both credentials here and save them.\n3. Open Last.fm authorization, approve Capsulyric in the browser, then return and finish the connection.</string>
     <string name="lastfm_create_api_key">Create Last.fm API key</string>
@@ -542,7 +556,7 @@ Available actions include:\n\n
 4. Clear image cache as well if needed.\n\n
 If online lyric results never update, or if you already corrected the match information but still see the old result, it is recommended to delete the cache entry for that song first and fetch it again.</string>
     <string name="faq_q_access_diagnostics">Q: How to access Cache Management and Lyric Debugging?</string>
-    <string name="faq_a_access_diagnostics">A: Repeatedly tap <b>"Version"</b> or <b>"Internal Development Number"</b> on the <b>About</b> page to unlock the <b>Developer Mode</b> section at the bottom of App Settings. The <b>Diagnostics Tool</b> entry is inside that section. Cache Management and Online Lyric Debugging pages are located within the Diagnostics Tool. Note that the <b>custom matching</b> feature is found inside the "Online Lyric Debugging" page.</string>
+    <string name="faq_a_access_diagnostics">A: Repeatedly tap the header image on the <b>About</b> page to unlock the <b>Developer Mode</b> section at the bottom of App Settings. The <b>Diagnostics Tool</b> entry is inside that section. Cache Management and Online Lyric Debugging pages are located within the Diagnostics Tool. Note that the <b>custom matching</b> feature is found inside the "Online Lyric Debugging" page.</string>
     <string name="faq_q_offline_mode_online_lyrics">Q: Does Full Offline Mode affect online lyrics?</string>
     <string name="faq_a_offline_mode_online_lyrics">A: Yes. After <b>"Full Offline Mode"</b> is enabled, all online lyric requests are disabled. Update checks and other network-dependent content are also blocked.\n\n
 If you want to use online lyrics, please turn off Full Offline Mode first.</string>
@@ -565,7 +579,7 @@ If you want to use online lyrics, please turn off Full Offline Mode first.</stri
 <b>Solution</b>: Please go to system settings and re-grant Notification Access to this app.</string>
     
     <string name="faq_q_how_to_diagnostics">Q: How to open the Diagnostics Tool?</string>
-    <string name="faq_a_how_to_diagnostics">A: Go to the <b>Settings → About</b> page and tap <b>"Version"</b> or <b>"Internal Development Number"</b> 7 times. This unlocks the <b>Developer Mode</b> section at the bottom of <b>App Settings</b>; open <b>"Diagnostics Tool"</b> from there.\n\n
+    <string name="faq_a_how_to_diagnostics">A: Go to the <b>Settings → About</b> page and tap the page header image 7 times. This unlocks the <b>Developer Mode</b> section at the bottom of <b>App Settings</b>; open <b>"Diagnostics Tool"</b> from there.\n\n
 Once inside the Diagnostics Tool, you can access <b>Cache Management</b>, <b>Online Lyric Debugging</b>, <b>Lab</b> experimental features, and more.</string>
     <string name="faq_q_island_camera_overlap">Q: Super Island lyrics overlap with the camera cutout?</string>
     <string name="faq_a_island_camera_overlap">A: This can happen when the lyric text is too long on devices with a centered punch-hole camera. To resolve this:\n\n
@@ -586,7 +600,7 @@ Experiment with different values until the lyrics fit comfortably around the cam
     <string name="faq_a_get_log">A: Please follow the standardized procedure:\n\n
 <b>1. Activate Diagnostics Tool</b>\n
 - <b>Debug Version</b>: Direct access available via the Log Console on the main screen.\n
-- <b>Release Version</b>: Go to Settings → About and tap "Version" or "Internal Development Number" 7 times to unlock the Developer Mode section at the bottom of App Settings, then open Diagnostics Tool from there.\n\n
+- <b>Release Version</b>: Go to Settings → About and tap the page header image 7 times to unlock the Developer Mode section at the bottom of App Settings, then open Diagnostics Tool from there.\n\n
 <b>2. Export ZIP Package</b>\n
 Within the log interface, select the share/export icon. You can specify a timeframe for data capture. The application will aggregate environment context and system logs into a ZIP file. Please ensure this file is attached when submitting a GitHub Issue or feedback form.</string>
 
@@ -633,12 +647,12 @@ Within the log interface, select the share/export icon. You can specify a timefr
     <string name="oobe_warning_untested_system">⚠️ Untested System\nAndroid 16 detected. Live Update should work in theory, but there are no reports for this ROM yet.</string>
     <string name="oobe_warning_super_island_limited">⚠️ Limited Support\nNative Live Update is unavailable on this version. Xiaomi Super Island notifications will be enabled by default.</string>
     <string name="oobe_error_unsupported_device">❌ System Unsupported\nThis system is not yet supported. Dynamic lyrics require Android 16+ or HyperOS 3.0+.</string>
-    <string name="oobe_privacy_notice">🔒 Privacy First\nThis app runs entirely locally. Internet access is ONLY used if you explicitly enable "Online Lyrics". We never collect or transmit your personal data.</string>
+    <string name="oobe_privacy_notice">🔒 Privacy First\nThis app works locally by default. Internet access is only used for features you explicitly enable, such as Online Lyrics or Last.fm. We do not read or upload non-media notifications.</string>
     
     <string name="oobe_step_permissions">Permissions</string>
     <string name="oobe_perm_listener_title">Notification Listener</string>
     <string name="oobe_perm_listener_desc">Required to read lyrics and playback info from media notifications</string>
-    <string name="oobe_perm_listener_scope">This app only reads media playback notification content, including: album art, artist, song title, album name, and the package name of the app currently playing media.\n\nThe above information is used solely for:\n• Reading and displaying playback information\n• Extracting lyrics from media notifications\n• Matching online lyrics when Online Lyrics is enabled\n• App self-logging for diagnostics\n\nWe do NOT read chat messages, verification codes, emails, or any non-media notifications. No personal data is collected or transmitted.</string>
+    <string name="oobe_perm_listener_scope">This app only reads media playback notification content, including: album art, artist, song title, album name, and the package name of the app currently playing media.\n\nThe above information is used solely for:\n• Reading and displaying playback information\n• Extracting lyrics from media notifications\n• Matching online lyrics when Online Lyrics is enabled\n• Sending now playing and scrobble records to Last.fm when you enable Last.fm\n• App self-logging for diagnostics\n\nWe do NOT read chat messages, verification codes, emails, or any non-media notifications. Network requests are only made for features you explicitly enable.</string>
     <string name="oobe_perm_post_title">Post Notifications</string>
     <string name="oobe_perm_post_desc">Required to display the real-time lyrics capsule in the status bar</string>
     <string name="oobe_perm_battery_title">Battery Optimization (optional)</string>

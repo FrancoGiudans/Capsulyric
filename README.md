@@ -152,9 +152,12 @@ The above information is used solely for:
 - Reading and displaying playback information
 - Extracting lyrics from media notifications
 - Matching online lyrics when Online Lyrics is enabled
+- Sending now playing and scrobble records to Last.fm when Last.fm scrobbling is enabled and connected
 - App self-logging for diagnostics
 
-We do NOT read chat messages, verification codes, emails, or any non-media notifications. No personal data is collected or transmitted. All processing is done locally on your device.
+We do NOT read chat messages, verification codes, emails, or any non-media notifications. Processing stays on your device by default. Network requests are only made for features you explicitly enable, such as Online Lyrics or Last.fm.
+
+For Last.fm, Capsulyric uses API credentials supplied by the user. When enabled, it may send track title, artist, album, duration, and playback timestamp to Last.fm for now-playing updates and scrobbles. Last.fm API credentials and session keys are encrypted locally with Android Keystore-backed AES-GCM storage, and are excluded from Capsulyric setting exports and Android backup/device-transfer rules.
 
 本应用需要读取通知以获取歌词与播放信息。
 
@@ -163,9 +166,12 @@ We do NOT read chat messages, verification codes, emails, or any non-media notif
 - 播放信息的读取和显示
 - 媒体通知歌词的提取
 - 开启在线歌词后用以匹配在线歌词
+- 开启并连接 Last.fm 后向 Last.fm 发送正在播放与 scrobble 记录
 - 应用记录自身日志
 
-我们不会读取您的聊天消息、验证码、邮件等非媒体类通知，也不会收集或上传您的任何个人数据。所有处理均在本地完成。
+我们不会读取您的聊天消息、验证码、邮件等非媒体类通知。默认情况下数据在本机处理；只有在您明确开启在线歌词或 Last.fm 等功能时，才会发起相应网络请求。
+
+Last.fm 使用由用户自行提供的 API 凭据。开启后，Capsulyric 可能会将歌名、歌手、专辑、时长和播放时间发送给 Last.fm，用于正在播放状态和 scrobble 记录。Last.fm API 凭据与 session key 会使用 Android Keystore 支持的 AES-GCM 存储在本机，并排除在 Capsulyric 配置导出以及 Android 备份/设备迁移规则之外。
 
 ## Project Structure (项目结构)
 
@@ -221,10 +227,10 @@ Projects is licensed under [GPL-3.0](LICENSE).
 
 ## Credits (致谢)
 
-*   [SuperLyric](https://github.com/HChenX/SuperLyric) (GPL-3.0)
-*   [SuperLyricAPI](https://github.com/HChenX/SuperLyricApi) (LGPL-2.1)
-*   [Lyric Getter API](https://github.com/xiaowine/Lyric-Getter-Api) (LGPL-2.1)
-*   [InstallerX Revive](https://github.com/wxxsfxyzm/InstallerX-Revived) (GPL-3.0)
-*   [Lyricify-Lyrics-Helper](https://github.com/WXRIW/Lyricify-Lyrics-Helper) (Apache-2.0)
+*   [HChenX/SuperLyric](https://github.com/HChenX/SuperLyric) (GPL-3.0)
+*   [HChenX/SuperLyricAPI](https://github.com/HChenX/SuperLyricApi) (LGPL-2.1)
+*   [xiaowine/Lyric Getter API](https://github.com/xiaowine/Lyric-Getter-Api) (LGPL-2.1)
+*   [wxxsfxyzm/InstallerX Revive](https://github.com/wxxsfxyzm/InstallerX-Revived) (GPL-3.0)
+*   [WXRTW/Lyricify-Lyrics-Helper](https://github.com/WXRIW/Lyricify-Lyrics-Helper) (Apache-2.0)
 *   [compose-miuix-ui/miuix](https://github.com/compose-miuix-ui/miuix) (Apache-2.0)
-*   [HyperNotification](https://github.com/xzakota/HyperNotification) (Apache-2.0)
+*   [xzakota/HyperNotification](https://github.com/xzakota/HyperNotification) (Apache-2.0)

@@ -30,6 +30,7 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -92,6 +93,7 @@ import com.example.islandlyrics.feature.settings.SettingsActivity
 import com.example.islandlyrics.ui.miuix.blur.MiuixBlurDialog
 import com.example.islandlyrics.ui.miuix.blur.MiuixBlurScaffold
 import com.example.islandlyrics.ui.miuix.blur.MiuixBlurTopAppBar
+import com.example.islandlyrics.ui.miuix.effects.MiuixAuroraBackground
 import com.example.islandlyrics.ui.miuix.effects.miuixPageScroll
 import com.example.islandlyrics.ui.miuix.navigation.MiuixBackIcon
 import top.yukonga.miuix.kmp.basic.Button
@@ -241,7 +243,8 @@ fun MiuixOobeScreen(
                 subtitle = stringResource(R.string.oobe_welcome_subtitle),
                 actionText = stringResource(R.string.oobe_next),
                 onAction = { currentStep = 1 },
-                primary = true
+                primary = true,
+                useEffectBackground = true
             )
 
             1 -> StandardStepPage(
@@ -327,6 +330,7 @@ fun MiuixOobeScreen(
                 actionText = stringResource(R.string.oobe_finish_start),
                 onAction = onFinish,
                 primary = true,
+                useEffectBackground = true,
                 showBack = true,
                 onBack = { currentStep = 4 }
             )
@@ -343,21 +347,36 @@ private fun LandingPage(
     actionText: String,
     onAction: () -> Unit,
     primary: Boolean,
+    useEffectBackground: Boolean = false,
     showBack: Boolean = false,
     onBack: (() -> Unit)? = null
 ) {
+    val isDark = isSystemInDarkTheme()
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(pageBackgroundColor())
-            .statusBarsPadding()
-            .navigationBarsPadding()
     ) {
+        if (useEffectBackground) {
+            MiuixAuroraBackground(
+                modifier = Modifier.matchParentSize(),
+                isDark = isDark,
+                dynamicBackground = true,
+                effectBackground = true
+            ) {}
+        } else {
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .background(pageBackgroundColor())
+            )
+        }
+
         if (showBack && onBack != null) {
             IconButton(
                 onClick = onBack,
                 modifier = Modifier
                     .align(Alignment.TopStart)
+                    .statusBarsPadding()
                     .padding(start = 12.dp, top = 12.dp)
             ) {
                 MiuixBackIcon(contentDescription = null)
@@ -399,6 +418,7 @@ private fun LandingPage(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
+                .navigationBarsPadding()
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             minHeight = 60.dp,
             cornerRadius = 30.dp,
@@ -474,6 +494,18 @@ private fun StandardStepPage(
                     item { content() }
                 }
 
+                if (!actionEnabled) {
+                    Text(
+                        text = stringResource(R.string.oobe_perm_required_hint),
+                        fontSize = 13.sp,
+                        color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(start = 24.dp, end = 24.dp, top = 4.dp, bottom = 4.dp)
+                    )
+                }
+
                 Button(
                     onClick = onAction,
                     enabled = actionEnabled,
@@ -493,18 +525,6 @@ private fun StandardStepPage(
                         text = actionText,
                         fontSize = 18.sp,
                         fontWeight = FontWeight.SemiBold
-                    )
-                }
-
-                if (!actionEnabled) {
-                    Text(
-                        text = stringResource(R.string.oobe_perm_required_hint),
-                        fontSize = 13.sp,
-                        color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = 4.dp)
                     )
                 }
             }

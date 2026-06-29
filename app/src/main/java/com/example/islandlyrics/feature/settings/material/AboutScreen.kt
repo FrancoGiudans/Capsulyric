@@ -6,8 +6,21 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.widget.Toast
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Article
@@ -17,21 +30,39 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.Poll
 import androidx.compose.material.icons.filled.Sync
-import androidx.compose.material3.*
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MediumTopAppBar
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import com.example.islandlyrics.R
 import com.example.islandlyrics.core.feed.CommunityFeed
@@ -40,10 +71,11 @@ import com.example.islandlyrics.core.feed.CommunityFeedStatus
 import com.example.islandlyrics.core.network.OfflineModeManager
 import com.example.islandlyrics.core.settings.LabFeatureManager
 import com.example.islandlyrics.core.update.UpdateChecker
-import com.example.islandlyrics.lyrics.state.LyricRepository
+import com.example.islandlyrics.feature.licenses.OpenSourceLicensesActivity
 import com.example.islandlyrics.feature.settings.CommunityDialogState
 import com.example.islandlyrics.feature.settings.ReleaseDialogState
 import com.example.islandlyrics.feature.update.material.UpdateDialog
+import com.example.islandlyrics.lyrics.state.LyricRepository
 import com.example.islandlyrics.ui.theme.material.materialPageContainerColor
 import com.example.islandlyrics.ui.theme.material.neutralMaterialTopBarColors
 
@@ -66,8 +98,8 @@ fun AboutScreen(
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 
     val devModeEnabled by LyricRepository.getInstance().devModeEnabled.observeAsState(false)
-    var showFeedbackDialog by remember { mutableStateOf(false) }
     val offlineModeEnabled = remember { OfflineModeManager.isEnabled(context) }
+    var showFeedbackDialog by remember { mutableStateOf(false) }
     var autoUpdateEnabled by remember { mutableStateOf(UpdateChecker.isAutoUpdateEnabled(context)) }
     var showChannelDropdown by remember { mutableStateOf(false) }
     var currentChannel by remember { mutableStateOf(UpdateChecker.getUpdateChannel(context)) }
@@ -78,27 +110,31 @@ fun AboutScreen(
     var communityFeedLoaded by remember { mutableStateOf(false) }
     var communityDialogState by remember { mutableStateOf<CommunityDialogState?>(null) }
     var devStepCount by remember { mutableIntStateOf(0) }
-    val announcementSectionTitle = stringResource(R.string.community_announcement_title)
-    val pollSectionTitle = stringResource(R.string.community_poll_title)
+
+    val versionInfoText = "$updateVersionText\n$updateCodenameText\n$updateBuildText"
+    val copiedText = stringResource(R.string.toast_copied)
     val devModeAlreadyEnabledText = stringResource(R.string.toast_dev_mode_already_enabled)
     val devModeStepsFormat = stringResource(R.string.toast_dev_mode_steps)
     val devModeEnabledText = stringResource(R.string.toast_dev_mode_enabled)
-    val copiedText = stringResource(R.string.toast_copied)
-    fun handleDevModeTap(): Boolean {
+
+    fun copyVersionInfo() {
+        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        clipboard.setPrimaryClip(ClipData.newPlainText("Capsulyric version", versionInfoText))
+        Toast.makeText(context, copiedText, Toast.LENGTH_SHORT).show()
+    }
+
+    fun handleDevModeTap() {
         if (devModeEnabled) {
             Toast.makeText(context, devModeAlreadyEnabledText, Toast.LENGTH_SHORT).show()
-            return true
+            return
         }
         devStepCount++
         if (devStepCount in 3..6) {
             Toast.makeText(context, String.format(devModeStepsFormat, 7 - devStepCount), Toast.LENGTH_SHORT).show()
-            return true
         } else if (devStepCount == 7) {
             LyricRepository.getInstance().setDevMode(context, true)
             Toast.makeText(context, devModeEnabledText, Toast.LENGTH_SHORT).show()
-            return true
         }
-        return false
     }
 
     LaunchedEffect(offlineModeEnabled, feedSourcePriority) {
@@ -134,12 +170,18 @@ fun AboutScreen(
                 .padding(paddingValues),
             contentPadding = PaddingValues(bottom = 24.dp)
         ) {
-            // ── Community ────────────────────────────────────────────────────
-            item { SettingsSectionHeader(text = stringResource(R.string.settings_community_header), marginTop = 0.dp) }
+            item {
+                MaterialAboutHeader(
+                    versionInfoText = versionInfoText,
+                    onVersionClick = ::copyVersionInfo,
+                    onHeaderTap = ::handleDevModeTap
+                )
+            }
 
-            if (!offlineModeEnabled) {
-                item {
-                    SettingsCard {
+            item { SettingsSectionHeader(text = stringResource(R.string.settings_community_header), marginTop = 8.dp) }
+            item {
+                SettingsCard {
+                    if (!offlineModeEnabled) {
                         Box(modifier = Modifier.fillMaxWidth()) {
                             SettingsTextItem(
                                 title = stringResource(R.string.diag_lab_feed_source_title),
@@ -171,76 +213,45 @@ fun AboutScreen(
                                 }
                             }
                         }
+                        SettingsCardDivider()
                     }
+                    CommunitySection(
+                        communityFeed = communityFeed,
+                        communityFeedLoaded = communityFeedLoaded,
+                        onCommunityItemClick = { communityDialogState = it }
+                    )
                 }
             }
 
-            if (!communityFeedLoaded) {
-                item {
-                    SettingsCard {
+            item { SettingsSectionHeader(text = stringResource(R.string.about_title)) }
+            item {
+                SettingsCard {
+                    if (!offlineModeEnabled) {
                         SettingsActionItem(
-                            title = stringResource(R.string.community_loading_title),
-                            summary = stringResource(R.string.community_loading_desc),
-                            icon = Icons.Filled.Campaign,
-                            onClick = {}
+                            title = stringResource(R.string.settings_feedback),
+                            summary = stringResource(R.string.summary_feedback),
+                            icon = Icons.AutoMirrored.Filled.Send,
+                            onClick = { showFeedbackDialog = true }
                         )
+                        SettingsCardDivider()
                     }
-                }
-            } else {
-                val hasAnnouncements = !communityFeed?.announcements.isNullOrEmpty()
-                val hasPolls = !communityFeed?.polls.isNullOrEmpty()
-                if (hasAnnouncements || hasPolls) {
-                    item {
-                        SettingsCard {
-                            communityFeed?.announcements?.forEachIndexed { idx, announcement ->
-                                if (idx > 0) SettingsCardDivider()
-                                CommunityActionItem(
-                                    title = announcementSectionTitle,
-                                    item = announcement,
-                                    fallbackSummary = stringResource(R.string.community_open_in_browser),
-                                    icon = Icons.Filled.Campaign,
-                                    onClick = { communityDialogState = CommunityDialogState(announcementSectionTitle, announcement) }
-                                )
-                            }
-                            val announcements = communityFeed?.announcements ?: emptyList()
-                            communityFeed?.polls?.forEachIndexed { idx, poll ->
-                                if (idx > 0 || announcements.isNotEmpty()) SettingsCardDivider()
-                                CommunityActionItem(
-                                    title = pollSectionTitle,
-                                    item = poll,
-                                    fallbackSummary = stringResource(R.string.community_open_in_browser),
-                                    icon = Icons.Filled.Poll,
-                                    onClick = { communityDialogState = CommunityDialogState(pollSectionTitle, poll) }
-                                )
-                            }
+                    SettingsActionItem(
+                        title = stringResource(R.string.settings_about_github),
+                        summary = stringResource(R.string.summary_github),
+                        icon = Icons.Filled.Link,
+                        onClick = {
+                            context.startActivity(Intent(Intent.ACTION_VIEW, "https://github.com/FrancoGiudans/Capsulyric".toUri()))
                         }
-                    }
-                } else if (communityFeed?.status == CommunityFeedStatus.UNAVAILABLE) {
-                    item {
-                        SettingsCard {
-                            SettingsActionItem(
-                                title = stringResource(R.string.community_unavailable_title),
-                                summary = stringResource(R.string.community_unavailable_desc),
-                                icon = Icons.Filled.Info,
-                                onClick = {}
-                            )
-                        }
-                    }
-                } else {
-                    item {
-                        SettingsCard {
-                            SettingsActionItem(
-                                title = stringResource(R.string.community_empty_title),
-                                summary = stringResource(R.string.community_empty_desc),
-                                icon = Icons.Filled.Info,
-                                onClick = {}
-                            )
-                        }
-                    }
+                    )
+                    SettingsCardDivider()
+                    MaterialVersionInfoItem(
+                        title = stringResource(R.string.about_version),
+                        value = versionInfoText,
+                        onClick = ::copyVersionInfo
+                    )
                 }
             }
 
-            // ── Updates ──────────────────────────────────────────────────────
             if (!offlineModeEnabled) {
                 item { SettingsSectionHeader(text = stringResource(R.string.update_check_title)) }
                 item {
@@ -303,51 +314,16 @@ fun AboutScreen(
                 }
             }
 
-            // ── About ─────────────────────────────────────────────────────────
-            item { SettingsSectionHeader(text = stringResource(R.string.about_title)) }
+            item { SettingsSectionHeader(text = stringResource(R.string.open_source_licenses_header)) }
             item {
                 SettingsCard {
-                    if (!offlineModeEnabled) {
-                        SettingsActionItem(
-                            title = stringResource(R.string.settings_feedback),
-                            summary = stringResource(R.string.summary_feedback),
-                            icon = Icons.AutoMirrored.Filled.Send,
-                            onClick = { showFeedbackDialog = true }
-                        )
-                        SettingsCardDivider()
-                        SettingsActionItem(
-                            title = stringResource(R.string.settings_about_github),
-                            summary = stringResource(R.string.summary_github),
-                            icon = Icons.Filled.Link,
-                            onClick = {
-                                val browserIntent = Intent(Intent.ACTION_VIEW, "https://github.com/FrancoGiudans/Capsulyric".toUri())
-                                context.startActivity(browserIntent)
-                            }
-                        )
-                        SettingsCardDivider()
-                    }
-                    SettingsValueItem(
-                        title = stringResource(R.string.about_version),
-                        value = updateVersionText,
+                    SettingsActionItem(
+                        title = stringResource(R.string.open_source_licenses_title),
+                        summary = stringResource(R.string.open_source_licenses_summary),
+                        icon = Icons.Filled.Link,
                         onClick = {
-                            val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                            val copyText = "$updateVersionText（$updateCodenameText，$updateBuildText）"
-                            cm.setPrimaryClip(ClipData.newPlainText("Version", copyText))
-                            if (!handleDevModeTap()) {
-                                Toast.makeText(context, copiedText, Toast.LENGTH_SHORT).show()
-                            }
+                            context.startActivity(Intent(context, OpenSourceLicensesActivity::class.java))
                         }
-                    )
-                    SettingsCardDivider()
-                    SettingsValueItem(
-                        title = stringResource(R.string.about_codename),
-                        value = updateCodenameText
-                    )
-                    SettingsCardDivider()
-                    SettingsValueItem(
-                        title = stringResource(R.string.about_commit),
-                        value = updateBuildText,
-                        onClick = { handleDevModeTap() }
                     )
                 }
             }
@@ -365,8 +341,7 @@ fun AboutScreen(
                 onDismiss = { communityDialogState = null },
                 onOpen = {
                     if (dialogState.item.hasUrl) {
-                        val browserIntent = Intent(Intent.ACTION_VIEW, dialogState.item.url.toUri())
-                        context.startActivity(browserIntent)
+                        context.startActivity(Intent(Intent.ACTION_VIEW, dialogState.item.url.toUri()))
                     }
                     communityDialogState = null
                 }
@@ -395,4 +370,146 @@ fun AboutScreen(
             )
         }
     }
+}
+
+@Composable
+private fun MaterialAboutHeader(
+    versionInfoText: String,
+    onVersionClick: () -> Unit,
+    onHeaderTap: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .pointerInput(Unit) {
+                detectTapGestures { onHeaderTap() }
+            }
+            .padding(horizontal = 24.dp, vertical = 28.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Card(
+            modifier = Modifier.size(92.dp),
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+        ) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Image(
+                    painter = painterResource(id = R.mipmap.ic_launcher_monochrome),
+                    contentDescription = stringResource(R.string.app_name),
+                    colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.primary),
+                    modifier = Modifier.size(72.dp)
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            text = stringResource(R.string.app_name),
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onSurface,
+            textAlign = TextAlign.Center
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = versionInfoText,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(onClick = onVersionClick)
+        )
+    }
+}
+
+@Composable
+private fun MaterialVersionInfoItem(
+    title: String,
+    value: String,
+    onClick: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 14.dp)
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+@Composable
+private fun CommunitySection(
+    communityFeed: CommunityFeed?,
+    communityFeedLoaded: Boolean,
+    onCommunityItemClick: (CommunityDialogState) -> Unit
+) {
+    val announcementSectionTitle = stringResource(R.string.community_announcement_title)
+    val pollSectionTitle = stringResource(R.string.community_poll_title)
+
+    if (!communityFeedLoaded) {
+        SettingsActionItem(
+            title = stringResource(R.string.community_loading_title),
+            summary = stringResource(R.string.community_loading_desc),
+            icon = Icons.Filled.Campaign,
+            onClick = {}
+        )
+        return
+    }
+
+    val announcements = communityFeed?.announcements ?: emptyList()
+    val polls = communityFeed?.polls ?: emptyList()
+    if (announcements.isNotEmpty() || polls.isNotEmpty()) {
+        announcements.forEachIndexed { index, announcement ->
+            if (index > 0) SettingsCardDivider()
+            CommunityActionItem(
+                title = announcementSectionTitle,
+                item = announcement,
+                fallbackSummary = stringResource(R.string.community_open_in_browser),
+                icon = Icons.Filled.Campaign,
+                onClick = { onCommunityItemClick(CommunityDialogState(announcementSectionTitle, announcement)) }
+            )
+        }
+        polls.forEachIndexed { index, poll ->
+            if (index > 0 || announcements.isNotEmpty()) SettingsCardDivider()
+            CommunityActionItem(
+                title = pollSectionTitle,
+                item = poll,
+                fallbackSummary = stringResource(R.string.community_open_in_browser),
+                icon = Icons.Filled.Poll,
+                onClick = { onCommunityItemClick(CommunityDialogState(pollSectionTitle, poll)) }
+            )
+        }
+        return
+    }
+
+    SettingsActionItem(
+        title = if (communityFeed?.status == CommunityFeedStatus.UNAVAILABLE) {
+            stringResource(R.string.community_unavailable_title)
+        } else {
+            stringResource(R.string.community_empty_title)
+        },
+        summary = if (communityFeed?.status == CommunityFeedStatus.UNAVAILABLE) {
+            stringResource(R.string.community_unavailable_desc)
+        } else {
+            stringResource(R.string.community_empty_desc)
+        },
+        icon = Icons.Filled.Info,
+        onClick = {}
+    )
 }

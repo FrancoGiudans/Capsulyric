@@ -38,7 +38,7 @@
     <string name="summary_diagnostics">查看日志、服务状态和系统信息</string>
     <string name="btn_disable_diagnostics">禁用诊断工具</string>
     <string name="dialog_disable_diagnostics_title">确认禁用诊断工具？</string>
-    <string name="dialog_disable_diagnostics_message">禁用后将隐藏此入口，并停止记录调试级别日志。如需重新开启，请在此处再次连击版本号。</string>
+    <string name="dialog_disable_diagnostics_message">禁用后将隐藏此入口，并停止记录调试级别日志。如需重新开启，请进入“设置 → 关于”页面并再次连续点击顶部头图 7 次。</string>
     <string name="tap_to_copy_hint">(点击复制歌词)</string>
     <string name="app_version_fmt">版本: %1$s\n渠道: %2$s</string>
     
@@ -76,7 +76,7 @@
     <string name="dialog_btn_cancel">取消</string>
     <string name="dialog_delete_confirm">确认删除 %s 吗？</string>
     <string name="dialog_privacy_title">权限使用说明</string>
-    <string name="dialog_privacy_message">本应用需要读取通知以获取歌词与播放信息。\n\n我们仅会读取媒体播放通知的内容，包括：专辑图片、歌手、歌名、专辑名，以及正在播放媒体的应用包名。\n\n上述信息仅用于以下用途：\n• 播放信息的读取和显示\n• 媒体通知歌词的提取\n• 开启在线歌词后用以匹配在线歌词\n• 应用记录自身日志\n\n我们不会读取您的聊天消息、验证码、邮件等非媒体类通知，也不会收集或上传您的任何个人数据。所有处理均在本地完成。</string>
+    <string name="dialog_privacy_message">本应用需要读取通知以获取歌词与播放信息。\n\n我们仅会读取媒体播放通知的内容，包括：专辑图片、歌手、歌名、专辑名，以及正在播放媒体的应用包名。\n\n上述信息仅用于以下用途：\n• 播放信息的读取和显示\n• 媒体通知歌词的提取\n• 开启在线歌词后用以匹配在线歌词\n• 开启 Last.fm 后向 Last.fm 发送正在播放与 scrobble 记录\n• 应用记录自身日志\n\n我们不会读取您的聊天消息、验证码、邮件等非媒体类通知。默认情况下数据在本机处理；只有在您明确开启在线歌词或 Last.fm 等功能时，才会发起相应网络请求。</string>
     <string name="dialog_btn_understand">理解并授权</string>
     <string name="dialog_block_xmsf_title">提示</string>
     <string name="dialog_block_xmsf_message">开启后可能会造成耗电量增加和消息延迟，是否继续开启？</string>
@@ -142,6 +142,20 @@
     <string name="community_about_title">社区动态与关于</string>
     <string name="settings_about_capsulyric">关于Capsulyric</string>
     <string name="settings_community_header">社区动态</string>
+    <string name="open_source_licenses_header">引用库</string>
+    <string name="open_source_licenses_title">开源许可</string>
+    <string name="open_source_licenses_summary">查看第三方库与开源协议</string>
+    <string name="open_source_licenses_page_desc">Capsulyric 使用了若干开源库。许可数据会在构建时根据应用依赖图自动生成。</string>
+    <string name="open_source_licenses_loading">正在加载引用库列表...</string>
+    <string name="open_source_licenses_count_format">共包含 %1$d 个库</string>
+    <string name="open_source_licenses_libraries">库列表</string>
+    <string name="open_source_licenses_version">版本</string>
+    <string name="open_source_licenses_license">许可协议</string>
+    <string name="open_source_licenses_authors">作者</string>
+    <string name="open_source_licenses_project">项目地址</string>
+    <string name="open_source_licenses_license_text">协议正文</string>
+    <string name="open_source_licenses_open_project">打开项目</string>
+    <string name="open_source_licenses_unknown">未知</string>
 
     <string name="settings_dynamic_icon_desc">展示歌名-歌手，仅HyperOS 3.0.300+可用</string>
     <string name="channel_live_lyrics">实时歌词更新</string>
@@ -264,7 +278,7 @@
     <string name="settings_use_online_lyrics_desc">从多个在线源(酷狗/网易/LrcApi)获取带时间轴的歌词</string>
     <string name="lastfm_title">Last.fm</string>
     <string name="lastfm_settings_summary">使用你自己的 Last.fm API 凭据记录白名单播放器播放历史</string>
-    <string name="lastfm_description">Capsulyric 只会记录已启用解析规则的播放器。API 凭据和 session key 会加密保存在本机，不会包含在备份中。</string>
+    <string name="lastfm_description">Capsulyric 只会记录已启用解析规则的播放器。歌名、歌手、专辑、时长和播放时间可能会发送给 Last.fm。API 凭据和 session key 会加密保存在本机，并排除在应用导出和 Android 备份之外。</string>
     <string name="lastfm_setup_title">使用指引</string>
     <string name="lastfm_setup_steps">1. 前往 Last.fm 创建 API 账号，并复制 API key 与 Shared secret。\n2. 将两项凭据粘贴到此页面并保存。\n3. 打开 Last.fm 授权页，在浏览器中允许 Capsulyric，然后回到这里完成连接。</string>
     <string name="lastfm_create_api_key">申请 Last.fm API key</string>
@@ -467,7 +481,7 @@
 4. 必要时连同图片缓存一起清理。\n\n
 如果在线歌词结果一直不更新，或者你已经修正了匹配信息但仍然显示旧结果，建议先删除对应歌曲的歌词缓存，再重新获取。</string>
     <string name="faq_q_access_diagnostics">Q：如何进入缓存管理页面和歌词调试页面？</string>
-    <string name="faq_a_access_diagnostics">A：通过在“关于”页面连续点击<b>“版本号”</b>或<b>“内部开发号”</b>即可在应用设置底部解锁<b>“开发者模式”</b>分类，<b>诊断工具</b>位于其中。缓存管理和在线歌词调试页面均位于诊断工具内，其中<b>自定义匹配</b>功能位于“在线歌词调试”页面内。</string>
+    <string name="faq_a_access_diagnostics">A：通过在“关于”页面连续点击顶部头图即可在应用设置底部解锁<b>“开发者模式”</b>分类，<b>诊断工具</b>位于其中。缓存管理和在线歌词调试页面均位于诊断工具内，其中<b>自定义匹配</b>功能位于“在线歌词调试”页面内。</string>
     <string name="faq_q_offline_mode_online_lyrics">Q：完全离线模式会影响在线歌词吗？</string>
     <string name="faq_a_offline_mode_online_lyrics">A：会。开启<b>“完全离线模式”</b>后，所有在线歌词请求都会被禁用，同时也不会检查更新或加载其他需要联网的内容。\n\n
 如果你需要使用在线歌词，请先关闭“完全离线模式”。</string>
@@ -490,7 +504,7 @@
 <b>解决</b>： 请尝试前往系统设置，重新授予本应用的通知使用权。</string>
     
     <string name="faq_q_how_to_diagnostics">Q：如何打开诊断工具？</string>
-    <string name="faq_a_how_to_diagnostics">A：前往<b>“设置 → 关于”</b>页面，连续点击<b>“版本号”</b>或<b>“内部开发号”</b> 7 次，即可在<b>“应用设置”</b>页面底部看到<b>“开发者模式”</b>分类，点击其中的<b>“诊断工具”</b>进入即可。\n\n
+    <string name="faq_a_how_to_diagnostics">A：前往<b>“设置 → 关于”</b>页面，连续点击页面顶部头图 7 次，即可在<b>“应用设置”</b>页面底部看到<b>“开发者模式”</b>分类，点击其中的<b>“诊断工具”</b>进入即可。\n\n
 诊断工具内包含<b>缓存管理</b>、<b>在线歌词调试</b>以及<b>实验室</b>实验性功能等多项工具。</string>
     <string name="faq_q_island_camera_overlap">Q：超级岛歌词与摄像头重叠？</string>
     <string name="faq_a_island_camera_overlap">A：当歌词文字较长时，可能会与屏幕顶部居中挖孔摄像头区域发生重叠。请按以下步骤调整：\n\n
@@ -511,7 +525,7 @@
     <string name="faq_a_get_log">A： 请参考以下标准流程：\n\n
 <b>1. 激活诊断工具</b>\n
 - <b>Debug 版本</b>： 设置页直接提供 Log Console 入口。\n
-- <b>Release 版本</b>： 进入“设置 → 关于”页面，连续点击“版本号”或“内部开发号” 7 次，即可在应用设置底部解锁“开发者模式”分类，并从其中进入“诊断工具”。\n\n
+- <b>Release 版本</b>： 进入“设置 → 关于”页面，连续点击页面顶部头图 7 次，即可在应用设置底部解锁“开发者模式”分类，并从其中进入“诊断工具”。\n\n
 <b>2. 导出 ZIP 压缩包</b>\n
 进入日志界面后，点击右上角的“分享/导出”按钮。您可以根据需求选择特定的时间跨度，App 将自动对环境上下文信息与系统日志进行打包。在提交 GitHub Issue 或填写反馈单时，请务必作为附件上传此 ZIP 文件。</string>
 
@@ -553,12 +567,12 @@
     <string name="oobe_warning_untested_system">⚠️ 未经测试的系统\n检测到 Android 16。理论上支持 Live Update，但目前尚无该 ROM 的使用报告。</string>
     <string name="oobe_warning_super_island_limited">⚠️ 受限支持\n此版本暂不支持原生实时更新，将默认启用小米超级岛通知。</string>
     <string name="oobe_error_unsupported_device">❌ 系统不受支持\n当前系统暂不支持。动态歌词功能需要 Android 16+ 或 HyperOS 3.0+。</string>
-    <string name="oobe_privacy_notice">🔒 隐私优先\n本应用完全在本地运行。只有在您明确开启“在线歌词”时才会使用网络权限。我们绝不收集或传输您的个人数据。</string>
+    <string name="oobe_privacy_notice">🔒 隐私优先\n本应用默认在本地处理数据。只有在您明确开启“在线歌词”或 Last.fm 等功能时才会使用网络权限。我们不会读取或上传非媒体类通知。</string>
     
     <string name="oobe_step_permissions">权限设置</string>
     <string name="oobe_perm_listener_title">通知使用权</string>
     <string name="oobe_perm_listener_desc">用于读取媒体播放通知中的歌词与播放信息</string>
-    <string name="oobe_perm_listener_scope">本应用仅会读取媒体播放通知的内容，包括：专辑图片、歌手、歌名、专辑名，以及正在播放媒体的应用包名。\n\n上述信息仅用于以下用途：\n• 播放信息的读取和显示\n• 媒体通知歌词的提取\n• 开启在线歌词后用以匹配在线歌词\n• 应用记录自身日志\n\n我们不会读取您的聊天消息、验证码、邮件内容等非媒体类通知，也不会收集或上传您的任何个人数据。</string>
+    <string name="oobe_perm_listener_scope">本应用仅会读取媒体播放通知的内容，包括：专辑图片、歌手、歌名、专辑名，以及正在播放媒体的应用包名。\n\n上述信息仅用于以下用途：\n• 播放信息的读取和显示\n• 媒体通知歌词的提取\n• 开启在线歌词后用以匹配在线歌词\n• 开启 Last.fm 后向 Last.fm 发送正在播放与 scrobble 记录\n• 应用记录自身日志\n\n我们不会读取您的聊天消息、验证码、邮件内容等非媒体类通知。只有在您明确开启相关功能时才会发起网络请求。</string>
     <string name="oobe_perm_post_title">通知发送权</string>
     <string name="oobe_perm_post_desc">用于在状态栏显示包含实时歌词的通知胶囊</string>
     <string name="oobe_perm_battery_title">电池优化 （可选）</string>

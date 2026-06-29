@@ -12,7 +12,6 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -52,7 +51,8 @@ fun PredictiveBackActivity(
     val predictiveBackEnabled = rememberPredictiveBackEnabledState(prefs)
     val animationMode = rememberPredictiveBackAnimationModeState(prefs)
     val animationStyle = rememberPredictiveBackAnimationStyleState(prefs)
-    val useConsistentAnimation = animationMode == PredictiveBackAnimationMode.Consistent
+    val useConsistentAnimation = predictiveBackEnabled && animationMode == PredictiveBackAnimationMode.Consistent
+    val isOverlaySheetTransition = closeExitTransition == R.anim.overlay_sheet_close_exit
 
     if (!enabled || !predictiveBackEnabled) {
         content()
@@ -80,9 +80,9 @@ fun PredictiveBackActivity(
     val scope = rememberCoroutineScope()
     val exitAnimatable = remember { Animatable(0f) }
     var isExiting by remember { mutableStateOf(false) }
-    var lastEdge by remember { mutableIntStateOf(0) }
     var lastPivotY by remember { mutableFloatStateOf(0.5f) }
     var lastProgress by remember { mutableFloatStateOf(0f) }
+    var lastGestureDirection by remember { mutableFloatStateOf(1f) }
 
     CompositionLocalProvider(
         LocalNavigationEventDispatcherOwner provides activityDispatcherOwner
@@ -98,19 +98,11 @@ fun PredictiveBackActivity(
                         animationSpec = tween(durationMillis = 150, easing = LinearEasing)
                     )
                     activity?.finish()
-                    if (useConsistentAnimation) {
-                        activity?.overrideActivityTransition(
-                            Activity.OVERRIDE_TRANSITION_CLOSE,
-                            R.anim.page_close_enter,
-                            R.anim.page_close_enter
-                        )
-                    } else {
-                        activity?.overrideActivityTransition(
-                            Activity.OVERRIDE_TRANSITION_CLOSE,
-                            closeEnterTransition,
-                            closeExitTransition
-                        )
-                    }
+                    activity?.overrideActivityTransition(
+                        Activity.OVERRIDE_TRANSITION_CLOSE,
+                        R.anim.page_close_enter,
+                        R.anim.page_close_enter
+                    )
                 }
             }
         )
@@ -122,22 +114,21 @@ fun PredictiveBackActivity(
         val windowInfo = LocalWindowInfo.current
         val containerHeightPx = windowInfo.containerSize.height
 
-        val edge = progressInProgress?.latestEvent?.swipeEdge ?: 0
+        val edge = progressInProgress?.latestEvent?.swipeEdge ?: EDGE_LEFT
         val touchY = progressInProgress?.latestEvent?.touchY
         val gestureProgress = progressInProgress?.latestEvent?.progress ?: 0f
-        val isLeftEdge = edge == EDGE_LEFT
 
         if (isGestureActive) {
-            lastEdge = edge
             lastProgress = gestureProgress
             lastPivotY = predictiveBackPivotY(touchY, containerHeightPx)
+            lastGestureDirection = predictiveBackExitDirection(edge == EDGE_LEFT)
         }
 
         val currentPivotY = predictiveBackPivotY(touchY, containerHeightPx)
 
         val exitProgress = exitAnimatable.value
-        val gestureDirection = predictiveBackExitDirection(isLeftEdge)
-        val exitDirection = predictiveBackExitDirection(lastEdge == EDGE_LEFT)
+        val gestureDirection = predictiveBackExitDirection(edge == EDGE_LEFT)
+        val exitDirection = lastGestureDirection
 
         val shouldAnimate = isGestureActive || isExiting
 
@@ -148,35 +139,66 @@ fun PredictiveBackActivity(
                     if (isExiting) {
                         val startProgress = lastProgress.coerceIn(0f, 1f)
                         val progress = startProgress + (1f - startProgress) * exitProgress
-                        applyPredictiveBackFrontTransform(
-                            style = if (useConsistentAnimation) {
-                                animationStyle
-                            } else {
-                                PredictiveBackAnimationStyle.ScaleSlide
-                            },
-                            progress = progress,
-                            direction = exitDirection,
-                            pivotY = lastPivotY
-                        )
+                        if (useConsistentAnimation) {
+                            applyPredictiveBackFrontTransform(
+                                style = animationStyle,
+                                progress = progress,
+                                direction = exitDirection,
+                                pivotY = lastPivotY
+                            )
+                        } else {
+                            applyPageSpecificActivityBackTransform(
+                                progress = progress,
+                                overlaySheet = isOverlaySheetTransition
+                            )
+                        }
                     } else if (isGestureActive) {
-                        applyPredictiveBackFrontTransform(
-                            style = if (useConsistentAnimation) {
-                                animationStyle
-                            } else {
-                                PredictiveBackAnimationStyle.ScaleSlide
-                            },
-                            progress = gestureProgress,
-                            direction = gestureDirection,
-                            pivotY = currentPivotY
-                        )
+                        if (useConsistentAnimation) {
+                            applyPredictiveBackFrontTransform(
+                                style = animationStyle,
+                                progress = gestureProgress,
+                                direction = gestureDirection,
+                                pivotY = currentPivotY
+                            )
+                        } else {
+                            applyPageSpecificActivityBackTransform(
+                                progress = gestureProgress,
+                                overlaySheet = isOverlaySheetTransition
+                            )
+                        }
                     }
                 }
                 .clip(
-                    if (shouldAnimate) RoundedCornerShape(16.dp)
+                    if (shouldAnimate && useConsistentAnimation) RoundedCornerShape(16.dp)
                     else RoundedCornerShape(0.dp)
                 )
         ) {
             currentContent()
         }
+    }
+}
+
+private fun androidx.compose.ui.graphics.GraphicsLayerScope.applyPageSpecificActivityBackTransform(
+    progress: Float,
+    overlaySheet: Boolean
+) {
+    val p = progress.coerceIn(0f, 1f)
+    alpha = 1f
+    scaleX = 1f
+    scaleY = 1f
+    translationX = 0f
+    translationY = 0f
+    rotationX = 0f
+    rotationY = 0f
+
+    if (overlaySheet) {
+        val sheetShrinkProgress = p.coerceIn(0f, 1f)
+        scaleX = 1f - (0.12f * sheetShrinkProgress)
+        scaleY = 1f - (0.06f * sheetShrinkProgress)
+        translationY = size.height * 0.22f * sheetShrinkProgress
+        alpha = 1f - (0.08f * sheetShrinkProgress)
+    } else {
+        translationX = size.width * p
+        alpha = 1f - (0.04f * p)
     }
 }

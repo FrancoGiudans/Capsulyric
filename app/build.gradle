@@ -1,6 +1,7 @@
 plugins {
     id 'com.android.application'
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.aboutlibraries)
 }
 
 apply from: rootProject.file('gradle/scripts/versioning.gradle')
@@ -54,6 +55,7 @@ dependencies {
     implementation libs.miuix.preference
     implementation libs.miuix.blur
     implementation libs.navigationevent.compose
+    implementation libs.aboutlibraries.compose.m3
 
     // Shizuku
     implementation libs.shizuku.api
