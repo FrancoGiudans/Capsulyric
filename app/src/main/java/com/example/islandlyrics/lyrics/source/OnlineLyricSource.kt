@@ -89,7 +89,11 @@ class OnlineLyricSource(private val context: Context) {
         if (currentSongState.isInstrumental) {
             AppLogger.getInstance().i(TAG, "[$packageName] Marked instrumental — using no-lyrics state")
             cancel()
-            LyricRepository.getInstance().updateLyric("", packageName, "System")
+            LyricRepository.getInstance().updateLyric(
+                "",
+                packageName,
+                LyricRepository.API_PATH_INSTRUMENTAL
+            )
             LyricRepository.getInstance().updateParsedLyrics(
                 lines = emptyList(),
                 hasSyllable = false,

@@ -263,6 +263,7 @@ class LyricRepository private constructor() {
 
     companion object {
         const val ACTION_REFRESH_DIAGNOSTICS = "com.example.islandlyrics.ACTION_REFRESH_DIAGNOSTICS"
+        const val API_PATH_INSTRUMENTAL = "Instrumental"
         private var instance: LyricRepository? = null
 
         @Synchronized

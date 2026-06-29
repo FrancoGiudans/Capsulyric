@@ -177,7 +177,7 @@ internal class LyricSourceArbiter {
             "Lyric Getter" -> SourceType.LYRIC_GETTER
             "Local LRC" -> SourceType.LOCAL
             "Online API", "Online Cache" -> SourceType.ONLINE
-            "System" -> SourceType.SYSTEM
+            "System", LyricRepository.API_PATH_INSTRUMENTAL -> SourceType.SYSTEM
             else -> SourceType.UNKNOWN
         }
     }

@@ -134,7 +134,7 @@ class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(app
     }
 
     private fun applyNoLyricsState(mediaInfo: LyricRepository.MediaInfo) {
-        repo.updateLyric("", mediaInfo.packageName, "System")
+        repo.updateLyric("", mediaInfo.packageName, LyricRepository.API_PATH_INSTRUMENTAL)
         repo.updateParsedLyrics(
             lines = emptyList(),
             hasSyllable = false,
