@@ -384,24 +384,26 @@ private fun MiuixAboutContent(
                 )
             }
 
-            item(key = "community") {
-                SmallTitle(text = stringResource(R.string.settings_community_header))
-                FrostedAboutCard(
-                    backdrop = backdrop,
-                    blurEnabled = blurEnabled,
-                    blurColors = cardBlurColors
-                ) {
-                    CommunitySection(
-                        offlineModeEnabled = offlineModeEnabled,
-                        feedSourcePriority = feedSourcePriority,
-                        onFeedSourcePriorityChange = { source ->
-                            feedSourcePriority = source
-                            LabFeatureManager.setFeedSourcePriority(context, source)
-                        },
-                        communityFeed = communityFeed,
-                        communityFeedLoaded = communityFeedLoaded,
-                        onCommunityItemClick = { communityDialogState = it }
-                    )
+            if (!offlineModeEnabled) {
+                item(key = "community") {
+                    SmallTitle(text = stringResource(R.string.settings_community_header))
+                    FrostedAboutCard(
+                        backdrop = backdrop,
+                        blurEnabled = blurEnabled,
+                        blurColors = cardBlurColors
+                    ) {
+                        CommunitySection(
+                            offlineModeEnabled = offlineModeEnabled,
+                            feedSourcePriority = feedSourcePriority,
+                            onFeedSourcePriorityChange = { source ->
+                                feedSourcePriority = source
+                                LabFeatureManager.setFeedSourcePriority(context, source)
+                            },
+                            communityFeed = communityFeed,
+                            communityFeedLoaded = communityFeedLoaded,
+                            onCommunityItemClick = { communityDialogState = it }
+                        )
+                    }
                 }
             }
 
@@ -413,7 +415,6 @@ private fun MiuixAboutContent(
                     blurColors = cardBlurColors
                 ) {
                     AboutSection(
-                        offlineModeEnabled = offlineModeEnabled,
                         showFeedbackPopup = showFeedbackPopup,
                         onToggleFeedback = { showFeedbackPopup = !showFeedbackPopup },
                         versionInfoText = versionInfoText,
@@ -694,50 +695,47 @@ private fun CommunitySection(
 
 @Composable
 private fun AboutSection(
-    offlineModeEnabled: Boolean,
     showFeedbackPopup: Boolean,
     onToggleFeedback: () -> Unit,
     versionInfoText: String,
     onCopyVersion: () -> Unit
 ) {
     val context = LocalContext.current
-    if (!offlineModeEnabled) {
-        BasicComponent(
-            title = stringResource(R.string.settings_feedback),
-            summary = stringResource(R.string.summary_feedback),
-            endActions = {
-                androidx.compose.material3.Icon(
-                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                    contentDescription = null,
-                    tint = MiuixTheme.colorScheme.onSurfaceVariantActions,
-                    modifier = Modifier.graphicsLayer {
-                        rotationZ = if (showFeedbackPopup) 90f else 0f
-                    }
-                )
-            },
-            onClick = onToggleFeedback
-        )
-        AnimatedVisibility(
-            visible = showFeedbackPopup,
-            enter = fadeIn() + expandVertically(),
-            exit = fadeOut() + shrinkVertically()
-        ) {
-            Column {
-                BasicComponent(
-                    title = stringResource(R.string.dialog_feedback_github),
-                    summary = stringResource(R.string.dialog_feedback_github_desc),
-                    onClick = {
-                        context.startActivity(Intent(Intent.ACTION_VIEW, "https://github.com/FrancoGiudans/Capsulyric/issues/new?template=bug_report.yml".toUri()))
-                    }
-                )
-                BasicComponent(
-                    title = stringResource(R.string.dialog_feedback_wps),
-                    summary = stringResource(R.string.dialog_feedback_wps_desc),
-                    onClick = {
-                        context.startActivity(Intent(Intent.ACTION_VIEW, "https://f.wps.cn/g/qACKW9I3/".toUri()))
-                    }
-                )
-            }
+    BasicComponent(
+        title = stringResource(R.string.settings_feedback),
+        summary = stringResource(R.string.summary_feedback),
+        endActions = {
+            androidx.compose.material3.Icon(
+                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                contentDescription = null,
+                tint = MiuixTheme.colorScheme.onSurfaceVariantActions,
+                modifier = Modifier.graphicsLayer {
+                    rotationZ = if (showFeedbackPopup) 90f else 0f
+                }
+            )
+        },
+        onClick = onToggleFeedback
+    )
+    AnimatedVisibility(
+        visible = showFeedbackPopup,
+        enter = fadeIn() + expandVertically(),
+        exit = fadeOut() + shrinkVertically()
+    ) {
+        Column {
+            BasicComponent(
+                title = stringResource(R.string.dialog_feedback_github),
+                summary = stringResource(R.string.dialog_feedback_github_desc),
+                onClick = {
+                    context.startActivity(Intent(Intent.ACTION_VIEW, "https://github.com/FrancoGiudans/Capsulyric/issues/new?template=bug_report.yml".toUri()))
+                }
+            )
+            BasicComponent(
+                title = stringResource(R.string.dialog_feedback_wps),
+                summary = stringResource(R.string.dialog_feedback_wps_desc),
+                onClick = {
+                    context.startActivity(Intent(Intent.ACTION_VIEW, "https://f.wps.cn/g/qACKW9I3/".toUri()))
+                }
+            )
         }
     }
 

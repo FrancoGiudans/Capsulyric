@@ -108,6 +108,9 @@
     <string name="settings_general_header">通用</string>
     <string name="settings_full_offline_mode">完全离线模式</string>
     <string name="settings_full_offline_mode_desc">隐藏所有需要联网的功能，并阻止更新检查、社区动态和在线歌词请求</string>
+    <string name="settings_full_offline_mode_dialog_title">开启完全离线模式？</string>
+    <string name="settings_full_offline_mode_dialog_message">以下应用内联网功能会被隐藏或阻止：\n\n• 在线歌词匹配和重匹配\n• Last.fm 记录播放和授权\n• 更新检查和当前版本更新日志查询\n• 社区动态和动态源选择\n\nGitHub 仓库、反馈页面等外部浏览器链接仍可正常打开。</string>
+    <string name="settings_full_offline_mode_dialog_confirm">开启</string>
     <string name="settings_cache_management">缓存管理</string>
     <string name="settings_cache_management_desc">管理在线歌词缓存和远程图片缓存</string>
     <string name="settings_core_services_header">核心服务</string>

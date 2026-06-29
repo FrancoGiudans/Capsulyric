@@ -60,6 +60,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.islandlyrics.R
+import com.example.islandlyrics.core.network.OfflineModeManager
 import com.example.islandlyrics.lyrics.online.OnlineLyricFetcher
 import com.example.islandlyrics.feature.onlinelyricdebug.OnlineLyricDebugViewModel
 import com.example.islandlyrics.feature.settings.material.SettingsCard
@@ -74,6 +75,7 @@ fun OnlineLyricDebugScreen(
     viewModel: OnlineLyricDebugViewModel = viewModel()
 ) {
     val context = LocalContext.current
+    val offlineModeEnabled = OfflineModeManager.isEnabled(context)
     val mediaInfo by viewModel.liveMetadata.observeAsState()
     val albumArt by viewModel.liveAlbumArt.observeAsState()
     val liveProgress by viewModel.liveProgress.observeAsState()
@@ -164,7 +166,7 @@ fun OnlineLyricDebugScreen(
                         Spacer(modifier = Modifier.height(14.dp))
                         Button(
                             onClick = { viewModel.rematchWithCurrentPlayback() },
-                            enabled = !isFetching,
+                            enabled = !isFetching && !offlineModeEnabled,
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
@@ -219,7 +221,7 @@ fun OnlineLyricDebugScreen(
                         Spacer(modifier = Modifier.height(14.dp))
                         Button(
                             onClick = { viewModel.rematchLyrics() },
-                            enabled = !isFetching,
+                            enabled = !isFetching && !offlineModeEnabled,
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             if (isFetching) {

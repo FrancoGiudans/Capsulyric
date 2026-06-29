@@ -16,6 +16,7 @@ import android.os.SystemClock
 import android.provider.Settings
 import android.view.ContextThemeWrapper
 import android.widget.Toast
+import com.example.islandlyrics.core.network.OfflineModeManager
 import androidx.core.graphics.createBitmap
 import androidx.compose.foundation.Canvas as ComposeCanvas
 import androidx.compose.foundation.Image
@@ -330,6 +331,7 @@ fun MainScreen(
                                 primaryProgress = if (isPrimary) repoProgress else null,
                                 primaryIsPlaying = if (isPrimary) repoPlaying else null,
                                 showOnlineLyricRematch = isPrimary &&
+                                    !OfflineModeManager.isEnabled(context) &&
                                     (isCurrentTrackInstrumental || isOnlineLyricSource(repoLyric?.apiPath)),
                                 onOpenOnlineLyricRematch = onOpenOnlineLyricRematch,
                                 minCardHeight = minCardHeight,

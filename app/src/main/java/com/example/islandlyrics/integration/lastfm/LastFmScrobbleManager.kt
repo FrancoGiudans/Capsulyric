@@ -16,7 +16,7 @@ class LastFmScrobbleManager(context: Context) {
     private val appContext = context.applicationContext
     private val prefs = AppPreferences.of(appContext)
     private val store = LastFmSecureStore(appContext)
-    private val api = LastFmApiClient()
+    private val api = LastFmApiClient(networkAllowed = { !OfflineModeManager.isEnabled(appContext) })
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     private var currentInstance: PlayInstance? = null

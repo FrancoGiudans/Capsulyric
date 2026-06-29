@@ -5,6 +5,7 @@ import com.example.islandlyrics.ui.miuix.blur.MiuixBlurTopAppBar
 import com.example.islandlyrics.ui.miuix.blur.MiuixBlurScaffold
 import android.graphics.Bitmap
 import com.example.islandlyrics.R
+import com.example.islandlyrics.core.network.OfflineModeManager
 import com.example.islandlyrics.runtime.service.MediaMonitorService
 import com.example.islandlyrics.rules.ParserRuleHelper
 import com.example.islandlyrics.lyrics.cache.OnlineLyricCacheStore
@@ -350,6 +351,7 @@ fun MiuixMainScreen(
                                 primaryAlbumArt = if (isPrimary) repoAlbumArt else null,
                                 primaryProgress = if (isPrimary) repoProgress else null,
                                 showOnlineLyricRematch = isPrimary &&
+                                    !OfflineModeManager.isEnabled(context) &&
                                     (isCurrentTrackInstrumental || isOnlineLyricSource(repoLyric?.apiPath)),
                                 onOpenOnlineLyricRematch = onOpenOnlineLyricRematch
                             )

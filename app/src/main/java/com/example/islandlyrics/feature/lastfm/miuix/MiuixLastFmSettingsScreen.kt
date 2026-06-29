@@ -52,9 +52,10 @@ fun MiuixLastFmSettingsScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     val prefs = remember { AppPreferences.of(context) }
     val store = remember { LastFmSecureStore(context) }
-    val api = remember { LastFmApiClient() }
+    val api = remember { LastFmApiClient(networkAllowed = { !OfflineModeManager.isEnabled(context) }) }
     val scope = rememberCoroutineScope()
     val scrollBehavior = MiuixScrollBehavior(rememberTopAppBarState())
+    val offlineModeEnabled = OfflineModeManager.isEnabled(context)
 
     var credentials by remember { mutableStateOf(store.getCredentials()) }
     var enabled by remember { mutableStateOf(AppPreferences.isLastFmEnabled(prefs)) }
@@ -215,6 +216,10 @@ fun MiuixLastFmSettingsScreen(onBack: () -> Unit) {
                         summary = stringResource(R.string.lastfm_enable_desc),
                         checked = enabled,
                         onCheckedChange = {
+                            if (OfflineModeManager.isEnabled(context) && it) {
+                                message = offlineBlockedText
+                                return@SwitchPreference
+                            }
                             enabled = it
                             prefs.edit { putBoolean(AppPreferences.Keys.LASTFM_ENABLED, it) }
                         }
@@ -248,7 +253,7 @@ fun MiuixLastFmSettingsScreen(onBack: () -> Unit) {
             item {
                 Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Button(
-                        enabled = !busy,
+                        enabled = !busy && (!credentials.isConnected || !offlineModeEnabled),
                         onClick = {
                             if (credentials.isConnected) {
                                 openAuthorization(saveFirst = false)
@@ -268,7 +273,7 @@ fun MiuixLastFmSettingsScreen(onBack: () -> Unit) {
                     }
                     if (!credentials.isConnected) {
                         Button(
-                            enabled = !busy,
+                            enabled = !busy && !offlineModeEnabled,
                             onClick = { openAuthorization(saveFirst = true) },
                             modifier = Modifier.fillMaxWidth()
                         ) {
@@ -277,7 +282,7 @@ fun MiuixLastFmSettingsScreen(onBack: () -> Unit) {
                     }
                     if (!credentials.isConnected || authInProgress) {
                         Button(
-                            enabled = !busy,
+                            enabled = !busy && !offlineModeEnabled,
                             onClick = { finishConnection() },
                             modifier = Modifier.fillMaxWidth()
                         ) {

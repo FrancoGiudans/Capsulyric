@@ -178,10 +178,10 @@ fun AboutScreen(
                 )
             }
 
-            item { SettingsSectionHeader(text = stringResource(R.string.settings_community_header), marginTop = 8.dp) }
-            item {
-                SettingsCard {
-                    if (!offlineModeEnabled) {
+            if (!offlineModeEnabled) {
+                item { SettingsSectionHeader(text = stringResource(R.string.settings_community_header), marginTop = 8.dp) }
+                item {
+                    SettingsCard {
                         Box(modifier = Modifier.fillMaxWidth()) {
                             SettingsTextItem(
                                 title = stringResource(R.string.diag_lab_feed_source_title),
@@ -214,27 +214,25 @@ fun AboutScreen(
                             }
                         }
                         SettingsCardDivider()
+                        CommunitySection(
+                            communityFeed = communityFeed,
+                            communityFeedLoaded = communityFeedLoaded,
+                            onCommunityItemClick = { communityDialogState = it }
+                        )
                     }
-                    CommunitySection(
-                        communityFeed = communityFeed,
-                        communityFeedLoaded = communityFeedLoaded,
-                        onCommunityItemClick = { communityDialogState = it }
-                    )
                 }
             }
 
             item { SettingsSectionHeader(text = stringResource(R.string.about_title)) }
             item {
                 SettingsCard {
-                    if (!offlineModeEnabled) {
-                        SettingsActionItem(
-                            title = stringResource(R.string.settings_feedback),
-                            summary = stringResource(R.string.summary_feedback),
-                            icon = Icons.AutoMirrored.Filled.Send,
-                            onClick = { showFeedbackDialog = true }
-                        )
-                        SettingsCardDivider()
-                    }
+                    SettingsActionItem(
+                        title = stringResource(R.string.settings_feedback),
+                        summary = stringResource(R.string.summary_feedback),
+                        icon = Icons.AutoMirrored.Filled.Send,
+                        onClick = { showFeedbackDialog = true }
+                    )
+                    SettingsCardDivider()
                     SettingsActionItem(
                         title = stringResource(R.string.settings_about_github),
                         summary = stringResource(R.string.summary_github),

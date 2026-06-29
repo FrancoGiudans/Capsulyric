@@ -30,7 +30,7 @@ import kotlinx.coroutines.withContext
  */
 class OnlineLyricSource(private val context: Context) {
 
-    private val fetcher    = OnlineLyricFetcher()
+    private val fetcher    = OnlineLyricFetcher(networkAllowed = { !OfflineModeManager.isEnabled(context) })
     private val cacheStore = OnlineLyricCacheStore(context)
     private val scope      = CoroutineScope(Dispatchers.Main + Job())
     private var fetchJob: Job? = null

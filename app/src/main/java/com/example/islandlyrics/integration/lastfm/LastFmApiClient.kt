@@ -11,7 +11,8 @@ import kotlin.coroutines.resume
 import kotlinx.coroutines.suspendCancellableCoroutine
 
 class LastFmApiClient(
-    private val client: OkHttpClient = OkHttpClient()
+    private val client: OkHttpClient = OkHttpClient(),
+    private val networkAllowed: () -> Boolean = { true }
 ) {
     fun authUrl(apiKey: String, token: String): String =
         "https://www.last.fm/api/auth/?api_key=${Uri.encode(apiKey)}&token=${Uri.encode(token)}"
@@ -64,6 +65,10 @@ class LastFmApiClient(
         credentials: LastFmCredentials,
         params: Map<String, String>
     ): Result<JSONObject> = suspendCancellableCoroutine { continuation ->
+        if (!networkAllowed()) {
+            continuation.resume(Result.failure(IllegalStateException("Network actions are blocked")))
+            return@suspendCancellableCoroutine
+        }
         val signedParams = params +
             ("api_key" to credentials.apiKey) +
             ("format" to "json") +

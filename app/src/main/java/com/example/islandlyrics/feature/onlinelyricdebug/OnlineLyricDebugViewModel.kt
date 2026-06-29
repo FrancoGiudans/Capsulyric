@@ -6,6 +6,7 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
 import com.example.islandlyrics.core.logging.AppLogger
+import com.example.islandlyrics.core.network.OfflineModeManager
 import com.example.islandlyrics.lyrics.state.LyricRepository
 import com.example.islandlyrics.rules.ParserRule
 import com.example.islandlyrics.rules.ParserRuleHelper
@@ -19,7 +20,8 @@ import com.example.islandlyrics.R
 
 class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(application) {
     private val repo = LyricRepository.getInstance()
-    private val fetcher = OnlineLyricFetcher()
+    private val appContext = application.applicationContext
+    private val fetcher = OnlineLyricFetcher(networkAllowed = { !OfflineModeManager.isEnabled(appContext) })
     private val cacheStore = OnlineLyricCacheStore(application)
 
     private val _isFetching = MutableLiveData(false)
@@ -399,6 +401,14 @@ class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(app
     }
 
     fun fetchLyrics(forceRefresh: Boolean = false) {
+        if (OfflineModeManager.isEnabled(appContext)) {
+            _isFetching.value = false
+            _error.value = s(R.string.offline_mode_network_blocked)
+            _attempts.value = emptyList()
+            _selectedResult.value = null
+            _usedCleanTitleFallback.value = false
+            return
+        }
         val mediaInfo = liveMetadata.value
         if (mediaInfo == null) {
             _error.value = s(R.string.online_lyric_debug_error_no_song)

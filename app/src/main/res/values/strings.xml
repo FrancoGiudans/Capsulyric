@@ -108,6 +108,9 @@
     <string name="settings_general_header">General</string>
     <string name="settings_full_offline_mode">Full Offline Mode</string>
     <string name="settings_full_offline_mode_desc">Hide all network-related features and block update checks, community feed, and online lyric requests</string>
+    <string name="settings_full_offline_mode_dialog_title">Enable Full Offline Mode?</string>
+    <string name="settings_full_offline_mode_dialog_message">The following in-app network features will be hidden or blocked:\n\n• Online lyric matching and rematching\n• Last.fm scrobbling and authorization\n• Update checks and current-version changelog lookup\n• Community feed and feed source selection\n\nExternal browser links, such as GitHub repository and feedback pages, will still open normally.</string>
+    <string name="settings_full_offline_mode_dialog_confirm">Enable</string>
     <string name="settings_cache_management">Cache Management</string>
     <string name="settings_cache_management_desc">Manage cached online lyrics and remote images</string>
     <string name="settings_core_services_header">Core Services</string>

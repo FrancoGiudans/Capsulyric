@@ -8,6 +8,7 @@ import android.annotation.SuppressLint
 import android.app.Activity
 import com.example.islandlyrics.R
 import com.example.islandlyrics.core.feed.CommunityFeedItem
+import com.example.islandlyrics.core.network.OfflineModeManager
 import com.example.islandlyrics.core.update.UpdateChecker
 import com.example.islandlyrics.core.theme.ThemeHelper
 import com.example.islandlyrics.core.platform.RomUtils
@@ -95,6 +96,7 @@ fun MiuixSettingsScreen(
 ) {
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE) }
+    val offlineModeEnabled = OfflineModeManager.isEnabled(context)
     val snackbarHostState = remember { MiuixSnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
     val scrollBehavior = MiuixScrollBehavior(rememberTopAppBarState())
@@ -427,25 +429,27 @@ fun MiuixSettingsScreen(
                     onOpenDirectory = onOpenLocalLyricDirectory
                 )
             }
-            item { SmallTitle(text = stringResource(R.string.settings_lyric_tools_header)) }
-            item {
-                Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
-                    SuperArrow(
-                        title = stringResource(R.string.online_lyric_rematch_title),
-                        summary = stringResource(R.string.online_lyric_rematch_settings_desc),
-                        onClick = {
-                            onOpenOnlineLyricRematch?.invoke()
-                                ?: context.startActivity(Intent(context, com.example.islandlyrics.feature.onlinelyricdebug.OnlineLyricDebugActivity::class.java))
-                        }
-                    )
-                    SuperArrow(
-                        title = stringResource(R.string.lastfm_title),
-                        summary = stringResource(R.string.lastfm_settings_summary),
-                        onClick = {
-                            onOpenLastFm?.invoke()
-                                ?: context.startActivity(Intent(context, LastFmSettingsActivity::class.java))
-                        }
-                    )
+            if (!offlineModeEnabled) {
+                item { SmallTitle(text = stringResource(R.string.settings_lyric_tools_header)) }
+                item {
+                    Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
+                        SuperArrow(
+                            title = stringResource(R.string.online_lyric_rematch_title),
+                            summary = stringResource(R.string.online_lyric_rematch_settings_desc),
+                            onClick = {
+                                onOpenOnlineLyricRematch?.invoke()
+                                    ?: context.startActivity(Intent(context, com.example.islandlyrics.feature.onlinelyricdebug.OnlineLyricDebugActivity::class.java))
+                            }
+                        )
+                        SuperArrow(
+                            title = stringResource(R.string.lastfm_title),
+                            summary = stringResource(R.string.lastfm_settings_summary),
+                            onClick = {
+                                onOpenLastFm?.invoke()
+                                    ?: context.startActivity(Intent(context, LastFmSettingsActivity::class.java))
+                            }
+                        )
+                    }
                 }
             }
             item { SmallTitle(text = stringResource(R.string.settings_backup_header)) }

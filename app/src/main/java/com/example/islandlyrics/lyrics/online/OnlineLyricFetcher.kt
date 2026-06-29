@@ -20,7 +20,9 @@ import javax.net.ssl.HostnameVerifier
  * 在线歌词获取器
  * 支持从多个在线源(酷狗/网易/LrcApi)获取带时间轴的歌词
  */
-class OnlineLyricFetcher {
+class OnlineLyricFetcher(
+    private val networkAllowed: () -> Boolean = { true }
+) {
 
     data class LyricQuery(
         val title: String,
@@ -81,7 +83,7 @@ class OnlineLyricFetcher {
         .retryOnConnectionFailure(false)
         .hostnameVerifier(HostnameVerifier { _, _ -> true })
         .build()
-    private val httpClient = OnlineLyricHttpClient(client)
+    private val httpClient = OnlineLyricHttpClient(client, networkAllowed)
     private val lrclibProvider = LrclibLyricProvider(httpClient)
     private val lrcApiProvider = LrcApiLyricProvider(httpClient)
     private val sodaMusicProvider = SodaMusicLyricProvider(httpClient)
@@ -111,6 +113,10 @@ class OnlineLyricFetcher {
     ): FetchOutcome {
         val providerOrder = OnlineLyricProvider.normalizeOrder(providerOrderIds)
         val query = LyricQuery(title = title, artist = artist)
+        if (!networkAllowed()) {
+            AppLogger.getInstance().i("OnlineLyric", "Offline mode enabled, online lyric fetch blocked")
+            return FetchOutcome(query, null, emptyList(), false)
+        }
         val exactAttempts = fetchAllProviders(query, providerOrder, usedCleanTitleFallback = false)
         val exactBest = selector.selectBestResult(exactAttempts, title, artist, providerOrder, useSmartSelection)
         if (exactBest != null) {

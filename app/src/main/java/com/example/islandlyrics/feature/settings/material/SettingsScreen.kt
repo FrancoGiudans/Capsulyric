@@ -6,6 +6,7 @@ import android.annotation.SuppressLint
 import android.app.Activity
 import com.example.islandlyrics.R
 import com.example.islandlyrics.core.feed.CommunityFeedItem
+import com.example.islandlyrics.core.network.OfflineModeManager
 import com.example.islandlyrics.core.theme.ThemeHelper
 import com.example.islandlyrics.core.platform.RomUtils
 import com.example.islandlyrics.feature.faq.FAQActivity
@@ -106,6 +107,7 @@ fun SettingsScreen(
     val backupImportSuccessWithCacheFormat = stringResource(R.string.settings_backup_import_success_with_cache)
     val backupImportFailedText = stringResource(R.string.settings_backup_import_failed)
     val devModeEnabled by LyricRepository.getInstance().devModeEnabled.observeAsState(false)
+    val offlineModeEnabled = OfflineModeManager.isEnabled(context)
 
     // Backup category selection states
     var showExportCategoryDialog by remember { mutableStateOf(false) }
@@ -432,28 +434,30 @@ fun SettingsScreen(
                     onOpenDirectory = onOpenLocalLyricDirectory
                 )
             }
-            item { SettingsSectionHeader(text = stringResource(R.string.settings_lyric_tools_header)) }
-            item {
-                SettingsCard {
-                    SettingsActionItem(
-                        title = stringResource(R.string.online_lyric_rematch_title),
-                        summary = stringResource(R.string.online_lyric_rematch_settings_desc),
-                        icon = Icons.Filled.Refresh,
-                        onClick = {
-                            onOpenOnlineLyricRematch?.invoke()
-                                ?: context.startActivity(Intent(context, com.example.islandlyrics.feature.onlinelyricdebug.OnlineLyricDebugActivity::class.java))
-                        }
-                    )
-                    SettingsCardDivider()
-                    SettingsActionItem(
-                        title = stringResource(R.string.lastfm_title),
-                        summary = stringResource(R.string.lastfm_settings_summary),
-                        icon = Icons.Filled.Link,
-                        onClick = {
-                            onOpenLastFm?.invoke()
-                                ?: context.startActivity(Intent(context, LastFmSettingsActivity::class.java))
-                        }
-                    )
+            if (!offlineModeEnabled) {
+                item { SettingsSectionHeader(text = stringResource(R.string.settings_lyric_tools_header)) }
+                item {
+                    SettingsCard {
+                        SettingsActionItem(
+                            title = stringResource(R.string.online_lyric_rematch_title),
+                            summary = stringResource(R.string.online_lyric_rematch_settings_desc),
+                            icon = Icons.Filled.Refresh,
+                            onClick = {
+                                onOpenOnlineLyricRematch?.invoke()
+                                    ?: context.startActivity(Intent(context, com.example.islandlyrics.feature.onlinelyricdebug.OnlineLyricDebugActivity::class.java))
+                            }
+                        )
+                        SettingsCardDivider()
+                        SettingsActionItem(
+                            title = stringResource(R.string.lastfm_title),
+                            summary = stringResource(R.string.lastfm_settings_summary),
+                            icon = Icons.Filled.Link,
+                            onClick = {
+                                onOpenLastFm?.invoke()
+                                    ?: context.startActivity(Intent(context, LastFmSettingsActivity::class.java))
+                            }
+                        )
+                    }
                 }
             }
             item { SettingsSectionHeader(text = stringResource(R.string.settings_backup_header)) }

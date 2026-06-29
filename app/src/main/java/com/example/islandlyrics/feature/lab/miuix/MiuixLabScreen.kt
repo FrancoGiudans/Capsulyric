@@ -64,10 +64,14 @@ fun MiuixLabScreen(onBack: () -> Unit) {
     var scrollEndHapticEnabled by remember {
         mutableStateOf(LabFeatureManager.isScrollEndHapticEnabled(context))
     }
+    val showOfflineModeDialog = remember { mutableStateOf(false) }
     val showAdvancedStyleDialog = remember { mutableStateOf(false) }
     val showLiveUpdateTextLimitsDialog = remember { mutableStateOf(false) }
 
-    MiuixBackHandler(enabled = showAdvancedStyleDialog.value || showLiveUpdateTextLimitsDialog.value) {
+    MiuixBackHandler(
+        enabled = showOfflineModeDialog.value || showAdvancedStyleDialog.value || showLiveUpdateTextLimitsDialog.value
+    ) {
+        showOfflineModeDialog.value = false
         showAdvancedStyleDialog.value = false
         showLiveUpdateTextLimitsDialog.value = false
     }
@@ -112,9 +116,13 @@ fun MiuixLabScreen(onBack: () -> Unit) {
                         title = stringResource(R.string.settings_full_offline_mode),
                         summary = stringResource(R.string.settings_full_offline_mode_desc),
                         checked = offlineModeEnabled,
-                        onCheckedChange = {
-                            offlineModeEnabled = it
-                            OfflineModeManager.setEnabled(context, it)
+                        onCheckedChange = { enabled ->
+                            if (enabled) {
+                                showOfflineModeDialog.value = true
+                            } else {
+                                offlineModeEnabled = false
+                                OfflineModeManager.setEnabled(context, false)
+                            }
                         }
                     )
                     SuperSwitch(
@@ -209,6 +217,38 @@ fun MiuixLabScreen(onBack: () -> Unit) {
                     )
 
                 }
+            }
+        }
+
+        MiuixBlurDialog(
+            title = stringResource(R.string.settings_full_offline_mode_dialog_title),
+            summary = stringResource(R.string.settings_full_offline_mode_dialog_message),
+            show = showOfflineModeDialog.value,
+            onDismissRequest = { showOfflineModeDialog.value = false }
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                TextButton(
+                    text = stringResource(android.R.string.cancel),
+                    onClick = { showOfflineModeDialog.value = false },
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.textButtonColors(
+                        textColor = MiuixTheme.colorScheme.onSurfaceVariantActions
+                    )
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                TextButton(
+                    text = stringResource(R.string.settings_full_offline_mode_dialog_confirm),
+                    onClick = {
+                        OfflineModeManager.setEnabled(context, true)
+                        offlineModeEnabled = true
+                        showOfflineModeDialog.value = false
+                    },
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.textButtonColorsPrimary()
+                )
             }
         }
 

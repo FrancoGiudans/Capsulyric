@@ -2,6 +2,7 @@ package com.example.islandlyrics.feature.mediacontrol.miuix
 
 import android.content.Context
 import com.example.islandlyrics.R
+import com.example.islandlyrics.core.network.OfflineModeManager
 import com.example.islandlyrics.core.settings.AppPreferences
 import com.example.islandlyrics.core.platform.RomUtils
 import com.example.islandlyrics.runtime.service.MediaMonitorService
@@ -113,7 +114,7 @@ fun MiuixMediaControlDialog(
     val repoMetadata by repo.liveMetadata.observeAsState()
     val repoLyric by repo.liveLyric.observeAsState()
     val repoProgress by repo.liveProgress.observeAsState()
-    val showOnlineLyricRematch = isOnlineLyricSource(repoLyric?.apiPath)
+    val showOnlineLyricRematch = !OfflineModeManager.isEnabled(context) && isOnlineLyricSource(repoLyric?.apiPath)
 
     val blurEnabled = remember {
         AppPreferences.of(context).getBoolean(AppPreferences.Keys.CARD_BLUR_ENABLED, false)

@@ -2,6 +2,7 @@ package com.example.islandlyrics.feature.mediacontrol.material
 
 import android.content.Context
 import com.example.islandlyrics.R
+import com.example.islandlyrics.core.network.OfflineModeManager
 import com.example.islandlyrics.core.platform.RomUtils
 import com.example.islandlyrics.runtime.service.MediaMonitorService
 import com.example.islandlyrics.rules.ParserRuleHelper
@@ -111,7 +112,7 @@ fun MediaControlDialog(onDismiss: () -> Unit) {
 
     val repoLyric by repo.liveLyric.observeAsState()
     val repoProgress by repo.liveProgress.observeAsState()
-    val showOnlineLyricRematch = isOnlineLyricSource(repoLyric?.apiPath)
+    val showOnlineLyricRematch = !OfflineModeManager.isEnabled(context) && isOnlineLyricSource(repoLyric?.apiPath)
 
     // Transition State for Enter/Exit animations
     val visibleState = remember { MutableTransitionState(true) }

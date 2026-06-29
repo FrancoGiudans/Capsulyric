@@ -58,9 +58,10 @@ fun LastFmSettingsScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     val prefs = remember { AppPreferences.of(context) }
     val store = remember { LastFmSecureStore(context) }
-    val api = remember { LastFmApiClient() }
+    val api = remember { LastFmApiClient(networkAllowed = { !OfflineModeManager.isEnabled(context) }) }
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
+    val offlineModeEnabled = OfflineModeManager.isEnabled(context)
 
     var credentials by remember { mutableStateOf(store.getCredentials()) }
     var enabled by remember { mutableStateOf(AppPreferences.isLastFmEnabled(prefs)) }
@@ -228,6 +229,7 @@ fun LastFmSettingsScreen(onBack: () -> Unit) {
                         title = stringResource(R.string.lastfm_enable),
                         subtitle = stringResource(R.string.lastfm_enable_desc),
                         checked = enabled,
+                        enabled = !offlineModeEnabled,
                         onCheckedChange = {
                             enabled = it
                             prefs.edit { putBoolean(AppPreferences.Keys.LASTFM_ENABLED, it) }
@@ -287,7 +289,7 @@ fun LastFmSettingsScreen(onBack: () -> Unit) {
                             }
 
                             Button(
-                                enabled = !busy,
+                                enabled = !busy && !offlineModeEnabled,
                                 onClick = { openAuthorization(saveFirst = true) },
                                 modifier = Modifier.fillMaxWidth()
                             ) {
@@ -297,7 +299,7 @@ fun LastFmSettingsScreen(onBack: () -> Unit) {
                             }
                         } else {
                             Button(
-                                enabled = !busy,
+                                enabled = !busy && !offlineModeEnabled,
                                 onClick = { openAuthorization(saveFirst = false) },
                                 modifier = Modifier.fillMaxWidth()
                             ) {
@@ -309,7 +311,7 @@ fun LastFmSettingsScreen(onBack: () -> Unit) {
 
                         if (!credentials.isConnected || authInProgress) {
                             Button(
-                                enabled = !busy,
+                                enabled = !busy && !offlineModeEnabled,
                                 onClick = { finishConnection() },
                                 modifier = Modifier.fillMaxWidth()
                             ) {

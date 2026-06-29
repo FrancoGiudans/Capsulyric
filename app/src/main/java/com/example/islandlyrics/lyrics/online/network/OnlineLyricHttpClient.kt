@@ -12,46 +12,53 @@ import java.io.IOException
 import kotlin.coroutines.resume
 
 internal class OnlineLyricHttpClient(
-    private val client: OkHttpClient
+    private val client: OkHttpClient,
+    private val networkAllowed: () -> Boolean = { true }
 ) {
     suspend fun get(
         url: String,
         headers: Map<String, String> = emptyMap()
-    ): String? = suspendCancellableCoroutine { continuation ->
-        val request = Request.Builder().url(url).apply {
-            headers.forEach { (key, value) -> header(key, value) }
-        }.build()
-        client.newCall(request).enqueue(object : Callback {
-            override fun onFailure(call: okhttp3.Call, e: IOException) {
-                continuation.resume(null)
-            }
+    ): String? {
+        if (!networkAllowed()) return null
+        return suspendCancellableCoroutine { continuation ->
+            val request = Request.Builder().url(url).apply {
+                headers.forEach { (key, value) -> header(key, value) }
+            }.build()
+            client.newCall(request).enqueue(object : Callback {
+                override fun onFailure(call: okhttp3.Call, e: IOException) {
+                    continuation.resume(null)
+                }
 
-            override fun onResponse(call: okhttp3.Call, response: Response) {
-                continuation.resume(response.body.string())
-            }
-        })
+                override fun onResponse(call: okhttp3.Call, response: Response) {
+                    continuation.resume(response.body.string())
+                }
+            })
+        }
     }
 
     suspend fun postForm(
         url: String,
         form: Map<String, String>,
         headers: Map<String, String> = emptyMap()
-    ): String? = suspendCancellableCoroutine { continuation ->
-        val requestBody = FormBody.Builder().apply {
-            form.forEach { (key, value) -> add(key, value) }
-        }.build()
-        val request = Request.Builder().url(url).post(requestBody).apply {
-            headers.forEach { (key, value) -> header(key, value) }
-        }.build()
-        client.newCall(request).enqueue(object : Callback {
-            override fun onFailure(call: okhttp3.Call, e: IOException) {
-                continuation.resume(null)
-            }
+    ): String? {
+        if (!networkAllowed()) return null
+        return suspendCancellableCoroutine { continuation ->
+            val requestBody = FormBody.Builder().apply {
+                form.forEach { (key, value) -> add(key, value) }
+            }.build()
+            val request = Request.Builder().url(url).post(requestBody).apply {
+                headers.forEach { (key, value) -> header(key, value) }
+            }.build()
+            client.newCall(request).enqueue(object : Callback {
+                override fun onFailure(call: okhttp3.Call, e: IOException) {
+                    continuation.resume(null)
+                }
 
-            override fun onResponse(call: okhttp3.Call, response: Response) {
-                continuation.resume(response.body.string())
-            }
-        })
+                override fun onResponse(call: okhttp3.Call, response: Response) {
+                    continuation.resume(response.body.string())
+                }
+            })
+        }
     }
 
     fun postFormBlocking(
@@ -59,6 +66,7 @@ internal class OnlineLyricHttpClient(
         form: Map<String, String>,
         headers: Map<String, String> = emptyMap()
     ): String? {
+        if (!networkAllowed()) return null
         val requestBody = FormBody.Builder().apply {
             form.forEach { (key, value) -> add(key, value) }
         }.build()
@@ -76,20 +84,23 @@ internal class OnlineLyricHttpClient(
         url: String,
         bodyJson: String,
         headers: Map<String, String> = emptyMap()
-    ): String? = suspendCancellableCoroutine { continuation ->
-        val requestBody = bodyJson.toRequestBody("application/json; charset=utf-8".toMediaType())
-        val request = Request.Builder().url(url).post(requestBody).apply {
-            headers.forEach { (key, value) -> header(key, value) }
-        }.build()
-        client.newCall(request).enqueue(object : Callback {
-            override fun onFailure(call: okhttp3.Call, e: IOException) {
-                continuation.resume(null)
-            }
+    ): String? {
+        if (!networkAllowed()) return null
+        return suspendCancellableCoroutine { continuation ->
+            val requestBody = bodyJson.toRequestBody("application/json; charset=utf-8".toMediaType())
+            val request = Request.Builder().url(url).post(requestBody).apply {
+                headers.forEach { (key, value) -> header(key, value) }
+            }.build()
+            client.newCall(request).enqueue(object : Callback {
+                override fun onFailure(call: okhttp3.Call, e: IOException) {
+                    continuation.resume(null)
+                }
 
-            override fun onResponse(call: okhttp3.Call, response: Response) {
-                continuation.resume(response.body.string())
-            }
-        })
+                override fun onResponse(call: okhttp3.Call, response: Response) {
+                    continuation.resume(response.body.string())
+                }
+            })
+        }
     }
 }
 

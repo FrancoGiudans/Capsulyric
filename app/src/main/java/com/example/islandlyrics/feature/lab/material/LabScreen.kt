@@ -58,6 +58,7 @@ fun LabScreen(onBack: () -> Unit) {
     var experimentUpdatesEnabled by remember {
         mutableStateOf(LabFeatureManager.isExperimentUpdatesEnabled(context))
     }
+    var showOfflineModeDialog by remember { mutableStateOf(false) }
     var showAdvancedStyleDialog by remember { mutableStateOf(false) }
     var showLiveUpdateTextLimitsDialog by remember { mutableStateOf(false) }
 
@@ -97,9 +98,13 @@ fun LabScreen(onBack: () -> Unit) {
                         title = stringResource(R.string.settings_full_offline_mode),
                         subtitle = stringResource(R.string.settings_full_offline_mode_desc),
                         checked = offlineModeEnabled,
-                        onCheckedChange = {
-                            offlineModeEnabled = it
-                            OfflineModeManager.setEnabled(context, it)
+                        onCheckedChange = { enabled ->
+                            if (enabled) {
+                                showOfflineModeDialog = true
+                            } else {
+                                offlineModeEnabled = false
+                                OfflineModeManager.setEnabled(context, false)
+                            }
                         }
                     )
                 }
@@ -184,6 +189,30 @@ fun LabScreen(onBack: () -> Unit) {
                 }
             }
         }
+    }
+
+    if (showOfflineModeDialog) {
+        AlertDialog(
+            onDismissRequest = { showOfflineModeDialog = false },
+            title = { Text(stringResource(R.string.settings_full_offline_mode_dialog_title)) },
+            text = { Text(stringResource(R.string.settings_full_offline_mode_dialog_message)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        OfflineModeManager.setEnabled(context, true)
+                        offlineModeEnabled = true
+                        showOfflineModeDialog = false
+                    }
+                ) {
+                    Text(stringResource(R.string.settings_full_offline_mode_dialog_confirm))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showOfflineModeDialog = false }) {
+                    Text(stringResource(android.R.string.cancel))
+                }
+            }
+        )
     }
 
     if (showAdvancedStyleDialog) {
