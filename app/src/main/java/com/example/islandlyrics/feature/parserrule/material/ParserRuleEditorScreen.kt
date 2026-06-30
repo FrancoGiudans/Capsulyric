@@ -141,7 +141,8 @@ fun ParserRuleEditorScreen(
                     useLyricGetterApi = next.useLyricGetterApi,
                     useLyriconApi = next.useLyriconApi,
                     receiveLyriconTranslation = next.receiveLyriconTranslation,
-                    receiveLyriconRomanization = next.receiveLyriconRomanization
+                    receiveLyriconRomanization = next.receiveLyriconRomanization,
+                    useLastFmScrobble = next.useLastFmScrobble
                 )
             }
         }
@@ -190,7 +191,7 @@ fun ParserRuleEditorScreen(
                         if (!isTemplate && state.packageName.isBlank()) {
                             Toast.makeText(context, enterPkgMessage, Toast.LENGTH_SHORT).show()
                         } else {
-                            onSaved(state.toRule(initialRule, isNewRule))
+                            onSaved(state.toRule(initialRule))
                         }
                     }) {
                         Icon(Icons.Default.Check, contentDescription = stringResource(R.string.parser_save_rule))
@@ -255,13 +256,25 @@ fun ParserRuleEditorScreen(
                     onShowOnlineSuggestion = { showOnlineSuggestionDialog = true }
                 )
             }
+            if (!isTemplate) {
+                Spacer(modifier = Modifier.height(16.dp))
+                SettingsSectionHeader(stringResource(R.string.parser_lastfm_header))
+                SourceCard {
+                    SwitchRow(
+                        title = stringResource(R.string.parser_lastfm_scrobble),
+                        subtitle = stringResource(R.string.parser_lastfm_scrobble_desc),
+                        checked = state.useLastFmScrobble,
+                        onCheckedChange = { updateSourceState(state.copy(useLastFmScrobble = it)) }
+                    )
+                }
+            }
             Spacer(modifier = Modifier.height(16.dp))
             Button(
                 onClick = {
                     if (!isTemplate && state.packageName.isBlank()) {
                         Toast.makeText(context, enterPkgMessage, Toast.LENGTH_SHORT).show()
                     } else {
-                        onSaved(state.toRule(initialRule, isNewRule))
+                        onSaved(state.toRule(initialRule))
                     }
                 },
                 modifier = Modifier.fillMaxWidth()
@@ -334,7 +347,7 @@ fun ParserRuleEditorScreen(
             pageContent = { configType ->
                 ParserRuleSourceConfigScreen(
                     configType = configType,
-                    initialRule = state.toRule(initialRule, false),
+                    initialRule = state.toRule(initialRule),
                     onBack = { templateConfigType.value = null },
                     onStateChange = { state = it }
                 )

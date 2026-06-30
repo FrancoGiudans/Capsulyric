@@ -209,6 +209,9 @@
     <string name="parser_field_order_label">顺序</string>
     <string name="parser_logic_header">来源与逻辑</string>
     <string name="parser_logic_desc">歌词来源与功能</string>
+    <string name="parser_lastfm_header">Last.fm</string>
+    <string name="parser_lastfm_scrobble">同步到 Last.fm</string>
+    <string name="parser_lastfm_scrobble_desc">上传此应用的播放记录</string>
     <string name="parser_notify_lyric_desc">从通知标题中提取歌词</string>
     <string name="parser_online_lyric_desc_short">从互联网 API 获取</string>
     <string name="parser_local_lyric">本地 LRC 文件</string>
@@ -280,13 +283,13 @@
     <string name="settings_use_online_lyrics">使用在线歌词 API</string>
     <string name="settings_use_online_lyrics_desc">从多个在线源(酷狗/网易/LrcApi)获取带时间轴的歌词</string>
     <string name="lastfm_title">Last.fm</string>
-    <string name="lastfm_settings_summary">使用你自己的 Last.fm API 凭据记录白名单播放器播放历史</string>
-    <string name="lastfm_description">Capsulyric 只会记录已启用解析规则的播放器。歌名、歌手、专辑、时长和播放时间可能会发送给 Last.fm。API 凭据和 session key 会加密保存在本机，并排除在应用导出和 Android 备份之外。</string>
+    <string name="lastfm_settings_summary">使用你自己的 Last.fm API 凭据记录已选择的播放器播放历史</string>
+    <string name="lastfm_description">Capsulyric 只会记录在解析规则中开启了 Last.fm 的播放器。歌名、歌手、专辑、时长和播放时间可能会发送给 Last.fm。API 凭据和 session key 会加密保存在本机，并排除在应用导出和 Android 备份之外。</string>
     <string name="lastfm_setup_title">使用指引</string>
     <string name="lastfm_setup_steps">1. 前往 Last.fm 创建 API 账号，并复制 API key 与 Shared secret。\n2. 将两项凭据粘贴到此页面并保存。\n3. 打开 Last.fm 授权页，在浏览器中允许 Capsulyric，然后回到这里完成连接。</string>
     <string name="lastfm_create_api_key">申请 Last.fm API key</string>
     <string name="lastfm_enable">启用 Last.fm 播放记录</string>
-    <string name="lastfm_enable_desc">为白名单播放器发送正在播放与 scrobble 记录</string>
+    <string name="lastfm_enable_desc">为已选择的应用发送正在播放与 scrobble 记录</string>
     <string name="lastfm_api_key">API key</string>
     <string name="lastfm_api_secret">Shared secret</string>
     <string name="lastfm_save_credentials">保存凭据</string>
@@ -294,7 +297,7 @@
     <string name="lastfm_reauthorize">重新授权 Last.fm</string>
     <string name="lastfm_finish_connect">完成连接</string>
     <string name="lastfm_disconnect">断开连接并清除凭据</string>
-    <string name="lastfm_connected_note">Capsulyric 已可记录启用解析规则的播放器。只有在 Last.fm 不再接受连接，或想切换账号时才需要重新授权。</string>
+    <string name="lastfm_connected_note">Capsulyric 已可记录在解析规则中开启了 Last.fm 的播放器。只有在 Last.fm 不再接受连接，或想切换账号时才需要重新授权。</string>
     <string name="lastfm_connected_as">已连接为 %1$s</string>
     <string name="lastfm_not_connected">未连接</string>
     <string name="lastfm_saved">Last.fm 凭据已保存</string>
