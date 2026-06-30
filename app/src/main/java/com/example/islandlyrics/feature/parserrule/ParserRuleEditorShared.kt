@@ -27,7 +27,8 @@ data class ParserRuleEditorState(
     val useLyricGetterApi: Boolean,
     val useLyriconApi: Boolean,
     val receiveLyriconTranslation: Boolean,
-    val receiveLyriconRomanization: Boolean
+    val receiveLyriconRomanization: Boolean,
+    val useLastFmScrobble: Boolean
 )
 
 fun ParserRule.toEditorState(): ParserRuleEditorState = ParserRuleEditorState(
@@ -47,7 +48,8 @@ fun ParserRule.toEditorState(): ParserRuleEditorState = ParserRuleEditorState(
     useLyricGetterApi = useLyricGetterApi,
     useLyriconApi = useLyriconApi,
     receiveLyriconTranslation = receiveLyriconTranslation,
-    receiveLyriconRomanization = receiveLyriconRomanization
+    receiveLyriconRomanization = receiveLyriconRomanization,
+    useLastFmScrobble = useLastFmScrobble
 )
 
 fun ParserRuleEditorState.withSourceSettingsFrom(source: ParserRuleEditorState): ParserRuleEditorState = copy(
@@ -65,10 +67,11 @@ fun ParserRuleEditorState.withSourceSettingsFrom(source: ParserRuleEditorState):
     useLyricGetterApi = source.useLyricGetterApi,
     useLyriconApi = source.useLyriconApi,
     receiveLyriconTranslation = source.receiveLyriconTranslation,
-    receiveLyriconRomanization = source.receiveLyriconRomanization
+    receiveLyriconRomanization = source.receiveLyriconRomanization,
+    useLastFmScrobble = source.useLastFmScrobble
 )
 
-fun ParserRuleEditorState.toRule(previousRule: ParserRule?, isNewRule: Boolean): ParserRule = ParserRule(
+fun ParserRuleEditorState.toRule(previousRule: ParserRule?): ParserRule = ParserRule(
     packageName = packageName.trim(),
     customName = customName.trim().ifEmpty { null },
     enabled = previousRule?.enabled ?: true,
@@ -86,6 +89,7 @@ fun ParserRuleEditorState.toRule(previousRule: ParserRule?, isNewRule: Boolean):
     useLyricGetterApi = useLyricGetterApi,
     useLyriconApi = useLyriconApi,
     receiveLyriconTranslation = receiveLyriconTranslation,
-    receiveLyriconRomanization = receiveLyriconRomanization
+    receiveLyriconRomanization = receiveLyriconRomanization,
+    useLastFmScrobble = useLastFmScrobble
 )
 

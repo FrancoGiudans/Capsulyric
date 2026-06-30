@@ -23,7 +23,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Check
@@ -77,9 +79,6 @@ import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TextField
 import top.yukonga.miuix.kmp.basic.rememberTopAppBarState
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
-import top.yukonga.miuix.kmp.icon.MiuixIcons
-import top.yukonga.miuix.kmp.icon.extended.Back
-import top.yukonga.miuix.kmp.icon.extended.Help
 import top.yukonga.miuix.kmp.preference.OverlayDropdownPreference as SuperDropdown
 import top.yukonga.miuix.kmp.preference.SwitchPreference as SuperSwitch
 import top.yukonga.miuix.kmp.theme.MiuixTheme
@@ -139,7 +138,8 @@ fun MiuixParserRuleEditorScreen(
                     useLyricGetterApi = next.useLyricGetterApi,
                     useLyriconApi = next.useLyriconApi,
                     receiveLyriconTranslation = next.receiveLyriconTranslation,
-                    receiveLyriconRomanization = next.receiveLyriconRomanization
+                    receiveLyriconRomanization = next.receiveLyriconRomanization,
+                    useLastFmScrobble = next.useLastFmScrobble
                 )
             }
         }
@@ -179,7 +179,7 @@ fun MiuixParserRuleEditorScreen(
                         },
                         modifier = Modifier.padding(start = 12.dp)
                     ) {
-                        Icon(MiuixIcons.Back, contentDescription = "返回", tint = MiuixTheme.colorScheme.onBackground)
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回", tint = MiuixTheme.colorScheme.onBackground)
                     }
                 },
                 actions = {
@@ -188,7 +188,7 @@ fun MiuixParserRuleEditorScreen(
                             if (!isTemplate && state.packageName.isBlank()) {
                                 Toast.makeText(context, enterPkgMessage, Toast.LENGTH_SHORT).show()
                             } else {
-                                onSaved(state.toRule(initialRule, isNewRule))
+                                onSaved(state.toRule(initialRule))
                             }
                         }
                     ) {
@@ -200,7 +200,7 @@ fun MiuixParserRuleEditorScreen(
                                 ?: context.startActivity(Intent(context, com.example.islandlyrics.feature.faq.FAQActivity::class.java))
                         }
                     ) {
-                        Icon(MiuixIcons.Help, contentDescription = stringResource(R.string.faq_title), tint = MiuixTheme.colorScheme.onBackground)
+                        Icon(Icons.Default.Info, contentDescription = stringResource(R.string.faq_title), tint = MiuixTheme.colorScheme.onBackground)
                     }
                     if (isTemplate || !isNewRule) {
                         IconButton(onClick = { showDeleteDialog = true }) {
@@ -256,13 +256,26 @@ fun MiuixParserRuleEditorScreen(
                 )
             }
 
+            if (!isTemplate) {
+                Spacer(modifier = Modifier.height(16.dp))
+                SmallTitle(text = stringResource(R.string.parser_lastfm_header))
+                Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
+                    SuperSwitch(
+                        title = stringResource(R.string.parser_lastfm_scrobble),
+                        summary = stringResource(R.string.parser_lastfm_scrobble_desc),
+                        checked = state.useLastFmScrobble,
+                        onCheckedChange = { updateSourceState(state.copy(useLastFmScrobble = it)) }
+                    )
+                }
+            }
+
             Spacer(modifier = Modifier.height(16.dp))
             Button(
                 onClick = {
                     if (!isTemplate && state.packageName.isBlank()) {
                         Toast.makeText(context, enterPkgMessage, Toast.LENGTH_SHORT).show()
                     } else {
-                        onSaved(state.toRule(initialRule, isNewRule))
+                        onSaved(state.toRule(initialRule))
                     }
                 },
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)
@@ -343,7 +356,7 @@ fun MiuixParserRuleEditorScreen(
             pageContent = { configType ->
                 MiuixParserRuleSourceConfigScreen(
                     configType = configType,
-                    initialRule = state.toRule(initialRule, false),
+                    initialRule = state.toRule(initialRule),
                     onBack = { templateConfigType.value = null },
                     onStateChange = { state = it }
                 )
@@ -447,7 +460,7 @@ fun MiuixParserRuleSourceConfigScreen(
                         onClick = onBack,
                         modifier = Modifier.padding(start = 12.dp)
                     ) {
-                        Icon(MiuixIcons.Back, contentDescription = "返回", tint = MiuixTheme.colorScheme.onBackground)
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回", tint = MiuixTheme.colorScheme.onBackground)
                     }
                 }
             )

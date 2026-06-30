@@ -1,7 +1,6 @@
 package com.example.islandlyrics.integration.lastfm
 
 import android.content.Context
-import androidx.core.content.edit
 import com.example.islandlyrics.core.logging.AppLogger
 import com.example.islandlyrics.core.network.OfflineModeManager
 import com.example.islandlyrics.core.settings.AppPreferences
@@ -28,7 +27,8 @@ class LastFmScrobbleManager(context: Context) {
             currentInstance = null
             return
         }
-        if (ParserRuleHelper.getRuleForPackage(appContext, info.packageName) == null) {
+        val rule = ParserRuleHelper.getRuleForPackage(appContext, info.packageName)
+        if (rule == null || !rule.useLastFmScrobble) {
             currentInstance = null
             return
         }
@@ -94,12 +94,6 @@ class LastFmScrobbleManager(context: Context) {
                 AppLogger.getInstance().e(TAG, "Last.fm scrobble failed: ${it.message}")
             }
         }
-    }
-
-    fun disconnect() {
-        prefs.edit { putBoolean(AppPreferences.Keys.LASTFM_ENABLED, false) }
-        store.clearSession()
-        currentInstance = null
     }
 
     private fun sendNowPlayingIfReady() {

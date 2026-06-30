@@ -210,6 +210,9 @@
     <string name="parser_field_order_label">Field Order</string>
     <string name="parser_logic_header">Sources &amp; Logic</string>
     <string name="parser_logic_desc">Lyric Sources &amp; Features</string>
+    <string name="parser_lastfm_header">Last.fm</string>
+    <string name="parser_lastfm_scrobble">Scrobble to Last.fm</string>
+    <string name="parser_lastfm_scrobble_desc">Upload playback records for this app only</string>
     <string name="parser_notify_lyric_desc">Extract lyrics from notification title</string>
     <string name="parser_online_lyric_desc_short">Fetch from internet APIs</string>
     <string name="parser_local_lyric">Local LRC Files</string>
@@ -294,13 +297,13 @@
     <string name="settings_use_superlyric_api">Use SuperLyric API</string>
     <string name="settings_use_superlyric_api_desc">(Reserved) Enhanced lyric API integration</string>
     <string name="lastfm_title">Last.fm</string>
-    <string name="lastfm_settings_summary">Scrobble whitelisted music apps with your own Last.fm API credentials</string>
-    <string name="lastfm_description">Capsulyric only scrobbles enabled parser-rule apps. Track title, artist, album, duration, and timestamp may be sent to Last.fm. API credentials and session keys are encrypted on this device and are excluded from app exports and Android backups.</string>
+    <string name="lastfm_settings_summary">Scrobble selected music apps with your own Last.fm API credentials</string>
+    <string name="lastfm_description">Capsulyric only scrobbles apps that have Last.fm enabled in parser rules. Track title, artist, album, duration, and timestamp may be sent to Last.fm. API credentials and session keys are encrypted on this device and are excluded from app exports and Android backups.</string>
     <string name="lastfm_setup_title">Setup guide</string>
     <string name="lastfm_setup_steps">1. Create a Last.fm API account and copy the API key and shared secret.\n2. Paste both credentials here and save them.\n3. Open Last.fm authorization, approve Capsulyric in the browser, then return and finish the connection.</string>
     <string name="lastfm_create_api_key">Create Last.fm API key</string>
     <string name="lastfm_enable">Enable Last.fm scrobbling</string>
-    <string name="lastfm_enable_desc">Send now playing and scrobble records for whitelisted players</string>
+    <string name="lastfm_enable_desc">Send now playing and scrobble records for selected apps</string>
     <string name="lastfm_api_key">API key</string>
     <string name="lastfm_api_secret">Shared secret</string>
     <string name="lastfm_save_credentials">Save credentials</string>
@@ -308,7 +311,7 @@
     <string name="lastfm_reauthorize">Reauthorize Last.fm</string>
     <string name="lastfm_finish_connect">Finish connection</string>
     <string name="lastfm_disconnect">Disconnect and clear credentials</string>
-    <string name="lastfm_connected_note">Capsulyric is ready to scrobble enabled parser-rule apps. Reauthorize only if Last.fm stops accepting the connection or you want to switch accounts.</string>
+    <string name="lastfm_connected_note">Capsulyric is ready to scrobble parser-rule apps with Last.fm enabled. Reauthorize only if Last.fm stops accepting the connection or you want to switch accounts.</string>
     <string name="lastfm_connected_as">Connected as %1$s</string>
     <string name="lastfm_not_connected">Not connected</string>
     <string name="lastfm_saved">Last.fm credentials saved</string>

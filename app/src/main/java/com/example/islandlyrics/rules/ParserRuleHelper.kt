@@ -36,13 +36,13 @@ object ParserRuleHelper {
      */
     private val DEFAULTS = listOf(
         // Native notification lyric support (car/bluetooth protocol)
-        ParserRule("com.tencent.qqmusic", customName="QQ Music", enabled=true, usesCarProtocol=true, separatorPattern="-", fieldOrder=FieldOrder.TITLE_ARTIST, onlineLyricProviderOrder = OnlineLyricProvider.defaultIdsForPackage("com.tencent.qqmusic"), useSuperLyricApi=false, useLyricGetterApi=false, useLyriconApi=false),
-        ParserRule("com.netease.cloudmusic", customName="NetEase Cloud Music", enabled=true, usesCarProtocol=true, separatorPattern=" - ", fieldOrder=FieldOrder.TITLE_ARTIST, onlineLyricProviderOrder = OnlineLyricProvider.defaultIdsForPackage("com.netease.cloudmusic"), useSuperLyricApi=false, useLyricGetterApi=false, useLyriconApi=false),
-        ParserRule("com.miui.player", customName="Mi Music", enabled=true, usesCarProtocol=true, separatorPattern="-", fieldOrder=FieldOrder.TITLE_ARTIST, onlineLyricProviderOrder = OnlineLyricProvider.defaultIdsForPackage("com.miui.player"), useSuperLyricApi=false, useLyricGetterApi=false, useLyriconApi=false),
+        ParserRule("com.tencent.qqmusic", customName="QQ Music", enabled=true, usesCarProtocol=true, separatorPattern="-", fieldOrder=FieldOrder.TITLE_ARTIST, onlineLyricProviderOrder = OnlineLyricProvider.defaultIdsForPackage("com.tencent.qqmusic"), useSuperLyricApi=false, useLyricGetterApi=false, useLyriconApi=false, useLastFmScrobble=false),
+        ParserRule("com.netease.cloudmusic", customName="NetEase Cloud Music", enabled=true, usesCarProtocol=true, separatorPattern=" - ", fieldOrder=FieldOrder.TITLE_ARTIST, onlineLyricProviderOrder = OnlineLyricProvider.defaultIdsForPackage("com.netease.cloudmusic"), useSuperLyricApi=false, useLyricGetterApi=false, useLyriconApi=false, useLastFmScrobble=false),
+        ParserRule("com.miui.player", customName="Mi Music", enabled=true, usesCarProtocol=true, separatorPattern="-", fieldOrder=FieldOrder.TITLE_ARTIST, onlineLyricProviderOrder = OnlineLyricProvider.defaultIdsForPackage("com.miui.player"), useSuperLyricApi=false, useLyricGetterApi=false, useLyriconApi=false, useLastFmScrobble=false),
         
         // Require superlyricapi or other methods (car protocol disabled by default)
-        ParserRule("com.kugou.android", customName="KuGou Music", enabled=true, usesCarProtocol=true, separatorPattern="-", fieldOrder=FieldOrder.TITLE_ARTIST, onlineLyricProviderOrder = OnlineLyricProvider.defaultIdsForPackage("com.kugou.android"), useSuperLyricApi=false, useLyricGetterApi=false, useLyriconApi=false),
-        ParserRule("com.apple.android.music", customName="Apple Music", enabled=true, usesCarProtocol=false, separatorPattern=" - ", fieldOrder=FieldOrder.TITLE_ARTIST, onlineLyricProviderOrder = OnlineLyricProvider.defaultIdsForPackage("com.apple.android.music"), useSuperLyricApi=false, useLyricGetterApi=false, useLyriconApi=false)
+        ParserRule("com.kugou.android", customName="KuGou Music", enabled=true, usesCarProtocol=true, separatorPattern="-", fieldOrder=FieldOrder.TITLE_ARTIST, onlineLyricProviderOrder = OnlineLyricProvider.defaultIdsForPackage("com.kugou.android"), useSuperLyricApi=false, useLyricGetterApi=false, useLyriconApi=false, useLastFmScrobble=false),
+        ParserRule("com.apple.android.music", customName="Apple Music", enabled=true, usesCarProtocol=false, separatorPattern=" - ", fieldOrder=FieldOrder.TITLE_ARTIST, onlineLyricProviderOrder = OnlineLyricProvider.defaultIdsForPackage("com.apple.android.music"), useSuperLyricApi=false, useLyricGetterApi=false, useLyriconApi=false, useLastFmScrobble=false)
     )
 
     /**
@@ -99,7 +99,8 @@ object ParserRuleHelper {
                             useLyriconApi = obj.optBoolean("useLyriconApi", false),
                             receiveLyriconTranslation = obj.optBoolean("receiveLyriconTranslation", false),
                             receiveLyriconRomanization = obj.optBoolean("receiveLyriconRomanization", false),
-                            useLocalLyrics = obj.optBoolean("useLocalLyrics", false)
+                            useLocalLyrics = obj.optBoolean("useLocalLyrics", false),
+                            useLastFmScrobble = obj.optBoolean("useLastFmScrobble", false)
                         )
                     )
                 }
@@ -276,6 +277,7 @@ object ParserRuleHelper {
             put("receiveLyriconTranslation", rule.receiveLyriconTranslation)
             put("receiveLyriconRomanization", rule.receiveLyriconRomanization)
             put("useLocalLyrics", rule.useLocalLyrics)
+            put("useLastFmScrobble", rule.useLastFmScrobble)
         }
     }
 
@@ -318,7 +320,8 @@ object ParserRuleHelper {
             useLyriconApi = obj.optBoolean("useLyriconApi", false),
             receiveLyriconTranslation = obj.optBoolean("receiveLyriconTranslation", false),
             receiveLyriconRomanization = obj.optBoolean("receiveLyriconRomanization", false),
-            useLocalLyrics = obj.optBoolean("useLocalLyrics", false)
+            useLocalLyrics = obj.optBoolean("useLocalLyrics", false),
+            useLastFmScrobble = obj.optBoolean("useLastFmScrobble", false)
         )
     }
 
@@ -340,7 +343,8 @@ object ParserRuleHelper {
             useLyricGetterApi = false,
             useLyriconApi = false,
             receiveLyriconTranslation = false,
-            receiveLyriconRomanization = false
+            receiveLyriconRomanization = false,
+            useLastFmScrobble = false
         )
     }
 
@@ -361,7 +365,8 @@ object ParserRuleHelper {
             useLyricGetterApi = template.useLyricGetterApi,
             useLyriconApi = template.useLyriconApi,
             receiveLyriconTranslation = template.receiveLyriconTranslation,
-            receiveLyriconRomanization = template.receiveLyriconRomanization
+            receiveLyriconRomanization = template.receiveLyriconRomanization,
+            useLastFmScrobble = template.useLastFmScrobble
         )
     }
     /**
