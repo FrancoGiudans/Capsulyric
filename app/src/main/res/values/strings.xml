@@ -1017,7 +1017,7 @@ Within the log interface, select the share/export icon. You can specify a timefr
     <string name="settings_floating_text_background">Minimal Mode Background</string>
     <string name="settings_floating_text_background_desc">Add a subtle dark background behind text in minimal state</string>
     <string name="settings_floating_display_mode">Display Mode</string>
-    <string name="settings_floating_mode_single">Single Line</string>
+    <string name="settings_floating_mode_single">Original</string>
     <string name="settings_floating_mode_single_desc">Show only the current lyric line</string>
     <string name="settings_floating_mode_romanization">Romanization</string>
     <string name="settings_floating_mode_romanization_desc">Place romanized lyrics above the current line when available</string>

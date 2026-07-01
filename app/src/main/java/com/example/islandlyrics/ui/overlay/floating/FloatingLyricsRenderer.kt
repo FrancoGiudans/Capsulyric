@@ -4,7 +4,6 @@ import android.content.Context
 import android.content.SharedPreferences
 import android.graphics.Color
 import android.graphics.PixelFormat
-import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.GradientDrawable
 import android.os.Handler
 import android.os.Looper
@@ -22,6 +21,8 @@ import android.widget.PopupWindow
 import android.widget.ScrollView
 import android.widget.TextView
 import androidx.core.content.edit
+import androidx.core.graphics.drawable.toDrawable
+import androidx.core.view.isNotEmpty
 import com.example.islandlyrics.R
 import com.example.islandlyrics.core.settings.AppPreferences
 import com.example.islandlyrics.lyrics.state.LyricRepository
@@ -51,6 +52,7 @@ class FloatingLyricsRenderer(private val context: Context) {
         const val PREF_TEXT_STROKE     = FloatingLyricsStyleStore.KEY_TEXT_STROKE
         const val PREF_TEXT_BACKGROUND = FloatingLyricsStyleStore.KEY_TEXT_BACKGROUND
         const val PREF_DISPLAY_MODE = FloatingLyricsDisplayConfig.KEY_DISPLAY_MODE
+        const val PREF_SHOW_NEIGHBOR_LINE = FloatingLyricsDisplayConfig.KEY_SHOW_NEIGHBOR_LINE
         const val PREF_NEIGHBOR_ALIGNMENT = FloatingLyricsDisplayConfig.KEY_NEIGHBOR_ALIGNMENT
         const val PREF_WORD_HIGHLIGHT = FloatingLyricsDisplayConfig.KEY_WORD_HIGHLIGHT
         const val PREF_POS_X           = FloatingLyricsWindowPositionStore.KEY_POS_X
@@ -139,7 +141,7 @@ class FloatingLyricsRenderer(private val context: Context) {
         when (key) {
             PREF_TEXT_SIZE, PREF_TEXT_COLOR, PREF_FOLLOW_ALBUM_COLOR, 
             PREF_SHOW_ALBUM_ART, PREF_TEXT_STROKE, PREF_TEXT_BACKGROUND,
-            PREF_DISPLAY_MODE, PREF_NEIGHBOR_ALIGNMENT,
+            PREF_DISPLAY_MODE, PREF_SHOW_NEIGHBOR_LINE, PREF_NEIGHBOR_ALIGNMENT,
             PREF_WORD_HIGHLIGHT -> {
                 mainHandler.post {
                     loadPrefs()
@@ -408,7 +410,7 @@ class FloatingLyricsRenderer(private val context: Context) {
             topMargin = dpToPx(12)
         })
 
-        box.addView(buildControlsRow(), centerRow(topMarginDp = 2))
+        box.addView(buildControlsRow(), centerRow())
 
         return box
     }
@@ -468,7 +470,7 @@ class FloatingLyricsRenderer(private val context: Context) {
         val width = settingsPopupWidth()
         val popup = PopupWindow(buildSettingsPopupContent(anchor), width, ViewGroup.LayoutParams.WRAP_CONTENT, false).apply {
             isOutsideTouchable = true
-            setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+            setBackgroundDrawable(Color.TRANSPARENT.toDrawable())
             elevation = dpToPx(10).toFloat()
             setOnDismissListener {
                 settingsPopupDismissedAtMs = SystemClock.uptimeMillis()
@@ -518,9 +520,13 @@ class FloatingLyricsRenderer(private val context: Context) {
             anchor = anchor
         ))
         addSettingsPopupRow(list, buildDisplayModePopupRow(anchor))
-        if (displayConfig.displayMode == FloatingLyricsDisplayMode.NEIGHBOR_LINE) {
-            addSettingsPopupRow(list, buildNeighborAlignmentPopupRow(anchor))
-        }
+        addSettingsPopupRow(list, buildBooleanPopupRow(
+            title = context.getString(R.string.settings_floating_show_neighbor_line),
+            currentValue = { displayConfig.showNeighborLine },
+            onToggle = { value -> prefs().edit { putBoolean(PREF_SHOW_NEIGHBOR_LINE, value) } },
+            anchor = anchor
+        ))
+        addSettingsPopupRow(list, buildNeighborAlignmentPopupRow(anchor))
         addSettingsPopupRow(list, buildBooleanPopupRow(
             title = context.getString(R.string.settings_floating_word_highlight),
             currentValue = { displayConfig.wordHighlight },
@@ -543,7 +549,7 @@ class FloatingLyricsRenderer(private val context: Context) {
     }
 
     private fun addSettingsPopupRow(list: LinearLayout, row: View) {
-        if (list.childCount > 0) {
+        if (list.isNotEmpty()) {
             list.addView(buildSettingsPopupDivider(), LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 1))
         }
         list.addView(row, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
@@ -632,35 +638,37 @@ class FloatingLyricsRenderer(private val context: Context) {
     private fun buildDisplayModePopupRow(anchor: View): View {
         return LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
-            minimumHeight = dpToPx(96)
+            minimumHeight = dpToPx(58)
             setPadding(dpToPx(16), dpToPx(10), dpToPx(16), dpToPx(10))
 
             addView(buildSettingsPopupTitle(context.getString(R.string.settings_floating_display_mode)), matchW())
 
-            val modeRows = LinearLayout(context).apply {
-                orientation = LinearLayout.VERTICAL
+            val row = LinearLayout(context).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
             }
-            FloatingLyricsDisplayMode.entries.chunked(2).forEach { modes ->
-                val row = LinearLayout(context).apply {
-                    orientation = LinearLayout.HORIZONTAL
-                    gravity = Gravity.CENTER_VERTICAL
-                }
-                modes.forEach { mode ->
-                    row.addView(buildPopupChip(
-                        text = displayModeLabel(mode),
-                        selected = displayConfig.displayMode == mode,
-                        onClick = {
-                            applyPopupSetting(anchor) {
-                                prefs().edit { putString(PREF_DISPLAY_MODE, mode.value) }
+            FloatingLyricsDisplayMode.optionOrder.forEach { mode ->
+                row.addView(buildPopupChip(
+                    text = displayModeLabel(mode),
+                    selected = mode in displayConfig.displayModes,
+                    onClick = {
+                        val nextModes = FloatingLyricsDisplayMode.toggledModes(
+                            displayConfig.displayModes,
+                            mode,
+                            mode !in displayConfig.displayModes
+                        ) ?: return@buildPopupChip
+                        applyPopupSetting(anchor) {
+                            prefs().edit {
+                                putString(PREF_DISPLAY_MODE, FloatingLyricsDisplayMode.preferenceValue(nextModes))
+                                putBoolean(PREF_SHOW_NEIGHBOR_LINE, displayConfig.showNeighborLine)
                             }
                         }
-                    ), LinearLayout.LayoutParams(0, dpToPx(34), 1f).apply {
-                        marginEnd = dpToPx(8)
-                    })
-                }
-                modeRows.addView(row, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dpToPx(38)))
+                    }
+                ), LinearLayout.LayoutParams(0, dpToPx(34), 1f).apply {
+                    marginEnd = dpToPx(8)
+                })
             }
-            addView(modeRows, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+            addView(row, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
                 topMargin = dpToPx(8)
             })
         }
@@ -853,10 +861,9 @@ class FloatingLyricsRenderer(private val context: Context) {
 
     private fun displayModeLabel(mode: FloatingLyricsDisplayMode): String {
         return when (mode) {
-            FloatingLyricsDisplayMode.SINGLE_LINE -> context.getString(R.string.settings_floating_mode_single)
+            FloatingLyricsDisplayMode.LYRIC -> context.getString(R.string.settings_floating_mode_single)
             FloatingLyricsDisplayMode.ROMANIZATION -> context.getString(R.string.settings_floating_mode_romanization)
             FloatingLyricsDisplayMode.TRANSLATION -> context.getString(R.string.settings_floating_mode_translation)
-            FloatingLyricsDisplayMode.NEIGHBOR_LINE -> context.getString(R.string.settings_floating_mode_neighbor)
         }
     }
 
@@ -985,9 +992,9 @@ class FloatingLyricsRenderer(private val context: Context) {
     }
 
     private fun matchW() = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-    private fun centerRow(topMarginDp: Int = 0) = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).also {
+    private fun centerRow() = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).also {
         it.gravity = Gravity.CENTER_HORIZONTAL
-        it.topMargin = dpToPx(topMarginDp)
+        it.topMargin = dpToPx(2)
     }
 
     private fun buildPillBackground(): GradientDrawable = GradientDrawable().apply {
