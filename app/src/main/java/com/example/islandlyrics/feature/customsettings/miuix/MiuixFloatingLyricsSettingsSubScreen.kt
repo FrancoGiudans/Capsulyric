@@ -17,6 +17,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.islandlyrics.R
+import com.example.islandlyrics.ui.miuix.blur.MiuixBlurDialog
+import com.example.islandlyrics.ui.overlay.floating.FloatingLyricsDisplayConfig
 import com.example.islandlyrics.ui.overlay.floating.FloatingLyricsDisplayMode
 import com.example.islandlyrics.ui.overlay.floating.FloatingLyricsNeighborAlignment
 import com.example.islandlyrics.ui.overlay.floating.FloatingLyricsRenderer
@@ -26,7 +28,9 @@ import top.yukonga.miuix.kmp.basic.ButtonDefaults
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TextButton
 import top.yukonga.miuix.kmp.basic.Slider
-import top.yukonga.miuix.kmp.preference.RadioButtonPreference as SuperRadio
+import top.yukonga.miuix.kmp.preference.ArrowPreference as SuperArrow
+import top.yukonga.miuix.kmp.preference.CheckboxPreference
+import top.yukonga.miuix.kmp.preference.OverlayDropdownPreference as SuperDropdown
 import top.yukonga.miuix.kmp.preference.SwitchPreference as SuperSwitch
 import kotlin.math.roundToInt
 
@@ -40,11 +44,14 @@ fun MiuixFloatingLyricsSettingsSubScreen(prefs: SharedPreferences, scope: Corout
     var followAlbumColor by remember { mutableStateOf(prefs.getBoolean(FloatingLyricsRenderer.PREF_FOLLOW_ALBUM_COLOR, true)) }
     var textStroke by remember { mutableStateOf(prefs.getBoolean(FloatingLyricsRenderer.PREF_TEXT_STROKE, true)) }
     var textBackground by remember { mutableStateOf(prefs.getBoolean(FloatingLyricsRenderer.PREF_TEXT_BACKGROUND, false)) }
-    var displayMode by remember {
+    var displayModes by remember {
         mutableStateOf(
-            FloatingLyricsDisplayMode.from(
-                prefs.getString(FloatingLyricsRenderer.PREF_DISPLAY_MODE, FloatingLyricsDisplayMode.SINGLE_LINE.value)
-            )
+            FloatingLyricsDisplayConfig.readDisplayModes(prefs)
+        )
+    }
+    var showNeighborLine by remember {
+        mutableStateOf(
+            FloatingLyricsDisplayConfig.readShowNeighborLine(prefs)
         )
     }
     var neighborAlignment by remember {
@@ -54,6 +61,7 @@ fun MiuixFloatingLyricsSettingsSubScreen(prefs: SharedPreferences, scope: Corout
             )
         )
     }
+    val showDisplayModeDialog = remember { mutableStateOf(false) }
     var wordHighlight by remember { mutableStateOf(prefs.getBoolean(FloatingLyricsRenderer.PREF_WORD_HIGHLIGHT, true)) }
     
     var textSizeSp by remember { mutableFloatStateOf(prefs.getFloat(FloatingLyricsRenderer.PREF_TEXT_SIZE, 15f)) }
@@ -62,6 +70,20 @@ fun MiuixFloatingLyricsSettingsSubScreen(prefs: SharedPreferences, scope: Corout
     }
     var floatingTextColorEditing by remember { mutableStateOf(false) }
     var floatingTextColorSnapshot by remember { mutableStateOf(customTextColor) }
+    val keepOneText = stringResource(R.string.settings_home_lyric_preview_keep_one)
+
+    fun setDisplayMode(mode: FloatingLyricsDisplayMode, checked: Boolean) {
+        val nextModes = FloatingLyricsDisplayMode.toggledModes(displayModes, mode, checked)
+        if (nextModes == null) {
+            Toast.makeText(context, keepOneText, Toast.LENGTH_SHORT).show()
+            return
+        }
+        displayModes = nextModes
+        prefs.edit {
+            putString(FloatingLyricsRenderer.PREF_DISPLAY_MODE, FloatingLyricsDisplayMode.preferenceValue(nextModes))
+            putBoolean(FloatingLyricsRenderer.PREF_SHOW_NEIGHBOR_LINE, showNeighborLine)
+        }
+    }
 
     Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
         SuperSwitch(
@@ -113,22 +135,27 @@ fun MiuixFloatingLyricsSettingsSubScreen(prefs: SharedPreferences, scope: Corout
         )
 
         FloatingDisplayModeSelector(
-            selectedMode = displayMode,
-            onModeSelected = {
-                displayMode = it
-                prefs.edit { putString(FloatingLyricsRenderer.PREF_DISPLAY_MODE, it.value) }
+            selectedModes = displayModes,
+            onClick = { showDisplayModeDialog.value = true }
+        )
+
+        SuperSwitch(
+            title = stringResource(R.string.settings_floating_show_neighbor_line),
+            summary = stringResource(R.string.settings_floating_show_neighbor_line_desc),
+            checked = showNeighborLine,
+            onCheckedChange = {
+                showNeighborLine = it
+                prefs.edit { putBoolean(FloatingLyricsRenderer.PREF_SHOW_NEIGHBOR_LINE, it) }
             }
         )
 
-        if (displayMode == FloatingLyricsDisplayMode.NEIGHBOR_LINE) {
-            FloatingNeighborAlignmentSelector(
-                selectedAlignment = neighborAlignment,
-                onAlignmentSelected = {
-                    neighborAlignment = it
-                    prefs.edit { putString(FloatingLyricsRenderer.PREF_NEIGHBOR_ALIGNMENT, it.value) }
-                }
-            )
-        }
+        FloatingNeighborAlignmentSelector(
+            selectedAlignment = neighborAlignment,
+            onAlignmentSelected = {
+                neighborAlignment = it
+                prefs.edit { putString(FloatingLyricsRenderer.PREF_NEIGHBOR_ALIGNMENT, it.value) }
+            }
+        )
 
         SuperSwitch(
             title = stringResource(R.string.settings_floating_word_highlight),
@@ -217,42 +244,53 @@ fun MiuixFloatingLyricsSettingsSubScreen(prefs: SharedPreferences, scope: Corout
         )
         }
     }
+
+    if (showDisplayModeDialog.value) {
+        MiuixBlurDialog(
+            show = true,
+            title = stringResource(R.string.settings_floating_display_mode),
+            onDismissRequest = { showDisplayModeDialog.value = false }
+        ) {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                CheckboxPreference(
+                    title = stringResource(R.string.settings_floating_mode_single),
+                    checked = FloatingLyricsDisplayMode.LYRIC in displayModes,
+                    onCheckedChange = { setDisplayMode(FloatingLyricsDisplayMode.LYRIC, it) }
+                )
+                CheckboxPreference(
+                    title = stringResource(R.string.settings_floating_mode_translation),
+                    checked = FloatingLyricsDisplayMode.TRANSLATION in displayModes,
+                    onCheckedChange = { setDisplayMode(FloatingLyricsDisplayMode.TRANSLATION, it) }
+                )
+                CheckboxPreference(
+                    title = stringResource(R.string.settings_floating_mode_romanization),
+                    checked = FloatingLyricsDisplayMode.ROMANIZATION in displayModes,
+                    onCheckedChange = { setDisplayMode(FloatingLyricsDisplayMode.ROMANIZATION, it) }
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                TextButton(
+                    text = stringResource(R.string.backup_dialog_confirm),
+                    onClick = { showDisplayModeDialog.value = false },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.textButtonColorsPrimary()
+                )
+            }
+        }
+    }
 }
 
 @Composable
 private fun FloatingDisplayModeSelector(
-    selectedMode: FloatingLyricsDisplayMode,
-    onModeSelected: (FloatingLyricsDisplayMode) -> Unit
+    selectedModes: Set<FloatingLyricsDisplayMode>,
+    onClick: () -> Unit
 ) {
-    Text(
-        text = stringResource(R.string.settings_floating_display_mode),
-        fontSize = 15.sp,
-        fontWeight = FontWeight.Medium,
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp)
-    )
-    FloatingModeRadio(
-        title = stringResource(R.string.settings_floating_mode_single),
-        summary = stringResource(R.string.settings_floating_mode_single_desc),
-        selected = selectedMode == FloatingLyricsDisplayMode.SINGLE_LINE,
-        onClick = { onModeSelected(FloatingLyricsDisplayMode.SINGLE_LINE) }
-    )
-    FloatingModeRadio(
-        title = stringResource(R.string.settings_floating_mode_romanization),
-        summary = stringResource(R.string.settings_floating_mode_romanization_desc),
-        selected = selectedMode == FloatingLyricsDisplayMode.ROMANIZATION,
-        onClick = { onModeSelected(FloatingLyricsDisplayMode.ROMANIZATION) }
-    )
-    FloatingModeRadio(
-        title = stringResource(R.string.settings_floating_mode_translation),
-        summary = stringResource(R.string.settings_floating_mode_translation_desc),
-        selected = selectedMode == FloatingLyricsDisplayMode.TRANSLATION,
-        onClick = { onModeSelected(FloatingLyricsDisplayMode.TRANSLATION) }
-    )
-    FloatingModeRadio(
-        title = stringResource(R.string.settings_floating_mode_neighbor),
-        summary = stringResource(R.string.settings_floating_mode_neighbor_desc),
-        selected = selectedMode == FloatingLyricsDisplayMode.NEIGHBOR_LINE,
-        onClick = { onModeSelected(FloatingLyricsDisplayMode.NEIGHBOR_LINE) }
+    SuperArrow(
+        title = stringResource(R.string.settings_floating_display_mode),
+        summary = stringResource(
+            R.string.settings_home_lyric_preview_summary_fmt,
+            selectedModes.labelForFloatingDisplayMode()
+        ),
+        onClick = onClick
     )
 }
 
@@ -261,37 +299,37 @@ private fun FloatingNeighborAlignmentSelector(
     selectedAlignment: FloatingLyricsNeighborAlignment,
     onAlignmentSelected: (FloatingLyricsNeighborAlignment) -> Unit
 ) {
-    Text(
-        text = stringResource(R.string.settings_floating_neighbor_alignment),
-        fontSize = 15.sp,
-        fontWeight = FontWeight.Medium,
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp)
-    )
-    FloatingModeRadio(
-        title = stringResource(R.string.settings_floating_alignment_center),
-        summary = stringResource(R.string.settings_floating_alignment_center_desc),
-        selected = selectedAlignment == FloatingLyricsNeighborAlignment.CENTER,
-        onClick = { onAlignmentSelected(FloatingLyricsNeighborAlignment.CENTER) }
-    )
-    FloatingModeRadio(
-        title = stringResource(R.string.settings_floating_alignment_split),
-        summary = stringResource(R.string.settings_floating_alignment_split_desc),
-        selected = selectedAlignment == FloatingLyricsNeighborAlignment.SPLIT_START_END,
-        onClick = { onAlignmentSelected(FloatingLyricsNeighborAlignment.SPLIT_START_END) }
+    val alignments = FloatingLyricsNeighborAlignment.entries
+    val labels = alignments.map { alignment ->
+        when (alignment) {
+            FloatingLyricsNeighborAlignment.CENTER -> stringResource(R.string.settings_floating_alignment_center)
+            FloatingLyricsNeighborAlignment.SPLIT_START_END -> stringResource(R.string.settings_floating_alignment_split)
+        }
+    }
+    val currentIndex = alignments.indexOf(selectedAlignment).takeIf { it >= 0 } ?: 0
+
+    SuperDropdown(
+        title = stringResource(R.string.settings_floating_neighbor_alignment),
+        items = labels,
+        selectedIndex = currentIndex,
+        onSelectedIndexChange = { index -> onAlignmentSelected(alignments[index]) }
     )
 }
 
 @Composable
-private fun FloatingModeRadio(
-    title: String,
-    summary: String,
-    selected: Boolean,
-    onClick: () -> Unit
-) {
-    SuperRadio(
-        title = title,
-        summary = summary,
-        selected = selected,
-        onClick = onClick
-    )
+private fun Set<FloatingLyricsDisplayMode>.labelForFloatingDisplayMode(): String {
+    val labels = buildList {
+        if (FloatingLyricsDisplayMode.LYRIC in this@labelForFloatingDisplayMode) {
+            add(stringResource(R.string.settings_floating_mode_single))
+        }
+        if (FloatingLyricsDisplayMode.TRANSLATION in this@labelForFloatingDisplayMode) {
+            add(stringResource(R.string.settings_floating_mode_translation))
+        }
+        if (FloatingLyricsDisplayMode.ROMANIZATION in this@labelForFloatingDisplayMode) {
+            add(stringResource(R.string.settings_floating_mode_romanization))
+        }
+    }
+    return labels.ifEmpty {
+        listOf(stringResource(R.string.settings_floating_mode_single))
+    }.joinToString(" / ")
 }

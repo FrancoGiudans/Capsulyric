@@ -18,6 +18,8 @@ import com.example.islandlyrics.R
 import com.example.islandlyrics.feature.settings.material.SettingsCard
 import com.example.islandlyrics.feature.settings.material.SettingsCardDivider
 import com.example.islandlyrics.feature.settings.material.SettingsSwitchItem
+import com.example.islandlyrics.feature.settings.material.SettingsTextItem
+import com.example.islandlyrics.ui.overlay.floating.FloatingLyricsDisplayConfig
 import com.example.islandlyrics.ui.overlay.floating.FloatingLyricsDisplayMode
 import com.example.islandlyrics.ui.overlay.floating.FloatingLyricsNeighborAlignment
 import com.example.islandlyrics.ui.overlay.floating.FloatingLyricsRenderer
@@ -36,11 +38,14 @@ fun FloatingLyricsSettingsSubScreen(prefs: SharedPreferences) {
     var followAlbumColor by remember { mutableStateOf(prefs.getBoolean(FloatingLyricsRenderer.PREF_FOLLOW_ALBUM_COLOR, true)) }
     var textStroke by remember { mutableStateOf(prefs.getBoolean(FloatingLyricsRenderer.PREF_TEXT_STROKE, true)) }
     var textBackground by remember { mutableStateOf(prefs.getBoolean(FloatingLyricsRenderer.PREF_TEXT_BACKGROUND, false)) }
-    var displayMode by remember {
+    var displayModes by remember {
         mutableStateOf(
-            FloatingLyricsDisplayMode.from(
-                prefs.getString(FloatingLyricsRenderer.PREF_DISPLAY_MODE, FloatingLyricsDisplayMode.SINGLE_LINE.value)
-            )
+            FloatingLyricsDisplayConfig.readDisplayModes(prefs)
+        )
+    }
+    var showNeighborLine by remember {
+        mutableStateOf(
+            FloatingLyricsDisplayConfig.readShowNeighborLine(prefs)
         )
     }
     var neighborAlignment by remember {
@@ -50,6 +55,8 @@ fun FloatingLyricsSettingsSubScreen(prefs: SharedPreferences) {
             )
         )
     }
+    val showDisplayModeDialog = remember { mutableStateOf(false) }
+    val showNeighborAlignmentDialog = remember { mutableStateOf(false) }
     var wordHighlight by remember { mutableStateOf(prefs.getBoolean(FloatingLyricsRenderer.PREF_WORD_HIGHLIGHT, true)) }
     var textSizeSp by remember { mutableFloatStateOf(prefs.getFloat(FloatingLyricsRenderer.PREF_TEXT_SIZE, 15f)) }
 
@@ -58,6 +65,20 @@ fun FloatingLyricsSettingsSubScreen(prefs: SharedPreferences) {
     }
     var floatingTextColorEditing by remember { mutableStateOf(false) }
     var floatingTextColorSnapshot by remember { mutableStateOf(customTextColor) }
+    val keepOneText = stringResource(R.string.settings_home_lyric_preview_keep_one)
+
+    fun setDisplayMode(mode: FloatingLyricsDisplayMode, checked: Boolean) {
+        val nextModes = FloatingLyricsDisplayMode.toggledModes(displayModes, mode, checked)
+        if (nextModes == null) {
+            Toast.makeText(context, keepOneText, Toast.LENGTH_SHORT).show()
+            return
+        }
+        displayModes = nextModes
+        prefs.edit {
+            putString(FloatingLyricsRenderer.PREF_DISPLAY_MODE, FloatingLyricsDisplayMode.preferenceValue(nextModes))
+            putBoolean(FloatingLyricsRenderer.PREF_SHOW_NEIGHBOR_LINE, showNeighborLine)
+        }
+    }
 
     SettingsCard {
         SettingsSwitchItem(
@@ -113,23 +134,26 @@ fun FloatingLyricsSettingsSubScreen(prefs: SharedPreferences) {
 
             SettingsCardDivider()
             FloatingDisplayModeSelector(
-                selectedMode = displayMode,
-                onModeSelected = {
-                    displayMode = it
-                    prefs.edit { putString(FloatingLyricsRenderer.PREF_DISPLAY_MODE, it.value) }
+                selectedModes = displayModes,
+                onClick = { showDisplayModeDialog.value = true }
+            )
+
+            SettingsCardDivider()
+            SettingsSwitchItem(
+                title = stringResource(R.string.settings_floating_show_neighbor_line),
+                subtitle = stringResource(R.string.settings_floating_show_neighbor_line_desc),
+                checked = showNeighborLine,
+                onCheckedChange = {
+                    showNeighborLine = it
+                    prefs.edit { putBoolean(FloatingLyricsRenderer.PREF_SHOW_NEIGHBOR_LINE, it) }
                 }
             )
 
-            if (displayMode == FloatingLyricsDisplayMode.NEIGHBOR_LINE) {
-                SettingsCardDivider()
-                FloatingNeighborAlignmentSelector(
-                    selectedAlignment = neighborAlignment,
-                    onAlignmentSelected = {
-                        neighborAlignment = it
-                        prefs.edit { putString(FloatingLyricsRenderer.PREF_NEIGHBOR_ALIGNMENT, it.value) }
-                    }
-                )
-            }
+            SettingsCardDivider()
+            FloatingNeighborAlignmentSelector(
+                selectedAlignment = neighborAlignment,
+                onClick = { showNeighborAlignmentDialog.value = true }
+            )
 
             SettingsCardDivider()
             SettingsSwitchItem(
@@ -225,73 +249,127 @@ fun FloatingLyricsSettingsSubScreen(prefs: SharedPreferences) {
             }
         }
     }
+
+    if (showDisplayModeDialog.value) {
+        AlertDialog(
+            onDismissRequest = { showDisplayModeDialog.value = false },
+            title = { Text(stringResource(R.string.settings_floating_display_mode)) },
+            text = {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    FloatingDisplayModeOption(
+                        title = stringResource(R.string.settings_floating_mode_single),
+                        checked = FloatingLyricsDisplayMode.LYRIC in displayModes,
+                        onCheckedChange = { setDisplayMode(FloatingLyricsDisplayMode.LYRIC, it) }
+                    )
+                    FloatingDisplayModeOption(
+                        title = stringResource(R.string.settings_floating_mode_translation),
+                        checked = FloatingLyricsDisplayMode.TRANSLATION in displayModes,
+                        onCheckedChange = { setDisplayMode(FloatingLyricsDisplayMode.TRANSLATION, it) }
+                    )
+                    FloatingDisplayModeOption(
+                        title = stringResource(R.string.settings_floating_mode_romanization),
+                        checked = FloatingLyricsDisplayMode.ROMANIZATION in displayModes,
+                        onCheckedChange = { setDisplayMode(FloatingLyricsDisplayMode.ROMANIZATION, it) }
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showDisplayModeDialog.value = false }) {
+                    Text(stringResource(R.string.backup_dialog_confirm))
+                }
+            }
+        )
+    }
+
+    if (showNeighborAlignmentDialog.value) {
+        AlertDialog(
+            onDismissRequest = { showNeighborAlignmentDialog.value = false },
+            title = { Text(stringResource(R.string.settings_floating_neighbor_alignment)) },
+            text = {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    FloatingRadioRow(
+                        title = stringResource(R.string.settings_floating_alignment_center),
+                        subtitle = stringResource(R.string.settings_floating_alignment_center_desc),
+                        selected = neighborAlignment == FloatingLyricsNeighborAlignment.CENTER,
+                        onClick = {
+                            neighborAlignment = FloatingLyricsNeighborAlignment.CENTER
+                            prefs.edit {
+                                putString(FloatingLyricsRenderer.PREF_NEIGHBOR_ALIGNMENT, FloatingLyricsNeighborAlignment.CENTER.value)
+                            }
+                        }
+                    )
+                    FloatingRadioRow(
+                        title = stringResource(R.string.settings_floating_alignment_split),
+                        subtitle = stringResource(R.string.settings_floating_alignment_split_desc),
+                        selected = neighborAlignment == FloatingLyricsNeighborAlignment.SPLIT_START_END,
+                        onClick = {
+                            neighborAlignment = FloatingLyricsNeighborAlignment.SPLIT_START_END
+                            prefs.edit {
+                                putString(FloatingLyricsRenderer.PREF_NEIGHBOR_ALIGNMENT, FloatingLyricsNeighborAlignment.SPLIT_START_END.value)
+                            }
+                        }
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showNeighborAlignmentDialog.value = false }) {
+                    Text(stringResource(R.string.backup_dialog_confirm))
+                }
+            }
+        )
+    }
 }
 
 @Composable
 private fun FloatingDisplayModeSelector(
-    selectedMode: FloatingLyricsDisplayMode,
-    onModeSelected: (FloatingLyricsDisplayMode) -> Unit
+    selectedModes: Set<FloatingLyricsDisplayMode>,
+    onClick: () -> Unit
 ) {
-    val options = listOf(
-        FloatingLyricsDisplayMode.SINGLE_LINE to (
-            stringResource(R.string.settings_floating_mode_single) to stringResource(R.string.settings_floating_mode_single_desc)
-        ),
-        FloatingLyricsDisplayMode.ROMANIZATION to (
-            stringResource(R.string.settings_floating_mode_romanization) to stringResource(R.string.settings_floating_mode_romanization_desc)
-        ),
-        FloatingLyricsDisplayMode.TRANSLATION to (
-            stringResource(R.string.settings_floating_mode_translation) to stringResource(R.string.settings_floating_mode_translation_desc)
-        ),
-        FloatingLyricsDisplayMode.NEIGHBOR_LINE to (
-            stringResource(R.string.settings_floating_mode_neighbor) to stringResource(R.string.settings_floating_mode_neighbor_desc)
-        )
+    SettingsTextItem(
+        title = stringResource(R.string.settings_floating_display_mode),
+        value = selectedModes.labelForFloatingDisplayMode(),
+        onClick = onClick
     )
-
-    Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
-        Text(
-            text = stringResource(R.string.settings_floating_display_mode),
-            style = MaterialTheme.typography.titleMedium
-        )
-        Spacer(modifier = Modifier.height(4.dp))
-        options.forEach { (mode, texts) ->
-            FloatingRadioRow(
-                title = texts.first,
-                subtitle = texts.second,
-                selected = selectedMode == mode,
-                onClick = { onModeSelected(mode) }
-            )
-        }
-    }
 }
 
 @Composable
 private fun FloatingNeighborAlignmentSelector(
     selectedAlignment: FloatingLyricsNeighborAlignment,
-    onAlignmentSelected: (FloatingLyricsNeighborAlignment) -> Unit
+    onClick: () -> Unit
 ) {
-    val options = listOf(
-        FloatingLyricsNeighborAlignment.CENTER to (
-            stringResource(R.string.settings_floating_alignment_center) to stringResource(R.string.settings_floating_alignment_center_desc)
-        ),
-        FloatingLyricsNeighborAlignment.SPLIT_START_END to (
-            stringResource(R.string.settings_floating_alignment_split) to stringResource(R.string.settings_floating_alignment_split_desc)
-        )
+    val label = when (selectedAlignment) {
+        FloatingLyricsNeighborAlignment.CENTER -> stringResource(R.string.settings_floating_alignment_center)
+        FloatingLyricsNeighborAlignment.SPLIT_START_END -> stringResource(R.string.settings_floating_alignment_split)
+    }
+    SettingsTextItem(
+        title = stringResource(R.string.settings_floating_neighbor_alignment),
+        value = label,
+        onClick = onClick
     )
+}
 
-    Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
-        Text(
-            text = stringResource(R.string.settings_floating_neighbor_alignment),
-            style = MaterialTheme.typography.titleMedium
+@Composable
+private fun FloatingDisplayModeOption(
+    title: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Checkbox(
+            checked = checked,
+            onCheckedChange = onCheckedChange
         )
-        Spacer(modifier = Modifier.height(4.dp))
-        options.forEach { (alignment, texts) ->
-            FloatingRadioRow(
-                title = texts.first,
-                subtitle = texts.second,
-                selected = selectedAlignment == alignment,
-                onClick = { onAlignmentSelected(alignment) }
-            )
-        }
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+            text = title,
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurface
+        )
     }
 }
 
@@ -320,4 +398,22 @@ private fun FloatingRadioRow(
             )
         }
     }
+}
+
+@Composable
+private fun Set<FloatingLyricsDisplayMode>.labelForFloatingDisplayMode(): String {
+    val labels = buildList {
+        if (FloatingLyricsDisplayMode.LYRIC in this@labelForFloatingDisplayMode) {
+            add(stringResource(R.string.settings_floating_mode_single))
+        }
+        if (FloatingLyricsDisplayMode.TRANSLATION in this@labelForFloatingDisplayMode) {
+            add(stringResource(R.string.settings_floating_mode_translation))
+        }
+        if (FloatingLyricsDisplayMode.ROMANIZATION in this@labelForFloatingDisplayMode) {
+            add(stringResource(R.string.settings_floating_mode_romanization))
+        }
+    }
+    return labels.ifEmpty {
+        listOf(stringResource(R.string.settings_floating_mode_single))
+    }.joinToString(" / ")
 }

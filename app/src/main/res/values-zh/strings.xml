@@ -1008,7 +1008,7 @@
     <string name="settings_floating_text_background">极简模式底纹</string>
     <string name="settings_floating_text_background_desc">在折叠（极简）状态下为文字后方加入灰色底纹</string>
     <string name="settings_floating_display_mode">显示模式</string>
-    <string name="settings_floating_mode_single">单行</string>
+    <string name="settings_floating_mode_single">原文</string>
     <string name="settings_floating_mode_single_desc">仅显示当前歌词句</string>
     <string name="settings_floating_mode_romanization">罗马音</string>
     <string name="settings_floating_mode_romanization_desc">当前歌词提供罗马音时，将罗马音显示在原文上方</string>
