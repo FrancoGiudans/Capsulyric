@@ -30,7 +30,7 @@ jobs:
           if [ -z "$CODENAME" ]; then
             CODENAME="Unassigned"
           fi
-          VERSION_PREFIX="Version.$(TZ=Asia/Shanghai date +'%y').$(TZ=Asia/Shanghai date +'%-m')"
+          VERSION_PREFIX="$(TZ=Asia/Shanghai date +'%y').$(TZ=Asia/Shanghai date +'%-m')"
           echo "codename=$CODENAME" >> $GITHUB_OUTPUT
           echo "version_prefix=$VERSION_PREFIX" >> $GITHUB_OUTPUT
 

@@ -20,8 +20,8 @@ object UpdateChecker {
 
     private const val TAG = "UpdateChecker"
     private const val GITHUB_API_URL = "https://api.github.com/repos/FrancoGiudans/Capsulyric/releases/latest"
-    private val VERSION_IN_TITLE_REGEX = Regex("""Version\.\d{2}\.\d+(?:\.[A-Za-z0-9]+)?_C\d+""")
-    private val VERSION_IN_BODY_REGEX = Regex("""(?im)^\s*[-*]\s*\*\*Version:\*\*\s*`(Version\.\d{2}\.\d+(?:\.[A-Za-z0-9]+)?_C\d+)`""")
+    private val VERSION_IN_TITLE_REGEX = Regex("""\d{2}\.\d+(?:\.[A-Za-z0-9]+)?_C\d+""")
+    private val VERSION_IN_BODY_REGEX = Regex("""(?im)^\s*[-*]\s*\*\*Version:\*\*\s*`(\d{2}\.\d+(?:\.[A-Za-z0-9]+)?_C\d+)`""")
 
     const val CHANNEL_STABLE = "Stable"
     const val CHANNEL_PREVIEW = "Preview"

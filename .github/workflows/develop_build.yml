@@ -109,7 +109,7 @@ jobs:
           if [ -z "$CODENAME" ]; then
             CODENAME="Unassigned"
           fi
-          VERSION_PREFIX="Version.$(TZ=Asia/Shanghai date +'%y').$(TZ=Asia/Shanghai date +'%-m')"
+          VERSION_PREFIX="$(TZ=Asia/Shanghai date +'%y').$(TZ=Asia/Shanghai date +'%-m')"
           echo "codename=$CODENAME" >> $GITHUB_OUTPUT
           echo "version_prefix=$VERSION_PREFIX" >> $GITHUB_OUTPUT
 
@@ -184,14 +184,14 @@ jobs:
           echo "branch_slug=$BRANCH_SLUG" >> $GITHUB_OUTPUT
           
           # Find the most recent previous shared Canary tag for changelog comparison
-          PREV_TAG=$(git tag --sort=-creatordate | grep -E '^(Canary\.Version|Canary\.[A-Za-z0-9._-]+|Version\.[0-9]{2}\.[0-9]+\.Canary)_C[0-9]+$' | head -n 1)
+          PREV_TAG=$(git tag --sort=-creatordate | grep -E '^Canary\.Version_C[0-9]+$' | head -n 1)
           PREV_SHA=""
           if [ -n "$PREV_TAG" ]; then
             PREV_SHA=$(git rev-list -n 1 "$PREV_TAG" 2>/dev/null || echo "")
           fi
           
           # Base name of the release
-          REL_NAME="Experiment Build ${DISPLAY_VERSION}"
+          REL_NAME="${DISPLAY_VERSION}"
           TAG_NAME="Canary.Version_C${COUNT}"
           echo "rel_name=$REL_NAME" >> $GITHUB_OUTPUT
           echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
@@ -204,7 +204,7 @@ jobs:
           echo ">" >> canary_body.md
           echo "> This is a rolling Experiment release generated automatically. It may contain unstable code or breaking changes." >> canary_body.md
           echo "" >> canary_body.md
-          echo "## Experiment Build" >> canary_body.md
+          echo "## Build Info" >> canary_body.md
           echo "- **Codename:** \`${CODENAME}\`" >> canary_body.md
           echo "- **Version:** \`${DISPLAY_VERSION}\`" >> canary_body.md
           echo "- **Latest Commit:** \`${SHORT_SHA}\`" >> canary_body.md
@@ -213,7 +213,7 @@ jobs:
           echo "### Changes since last Experiment release" >> canary_body.md
           
           if [ -z "$PREV_SHA" ]; then
-            echo "First Experiment build recorded." >> canary_body.md
+            echo "First build recorded." >> canary_body.md
           elif [ "$PREV_SHA" == "$(git rev-parse HEAD)" ]; then
             echo "No new commits (Re-run or manual trigger)." >> canary_body.md
           else
@@ -238,7 +238,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          CANARY_TAGS=$(git tag | grep -E '^(Canary\.Version|Canary\.[A-Za-z0-9._-]+|Version\.[0-9]{2}\.[0-9]+\.Canary)_C[0-9]+$' || true)
+          CANARY_TAGS=$(git tag | grep -E '^Canary\.Version_C[0-9]+$' || true)
           if [ -n "$CANARY_TAGS" ]; then
             echo "Found existing Canary tags: $CANARY_TAGS"
             for tag in $CANARY_TAGS; do

@@ -57,8 +57,8 @@ jobs:
             echo "Commit raw version input: '${RAW}'"
           fi
 
-          # Auto prefix: Version.YY.M (Shanghai timezone)
-          AUTO_PREFIX="Version.$(TZ=Asia/Shanghai date +'%y').$(TZ=Asia/Shanghai date +'%-m')"
+          # Auto prefix: YY.M (Shanghai timezone)
+          AUTO_PREFIX="$(TZ=Asia/Shanghai date +'%y').$(TZ=Asia/Shanghai date +'%-m')"
 
           # Defaults
           CHANNEL="Stable"
@@ -96,7 +96,7 @@ jobs:
           if [ -z "$VERSION_NUMS" ]; then
             VERSION_PREFIX="$AUTO_PREFIX"
           else
-            VERSION_PREFIX="Version.${VERSION_NUMS}"
+            VERSION_PREFIX="${VERSION_NUMS}"
           fi
 
           echo "version_prefix=${VERSION_PREFIX}" >> $GITHUB_OUTPUT
@@ -367,10 +367,10 @@ jobs:
           CHANNEL="${{ steps.meta.outputs.channel }}"
 
           if [ "$CHANNEL" = "Stable" ]; then
-            PREV_TAG=$(git tag --sort=-creatordate | grep -v "Canary" | grep -E "^Version\..*\.Stable_C" | grep -vxF "$CURRENT_TAG" | head -n 1)
+            PREV_TAG=$(git tag --sort=-creatordate | grep -v "Canary" | grep -E "^[0-9]{2}\..*\.Stable_C" | grep -vxF "$CURRENT_TAG" | head -n 1)
             echo "Stable release - searching previous Stable tags"
           else
-            PREV_TAG=$(git tag --sort=-creatordate | grep -v "Canary" | grep -E "^Version\." | grep -vxF "$CURRENT_TAG" | head -n 1)
+            PREV_TAG=$(git tag --sort=-creatordate | grep -v "Canary" | grep -E "^[0-9]{2}\." | grep -vxF "$CURRENT_TAG" | head -n 1)
             echo "Preview/Experiment release - searching any previous tag"
           fi
           echo "Previous tag found: ${PREV_TAG:-none}"
@@ -446,6 +446,7 @@ jobs:
           body_path: release_body.md
           prerelease: ${{ steps.meta.outputs.is_prerelease }}
           make_latest: ${{ steps.meta.outputs.is_prerelease == 'false' }}
+          discussion_category_name: Announcements
           files: |
             ${{ steps.artifacts.outputs.apk }}
             ${{ steps.artifacts.outputs.md5 }}

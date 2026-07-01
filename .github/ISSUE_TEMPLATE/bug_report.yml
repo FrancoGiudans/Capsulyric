@@ -25,11 +25,11 @@ body:
     attributes:
       label: App Version / 软件版本
       description: |
-        Please provide the version name (e.g. `Version.26.4_C338` or `Version.26.4.Preview_C338`). 
+        Please provide the version name (e.g. `26.4_C338` or `26.4.Preview_C338`). 
         **Tip: Click the version number in the app Settings to copy.**
-        请提供版本号（例如 `Version.26.4_C338` 或 `Version.26.4.Preview_C338`）。
+        请提供版本号（例如 `26.4_C338` 或 `26.4.Preview_C338`）。
         **提示：在应用设置中点击版本号即可复制。**
-      placeholder: e.g. Version.26.4.Preview_C338 or Version.26.4.Canary_C341
+      placeholder: e.g. 26.4.Preview_C338 or 26.4.Canary_C341
     validations:
       required: true
   - type: dropdown

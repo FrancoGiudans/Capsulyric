@@ -43,7 +43,7 @@ static def getBuildMetadata(project, propertyName, envName, fallbackValue) {
 
 static def getDefaultVersionPrefix() {
     def now = ZonedDateTime.now(ZoneId.of("Asia/Shanghai"))
-    return now.format(DateTimeFormatter.ofPattern("'Version.'yy.M"))
+    return now.format(DateTimeFormatter.ofPattern("yy.M"))
 }
 
 static def normalizeVersionChannel(String value) {
