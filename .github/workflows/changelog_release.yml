@@ -28,6 +28,7 @@ jobs:
     permissions:
       contents: write
       actions: read
+      discussions: write
 
     steps:
       # ============================================================
