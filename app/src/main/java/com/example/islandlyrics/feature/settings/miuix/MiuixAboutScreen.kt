@@ -776,17 +776,20 @@ private fun UpdateSection(
         onClick = { onAutoUpdateChange(!autoUpdateEnabled) }
     )
 
-    BasicComponent(
+    val channels = buildList {
+        add(UpdateChecker.CHANNEL_STABLE)
+        add(UpdateChecker.CHANNEL_PREVIEW)
+        if (experimentUpdatesEnabled) add(UpdateChecker.CHANNEL_EXPERIMENT)
+    }
+    val selectedChannelIndex = channels.indexOf(currentChannel).takeIf { it >= 0 } ?: 0
+
+    SuperDropdown(
         title = stringResource(R.string.settings_prerelease_update),
-        summary = currentChannel,
-        onClick = {
-            val channels = buildList {
-                add(UpdateChecker.CHANNEL_STABLE)
-                add(UpdateChecker.CHANNEL_PREVIEW)
-                if (experimentUpdatesEnabled) add(UpdateChecker.CHANNEL_EXPERIMENT)
-            }
-            val currentIndex = channels.indexOf(currentChannel).takeIf { it >= 0 } ?: 0
-            onChannelChange(channels[(currentIndex + 1) % channels.size])
+        summary = stringResource(R.string.settings_prerelease_update_desc),
+        items = channels,
+        selectedIndex = selectedChannelIndex,
+        onSelectedIndexChange = { index ->
+            onChannelChange(channels[index])
         }
     )
 
