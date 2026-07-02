@@ -21,7 +21,7 @@ Set to `true` to force a pre-release build regardless of commit message.
 **功能更新**
 - 完善桌面歌词功能，新增双行显示、罗马音对照与翻译对照模式
 - 新增首页歌词类型多选配置功能
-- 引入 Last.fm 播放记录同步功能，支持自定义 Key 输入与单解析规则独立开关
+- 引入 Last.fm 播放记录同步功能，支持自定义 Key 输入与解析规则独立开关
 - 支持在线歌词纯音乐标记，标记后自动跳过匹配请求，胶囊视图仅显示播放信息，支持手动撤销
 - 完善应用完全离线模式
 - 新增 Live Update 字数上限调节功能
