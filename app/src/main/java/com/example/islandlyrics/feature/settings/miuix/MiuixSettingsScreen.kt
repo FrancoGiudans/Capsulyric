@@ -325,7 +325,7 @@ fun MiuixSettingsScreen(
                         stringResource(R.string.lang_english),
                         stringResource(R.string.lang_chinese)
                     )
-                    val currentLangCode = prefs.getString("language_code", "") ?: ""
+                    val currentLangCode = ThemeHelper.getLanguage(context)
                     val currentLangIndex = langOptions.indexOf(currentLangCode).takeIf { it >= 0 } ?: 0
                     
                     SuperDropdown(
@@ -334,7 +334,6 @@ fun MiuixSettingsScreen(
                         selectedIndex = currentLangIndex,
                         onSelectedIndexChange = { index ->
                             val code = langOptions[index]
-                            prefs.edit { putString("language_code", code) }
                             ThemeHelper.setLanguage(context, code)
                             (context as? Activity)?.recreate()
                         }

@@ -1,6 +1,9 @@
 package com.example.islandlyrics.core.theme
 
+import android.app.LocaleManager
 import android.content.Context
+import android.content.SharedPreferences
+import android.os.Build
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.os.LocaleListCompat
 import com.example.islandlyrics.core.settings.AppPreferences
@@ -8,6 +11,7 @@ import com.example.islandlyrics.core.settings.AppPreferences
 object ThemeHelper {
 
     private const val KEY_LANGUAGE = AppPreferences.Keys.LANGUAGE_CODE // "" (system), "en", "zh-CN"
+    private const val KEY_LANGUAGE_LAST_APPLIED_TO_SYSTEM = "language_code_last_applied_to_system"
     private const val KEY_UI_USE_MIUIX = AppPreferences.Keys.UI_USE_MIUIX
 
     private const val KEY_MIUIX_FOLLOW_SYSTEM = AppPreferences.Keys.THEME_FOLLOW_SYSTEM
@@ -32,12 +36,7 @@ object ThemeHelper {
         val prefs = prefs(context)
 
         // 1. Language
-        val lang = prefs.getString(KEY_LANGUAGE, "")
-        if (lang.isNullOrEmpty()) {
-            AppCompatDelegate.setApplicationLocales(LocaleListCompat.getEmptyLocaleList())
-        } else {
-            AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags(lang))
-        }
+        applyLanguage(context, prefs)
 
         // 2. Dark Mode
         val followSystem = getFollowSystem(context)
@@ -66,13 +65,16 @@ object ThemeHelper {
 
     // Setters
     fun setLanguage(context: Context, langCode: String) {
-        prefs(context)
-            .edit().putString(KEY_LANGUAGE, langCode).apply()
-        if (langCode.isEmpty()) {
-            AppCompatDelegate.setApplicationLocales(LocaleListCompat.getEmptyLocaleList())
-        } else {
-            AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags(langCode))
-        }
+        val normalized = normalizeLanguageTag(langCode)
+        prefs(context).edit()
+            .putString(KEY_LANGUAGE, normalized)
+            .putString(KEY_LANGUAGE_LAST_APPLIED_TO_SYSTEM, normalized)
+            .apply()
+        setApplicationLocales(normalized)
+    }
+
+    fun getLanguage(context: Context): String {
+        return synchronizeLanguageWithSystem(context, prefs(context))
     }
 
     fun setFollowSystem(context: Context, follow: Boolean) {
@@ -185,6 +187,69 @@ object ThemeHelper {
     private fun prefs(context: Context) =
         AppPreferences.of(context)
 
+    private fun applyLanguage(context: Context, prefs: SharedPreferences) {
+        val language = synchronizeLanguageWithSystem(context, prefs)
+        setApplicationLocales(language)
+        rememberLanguageAppliedToSystem(prefs, language)
+    }
+
+    private fun synchronizeLanguageWithSystem(
+        context: Context,
+        prefs: SharedPreferences
+    ): String {
+        val stored = normalizeLanguageTag(prefs.getString(KEY_LANGUAGE, "") ?: "")
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+            return stored
+        }
+
+        val system = getSystemApplicationLanguage(context)
+        val lastApplied = prefs.getString(KEY_LANGUAGE_LAST_APPLIED_TO_SYSTEM, null)
+            ?.let(::normalizeLanguageTag)
+
+        val resolved = when {
+            lastApplied != null && system != lastApplied -> system
+            lastApplied == null && stored.isEmpty() && system.isNotEmpty() -> system
+            lastApplied == null && stored.isNotEmpty() && system != stored -> stored
+            else -> stored
+        }
+
+        if (resolved != stored) {
+            prefs.edit().putString(KEY_LANGUAGE, resolved).apply()
+        }
+        return resolved
+    }
+
+    private fun getSystemApplicationLanguage(context: Context): String {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+            return ""
+        }
+        val localeManager = context.getSystemService(LocaleManager::class.java)
+        return normalizeLanguageTag(localeManager.applicationLocales.toLanguageTags())
+    }
+
+    private fun setApplicationLocales(langCode: String) {
+        val locales = if (langCode.isEmpty()) {
+            LocaleListCompat.getEmptyLocaleList()
+        } else {
+            LocaleListCompat.forLanguageTags(langCode)
+        }
+        AppCompatDelegate.setApplicationLocales(locales)
+    }
+
+    private fun rememberLanguageAppliedToSystem(prefs: SharedPreferences, langCode: String) {
+        prefs.edit().putString(KEY_LANGUAGE_LAST_APPLIED_TO_SYSTEM, langCode).apply()
+    }
+
+    private fun normalizeLanguageTag(langCode: String): String {
+        val primary = langCode.substringBefore(',').trim()
+        return when {
+            primary.isEmpty() -> ""
+            primary.equals("en", ignoreCase = true) || primary.startsWith("en-", ignoreCase = true) -> "en"
+            primary.equals("zh", ignoreCase = true) || primary.startsWith("zh-", ignoreCase = true) -> "zh-CN"
+            else -> primary
+        }
+    }
+
     private fun activeFollowSystemKey(context: Context): String {
         return if (isMiuixEnabled(context)) KEY_MIUIX_FOLLOW_SYSTEM else KEY_MATERIAL_FOLLOW_SYSTEM
     }
@@ -202,7 +267,7 @@ object ThemeHelper {
     }
 
     private fun readBooleanWithFallback(
-        prefs: android.content.SharedPreferences,
+        prefs: SharedPreferences,
         primaryKey: String,
         fallbackKey: String,
         defaultValue: Boolean
@@ -212,7 +277,7 @@ object ThemeHelper {
     }
 
     private fun readIntWithFallback(
-        prefs: android.content.SharedPreferences,
+        prefs: SharedPreferences,
         primaryKey: String,
         fallbackKey: String,
         defaultValue: Int

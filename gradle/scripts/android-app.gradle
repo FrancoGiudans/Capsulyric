@@ -60,6 +60,10 @@ android {
         aidl = true
     }
 
+    androidResources {
+        generateLocaleConfig = true
+    }
+
     packaging {
         jniLibs {
             keepDebugSymbols += ['**/libandroidx.graphics.path.so']

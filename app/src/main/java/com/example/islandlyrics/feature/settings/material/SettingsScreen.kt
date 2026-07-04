@@ -282,7 +282,7 @@ fun SettingsScreen(
         },
         containerColor = materialPageContainerColor()
     ) { paddingValues ->
-        val currentLangCode = prefs.getString("language_code", "")
+        val currentLangCode = ThemeHelper.getLanguage(context)
         val currentLangText = when (currentLangCode) {
             "en" -> stringResource(R.string.lang_english)
             "zh-CN" -> stringResource(R.string.lang_chinese)
