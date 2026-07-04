@@ -28,6 +28,7 @@ jobs:
     permissions:
       contents: write
       actions: read
+      discussions: write
 
     steps:
       # ============================================================
@@ -446,7 +447,7 @@ jobs:
           body_path: release_body.md
           prerelease: ${{ steps.meta.outputs.is_prerelease }}
           make_latest: ${{ steps.meta.outputs.is_prerelease == 'false' }}
-          discussion_category_name: Announcements
+          discussion_category_name: announcements
           files: |
             ${{ steps.artifacts.outputs.apk }}
             ${{ steps.artifacts.outputs.md5 }}
