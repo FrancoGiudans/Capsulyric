@@ -87,6 +87,7 @@ class FloatingLyricsRenderer(private val context: Context) {
     private var windowParams: WindowManager.LayoutParams? = null
     private var settingsPopup: PopupWindow? = null
     private var settingsPopupDismissedAtMs: Long = 0L
+    private var settingsPopupRefreshQueued = false
 
     private val styleStore = FloatingLyricsStyleStore(context)
     private val positionStore = FloatingLyricsWindowPositionStore(context)
@@ -473,6 +474,7 @@ class FloatingLyricsRenderer(private val context: Context) {
             setBackgroundDrawable(Color.TRANSPARENT.toDrawable())
             elevation = dpToPx(10).toFloat()
             setOnDismissListener {
+                settingsPopupRefreshQueued = false
                 settingsPopupDismissedAtMs = SystemClock.uptimeMillis()
                 if (settingsPopup === this) settingsPopup = null
             }
@@ -485,18 +487,33 @@ class FloatingLyricsRenderer(private val context: Context) {
         val popup = settingsPopup ?: return
         if (!popup.isShowing) return
         val width = settingsPopupWidth()
-        val previousScrollY = (popup.contentView as? ScrollView)?.scrollY ?: 0
-        popup.contentView = buildSettingsPopupContent(anchor).apply {
-            post { (this as? ScrollView)?.scrollTo(0, previousScrollY) }
+        val scrollView = popup.contentView as? ScrollView ?: return
+        val list = scrollView.getChildAt(0) as? LinearLayout ?: return
+        val previousScrollY = scrollView.scrollY
+
+        list.removeAllViews()
+        populateSettingsPopupList(list, anchor)
+        scrollView.post {
+            scrollView.scrollTo(0, previousScrollY.coerceAtMost(list.height))
         }
         popup.width = width
         popup.height = ViewGroup.LayoutParams.WRAP_CONTENT
         popup.update(width, ViewGroup.LayoutParams.WRAP_CONTENT)
     }
 
+    private fun scheduleSettingsPopupRefresh(anchor: View) {
+        if (settingsPopupRefreshQueued) return
+        settingsPopupRefreshQueued = true
+        mainHandler.post {
+            settingsPopupRefreshQueued = false
+            refreshSettingsPopup(anchor)
+        }
+    }
+
     private fun dismissSettingsPopup() {
         settingsPopup?.dismiss()
         settingsPopup = null
+        settingsPopupRefreshQueued = false
         settingsPopupDismissedAtMs = SystemClock.uptimeMillis()
     }
 
@@ -506,6 +523,15 @@ class FloatingLyricsRenderer(private val context: Context) {
             setPadding(0, dpToPx(6), 0, dpToPx(6))
             background = roundedRect(0xF21D1D1F.toInt(), 16)
         }
+        populateSettingsPopupList(list, anchor)
+        return ScrollView(context).apply {
+            isFillViewport = false
+            overScrollMode = View.OVER_SCROLL_NEVER
+            addView(list, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+        }
+    }
+
+    private fun populateSettingsPopupList(list: LinearLayout, anchor: View) {
         addSettingsPopupRow(list, buildColorPopupRow(anchor))
         addSettingsPopupRow(list, buildBooleanPopupRow(
             title = context.getString(R.string.settings_floating_show_album_art),
@@ -541,11 +567,6 @@ class FloatingLyricsRenderer(private val context: Context) {
         ))
         addSettingsPopupRow(list, buildTextSizePopupRow(anchor))
         addSettingsPopupRow(list, buildResetPositionPopupRow())
-        return ScrollView(context).apply {
-            isFillViewport = false
-            overScrollMode = View.OVER_SCROLL_NEVER
-            addView(list, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
-        }
     }
 
     private fun addSettingsPopupRow(list: LinearLayout, row: View) {
@@ -780,7 +801,7 @@ class FloatingLyricsRenderer(private val context: Context) {
         lastAppliedSnapshot = null
         lastState?.let { applyState(it) }
         resetCollapseTimer()
-        refreshSettingsPopup(anchor)
+        scheduleSettingsPopupRefresh(anchor)
     }
 
     private fun buildSettingsPopupTitle(title: String): TextView {

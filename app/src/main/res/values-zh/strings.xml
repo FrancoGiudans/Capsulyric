@@ -263,11 +263,11 @@
     <string name="parser_lyric_source_config">歌词源配置</string>
     <string name="parser_no_source_enabled">未启用来源</string>
     <string name="parser_receive_translation">接收翻译</string>
-    <string name="parser_receive_romanization">接收罗马音</string>
+    <string name="parser_receive_romanization">接收拼音歌词</string>
     <string name="parser_online_translation_desc">目前只有 QQ 音乐和网易云在线歌词提供翻译数据。</string>
-    <string name="parser_online_romanization_desc">目前只有 QQ 音乐和网易云在线歌词提供罗马音数据。</string>
+    <string name="parser_online_romanization_desc">目前只有 QQ 音乐和网易云在线歌词提供拼音歌词数据。</string>
     <string name="parser_lyricon_translation_desc">在当前 Lyricon 提供方上报翻译字段时接收。</string>
-    <string name="parser_lyricon_romanization_desc">在当前 Lyricon 提供方上报罗马音或 secondary 字段时接收。</string>
+    <string name="parser_lyricon_romanization_desc">在当前 Lyricon 提供方上报拼音歌词或 secondary 字段时接收。</string>
     <string name="parser_save">保存</string>
     <string name="parser_save_rule">保存规则</string>
     <string name="parser_add_app_fmt">添加 %s</string>
@@ -659,10 +659,10 @@
     <string name="settings_click_action_open_playing_app_desc">跳转到正在播放媒体的应用（无法打开时回到本应用）</string>
     <string name="settings_disable_scrolling">禁用歌词滚动</string>
     <string name="settings_lyric_text_display_mode">优先显示内容</string>
-    <string name="settings_lyric_text_display_mode_desc">翻译/罗马音仅在对应歌词源已接收且当前歌曲提供数据时生效；否则显示原歌词。</string>
+    <string name="settings_lyric_text_display_mode_desc">翻译/拼音歌词仅在对应歌词源已接收且当前歌曲提供数据时生效；否则显示原歌词。</string>
     <string name="lyric_text_display_mode_lyric">歌词</string>
     <string name="lyric_text_display_mode_translation">翻译</string>
-    <string name="lyric_text_display_mode_romanization">罗马音</string>
+    <string name="lyric_text_display_mode_romanization">拼音歌词</string>
     <string name="settings_super_island">发送小米超级岛通知</string>
     <string name="settings_super_island_desc">替代 Live Update，使用小米超级岛模版发送歌词通知</string>
     <string name="settings_capsule_mode">胶囊模式</string>
@@ -805,7 +805,7 @@
     <string name="diag_enabled">✅ 已开启</string>
     <string name="diag_disabled">❌ 未开启</string>
     <string name="diag_btn_refresh">刷新 API</string>
-    <string name="diag_qq_roman_debug_title">罗马音/翻译调试</string>
+    <string name="diag_qq_roman_debug_title">拼音歌词/翻译调试</string>
     <string name="diag_qq_roman_debug_desc">直接抓取并完整输出 QQ 音乐和网易云的歌词扩展字段</string>
 
     <!-- 在线歌词调试 -->
@@ -873,17 +873,17 @@
     <string name="online_lyric_debug_result_lrc_or_text">LRC或文本</string>
     <string name="online_lyric_debug_result_main_lyrics">主歌词</string>
     <string name="online_lyric_debug_result_translation">翻译歌词</string>
-    <string name="online_lyric_debug_result_romanization">罗马音</string>
+    <string name="online_lyric_debug_result_romanization">拼音歌词</string>
     <string name="online_lyric_debug_no_translation_match">不匹配翻译歌词</string>
-    <string name="online_lyric_debug_no_romanization_match">不匹配罗马音</string>
+    <string name="online_lyric_debug_no_romanization_match">不匹配拼音歌词</string>
     <string name="online_lyric_debug_no_sidecar_summary">保留该歌词类型为空</string>
     <string name="online_lyric_debug_clean_title_badge">清洗标题重试</string>
     <string name="online_lyric_debug_main_candidates">主歌词来源</string>
     <string name="online_lyric_debug_translation_candidates">翻译歌词来源</string>
-    <string name="online_lyric_debug_roman_candidates">罗马音来源</string>
+    <string name="online_lyric_debug_roman_candidates">拼音歌词来源</string>
     <string name="online_lyric_debug_no_main_candidates">本次没有可用的主歌词</string>
     <string name="online_lyric_debug_no_translation_candidates">本次没有翻译歌词</string>
-    <string name="online_lyric_debug_no_roman_candidates">本次没有罗马音歌词</string>
+    <string name="online_lyric_debug_no_roman_candidates">本次没有拼音歌词</string>
     <string name="online_lyric_debug_tap_for_full_result">点击查看完整结果</string>
     <string name="online_lyric_debug_attempt_title_fmt">%1$s 最终结果</string>
     <string name="online_lyric_debug_duration_fmt">耗时: %1$dms</string>
@@ -891,7 +891,7 @@
     <string name="online_lyric_debug_select_result">选中这个结果</string>
     <string name="online_lyric_debug_use_as_main">用作主歌词</string>
     <string name="online_lyric_debug_use_as_translation">用作翻译歌词</string>
-    <string name="online_lyric_debug_use_as_romanization">用作罗马音</string>
+    <string name="online_lyric_debug_use_as_romanization">用作拼音歌词</string>
     <string name="online_lyric_debug_close">关闭</string>
     <string name="online_lyric_debug_none">无</string>
     <string name="online_lyric_debug_dash">—</string>
@@ -946,7 +946,7 @@
     <string name="cache_management_query_info">查询信息</string>
     <string name="cache_management_provider">来源</string>
     <string name="cache_management_sidecars">额外内容</string>
-    <string name="cache_management_sidecars_fmt">翻译: %1$s / 罗马音: %2$s</string>
+    <string name="cache_management_sidecars_fmt">翻译: %1$s / 拼音歌词: %2$s</string>
     <string name="cache_management_yes">有</string>
     <string name="cache_management_no">无</string>
     <string name="cache_management_updated_at">更新时间</string>
@@ -1026,8 +1026,8 @@
     <string name="settings_floating_display_mode">显示模式</string>
     <string name="settings_floating_mode_single">原文</string>
     <string name="settings_floating_mode_single_desc">仅显示当前歌词句</string>
-    <string name="settings_floating_mode_romanization">罗马音</string>
-    <string name="settings_floating_mode_romanization_desc">当前歌词提供罗马音时，将罗马音显示在原文上方</string>
+    <string name="settings_floating_mode_romanization">拼音歌词</string>
+    <string name="settings_floating_mode_romanization_desc">当前歌词提供拼音歌词时，将拼音歌词显示在原文上方</string>
     <string name="settings_floating_mode_translation">翻译</string>
     <string name="settings_floating_mode_translation_desc">当前歌词提供翻译时，将翻译显示在原文下方</string>
     <string name="settings_floating_mode_neighbor">双行歌词</string>
@@ -1037,8 +1037,8 @@
     <string name="settings_floating_alignment_center_desc">上下两句都居中排列</string>
     <string name="settings_floating_alignment_split">左右分布</string>
     <string name="settings_floating_alignment_split_desc">将上下两句分别靠左右排列</string>
-    <string name="settings_floating_show_romanization">显示罗马音</string>
-    <string name="settings_floating_show_romanization_desc">当前歌词提供罗马音时，将罗马音显示在原文上方</string>
+    <string name="settings_floating_show_romanization">显示拼音歌词</string>
+    <string name="settings_floating_show_romanization_desc">当前歌词提供拼音歌词时，将拼音歌词显示在原文上方</string>
     <string name="settings_floating_show_translation">显示翻译</string>
     <string name="settings_floating_show_translation_desc">当前歌词提供翻译时，将翻译显示在原文下方</string>
     <string name="settings_floating_show_neighbor_line">显示当前句和下一句</string>
