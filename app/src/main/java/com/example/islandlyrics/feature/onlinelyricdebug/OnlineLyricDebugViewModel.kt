@@ -8,10 +8,10 @@ import androidx.lifecycle.viewModelScope
 import com.example.islandlyrics.core.logging.AppLogger
 import com.example.islandlyrics.core.network.OfflineModeManager
 import com.example.islandlyrics.lyrics.state.LyricRepository
-import com.example.islandlyrics.rules.ParserRule
 import com.example.islandlyrics.rules.ParserRuleHelper
 import com.example.islandlyrics.lyrics.online.OnlineLyricFetcher
 import com.example.islandlyrics.lyrics.cache.OnlineLyricCacheStore
+import com.example.islandlyrics.lyrics.online.parser.OnlineLyricSidecarMerger
 import com.example.islandlyrics.lyrics.online.provider.OnlineLyricProvider
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -19,6 +19,12 @@ import kotlinx.coroutines.withContext
 import com.example.islandlyrics.R
 
 class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(application) {
+    enum class ResultRole {
+        MAIN,
+        TRANSLATION,
+        ROMANIZATION
+    }
+
     private val repo = LyricRepository.getInstance()
     private val appContext = application.applicationContext
     private val fetcher = OnlineLyricFetcher(networkAllowed = { !OfflineModeManager.isEnabled(appContext) })
@@ -40,6 +46,18 @@ class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(app
 
     private val _selectedResult = MutableLiveData<OnlineLyricFetcher.LyricResult?>(null)
     val selectedResult: LiveData<OnlineLyricFetcher.LyricResult?> = _selectedResult
+
+    private val _selectedMainResult = MutableLiveData<OnlineLyricFetcher.LyricResult?>(null)
+    val selectedMainResult: LiveData<OnlineLyricFetcher.LyricResult?> = _selectedMainResult
+
+    private val _selectedTranslationResult = MutableLiveData<OnlineLyricFetcher.LyricResult?>(null)
+    val selectedTranslationResult: LiveData<OnlineLyricFetcher.LyricResult?> = _selectedTranslationResult
+
+    private val _selectedRomanResult = MutableLiveData<OnlineLyricFetcher.LyricResult?>(null)
+    val selectedRomanResult: LiveData<OnlineLyricFetcher.LyricResult?> = _selectedRomanResult
+
+    private var translationDisabledByUser = false
+    private var romanDisabledByUser = false
 
     private val _usedCleanTitleFallback = MutableLiveData(false)
     val usedCleanTitleFallback: LiveData<Boolean> = _usedCleanTitleFallback
@@ -87,6 +105,37 @@ class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(app
         return parsed.ifBlank { result?.lyrics.orEmpty().trim() }
     }
 
+    fun resultTranslationText(result: OnlineLyricFetcher.LyricResult?): String {
+        return sidecarLyricsText(result?.translationLyrics)
+    }
+
+    fun resultRomanText(result: OnlineLyricFetcher.LyricResult?): String {
+        return sidecarLyricsText(result?.romanLyrics)
+    }
+
+    private fun sidecarLyricsText(content: String?): String {
+        if (content.isNullOrBlank()) return ""
+        val lineTimestampRegex = Regex("""\[\d{1,2}:\d{2}(?:\.\d{1,3})?]""")
+        val qrcHeaderRegex = Regex("""\[\d+,\d+]""")
+        val wordTokenRegex = Regex("""(?:<|\()\d+,\d+(?:,\d+)?(?:>|\))""")
+        val lines = content
+            .lineSequence()
+            .map { rawLine ->
+                rawLine
+                    .replace(lineTimestampRegex, "")
+                    .replace(qrcHeaderRegex, "")
+                    .replace(wordTokenRegex, "")
+                    .trim()
+            }
+            .filter { it.isNotBlank() }
+            .toList()
+        return lines
+            .filterIndexed { index, text ->
+                index == 0 || text != lines[index - 1]
+            }
+            .joinToString("\n")
+    }
+
     private fun findCurrentLine(
         lines: List<OnlineLyricFetcher.LyricLine>,
         position: Long
@@ -101,6 +150,107 @@ class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(app
         return lines.lastOrNull { it.startTime <= position }
     }
 
+    fun canUseAttemptForRole(
+        attempt: OnlineLyricFetcher.ProviderAttempt,
+        role: ResultRole
+    ): Boolean {
+        val result = attempt.result ?: return false
+        if (result.error != null) return false
+        return when (role) {
+            ResultRole.MAIN -> isUsableMainResult(result)
+            ResultRole.TRANSLATION -> !result.translationLyrics.isNullOrBlank()
+            ResultRole.ROMANIZATION -> !result.romanLyrics.isNullOrBlank()
+        }
+    }
+
+    private fun isUsableMainResult(result: OnlineLyricFetcher.LyricResult): Boolean {
+        return !result.lyrics.isNullOrBlank() && !result.parsedLines.isNullOrEmpty()
+    }
+
+    private fun selectBestSidecarResult(
+        attempts: List<OnlineLyricFetcher.ProviderAttempt>,
+        preferredMain: OnlineLyricFetcher.LyricResult?,
+        role: ResultRole
+    ): OnlineLyricFetcher.LyricResult? {
+        if (preferredMain != null && hasRequestedSidecar(preferredMain, role)) return preferredMain
+        return attempts
+            .mapNotNull { it.result }
+            .firstOrNull { it.error == null && hasRequestedSidecar(it, role) }
+    }
+
+    private fun hasRequestedSidecar(
+        result: OnlineLyricFetcher.LyricResult,
+        role: ResultRole
+    ): Boolean {
+        return when (role) {
+            ResultRole.MAIN -> isUsableMainResult(result)
+            ResultRole.TRANSLATION -> !result.translationLyrics.isNullOrBlank()
+            ResultRole.ROMANIZATION -> !result.romanLyrics.isNullOrBlank()
+        }
+    }
+
+    private fun buildCombinedResult(
+        mainResult: OnlineLyricFetcher.LyricResult,
+        translationResult: OnlineLyricFetcher.LyricResult?,
+        romanResult: OnlineLyricFetcher.LyricResult?
+    ): OnlineLyricFetcher.LyricResult {
+        val translationLyrics = translationResult?.translationLyrics?.takeIf { it.isNotBlank() }
+        val romanLyrics = romanResult?.romanLyrics?.takeIf { it.isNotBlank() }
+        return mainResult.copy(
+            api = buildCombinedApiLabel(mainResult, translationResult, romanResult),
+            translationLyrics = translationLyrics,
+            romanLyrics = romanLyrics
+        )
+    }
+
+    private fun buildCombinedApiLabel(
+        mainResult: OnlineLyricFetcher.LyricResult,
+        translationResult: OnlineLyricFetcher.LyricResult?,
+        romanResult: OnlineLyricFetcher.LyricResult?
+    ): String {
+        val sidecars = buildList {
+            if (translationResult != null && translationResult.api != mainResult.api) {
+                add("T:${translationResult.api}")
+            }
+            if (romanResult != null && romanResult.api != mainResult.api) {
+                add("R:${romanResult.api}")
+            }
+        }
+        return if (sidecars.isEmpty()) {
+            mainResult.api
+        } else {
+            "${mainResult.api} + ${sidecars.joinToString(" + ")}"
+        }
+    }
+
+    private fun setSelectionState(
+        mainResult: OnlineLyricFetcher.LyricResult?,
+        translationResult: OnlineLyricFetcher.LyricResult?,
+        romanResult: OnlineLyricFetcher.LyricResult?
+    ): OnlineLyricFetcher.LyricResult? {
+        _selectedMainResult.value = mainResult
+        _selectedTranslationResult.value = translationResult
+        _selectedRomanResult.value = romanResult
+        val combined = mainResult?.let {
+            buildCombinedResult(
+                mainResult = it,
+                translationResult = translationResult,
+                romanResult = romanResult
+            )
+        }
+        _selectedResult.value = combined
+        return combined
+    }
+
+    private fun clearSelectionState() {
+        _selectedResult.value = null
+        _selectedMainResult.value = null
+        _selectedTranslationResult.value = null
+        _selectedRomanResult.value = null
+        translationDisabledByUser = false
+        romanDisabledByUser = false
+    }
+
     private fun applyResultToRepository(
         mediaInfo: LyricRepository.MediaInfo,
         result: OnlineLyricFetcher.LyricResult,
@@ -108,7 +258,7 @@ class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(app
     ) {
         val rule = ParserRuleHelper.getRuleForPackage(getApplication(), mediaInfo.packageName)
             ?: ParserRuleHelper.createDefaultRule(mediaInfo.packageName)
-        val lines = result.withSidecars(rule)
+        val lines = OnlineLyricSidecarMerger.withSidecars(result, rule)
         repo.updateParsedLyrics(
             lines = lines,
             hasSyllable = result.hasSyllable,
@@ -143,58 +293,8 @@ class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(app
             timelineCapability = LyricRepository.TimelineCapability.NONE
         )
         repo.updateCurrentLine(null)
-        _selectedResult.value = null
+        clearSelectionState()
         _attempts.value = emptyList()
-    }
-
-    private fun OnlineLyricFetcher.LyricResult.withSidecars(rule: ParserRule): List<OnlineLyricFetcher.LyricLine> {
-        val lines = parsedLines.orEmpty()
-        if (lines.isEmpty()) return emptyList()
-        val translationByTime = if (rule.receiveOnlineTranslation) {
-            translationLyrics?.let { parseSidecarLrc(it) }.orEmpty()
-        } else {
-            emptyMap()
-        }
-        val romanByTime = if (rule.receiveOnlineRomanization) {
-            romanLyrics?.let { parseSidecarLrc(it) }.orEmpty()
-        } else {
-            emptyMap()
-        }
-        if (translationByTime.isEmpty() && romanByTime.isEmpty()) return lines
-
-        return lines.map { line ->
-            line.copy(
-                translation = translationByTime[line.startTime] ?: line.translation,
-                roma = romanByTime[line.startTime] ?: line.roma
-            )
-        }
-    }
-
-    private fun parseSidecarLrc(content: String): Map<Long, String> {
-        val timestampRegex = Regex("""\[(\d{1,2}):(\d{2})(?:\.(\d{1,3}))?]""")
-        return content.lineSequence()
-            .mapNotNull { rawLine ->
-                val matches = timestampRegex.findAll(rawLine).toList()
-                if (matches.isEmpty()) return@mapNotNull null
-                val text = rawLine.replace(timestampRegex, "").trim()
-                if (text.isBlank()) return@mapNotNull null
-                matches.map { match -> match.toMillis() to text }
-            }
-            .flatten()
-            .toMap()
-    }
-
-    private fun MatchResult.toMillis(): Long {
-        val minutes = groupValues[1].toLongOrNull() ?: 0L
-        val seconds = groupValues[2].toLongOrNull() ?: 0L
-        val fraction = groupValues.getOrNull(3).orEmpty()
-        val millis = when (fraction.length) {
-            0 -> 0L
-            1 -> fraction.toLongOrNull()?.times(100L) ?: 0L
-            2 -> fraction.toLongOrNull()?.times(10L) ?: 0L
-            else -> fraction.take(3).toLongOrNull() ?: 0L
-        }
-        return minutes * 60_000L + seconds * 1000L + millis
     }
 
     private suspend fun persistAndApplyResult(
@@ -213,8 +313,37 @@ class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(app
             )
         }
         applyResultToRepository(mediaInfo, result)
-        _selectedResult.value = result
+        translationDisabledByUser = false
+        romanDisabledByUser = false
+        setSelectionState(
+            mainResult = result,
+            translationResult = result.takeIf { !it.translationLyrics.isNullOrBlank() },
+            romanResult = result.takeIf { !it.romanLyrics.isNullOrBlank() }
+        )
         _cacheStatus.value = cacheMessage
+    }
+
+    private suspend fun persistAndApplySelection(
+        mediaInfo: LyricRepository.MediaInfo,
+        queryTitle: String,
+        queryArtist: String,
+        mainResult: OnlineLyricFetcher.LyricResult,
+        translationResult: OnlineLyricFetcher.LyricResult?,
+        romanResult: OnlineLyricFetcher.LyricResult?,
+        cacheMessage: String? = null
+    ) {
+        val combinedResult = buildCombinedResult(mainResult, translationResult, romanResult)
+        withContext(Dispatchers.IO) {
+            cacheStore.saveLyricResult(
+                mediaInfo = mediaInfo,
+                queryTitle = queryTitle,
+                queryArtist = queryArtist,
+                result = combinedResult
+            )
+        }
+        applyResultToRepository(mediaInfo, combinedResult)
+        setSelectionState(mainResult, translationResult, romanResult)
+        _cacheStatus.value = cacheMessage ?: s(R.string.online_lyric_debug_cache_written_fmt, combinedResult.api)
     }
 
     fun syncProviderOrderFromCurrentRule() {
@@ -405,7 +534,7 @@ class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(app
             _isFetching.value = false
             _error.value = s(R.string.offline_mode_network_blocked)
             _attempts.value = emptyList()
-            _selectedResult.value = null
+            clearSelectionState()
             _usedCleanTitleFallback.value = false
             return
         }
@@ -420,7 +549,7 @@ class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(app
         _isFetching.value = true
         _error.value = null
         _attempts.value = emptyList()
-        _selectedResult.value = null
+        clearSelectionState()
         _usedCleanTitleFallback.value = false
 
         viewModelScope.launch {
@@ -457,7 +586,11 @@ class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(app
                         cacheStore.getCachedLyric(mediaInfo, queryTitle, queryArtist)
                     }
                     if (cacheHit != null) {
-                        _selectedResult.value = cacheHit.result
+                        setSelectionState(
+                            mainResult = cacheHit.result,
+                            translationResult = cacheHit.result.takeIf { !it.translationLyrics.isNullOrBlank() },
+                            romanResult = cacheHit.result.takeIf { !it.romanLyrics.isNullOrBlank() }
+                        )
                         _attempts.value = emptyList()
                         _cacheStatus.value = s(R.string.online_lyric_debug_cache_hit)
                         applyResultToRepository(mediaInfo, cacheHit.result, apiPath = "Online Cache")
@@ -477,15 +610,27 @@ class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(app
                 )
                 _attempts.value = outcome.attempts
                 _usedCleanTitleFallback.value = outcome.usedCleanTitleFallback
-                _selectedResult.value = outcome.bestResult
                 if (outcome.bestResult == null) {
+                    clearSelectionState()
                     _error.value = s(R.string.online_lyric_debug_all_apis_failed)
                 } else {
-                    persistAndApplyResult(
+                    val translationResult = selectBestSidecarResult(
+                        attempts = outcome.attempts,
+                        preferredMain = outcome.bestResult,
+                        role = ResultRole.TRANSLATION
+                    )
+                    val romanResult = selectBestSidecarResult(
+                        attempts = outcome.attempts,
+                        preferredMain = outcome.bestResult,
+                        role = ResultRole.ROMANIZATION
+                    )
+                    persistAndApplySelection(
                         mediaInfo = mediaInfo,
                         queryTitle = queryTitle,
                         queryArtist = queryArtist,
-                        result = outcome.bestResult,
+                        mainResult = outcome.bestResult,
+                        translationResult = translationResult,
+                        romanResult = romanResult,
                         cacheMessage = s(R.string.online_lyric_debug_cache_switched_fmt, outcome.bestResult.api)
                     )
                     AppLogger.getInstance().log("OnlineLyricDebug", "自动选择: ${outcome.bestResult.api} (${outcome.bestResult.score})")
@@ -508,12 +653,16 @@ class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(app
     }
 
     fun selectAttempt(attempt: OnlineLyricFetcher.ProviderAttempt) {
+        selectAttemptForRole(ResultRole.MAIN, attempt)
+    }
+
+    fun selectAttemptForRole(role: ResultRole, attempt: OnlineLyricFetcher.ProviderAttempt) {
         val mediaInfo = liveMetadata.value ?: run {
             _error.value = s(R.string.online_lyric_debug_error_no_song)
             return
         }
         val result = attempt.result
-        if (result == null || result.error != null || result.parsedLines.isNullOrEmpty()) {
+        if (result == null || !canUseAttemptForRole(attempt, role)) {
             _error.value = s(R.string.online_lyric_debug_error_result_unavailable)
             return
         }
@@ -532,15 +681,123 @@ class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(app
                         useRawMetadata = rule.useRawMetadataForOnlineMatching
                     )
                 }
-                persistAndApplyResult(
+                val currentMain = when (role) {
+                    ResultRole.MAIN -> result
+                    ResultRole.TRANSLATION,
+                    ResultRole.ROMANIZATION -> _selectedMainResult.value ?: _selectedResult.value
+                }
+                if (currentMain == null || !isUsableMainResult(currentMain)) {
+                    _error.value = s(R.string.online_lyric_debug_error_result_unavailable)
+                    return@launch
+                }
+                val nextTranslation = when (role) {
+                    ResultRole.MAIN -> {
+                        if (translationDisabledByUser) {
+                            null
+                        } else {
+                            _selectedTranslationResult.value
+                                ?: result.takeIf { !it.translationLyrics.isNullOrBlank() }
+                        }
+                    }
+                    ResultRole.TRANSLATION -> {
+                        translationDisabledByUser = false
+                        result
+                    }
+                    ResultRole.ROMANIZATION -> _selectedTranslationResult.value
+                }
+                val nextRoman = when (role) {
+                    ResultRole.MAIN -> {
+                        if (romanDisabledByUser) {
+                            null
+                        } else {
+                            _selectedRomanResult.value
+                                ?: result.takeIf { !it.romanLyrics.isNullOrBlank() }
+                        }
+                    }
+                    ResultRole.TRANSLATION -> _selectedRomanResult.value
+                    ResultRole.ROMANIZATION -> {
+                        romanDisabledByUser = false
+                        result
+                    }
+                }
+                persistAndApplySelection(
                     mediaInfo = mediaInfo,
                     queryTitle = currentSongState.effectiveTitle,
                     queryArtist = currentSongState.effectiveArtist,
-                    result = result,
-                    cacheMessage = s(R.string.online_lyric_debug_cache_written_fmt, result.api)
+                    mainResult = currentMain,
+                    translationResult = nextTranslation,
+                    romanResult = nextRoman,
+                    cacheMessage = s(
+                        R.string.online_lyric_debug_cache_written_fmt,
+                        buildCombinedApiLabel(currentMain, nextTranslation, nextRoman)
+                    )
                 )
                 _dialogAttempt.value = null
-                AppLogger.getInstance().log("OnlineLyricDebug", "手动选择: ${result.api} (${result.score})")
+                AppLogger.getInstance().log("OnlineLyricDebug", "手动选择[$role]: ${result.api} (${result.score})")
+            } catch (e: Exception) {
+                _error.value = s(R.string.online_lyric_debug_error_switch_failed_fmt, e.message ?: "")
+            } finally {
+                _isFetching.value = false
+                syncCurrentSongQuery()
+            }
+        }
+    }
+
+    fun clearSidecarForRole(role: ResultRole) {
+        if (role == ResultRole.MAIN) return
+        val mediaInfo = liveMetadata.value ?: run {
+            _error.value = s(R.string.online_lyric_debug_error_no_song)
+            return
+        }
+        val currentMain = _selectedMainResult.value ?: _selectedResult.value
+        if (currentMain == null || !isUsableMainResult(currentMain)) {
+            _error.value = s(R.string.online_lyric_debug_error_result_unavailable)
+            return
+        }
+
+        _isFetching.value = true
+        _error.value = null
+        viewModelScope.launch {
+            try {
+                val rule = ParserRuleHelper.getRuleForPackage(getApplication(), mediaInfo.packageName)
+                    ?: ParserRuleHelper.createDefaultRule(mediaInfo.packageName)
+                val currentSongState = withContext(Dispatchers.IO) {
+                    cacheStore.getCurrentSongState(
+                        mediaInfo = mediaInfo,
+                        fallbackTitle = mediaInfo.title,
+                        fallbackArtist = mediaInfo.artist,
+                        useRawMetadata = rule.useRawMetadataForOnlineMatching
+                    )
+                }
+                val nextTranslation = when (role) {
+                    ResultRole.TRANSLATION -> {
+                        translationDisabledByUser = true
+                        null
+                    }
+                    ResultRole.ROMANIZATION -> _selectedTranslationResult.value
+                    ResultRole.MAIN -> _selectedTranslationResult.value
+                }
+                val nextRoman = when (role) {
+                    ResultRole.TRANSLATION -> _selectedRomanResult.value
+                    ResultRole.ROMANIZATION -> {
+                        romanDisabledByUser = true
+                        null
+                    }
+                    ResultRole.MAIN -> _selectedRomanResult.value
+                }
+                persistAndApplySelection(
+                    mediaInfo = mediaInfo,
+                    queryTitle = currentSongState.effectiveTitle,
+                    queryArtist = currentSongState.effectiveArtist,
+                    mainResult = currentMain,
+                    translationResult = nextTranslation,
+                    romanResult = nextRoman,
+                    cacheMessage = s(
+                        R.string.online_lyric_debug_cache_written_fmt,
+                        buildCombinedApiLabel(currentMain, nextTranslation, nextRoman)
+                    )
+                )
+                AppLogger.getInstance().log("OnlineLyricDebug", "手动清除[$role]")
             } catch (e: Exception) {
                 _error.value = s(R.string.online_lyric_debug_error_switch_failed_fmt, e.message ?: "")
             } finally {

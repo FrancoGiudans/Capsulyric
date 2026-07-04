@@ -4,6 +4,7 @@ import android.graphics.Bitmap
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -78,6 +79,9 @@ fun MiuixOnlineLyricDebugScreen(
     val parsedLyrics by viewModel.liveParsedLyrics.observeAsState()
     val isFetching by viewModel.isFetching.observeAsState(false)
     val selectedResult by viewModel.selectedResult.observeAsState()
+    val selectedMainResult by viewModel.selectedMainResult.observeAsState()
+    val selectedTranslationResult by viewModel.selectedTranslationResult.observeAsState()
+    val selectedRomanResult by viewModel.selectedRomanResult.observeAsState()
     val attempts by viewModel.attempts.observeAsState(emptyList())
     val dialogAttempt by viewModel.dialogAttempt.observeAsState()
     val error by viewModel.error.observeAsState()
@@ -90,6 +94,8 @@ fun MiuixOnlineLyricDebugScreen(
 
     var dialogTitle by remember { mutableStateOf<String?>(null) }
     var dialogText by remember { mutableStateOf("") }
+    var dialogResult by remember { mutableStateOf<OnlineLyricFetcher.LyricResult?>(null) }
+    var dialogRole by remember { mutableStateOf<OnlineLyricDebugViewModel.ResultRole?>(null) }
 
     LaunchedEffect(mediaInfo?.packageName, mediaInfo?.title, mediaInfo?.artist) {
         if (mediaInfo != null) {
@@ -141,6 +147,8 @@ fun MiuixOnlineLyricDebugScreen(
                         .clickable(enabled = currentFullLyrics.isNotBlank() || !liveLyric?.lyric.isNullOrBlank()) {
                             dialogTitle = currentFullLyricsTitle
                             dialogText = currentFullLyrics.ifBlank { liveLyric?.lyric.orEmpty() }
+                            dialogResult = null
+                            dialogRole = null
                         }
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
@@ -261,6 +269,8 @@ fun MiuixOnlineLyricDebugScreen(
                         .clickable(enabled = rematchedLyrics.isNotBlank()) {
                             dialogTitle = resultFullLyricsTitle
                             dialogText = rematchedLyrics
+                            dialogResult = selectedResult
+                            dialogRole = null
                         }
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
@@ -268,6 +278,13 @@ fun MiuixOnlineLyricDebugScreen(
                             Text(
                                 stringResource(R.string.online_lyric_rematch_result_source_fmt, selectedResult?.api.orEmpty()),
                                 color = MiuixTheme.colorScheme.primary
+                            )
+                            ResultBadges(
+                                labels = resultBadges(
+                                    result = selectedResult,
+                                    attempt = null,
+                                    selected = true
+                                )
                             )
                             Spacer(modifier = Modifier.height(8.dp))
                         }
@@ -295,23 +312,50 @@ fun MiuixOnlineLyricDebugScreen(
                                 color = MiuixTheme.colorScheme.onSurfaceSecondary
                             )
                         } else {
-                            attempts.forEach { attempt ->
-                                val result = attempt.result
-                                val preview = viewModel.resultLyricsText(result)
-                                SourceResultRow(
-                                    title = attempt.provider.displayName(context),
-                                    subtitle = when {
-                                        result == null -> stringResource(R.string.online_lyric_debug_no_result)
-                                        result.error != null -> stringResource(R.string.online_lyric_debug_error_fmt, result.error)
-                                        result == selectedResult -> stringResource(R.string.online_lyric_rematch_selected_result)
-                                        else -> stringResource(R.string.online_lyric_rematch_available_result)
-                                    },
-                                    preview = preview.ifBlank { result?.error.orEmpty() },
-                                    enabled = result != null,
-                                    selected = result == selectedResult,
-                                    onClick = { viewModel.openAttempt(attempt) }
-                                )
-                            }
+                            CandidateSection(
+                                title = stringResource(R.string.online_lyric_debug_main_candidates),
+                                attempts = attempts,
+                                selectedResult = selectedMainResult,
+                                canUse = { viewModel.canUseAttemptForRole(it, OnlineLyricDebugViewModel.ResultRole.MAIN) },
+                                preview = { viewModel.resultLyricsText(it) },
+                                emptyText = stringResource(R.string.online_lyric_debug_no_main_candidates),
+                                onOpen = {
+                                    dialogRole = OnlineLyricDebugViewModel.ResultRole.MAIN
+                                    viewModel.openAttempt(it)
+                                }
+                            )
+                            CandidateSection(
+                                title = stringResource(R.string.online_lyric_debug_translation_candidates),
+                                attempts = attempts,
+                                selectedResult = selectedTranslationResult,
+                                canUse = { viewModel.canUseAttemptForRole(it, OnlineLyricDebugViewModel.ResultRole.TRANSLATION) },
+                                preview = { viewModel.resultTranslationText(it) },
+                                emptyText = stringResource(R.string.online_lyric_debug_no_translation_candidates),
+                                clearTitle = stringResource(R.string.online_lyric_debug_no_translation_match),
+                                onClear = {
+                                    viewModel.clearSidecarForRole(OnlineLyricDebugViewModel.ResultRole.TRANSLATION)
+                                },
+                                onOpen = {
+                                    dialogRole = OnlineLyricDebugViewModel.ResultRole.TRANSLATION
+                                    viewModel.openAttempt(it)
+                                }
+                            )
+                            CandidateSection(
+                                title = stringResource(R.string.online_lyric_debug_roman_candidates),
+                                attempts = attempts,
+                                selectedResult = selectedRomanResult,
+                                canUse = { viewModel.canUseAttemptForRole(it, OnlineLyricDebugViewModel.ResultRole.ROMANIZATION) },
+                                preview = { viewModel.resultRomanText(it) },
+                                emptyText = stringResource(R.string.online_lyric_debug_no_roman_candidates),
+                                clearTitle = stringResource(R.string.online_lyric_debug_no_romanization_match),
+                                onClear = {
+                                    viewModel.clearSidecarForRole(OnlineLyricDebugViewModel.ResultRole.ROMANIZATION)
+                                },
+                                onOpen = {
+                                    dialogRole = OnlineLyricDebugViewModel.ResultRole.ROMANIZATION
+                                    viewModel.openAttempt(it)
+                                }
+                            )
                         }
                     }
                 }
@@ -322,19 +366,30 @@ fun MiuixOnlineLyricDebugScreen(
             MiuixBlurDialog(
                 title = title,
                 show = true,
-                onDismissRequest = { dialogTitle = null }
+                onDismissRequest = {
+                    dialogTitle = null
+                    dialogResult = null
+                    dialogRole = null
+                }
             ) {
                 Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
-                    Text(
-                        text = dialogText.ifBlank { stringResource(R.string.online_lyric_rematch_no_lyrics) },
+                    ResultTextSections(
+                        mainText = dialogText.ifBlank { stringResource(R.string.online_lyric_rematch_no_lyrics) },
+                        translationText = viewModel.resultTranslationText(dialogResult),
+                        romanText = viewModel.resultRomanText(dialogResult),
                         modifier = Modifier
                             .fillMaxWidth()
                             .heightIn(min = 160.dp, max = 420.dp)
-                            .verticalScroll(rememberScrollState()),
-                        color = MiuixTheme.colorScheme.onSurface
                     )
                     Spacer(modifier = Modifier.height(16.dp))
-                    Button(onClick = { dialogTitle = null }, modifier = Modifier.fillMaxWidth()) {
+                    Button(
+                        onClick = {
+                            dialogTitle = null
+                            dialogResult = null
+                            dialogRole = null
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
                         Text(stringResource(R.string.online_lyric_debug_close))
                     }
                 }
@@ -342,13 +397,29 @@ fun MiuixOnlineLyricDebugScreen(
         }
 
         dialogAttempt?.let { attempt ->
+            val role = dialogRole ?: OnlineLyricDebugViewModel.ResultRole.MAIN
             AttemptResultDialog(
                 attempt = attempt,
                 text = viewModel.resultLyricsText(attempt.result),
-                canSelect = attempt.result?.let { it.error == null && !it.parsedLines.isNullOrEmpty() } == true,
+                translationText = viewModel.resultTranslationText(attempt.result),
+                romanText = viewModel.resultRomanText(attempt.result),
+                canSelect = viewModel.canUseAttemptForRole(attempt, role),
+                selectLabel = when (role) {
+                    OnlineLyricDebugViewModel.ResultRole.MAIN -> stringResource(R.string.online_lyric_debug_use_as_main)
+                    OnlineLyricDebugViewModel.ResultRole.TRANSLATION -> stringResource(R.string.online_lyric_debug_use_as_translation)
+                    OnlineLyricDebugViewModel.ResultRole.ROMANIZATION -> stringResource(R.string.online_lyric_debug_use_as_romanization)
+                },
                 isFetching = isFetching,
-                onSelect = { viewModel.selectAttempt(attempt) },
-                onDismiss = { viewModel.closeDialog() }
+                onSelect = {
+                    viewModel.selectAttemptForRole(
+                        role,
+                        attempt
+                    )
+                },
+                onDismiss = {
+                    dialogRole = null
+                    viewModel.closeDialog()
+                }
             )
         }
     }
@@ -433,9 +504,78 @@ private fun formatTime(ms: Long): String {
 }
 
 @Composable
+private fun CandidateSection(
+    title: String,
+    attempts: List<OnlineLyricFetcher.ProviderAttempt>,
+    selectedResult: OnlineLyricFetcher.LyricResult?,
+    canUse: (OnlineLyricFetcher.ProviderAttempt) -> Boolean,
+    preview: (OnlineLyricFetcher.LyricResult?) -> String,
+    emptyText: String,
+    clearTitle: String? = null,
+    onClear: (() -> Unit)? = null,
+    onOpen: (OnlineLyricFetcher.ProviderAttempt) -> Unit
+) {
+    val context = LocalContext.current
+    val usableAttempts = attempts.filter(canUse)
+    Text(
+        text = title,
+        fontSize = 13.sp,
+        fontWeight = FontWeight.SemiBold,
+        color = MiuixTheme.colorScheme.primary,
+        modifier = Modifier.padding(top = 8.dp, bottom = 8.dp)
+    )
+    if (clearTitle != null && onClear != null) {
+        SourceResultRow(
+            title = clearTitle,
+            subtitle = if (selectedResult == null) {
+                stringResource(R.string.online_lyric_rematch_selected_result)
+            } else {
+                stringResource(R.string.online_lyric_debug_no_sidecar_summary)
+            },
+            badges = emptyList(),
+            preview = "",
+            enabled = true,
+            selected = selectedResult == null,
+            onClick = onClear
+        )
+    }
+    if (usableAttempts.isEmpty()) {
+        Text(
+            text = emptyText,
+            fontSize = 13.sp,
+            color = MiuixTheme.colorScheme.onSurfaceSecondary,
+            modifier = Modifier.padding(bottom = 12.dp)
+        )
+        return
+    }
+    usableAttempts.forEach { attempt ->
+        val result = attempt.result
+        val selected = result == selectedResult
+        SourceResultRow(
+            title = attempt.provider.displayName(context),
+            subtitle = if (selected) {
+                stringResource(R.string.online_lyric_rematch_selected_result)
+            } else {
+                stringResource(R.string.online_lyric_rematch_available_result)
+            },
+            badges = resultBadges(
+                result = result,
+                attempt = attempt,
+                selected = selected
+            ),
+            preview = preview(result),
+            enabled = result != null,
+            selected = selected,
+            onClick = { onOpen(attempt) }
+        )
+    }
+}
+
+@Composable
 private fun SourceResultRow(
     title: String,
     subtitle: String,
+    badges: List<String>,
     preview: String,
     enabled: Boolean,
     selected: Boolean,
@@ -466,6 +606,7 @@ private fun SourceResultRow(
             fontSize = 12.sp,
             color = MiuixTheme.colorScheme.primary
         )
+        ResultBadges(labels = badges)
         if (preview.isNotBlank()) {
             Spacer(modifier = Modifier.height(6.dp))
             Text(
@@ -481,10 +622,68 @@ private fun SourceResultRow(
 }
 
 @Composable
+private fun resultBadges(
+    result: OnlineLyricFetcher.LyricResult?,
+    attempt: OnlineLyricFetcher.ProviderAttempt?,
+    selected: Boolean
+): List<String> {
+    val labels = mutableListOf<String>()
+    if (selected) {
+        labels += stringResource(R.string.online_lyric_rematch_selected_result)
+    }
+    if (result != null && result.error == null && !result.parsedLines.isNullOrEmpty()) {
+        labels += if (result.hasSyllable || result.parsedLines.orEmpty().any { !it.syllables.isNullOrEmpty() }) {
+            stringResource(R.string.online_lyric_debug_result_syllable)
+        } else {
+            stringResource(R.string.online_lyric_debug_result_lrc_or_text)
+        }
+        if (!result.translationLyrics.isNullOrBlank()) {
+            labels += stringResource(R.string.online_lyric_debug_result_translation)
+        }
+        if (!result.romanLyrics.isNullOrBlank()) {
+            labels += stringResource(R.string.online_lyric_debug_result_romanization)
+        }
+    }
+    if (attempt?.usedCleanTitleFallback == true) {
+        labels += stringResource(R.string.online_lyric_debug_clean_title_badge)
+    }
+    return labels
+}
+
+@Composable
+private fun ResultBadges(labels: List<String>) {
+    if (labels.isEmpty()) return
+    Spacer(modifier = Modifier.height(6.dp))
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        labels.forEach { label ->
+            Text(
+                text = label,
+                fontSize = 11.sp,
+                color = MiuixTheme.colorScheme.onSecondary,
+                modifier = Modifier
+                    .background(
+                        color = MiuixTheme.colorScheme.secondary,
+                        shape = RoundedCornerShape(6.dp)
+                    )
+                    .padding(horizontal = 8.dp, vertical = 3.dp)
+            )
+        }
+    }
+}
+
+@Composable
 private fun AttemptResultDialog(
     attempt: OnlineLyricFetcher.ProviderAttempt,
     text: String,
+    translationText: String,
+    romanText: String,
     canSelect: Boolean,
+    selectLabel: String,
     isFetching: Boolean,
     onSelect: () -> Unit,
     onDismiss: () -> Unit
@@ -495,15 +694,16 @@ private fun AttemptResultDialog(
         onDismissRequest = onDismiss
     ) {
         Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
-            Text(
-                text = attempt.result?.error?.let {
+            val bodyText = attempt.result?.error?.let {
                     stringResource(R.string.online_lyric_debug_error_fmt, it)
-                } ?: text.ifBlank { stringResource(R.string.online_lyric_debug_no_result) },
+                } ?: text.ifBlank { stringResource(R.string.online_lyric_debug_no_result) }
+            ResultTextSections(
+                mainText = bodyText,
+                translationText = if (attempt.result?.error == null) translationText else "",
+                romanText = if (attempt.result?.error == null) romanText else "",
                 modifier = Modifier
                     .fillMaxWidth()
                     .heightIn(min = 160.dp, max = 420.dp)
-                    .verticalScroll(rememberScrollState()),
-                color = MiuixTheme.colorScheme.onSurface
             )
             Spacer(modifier = Modifier.height(16.dp))
             Row(
@@ -512,12 +712,12 @@ private fun AttemptResultDialog(
             ) {
                 if (canSelect) {
                     Button(
-                        onClick = onSelect,
-                        enabled = !isFetching,
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text(stringResource(R.string.online_lyric_debug_select_result))
-                    }
+                    onClick = onSelect,
+                    enabled = !isFetching,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(selectLabel)
+                }
                 }
                 Button(onClick = onDismiss, modifier = Modifier.weight(1f)) {
                     Text(stringResource(R.string.online_lyric_debug_close))
@@ -525,6 +725,52 @@ private fun AttemptResultDialog(
             }
         }
     }
+}
+
+@Composable
+private fun ResultTextSections(
+    mainText: String,
+    translationText: String,
+    romanText: String,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier = modifier.verticalScroll(rememberScrollState())) {
+        if (mainText.isNotBlank()) {
+            ResultTextSection(
+                title = stringResource(R.string.online_lyric_debug_result_main_lyrics),
+                text = mainText
+            )
+        }
+        if (translationText.isNotBlank()) {
+            if (mainText.isNotBlank()) Spacer(modifier = Modifier.height(14.dp))
+            ResultTextSection(
+                title = stringResource(R.string.online_lyric_debug_result_translation),
+                text = translationText
+            )
+        }
+        if (romanText.isNotBlank()) {
+            if (mainText.isNotBlank() || translationText.isNotBlank()) Spacer(modifier = Modifier.height(14.dp))
+            ResultTextSection(
+                title = stringResource(R.string.online_lyric_debug_result_romanization),
+                text = romanText
+            )
+        }
+    }
+}
+
+@Composable
+private fun ResultTextSection(title: String, text: String) {
+    Text(
+        text = title,
+        fontSize = 13.sp,
+        fontWeight = FontWeight.SemiBold,
+        color = MiuixTheme.colorScheme.primary
+    )
+    Spacer(modifier = Modifier.height(6.dp))
+    Text(
+        text = text,
+        color = MiuixTheme.colorScheme.onSurface
+    )
 }
 
 
