@@ -353,13 +353,9 @@ object UpdateChecker {
     }
 
     fun getComparableVersion(release: ReleaseInfo): String {
-        val normalizedTag = release.tagName.removePrefix("v")
-        if (!isCanaryTag(release.tagName)) {
-            return normalizedTag
-        }
         return extractVersionFromBody(release.body)
             ?: extractVersionFromTitle(release.name)
-            ?: normalizedTag
+            ?: release.tagName.removePrefix("v")
     }
 
     /**
