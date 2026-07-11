@@ -1,6 +1,6 @@
 /*
  *
- *  * Copyright (c) 2026 Franco Giudance
+ *  * Copyright (c) 2026 FrancoGiudans
  *  *
  *  * This file is part of Capsulyric.
  *  *

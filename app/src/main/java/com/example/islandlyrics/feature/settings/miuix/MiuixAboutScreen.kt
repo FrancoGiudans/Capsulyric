@@ -1,6 +1,6 @@
 /*
  *
- *  * Copyright (c) 2026 Franco Giudance
+ *  * Copyright (c) 2026 FrancoGiudans
  *  *
  *  * This file is part of Capsulyric.
  *  *
@@ -491,6 +491,18 @@ private fun MiuixAboutContent(
             }
 
             item { Spacer(modifier = Modifier.height(12.dp)) }
+
+            item {
+                Text(
+                    text = "Copyright © 2026 Franco Giudans. Licensed under GPL-3.0.",
+                    fontSize = 12.sp,
+                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp, vertical = 8.dp)
+                )
+            }
         }
     }
 
