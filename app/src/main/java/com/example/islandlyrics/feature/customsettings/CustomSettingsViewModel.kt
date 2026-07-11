@@ -39,6 +39,7 @@ import com.example.islandlyrics.ui.navigation.PREF_PREDICTIVE_BACK_ENABLED
 import com.example.islandlyrics.ui.navigation.PredictiveBackAnimationMode
 import com.example.islandlyrics.ui.navigation.PredictiveBackAnimationStyle
 import com.example.islandlyrics.ui.overlay.superisland.config.SuperIslandColorSource
+import com.example.islandlyrics.ui.overlay.superisland.config.SuperIslandDualLineMode
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -115,6 +116,8 @@ class CustomSettingsViewModel(application: Application) : AndroidViewModel(appli
                 prefs.edit { putString(AppPreferences.Keys.SUPER_ISLAND_SHARE_FORMAT, action.value) }
             is CustomSettingsAction.SetSuperIslandNotificationStyle ->
                 prefs.edit { putString(AppPreferences.Keys.SUPER_ISLAND_NOTIFICATION_STYLE, action.value) }
+            is CustomSettingsAction.SetSuperIslandDualLineMode ->
+                prefs.edit { putString(AppPreferences.Keys.SUPER_ISLAND_DUAL_LINE_MODE, action.value) }
             is CustomSettingsAction.SetSuperIslandMediaButtonLayout ->
                 prefs.edit { putString(AppPreferences.Keys.SUPER_ISLAND_MEDIA_BUTTON_LAYOUT, action.value) }
             is CustomSettingsAction.SetXmsfBypassMode ->
@@ -167,6 +170,7 @@ class CustomSettingsViewModel(application: Application) : AndroidViewModel(appli
             actionStyle = AppPreferences.notificationActionsStyle(prefs),
             superIslandMediaButtonLayout = AppPreferences.superIslandMediaButtonLayout(prefs),
             superIslandNotificationStyle = LabFeatureManager.sanitizeSuperIslandNotificationStyle(app),
+            superIslandDualLineMode = SuperIslandDualLineMode.read(prefs),
             superIslandAdvancedStyleLabEnabled = LabFeatureManager.isSuperIslandAdvancedStyleEnabled(prefs),
             superIslandTextLimitsLabEnabled = LabFeatureManager.isSuperIslandTextLimitsEnabled(prefs),
             superIslandRelaxedTextLimitsLabEnabled = LabFeatureManager.isSuperIslandRelaxedTextLimitsEnabled(prefs),

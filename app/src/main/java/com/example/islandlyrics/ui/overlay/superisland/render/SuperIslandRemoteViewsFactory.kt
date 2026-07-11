@@ -27,6 +27,7 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
+import android.view.View
 import android.widget.RemoteViews
 import com.example.islandlyrics.R
 import com.example.islandlyrics.ui.overlay.superisland.cache.SuperIslandIconCache
@@ -75,6 +76,46 @@ internal class SuperIslandRemoteViewsFactory(
         views.setOnClickPendingIntent(R.id.custom_expand_play_pause, createMediaActionIntent(2101, "com.example.islandlyrics.ACTION_MEDIA_PLAY_PAUSE"))
         views.setOnClickPendingIntent(R.id.custom_expand_next, createMediaActionIntent(2102, "com.example.islandlyrics.ACTION_MEDIA_NEXT"))
         miPlayIntent?.let { views.setOnClickPendingIntent(R.id.custom_expand_miplay, it) }
+        return views
+    }
+
+    fun createDualLineExpand(
+        state: UIState,
+        dualLineText: SuperIslandDualLineText,
+        progressPercent: Int,
+        progressBarColor: String,
+        darkMode: Boolean
+    ): RemoteViews {
+        val views = RemoteViews(context.packageName, R.layout.super_island_lyrics_dual_expand)
+        val primaryTextColor = android.graphics.Color.parseColor(if (darkMode) "#FFFFFFFF" else "#FF111111")
+        val secondaryTextColor = android.graphics.Color.parseColor(if (darkMode) "#B3FFFFFF" else "#99000000")
+        val iconTintColor = primaryTextColor
+        views.setTextViewText(R.id.dual_expand_primary, dualLineText.primary)
+        views.setTextColor(R.id.dual_expand_primary, primaryTextColor)
+
+        val secondary = dualLineText.secondary
+        if (secondary.isNullOrBlank()) {
+            views.setViewVisibility(R.id.dual_expand_secondary, View.GONE)
+        } else {
+            views.setViewVisibility(R.id.dual_expand_secondary, View.VISIBLE)
+            views.setTextViewText(R.id.dual_expand_secondary, secondary)
+            views.setTextColor(R.id.dual_expand_secondary, secondaryTextColor)
+        }
+
+        views.setImageViewBitmap(
+            R.id.dual_expand_progress,
+            progressBitmapCache.createWide(progressPercent, progressBarColor, darkMode)
+        )
+        views.setImageViewResource(
+            R.id.dual_expand_play_pause,
+            if (state.isPlaying) R.drawable.ic_pause else R.drawable.ic_play_arrow
+        )
+        views.setInt(R.id.dual_expand_prev, "setColorFilter", iconTintColor)
+        views.setInt(R.id.dual_expand_play_pause, "setColorFilter", iconTintColor)
+        views.setInt(R.id.dual_expand_next, "setColorFilter", iconTintColor)
+        views.setOnClickPendingIntent(R.id.dual_expand_prev, createMediaActionIntent(2200, "com.example.islandlyrics.ACTION_MEDIA_PREV"))
+        views.setOnClickPendingIntent(R.id.dual_expand_play_pause, createMediaActionIntent(2201, "com.example.islandlyrics.ACTION_MEDIA_PLAY_PAUSE"))
+        views.setOnClickPendingIntent(R.id.dual_expand_next, createMediaActionIntent(2202, "com.example.islandlyrics.ACTION_MEDIA_NEXT"))
         return views
     }
 

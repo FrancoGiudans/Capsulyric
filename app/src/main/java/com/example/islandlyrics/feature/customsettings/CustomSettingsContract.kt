@@ -39,6 +39,7 @@ data class CustomSettingsUiState(
     val actionStyle: String = "disabled",
     val superIslandMediaButtonLayout: String = "two_button",
     val superIslandNotificationStyle: String = "standard",
+    val superIslandDualLineMode: String = "translation",
     val superIslandAdvancedStyleLabEnabled: Boolean = false,
     val superIslandTextLimitsLabEnabled: Boolean = false,
     val superIslandRelaxedTextLimitsLabEnabled: Boolean = false,
@@ -99,6 +100,7 @@ sealed interface CustomSettingsAction {
     data class SetSuperIslandShareEnabled(val value: Boolean) : CustomSettingsAction
     data class SetSuperIslandShareFormat(val value: String) : CustomSettingsAction
     data class SetSuperIslandNotificationStyle(val value: String) : CustomSettingsAction
+    data class SetSuperIslandDualLineMode(val value: String) : CustomSettingsAction
     data class SetSuperIslandMediaButtonLayout(val value: String) : CustomSettingsAction
     data class SetXmsfBypassMode(val value: XmsfBypassMode) : CustomSettingsAction
     data class SetXmsfCustomDurationMs(val value: Int) : CustomSettingsAction

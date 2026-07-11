@@ -548,6 +548,12 @@
     <string name="settings_super_island_notification_style">通知样式</string>
     <string name="super_island_notification_style_standard">标准小米超级岛样式</string>
     <string name="super_island_notification_style_advanced_beta">高级样式（Beta）</string>
+    <string name="super_island_notification_style_advanced_lyrics_dual">高级双行歌词</string>
+    <string name="settings_super_island_dual_line_mode">第二行内容</string>
+    <string name="settings_super_island_dual_line_mode_desc">翻译和罗马音需要在解析规则中启用对应来源。</string>
+    <string name="super_island_dual_line_mode_next_lyric">当前歌词 + 下一句歌词</string>
+    <string name="super_island_dual_line_mode_translation">歌词 + 翻译</string>
+    <string name="super_island_dual_line_mode_romanization">歌词 + 罗马音</string>
     <string name="settings_super_island_media_button_layout">播放按键布局</string>
     <string name="super_island_media_button_layout_two">双按键</string>
     <string name="super_island_media_button_layout_two_desc">播放/暂停、下一首</string>

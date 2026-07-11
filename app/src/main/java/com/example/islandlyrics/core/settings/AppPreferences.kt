@@ -40,6 +40,7 @@ object AppPreferences {
         const val SUPER_ISLAND_SHARE_FORMAT = "super_island_share_format"
         const val SUPER_ISLAND_MEDIA_BUTTON_LAYOUT = "super_island_media_button_layout"
         const val SUPER_ISLAND_NOTIFICATION_STYLE = "super_island_notification_style"
+        const val SUPER_ISLAND_DUAL_LINE_MODE = "super_island_dual_line_mode"
         const val SUPER_ISLAND_LYRIC_MODE = "super_island_lyric_mode"
         const val SUPER_ISLAND_FULL_LYRIC_SHOW_LEFT_COVER = "super_island_full_lyric_show_left_cover"
         const val XMSF_NETWORK_MODE = "block_xmsf_network_mode"
@@ -114,6 +115,7 @@ object AppPreferences {
         const val SUPER_ISLAND_SHARE_FORMAT = "format_1"
         const val SUPER_ISLAND_MEDIA_BUTTON_LAYOUT = "two_button"
         const val SUPER_ISLAND_NOTIFICATION_STYLE = "standard"
+        const val SUPER_ISLAND_DUAL_LINE_MODE = "translation"
         const val SUPER_ISLAND_LYRIC_MODE = "standard"
     }
 
@@ -155,6 +157,10 @@ object AppPreferences {
     fun superIslandNotificationStyle(prefs: SharedPreferences): String =
         prefs.getString(Keys.SUPER_ISLAND_NOTIFICATION_STYLE, Defaults.SUPER_ISLAND_NOTIFICATION_STYLE)
             ?: Defaults.SUPER_ISLAND_NOTIFICATION_STYLE
+
+    fun superIslandDualLineMode(prefs: SharedPreferences): String =
+        prefs.getString(Keys.SUPER_ISLAND_DUAL_LINE_MODE, Defaults.SUPER_ISLAND_DUAL_LINE_MODE)
+            ?: Defaults.SUPER_ISLAND_DUAL_LINE_MODE
 
     fun superIslandLyricMode(prefs: SharedPreferences): String =
         prefs.getString(Keys.SUPER_ISLAND_LYRIC_MODE, Defaults.SUPER_ISLAND_LYRIC_MODE)

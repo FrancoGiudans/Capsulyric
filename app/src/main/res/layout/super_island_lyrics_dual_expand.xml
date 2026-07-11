@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:gravity="center_vertical"
+    android:orientation="vertical"
+    android:paddingStart="20dp"
+    android:paddingTop="18dp"
+    android:paddingEnd="20dp"
+    android:paddingBottom="18dp">
+
+    <TextView
+        android:id="@+id/dual_expand_primary"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:lineSpacingExtra="3dp"
+        android:maxLines="4"
+        android:textColor="@android:color/white"
+        android:textSize="18sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/dual_expand_secondary"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="7dp"
+        android:lineSpacingExtra="2dp"
+        android:maxLines="2"
+        android:textColor="#B3FFFFFF"
+        android:textSize="14sp" />
+
+    <ImageView
+        android:id="@+id/dual_expand_progress"
+        android:layout_width="match_parent"
+        android:layout_height="6dp"
+        android:layout_marginTop="16dp"
+        android:scaleType="fitXY"
+        android:src="@drawable/ic_music_note" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="18dp"
+        android:gravity="center"
+        android:orientation="horizontal">
+
+        <ImageButton
+            android:id="@+id/dual_expand_prev"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:layout_marginEnd="18dp"
+            android:background="@android:color/transparent"
+            android:padding="10dp"
+            android:scaleType="centerInside"
+            android:src="@drawable/ic_skip_previous"
+            android:tint="@android:color/white" />
+
+        <ImageButton
+            android:id="@+id/dual_expand_play_pause"
+            android:layout_width="52dp"
+            android:layout_height="52dp"
+            android:layout_marginEnd="18dp"
+            android:background="@android:color/transparent"
+            android:padding="12dp"
+            android:scaleType="centerInside"
+            android:src="@drawable/ic_pause"
+            android:tint="@android:color/white" />
+
+        <ImageButton
+            android:id="@+id/dual_expand_next"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:background="@android:color/transparent"
+            android:padding="10dp"
+            android:scaleType="centerInside"
+            android:src="@drawable/ic_skip_next"
+            android:tint="@android:color/white" />
+    </LinearLayout>
+</LinearLayout>

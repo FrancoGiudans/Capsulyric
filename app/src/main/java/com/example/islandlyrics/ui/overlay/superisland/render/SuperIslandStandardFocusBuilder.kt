@@ -80,7 +80,7 @@ internal class SuperIslandStandardFocusBuilder(
 
             if (preferences.actionStyle == "media_controls") {
                 actions {
-                    val effectiveButtonLayout = if (preferences.notificationStyle == "advanced_beta") "three_button" else preferences.mediaButtonLayout
+                    val effectiveButtonLayout = if (preferences.notificationStyle == "advanced_beta" || preferences.notificationStyle == "advanced_lyrics_dual") "three_button" else preferences.mediaButtonLayout
                     val showPrevButton = effectiveButtonLayout == "three_button"
                     val prevActionKey = if (showPrevButton) {
                         createFocusBroadcastAction(

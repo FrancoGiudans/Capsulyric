@@ -47,6 +47,8 @@ internal class SuperIslandPreferencesCache(
         private set
     var notificationStyle = "standard"
         private set
+    var dualLineMode = SuperIslandDualLineMode.TRANSLATION
+        private set
     var lyricMode = "standard"
         private set
     var fullLyricShowLeftCover = true
@@ -91,6 +93,8 @@ internal class SuperIslandPreferencesCache(
                 mediaButtonLayout = AppPreferences.superIslandMediaButtonLayout(p)
             AppPreferences.Keys.SUPER_ISLAND_NOTIFICATION_STYLE ->
                 notificationStyle = AppPreferences.superIslandNotificationStyle(p)
+            AppPreferences.Keys.SUPER_ISLAND_DUAL_LINE_MODE ->
+                dualLineMode = SuperIslandDualLineMode.read(p)
             AppPreferences.Keys.SUPER_ISLAND_LYRIC_MODE ->
                 lyricMode = sanitizeLyricMode(AppPreferences.superIslandLyricMode(p))
             AppPreferences.Keys.SUPER_ISLAND_FULL_LYRIC_SHOW_LEFT_COVER ->
@@ -129,6 +133,7 @@ internal class SuperIslandPreferencesCache(
         actionStyle = AppPreferences.notificationActionsStyle(prefs)
         mediaButtonLayout = AppPreferences.superIslandMediaButtonLayout(prefs)
         notificationStyle = AppPreferences.superIslandNotificationStyle(prefs)
+        dualLineMode = SuperIslandDualLineMode.read(prefs)
         lyricMode = sanitizeLyricMode(AppPreferences.superIslandLyricMode(prefs))
         fullLyricShowLeftCover = AppPreferences.isSuperIslandFullLyricLeftCoverEnabled(prefs)
         loadTextLimits(prefs)

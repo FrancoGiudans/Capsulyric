@@ -43,6 +43,7 @@ internal class SuperIslandRenderStateTracker {
     private var lastSentIsPlaying = false
     private var lastSentTitle = ""
     private var lastSentArtist = ""
+    private var lastSentExtraContentSignature = ""
     private var lastFocusParam = ""
     private var lastNotifyTime = 0L
     private var lastAppliedAlbumColor = 0
@@ -53,6 +54,9 @@ internal class SuperIslandRenderStateTracker {
         lastSentProgressPercent = -1
         lastSentSubText = ""
         lastSentIsPlaying = false
+        lastSentTitle = ""
+        lastSentArtist = ""
+        lastSentExtraContentSignature = ""
         isFirstNotification = true
         firstNotificationReason = "initial"
         lastAppliedAlbumColor = 0
@@ -67,7 +71,8 @@ internal class SuperIslandRenderStateTracker {
         state: UIState,
         displayLyric: String,
         progressPercent: Int,
-        accentColor: Int
+        accentColor: Int,
+        extraContentSignature: String = ""
     ): SuperIslandRenderDecision? {
         val trackChanged = state.title != lastSentTitle || state.artist != lastSentArtist
         if (trackChanged && !isFirstNotification) {
@@ -101,6 +106,7 @@ internal class SuperIslandRenderStateTracker {
         val contentChanged = trackChanged ||
                 lyricLineChanged ||
                 displayLyric != lastSentDisplayLyric ||
+                extraContentSignature != lastSentExtraContentSignature ||
                 state.isPlaying != lastSentIsPlaying
         val now = System.currentTimeMillis()
 
@@ -129,6 +135,7 @@ internal class SuperIslandRenderStateTracker {
         progressPercent: Int,
         subText: String,
         accentColor: Int,
+        extraContentSignature: String = "",
         focusSignature: String
     ) {
         lastAppliedAlbumColor = accentColor
@@ -140,6 +147,7 @@ internal class SuperIslandRenderStateTracker {
         lastSentIsPlaying = state.isPlaying
         lastSentTitle = state.title
         lastSentArtist = state.artist
+        lastSentExtraContentSignature = extraContentSignature
         lastNotifyTime = System.currentTimeMillis()
     }
 

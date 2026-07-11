@@ -136,7 +136,7 @@ internal class SuperIslandIconCache(
         mediaButtonLayout: String,
         notificationStyle: String
     ) {
-        val effectiveButtonLayout = if (notificationStyle == "advanced_beta") "three_button" else mediaButtonLayout
+        val effectiveButtonLayout = if (notificationStyle == "advanced_beta" || notificationStyle == "advanced_lyrics_dual") "three_button" else mediaButtonLayout
         val actionsHash = if (actionStyle == "media_controls") {
             "$isPlaying|$effectiveButtonLayout".hashCode()
         } else {

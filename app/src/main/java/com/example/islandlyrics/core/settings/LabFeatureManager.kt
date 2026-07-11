@@ -41,6 +41,7 @@ object LabFeatureManager {
 
     const val SUPER_ISLAND_STYLE_STANDARD = "standard"
     const val SUPER_ISLAND_STYLE_ADVANCED = "advanced_beta"
+    const val SUPER_ISLAND_STYLE_ADVANCED_LYRICS_DUAL = "advanced_lyrics_dual"
     const val FEED_SOURCE_GITHUB = "github"
     const val FEED_SOURCE_GITEE = "gitee"
 
@@ -54,7 +55,7 @@ object LabFeatureManager {
 
         if (!prefs.getBoolean(KEY_SUPER_ISLAND_ADVANCED_STYLE_MIGRATED, false)) {
             val advancedSelected =
-                AppPreferences.superIslandNotificationStyle(prefs) == SUPER_ISLAND_STYLE_ADVANCED
+                AppPreferences.superIslandNotificationStyle(prefs) in advancedSuperIslandStyles
             editor.putBoolean(KEY_SUPER_ISLAND_ADVANCED_STYLE_ENABLED, advancedSelected)
             editor.putBoolean(KEY_SUPER_ISLAND_ADVANCED_STYLE_MIGRATED, true)
             changed = true
@@ -101,7 +102,7 @@ object LabFeatureManager {
 
         val currentStyle =
             AppPreferences.superIslandNotificationStyle(prefs)
-        val revertedToStandard = !enabled && currentStyle == SUPER_ISLAND_STYLE_ADVANCED
+        val revertedToStandard = !enabled && currentStyle in advancedSuperIslandStyles
 
         prefs.edit()
             .putBoolean(KEY_SUPER_ISLAND_ADVANCED_STYLE_ENABLED, enabled)
@@ -123,13 +124,13 @@ object LabFeatureManager {
         val currentStyle =
             AppPreferences.superIslandNotificationStyle(prefs)
         val advancedEnabled = prefs.getBoolean(KEY_SUPER_ISLAND_ADVANCED_STYLE_ENABLED, false)
-        if (currentStyle == SUPER_ISLAND_STYLE_ADVANCED && !advancedEnabled) {
+        if (currentStyle in advancedSuperIslandStyles && !advancedEnabled) {
             prefs.edit()
                 .putString(AppPreferences.Keys.SUPER_ISLAND_NOTIFICATION_STYLE, SUPER_ISLAND_STYLE_STANDARD)
                 .apply()
             return SUPER_ISLAND_STYLE_STANDARD
         }
-        return currentStyle
+        return if (currentStyle in allSuperIslandStyles) currentStyle else SUPER_ISLAND_STYLE_STANDARD
     }
 
     fun isSuperIslandTextLimitsEnabled(context: Context): Boolean {
@@ -279,4 +280,11 @@ object LabFeatureManager {
 
     private fun Context.prefs(): SharedPreferences =
         AppPreferences.of(this)
+
+    private val advancedSuperIslandStyles = setOf(
+        SUPER_ISLAND_STYLE_ADVANCED,
+        SUPER_ISLAND_STYLE_ADVANCED_LYRICS_DUAL
+    )
+
+    private val allSuperIslandStyles = advancedSuperIslandStyles + SUPER_ISLAND_STYLE_STANDARD
 }

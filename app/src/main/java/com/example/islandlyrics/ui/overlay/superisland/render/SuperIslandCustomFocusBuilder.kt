@@ -25,6 +25,7 @@ package com.example.islandlyrics.ui.overlay.superisland.render
 import android.app.PendingIntent
 import android.graphics.Bitmap
 import android.os.Bundle
+import com.example.islandlyrics.core.logging.AppLogger
 import com.example.islandlyrics.ui.overlay.model.UIState
 import com.example.islandlyrics.ui.overlay.superisland.cache.SuperIslandIconCache
 import com.example.islandlyrics.ui.overlay.superisland.config.SuperIslandPreferencesCache
@@ -70,24 +71,46 @@ internal class SuperIslandCustomFocusBuilder(
             ticker = displayLyric.ifEmpty { subText.ifEmpty { state.title.ifEmpty { "♪" } } }
             tickerPic = appKey ?: islandSmallKey ?: avatarKey
 
-            val customLightViews = remoteViewsFactory.createExpand(
-                state = state,
-                subText = subText,
-                progressPercent = progressPercent,
-                progressBarColor = progressBarColor,
-                darkMode = false,
-                albumArt = albumArt,
-                miPlayIntent = miPlayIntent
-            )
-            val customDarkViews = remoteViewsFactory.createExpand(
-                state = state,
-                subText = subText,
-                progressPercent = progressPercent,
-                progressBarColor = progressBarColor,
-                darkMode = true,
-                albumArt = albumArt,
-                miPlayIntent = miPlayIntent
-            )
+            val useDualLineStyle = preferences.notificationStyle == "advanced_lyrics_dual"
+            val dualLineText = SuperIslandDualLineTextResolver.resolve(state, preferences.dualLineMode)
+            val customLightViews = if (useDualLineStyle) {
+                remoteViewsFactory.createDualLineExpand(
+                    state = state,
+                    dualLineText = dualLineText,
+                    progressPercent = progressPercent,
+                    progressBarColor = progressBarColor,
+                    darkMode = false
+                )
+            } else {
+                remoteViewsFactory.createExpand(
+                    state = state,
+                    subText = subText,
+                    progressPercent = progressPercent,
+                    progressBarColor = progressBarColor,
+                    darkMode = false,
+                    albumArt = albumArt,
+                    miPlayIntent = miPlayIntent
+                )
+            }
+            val customDarkViews = if (useDualLineStyle) {
+                remoteViewsFactory.createDualLineExpand(
+                    state = state,
+                    dualLineText = dualLineText,
+                    progressPercent = progressPercent,
+                    progressBarColor = progressBarColor,
+                    darkMode = true
+                )
+            } else {
+                remoteViewsFactory.createExpand(
+                    state = state,
+                    subText = subText,
+                    progressPercent = progressPercent,
+                    progressBarColor = progressBarColor,
+                    darkMode = true,
+                    albumArt = albumArt,
+                    miPlayIntent = miPlayIntent
+                )
+            }
             val tinyViews = remoteViewsFactory.createTiny(
                 state = state,
                 subText = subText,
@@ -140,6 +163,11 @@ internal class SuperIslandCustomFocusBuilder(
                                 pic = islandSmallKey
                             }
                         }
+                        progressInfo {
+                            progress = progressPercent
+                            colorReach = if (showHighlightColor) hexColor else "#757575"
+                            colorUnReach = "#333333"
+                        }
                     }
                 }
             }
@@ -152,14 +180,18 @@ internal class SuperIslandCustomFocusBuilder(
         val customJson = customExtras.getString("miui.focus.param.custom") ?: return merged
         val standardJson = standardExtras.getString("miui.focus.param") ?: return merged
 
-        runCatching {
+        try {
             val customRoot = JSONObject(customJson)
             val standardRoot = JSONObject(standardJson)
             val island = standardRoot.optJSONObject("param_v2")?.optJSONObject("param_island")
             if (island != null) {
                 customRoot.put("param_island", island)
                 merged.putString("miui.focus.param.custom", customRoot.toString())
+            } else {
+                AppLogger.getInstance().w("SuperIsland", "mergeCustomFocus: standard island is null, collapse state may be missing")
             }
+        } catch (e: Exception) {
+            AppLogger.getInstance().e("SuperIsland", "mergeCustomFocus failed: ${e.message}", e)
         }
 
         return merged

@@ -38,6 +38,7 @@ import com.example.islandlyrics.ui.overlay.capsule.config.LiveUpdateTextLimitCon
 import com.example.islandlyrics.ui.navigation.PredictiveBackAnimationMode
 import com.example.islandlyrics.ui.navigation.PredictiveBackAnimationStyle
 import com.example.islandlyrics.ui.overlay.superisland.config.SuperIslandColorSource
+import com.example.islandlyrics.ui.overlay.superisland.config.SuperIslandDualLineMode
 import com.example.islandlyrics.ui.overlay.superisland.config.SuperIslandTextLimitConfig
 import com.example.islandlyrics.R
 import com.example.islandlyrics.core.platform.XmsfBypassMode
@@ -122,6 +123,9 @@ fun MiuixCustomSettingsScreen(
     }
     var superIslandNotificationStyle by remember(uiState.superIslandNotificationStyle) {
         mutableStateOf(uiState.superIslandNotificationStyle)
+    }
+    var superIslandDualLineMode by remember(uiState.superIslandDualLineMode) {
+        mutableStateOf(uiState.superIslandDualLineMode)
     }
     var superIslandAdvancedStyleLabEnabled by remember(uiState.superIslandAdvancedStyleLabEnabled) {
         mutableStateOf(uiState.superIslandAdvancedStyleLabEnabled)
@@ -793,7 +797,10 @@ fun MiuixCustomSettingsScreen(
                             item {
                                 Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
                                     // ⚡ Logic: Hide Colorize Progress Bar if Playback Notification (media_controls) is selected
-                                    if (actionStyle == "disabled" || (actionStyle == "media_controls" && superIslandNotificationStyle == "advanced_beta")) {
+                                    if (actionStyle == "disabled" || (actionStyle == "media_controls" &&
+                                            (superIslandNotificationStyle == LabFeatureManager.SUPER_ISLAND_STYLE_ADVANCED ||
+                                                    superIslandNotificationStyle == LabFeatureManager.SUPER_ISLAND_STYLE_ADVANCED_LYRICS_DUAL))
+                                    ) {
                                         SuperSwitch(
                                             title = stringResource(R.string.settings_progress_color),
                                             summary = stringResource(R.string.settings_progress_color_desc),
@@ -832,11 +839,13 @@ fun MiuixCustomSettingsScreen(
                                             add(LabFeatureManager.SUPER_ISLAND_STYLE_STANDARD)
                                             if (superIslandAdvancedStyleLabEnabled) {
                                                 add(LabFeatureManager.SUPER_ISLAND_STYLE_ADVANCED)
+                                                add(LabFeatureManager.SUPER_ISLAND_STYLE_ADVANCED_LYRICS_DUAL)
                                             }
                                         }
                                         val notificationStyleNames = notificationStyles.map { style ->
                                             when (style) {
                                                 LabFeatureManager.SUPER_ISLAND_STYLE_ADVANCED -> stringResource(R.string.super_island_notification_style_advanced_beta)
+                                                LabFeatureManager.SUPER_ISLAND_STYLE_ADVANCED_LYRICS_DUAL -> stringResource(R.string.super_island_notification_style_advanced_lyrics_dual)
                                                 else -> stringResource(R.string.super_island_notification_style_standard)
                                             }
                                         }
@@ -853,7 +862,33 @@ fun MiuixCustomSettingsScreen(
                                             }
                                         )
 
-                                        if (superIslandNotificationStyle != "advanced_beta") {
+                                        if (superIslandNotificationStyle == LabFeatureManager.SUPER_ISLAND_STYLE_ADVANCED_LYRICS_DUAL) {
+                                            val dualLineModes = SuperIslandDualLineMode.values
+                                            val dualLineModeNames = dualLineModes.map { mode ->
+                                                when (mode) {
+                                                    SuperIslandDualLineMode.NEXT_LYRIC -> stringResource(R.string.super_island_dual_line_mode_next_lyric)
+                                                    SuperIslandDualLineMode.ROMANIZATION -> stringResource(R.string.super_island_dual_line_mode_romanization)
+                                                    else -> stringResource(R.string.super_island_dual_line_mode_translation)
+                                                }
+                                            }
+                                            val currentDualLineModeIndex = dualLineModes.indexOf(superIslandDualLineMode).takeIf { it >= 0 } ?: 0
+
+                                            SuperDropdown(
+                                                title = stringResource(R.string.settings_super_island_dual_line_mode),
+                                                summary = stringResource(R.string.settings_super_island_dual_line_mode_desc),
+                                                items = dualLineModeNames,
+                                                selectedIndex = currentDualLineModeIndex,
+                                                onSelectedIndexChange = { index ->
+                                                    val newMode = dualLineModes[index]
+                                                    superIslandDualLineMode = newMode
+                                                    viewModel.dispatch(CustomSettingsAction.SetSuperIslandDualLineMode(newMode))
+                                                }
+                                            )
+                                        }
+
+                                        if (superIslandNotificationStyle != LabFeatureManager.SUPER_ISLAND_STYLE_ADVANCED &&
+                                            superIslandNotificationStyle != LabFeatureManager.SUPER_ISLAND_STYLE_ADVANCED_LYRICS_DUAL
+                                        ) {
                                             val buttonLayoutItems = listOf(
                                                 Triple(
                                                     "two_button",

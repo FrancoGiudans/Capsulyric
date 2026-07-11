@@ -28,6 +28,30 @@ import com.xzakota.hyper.notification.island.model.BigIslandArea
 import com.xzakota.hyper.notification.island.model.TextInfo
 
 internal object SuperIslandBigAreaRenderer {
+    fun BigIslandArea.applyDualLineLyrics(
+        config: SuperIslandLyricRenderConfig,
+        dualLineText: SuperIslandDualLineText,
+        showHighlightColor: Boolean
+    ) {
+        val leftText = SuperIslandLyricLayout.takeByWeight(
+            dualLineText.primary,
+            config.leftNoCoverTextWeight
+        ).ifEmpty { "♪" }
+        val rightText = SuperIslandLyricLayout.takeByWeight(
+            dualLineText.secondary ?: dualLineText.primary,
+            config.rightTextWeight
+        ).ifEmpty { "♪" }
+
+        applyTwoColumnText(
+            showLeftCover = false,
+            islandKey = null,
+            leftText = leftText,
+            rightText = rightText,
+            showHighlightColor = showHighlightColor,
+            narrowLeftFont = false
+        )
+    }
+
     fun BigIslandArea.applyLyrics(
         config: SuperIslandLyricRenderConfig,
         preferMetadataLayout: Boolean,

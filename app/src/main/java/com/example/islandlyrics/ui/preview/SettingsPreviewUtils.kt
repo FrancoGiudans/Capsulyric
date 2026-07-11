@@ -335,7 +335,7 @@ fun NotificationPreview(
     val artist = metadata?.artist ?: "Artist Name"
     val currentLyric = lyricInfo?.lyric ?: "Lyrics will appear here..."
     val sourceApp = lyricInfo?.sourceApp ?: "Source App"
-    val effectiveButtonLayout = if (superIslandNotificationStyle == "advanced_beta") "three_button" else superIslandMediaButtonLayout
+    val effectiveButtonLayout = if (superIslandNotificationStyle == "advanced_beta" || superIslandNotificationStyle == "advanced_lyrics_dual") "three_button" else superIslandMediaButtonLayout
     val notificationLyric = when {
         superIslandEnabled && actionStyle == "media_controls" && effectiveButtonLayout == "three_button" ->
             SuperIslandLyricLayout.takeByWeight(currentLyric, 10).ifEmpty { currentLyric }
@@ -407,7 +407,7 @@ fun NotificationPreview(
                 .padding(16.dp)
         ) {
             if (actionStyle == "media_controls") {
-                val showAdvancedStyle = superIslandNotificationStyle == "advanced_beta"
+                val showAdvancedStyle = superIslandNotificationStyle == "advanced_beta" || superIslandNotificationStyle == "advanced_lyrics_dual"
                 val showPrevButton = if (showAdvancedStyle) true else superIslandMediaButtonLayout == "three_button"
                 // Template 12 Layout: [Album Art] [Lyrics / Title-Artist] [Buttons Group]
                 // All on the same row, reflecting real clipping/blocking behavior

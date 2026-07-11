@@ -61,7 +61,7 @@ object BackupCategories {
         keyPatterns = listOf("capsule_render_mode", "super_island_*"),
         subGroups = listOf(
             SubGroup("capsule_style", listOf(
-                "super_island_notification_style", "super_island_lyric_mode",
+                "super_island_notification_style", "super_island_dual_line_mode", "super_island_lyric_mode",
                 "super_island_enabled", "capsule_render_mode"
             )),
             SubGroup("capsule_layout", listOf(

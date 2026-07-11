@@ -32,6 +32,7 @@ import com.example.islandlyrics.ui.overlay.capsule.config.LiveUpdateTextLimitCon
 import com.example.islandlyrics.ui.navigation.PredictiveBackAnimationMode
 import com.example.islandlyrics.ui.navigation.PredictiveBackAnimationStyle
 import com.example.islandlyrics.ui.overlay.superisland.config.SuperIslandColorSource
+import com.example.islandlyrics.ui.overlay.superisland.config.SuperIslandDualLineMode
 import com.example.islandlyrics.ui.overlay.superisland.config.SuperIslandTextLimitConfig
 import com.example.islandlyrics.R
 import com.example.islandlyrics.core.platform.XmsfBypassMode
@@ -141,6 +142,9 @@ fun CustomSettingsScreen(
     var superIslandNotificationStyle by remember(uiState.superIslandNotificationStyle) {
         mutableStateOf(uiState.superIslandNotificationStyle)
     }
+    var superIslandDualLineMode by remember(uiState.superIslandDualLineMode) {
+        mutableStateOf(uiState.superIslandDualLineMode)
+    }
     var superIslandAdvancedStyleLabEnabled by remember(uiState.superIslandAdvancedStyleLabEnabled) {
         mutableStateOf(uiState.superIslandAdvancedStyleLabEnabled)
     }
@@ -156,6 +160,7 @@ fun CustomSettingsScreen(
     var showActionStyleDropdown by remember { mutableStateOf(false) }
     var showSuperIslandMediaButtonLayoutDropdown by remember { mutableStateOf(false) }
     var showSuperIslandNotificationStyleDropdown by remember { mutableStateOf(false) }
+    var showSuperIslandDualLineModeDropdown by remember { mutableStateOf(false) }
 
     // Share Format Dropdown State
     var showShareFormatDropdown by remember { mutableStateOf(false) }
@@ -991,7 +996,10 @@ fun CustomSettingsScreen(
                              Spacer(modifier = Modifier.height(16.dp))
 
                             SettingsCard {
-                            if (actionStyle == "disabled" || (actionStyle == "media_controls" && superIslandNotificationStyle == "advanced_beta")) {
+                            if (actionStyle == "disabled" || (actionStyle == "media_controls" &&
+                                    (superIslandNotificationStyle == LabFeatureManager.SUPER_ISLAND_STYLE_ADVANCED ||
+                                            superIslandNotificationStyle == LabFeatureManager.SUPER_ISLAND_STYLE_ADVANCED_LYRICS_DUAL))
+                            ) {
                                  SettingsSwitchItem(
                                     title = stringResource(R.string.settings_progress_color),
                                     subtitle = stringResource(R.string.settings_progress_color_desc),
@@ -1044,7 +1052,8 @@ fun CustomSettingsScreen(
 
                             if (actionStyle == "media_controls" && superIslandEnabled) {
                                 val notificationStyleDisplayName = when (superIslandNotificationStyle) {
-                                    "advanced_beta" -> stringResource(R.string.super_island_notification_style_advanced_beta)
+                                    LabFeatureManager.SUPER_ISLAND_STYLE_ADVANCED -> stringResource(R.string.super_island_notification_style_advanced_beta)
+                                    LabFeatureManager.SUPER_ISLAND_STYLE_ADVANCED_LYRICS_DUAL -> stringResource(R.string.super_island_notification_style_advanced_lyrics_dual)
                                     else -> stringResource(R.string.super_island_notification_style_standard)
                                 }
                                 SettingsCardDivider()
@@ -1063,6 +1072,7 @@ fun CustomSettingsScreen(
                                             add(LabFeatureManager.SUPER_ISLAND_STYLE_STANDARD to R.string.super_island_notification_style_standard)
                                             if (superIslandAdvancedStyleLabEnabled) {
                                                 add(LabFeatureManager.SUPER_ISLAND_STYLE_ADVANCED to R.string.super_island_notification_style_advanced_beta)
+                                                add(LabFeatureManager.SUPER_ISLAND_STYLE_ADVANCED_LYRICS_DUAL to R.string.super_island_notification_style_advanced_lyrics_dual)
                                             }
                                         }
                                             styleOptions.forEach { (styleId, nameId) ->
@@ -1079,7 +1089,48 @@ fun CustomSettingsScreen(
                                     }
                                 }
 
-                                if (superIslandNotificationStyle != "advanced_beta") {
+                                if (superIslandNotificationStyle == LabFeatureManager.SUPER_ISLAND_STYLE_ADVANCED_LYRICS_DUAL) {
+                                    val dualLineModeDisplayName = when (superIslandDualLineMode) {
+                                        SuperIslandDualLineMode.NEXT_LYRIC -> stringResource(R.string.super_island_dual_line_mode_next_lyric)
+                                        SuperIslandDualLineMode.ROMANIZATION -> stringResource(R.string.super_island_dual_line_mode_romanization)
+                                        else -> stringResource(R.string.super_island_dual_line_mode_translation)
+                                    }
+                                    SettingsCardDivider()
+                                    Box(modifier = Modifier.fillMaxWidth()) {
+                                        SettingsTextItem(
+                                            title = stringResource(R.string.settings_super_island_dual_line_mode),
+                                            subtitle = stringResource(R.string.settings_super_island_dual_line_mode_desc),
+                                            value = dualLineModeDisplayName,
+                                            onClick = { showSuperIslandDualLineModeDropdown = true }
+                                        )
+                                        Box(modifier = Modifier.matchParentSize().wrapContentSize(Alignment.Center)) {
+                                            DropdownMenu(
+                                                expanded = showSuperIslandDualLineModeDropdown,
+                                                onDismissRequest = { showSuperIslandDualLineModeDropdown = false }
+                                            ) {
+                                                val dualLineModeOptions = listOf(
+                                                    SuperIslandDualLineMode.NEXT_LYRIC to R.string.super_island_dual_line_mode_next_lyric,
+                                                    SuperIslandDualLineMode.TRANSLATION to R.string.super_island_dual_line_mode_translation,
+                                                    SuperIslandDualLineMode.ROMANIZATION to R.string.super_island_dual_line_mode_romanization
+                                                )
+                                                dualLineModeOptions.forEach { (modeId, nameId) ->
+                                                    DropdownMenuItem(
+                                                        text = { Text(stringResource(nameId)) },
+                                                        onClick = {
+                                                            superIslandDualLineMode = modeId
+                                                            viewModel.dispatch(CustomSettingsAction.SetSuperIslandDualLineMode(modeId))
+                                                            showSuperIslandDualLineModeDropdown = false
+                                                        }
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+
+                                if (superIslandNotificationStyle != LabFeatureManager.SUPER_ISLAND_STYLE_ADVANCED &&
+                                    superIslandNotificationStyle != LabFeatureManager.SUPER_ISLAND_STYLE_ADVANCED_LYRICS_DUAL
+                                ) {
                                     val layoutDisplayName = when (superIslandMediaButtonLayout) {
                                         "three_button" -> stringResource(R.string.super_island_media_button_layout_three)
                                         else -> stringResource(R.string.super_island_media_button_layout_two)

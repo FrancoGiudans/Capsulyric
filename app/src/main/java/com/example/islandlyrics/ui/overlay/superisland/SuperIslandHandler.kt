@@ -39,6 +39,7 @@ import com.example.islandlyrics.ui.overlay.superisland.config.SuperIslandColorSo
 import com.example.islandlyrics.ui.overlay.superisland.config.SuperIslandPreferencesCache
 import com.example.islandlyrics.ui.overlay.superisland.intent.SuperIslandIntentFactory
 import com.example.islandlyrics.ui.overlay.superisland.render.SuperIslandCustomFocusBuilder
+import com.example.islandlyrics.ui.overlay.superisland.render.SuperIslandDualLineTextResolver
 import com.example.islandlyrics.ui.overlay.superisland.render.SuperIslandNotificationBuilder
 import com.example.islandlyrics.ui.overlay.superisland.render.SuperIslandRemoteViewsFactory
 import com.example.islandlyrics.ui.overlay.superisland.render.SuperIslandStandardFocusBuilder
@@ -155,11 +156,18 @@ class SuperIslandHandler(
             customColor = preferences.customColor
         )
 
+        val dualLineText = if (preferences.notificationStyle == "advanced_lyrics_dual") {
+            SuperIslandDualLineTextResolver.resolve(state, preferences.dualLineMode)
+        } else {
+            null
+        }
+
         val renderDecision = renderStateTracker.prepare(
             state = state,
             displayLyric = displayLyric,
             progressPercent = progressPercent,
-            accentColor = accentColor
+            accentColor = accentColor,
+            extraContentSignature = dualLineText?.signature.orEmpty()
         ) ?: return
 
         val metadata = LyricRepository.getInstance().liveMetadata.value
@@ -188,7 +196,8 @@ class SuperIslandHandler(
         val packageName = state.mediaPackage.ifEmpty { context.packageName }
         val titleWithArtist = if (state.artist.isNotBlank()) "${state.title} - ${state.artist}" else state.title
 
-        val customExpandEnabled = preferences.notificationStyle == "advanced_beta" &&
+        val customExpandEnabled = (preferences.notificationStyle == "advanced_beta" ||
+            preferences.notificationStyle == "advanced_lyrics_dual") &&
             preferences.actionStyle == "media_controls"
 
         val standardExtras = standardFocusBuilder.build(
@@ -260,6 +269,7 @@ class SuperIslandHandler(
             progressPercent = progressPercent,
             subText = subText,
             accentColor = accentColor,
+            extraContentSignature = dualLineText?.signature.orEmpty(),
             focusSignature = focusSignature
         )
 
