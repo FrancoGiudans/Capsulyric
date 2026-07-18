@@ -78,6 +78,10 @@ internal class SuperIslandIconCache(
         bitmapScaler.clear()
     }
 
+    fun clear() {
+        reset()
+    }
+
     fun update(
         metadata: LyricRepository.MediaInfo?,
         albumArt: Bitmap?,

@@ -46,7 +46,7 @@ object ParserRuleHelper {
     private val ruleCache = HashMap<String, ParserRule?>()
     private var cacheValid = false
 
-    private fun invalidateCache() {
+    fun invalidateCache() {
         cacheValid = false
         ruleCache.clear()
     }

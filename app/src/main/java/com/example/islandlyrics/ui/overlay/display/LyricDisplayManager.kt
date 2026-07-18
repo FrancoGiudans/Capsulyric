@@ -92,6 +92,18 @@ class LyricDisplayManager(private val context: Context) {
     private var timingGapActive = false
     private var timingGapNextDelayMs = 0L
 
+    // ── Tick-level diff cache: avoid rebuilding UIState when nothing changed ──
+    // When the current tick's inputs match the last emitted tick, skip the
+    // entire processTick() body (except timer scheduling). This eliminates
+    // most per-frame allocations during stable playback.
+    private var lastTickInputHash: Int = 0
+    private var lastTickProgressPercent: Int = -1
+
+    // ── LyricPresentation cache: avoid rebuilding DisplayLines every tick ──
+    private var cachedPresentation: LyricPresentation? = null
+    private var cachedPresentationLineIndex: Int = -2
+    private var cachedPresentationTrackKey: String = ""
+
     // Observers
     private val parsedLyricsObserver = Observer<LyricRepository.ParsedLyricsInfo?> { parsedInfo ->
         parsedLyricState = ParsedLyricDisplayState.from(parsedInfo)
@@ -237,11 +249,31 @@ class LyricDisplayManager(private val context: Context) {
         
         val isPlaying = repo.isPlaying.value == true
         val currentLyric = lyricInfo?.lyric ?: ""
-        val preferredPlainLyric = LyricTextDisplayMode.resolve(displayConfig.lyricTextDisplayMode, lyricInfo, currentLyric)
-        val sourceApp = lyricInfo?.sourceApp ?: ""
         val currentPosition = progressInfo?.position ?: 0L
         val duration = progressInfo?.duration ?: metaInfo?.duration ?: 0L
         val isInstrumental = lyricInfo?.apiPath == LyricRepository.API_PATH_INSTRUMENTAL
+
+        // ── Lightweight diff: skip full processing if nothing meaningful changed ──
+        val tickInputHash = hashTickInputs(
+            currentLyric = currentLyric,
+            position = currentPosition,
+            isPlaying = isPlaying,
+            albumColor = albumArtColorExtractor.currentColor,
+            metaTitle = metaInfo?.title ?: "",
+            metaArtist = metaInfo?.artist ?: "",
+            isInstrumental = isInstrumental,
+            parsedStateHash = parsedLyricState.hashCode()
+        )
+        val progressPercent = if (duration > 0) ((currentPosition.toFloat() / duration.toFloat()) * 100).toInt() else -1
+        val progressChangedEnough = kotlin.math.abs(progressPercent - lastTickProgressPercent) >= 3
+
+        if (tickInputHash == lastTickInputHash && !progressChangedEnough && lastTickInputHash != 0) {
+            return  // nothing changed — skip allocation-heavy body, just reschedule timer
+        }
+        lastTickInputHash = tickInputHash
+        lastTickProgressPercent = progressPercent
+        val preferredPlainLyric = LyricTextDisplayMode.resolve(displayConfig.lyricTextDisplayMode, lyricInfo, currentLyric)
+        val sourceApp = lyricInfo?.sourceApp ?: ""
         val effectiveParsedLyricState = if (isInstrumental) {
             ParsedLyricDisplayState()
         } else {
@@ -374,14 +406,14 @@ class LyricDisplayManager(private val context: Context) {
             lastStableFullLyric = fullLyricForDisplay
         }
         
-        val progressPercent = if (duration > 0) ((currentPosition.toFloat() / duration.toFloat()) * 100).toInt() else -1
-        val lyricPresentation = buildLyricPresentation(
+        val lyricPresentation = buildLyricPresentationCached(
             lyricInfo = lyricInfo,
             position = currentPosition,
             gapDisplayText = displayLyric,
             useGapContext = timingGapActive,
             useGapIndicatorLine = timingGapActive && (isTimingGapPlaceholder || isTimingGapAnimated),
-            parsedState = effectiveParsedLyricState
+            parsedState = effectiveParsedLyricState,
+            metaInfo = metaInfo
         )
         
         val state = UIState(
@@ -405,6 +437,77 @@ class LyricDisplayManager(private val context: Context) {
             albumArt = repo.liveAlbumArt.value
         )
         onStateUpdated?.invoke(state)
+    }
+
+    // ── Tick input hashing ──────────────────────────────────────────────────
+    private fun hashTickInputs(
+        currentLyric: String,
+        position: Long,
+        isPlaying: Boolean,
+        albumColor: Int,
+        metaTitle: String,
+        metaArtist: String,
+        isInstrumental: Boolean,
+        parsedStateHash: Int
+    ): Int {
+        // Round position to ~100ms — sub-100ms changes rarely affect display
+        val posBucket = position / 100
+        var hash = currentLyric.hashCode()
+        hash = 31 * hash + posBucket.hashCode()
+        hash = 31 * hash + isPlaying.hashCode()
+        hash = 31 * hash + albumColor
+        hash = 31 * hash + metaTitle.hashCode()
+        hash = 31 * hash + metaArtist.hashCode()
+        hash = 31 * hash + isInstrumental.hashCode()
+        hash = 31 * hash + parsedStateHash
+        return hash
+    }
+
+    // ── LyricPresentation with caching ──────────────────────────────────────
+    private fun buildLyricPresentationCached(
+        lyricInfo: LyricRepository.LyricInfo?,
+        position: Long,
+        gapDisplayText: String,
+        useGapContext: Boolean,
+        useGapIndicatorLine: Boolean,
+        parsedState: ParsedLyricDisplayState,
+        metaInfo: LyricRepository.MediaInfo?
+    ): LyricPresentation {
+        val currentLineIndex = parsedState.currentLineIndex(position)
+        val trackKey = "${metaInfo?.title}|${metaInfo?.artist}|${metaInfo?.packageName}"
+
+        // Reuse cached presentation if line index and track haven't changed
+        if (cachedPresentation != null &&
+            currentLineIndex == cachedPresentationLineIndex &&
+            trackKey == cachedPresentationTrackKey &&
+            !useGapContext
+        ) {
+            return cachedPresentation!!
+        }
+
+        // Invalidate cache on track change
+        if (trackKey != cachedPresentationTrackKey) {
+            cachedPresentation = null
+            cachedPresentationLineIndex = -2
+            cachedPresentationTrackKey = trackKey
+        }
+
+        val result = buildLyricPresentation(
+            lyricInfo = lyricInfo,
+            position = position,
+            gapDisplayText = gapDisplayText,
+            useGapContext = useGapContext,
+            useGapIndicatorLine = useGapIndicatorLine,
+            parsedState = parsedState
+        )
+
+        // Cache for reuse across ticks on the same line
+        if (!useGapContext && result.currentLine != null) {
+            cachedPresentation = result
+            cachedPresentationLineIndex = currentLineIndex
+        }
+
+        return result
     }
 
     private fun buildLyricPresentation(

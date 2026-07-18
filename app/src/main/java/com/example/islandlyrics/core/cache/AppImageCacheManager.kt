@@ -26,6 +26,7 @@ import android.content.Context
 import coil.ImageLoader
 import coil.annotation.ExperimentalCoilApi
 import coil.disk.DiskCache
+import coil.memory.MemoryCache
 import java.io.File
 
 object AppImageCacheManager {
@@ -44,6 +45,11 @@ object AppImageCacheManager {
         val appContext = context.applicationContext
         return imageLoader ?: synchronized(this) {
             imageLoader ?: ImageLoader.Builder(appContext)
+                .memoryCache {
+                    MemoryCache.Builder(appContext)
+                        .maxSizeBytes(16 * 1024 * 1024)  // 16 MB — sufficient for markdown images
+                        .build()
+                }
                 .diskCache {
                     DiskCache.Builder()
                         .directory(cacheDirectory(appContext))

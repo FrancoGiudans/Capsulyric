@@ -307,6 +307,9 @@ class LyricService : Service() {
         )
         syncPushLyricSources()
 
+        // Attempt to restore state after a fair-memory KILL
+        com.example.islandlyrics.runtime.memory.FairMemoryManager.getInstance().tryRestoreState(this)
+
         mediaCommandRouter.register()
 
         // Register refresh receiver
