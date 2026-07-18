@@ -400,6 +400,14 @@ class LyricDisplayManager(private val context: Context) {
             fullLyricForDisplay = preferredPlainLyric
         }
 
+        // Fall back to metadata layout (title | artist) when no lyric text
+        // is available to display — e.g. searching, loading, no lyric source.
+        // Deliberately excludes timing-gap placeholders ("♪") and countdown
+        // indicators ("●●●") because those are not blank.
+        if (!preferMetadataLayout && displayLyric.isBlank() && fullLyricForDisplay.isBlank() && !isInstrumental) {
+            preferMetadataLayout = true
+        }
+
         val shouldPersistStableDisplay = !timingGapActive && displayLyric.isNotBlank()
         if (shouldPersistStableDisplay) {
             lastStableDisplayLyric = displayLyric
