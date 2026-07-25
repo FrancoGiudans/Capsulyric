@@ -40,7 +40,13 @@ class IslandLyricsApp : Application() {
         super.onCreate()
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            HiddenApiBypass.addHiddenApiExemptions("")
+            try {
+                HiddenApiBypass.addHiddenApiExemptions("")
+            } catch (t: Throwable) {
+                // Android 17 (API 37) may further restrict hidden API access;
+                // log and continue — Shizuku/FirewallCompat paths have their own fallbacks.
+                android.util.Log.w("IslandLyricsApp", "HiddenApiBypass failed, some reflective paths may be unavailable", t)
+            }
         }
 
         // Initialise unified logger so all AppLogger calls are persisted to file

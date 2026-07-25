@@ -9,7 +9,7 @@ android {
         versionCode = appVersioning.gitCommitCount(project)
         applicationId = "com.franco.capsulyric"
         minSdk = 35
-        targetSdk = 36
+        targetSdk = 37
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         def versionPrefix = appVersioning.buildMetadata(project, "versionPrefix", "APP_VERSION_PREFIX", appVersioning.defaultVersionPrefix())

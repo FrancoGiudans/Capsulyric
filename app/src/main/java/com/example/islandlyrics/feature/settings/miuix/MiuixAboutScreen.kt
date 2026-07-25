@@ -770,6 +770,13 @@ private fun AboutSection(
                     context.startActivity(Intent(Intent.ACTION_VIEW, "https://f.wps.cn/g/qACKW9I3/".toUri()))
                 }
             )
+            BasicComponent(
+                title = stringResource(R.string.dialog_feedback_wjx),
+                summary = stringResource(R.string.dialog_feedback_wjx_desc),
+                onClick = {
+                    context.startActivity(Intent(Intent.ACTION_VIEW, "https://v.wjx.cn/vm/rGK24xY.aspx".toUri()))
+                }
+            )
         }
     }
 

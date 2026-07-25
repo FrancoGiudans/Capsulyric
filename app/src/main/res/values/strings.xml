@@ -425,6 +425,8 @@
     <string name="dialog_feedback_github_desc">Recommended. High processing efficiency.</string>
     <string name="dialog_feedback_wps">WPS Form</string>
     <string name="dialog_feedback_wps_desc">Alternative. May require login.</string>
+    <string name="dialog_feedback_wjx">WJX Survey</string>
+    <string name="dialog_feedback_wjx_desc">No login required.</string>
     <string name="settings_hide_recents">Hide from Recents</string>
     <string name="settings_hide_recents_desc">Automatically remove from recents when app goes to background</string>
     <string name="settings_backup_export">Export Settings</string>

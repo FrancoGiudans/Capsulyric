@@ -854,6 +854,31 @@ fun FeedbackSelectionDialog(onDismiss: () -> Unit) {
                         )
                     }
                 }
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            val browserIntent = Intent(Intent.ACTION_VIEW, "https://v.wjx.cn/vm/rGK24xY.aspx".toUri())
+                            context.startActivity(browserIntent)
+                            onDismiss()
+                        }
+                        .padding(vertical = 12.dp, horizontal = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(R.string.dialog_feedback_wjx),
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = stringResource(R.string.dialog_feedback_wjx_desc),
+                            fontSize = 14.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
             }
         },
         confirmButton = {
