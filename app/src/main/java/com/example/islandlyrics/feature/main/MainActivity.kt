@@ -35,6 +35,12 @@ import com.example.islandlyrics.feature.cache.material.CacheManagementScreen
 import com.example.islandlyrics.feature.cache.miuix.MiuixCacheManagementScreen
 import com.example.islandlyrics.feature.customsettings.material.CustomSettingsScreen
 import com.example.islandlyrics.feature.customsettings.miuix.MiuixCustomSettingsScreen
+import com.example.islandlyrics.feature.customsettings.material.AppUiScreen
+import com.example.islandlyrics.feature.customsettings.material.CapsuleNotificationScreen
+import com.example.islandlyrics.feature.customsettings.material.DesktopLyricsScreen
+import com.example.islandlyrics.feature.customsettings.miuix.MiuixAppUiScreen
+import com.example.islandlyrics.feature.customsettings.miuix.MiuixCapsuleNotificationScreen
+import com.example.islandlyrics.feature.customsettings.miuix.MiuixDesktopLyricsScreen
 import com.example.islandlyrics.feature.diagnostics.material.DiagnosticsScreen
 import com.example.islandlyrics.feature.diagnostics.miuix.MiuixDiagnosticsScreen
 import com.example.islandlyrics.feature.faq.material.FAQScreen
@@ -60,8 +66,12 @@ import com.example.islandlyrics.feature.settings.ReleaseDialogMode
 import com.example.islandlyrics.feature.settings.ReleaseDialogState
 import com.example.islandlyrics.feature.settings.material.AboutScreen
 import com.example.islandlyrics.feature.settings.material.SettingsScreen
+import com.example.islandlyrics.feature.settings.material.CommunityScreen
+import com.example.islandlyrics.feature.settings.material.LocalLyricDirectoriesScreen
 import com.example.islandlyrics.feature.settings.miuix.MiuixAboutScreen
 import com.example.islandlyrics.feature.settings.miuix.MiuixSettingsScreen
+import com.example.islandlyrics.feature.settings.miuix.MiuixCommunityScreen
+import com.example.islandlyrics.feature.settings.miuix.MiuixLocalLyricDirectoriesScreen
 import com.example.islandlyrics.ui.miuix.theme.MiuixAppTheme
 import com.example.islandlyrics.ui.miuix.blur.LocalMiuixBlurBackdrop
 import com.example.islandlyrics.ui.miuix.blur.LocalMiuixBlurEnabled
@@ -421,8 +431,12 @@ class MainActivity : BaseActivity() {
                         onOpenCustomSettings = {
                             pushPage(AppPage.CustomSettings)
                         },
+                        onOpenCapsuleNotification = { pushPage(AppPage.CapsuleNotification) },
+                        onOpenDesktopLyrics = { pushPage(AppPage.DesktopLyrics) },
+                        onOpenCommunity = { pushPage(AppPage.Community) },
                         onOpenFaq = { pushPage(AppPage.Faq) },
                         onOpenAbout = { pushPage(AppPage.About) },
+                        onOpenLocalLyricDirectories = { pushPage(AppPage.LocalLyricDirectories) },
                         onOpenLocalLyricDirectory = { uri, name ->
                             pushPage(AppPage.LocalLyricDirectory(uri.toString(), name))
                         },
@@ -588,8 +602,12 @@ class MainActivity : BaseActivity() {
                                     onOpenCustomSettings = {
                                         pushPage(AppPage.CustomSettings)
                                     },
+                                    onOpenCapsuleNotification = { pushPage(AppPage.CapsuleNotification) },
+                                    onOpenDesktopLyrics = { pushPage(AppPage.DesktopLyrics) },
+                                    onOpenCommunity = { pushPage(AppPage.Community) },
                                     onOpenFaq = { pushPage(AppPage.Faq) },
                                     onOpenAbout = { pushPage(AppPage.About) },
+                                    onOpenLocalLyricDirectories = { pushPage(AppPage.LocalLyricDirectories) },
                                     onOpenLocalLyricDirectory = { uri, name ->
                                         pushPage(AppPage.LocalLyricDirectory(uri.toString(), name))
                                     },
@@ -781,12 +799,15 @@ class MainActivity : BaseActivity() {
         onPushPage: (AppPage) -> Unit
     ) {
         when (page) {
-            AppPage.CustomSettings -> CustomSettingsScreen(
+            AppPage.CustomSettings -> AppUiScreen(onBack = onBack)
+            AppPage.CapsuleNotification -> CapsuleNotificationScreen(onBack = onBack)
+            AppPage.DesktopLyrics -> DesktopLyricsScreen(onBack = onBack)
+            AppPage.Community -> CommunityScreen(onBack = onBack)
+            AppPage.LocalLyricDirectories -> LocalLyricDirectoriesScreen(
                 onBack = onBack,
-                onCheckUpdate = {},
-                onShowLogs = { onPushPage(AppPage.LogViewer) },
-                updateVersionText = getVersionNameForUi(),
-                updateBuildText = BuildConfig.GIT_COMMIT_HASH
+                onOpenDirectory = { uri, name ->
+                    onPushPage(AppPage.LocalLyricDirectory(uri.toString(), name))
+                }
             )
             AppPage.Faq -> FAQScreen(onBack = onBack)
             AppPage.About -> AboutScreen(
@@ -829,12 +850,15 @@ class MainActivity : BaseActivity() {
         onPushPage: (AppPage) -> Unit
     ) {
         when (page) {
-            AppPage.CustomSettings -> MiuixCustomSettingsScreen(
+            AppPage.CustomSettings -> MiuixAppUiScreen(onBack = onBack)
+            AppPage.CapsuleNotification -> MiuixCapsuleNotificationScreen(onBack = onBack)
+            AppPage.DesktopLyrics -> MiuixDesktopLyricsScreen(onBack = onBack)
+            AppPage.Community -> MiuixCommunityScreen(onBack = onBack)
+            AppPage.LocalLyricDirectories -> MiuixLocalLyricDirectoriesScreen(
                 onBack = onBack,
-                onCheckUpdate = {},
-                onShowLogs = { onPushPage(AppPage.LogViewer) },
-                updateVersionText = getVersionNameForUi(),
-                updateBuildText = BuildConfig.GIT_COMMIT_HASH
+                onOpenDirectory = { uri, name ->
+                    onPushPage(AppPage.LocalLyricDirectory(uri.toString(), name))
+                }
             )
             AppPage.Faq -> MiuixFAQScreen(onBack = onBack)
             AppPage.About -> MiuixAboutScreen(
@@ -873,6 +897,10 @@ class MainActivity : BaseActivity() {
 
 private sealed class AppPage {
     data object CustomSettings : AppPage()
+    data object CapsuleNotification : AppPage()
+    data object DesktopLyrics : AppPage()
+    data object Community : AppPage()
+    data object LocalLyricDirectories : AppPage()
     data object Faq : AppPage()
     data object About : AppPage()
     data object Diagnostics : AppPage()

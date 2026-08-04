@@ -27,9 +27,13 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
+import android.graphics.BitmapFactory
+import android.graphics.drawable.Icon
+import android.net.Uri
 import com.example.islandlyrics.BuildConfig
 import com.example.islandlyrics.R
 import com.example.islandlyrics.core.logging.AppLogger
+import com.example.islandlyrics.core.settings.LabFeatureManager
 import com.example.islandlyrics.lyrics.state.LyricRepository
 import com.example.islandlyrics.runtime.service.LyricService
 import com.example.islandlyrics.ui.overlay.model.UIState
@@ -37,6 +41,8 @@ import com.example.islandlyrics.ui.overlay.superisland.cache.SuperIslandIconCach
 import com.example.islandlyrics.ui.overlay.superisland.cache.SuperIslandProgressBitmapCache
 import com.example.islandlyrics.ui.overlay.superisland.config.SuperIslandColorSource
 import com.example.islandlyrics.ui.overlay.superisland.config.SuperIslandPreferencesCache
+import com.example.islandlyrics.ui.overlay.superisland.config.SuperIslandSecondaryTextMode
+import com.example.islandlyrics.ui.overlay.superisland.config.SuperIslandTemplate2PicSource
 import com.example.islandlyrics.ui.overlay.superisland.intent.SuperIslandIntentFactory
 import com.example.islandlyrics.ui.overlay.superisland.render.SuperIslandCustomFocusBuilder
 import com.example.islandlyrics.ui.overlay.superisland.render.SuperIslandDualLineTextResolver
@@ -69,6 +75,8 @@ class SuperIslandHandler(
 
     private var cachedContentIntent: PendingIntent? = null
     private var cachedMiPlayIntent: PendingIntent? = null
+    private var customTemplate2IconKey: String? = null
+    private var customTemplate2Icon: Icon? = null
 
     private val preferences = SuperIslandPreferencesCache(
         context = context,
@@ -150,6 +158,15 @@ class SuperIslandHandler(
         val subText = if (state.artist.isNotBlank()) "${state.title} - ${state.artist}" else state.title
         val progressPercent = state.progressCurrent
         val albumColor = state.albumColor
+        // 显示模式的次要文本仅在模板2（标准样式 + 无按键 + 不显示进度条）时使用
+        val secondaryText = if (effectiveActionStyle == ACTION_STYLE_TEMPLATE2) {
+            SuperIslandDualLineTextResolver.resolveSecondary(
+                state = state,
+                modes = preferences.secondaryTextModes
+            )
+        } else {
+            null
+        }
         val accentColor = SuperIslandColorSource.resolveColor(
             source = preferences.colorSource,
             albumColor = albumColor,
@@ -157,7 +174,13 @@ class SuperIslandHandler(
         )
 
         val dualLineText = if (preferences.notificationStyle == "advanced_lyrics_dual") {
-            SuperIslandDualLineTextResolver.resolve(state, preferences.dualLineMode)
+            SuperIslandDualLineTextResolver.resolve(
+                state,
+                listOf(
+                    SuperIslandSecondaryTextMode.from(preferences.dualLineMode)
+                        ?: SuperIslandSecondaryTextMode.TRANSLATION
+                )
+            )
         } else {
             null
         }
@@ -184,7 +207,7 @@ class SuperIslandHandler(
             metadata = metadata,
             albumArt = albumArt,
             isPlaying = state.isPlaying,
-            actionStyle = preferences.actionStyle,
+            actionStyle = effectiveActionStyle,
             mediaButtonLayout = preferences.mediaButtonLayout,
             notificationStyle = preferences.notificationStyle
         )
@@ -195,10 +218,11 @@ class SuperIslandHandler(
         val progressBarColor = if (preferences.progressBarColorEnabled) hexColor else "#757575"
         val packageName = state.mediaPackage.ifEmpty { context.packageName }
         val titleWithArtist = if (state.artist.isNotBlank()) "${state.title} - ${state.artist}" else state.title
+        val template2Icon = resolveTemplate2Icon()
 
         val customExpandEnabled = (preferences.notificationStyle == "advanced_beta" ||
             preferences.notificationStyle == "advanced_lyrics_dual") &&
-            preferences.actionStyle == "media_controls"
+            effectiveActionStyle == "media_controls"
 
         val standardExtras = standardFocusBuilder.build(
             state = state,
@@ -210,7 +234,10 @@ class SuperIslandHandler(
             ringColor = ringColor,
             progressBarColor = progressBarColor,
             packageName = packageName,
-            titleWithArtist = titleWithArtist
+            titleWithArtist = titleWithArtist,
+            effectiveActionStyle = effectiveActionStyle,
+            template2Icon = template2Icon,
+            secondaryText = secondaryText
         )
 
         val extras = if (customExpandEnabled) {
@@ -221,12 +248,12 @@ class SuperIslandHandler(
                 progressPercent = progressPercent,
                 hexColor = hexColor,
                 showHighlightColor = showHighlightColor,
-                progressBarColor = progressBarColor,
-                titleWithArtist = titleWithArtist,
-                albumArt = albumArt,
-                miPlayIntent = cachedMiPlayIntent,
-                standardExtras = standardExtras
-            )
+            progressBarColor = progressBarColor,
+            titleWithArtist = titleWithArtist,
+            albumArt = albumArt,
+            miPlayIntent = cachedMiPlayIntent,
+            standardExtras = standardExtras
+        )
         } else {
             standardExtras
         }
@@ -247,7 +274,7 @@ class SuperIslandHandler(
             .setContentTitle(notificationTitle)
             .setContentText(notificationText)
             .setSubText(if (state.mediaPackage.isNotBlank()) state.mediaPackage else null)
-            .setColor(if (preferences.actionStyle == "media_controls") 0xFF757575.toInt() else accentColor)
+            .setColor(if (effectiveActionStyle == "media_controls") 0xFF757575.toInt() else accentColor)
             .addExtras(extras)
         if (preferences.clickStyle == "open_playing_app") {
             notificationBuilder.setContentIntent(
@@ -296,8 +323,53 @@ class SuperIslandHandler(
         return listOf(state.mediaPackage, state.title, state.artist).joinToString("|")
     }
 
+    /**
+     * 新通知逻辑：播放按键布局 + 显示进度条 共同决定通知按键样式。
+     * - 无按键 + 显示进度条：等价于旧「通知按键 = 关闭」（显示进度条，无媒体按钮）
+     * - 标准样式 + 无按键 + 隐藏进度条：发送模板2通知（文本组件2 + 识别图形组件1）
+     * - 有按键：显示媒体按钮
+     */
+    private val effectiveActionStyle: String
+        get() = when {
+            preferences.mediaButtonLayout == "no_button" &&
+                !preferences.showProgressBar &&
+                preferences.notificationStyle == LabFeatureManager.SUPER_ISLAND_STYLE_STANDARD ->
+                ACTION_STYLE_TEMPLATE2
+            preferences.mediaButtonLayout == "no_button" -> "disabled"
+            else -> "media_controls"
+        }
+
+    /**
+     * 模板2识别图形组件的图片来源：专辑图 / 正在播放App图标 / 应用图标 / 用户自定义图片。
+     */
+    private fun resolveTemplate2Icon(): Icon? = when (preferences.template2PicSource) {
+        SuperIslandTemplate2PicSource.PLAYING_APP -> iconCache.appIcon
+        SuperIslandTemplate2PicSource.APP_ICON ->
+            Icon.createWithResource(context, R.mipmap.ic_launcher)
+        SuperIslandTemplate2PicSource.CUSTOM -> resolveCustomTemplate2Icon()
+        else -> iconCache.avatarIcon ?: iconCache.appIcon ?: Icon.createWithResource(context, R.mipmap.ic_launcher)
+    }
+
+    private fun resolveCustomTemplate2Icon(): Icon? {
+        val uri = preferences.template2CustomPicUri
+        if (uri.isNullOrBlank()) return null
+        if (uri != customTemplate2IconKey) {
+            customTemplate2IconKey = uri
+            customTemplate2Icon = try {
+                val bitmap = context.contentResolver.openInputStream(Uri.parse(uri))?.use { input ->
+                    BitmapFactory.decodeStream(input)
+                }
+                bitmap?.let { Icon.createWithBitmap(iconCache.scaleBitmap(it, 224)) }
+            } catch (e: Exception) {
+                null
+            }
+        }
+        return customTemplate2Icon
+    }
+
     companion object {
         private const val CHANNEL_ID = "lyric_capsule_channel"
         private const val NOTIFICATION_ID = 1001
+        private const val ACTION_STYLE_TEMPLATE2 = "template2"
     }
 }

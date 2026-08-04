@@ -66,7 +66,8 @@ fun rememberLocalLyricDirectoriesState(): MiuixLocalLyricDirectoriesState {
 @OptIn(ExperimentalFoundationApi::class)
 fun MiuixLocalLyricDirectoriesContent(
     state: MiuixLocalLyricDirectoriesState,
-    onOpenDirectory: ((Uri, String) -> Unit)? = null
+    onOpenDirectory: ((Uri, String) -> Unit)? = null,
+    showHeader: Boolean = true
 ) {
     val context = LocalContext.current
     val dirManager = remember { LocalLyricDirectoryManager.getInstance(context) }
@@ -83,8 +84,7 @@ fun MiuixLocalLyricDirectoriesContent(
         }
     }
 
-    SmallTitle(text = stringResource(R.string.settings_local_lyrics_title))
-    Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
+    val content: @Composable () -> Unit = {
         if (state.directories.isEmpty()) {
             SuperArrow(
                 title = stringResource(R.string.settings_local_lyrics_empty),
@@ -117,6 +117,13 @@ fun MiuixLocalLyricDirectoriesContent(
                 onClick = { dirPickerLauncher.launch(null) }
             )
         }
+    }
+
+    if (showHeader) {
+        SmallTitle(text = stringResource(R.string.settings_local_lyrics_title))
+    }
+    Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
+        content()
     }
 }
 

@@ -52,7 +52,10 @@ internal class SuperIslandStandardFocusBuilder(
         ringColor: String,
         progressBarColor: String,
         packageName: String,
-        titleWithArtist: String
+        titleWithArtist: String,
+        effectiveActionStyle: String,
+        template2Icon: Icon? = null,
+        secondaryText: String? = null
     ): android.os.Bundle {
         actionBundle.clear()
         val bundle = FocusNotification.buildV3 {
@@ -71,14 +74,16 @@ internal class SuperIslandStandardFocusBuilder(
             ticker = displayLyric.ifEmpty { subText.ifEmpty { state.title.ifEmpty { "♪" } } }
             tickerPic = appKey ?: islandSmallKey ?: avatarKey
 
-            chatInfo {
-                picProfile = avatarKey
-                title = SuperIslandTextResolver.primaryText(state)
-                content = subText
-                appIconPkg = packageName
+            if (effectiveActionStyle != ACTION_STYLE_TEMPLATE2) {
+                chatInfo {
+                    picProfile = avatarKey
+                    title = SuperIslandTextResolver.primaryText(state)
+                    content = secondaryText ?: subText
+                    appIconPkg = packageName
+                }
             }
 
-            if (preferences.actionStyle == "media_controls") {
+            if (effectiveActionStyle == "media_controls") {
                 actions {
                     val effectiveButtonLayout = if (preferences.notificationStyle == "advanced_beta" || preferences.notificationStyle == "advanced_lyrics_dual") "three_button" else preferences.mediaButtonLayout
                     val showPrevButton = effectiveButtonLayout == "three_button"
@@ -132,7 +137,26 @@ internal class SuperIslandStandardFocusBuilder(
                         clickWithCollapse = false
                     }
                 }
-            } else {
+            } else if (effectiveActionStyle == ACTION_STYLE_TEMPLATE2) {
+                // 模板2：文本组件2 + 识别图形组件1（无进度条、无按钮）
+                baseInfo {
+                    type = 2
+                    title = SuperIslandTextResolver.primaryText(state)
+                    content = secondaryText ?: subText
+                }
+                if (template2Icon != null) {
+                    val template2PicKey = createPicture("miui.focus.pic_template2", template2Icon)
+                    picInfo {
+                        type = 1
+                        pic = template2PicKey
+                    }
+                } else {
+                    picInfo {
+                        type = 1
+                        pic = appKey ?: islandSmallKey ?: avatarKey
+                    }
+                }
+            } else if (preferences.showProgressBar) {
                 progressInfo {
                     progress = progressPercent
                     colorProgress = progressBarColor
@@ -178,10 +202,12 @@ internal class SuperIslandStandardFocusBuilder(
                                 pic = islandSmallKey
                             }
                         }
-                        progressInfo {
-                            progress = progressPercent
-                            colorReach = ringColor
-                            colorUnReach = "#333333"
+                        if (preferences.showProgressBar) {
+                            progressInfo {
+                                progress = progressPercent
+                                colorReach = ringColor
+                                colorUnReach = "#333333"
+                            }
                         }
                     }
                 }
@@ -191,6 +217,10 @@ internal class SuperIslandStandardFocusBuilder(
             bundle.putBundle("miui.focus.actions", android.os.Bundle(actionBundle))
         }
         return bundle
+    }
+
+    companion object {
+        private const val ACTION_STYLE_TEMPLATE2 = "template2"
     }
 
     private fun createFocusBroadcastAction(

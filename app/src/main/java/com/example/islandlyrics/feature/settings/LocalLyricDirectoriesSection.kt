@@ -48,7 +48,8 @@ import com.example.islandlyrics.feature.settings.material.SettingsSectionHeader
 
 @Composable
 fun LocalLyricDirectoriesSection(
-    onOpenDirectory: ((Uri, String) -> Unit)? = null
+    onOpenDirectory: ((Uri, String) -> Unit)? = null,
+    showHeader: Boolean = true
 ) {
     val context = LocalContext.current
     val dirManager = remember { LocalLyricDirectoryManager.getInstance(context) }
@@ -70,8 +71,7 @@ fun LocalLyricDirectoriesSection(
         }
     }
 
-    SettingsSectionHeader(text = stringResource(R.string.settings_local_lyrics_title))
-    SettingsCard {
+    val content: @Composable () -> Unit = {
         if (directories.isEmpty()) {
             ListItem(
                 headlineContent = { Text(stringResource(R.string.settings_local_lyrics_empty)) },
@@ -115,6 +115,13 @@ fun LocalLyricDirectoriesSection(
                 modifier = Modifier.clickable { dirPickerLauncher.launch(null) }
             )
         }
+    }
+
+    if (showHeader) {
+        SettingsSectionHeader(text = stringResource(R.string.settings_local_lyrics_title))
+    }
+    SettingsCard {
+        content()
     }
 
     if (showRemoveDialog != null) {

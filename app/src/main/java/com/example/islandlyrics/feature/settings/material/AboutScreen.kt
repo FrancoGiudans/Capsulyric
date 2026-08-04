@@ -87,14 +87,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import com.example.islandlyrics.R
-import com.example.islandlyrics.core.feed.CommunityFeed
-import com.example.islandlyrics.core.feed.CommunityFeedRepository
-import com.example.islandlyrics.core.feed.CommunityFeedStatus
 import com.example.islandlyrics.core.network.OfflineModeManager
 import com.example.islandlyrics.core.settings.LabFeatureManager
 import com.example.islandlyrics.core.update.UpdateChecker
 import com.example.islandlyrics.feature.licenses.OpenSourceLicensesActivity
-import com.example.islandlyrics.feature.settings.CommunityDialogState
 import com.example.islandlyrics.feature.settings.ReleaseDialogState
 import com.example.islandlyrics.feature.update.material.UpdateDialog
 import com.example.islandlyrics.lyrics.state.LyricRepository
@@ -126,11 +122,6 @@ fun AboutScreen(
     var showChannelDropdown by remember { mutableStateOf(false) }
     var currentChannel by remember { mutableStateOf(UpdateChecker.getUpdateChannel(context)) }
     var experimentUpdatesEnabled by remember { mutableStateOf(LabFeatureManager.isExperimentUpdatesEnabled(context)) }
-    var feedSourcePriority by remember { mutableStateOf(LabFeatureManager.getFeedSourcePriority(context)) }
-    var showFeedSourceDropdown by remember { mutableStateOf(false) }
-    var communityFeed by remember { mutableStateOf<CommunityFeed?>(null) }
-    var communityFeedLoaded by remember { mutableStateOf(false) }
-    var communityDialogState by remember { mutableStateOf<CommunityDialogState?>(null) }
     var devStepCount by remember { mutableIntStateOf(0) }
 
     val versionInfoText = "$updateVersionText\n$updateCodenameText\n$updateBuildText"
@@ -159,22 +150,11 @@ fun AboutScreen(
         }
     }
 
-    LaunchedEffect(offlineModeEnabled, feedSourcePriority) {
-        communityFeedLoaded = false
-        if (offlineModeEnabled) {
-            communityFeed = null
-            communityFeedLoaded = true
-        } else {
-            communityFeed = CommunityFeedRepository.fetchFeed(context)
-            communityFeedLoaded = true
-        }
-    }
-
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             MediumTopAppBar(
-                title = { Text(stringResource(R.string.community_about_title)) },
+                title = { Text(stringResource(R.string.about_title)) },
                 navigationIcon = {
                     IconButton(onClick = { onBack?.invoke() ?: (context as? Activity)?.finish() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -198,51 +178,6 @@ fun AboutScreen(
                     onVersionClick = ::copyVersionInfo,
                     onHeaderTap = ::handleDevModeTap
                 )
-            }
-
-            if (!offlineModeEnabled) {
-                item { SettingsSectionHeader(text = stringResource(R.string.settings_community_header), marginTop = 8.dp) }
-                item {
-                    SettingsCard {
-                        Box(modifier = Modifier.fillMaxWidth()) {
-                            SettingsTextItem(
-                                title = stringResource(R.string.diag_lab_feed_source_title),
-                                value = if (feedSourcePriority == LabFeatureManager.FEED_SOURCE_GITEE) {
-                                    stringResource(R.string.diag_lab_feed_source_gitee)
-                                } else {
-                                    stringResource(R.string.diag_lab_feed_source_github)
-                                },
-                                onClick = { showFeedSourceDropdown = true }
-                            )
-                            Box(modifier = Modifier.matchParentSize().wrapContentSize(Alignment.CenterEnd)) {
-                                DropdownMenu(
-                                    expanded = showFeedSourceDropdown,
-                                    onDismissRequest = { showFeedSourceDropdown = false }
-                                ) {
-                                    listOf(
-                                        LabFeatureManager.FEED_SOURCE_GITHUB to stringResource(R.string.diag_lab_feed_source_github),
-                                        LabFeatureManager.FEED_SOURCE_GITEE to stringResource(R.string.diag_lab_feed_source_gitee)
-                                    ).forEach { (sourceKey, sourceLabel) ->
-                                        DropdownMenuItem(
-                                            text = { Text(sourceLabel) },
-                                            onClick = {
-                                                feedSourcePriority = sourceKey
-                                                LabFeatureManager.setFeedSourcePriority(context, sourceKey)
-                                                showFeedSourceDropdown = false
-                                            }
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                        SettingsCardDivider()
-                        CommunitySection(
-                            communityFeed = communityFeed,
-                            communityFeedLoaded = communityFeedLoaded,
-                            onCommunityItemClick = { communityDialogState = it }
-                        )
-                    }
-                }
             }
 
             item { SettingsSectionHeader(text = stringResource(R.string.about_title)) }
@@ -367,19 +302,6 @@ fun AboutScreen(
             FeedbackSelectionDialog(onDismiss = { showFeedbackDialog = false })
         }
 
-        communityDialogState?.let { dialogState ->
-            CommunityDetailsDialog(
-                state = dialogState,
-                onDismiss = { communityDialogState = null },
-                onOpen = {
-                    if (dialogState.item.hasUrl) {
-                        context.startActivity(Intent(Intent.ACTION_VIEW, dialogState.item.url.toUri()))
-                    }
-                    communityDialogState = null
-                }
-            )
-        }
-
         releaseDialogState?.let { dialogState ->
             UpdateDialog(
                 releaseInfo = dialogState.releaseInfo,
@@ -485,63 +407,3 @@ private fun MaterialVersionInfoItem(
     }
 }
 
-@Composable
-private fun CommunitySection(
-    communityFeed: CommunityFeed?,
-    communityFeedLoaded: Boolean,
-    onCommunityItemClick: (CommunityDialogState) -> Unit
-) {
-    val announcementSectionTitle = stringResource(R.string.community_announcement_title)
-    val pollSectionTitle = stringResource(R.string.community_poll_title)
-
-    if (!communityFeedLoaded) {
-        SettingsActionItem(
-            title = stringResource(R.string.community_loading_title),
-            summary = stringResource(R.string.community_loading_desc),
-            icon = Icons.Filled.Campaign,
-            onClick = {}
-        )
-        return
-    }
-
-    val announcements = communityFeed?.announcements ?: emptyList()
-    val polls = communityFeed?.polls ?: emptyList()
-    if (announcements.isNotEmpty() || polls.isNotEmpty()) {
-        announcements.forEachIndexed { index, announcement ->
-            if (index > 0) SettingsCardDivider()
-            CommunityActionItem(
-                title = announcementSectionTitle,
-                item = announcement,
-                fallbackSummary = stringResource(R.string.community_open_in_browser),
-                icon = Icons.Filled.Campaign,
-                onClick = { onCommunityItemClick(CommunityDialogState(announcementSectionTitle, announcement)) }
-            )
-        }
-        polls.forEachIndexed { index, poll ->
-            if (index > 0 || announcements.isNotEmpty()) SettingsCardDivider()
-            CommunityActionItem(
-                title = pollSectionTitle,
-                item = poll,
-                fallbackSummary = stringResource(R.string.community_open_in_browser),
-                icon = Icons.Filled.Poll,
-                onClick = { onCommunityItemClick(CommunityDialogState(pollSectionTitle, poll)) }
-            )
-        }
-        return
-    }
-
-    SettingsActionItem(
-        title = if (communityFeed?.status == CommunityFeedStatus.UNAVAILABLE) {
-            stringResource(R.string.community_unavailable_title)
-        } else {
-            stringResource(R.string.community_empty_title)
-        },
-        summary = if (communityFeed?.status == CommunityFeedStatus.UNAVAILABLE) {
-            stringResource(R.string.community_unavailable_desc)
-        } else {
-            stringResource(R.string.community_empty_desc)
-        },
-        icon = Icons.Filled.Info,
-        onClick = {}
-    )
-}

@@ -49,6 +49,15 @@ internal class SuperIslandPreferencesCache(
         private set
     var dualLineMode = SuperIslandDualLineMode.TRANSLATION
         private set
+    var showProgressBar = true
+        private set
+    var secondaryTextModes: List<SuperIslandSecondaryTextMode> =
+        listOf(SuperIslandSecondaryTextMode.TRANSLATION)
+        private set
+    var template2PicSource = SuperIslandTemplate2PicSource.ALBUM_ART
+        private set
+    var template2CustomPicUri: String? = null
+        private set
     var lyricMode = "standard"
         private set
     var fullLyricShowLeftCover = true
@@ -95,6 +104,14 @@ internal class SuperIslandPreferencesCache(
                 notificationStyle = AppPreferences.superIslandNotificationStyle(p)
             AppPreferences.Keys.SUPER_ISLAND_DUAL_LINE_MODE ->
                 dualLineMode = SuperIslandDualLineMode.read(p)
+            AppPreferences.Keys.SUPER_ISLAND_SHOW_PROGRESS_BAR ->
+                showProgressBar = AppPreferences.isSuperIslandShowProgressBar(p)
+            AppPreferences.Keys.SUPER_ISLAND_SECONDARY_TEXT_MODES ->
+                secondaryTextModes = SuperIslandSecondaryTextMode.read(p)
+            AppPreferences.Keys.SUPER_ISLAND_TEMPLATE2_PIC_SOURCE ->
+                template2PicSource = SuperIslandTemplate2PicSource.read(p)
+            AppPreferences.Keys.SUPER_ISLAND_TEMPLATE2_CUSTOM_PIC_URI ->
+                template2CustomPicUri = SuperIslandTemplate2PicSource.readCustomPicUri(p)
             AppPreferences.Keys.SUPER_ISLAND_LYRIC_MODE ->
                 lyricMode = sanitizeLyricMode(AppPreferences.superIslandLyricMode(p))
             AppPreferences.Keys.SUPER_ISLAND_FULL_LYRIC_SHOW_LEFT_COVER ->
@@ -134,6 +151,10 @@ internal class SuperIslandPreferencesCache(
         mediaButtonLayout = AppPreferences.superIslandMediaButtonLayout(prefs)
         notificationStyle = AppPreferences.superIslandNotificationStyle(prefs)
         dualLineMode = SuperIslandDualLineMode.read(prefs)
+        showProgressBar = AppPreferences.isSuperIslandShowProgressBar(prefs)
+        secondaryTextModes = SuperIslandSecondaryTextMode.read(prefs)
+        template2PicSource = SuperIslandTemplate2PicSource.read(prefs)
+        template2CustomPicUri = SuperIslandTemplate2PicSource.readCustomPicUri(prefs)
         lyricMode = sanitizeLyricMode(AppPreferences.superIslandLyricMode(prefs))
         fullLyricShowLeftCover = AppPreferences.isSuperIslandFullLyricLeftCoverEnabled(prefs)
         loadTextLimits(prefs)

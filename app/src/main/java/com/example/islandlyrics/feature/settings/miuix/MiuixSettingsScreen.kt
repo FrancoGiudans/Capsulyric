@@ -82,6 +82,7 @@ import com.example.islandlyrics.core.settings.SettingsBackupManager
 import com.example.islandlyrics.core.settings.SettingsBackupManager.ParserConflict
 import com.example.islandlyrics.core.settings.BackupCategories
 import com.example.islandlyrics.core.settings.SettingsBackupManager.PreviewResult
+import com.example.islandlyrics.core.settings.LabFeatureManager
 import com.example.islandlyrics.lyrics.state.LyricRepository
 import com.example.islandlyrics.runtime.service.MediaMonitorService
 import com.example.islandlyrics.runtime.playingapp.NewPlayingAppNotifier
@@ -102,8 +103,12 @@ fun MiuixSettingsScreen(
     updateCodenameText: String,
     updateBuildText: String,
     onOpenCustomSettings: () -> Unit = {},
+    onOpenCapsuleNotification: () -> Unit = {},
+    onOpenDesktopLyrics: (() -> Unit)? = null,
+    onOpenCommunity: (() -> Unit)? = null,
     onOpenFaq: (() -> Unit)? = null,
     onOpenAbout: (() -> Unit)? = null,
+    onOpenLocalLyricDirectories: (() -> Unit) = {},
     onOpenLocalLyricDirectory: ((Uri, String) -> Unit)? = null,
     onOpenOnlineLyricRematch: (() -> Unit)? = null,
     onOpenLastFm: (() -> Unit)? = null,
@@ -130,6 +135,7 @@ fun MiuixSettingsScreen(
     val backupImportSuccessWithCacheFormat = stringResource(R.string.settings_backup_import_success_with_cache)
     val backupImportFailedText = stringResource(R.string.settings_backup_import_failed)
     val devModeEnabled by LyricRepository.getInstance().devModeEnabled.observeAsState(false)
+    val floatingLyricsLabEnabled = remember { LabFeatureManager.isFloatingLyricsEnabled(prefs) }
 
     // Backup category selection states
     var showExportCategoryDialog by remember { mutableStateOf(false) }
@@ -208,7 +214,6 @@ fun MiuixSettingsScreen(
     var dynamicIconEnabled by remember { mutableStateOf(prefs.getBoolean("dynamic_icon_enabled", false)) }
 
     val showPrivacyDialog = remember { mutableStateOf(false) }
-    val localLyricDirState = rememberLocalLyricDirectoriesState()
     val showFeedbackPopup = remember { mutableStateOf(false) }
 
     MiuixBackHandler(enabled = showPrivacyDialog.value) { showPrivacyDialog.value = false }
@@ -325,14 +330,23 @@ fun MiuixSettingsScreen(
                 bottom = padding.calculateBottomPadding() + 116.dp
             )
         ) {
-            // ═══ 1. Personalization ═══
-            item { SmallTitle(text = stringResource(R.string.settings_personalization_header)) }
+            // ═══ 1. Core ═══
+            item { SmallTitle(text = stringResource(R.string.settings_core_header)) }
             item {
                 Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
                     SuperArrow(
-                        title = stringResource(R.string.page_title_personalization),
-                        onClick = onOpenCustomSettings
+                        title = stringResource(R.string.settings_capsule_notification),
+                        onClick = onOpenCapsuleNotification
                     )
+                    if (floatingLyricsLabEnabled) {
+                        SuperArrow(
+                            title = stringResource(R.string.settings_floating_lyrics),
+                            onClick = {
+                                onOpenDesktopLyrics?.invoke()
+                                    ?: onOpenCustomSettings()
+                            }
+                        )
+                    }
                 }
             }
 
@@ -340,6 +354,12 @@ fun MiuixSettingsScreen(
             item { SmallTitle(text = stringResource(R.string.settings_general_header)) }
             item {
                 Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
+                    // 个性化设置（仅保留 App 界面内容）
+                    SuperArrow(
+                        title = stringResource(R.string.page_title_personalization),
+                        onClick = onOpenCustomSettings
+                    )
+
                     // Language
                     val langOptions = listOf("", "en", "zh-CN")
                     val langNames = listOf(
@@ -403,8 +423,8 @@ fun MiuixSettingsScreen(
                 }
             }
 
-            // ═══ 3. System & Permissions ═══
-            item { SmallTitle(text = stringResource(R.string.settings_core_services_header)) }
+            // ═══ 3. Permissions ═══
+            item { SmallTitle(text = stringResource(R.string.settings_permissions_header)) }
             item {
                 Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
                     SuperSwitch(
@@ -443,17 +463,16 @@ fun MiuixSettingsScreen(
                 }
             }
 
-            // ═══ Local Lyrics ═══
+            // ═══ 4. Lyric Tools（本地歌词 + 歌词工具）═══
+            item { SmallTitle(text = stringResource(R.string.settings_lyric_tools_header)) }
             item {
-                MiuixLocalLyricDirectoriesContent(
-                    state = localLyricDirState,
-                    onOpenDirectory = onOpenLocalLyricDirectory
-                )
-            }
-            if (!offlineModeEnabled) {
-                item { SmallTitle(text = stringResource(R.string.settings_lyric_tools_header)) }
-                item {
-                    Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
+                Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
+                    SuperArrow(
+                        title = stringResource(R.string.settings_local_lyrics_title),
+                        summary = stringResource(R.string.settings_local_lyrics_directories),
+                        onClick = onOpenLocalLyricDirectories
+                    )
+                    if (!offlineModeEnabled) {
                         SuperArrow(
                             title = stringResource(R.string.online_lyric_rematch_title),
                             summary = stringResource(R.string.online_lyric_rematch_settings_desc),
@@ -467,7 +486,7 @@ fun MiuixSettingsScreen(
                             summary = stringResource(R.string.lastfm_settings_summary),
                             onClick = {
                                 onOpenLastFm?.invoke()
-                                    ?: context.startActivity(Intent(context, LastFmSettingsActivity::class.java))
+                                ?: context.startActivity(Intent(context, LastFmSettingsActivity::class.java))
                             }
                         )
                     }
@@ -505,8 +524,16 @@ fun MiuixSettingsScreen(
                                 ?: context.startActivity(Intent(context, FAQActivity::class.java))
                         }
                     )
+                    if (!offlineModeEnabled) {
+                        SuperArrow(
+                            title = stringResource(R.string.settings_community_header),
+                            onClick = {
+                                onOpenCommunity?.invoke()
+                            }
+                        )
+                    }
                     SuperArrow(
-                        title = stringResource(R.string.community_about_title),
+                        title = stringResource(R.string.about_title),
                         summary = stringResource(R.string.settings_about_capsulyric),
                         onClick = {
                             onOpenAbout?.invoke()
@@ -591,8 +618,6 @@ fun MiuixSettingsScreen(
                 onIgnore = onUpdateIgnore
             )
         }
-
-        MiuixLocalLyricDirectoriesDialog(localLyricDirState)
 
         // Backup category export dialog
         MiuixBackupCategoryDialog(

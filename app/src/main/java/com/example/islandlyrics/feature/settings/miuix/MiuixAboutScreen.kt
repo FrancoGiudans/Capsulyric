@@ -190,7 +190,7 @@ fun MiuixAboutScreen(
         Scaffold(
             topBar = {
                 SmallTopAppBar(
-                    title = stringResource(R.string.community_about_title),
+                    title = stringResource(R.string.about_title),
                     scrollBehavior = scrollBehavior,
                     color = MiuixTheme.colorScheme.surface.copy(alpha = if (scrollProgress >= 1f) 1f else 0f),
                     titleColor = MiuixTheme.colorScheme.onSurface.copy(alpha = scrollProgress),
@@ -260,10 +260,6 @@ private fun MiuixAboutContent(
     var autoUpdateEnabled by remember { mutableStateOf(UpdateChecker.isAutoUpdateEnabled(context)) }
     var currentChannel by remember { mutableStateOf(UpdateChecker.getUpdateChannel(context)) }
     var experimentUpdatesEnabled by remember { mutableStateOf(LabFeatureManager.isExperimentUpdatesEnabled(context)) }
-    var feedSourcePriority by remember { mutableStateOf(LabFeatureManager.getFeedSourcePriority(context)) }
-    var communityFeed by remember { mutableStateOf<CommunityFeed?>(null) }
-    var communityFeedLoaded by remember { mutableStateOf(false) }
-    var communityDialogState by remember { mutableStateOf<CommunityDialogState?>(null) }
     var showFeedbackPopup by remember { mutableStateOf(false) }
     var devStepCount by remember { mutableIntStateOf(0) }
 
@@ -312,17 +308,6 @@ private fun MiuixAboutContent(
         } else if (devStepCount == 7) {
             LyricRepository.getInstance().setDevMode(context, true)
             Toast.makeText(context, devModeEnabledText, Toast.LENGTH_SHORT).show()
-        }
-    }
-
-    LaunchedEffect(offlineModeEnabled, feedSourcePriority) {
-        communityFeedLoaded = false
-        if (offlineModeEnabled) {
-            communityFeed = null
-            communityFeedLoaded = true
-        } else {
-            communityFeed = CommunityFeedRepository.fetchFeed(context)
-            communityFeedLoaded = true
         }
     }
 
@@ -406,29 +391,6 @@ private fun MiuixAboutContent(
                 )
             }
 
-            if (!offlineModeEnabled) {
-                item(key = "community") {
-                    SmallTitle(text = stringResource(R.string.settings_community_header))
-                    FrostedAboutCard(
-                        backdrop = backdrop,
-                        blurEnabled = blurEnabled,
-                        blurColors = cardBlurColors
-                    ) {
-                        CommunitySection(
-                            offlineModeEnabled = offlineModeEnabled,
-                            feedSourcePriority = feedSourcePriority,
-                            onFeedSourcePriorityChange = { source ->
-                                feedSourcePriority = source
-                                LabFeatureManager.setFeedSourcePriority(context, source)
-                            },
-                            communityFeed = communityFeed,
-                            communityFeedLoaded = communityFeedLoaded,
-                            onCommunityItemClick = { communityDialogState = it }
-                        )
-                    }
-                }
-            }
-
             item(key = "about") {
                 SmallTitle(text = stringResource(R.string.about_title))
                 FrostedAboutCard(
@@ -504,19 +466,6 @@ private fun MiuixAboutContent(
                 )
             }
         }
-    }
-
-    communityDialogState?.let { dialogState ->
-        CommunityDetailsDialog(
-            state = dialogState,
-            onDismiss = { communityDialogState = null },
-            onOpen = {
-                if (dialogState.item.hasUrl) {
-                    context.startActivity(Intent(Intent.ACTION_VIEW, dialogState.item.url.toUri()))
-                }
-                communityDialogState = null
-            }
-        )
     }
 
     releaseDialogState?.let { dialogState ->
@@ -654,7 +603,7 @@ private fun HeaderContent(
 }
 
 @Composable
-private fun CommunitySection(
+internal fun CommunitySection(
     offlineModeEnabled: Boolean,
     feedSourcePriority: String,
     onFeedSourcePriorityChange: (String) -> Unit,

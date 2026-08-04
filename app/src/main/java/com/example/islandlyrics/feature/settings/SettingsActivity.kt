@@ -51,11 +51,21 @@ import com.example.islandlyrics.feature.logviewer.miuix.MiuixLogViewerScreen
 import com.example.islandlyrics.feature.onlinelyricdebug.material.OnlineLyricDebugScreen
 import com.example.islandlyrics.feature.onlinelyricdebug.miuix.MiuixOnlineLyricDebugScreen
 import com.example.islandlyrics.feature.settings.miuix.MiuixSettingsScreen
+import com.example.islandlyrics.feature.settings.miuix.MiuixCommunityScreen
+import com.example.islandlyrics.feature.settings.miuix.MiuixLocalLyricDirectoriesScreen
+import com.example.islandlyrics.feature.customsettings.miuix.MiuixCapsuleNotificationScreen
+import com.example.islandlyrics.feature.customsettings.miuix.MiuixAppUiScreen
+import com.example.islandlyrics.feature.customsettings.miuix.MiuixDesktopLyricsScreen
 import com.example.islandlyrics.ui.miuix.theme.MiuixAppTheme
 import com.example.islandlyrics.feature.update.material.UpdateDialog
 import com.example.islandlyrics.feature.settings.material.SettingsScreen
 import com.example.islandlyrics.feature.settings.material.AboutScreen
 import com.example.islandlyrics.feature.settings.miuix.MiuixAboutScreen
+import com.example.islandlyrics.feature.settings.material.CommunityScreen
+import com.example.islandlyrics.feature.settings.material.LocalLyricDirectoriesScreen
+import com.example.islandlyrics.feature.customsettings.material.CapsuleNotificationScreen
+import com.example.islandlyrics.feature.customsettings.material.AppUiScreen
+import com.example.islandlyrics.feature.customsettings.material.DesktopLyricsScreen
 import com.example.islandlyrics.ui.theme.material.IslandLyricsMaterialTheme
 import android.widget.Toast
 import androidx.activity.compose.setContent
@@ -115,8 +125,12 @@ class SettingsActivity : BaseActivity() {
                                     updateCodenameText = codename,
                                     updateBuildText = build,
                                     onOpenCustomSettings = { pushPage(SettingsPage.CustomSettings) },
+                                    onOpenCapsuleNotification = { pushPage(SettingsPage.CapsuleNotification) },
+                                    onOpenDesktopLyrics = { pushPage(SettingsPage.DesktopLyrics) },
+                                    onOpenCommunity = { pushPage(SettingsPage.Community) },
                                     onOpenFaq = { pushPage(SettingsPage.Faq) },
                                     onOpenAbout = { pushPage(SettingsPage.About) },
+                                    onOpenLocalLyricDirectories = { pushPage(SettingsPage.LocalLyricDirectories) },
                                     onOpenLocalLyricDirectory = { uri, name ->
                                         pushPage(SettingsPage.LocalLyricDirectory(uri.toString(), name))
                                     },
@@ -169,8 +183,12 @@ class SettingsActivity : BaseActivity() {
                                     updateCodenameText = codename,
                                     updateBuildText = build,
                                     onOpenCustomSettings = { pushPage(SettingsPage.CustomSettings) },
+                                    onOpenCapsuleNotification = { pushPage(SettingsPage.CapsuleNotification) },
+                                    onOpenDesktopLyrics = { pushPage(SettingsPage.DesktopLyrics) },
+                                    onOpenCommunity = { pushPage(SettingsPage.Community) },
                                     onOpenFaq = { pushPage(SettingsPage.Faq) },
                                     onOpenAbout = { pushPage(SettingsPage.About) },
+                                    onOpenLocalLyricDirectories = { pushPage(SettingsPage.LocalLyricDirectories) },
                                     onOpenLocalLyricDirectory = { uri, name ->
                                         pushPage(SettingsPage.LocalLyricDirectory(uri.toString(), name))
                                     },
@@ -216,12 +234,15 @@ class SettingsActivity : BaseActivity() {
         updateBuildText: String
     ) {
         when (page) {
-            SettingsPage.CustomSettings -> CustomSettingsScreen(
+            SettingsPage.CustomSettings -> AppUiScreen(onBack = onBack)
+            SettingsPage.CapsuleNotification -> CapsuleNotificationScreen(onBack = onBack)
+            SettingsPage.DesktopLyrics -> DesktopLyricsScreen(onBack = onBack)
+            SettingsPage.Community -> CommunityScreen(onBack = onBack)
+            SettingsPage.LocalLyricDirectories -> LocalLyricDirectoriesScreen(
                 onBack = onBack,
-                onCheckUpdate = {},
-                onShowLogs = { onPushPage(SettingsPage.LogViewer) },
-                updateVersionText = updateVersionText,
-                updateBuildText = updateBuildText
+                onOpenDirectory = { uri, name ->
+                    onPushPage(SettingsPage.LocalLyricDirectory(uri.toString(), name))
+                }
             )
             SettingsPage.Faq -> FAQScreen(onBack = onBack)
             SettingsPage.About -> AboutScreen(
@@ -266,12 +287,15 @@ class SettingsActivity : BaseActivity() {
         updateBuildText: String
     ) {
         when (page) {
-            SettingsPage.CustomSettings -> MiuixCustomSettingsScreen(
+            SettingsPage.CustomSettings -> MiuixAppUiScreen(onBack = onBack)
+            SettingsPage.CapsuleNotification -> MiuixCapsuleNotificationScreen(onBack = onBack)
+            SettingsPage.DesktopLyrics -> MiuixDesktopLyricsScreen(onBack = onBack)
+            SettingsPage.Community -> MiuixCommunityScreen(onBack = onBack)
+            SettingsPage.LocalLyricDirectories -> MiuixLocalLyricDirectoriesScreen(
                 onBack = onBack,
-                onCheckUpdate = {},
-                onShowLogs = { onPushPage(SettingsPage.LogViewer) },
-                updateVersionText = updateVersionText,
-                updateBuildText = updateBuildText
+                onOpenDirectory = { uri, name ->
+                    onPushPage(SettingsPage.LocalLyricDirectory(uri.toString(), name))
+                }
             )
             SettingsPage.Faq -> MiuixFAQScreen(onBack = onBack)
             SettingsPage.About -> MiuixAboutScreen(
@@ -427,6 +451,10 @@ class SettingsActivity : BaseActivity() {
 
 private sealed class SettingsPage {
     data object CustomSettings : SettingsPage()
+    data object CapsuleNotification : SettingsPage()
+    data object DesktopLyrics : SettingsPage()
+    data object Community : SettingsPage()
+    data object LocalLyricDirectories : SettingsPage()
     data object Faq : SettingsPage()
     data object About : SettingsPage()
     data object Diagnostics : SettingsPage()

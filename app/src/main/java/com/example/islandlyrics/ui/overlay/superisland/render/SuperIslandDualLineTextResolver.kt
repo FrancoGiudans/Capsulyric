@@ -23,7 +23,7 @@
 package com.example.islandlyrics.ui.overlay.superisland.render
 
 import com.example.islandlyrics.ui.overlay.model.UIState
-import com.example.islandlyrics.ui.overlay.superisland.config.SuperIslandDualLineMode
+import com.example.islandlyrics.ui.overlay.superisland.config.SuperIslandSecondaryTextMode
 
 internal data class SuperIslandDualLineText(
     val primary: String,
@@ -33,7 +33,10 @@ internal data class SuperIslandDualLineText(
 }
 
 internal object SuperIslandDualLineTextResolver {
-    fun resolve(state: UIState, mode: String): SuperIslandDualLineText {
+    fun resolve(
+        state: UIState,
+        modes: List<SuperIslandSecondaryTextMode>
+    ): SuperIslandDualLineText {
         val currentLine = state.lyricPresentation.currentLine
         val primary = sequenceOf(
             currentLine?.text,
@@ -45,12 +48,15 @@ internal object SuperIslandDualLineTextResolver {
             .firstOrNull { !SuperIslandTextResolver.isPlaceholder(it) }
             ?: "♪"
 
-        val secondary = resolveSecondary(state, mode)
+        val secondary = resolveSecondary(state, modes)
 
         return SuperIslandDualLineText(primary = primary, secondary = secondary)
     }
 
-    private fun resolveSecondary(state: UIState, mode: String): String? {
+    internal fun resolveSecondary(
+        state: UIState,
+        modes: List<SuperIslandSecondaryTextMode>
+    ): String? {
         val currentLine = state.lyricPresentation.currentLine
 
         fun candidate(text: String?): String? =
@@ -60,14 +66,22 @@ internal object SuperIslandDualLineTextResolver {
         val romanization = candidate(currentLine?.romanization)
         val nextLyric = candidate(state.lyricPresentation.nextLine?.text)
 
-        return when (mode) {
-            SuperIslandDualLineMode.TRANSLATION ->
-                translation ?: romanization ?: nextLyric
-            SuperIslandDualLineMode.ROMANIZATION ->
-                romanization ?: translation ?: nextLyric
-            SuperIslandDualLineMode.NEXT_LYRIC ->
-                nextLyric ?: translation ?: romanization
-            else -> translation ?: romanization ?: nextLyric
+        val parts = LinkedHashSet<String>()
+        for (mode in modes) {
+            val value = when (mode) {
+                SuperIslandSecondaryTextMode.TRANSLATION -> translation
+                SuperIslandSecondaryTextMode.ROMANIZATION -> romanization
+                SuperIslandSecondaryTextMode.NEXT_LYRIC -> nextLyric
+            }
+            if (value != null) parts.add(value)
         }
+        // 兜底：所选内容均不可用时，按翻译→罗马音→下一句的顺序取第一个可用内容
+        if (parts.isEmpty()) {
+            sequenceOf(translation, romanization, nextLyric)
+                .filterNotNull()
+                .firstOrNull()
+                ?.let { parts.add(it) }
+        }
+        return parts.joinToString(" / ").ifEmpty { null }
     }
 }

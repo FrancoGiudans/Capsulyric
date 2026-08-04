@@ -27,6 +27,14 @@ import com.example.islandlyrics.ui.overlay.config.CapsuleRenderMode
 import com.example.islandlyrics.ui.navigation.PredictiveBackAnimationMode
 import com.example.islandlyrics.ui.navigation.PredictiveBackAnimationStyle
 
+/** 个性化设置页拆分后各页面可用的页签集合。 */
+enum class CustomSettingsTab {
+    CAPSULE,
+    NOTIFICATION,
+    APP_UI,
+    DESKTOP_LYRICS
+}
+
 data class CustomSettingsUiState(
     val floatingLyricsLabEnabled: Boolean = false,
     val followSystem: Boolean = true,
@@ -40,6 +48,10 @@ data class CustomSettingsUiState(
     val superIslandMediaButtonLayout: String = "two_button",
     val superIslandNotificationStyle: String = "standard",
     val superIslandDualLineMode: String = "translation",
+    val superIslandShowProgressBar: Boolean = true,
+    val superIslandSecondaryTextModes: List<String> = listOf("next_lyric"),
+    val superIslandTemplate2PicSource: String = "album_art",
+    val superIslandTemplate2CustomPicUri: String? = null,
     val superIslandAdvancedStyleLabEnabled: Boolean = false,
     val superIslandTextLimitsLabEnabled: Boolean = false,
     val superIslandRelaxedTextLimitsLabEnabled: Boolean = false,
@@ -102,6 +114,10 @@ sealed interface CustomSettingsAction {
     data class SetSuperIslandNotificationStyle(val value: String) : CustomSettingsAction
     data class SetSuperIslandDualLineMode(val value: String) : CustomSettingsAction
     data class SetSuperIslandMediaButtonLayout(val value: String) : CustomSettingsAction
+    data class SetSuperIslandShowProgressBar(val value: Boolean) : CustomSettingsAction
+    data class SetSuperIslandSecondaryTextModes(val value: List<String>) : CustomSettingsAction
+    data class SetSuperIslandTemplate2PicSource(val value: String) : CustomSettingsAction
+    data class SetSuperIslandTemplate2CustomPicUri(val value: String?) : CustomSettingsAction
     data class SetXmsfBypassMode(val value: XmsfBypassMode) : CustomSettingsAction
     data class SetXmsfCustomDurationMs(val value: Int) : CustomSettingsAction
     data class SetMiuixEnabled(val value: Boolean) : CustomSettingsAction

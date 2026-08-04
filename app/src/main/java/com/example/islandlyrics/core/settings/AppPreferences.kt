@@ -41,6 +41,10 @@ object AppPreferences {
         const val SUPER_ISLAND_MEDIA_BUTTON_LAYOUT = "super_island_media_button_layout"
         const val SUPER_ISLAND_NOTIFICATION_STYLE = "super_island_notification_style"
         const val SUPER_ISLAND_DUAL_LINE_MODE = "super_island_dual_line_mode"
+        const val SUPER_ISLAND_SHOW_PROGRESS_BAR = "super_island_show_progress_bar"
+        const val SUPER_ISLAND_SECONDARY_TEXT_MODES = "super_island_secondary_text_modes"
+        const val SUPER_ISLAND_TEMPLATE2_PIC_SOURCE = "super_island_template2_pic_source"
+        const val SUPER_ISLAND_TEMPLATE2_CUSTOM_PIC_URI = "super_island_template2_custom_pic_uri"
         const val SUPER_ISLAND_LYRIC_MODE = "super_island_lyric_mode"
         const val SUPER_ISLAND_FULL_LYRIC_SHOW_LEFT_COVER = "super_island_full_lyric_show_left_cover"
         const val XMSF_NETWORK_MODE = "block_xmsf_network_mode"
@@ -116,6 +120,9 @@ object AppPreferences {
         const val SUPER_ISLAND_MEDIA_BUTTON_LAYOUT = "two_button"
         const val SUPER_ISLAND_NOTIFICATION_STYLE = "standard"
         const val SUPER_ISLAND_DUAL_LINE_MODE = "translation"
+        const val SUPER_ISLAND_SHOW_PROGRESS_BAR = true
+        const val SUPER_ISLAND_SECONDARY_TEXT_MODES = "next_lyric"
+        const val SUPER_ISLAND_TEMPLATE2_PIC_SOURCE = "album_art"
         const val SUPER_ISLAND_LYRIC_MODE = "standard"
     }
 
@@ -161,6 +168,20 @@ object AppPreferences {
     fun superIslandDualLineMode(prefs: SharedPreferences): String =
         prefs.getString(Keys.SUPER_ISLAND_DUAL_LINE_MODE, Defaults.SUPER_ISLAND_DUAL_LINE_MODE)
             ?: Defaults.SUPER_ISLAND_DUAL_LINE_MODE
+
+    fun isSuperIslandShowProgressBar(prefs: SharedPreferences): Boolean =
+        prefs.getBoolean(Keys.SUPER_ISLAND_SHOW_PROGRESS_BAR, Defaults.SUPER_ISLAND_SHOW_PROGRESS_BAR)
+
+    fun superIslandSecondaryTextModes(prefs: SharedPreferences): String =
+        prefs.getString(Keys.SUPER_ISLAND_SECONDARY_TEXT_MODES, Defaults.SUPER_ISLAND_SECONDARY_TEXT_MODES)
+            ?: Defaults.SUPER_ISLAND_SECONDARY_TEXT_MODES
+
+    fun superIslandTemplate2PicSource(prefs: SharedPreferences): String =
+        prefs.getString(Keys.SUPER_ISLAND_TEMPLATE2_PIC_SOURCE, Defaults.SUPER_ISLAND_TEMPLATE2_PIC_SOURCE)
+            ?: Defaults.SUPER_ISLAND_TEMPLATE2_PIC_SOURCE
+
+    fun superIslandTemplate2CustomPicUri(prefs: SharedPreferences): String? =
+        prefs.getString(Keys.SUPER_ISLAND_TEMPLATE2_CUSTOM_PIC_URI, null)
 
     fun superIslandLyricMode(prefs: SharedPreferences): String =
         prefs.getString(Keys.SUPER_ISLAND_LYRIC_MODE, Defaults.SUPER_ISLAND_LYRIC_MODE)

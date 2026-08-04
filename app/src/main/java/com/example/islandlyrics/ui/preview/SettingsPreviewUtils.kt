@@ -322,7 +322,9 @@ fun NotificationPreview(
     superIslandMediaButtonLayout: String = "two_button",
     superIslandNotificationStyle: String = "standard",
     superIslandLyricMode: String = "standard",
-    superIslandFullLyricShowLeftCover: Boolean = true
+    superIslandFullLyricShowLeftCover: Boolean = true,
+    showProgressBar: Boolean = true,
+    template2PicSource: String = "album_art"
 ) {
     val context = LocalContext.current
     val repo = remember { LyricRepository.getInstance() }
@@ -515,6 +517,104 @@ fun NotificationPreview(
                         )
                     }
                 }
+            } else if (actionStyle == "template2") {
+                // 模板2（文本组件2 + 识别图形组件1）：无按钮、无进度条
+                Column {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = currentLyric,
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 16.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = if (artist.isNotBlank()) "$title - $artist" else title,
+                                color = Color(0xFFB0B0B0),
+                                fontSize = 13.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.width(16.dp))
+
+                        Box(
+                            modifier = Modifier
+                                .size(56.dp)
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(Color.DarkGray)
+                        ) {
+                            when (template2PicSource) {
+                                "playing_app", "app_icon" -> {
+                                    val iconPackage = if (template2PicSource == "app_icon") {
+                                        context.packageName
+                                    } else {
+                                        metadata?.packageName
+                                    }
+                                    val template2Icon = remember(iconPackage) {
+                                        try {
+                                            iconPackage?.let { context.packageManager.getApplicationIcon(it) }
+                                        } catch (e: Exception) {
+                                            null
+                                        }
+                                    }
+                                    if (template2Icon != null) {
+                                        androidx.compose.ui.viewinterop.AndroidView(
+                                            factory = { ctx ->
+                                                android.widget.ImageView(ctx).apply {
+                                                    setImageDrawable(template2Icon)
+                                                }
+                                            },
+                                            modifier = Modifier.fillMaxSize()
+                                        )
+                                    } else {
+                                        Image(
+                                            painter = painterResource(R.mipmap.ic_launcher_foreground),
+                                            contentDescription = null,
+                                            modifier = Modifier.fillMaxSize()
+                                        )
+                                    }
+                                }
+                                "custom" -> {
+                                    Box(
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = "CUSTOM",
+                                            color = Color.White.copy(alpha = 0.7f),
+                                            fontSize = 10.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+                                }
+                                else -> {
+                                    if (albumArt != null) {
+                                        Image(
+                                            bitmap = albumArt!!.asImageBitmap(),
+                                            contentDescription = null,
+                                            modifier = Modifier.fillMaxSize(),
+                                            contentScale = ContentScale.Crop
+                                        )
+                                    } else {
+                                        Image(
+                                            painter = painterResource(R.mipmap.ic_launcher_foreground),
+                                            contentDescription = null,
+                                            modifier = Modifier.fillMaxSize()
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             } else {
                 // Template 7 Style (Legacy/Standard)
                 Column {
@@ -616,15 +716,17 @@ fun NotificationPreview(
                     Spacer(modifier = Modifier.height(16.dp))
 
                     // Bottom: Progress Bar
-                    LinearProgressIndicator(
-                        progress = { progress },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(4.dp)
-                            .clip(RoundedCornerShape(2.dp)),
-                        color = if (progressColorEnabled) barColor else Color.Gray.copy(alpha = 0.6f),
-                        trackColor = if (progressColorEnabled) barColor.copy(alpha = 0.2f) else Color(0xFF1A2633)
-                    )
+                    if (showProgressBar) {
+                        LinearProgressIndicator(
+                            progress = { progress },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(4.dp)
+                                .clip(RoundedCornerShape(2.dp)),
+                            color = if (progressColorEnabled) barColor else Color.Gray.copy(alpha = 0.6f),
+                            trackColor = if (progressColorEnabled) barColor.copy(alpha = 0.2f) else Color(0xFF1A2633)
+                        )
+                    }
                 }
             }
         }

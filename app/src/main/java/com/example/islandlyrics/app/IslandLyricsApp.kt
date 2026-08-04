@@ -32,6 +32,7 @@ import com.example.islandlyrics.core.settings.AppPreferences
 import com.example.islandlyrics.core.theme.ThemeHelper
 import com.example.islandlyrics.core.platform.RomUtils
 import com.example.islandlyrics.rules.ParserRuleHelper
+import com.example.islandlyrics.ui.overlay.superisland.config.SuperIslandPreferenceMigration
 import com.google.android.material.color.DynamicColors
 import org.lsposed.hiddenapibypass.HiddenApiBypass
 
@@ -64,6 +65,8 @@ class IslandLyricsApp : Application() {
         
         // Debug override
         val prefs = AppPreferences.of(this)
+        // 旧版本「通知按键」→ 新「播放按键布局 + 显示进度条」偏好迁移
+        SuperIslandPreferenceMigration.migrate(prefs)
         val forcedType = prefs.getString(AppPreferences.Keys.DEBUG_FORCED_ROM_TYPE, null)
         if (!forcedType.isNullOrEmpty()) {
             RomUtils.forcedRomType = forcedType

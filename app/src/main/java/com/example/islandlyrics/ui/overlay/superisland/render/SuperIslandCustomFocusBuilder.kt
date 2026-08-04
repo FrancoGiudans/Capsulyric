@@ -29,6 +29,7 @@ import com.example.islandlyrics.core.logging.AppLogger
 import com.example.islandlyrics.ui.overlay.model.UIState
 import com.example.islandlyrics.ui.overlay.superisland.cache.SuperIslandIconCache
 import com.example.islandlyrics.ui.overlay.superisland.config.SuperIslandPreferencesCache
+import com.example.islandlyrics.ui.overlay.superisland.config.SuperIslandSecondaryTextMode
 import com.example.islandlyrics.ui.overlay.superisland.config.toLyricRenderConfig
 import com.example.islandlyrics.ui.overlay.superisland.render.SuperIslandBigAreaRenderer.applyLyrics
 import com.xzakota.hyper.notification.focus.FocusNotification
@@ -72,7 +73,13 @@ internal class SuperIslandCustomFocusBuilder(
             tickerPic = appKey ?: islandSmallKey ?: avatarKey
 
             val useDualLineStyle = preferences.notificationStyle == "advanced_lyrics_dual"
-            val dualLineText = SuperIslandDualLineTextResolver.resolve(state, preferences.dualLineMode)
+            val dualLineText = SuperIslandDualLineTextResolver.resolve(
+                state,
+                listOf(
+                    SuperIslandSecondaryTextMode.from(preferences.dualLineMode)
+                        ?: SuperIslandSecondaryTextMode.TRANSLATION
+                )
+            )
             val customLightViews = if (useDualLineStyle) {
                 remoteViewsFactory.createDualLineExpand(
                     state = state,
@@ -163,10 +170,12 @@ internal class SuperIslandCustomFocusBuilder(
                                 pic = islandSmallKey
                             }
                         }
-                        progressInfo {
-                            progress = progressPercent
-                            colorReach = if (showHighlightColor) hexColor else "#757575"
-                            colorUnReach = "#333333"
+                        if (preferences.showProgressBar) {
+                            progressInfo {
+                                progress = progressPercent
+                                colorReach = if (showHighlightColor) hexColor else "#757575"
+                                colorUnReach = "#333333"
+                            }
                         }
                     }
                 }

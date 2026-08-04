@@ -39,6 +39,8 @@ import com.example.islandlyrics.ui.navigation.PredictiveBackAnimationMode
 import com.example.islandlyrics.ui.navigation.PredictiveBackAnimationStyle
 import com.example.islandlyrics.ui.overlay.superisland.config.SuperIslandColorSource
 import com.example.islandlyrics.ui.overlay.superisland.config.SuperIslandDualLineMode
+import com.example.islandlyrics.ui.overlay.superisland.config.SuperIslandSecondaryTextMode
+import com.example.islandlyrics.ui.overlay.superisland.config.SuperIslandTemplate2PicSource
 import com.example.islandlyrics.ui.overlay.superisland.config.SuperIslandTextLimitConfig
 import com.example.islandlyrics.R
 import com.example.islandlyrics.core.platform.XmsfBypassMode
@@ -49,22 +51,39 @@ import com.example.islandlyrics.runtime.service.LyricService
 import com.example.islandlyrics.feature.main.HomeLyricPreviewDisplay
 import com.example.islandlyrics.feature.main.MainActivity
 import com.example.islandlyrics.feature.customsettings.CustomSettingsAction
+import com.example.islandlyrics.feature.customsettings.CustomSettingsTab
 import com.example.islandlyrics.feature.customsettings.CustomSettingsViewModel
 import android.content.Context
 import android.content.Intent
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.DragHandle
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.zIndex
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -85,10 +104,12 @@ private const val MIUIX_THEME_COLOR_SOURCE_PREF_KEY = "miuix_theme_color_source"
 @Suppress("UNUSED_PARAMETER")
 fun MiuixCustomSettingsScreen(
     onBack: () -> Unit,
-    onCheckUpdate: () -> Unit,
-    onShowLogs: () -> Unit,
-    updateVersionText: String,
-    updateBuildText: String,
+    onCheckUpdate: () -> Unit = {},
+    onShowLogs: () -> Unit = {},
+    updateVersionText: String = "",
+    updateBuildText: String = "",
+    title: String = stringResource(R.string.page_title_personalization),
+    tabs: Set<CustomSettingsTab> = CustomSettingsTab.entries.toSet(),
     viewModel: CustomSettingsViewModel = viewModel()
 ) {
     val context = LocalContext.current
@@ -100,16 +121,23 @@ fun MiuixCustomSettingsScreen(
         mutableStateOf(uiState.floatingLyricsLabEnabled)
     }
 
-    val tabs = buildList {
-        add(stringResource(R.string.tab_capsule))
-        add(stringResource(R.string.tab_notification))
-        add(stringResource(R.string.tab_app_ui))
-        if (floatingLyricsLabEnabled) {
-            add(stringResource(R.string.settings_floating_lyrics))
+    val orderedTabs = buildList {
+        if (CustomSettingsTab.CAPSULE in tabs) add(CustomSettingsTab.CAPSULE)
+        if (CustomSettingsTab.NOTIFICATION in tabs) add(CustomSettingsTab.NOTIFICATION)
+        if (CustomSettingsTab.APP_UI in tabs) add(CustomSettingsTab.APP_UI)
+        if (CustomSettingsTab.DESKTOP_LYRICS in tabs && floatingLyricsLabEnabled) {
+            add(CustomSettingsTab.DESKTOP_LYRICS)
         }
     }
-    val pagerState = rememberPagerState(pageCount = { tabs.size })
-    val floatingLyricsPageIndex = if (floatingLyricsLabEnabled) tabs.lastIndex else -1
+    val tabLabels = orderedTabs.map { tab ->
+        when (tab) {
+            CustomSettingsTab.CAPSULE -> stringResource(R.string.tab_capsule)
+            CustomSettingsTab.NOTIFICATION -> stringResource(R.string.tab_notification)
+            CustomSettingsTab.APP_UI -> stringResource(R.string.tab_app_ui)
+            CustomSettingsTab.DESKTOP_LYRICS -> stringResource(R.string.settings_floating_lyrics)
+        }
+    }
+    val pagerState = rememberPagerState(pageCount = { orderedTabs.size })
 
     // State
     var followSystem by remember(uiState.followSystem) { mutableStateOf(uiState.followSystem) }
@@ -127,6 +155,19 @@ fun MiuixCustomSettingsScreen(
     var superIslandDualLineMode by remember(uiState.superIslandDualLineMode) {
         mutableStateOf(uiState.superIslandDualLineMode)
     }
+    var superIslandShowProgressBar by remember(uiState.superIslandShowProgressBar) {
+        mutableStateOf(uiState.superIslandShowProgressBar)
+    }
+    var secondaryTextModes by remember(uiState.superIslandSecondaryTextModes) {
+        mutableStateOf(uiState.superIslandSecondaryTextModes)
+    }
+    var template2PicSource by remember(uiState.superIslandTemplate2PicSource) {
+        mutableStateOf(uiState.superIslandTemplate2PicSource)
+    }
+    var template2CustomPicUri by remember(uiState.superIslandTemplate2CustomPicUri) {
+        mutableStateOf(uiState.superIslandTemplate2CustomPicUri)
+    }
+    var showSecondaryTextModeDialog by remember { mutableStateOf(false) }
     var superIslandAdvancedStyleLabEnabled by remember(uiState.superIslandAdvancedStyleLabEnabled) {
         mutableStateOf(uiState.superIslandAdvancedStyleLabEnabled)
     }
@@ -220,6 +261,22 @@ fun MiuixCustomSettingsScreen(
     var blockXmsfCustomDurationMs by remember { mutableIntStateOf(XmsfBypassMode.readCustomDurationMs(prefs)) }
     var showHomeLyricPreviewDialog by remember { mutableStateOf(false) }
 
+    val template2PicPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        try {
+            context.contentResolver.takePersistableUriPermission(
+                uri,
+                Intent.FLAG_GRANT_READ_URI_PERMISSION
+            )
+        } catch (_: Exception) {
+            // 无法持久化授权时，本次会话内仍可使用
+        }
+        template2CustomPicUri = uri.toString()
+        viewModel.dispatch(CustomSettingsAction.SetSuperIslandTemplate2CustomPicUri(uri.toString()))
+    }
+
     val isLiveUpdateSupported = remember { RomUtils.isLiveUpdateSupported() }
     val isHyperOs = remember { RomUtils.isHyperOs() }
     val effectiveCapsuleRenderMode = if (!isLiveUpdateSupported && capsuleRenderMode == CapsuleRenderMode.LIVE_UPDATE) {
@@ -230,6 +287,23 @@ fun MiuixCustomSettingsScreen(
     val homeLyricPreviewKeepOneText = stringResource(R.string.settings_home_lyric_preview_keep_one)
     val superIslandEnabled = effectiveCapsuleRenderMode == CapsuleRenderMode.XIAOMI_SUPER_ISLAND
     val islandStyleCapsuleEnabled = superIslandEnabled
+    /**
+     * 新通知逻辑：播放按键布局 + 显示进度条 推导生效的通知按键样式。
+     * - 无按键 + 显示进度条：等价于旧「通知按键 = 关闭」
+     * - 无按键 + 隐藏进度条：模板2通知（文本组件2 + 识别图形组件1）
+     * - 有按键：媒体控制按钮
+     */
+    val effectiveActionStyle = if (superIslandEnabled) {
+        when {
+            superIslandMediaButtonLayout == "no_button" &&
+                !superIslandShowProgressBar &&
+                superIslandNotificationStyle == LabFeatureManager.SUPER_ISLAND_STYLE_STANDARD -> "template2"
+            superIslandMediaButtonLayout == "no_button" -> "disabled"
+            else -> "media_controls"
+        }
+    } else {
+        actionStyle
+    }
     val forceDisableScrollingForSuperIslandLyricMode =
         islandStyleCapsuleEnabled && superIslandLyricMode == "full"
 
@@ -333,8 +407,8 @@ fun MiuixCustomSettingsScreen(
         MiuixBlurScaffold(
             topBar = {
                 MiuixBlurTopAppBar(
-                    title = stringResource(R.string.page_title_personalization),
-                    largeTitle = stringResource(R.string.page_title_personalization),
+                    title = title,
+                    largeTitle = title,
                     scrollBehavior = scrollBehavior,
                     navigationIcon = {
                         androidx.compose.material3.IconButton(
@@ -345,26 +419,28 @@ fun MiuixCustomSettingsScreen(
                         }
                     },
                     bottomContent = {
-                        Column {
-                            Spacer(modifier = Modifier.height(12.dp))
-                            TabRowWithContour(
-                                tabs = tabs,
-                                selectedTabIndex = pagerState.currentPage,
-                                onTabSelected = { index ->
-                                    scope.launch { pagerState.animateScrollToPage(index) }
-                                },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 12.dp),
-                                colors = TabRowDefaults.tabRowColors(
-                                    backgroundColor = MiuixTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f),
-                                    contentColor = MiuixTheme.colorScheme.onSurfaceVariantActions,
-                                    selectedBackgroundColor = MiuixTheme.colorScheme.onBackground.copy(alpha = 0.12f),
-                                    selectedContentColor = MiuixTheme.colorScheme.onBackground
-                                ),
-                                maxWidth = 96.dp
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
+                        if (tabLabels.size > 1) {
+                            Column {
+                                Spacer(modifier = Modifier.height(12.dp))
+                                TabRowWithContour(
+                                    tabs = tabLabels,
+                                    selectedTabIndex = pagerState.currentPage,
+                                    onTabSelected = { index ->
+                                        scope.launch { pagerState.animateScrollToPage(index) }
+                                    },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 12.dp),
+                                    colors = TabRowDefaults.tabRowColors(
+                                        backgroundColor = MiuixTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f),
+                                        contentColor = MiuixTheme.colorScheme.onSurfaceVariantActions,
+                                        selectedBackgroundColor = MiuixTheme.colorScheme.onBackground.copy(alpha = 0.12f),
+                                        selectedContentColor = MiuixTheme.colorScheme.onBackground
+                                    ),
+                                    maxWidth = 96.dp
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                            }
                         }
                     }
                 )
@@ -383,8 +459,8 @@ fun MiuixCustomSettingsScreen(
                         bottom = padding.calculateBottomPadding() + 24.dp
                     )
                 ) {
-                when (page) {
-                        0 -> { // Capsule
+                when (orderedTabs[page]) {
+                        CustomSettingsTab.CAPSULE -> { // Capsule
                             item {
                                 val previewIconStyle = if (superIslandEnabled) "advanced" else iconStyle
                                 CapsulePreview(
@@ -780,61 +856,67 @@ fun MiuixCustomSettingsScreen(
                                 }
                             }
                         }
-                        1 -> { // Notification
+                        CustomSettingsTab.NOTIFICATION -> { // Notification
                             item {
                                 NotificationPreview(
                                     progressColorEnabled = progressColorEnabled,
-                                    actionStyle = actionStyle,
+                                    actionStyle = effectiveActionStyle,
                                     superIslandEnabled = superIslandEnabled,
                                     superIslandTextColorEnabled = superIslandTextColorEnabled,
                                     superIslandMediaButtonLayout = superIslandMediaButtonLayout,
                                     superIslandNotificationStyle = superIslandNotificationStyle,
                                     superIslandLyricMode = superIslandLyricMode,
-                                    superIslandFullLyricShowLeftCover = superIslandFullLyricShowLeftCover
+                                    superIslandFullLyricShowLeftCover = superIslandFullLyricShowLeftCover,
+                                    showProgressBar = superIslandShowProgressBar,
+                                    template2PicSource = template2PicSource
                                 )
                             }
                             item { Spacer(modifier = Modifier.height(16.dp)) }
                             item {
                                 Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
-                                    // ⚡ Logic: Hide Colorize Progress Bar if Playback Notification (media_controls) is selected
-                                    if (actionStyle == "disabled" || (actionStyle == "media_controls" &&
-                                            (superIslandNotificationStyle == LabFeatureManager.SUPER_ISLAND_STYLE_ADVANCED ||
-                                                    superIslandNotificationStyle == LabFeatureManager.SUPER_ISLAND_STYLE_ADVANCED_LYRICS_DUAL))
-                                    ) {
-                                        SuperSwitch(
-                                            title = stringResource(R.string.settings_progress_color),
-                                            summary = stringResource(R.string.settings_progress_color_desc),
-                                            checked = progressColorEnabled,
-                                            onCheckedChange = {
-                                                progressColorEnabled = it
-                                                viewModel.dispatch(CustomSettingsAction.SetProgressColorEnabled(it))
+                                    // 旧版「通知按键」仅保留给非超级岛（实时更新胶囊）使用
+                                    if (!superIslandEnabled) {
+                                        val actionStyles = mutableListOf("disabled", "media_controls")
+                                        val actionStyleNames = mutableListOf(
+                                            stringResource(R.string.settings_action_style_off),
+                                            stringResource(R.string.settings_action_style_media)
+                                        )
+                                        if (isLiveUpdateSupported) {
+                                            actionStyles.add("miplay")
+                                            actionStyleNames.add(stringResource(R.string.settings_action_style_miplay))
+                                        }
+                                        val currentActionIndex = actionStyles.indexOf(actionStyle).takeIf { it >= 0 } ?: 0
+
+                                        SuperDropdown(
+                                            title = stringResource(R.string.settings_notification_actions),
+                                            items = actionStyleNames,
+                                            selectedIndex = currentActionIndex,
+                                            onSelectedIndexChange = { index ->
+                                                val newStyle = actionStyles[index]
+                                                actionStyle = newStyle
+                                                viewModel.dispatch(CustomSettingsAction.SetNotificationActionsStyle(newStyle))
                                             }
                                         )
-                                    }
 
-                                    val actionStyles = mutableListOf("disabled", "media_controls")
-                                    val actionStyleNames = mutableListOf(
-                                        stringResource(R.string.settings_action_style_off),
-                                        stringResource(R.string.settings_action_style_media)
-                                    )
-                                    if (isLiveUpdateSupported && !superIslandEnabled) {
-                                        actionStyles.add("miplay")
-                                        actionStyleNames.add(stringResource(R.string.settings_action_style_miplay))
-                                    }
-                                    val currentActionIndex = actionStyles.indexOf(actionStyle).takeIf { it >= 0 } ?: 0
-
-                                    SuperDropdown(
-                                        title = stringResource(R.string.settings_notification_actions),
-                                        items = actionStyleNames,
-                                        selectedIndex = currentActionIndex,
-                                        onSelectedIndexChange = { index ->
-                                            val newStyle = actionStyles[index]
-                                            actionStyle = newStyle
-                                            viewModel.dispatch(CustomSettingsAction.SetNotificationActionsStyle(newStyle))
+                                        // 进度条颜色（实时更新胶囊保留原逻辑）
+                                        if (actionStyle == "disabled" || (actionStyle == "media_controls" &&
+                                                (superIslandNotificationStyle == LabFeatureManager.SUPER_ISLAND_STYLE_ADVANCED ||
+                                                        superIslandNotificationStyle == LabFeatureManager.SUPER_ISLAND_STYLE_ADVANCED_LYRICS_DUAL))
+                                        ) {
+                                            SuperSwitch(
+                                                title = stringResource(R.string.settings_progress_color),
+                                                summary = stringResource(R.string.settings_progress_color_desc),
+                                                checked = progressColorEnabled,
+                                                onCheckedChange = {
+                                                    progressColorEnabled = it
+                                                    viewModel.dispatch(CustomSettingsAction.SetProgressColorEnabled(it))
+                                                }
+                                            )
                                         }
-                                    )
+                                    }
 
-                                    if (actionStyle == "media_controls" && superIslandEnabled) {
+                                    if (superIslandEnabled) {
+                                        // 1. 通知样式（通知页最上面）
                                         val notificationStyles = buildList {
                                             add(LabFeatureManager.SUPER_ISLAND_STYLE_STANDARD)
                                             if (superIslandAdvancedStyleLabEnabled) {
@@ -862,6 +944,7 @@ fun MiuixCustomSettingsScreen(
                                             }
                                         )
 
+                                        // 第二行内容（高级双行歌词样式专属）
                                         if (superIslandNotificationStyle == LabFeatureManager.SUPER_ISLAND_STYLE_ADVANCED_LYRICS_DUAL) {
                                             val dualLineModes = SuperIslandDualLineMode.values
                                             val dualLineModeNames = dualLineModes.map { mode ->
@@ -886,38 +969,149 @@ fun MiuixCustomSettingsScreen(
                                             )
                                         }
 
-                                        if (superIslandNotificationStyle != LabFeatureManager.SUPER_ISLAND_STYLE_ADVANCED &&
-                                            superIslandNotificationStyle != LabFeatureManager.SUPER_ISLAND_STYLE_ADVANCED_LYRICS_DUAL
+                                        // 3. 播放按键布局（无按键置顶）
+                                        val buttonLayoutItems = listOf(
+                                            Triple(
+                                                "no_button",
+                                                stringResource(R.string.super_island_media_button_layout_none),
+                                                stringResource(R.string.super_island_media_button_layout_none_desc)
+                                            ),
+                                            Triple(
+                                                "two_button",
+                                                stringResource(R.string.super_island_media_button_layout_two),
+                                                stringResource(R.string.super_island_media_button_layout_two_desc)
+                                            ),
+                                            Triple(
+                                                "three_button",
+                                                stringResource(R.string.super_island_media_button_layout_three),
+                                                stringResource(R.string.super_island_media_button_layout_three_desc)
+                                            )
+                                        )
+
+                                        SuperDropdown(
+                                            title = stringResource(R.string.settings_super_island_media_button_layout),
+                                            entry = DropdownEntry(
+                                                items = buttonLayoutItems.map { (layoutId, name, desc) ->
+                                                    DropdownItem(
+                                                        text = name,
+                                                        summary = desc,
+                                                        selected = superIslandMediaButtonLayout == layoutId,
+                                                        onClick = {
+                                                            superIslandMediaButtonLayout = layoutId
+                                                            viewModel.dispatch(CustomSettingsAction.SetSuperIslandMediaButtonLayout(layoutId))
+                                                        }
+                                                    )
+                                                }
+                                            )
+                                        )
+
+                                        // 4. 显示进度条（仅标准样式 + 无按键时出现）
+                                        if (superIslandNotificationStyle == LabFeatureManager.SUPER_ISLAND_STYLE_STANDARD &&
+                                            superIslandMediaButtonLayout == "no_button"
                                         ) {
-                                            val buttonLayoutItems = listOf(
+                                            SuperSwitch(
+                                                title = stringResource(R.string.settings_super_island_show_progress_bar),
+                                                summary = stringResource(R.string.settings_super_island_show_progress_bar_desc),
+                                                checked = superIslandShowProgressBar,
+                                                onCheckedChange = {
+                                                    superIslandShowProgressBar = it
+                                                    viewModel.dispatch(CustomSettingsAction.SetSuperIslandShowProgressBar(it))
+                                                }
+                                            )
+                                        }
+
+                                        // 5. 显示模式：仅模板2（标准样式 + 无按键 + 不显示进度条）时显示
+                                        if (effectiveActionStyle == "template2") {
+                                            val secondaryModesLabel = secondaryTextModes.mapNotNull { mode ->
+                                                when (mode) {
+                                                    SuperIslandSecondaryTextMode.NEXT_LYRIC.preferenceValue ->
+                                                        stringResource(R.string.super_island_secondary_text_next_lyric)
+                                                    SuperIslandSecondaryTextMode.ROMANIZATION.preferenceValue ->
+                                                        stringResource(R.string.super_island_secondary_text_romanization)
+                                                    else ->
+                                                        stringResource(R.string.super_island_secondary_text_translation)
+                                                }
+                                            }.joinToString(" / ")
+
+                                            SuperArrow(
+                                                title = stringResource(R.string.settings_super_island_secondary_text_mode),
+                                                summary = stringResource(
+                                                    R.string.settings_super_island_secondary_text_mode_summary,
+                                                    secondaryModesLabel.ifEmpty {
+                                                        stringResource(R.string.super_island_secondary_text_next_lyric)
+                                                    }
+                                                ),
+                                                onClick = { showSecondaryTextModeDialog = true }
+                                            )
+                                        }
+
+                                        // 6. 进度条颜色（显示进度条开启且进度可见时）
+                                        if (superIslandShowProgressBar &&
+                                            (effectiveActionStyle == "disabled" || (effectiveActionStyle == "media_controls" &&
+                                                    (superIslandNotificationStyle == LabFeatureManager.SUPER_ISLAND_STYLE_ADVANCED ||
+                                                            superIslandNotificationStyle == LabFeatureManager.SUPER_ISLAND_STYLE_ADVANCED_LYRICS_DUAL)))
+                                        ) {
+                                            SuperSwitch(
+                                                title = stringResource(R.string.settings_progress_color),
+                                                summary = stringResource(R.string.settings_progress_color_desc),
+                                                checked = progressColorEnabled,
+                                                onCheckedChange = {
+                                                    progressColorEnabled = it
+                                                    viewModel.dispatch(CustomSettingsAction.SetProgressColorEnabled(it))
+                                                }
+                                            )
+                                        }
+
+                                        // 7. 模板2识别图形组件来源（标准样式 + 无按键 + 隐藏进度条时生效）
+                                        if (effectiveActionStyle == "template2") {
+                                            val picSourceItems = listOf(
                                                 Triple(
-                                                    "two_button",
-                                                    stringResource(R.string.super_island_media_button_layout_two),
-                                                    stringResource(R.string.super_island_media_button_layout_two_desc)
+                                                    SuperIslandTemplate2PicSource.ALBUM_ART.preferenceValue,
+                                                    stringResource(R.string.super_island_template2_pic_album_art),
+                                                    stringResource(R.string.super_island_template2_pic_album_art_desc)
                                                 ),
                                                 Triple(
-                                                    "three_button",
-                                                    stringResource(R.string.super_island_media_button_layout_three),
-                                                    stringResource(R.string.super_island_media_button_layout_three_desc)
+                                                    SuperIslandTemplate2PicSource.PLAYING_APP.preferenceValue,
+                                                    stringResource(R.string.super_island_template2_pic_playing_app),
+                                                    stringResource(R.string.super_island_template2_pic_playing_app_desc)
+                                                ),
+                                                Triple(
+                                                    SuperIslandTemplate2PicSource.APP_ICON.preferenceValue,
+                                                    stringResource(R.string.super_island_template2_pic_app_icon),
+                                                    stringResource(R.string.super_island_template2_pic_app_icon_desc)
+                                                ),
+                                                Triple(
+                                                    SuperIslandTemplate2PicSource.CUSTOM.preferenceValue,
+                                                    stringResource(R.string.super_island_template2_pic_custom),
+                                                    stringResource(R.string.super_island_template2_pic_custom_desc)
                                                 )
                                             )
 
                                             SuperDropdown(
-                                                title = stringResource(R.string.settings_super_island_media_button_layout),
+                                                title = stringResource(R.string.settings_super_island_template2_pic_source),
                                                 entry = DropdownEntry(
-                                                    items = buttonLayoutItems.map { (layoutId, name, desc) ->
+                                                    items = picSourceItems.map { (sourceId, name, desc) ->
                                                         DropdownItem(
                                                             text = name,
                                                             summary = desc,
-                                                            selected = superIslandMediaButtonLayout == layoutId,
+                                                            selected = template2PicSource == sourceId,
                                                             onClick = {
-                                                                superIslandMediaButtonLayout = layoutId
-                                                                viewModel.dispatch(CustomSettingsAction.SetSuperIslandMediaButtonLayout(layoutId))
+                                                                template2PicSource = sourceId
+                                                                viewModel.dispatch(CustomSettingsAction.SetSuperIslandTemplate2PicSource(sourceId))
                                                             }
                                                         )
                                                     }
                                                 )
                                             )
+
+                                            if (template2PicSource == SuperIslandTemplate2PicSource.CUSTOM.preferenceValue) {
+                                                SuperArrow(
+                                                    title = stringResource(R.string.settings_super_island_template2_pic_custom_pick),
+                                                    summary = template2CustomPicUri
+                                                        ?: stringResource(R.string.settings_super_island_template2_pic_custom_none),
+                                                    onClick = { template2PicPickerLauncher.launch(arrayOf("image/*")) }
+                                                )
+                                            }
                                         }
                                     }
 
@@ -972,7 +1166,7 @@ fun MiuixCustomSettingsScreen(
                                 }
                             }
                         }
-                        2 -> { // App UI
+                        CustomSettingsTab.APP_UI -> { // App UI
                             item {
                                 Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
                                     val uiStyles = listOf(false, true)
@@ -1150,7 +1344,7 @@ fun MiuixCustomSettingsScreen(
                                 }
                             }
                         }
-                    floatingLyricsPageIndex -> { // Desktop Lyrics
+                    CustomSettingsTab.DESKTOP_LYRICS -> { // Desktop Lyrics
                         item {
                             MiuixFloatingLyricsSettingsSubScreen(prefs, scope)
                         }
@@ -1197,6 +1391,208 @@ fun MiuixCustomSettingsScreen(
                 }
             }
         }
+        if (showSecondaryTextModeDialog) {
+            MiuixSecondaryTextModeDialog(
+                selectedModes = secondaryTextModes,
+                onDismiss = { showSecondaryTextModeDialog = false },
+                onCommit = { modes ->
+                    secondaryTextModes = modes
+                    viewModel.dispatch(CustomSettingsAction.SetSuperIslandSecondaryTextModes(modes))
+                }
+            )
+        }
+    }
+}
+
+@Composable
+private fun MiuixSecondaryTextModeDialog(
+    selectedModes: List<String>,
+    onDismiss: () -> Unit,
+    onCommit: (List<String>) -> Unit
+) {
+    val context = LocalContext.current
+    val keepOneText = stringResource(R.string.settings_home_lyric_preview_keep_one)
+    var modes by remember(selectedModes) { mutableStateOf(selectedModes) }
+    var draggingMode by remember { mutableStateOf<String?>(null) }
+
+    fun toggle(mode: SuperIslandSecondaryTextMode, checked: Boolean) {
+        val prefValue = mode.preferenceValue
+        if (checked) {
+            if (prefValue !in modes) {
+                modes = modes + prefValue
+            }
+        } else {
+            if (modes.size <= 1) {
+                Toast.makeText(context, keepOneText, Toast.LENGTH_SHORT).show()
+                return
+            }
+            modes = modes - prefValue
+        }
+    }
+
+    MiuixBlurDialog(
+        show = true,
+        title = stringResource(R.string.settings_super_island_secondary_text_mode),
+        onDismissRequest = onDismiss
+    ) {
+        Column(modifier = Modifier.fillMaxWidth()) {
+            SuperIslandSecondaryTextMode.entries.forEach { mode ->
+                CheckboxPreference(
+                    title = stringResource(mode.labelRes()),
+                    checked = mode.preferenceValue in modes,
+                    onCheckedChange = { toggle(mode, it) }
+                )
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = stringResource(R.string.settings_super_island_secondary_text_priority),
+                color = MiuixTheme.colorScheme.onSurfaceSecondary,
+                fontSize = MiuixTheme.textStyles.body2.fontSize,
+                modifier = Modifier.padding(horizontal = 16.dp)
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            val rowHeight = 52.dp
+            val orderedModes = modes.mapNotNull { SuperIslandSecondaryTextMode.from(it) }
+            Box(modifier = Modifier.fillMaxWidth().height(rowHeight * orderedModes.size)) {
+                orderedModes.forEachIndexed { index, mode ->
+                    key(mode.preferenceValue) {
+                        MiuixSecondaryModeDragRow(
+                            label = stringResource(mode.labelRes()),
+                            index = index,
+                            rowHeight = rowHeight,
+                            itemCount = orderedModes.size,
+                            isDragging = draggingMode == mode.preferenceValue,
+                            onDragStart = { draggingMode = mode.preferenceValue },
+                            onDragMove = { from, to ->
+                                modes = modes.moveItem(from, to)
+                            },
+                            onDragCancel = { draggingMode = null },
+                            onDragEnd = { draggingMode = null }
+                        )
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+            TextButton(
+                text = stringResource(R.string.backup_dialog_confirm),
+                onClick = {
+                    val finalModes = orderedModes
+                        .ifEmpty { listOf(SuperIslandSecondaryTextMode.NEXT_LYRIC) }
+                        .map { it.preferenceValue }
+                    onCommit(finalModes)
+                    onDismiss()
+                },
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.textButtonColorsPrimary()
+            )
+        }
+    }
+}
+
+@Composable
+private fun MiuixSecondaryModeDragRow(
+    label: String,
+    index: Int,
+    rowHeight: Dp,
+    itemCount: Int,
+    isDragging: Boolean,
+    onDragStart: () -> Unit,
+    onDragMove: (Int, Int) -> Unit,
+    onDragCancel: () -> Unit,
+    onDragEnd: () -> Unit
+) {
+    var dragOffset by remember { mutableFloatStateOf(0f) }
+    val currentIndex by rememberUpdatedState(index)
+    val rowHeightPx = with(LocalDensity.current) { rowHeight.toPx() }
+    val animatedY by animateDpAsState(
+        targetValue = rowHeight * index,
+        animationSpec = spring(stiffness = 650f, dampingRatio = 0.85f),
+        label = "secondaryModeReorderY"
+    )
+    val baseY = if (isDragging) rowHeight * index else animatedY
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(rowHeight)
+            .offset {
+                IntOffset(
+                    x = 0,
+                    y = baseY.roundToPx() + if (isDragging) dragOffset.roundToInt() else 0
+                )
+            }
+            .zIndex(if (isDragging) 1f else 0f)
+            .graphicsLayer {
+                alpha = if (isDragging) 0.92f else 1f
+                scaleX = if (isDragging) 1.01f else 1f
+                scaleY = if (isDragging) 1.01f else 1f
+            }
+            .then(
+                if (isDragging) {
+                    Modifier
+                        .background(
+                            color = MiuixTheme.colorScheme.surfaceVariant.copy(alpha = 0.82f),
+                            shape = RoundedCornerShape(8.dp)
+                        )
+                        .padding(horizontal = 12.dp)
+                } else {
+                    Modifier.padding(horizontal = 16.dp)
+                }
+            ),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            label,
+            modifier = Modifier.weight(1f),
+            color = MiuixTheme.colorScheme.onSurface
+        )
+        Icon(
+            Icons.Default.DragHandle,
+            contentDescription = stringResource(R.string.action_drag_sort),
+            tint = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+            modifier = Modifier
+                .size(40.dp)
+                .padding(8.dp)
+                .pointerInput(itemCount) {
+                    detectDragGestures(
+                        onDragStart = {
+                            dragOffset = 0f
+                            onDragStart()
+                        },
+                        onDragEnd = {
+                            dragOffset = 0f
+                            onDragEnd()
+                        },
+                        onDragCancel = {
+                            dragOffset = 0f
+                            onDragCancel()
+                        },
+                        onDrag = { change, dragAmount ->
+                            change.consume()
+                            dragOffset += dragAmount.y
+                            val from = currentIndex
+                            val target = (from + (dragOffset / rowHeightPx).roundToInt()).coerceIn(0, itemCount - 1)
+                            if (target != from) {
+                                dragOffset -= (target - from) * rowHeightPx
+                                onDragMove(from, target)
+                            }
+                        }
+                    )
+                }
+        )
+    }
+}
+
+private fun SuperIslandSecondaryTextMode.labelRes(): Int = when (this) {
+    SuperIslandSecondaryTextMode.NEXT_LYRIC -> R.string.super_island_secondary_text_next_lyric
+    SuperIslandSecondaryTextMode.ROMANIZATION -> R.string.super_island_secondary_text_romanization
+    SuperIslandSecondaryTextMode.TRANSLATION -> R.string.super_island_secondary_text_translation
+}
+
+private fun <T> List<T>.moveItem(from: Int, to: Int): List<T> {
+    if (from == to || from !in indices || to !in indices) return this
+    return toMutableList().apply {
+        val item = removeAt(from)
+        add(to, item)
     }
 }
 
@@ -1309,6 +1705,45 @@ private fun Set<String>.labelForHomeLyricPreview(): String {
     return labels.ifEmpty {
         listOf(stringResource(R.string.lyric_text_display_mode_lyric))
     }.joinToString(" / ")
+}
+
+@Composable
+fun MiuixCapsuleNotificationScreen(
+    onBack: () -> Unit,
+    viewModel: CustomSettingsViewModel = viewModel()
+) {
+    MiuixCustomSettingsScreen(
+        onBack = onBack,
+        title = stringResource(R.string.settings_capsule_notification_title),
+        tabs = setOf(CustomSettingsTab.CAPSULE, CustomSettingsTab.NOTIFICATION),
+        viewModel = viewModel
+    )
+}
+
+@Composable
+fun MiuixAppUiScreen(
+    onBack: () -> Unit,
+    viewModel: CustomSettingsViewModel = viewModel()
+) {
+    MiuixCustomSettingsScreen(
+        onBack = onBack,
+        title = stringResource(R.string.page_title_personalization),
+        tabs = setOf(CustomSettingsTab.APP_UI),
+        viewModel = viewModel
+    )
+}
+
+@Composable
+fun MiuixDesktopLyricsScreen(
+    onBack: () -> Unit,
+    viewModel: CustomSettingsViewModel = viewModel()
+) {
+    MiuixCustomSettingsScreen(
+        onBack = onBack,
+        title = stringResource(R.string.settings_floating_lyrics),
+        tabs = setOf(CustomSettingsTab.DESKTOP_LYRICS),
+        viewModel = viewModel
+    )
 }
 
 

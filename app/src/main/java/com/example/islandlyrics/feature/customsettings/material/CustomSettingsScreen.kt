@@ -33,6 +33,8 @@ import com.example.islandlyrics.ui.navigation.PredictiveBackAnimationMode
 import com.example.islandlyrics.ui.navigation.PredictiveBackAnimationStyle
 import com.example.islandlyrics.ui.overlay.superisland.config.SuperIslandColorSource
 import com.example.islandlyrics.ui.overlay.superisland.config.SuperIslandDualLineMode
+import com.example.islandlyrics.ui.overlay.superisland.config.SuperIslandSecondaryTextMode
+import com.example.islandlyrics.ui.overlay.superisland.config.SuperIslandTemplate2PicSource
 import com.example.islandlyrics.ui.overlay.superisland.config.SuperIslandTextLimitConfig
 import com.example.islandlyrics.R
 import com.example.islandlyrics.core.platform.XmsfBypassMode
@@ -50,6 +52,7 @@ import com.example.islandlyrics.feature.settings.material.SettingsCardDivider
 import com.example.islandlyrics.feature.main.HomeLyricPreviewDisplay
 import com.example.islandlyrics.feature.main.MainActivity
 import com.example.islandlyrics.feature.customsettings.CustomSettingsAction
+import com.example.islandlyrics.feature.customsettings.CustomSettingsTab
 import com.example.islandlyrics.feature.customsettings.CustomSettingsViewModel
 import android.content.Context
 import android.content.Intent
@@ -57,21 +60,36 @@ import android.graphics.Color as AndroidColor
 import android.provider.Settings
 import android.util.TypedValue
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.foundation.background
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.islandlyrics.ui.theme.material.neutralMaterialTopBarColors
@@ -83,10 +101,12 @@ import kotlin.math.roundToInt
 @Suppress("UNUSED_PARAMETER")
 fun CustomSettingsScreen(
     onBack: () -> Unit,
-    onCheckUpdate: () -> Unit,
-    onShowLogs: () -> Unit,
-    updateVersionText: String,
-    updateBuildText: String,
+    onCheckUpdate: () -> Unit = {},
+    onShowLogs: () -> Unit = {},
+    updateVersionText: String = "",
+    updateBuildText: String = "",
+    title: String = stringResource(R.string.page_title_personalization),
+    tabs: Set<CustomSettingsTab> = CustomSettingsTab.entries.toSet(),
     viewModel: CustomSettingsViewModel = viewModel()
 ) {
     val context = LocalContext.current
@@ -97,16 +117,23 @@ fun CustomSettingsScreen(
         mutableStateOf(uiState.floatingLyricsLabEnabled)
     }
     
-    val tabs = buildList {
-        add(stringResource(R.string.tab_capsule))
-        add(stringResource(R.string.tab_notification))
-        add(stringResource(R.string.tab_app_ui))
-        if (floatingLyricsLabEnabled) {
-            add(stringResource(R.string.settings_floating_lyrics))
+    val orderedTabs = buildList {
+        if (CustomSettingsTab.CAPSULE in tabs) add(CustomSettingsTab.CAPSULE)
+        if (CustomSettingsTab.NOTIFICATION in tabs) add(CustomSettingsTab.NOTIFICATION)
+        if (CustomSettingsTab.APP_UI in tabs) add(CustomSettingsTab.APP_UI)
+        if (CustomSettingsTab.DESKTOP_LYRICS in tabs && floatingLyricsLabEnabled) {
+            add(CustomSettingsTab.DESKTOP_LYRICS)
         }
     }
-    val pagerState = rememberPagerState(pageCount = { tabs.size })
-    val floatingLyricsPageIndex = if (floatingLyricsLabEnabled) tabs.lastIndex else -1
+    val tabLabels = orderedTabs.map { tab ->
+        when (tab) {
+            CustomSettingsTab.CAPSULE -> stringResource(R.string.tab_capsule)
+            CustomSettingsTab.NOTIFICATION -> stringResource(R.string.tab_notification)
+            CustomSettingsTab.APP_UI -> stringResource(R.string.tab_app_ui)
+            CustomSettingsTab.DESKTOP_LYRICS -> stringResource(R.string.settings_floating_lyrics)
+        }
+    }
+    val pagerState = rememberPagerState(pageCount = { orderedTabs.size })
 
     // --- State Duplication ---
 
@@ -145,6 +172,20 @@ fun CustomSettingsScreen(
     var superIslandDualLineMode by remember(uiState.superIslandDualLineMode) {
         mutableStateOf(uiState.superIslandDualLineMode)
     }
+    var superIslandShowProgressBar by remember(uiState.superIslandShowProgressBar) {
+        mutableStateOf(uiState.superIslandShowProgressBar)
+    }
+    var secondaryTextModes by remember(uiState.superIslandSecondaryTextModes) {
+        mutableStateOf(uiState.superIslandSecondaryTextModes)
+    }
+    var template2PicSource by remember(uiState.superIslandTemplate2PicSource) {
+        mutableStateOf(uiState.superIslandTemplate2PicSource)
+    }
+    var template2CustomPicUri by remember(uiState.superIslandTemplate2CustomPicUri) {
+        mutableStateOf(uiState.superIslandTemplate2CustomPicUri)
+    }
+    var showSecondaryTextModeDialog by remember { mutableStateOf(false) }
+    var showTemplate2PicSourceDropdown by remember { mutableStateOf(false) }
     var superIslandAdvancedStyleLabEnabled by remember(uiState.superIslandAdvancedStyleLabEnabled) {
         mutableStateOf(uiState.superIslandAdvancedStyleLabEnabled)
     }
@@ -237,6 +278,22 @@ fun CustomSettingsScreen(
     var showPredictiveBackAnimationModeDropdown by remember { mutableStateOf(false) }
     var showPredictiveBackAnimationDropdown by remember { mutableStateOf(false) }
 
+    val template2PicPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        try {
+            context.contentResolver.takePersistableUriPermission(
+                uri,
+                Intent.FLAG_GRANT_READ_URI_PERMISSION
+            )
+        } catch (_: Exception) {
+            // 无法持久化授权时，本次会话内仍可使用
+        }
+        template2CustomPicUri = uri.toString()
+        viewModel.dispatch(CustomSettingsAction.SetSuperIslandTemplate2CustomPicUri(uri.toString()))
+    }
+
     // Check for HyperOS 3.0.300+
     val isLiveUpdateSupported = remember { RomUtils.isLiveUpdateSupported() }
     val isHyperOs = remember { RomUtils.isHyperOs() }
@@ -248,6 +305,20 @@ fun CustomSettingsScreen(
     val homeLyricPreviewKeepOneText = stringResource(R.string.settings_home_lyric_preview_keep_one)
     val superIslandEnabled = effectiveCapsuleRenderMode == CapsuleRenderMode.XIAOMI_SUPER_ISLAND
     val islandStyleCapsuleEnabled = superIslandEnabled
+    /**
+     * 新通知逻辑：播放按键布局 + 显示进度条 推导生效的通知按键样式。
+     */
+    val effectiveActionStyle = if (superIslandEnabled) {
+        when {
+            superIslandMediaButtonLayout == "no_button" &&
+                !superIslandShowProgressBar &&
+                superIslandNotificationStyle == LabFeatureManager.SUPER_ISLAND_STYLE_STANDARD -> "template2"
+            superIslandMediaButtonLayout == "no_button" -> "disabled"
+            else -> "media_controls"
+        }
+    } else {
+        actionStyle
+    }
     val forceDisableScrollingForSuperIslandLyricMode =
         islandStyleCapsuleEnabled && superIslandLyricMode == "full"
 
@@ -374,7 +445,7 @@ fun CustomSettingsScreen(
             topBar = {
                 Column {
                     TopAppBar(
-                        title = { Text(stringResource(R.string.page_title_personalization)) },
+                        title = { Text(title) },
                         navigationIcon = {
                             IconButton(onClick = onBack) {
                                 Icon(painterResource(R.drawable.ic_arrow_back), contentDescription = "Back")
@@ -383,31 +454,33 @@ fun CustomSettingsScreen(
                         colors = neutralMaterialTopBarColors()
                     )
                     // Tab switcher matching LogViewer FilterChip corner radius
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        tabs.forEachIndexed { index, title ->
-                            val selected = pagerState.currentPage == index
-                            if (selected) {
-                                Button(
-                                    onClick = { scope.launch { pagerState.animateScrollToPage(index) } },
-                                    modifier = Modifier.weight(1f),
-                                    shape = MaterialTheme.shapes.small,
-                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 10.dp)
-                                ) {
-                                    Text(title, style = MaterialTheme.typography.labelLarge, maxLines = 1)
-                                }
-                            } else {
-                                OutlinedButton(
-                                    onClick = { scope.launch { pagerState.animateScrollToPage(index) } },
-                                    modifier = Modifier.weight(1f),
-                                    shape = MaterialTheme.shapes.small,
-                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 10.dp)
-                                ) {
-                                    Text(title, style = MaterialTheme.typography.labelLarge, maxLines = 1)
+                    if (tabLabels.size > 1) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            tabLabels.forEachIndexed { index, tabTitle ->
+                                val selected = pagerState.currentPage == index
+                                if (selected) {
+                                    Button(
+                                        onClick = { scope.launch { pagerState.animateScrollToPage(index) } },
+                                        modifier = Modifier.weight(1f),
+                                        shape = MaterialTheme.shapes.small,
+                                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 10.dp)
+                                    ) {
+                                        Text(tabTitle, style = MaterialTheme.typography.labelLarge, maxLines = 1)
+                                    }
+                                } else {
+                                    OutlinedButton(
+                                        onClick = { scope.launch { pagerState.animateScrollToPage(index) } },
+                                        modifier = Modifier.weight(1f),
+                                        shape = MaterialTheme.shapes.small,
+                                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 10.dp)
+                                    ) {
+                                        Text(tabTitle, style = MaterialTheme.typography.labelLarge, maxLines = 1)
+                                    }
                                 }
                             }
                         }
@@ -425,8 +498,8 @@ fun CustomSettingsScreen(
                         .fillMaxSize()
                         .verticalScroll(rememberScrollState())
                 ) {
-                    when (page) {
-                        0 -> { // Capsule (Moved from 1)
+                    when (orderedTabs[page]) {
+                        CustomSettingsTab.CAPSULE -> { // Capsule (Moved from 1)
                             val previewIconStyle = if (superIslandEnabled) "advanced" else iconStyle
                             CapsulePreview(
                                 dynamicIconEnabled = if (superIslandEnabled) true else iconStyle != "disabled",
@@ -982,81 +1055,86 @@ fun CustomSettingsScreen(
                                 } // end SettingsCard (HyperOS)
                             }
                         }
-                        1 -> { // Notification
+                        CustomSettingsTab.NOTIFICATION -> { // Notification
                              NotificationPreview(
                                  progressColorEnabled = progressColorEnabled,
-                                 actionStyle = actionStyle,
+                                 actionStyle = effectiveActionStyle,
                                  superIslandEnabled = superIslandEnabled,
                                  superIslandTextColorEnabled = superIslandTextColorEnabled,
                                  superIslandMediaButtonLayout = superIslandMediaButtonLayout,
                                  superIslandNotificationStyle = superIslandNotificationStyle,
                                  superIslandLyricMode = superIslandLyricMode,
-                                 superIslandFullLyricShowLeftCover = superIslandFullLyricShowLeftCover
+                                 superIslandFullLyricShowLeftCover = superIslandFullLyricShowLeftCover,
+                                 showProgressBar = superIslandShowProgressBar,
+                                 template2PicSource = template2PicSource
                              )
                              Spacer(modifier = Modifier.height(16.dp))
 
                             SettingsCard {
-                            if (actionStyle == "disabled" || (actionStyle == "media_controls" &&
-                                    (superIslandNotificationStyle == LabFeatureManager.SUPER_ISLAND_STYLE_ADVANCED ||
-                                            superIslandNotificationStyle == LabFeatureManager.SUPER_ISLAND_STYLE_ADVANCED_LYRICS_DUAL))
-                            ) {
-                                 SettingsSwitchItem(
-                                    title = stringResource(R.string.settings_progress_color),
-                                    subtitle = stringResource(R.string.settings_progress_color_desc),
-                                    checked = progressColorEnabled,
-                                    onCheckedChange = {
-                                        progressColorEnabled = it
-                                        viewModel.dispatch(CustomSettingsAction.SetProgressColorEnabled(it))
-                                    }
-                                )
-                                SettingsCardDivider()
-                            }
-
-                            val actionStyleDisplay = when (actionStyle) {
-                                "media_controls" -> stringResource(R.string.settings_action_style_media)
-                                "miplay" -> stringResource(R.string.settings_action_style_miplay)
-                                else -> stringResource(R.string.settings_action_style_off)
-                            }
-                            Box(modifier = Modifier.fillMaxWidth()) {
-                                SettingsTextItem(
-                                    title = stringResource(R.string.settings_notification_actions),
-                                    value = actionStyleDisplay,
-                                    onClick = { showActionStyleDropdown = true }
-                                )
-                                Box(modifier = Modifier.matchParentSize().wrapContentSize(Alignment.Center)) {
-                                    DropdownMenu(
-                                        expanded = showActionStyleDropdown,
-                                        onDismissRequest = { showActionStyleDropdown = false }
-                                    ) {
-                                        val allStyles = listOf(
-                                            "disabled" to R.string.settings_action_style_off,
-                                            "media_controls" to R.string.settings_action_style_media,
-                                            "miplay" to R.string.settings_action_style_miplay
-                                        )
-                                        val styles = allStyles.filter { (styleId, _) ->
-                                            if (styleId == "miplay") isLiveUpdateSupported && !superIslandEnabled else true
-                                        }
-                                        styles.forEach { (styleId, nameId) ->
-                                            DropdownMenuItem(
-                                                text = { Text(stringResource(nameId)) },
-                                                onClick = {
-                                                    actionStyle = styleId
-                                                    viewModel.dispatch(CustomSettingsAction.SetNotificationActionsStyle(styleId))
-                                                    showActionStyleDropdown = false
-                                                }
+                            // 旧版「通知按键」仅保留给非超级岛（实时更新胶囊）使用
+                            if (!superIslandEnabled) {
+                                val actionStyleDisplay = when (actionStyle) {
+                                    "media_controls" -> stringResource(R.string.settings_action_style_media)
+                                    "miplay" -> stringResource(R.string.settings_action_style_miplay)
+                                    else -> stringResource(R.string.settings_action_style_off)
+                                }
+                                Box(modifier = Modifier.fillMaxWidth()) {
+                                    SettingsTextItem(
+                                        title = stringResource(R.string.settings_notification_actions),
+                                        value = actionStyleDisplay,
+                                        onClick = { showActionStyleDropdown = true }
+                                    )
+                                    Box(modifier = Modifier.matchParentSize().wrapContentSize(Alignment.Center)) {
+                                        DropdownMenu(
+                                            expanded = showActionStyleDropdown,
+                                            onDismissRequest = { showActionStyleDropdown = false }
+                                        ) {
+                                            val allStyles = listOf(
+                                                "disabled" to R.string.settings_action_style_off,
+                                                "media_controls" to R.string.settings_action_style_media,
+                                                "miplay" to R.string.settings_action_style_miplay
                                             )
+                                            val styles = allStyles.filter { (styleId, _) ->
+                                                if (styleId == "miplay") isLiveUpdateSupported && !superIslandEnabled else true
+                                            }
+                                            styles.forEach { (styleId, nameId) ->
+                                                DropdownMenuItem(
+                                                    text = { Text(stringResource(nameId)) },
+                                                    onClick = {
+                                                        actionStyle = styleId
+                                                        viewModel.dispatch(CustomSettingsAction.SetNotificationActionsStyle(styleId))
+                                                        showActionStyleDropdown = false
+                                                    }
+                                                )
+                                            }
                                         }
                                     }
                                 }
+                                // 进度条颜色（实时更新胶囊保留原逻辑）
+                                if (actionStyle == "disabled" || (actionStyle == "media_controls" &&
+                                        (superIslandNotificationStyle == LabFeatureManager.SUPER_ISLAND_STYLE_ADVANCED ||
+                                                superIslandNotificationStyle == LabFeatureManager.SUPER_ISLAND_STYLE_ADVANCED_LYRICS_DUAL))
+                                ) {
+                                    SettingsCardDivider()
+                                    SettingsSwitchItem(
+                                        title = stringResource(R.string.settings_progress_color),
+                                        subtitle = stringResource(R.string.settings_progress_color_desc),
+                                        checked = progressColorEnabled,
+                                        onCheckedChange = {
+                                            progressColorEnabled = it
+                                            viewModel.dispatch(CustomSettingsAction.SetProgressColorEnabled(it))
+                                        }
+                                    )
+                                }
                             }
 
-                            if (actionStyle == "media_controls" && superIslandEnabled) {
+                            if (superIslandEnabled) {
+                                // 1. 通知样式（通知页最上面）
                                 val notificationStyleDisplayName = when (superIslandNotificationStyle) {
                                     LabFeatureManager.SUPER_ISLAND_STYLE_ADVANCED -> stringResource(R.string.super_island_notification_style_advanced_beta)
                                     LabFeatureManager.SUPER_ISLAND_STYLE_ADVANCED_LYRICS_DUAL -> stringResource(R.string.super_island_notification_style_advanced_lyrics_dual)
                                     else -> stringResource(R.string.super_island_notification_style_standard)
                                 }
-                                SettingsCardDivider()
                                 Box(modifier = Modifier.fillMaxWidth()) {
                                     SettingsTextItem(
                                         title = stringResource(R.string.settings_super_island_notification_style),
@@ -1068,13 +1146,13 @@ fun CustomSettingsScreen(
                                             expanded = showSuperIslandNotificationStyleDropdown,
                                             onDismissRequest = { showSuperIslandNotificationStyleDropdown = false }
                                         ) {
-                                        val styleOptions = buildList {
-                                            add(LabFeatureManager.SUPER_ISLAND_STYLE_STANDARD to R.string.super_island_notification_style_standard)
-                                            if (superIslandAdvancedStyleLabEnabled) {
-                                                add(LabFeatureManager.SUPER_ISLAND_STYLE_ADVANCED to R.string.super_island_notification_style_advanced_beta)
-                                                add(LabFeatureManager.SUPER_ISLAND_STYLE_ADVANCED_LYRICS_DUAL to R.string.super_island_notification_style_advanced_lyrics_dual)
+                                            val styleOptions = buildList {
+                                                add(LabFeatureManager.SUPER_ISLAND_STYLE_STANDARD to R.string.super_island_notification_style_standard)
+                                                if (superIslandAdvancedStyleLabEnabled) {
+                                                    add(LabFeatureManager.SUPER_ISLAND_STYLE_ADVANCED to R.string.super_island_notification_style_advanced_beta)
+                                                    add(LabFeatureManager.SUPER_ISLAND_STYLE_ADVANCED_LYRICS_DUAL to R.string.super_island_notification_style_advanced_lyrics_dual)
+                                                }
                                             }
-                                        }
                                             styleOptions.forEach { (styleId, nameId) ->
                                                 DropdownMenuItem(
                                                     text = { Text(stringResource(nameId)) },
@@ -1089,6 +1167,7 @@ fun CustomSettingsScreen(
                                     }
                                 }
 
+                                // 第二行内容（高级双行歌词样式专属）
                                 if (superIslandNotificationStyle == LabFeatureManager.SUPER_ISLAND_STYLE_ADVANCED_LYRICS_DUAL) {
                                     val dualLineModeDisplayName = when (superIslandDualLineMode) {
                                         SuperIslandDualLineMode.NEXT_LYRIC -> stringResource(R.string.super_island_dual_line_mode_next_lyric)
@@ -1099,7 +1178,6 @@ fun CustomSettingsScreen(
                                     Box(modifier = Modifier.fillMaxWidth()) {
                                         SettingsTextItem(
                                             title = stringResource(R.string.settings_super_island_dual_line_mode),
-                                            subtitle = stringResource(R.string.settings_super_island_dual_line_mode_desc),
                                             value = dualLineModeDisplayName,
                                             onClick = { showSuperIslandDualLineModeDropdown = true }
                                         )
@@ -1128,38 +1206,165 @@ fun CustomSettingsScreen(
                                     }
                                 }
 
-                                if (superIslandNotificationStyle != LabFeatureManager.SUPER_ISLAND_STYLE_ADVANCED &&
-                                    superIslandNotificationStyle != LabFeatureManager.SUPER_ISLAND_STYLE_ADVANCED_LYRICS_DUAL
+                                // 2. 播放按键布局（无按键置顶）
+                                val layoutDisplayName = when (superIslandMediaButtonLayout) {
+                                    "three_button" -> stringResource(R.string.super_island_media_button_layout_three)
+                                    "no_button" -> stringResource(R.string.super_island_media_button_layout_none)
+                                    else -> stringResource(R.string.super_island_media_button_layout_two)
+                                }
+                                SettingsCardDivider()
+                                Box(modifier = Modifier.fillMaxWidth()) {
+                                    SettingsTextItem(
+                                        title = stringResource(R.string.settings_super_island_media_button_layout),
+                                        value = layoutDisplayName,
+                                        onClick = { showSuperIslandMediaButtonLayoutDropdown = true }
+                                    )
+                                    Box(modifier = Modifier.matchParentSize().wrapContentSize(Alignment.Center)) {
+                                        DropdownMenu(
+                                            expanded = showSuperIslandMediaButtonLayoutDropdown,
+                                            onDismissRequest = { showSuperIslandMediaButtonLayoutDropdown = false }
+                                        ) {
+                                            val layoutOptions = listOf(
+                                                Triple(
+                                                    "no_button",
+                                                    R.string.super_island_media_button_layout_none,
+                                                    R.string.super_island_media_button_layout_none_desc
+                                                ),
+                                                Triple(
+                                                    "two_button",
+                                                    R.string.super_island_media_button_layout_two,
+                                                    R.string.super_island_media_button_layout_two_desc
+                                                ),
+                                                Triple(
+                                                    "three_button",
+                                                    R.string.super_island_media_button_layout_three,
+                                                    R.string.super_island_media_button_layout_three_desc
+                                                )
+                                            )
+                                            layoutOptions.forEach { (layoutId, nameId, descId) ->
+                                                DropdownMenuItem(
+                                                    text = {
+                                                        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                                            Text(stringResource(nameId))
+                                                            Text(
+                                                                text = stringResource(descId),
+                                                                style = MaterialTheme.typography.bodySmall,
+                                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                            )
+                                                        }
+                                                    },
+                                                    onClick = {
+                                                        superIslandMediaButtonLayout = layoutId
+                                                        viewModel.dispatch(CustomSettingsAction.SetSuperIslandMediaButtonLayout(layoutId))
+                                                        showSuperIslandMediaButtonLayoutDropdown = false
+                                                    }
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+
+                                // 3. 显示进度条（仅标准样式 + 无按键时出现）
+                                if (superIslandNotificationStyle == LabFeatureManager.SUPER_ISLAND_STYLE_STANDARD &&
+                                    superIslandMediaButtonLayout == "no_button"
                                 ) {
-                                    val layoutDisplayName = when (superIslandMediaButtonLayout) {
-                                        "three_button" -> stringResource(R.string.super_island_media_button_layout_three)
-                                        else -> stringResource(R.string.super_island_media_button_layout_two)
+                                    SettingsCardDivider()
+                                    SettingsSwitchItem(
+                                        title = stringResource(R.string.settings_super_island_show_progress_bar),
+                                        subtitle = stringResource(R.string.settings_super_island_show_progress_bar_desc),
+                                        checked = superIslandShowProgressBar,
+                                        onCheckedChange = {
+                                            superIslandShowProgressBar = it
+                                            viewModel.dispatch(CustomSettingsAction.SetSuperIslandShowProgressBar(it))
+                                        }
+                                    )
+                                }
+
+                                // 4. 显示模式：仅模板2（标准样式 + 无按键 + 不显示进度条）时显示
+                                if (effectiveActionStyle == "template2") {
+                                    val secondaryModesLabel = secondaryTextModes.mapNotNull { mode ->
+                                        when (mode) {
+                                            SuperIslandSecondaryTextMode.NEXT_LYRIC.preferenceValue ->
+                                                stringResource(R.string.super_island_secondary_text_next_lyric)
+                                            SuperIslandSecondaryTextMode.ROMANIZATION.preferenceValue ->
+                                                stringResource(R.string.super_island_secondary_text_romanization)
+                                            else -> stringResource(R.string.super_island_secondary_text_translation)
+                                        }
+                                    }.joinToString(" / ")
+                                    SettingsCardDivider()
+                                    SettingsTextItem(
+                                        title = stringResource(R.string.settings_super_island_secondary_text_mode),
+                                        value = secondaryModesLabel.ifEmpty {
+                                            stringResource(R.string.super_island_secondary_text_next_lyric)
+                                        },
+                                        onClick = { showSecondaryTextModeDialog = true }
+                                    )
+                                }
+
+                                // 5. 进度条颜色（显示进度条开启且进度可见时）
+                                if (superIslandShowProgressBar &&
+                                    (effectiveActionStyle == "disabled" || (effectiveActionStyle == "media_controls" &&
+                                            (superIslandNotificationStyle == LabFeatureManager.SUPER_ISLAND_STYLE_ADVANCED ||
+                                                    superIslandNotificationStyle == LabFeatureManager.SUPER_ISLAND_STYLE_ADVANCED_LYRICS_DUAL)))
+                                ) {
+                                    SettingsCardDivider()
+                                    SettingsSwitchItem(
+                                        title = stringResource(R.string.settings_progress_color),
+                                        subtitle = stringResource(R.string.settings_progress_color_desc),
+                                        checked = progressColorEnabled,
+                                        onCheckedChange = {
+                                            progressColorEnabled = it
+                                            viewModel.dispatch(CustomSettingsAction.SetProgressColorEnabled(it))
+                                        }
+                                    )
+                                }
+
+                                // 6. 模板2识别图形组件来源（标准样式 + 无按键 + 隐藏进度条时生效）
+                                if (effectiveActionStyle == "template2") {
+                                    val template2PicDisplay = when (template2PicSource) {
+                                        SuperIslandTemplate2PicSource.PLAYING_APP.preferenceValue ->
+                                            stringResource(R.string.super_island_template2_pic_playing_app)
+                                        SuperIslandTemplate2PicSource.APP_ICON.preferenceValue ->
+                                            stringResource(R.string.super_island_template2_pic_app_icon)
+                                        SuperIslandTemplate2PicSource.CUSTOM.preferenceValue ->
+                                            stringResource(R.string.super_island_template2_pic_custom)
+                                        else -> stringResource(R.string.super_island_template2_pic_album_art)
                                     }
                                     SettingsCardDivider()
                                     Box(modifier = Modifier.fillMaxWidth()) {
                                         SettingsTextItem(
-                                            title = stringResource(R.string.settings_super_island_media_button_layout),
-                                            value = layoutDisplayName,
-                                            onClick = { showSuperIslandMediaButtonLayoutDropdown = true }
+                                            title = stringResource(R.string.settings_super_island_template2_pic_source),
+                                            value = template2PicDisplay,
+                                            onClick = { showTemplate2PicSourceDropdown = true }
                                         )
                                         Box(modifier = Modifier.matchParentSize().wrapContentSize(Alignment.Center)) {
                                             DropdownMenu(
-                                                expanded = showSuperIslandMediaButtonLayoutDropdown,
-                                                onDismissRequest = { showSuperIslandMediaButtonLayoutDropdown = false }
+                                                expanded = showTemplate2PicSourceDropdown,
+                                                onDismissRequest = { showTemplate2PicSourceDropdown = false }
                                             ) {
-                                                val layoutOptions = listOf(
+                                                val picOptions = listOf(
                                                     Triple(
-                                                        "two_button",
-                                                        R.string.super_island_media_button_layout_two,
-                                                        R.string.super_island_media_button_layout_two_desc
+                                                        SuperIslandTemplate2PicSource.ALBUM_ART.preferenceValue,
+                                                        R.string.super_island_template2_pic_album_art,
+                                                        R.string.super_island_template2_pic_album_art_desc
                                                     ),
                                                     Triple(
-                                                        "three_button",
-                                                        R.string.super_island_media_button_layout_three,
-                                                        R.string.super_island_media_button_layout_three_desc
+                                                        SuperIslandTemplate2PicSource.PLAYING_APP.preferenceValue,
+                                                        R.string.super_island_template2_pic_playing_app,
+                                                        R.string.super_island_template2_pic_playing_app_desc
+                                                    ),
+                                                    Triple(
+                                                        SuperIslandTemplate2PicSource.APP_ICON.preferenceValue,
+                                                        R.string.super_island_template2_pic_app_icon,
+                                                        R.string.super_island_template2_pic_app_icon_desc
+                                                    ),
+                                                    Triple(
+                                                        SuperIslandTemplate2PicSource.CUSTOM.preferenceValue,
+                                                        R.string.super_island_template2_pic_custom,
+                                                        R.string.super_island_template2_pic_custom_desc
                                                     )
                                                 )
-                                                layoutOptions.forEach { (layoutId, nameId, descId) ->
+                                                picOptions.forEach { (sourceId, nameId, descId) ->
                                                     DropdownMenuItem(
                                                         text = {
                                                             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -1172,14 +1377,23 @@ fun CustomSettingsScreen(
                                                             }
                                                         },
                                                         onClick = {
-                                                            superIslandMediaButtonLayout = layoutId
-                                                            viewModel.dispatch(CustomSettingsAction.SetSuperIslandMediaButtonLayout(layoutId))
-                                                            showSuperIslandMediaButtonLayoutDropdown = false
+                                                            template2PicSource = sourceId
+                                                            viewModel.dispatch(CustomSettingsAction.SetSuperIslandTemplate2PicSource(sourceId))
+                                                            showTemplate2PicSourceDropdown = false
                                                         }
                                                     )
                                                 }
                                             }
                                         }
+                                    }
+                                    if (template2PicSource == SuperIslandTemplate2PicSource.CUSTOM.preferenceValue) {
+                                        SettingsCardDivider()
+                                        SettingsTextItem(
+                                            title = stringResource(R.string.settings_super_island_template2_pic_custom_pick),
+                                            value = template2CustomPicUri
+                                                ?: stringResource(R.string.settings_super_island_template2_pic_custom_none),
+                                            onClick = { template2PicPickerLauncher.launch(arrayOf("image/*")) }
+                                        )
                                     }
                                 }
                             }
@@ -1269,7 +1483,7 @@ fun CustomSettingsScreen(
                             }
                             } // end SettingsCard (notification)
                         }
-                        2 -> { // App UI
+                        CustomSettingsTab.APP_UI -> { // App UI
                             Spacer(modifier = Modifier.height(8.dp))
                             SettingsCard {
                                 Box(modifier = Modifier.fillMaxWidth()) {
@@ -1515,7 +1729,7 @@ fun CustomSettingsScreen(
                                 }
                             }
                         }
-                        floatingLyricsPageIndex -> {
+                        CustomSettingsTab.DESKTOP_LYRICS -> {
                             FloatingLyricsSettingsSubScreen(prefs)
                         }
                     }
@@ -1588,7 +1802,216 @@ fun CustomSettingsScreen(
                 )
             }
 
+            if (showSecondaryTextModeDialog) {
+                MaterialSecondaryTextModeDialog(
+                    selectedModes = secondaryTextModes,
+                    onDismiss = { showSecondaryTextModeDialog = false },
+                    onCommit = { modes ->
+                        secondaryTextModes = modes
+                        viewModel.dispatch(CustomSettingsAction.SetSuperIslandSecondaryTextModes(modes))
+                    }
+                )
+            }
+
         }
+    }
+}
+
+@Composable
+private fun MaterialSecondaryTextModeDialog(
+    selectedModes: List<String>,
+    onDismiss: () -> Unit,
+    onCommit: (List<String>) -> Unit
+) {
+    val context = LocalContext.current
+    val keepOneText = stringResource(R.string.settings_home_lyric_preview_keep_one)
+    var modes by remember(selectedModes) { mutableStateOf(selectedModes) }
+    var draggingMode by remember { mutableStateOf<String?>(null) }
+
+    fun toggle(mode: SuperIslandSecondaryTextMode, checked: Boolean) {
+        val prefValue = mode.preferenceValue
+        if (checked) {
+            if (prefValue !in modes) {
+                modes = modes + prefValue
+            }
+        } else {
+            if (modes.size <= 1) {
+                Toast.makeText(context, keepOneText, Toast.LENGTH_SHORT).show()
+                return
+            }
+            modes = modes - prefValue
+        }
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.settings_super_island_secondary_text_mode)) },
+        text = {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                SuperIslandSecondaryTextMode.entries.forEach { mode ->
+                    MaterialHomeLyricPreviewOption(
+                        title = stringResource(mode.materialLabelRes()),
+                        checked = mode.preferenceValue in modes,
+                        onCheckedChange = { toggle(mode, it) }
+                    )
+                }
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = stringResource(R.string.settings_super_island_secondary_text_priority),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(start = 48.dp)
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                val rowHeight = 48.dp
+                val orderedModes = modes.mapNotNull { SuperIslandSecondaryTextMode.from(it) }
+                Box(modifier = Modifier.fillMaxWidth().height(rowHeight * orderedModes.size)) {
+                    orderedModes.forEachIndexed { index, mode ->
+                        key(mode.preferenceValue) {
+                            MaterialSecondaryModeDragRow(
+                                label = stringResource(mode.materialLabelRes()),
+                                index = index,
+                                rowHeight = rowHeight,
+                                itemCount = orderedModes.size,
+                                isDragging = draggingMode == mode.preferenceValue,
+                                onDragStart = { draggingMode = mode.preferenceValue },
+                                onDragMove = { from, to ->
+                                    modes = modes.moveItem(from, to)
+                                },
+                                onDragCancel = { draggingMode = null },
+                                onDragEnd = { draggingMode = null }
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    val finalModes = modes
+                        .mapNotNull { SuperIslandSecondaryTextMode.from(it) }
+                        .ifEmpty { listOf(SuperIslandSecondaryTextMode.NEXT_LYRIC) }
+                        .map { it.preferenceValue }
+                    onCommit(finalModes)
+                    onDismiss()
+                }
+            ) {
+                Text(stringResource(R.string.backup_dialog_confirm))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.dialog_btn_cancel))
+            }
+        }
+    )
+}
+
+@Composable
+private fun MaterialSecondaryModeDragRow(
+    label: String,
+    index: Int,
+    rowHeight: Dp,
+    itemCount: Int,
+    isDragging: Boolean,
+    onDragStart: () -> Unit,
+    onDragMove: (Int, Int) -> Unit,
+    onDragCancel: () -> Unit,
+    onDragEnd: () -> Unit
+) {
+    var dragOffset by remember { mutableFloatStateOf(0f) }
+    val currentIndex by rememberUpdatedState(index)
+    val rowHeightPx = with(LocalDensity.current) { rowHeight.toPx() }
+    val animatedY by animateDpAsState(
+        targetValue = rowHeight * index,
+        animationSpec = spring(stiffness = 650f, dampingRatio = 0.85f),
+        label = "secondaryModeReorderY"
+    )
+    val baseY = if (isDragging) rowHeight * index else animatedY
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(rowHeight)
+            .offset {
+                IntOffset(
+                    x = 0,
+                    y = baseY.roundToPx() + if (isDragging) dragOffset.roundToInt() else 0
+                )
+            }
+            .zIndex(if (isDragging) 1f else 0f)
+            .graphicsLayer {
+                alpha = if (isDragging) 0.92f else 1f
+                scaleX = if (isDragging) 1.01f else 1f
+                scaleY = if (isDragging) 1.01f else 1f
+            }
+            .then(
+                if (isDragging) {
+                    Modifier
+                        .background(
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.82f),
+                            shape = RoundedCornerShape(8.dp)
+                        )
+                        .padding(horizontal = 12.dp)
+                } else {
+                    Modifier.padding(start = 48.dp)
+                }
+            ),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            label,
+            modifier = Modifier.weight(1f),
+            color = MaterialTheme.colorScheme.onSurface
+        )
+        Icon(
+            Icons.Default.DragHandle,
+            contentDescription = stringResource(R.string.action_drag_sort),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier
+                .size(40.dp)
+                .padding(8.dp)
+                .pointerInput(itemCount) {
+                    detectDragGestures(
+                        onDragStart = {
+                            dragOffset = 0f
+                            onDragStart()
+                        },
+                        onDragEnd = {
+                            dragOffset = 0f
+                            onDragEnd()
+                        },
+                        onDragCancel = {
+                            dragOffset = 0f
+                            onDragCancel()
+                        },
+                        onDrag = { change, dragAmount ->
+                            change.consume()
+                            dragOffset += dragAmount.y
+                            val from = currentIndex
+                            val target = (from + (dragOffset / rowHeightPx).roundToInt()).coerceIn(0, itemCount - 1)
+                            if (target != from) {
+                                dragOffset -= (target - from) * rowHeightPx
+                                onDragMove(from, target)
+                            }
+                        }
+                    )
+                }
+        )
+    }
+}
+
+private fun SuperIslandSecondaryTextMode.materialLabelRes(): Int = when (this) {
+    SuperIslandSecondaryTextMode.NEXT_LYRIC -> R.string.super_island_secondary_text_next_lyric
+    SuperIslandSecondaryTextMode.ROMANIZATION -> R.string.super_island_secondary_text_romanization
+    SuperIslandSecondaryTextMode.TRANSLATION -> R.string.super_island_secondary_text_translation
+}
+
+private fun <T> List<T>.moveItem(from: Int, to: Int): List<T> {
+    if (from == to || from !in indices || to !in indices) return this
+    return toMutableList().apply {
+        val item = removeAt(from)
+        add(to, item)
     }
 }
 
@@ -1712,4 +2135,43 @@ private fun Set<String>.labelForHomeLyricPreview(): String {
     return labels.ifEmpty {
         listOf(stringResource(R.string.lyric_text_display_mode_lyric))
     }.joinToString(" / ")
+}
+
+@Composable
+fun CapsuleNotificationScreen(
+    onBack: () -> Unit,
+    viewModel: CustomSettingsViewModel = viewModel()
+) {
+    CustomSettingsScreen(
+        onBack = onBack,
+        title = stringResource(R.string.settings_capsule_notification_title),
+        tabs = setOf(CustomSettingsTab.CAPSULE, CustomSettingsTab.NOTIFICATION),
+        viewModel = viewModel
+    )
+}
+
+@Composable
+fun AppUiScreen(
+    onBack: () -> Unit,
+    viewModel: CustomSettingsViewModel = viewModel()
+) {
+    CustomSettingsScreen(
+        onBack = onBack,
+        title = stringResource(R.string.page_title_personalization),
+        tabs = setOf(CustomSettingsTab.APP_UI),
+        viewModel = viewModel
+    )
+}
+
+@Composable
+fun DesktopLyricsScreen(
+    onBack: () -> Unit,
+    viewModel: CustomSettingsViewModel = viewModel()
+) {
+    CustomSettingsScreen(
+        onBack = onBack,
+        title = stringResource(R.string.settings_floating_lyrics),
+        tabs = setOf(CustomSettingsTab.DESKTOP_LYRICS),
+        viewModel = viewModel
+    )
 }

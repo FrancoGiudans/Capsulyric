@@ -40,6 +40,8 @@ import com.example.islandlyrics.ui.navigation.PredictiveBackAnimationMode
 import com.example.islandlyrics.ui.navigation.PredictiveBackAnimationStyle
 import com.example.islandlyrics.ui.overlay.superisland.config.SuperIslandColorSource
 import com.example.islandlyrics.ui.overlay.superisland.config.SuperIslandDualLineMode
+import com.example.islandlyrics.ui.overlay.superisland.config.SuperIslandSecondaryTextMode
+import com.example.islandlyrics.ui.overlay.superisland.config.SuperIslandTemplate2PicSource
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -120,6 +122,16 @@ class CustomSettingsViewModel(application: Application) : AndroidViewModel(appli
                 prefs.edit { putString(AppPreferences.Keys.SUPER_ISLAND_DUAL_LINE_MODE, action.value) }
             is CustomSettingsAction.SetSuperIslandMediaButtonLayout ->
                 prefs.edit { putString(AppPreferences.Keys.SUPER_ISLAND_MEDIA_BUTTON_LAYOUT, action.value) }
+            is CustomSettingsAction.SetSuperIslandShowProgressBar ->
+                prefs.edit { putBoolean(AppPreferences.Keys.SUPER_ISLAND_SHOW_PROGRESS_BAR, action.value) }
+            is CustomSettingsAction.SetSuperIslandSecondaryTextModes -> {
+                val modes = action.value.mapNotNull { SuperIslandSecondaryTextMode.from(it) }
+                SuperIslandSecondaryTextMode.write(prefs, modes)
+            }
+            is CustomSettingsAction.SetSuperIslandTemplate2PicSource ->
+                SuperIslandTemplate2PicSource.write(prefs, SuperIslandTemplate2PicSource.from(action.value))
+            is CustomSettingsAction.SetSuperIslandTemplate2CustomPicUri ->
+                SuperIslandTemplate2PicSource.writeCustomPicUri(prefs, action.value)
             is CustomSettingsAction.SetXmsfBypassMode ->
                 XmsfBypassMode.write(prefs, action.value)
             is CustomSettingsAction.SetXmsfCustomDurationMs ->
@@ -171,6 +183,10 @@ class CustomSettingsViewModel(application: Application) : AndroidViewModel(appli
             superIslandMediaButtonLayout = AppPreferences.superIslandMediaButtonLayout(prefs),
             superIslandNotificationStyle = LabFeatureManager.sanitizeSuperIslandNotificationStyle(app),
             superIslandDualLineMode = SuperIslandDualLineMode.read(prefs),
+            superIslandShowProgressBar = AppPreferences.isSuperIslandShowProgressBar(prefs),
+            superIslandSecondaryTextModes = SuperIslandSecondaryTextMode.read(prefs).map { it.preferenceValue },
+            superIslandTemplate2PicSource = SuperIslandTemplate2PicSource.read(prefs).preferenceValue,
+            superIslandTemplate2CustomPicUri = SuperIslandTemplate2PicSource.readCustomPicUri(prefs),
             superIslandAdvancedStyleLabEnabled = LabFeatureManager.isSuperIslandAdvancedStyleEnabled(prefs),
             superIslandTextLimitsLabEnabled = LabFeatureManager.isSuperIslandTextLimitsEnabled(prefs),
             superIslandRelaxedTextLimitsLabEnabled = LabFeatureManager.isSuperIslandRelaxedTextLimitsEnabled(prefs),

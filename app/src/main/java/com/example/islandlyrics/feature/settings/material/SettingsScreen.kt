@@ -75,6 +75,7 @@ import androidx.compose.material.icons.automirrored.filled.Help
 import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.BatterySaver
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Upload
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Link
@@ -90,6 +91,7 @@ import com.example.islandlyrics.core.settings.SettingsBackupManager
 import com.example.islandlyrics.core.settings.SettingsBackupManager.ParserConflict
 import com.example.islandlyrics.core.settings.BackupCategories
 import com.example.islandlyrics.core.settings.SettingsBackupManager.PreviewResult
+import com.example.islandlyrics.core.settings.LabFeatureManager
 import com.example.islandlyrics.runtime.service.MediaMonitorService
 import com.example.islandlyrics.runtime.playingapp.NewPlayingAppNotifier
 import androidx.core.net.toUri
@@ -107,8 +109,12 @@ fun SettingsScreen(
     updateCodenameText: String,
     updateBuildText: String,
     onOpenCustomSettings: () -> Unit = {},
+    onOpenCapsuleNotification: () -> Unit = {},
+    onOpenDesktopLyrics: (() -> Unit)? = null,
+    onOpenCommunity: (() -> Unit)? = null,
     onOpenFaq: (() -> Unit)? = null,
     onOpenAbout: (() -> Unit)? = null,
+    onOpenLocalLyricDirectories: () -> Unit = {},
     onOpenLocalLyricDirectory: ((Uri, String) -> Unit)? = null,
     onOpenOnlineLyricRematch: (() -> Unit)? = null,
     onOpenLastFm: (() -> Unit)? = null,
@@ -129,6 +135,7 @@ fun SettingsScreen(
     val backupImportSuccessWithCacheFormat = stringResource(R.string.settings_backup_import_success_with_cache)
     val backupImportFailedText = stringResource(R.string.settings_backup_import_failed)
     val devModeEnabled by LyricRepository.getInstance().devModeEnabled.observeAsState(false)
+    val floatingLyricsLabEnabled = remember { LabFeatureManager.isFloatingLyricsEnabled(prefs) }
     val offlineModeEnabled = OfflineModeManager.isEnabled(context)
 
     // Backup category selection states
@@ -325,7 +332,28 @@ fun SettingsScreen(
                 .fillMaxSize(),
             contentPadding = PaddingValues(bottom = 24.dp + extraBottomPadding)
         ) {
-            item { SettingsSectionHeader(text = stringResource(R.string.settings_personalization_header)) }
+            item { SettingsSectionHeader(text = stringResource(R.string.settings_core_header)) }
+            item {
+                SettingsCard {
+                    SettingsActionItem(
+                        title = stringResource(R.string.settings_capsule_notification),
+                        icon = Icons.Filled.MusicNote,
+                        onClick = onOpenCapsuleNotification
+                    )
+                    if (floatingLyricsLabEnabled) {
+                        SettingsCardDivider()
+                        SettingsActionItem(
+                            title = stringResource(R.string.settings_floating_lyrics),
+                            icon = Icons.Filled.MusicNote,
+                            onClick = {
+                                onOpenDesktopLyrics?.invoke() ?: onOpenCustomSettings()
+                            }
+                        )
+                    }
+                }
+            }
+
+            item { SettingsSectionHeader(text = stringResource(R.string.settings_general_header)) }
             item {
                 SettingsCard {
                     SettingsActionItem(
@@ -333,12 +361,7 @@ fun SettingsScreen(
                         icon = Icons.Filled.Palette,
                         onClick = onOpenCustomSettings
                     )
-                }
-            }
-
-            item { SettingsSectionHeader(text = stringResource(R.string.settings_general_header)) }
-            item {
-                SettingsCard {
+                    SettingsCardDivider()
                     Box(modifier = Modifier.fillMaxWidth()) {
                         SettingsTextItem(
                             title = stringResource(R.string.settings_language),
@@ -408,7 +431,7 @@ fun SettingsScreen(
                 }
             }
 
-            item { SettingsSectionHeader(text = stringResource(R.string.settings_core_services_header)) }
+            item { SettingsSectionHeader(text = stringResource(R.string.settings_permissions_header)) }
             item {
                 SettingsCard {
                     SettingsSwitchItem(
@@ -451,15 +474,18 @@ fun SettingsScreen(
                 }
             }
 
+            // 歌词工具：本地歌词 + 歌词工具
+            item { SettingsSectionHeader(text = stringResource(R.string.settings_lyric_tools_header)) }
             item {
-                com.example.islandlyrics.feature.settings.LocalLyricDirectoriesSection(
-                    onOpenDirectory = onOpenLocalLyricDirectory
-                )
-            }
-            if (!offlineModeEnabled) {
-                item { SettingsSectionHeader(text = stringResource(R.string.settings_lyric_tools_header)) }
-                item {
-                    SettingsCard {
+                SettingsCard {
+                    SettingsActionItem(
+                        title = stringResource(R.string.settings_local_lyrics_title),
+                        summary = stringResource(R.string.settings_local_lyrics_directories),
+                        icon = Icons.Filled.Folder,
+                        onClick = onOpenLocalLyricDirectories
+                    )
+                    if (!offlineModeEnabled) {
+                        SettingsCardDivider()
                         SettingsActionItem(
                             title = stringResource(R.string.online_lyric_rematch_title),
                             summary = stringResource(R.string.online_lyric_rematch_settings_desc),
@@ -476,7 +502,7 @@ fun SettingsScreen(
                             icon = Icons.Filled.Link,
                             onClick = {
                                 onOpenLastFm?.invoke()
-                                    ?: context.startActivity(Intent(context, LastFmSettingsActivity::class.java))
+                                ?: context.startActivity(Intent(context, LastFmSettingsActivity::class.java))
                             }
                         )
                     }
@@ -517,8 +543,18 @@ fun SettingsScreen(
                         }
                     )
                     SettingsCardDivider()
+                    if (!offlineModeEnabled) {
+                        SettingsActionItem(
+                            title = stringResource(R.string.settings_community_header),
+                            icon = Icons.Filled.Info,
+                            onClick = {
+                                onOpenCommunity?.invoke()
+                            }
+                        )
+                        SettingsCardDivider()
+                    }
                     SettingsActionItem(
-                        title = stringResource(R.string.community_about_title),
+                        title = stringResource(R.string.about_title),
                         icon = Icons.Filled.Info,
                         onClick = {
                             onOpenAbout?.invoke()

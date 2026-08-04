@@ -25,6 +25,7 @@ package com.example.islandlyrics.feature.customsettings
 import com.example.islandlyrics.ui.navigation.BaseActivity
 import com.example.islandlyrics.ui.navigation.PredictiveBackActivity
 import android.os.Bundle
+import com.example.islandlyrics.R
 import com.example.islandlyrics.ui.miuix.theme.isMiuixEnabled
 import com.example.islandlyrics.core.update.UpdateChecker
 import com.example.islandlyrics.feature.customsettings.miuix.MiuixCustomSettingsScreen
@@ -47,7 +48,9 @@ class CustomSettingsActivity : BaseActivity() {
                             onCheckUpdate = { /* No-op */ },
                             onShowLogs = { /* No-op */ },
                             updateVersionText = "",
-                            updateBuildText = ""
+                            updateBuildText = "",
+                            title = getString(R.string.page_title_personalization),
+                            tabs = setOf(CustomSettingsTab.APP_UI)
                         )
                     }
                 }
@@ -59,7 +62,9 @@ class CustomSettingsActivity : BaseActivity() {
                             onCheckUpdate = { /* No-op or reuse UpdateChecker if needed */ },
                             onShowLogs = { /* No-op */ },
                             updateVersionText = "", // Not used in this screen
-                            updateBuildText = "" // Not used in this screen
+                            updateBuildText = "", // Not used in this screen
+                            title = getString(R.string.page_title_personalization),
+                            tabs = setOf(CustomSettingsTab.APP_UI)
                         )
                     }
                 }
