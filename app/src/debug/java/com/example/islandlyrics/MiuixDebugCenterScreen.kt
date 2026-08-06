@@ -118,7 +118,7 @@ fun MiuixDebugCenterScreen(
                     )
                     SuperArrow(
                         title = "Custom Settings Page",
-                        summary = "Open Personalization settings",
+                        summary = "Open the Personalization (App UI) settings page",
                         onClick = {
                             context.startActivity(Intent(context, CustomSettingsActivity::class.java))
                         }

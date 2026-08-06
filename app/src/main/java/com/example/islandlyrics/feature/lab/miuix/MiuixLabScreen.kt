@@ -60,7 +60,10 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.MiuixPopupUtils.Companion.MiuixPopupHost
 
 @Composable
-fun MiuixLabScreen(onBack: () -> Unit) {
+fun MiuixLabScreen(
+    onBack: () -> Unit,
+    onOpenCapsuleNotification: (() -> Unit)? = null
+) {
     val context = LocalContext.current
     val scrollBehavior = MiuixScrollBehavior(rememberTopAppBarState())
     val listState = rememberLazyListState()
@@ -299,7 +302,8 @@ fun MiuixLabScreen(onBack: () -> Unit) {
                         LabFeatureManager.setSuperIslandAdvancedStyleEnabled(context, true)
                         superIslandAdvancedStyleEnabled = true
                         showAdvancedStyleDialog.value = false
-                        context.startActivity(Intent(context, CustomSettingsActivity::class.java))
+                        onOpenCapsuleNotification?.invoke()
+                            ?: context.startActivity(Intent(context, CustomSettingsActivity::class.java))
                     },
                     modifier = Modifier.weight(1f),
                     colors = ButtonDefaults.textButtonColorsPrimary()

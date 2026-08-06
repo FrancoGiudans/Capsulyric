@@ -84,7 +84,7 @@ fun DebugCenterScreen(
             // ── Custom Settings Page ──
             DebugMenuButton(
                 text = "Custom Settings Page",
-                description = "Grouped settings: App Body, Capsule, Notification",
+                description = "Open the Personalization (App UI) settings page",
                 onClick = {
                     val intent = Intent(context, CustomSettingsActivity::class.java)
                     context.startActivity(intent)

@@ -59,7 +59,10 @@ import com.example.islandlyrics.ui.theme.material.neutralMaterialTopBarColors
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun LabScreen(onBack: () -> Unit) {
+fun LabScreen(
+    onBack: () -> Unit,
+    onOpenCapsuleNotification: (() -> Unit)? = null
+) {
     val context = LocalContext.current
     var offlineModeEnabled by remember { mutableStateOf(OfflineModeManager.isEnabled(context)) }
     var superIslandAdvancedStyleEnabled by remember {
@@ -248,7 +251,8 @@ fun LabScreen(onBack: () -> Unit) {
                         LabFeatureManager.setSuperIslandAdvancedStyleEnabled(context, true)
                         superIslandAdvancedStyleEnabled = true
                         showAdvancedStyleDialog = false
-                        context.startActivity(Intent(context, CustomSettingsActivity::class.java))
+                        onOpenCapsuleNotification?.invoke()
+                            ?: context.startActivity(Intent(context, CustomSettingsActivity::class.java))
                     }
                 ) {
                     Text(stringResource(R.string.diag_lab_super_island_dialog_confirm))

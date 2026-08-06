@@ -833,7 +833,7 @@ class MainActivity : BaseActivity() {
             AppPage.OnlineLyricDebug -> OnlineLyricDebugScreen(onBack = onBack)
             AppPage.LastFm -> LastFmSettingsScreen(onBack = onBack)
             AppPage.CacheManagement -> CacheManagementScreen(onBack = onBack)
-            AppPage.Lab -> LabScreen(onBack = onBack)
+            AppPage.Lab -> LabScreen(onBack = onBack, onOpenCapsuleNotification = { onPushPage(AppPage.CapsuleNotification) })
             AppPage.LogViewer -> LogViewerScreen(onBack = onBack)
             is AppPage.LocalLyricDirectory -> LocalLyricDirectoryScreen(
                 directoryUri = page.directoryUri.toUri(),
@@ -884,7 +884,7 @@ class MainActivity : BaseActivity() {
             AppPage.OnlineLyricDebug -> MiuixOnlineLyricDebugScreen(onBack = onBack)
             AppPage.LastFm -> MiuixLastFmSettingsScreen(onBack = onBack)
             AppPage.CacheManagement -> MiuixCacheManagementScreen(onBack = onBack)
-            AppPage.Lab -> MiuixLabScreen(onBack = onBack)
+            AppPage.Lab -> MiuixLabScreen(onBack = onBack, onOpenCapsuleNotification = { onPushPage(AppPage.CapsuleNotification) })
             AppPage.LogViewer -> MiuixLogViewerScreen(onBack = onBack)
             is AppPage.LocalLyricDirectory -> MiuixLocalLyricDirectoryScreen(
                 directoryUri = page.directoryUri.toUri(),

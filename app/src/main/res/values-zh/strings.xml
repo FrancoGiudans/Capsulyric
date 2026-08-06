@@ -463,7 +463,7 @@
 - <b>技术原理</b>：利用系统原生底层 API 实现。当应用处于后台或设备锁屏时，系统将依状态自动折叠为胶囊形态，具有极低的能效损耗。\n\n
 <b>2. 小米超级岛 (Super Island)</b>\n
 - <b>环境要求</b>：所有 HyperOS 版本。\n
-- <b>技术原理</b>：基于小米专有协议实现。需在设置中手动启用“发送小米超级岛通知”。\n
+- <b>技术原理</b>：基于小米专有协议实现。需在“设置 → 胶囊与通知”中手动启用“发送小米超级岛通知”。\n
 - <b>白名单突破方案</b>：\n
   • <b>已获取 Root 权限</b>：建议配合 HyperCeiler 等模块解除系统的应用限制。\n
   • <b>未获取 Root 权限</b>：需通过 Shizuku 进行授权，并启用“绕过小米超级岛白名单”功能。（注：该方案由于强制系统重定向通知，可能导致间歇性耗电增加或消息延迟。）</string>
@@ -526,8 +526,8 @@
 在诊断工具中找到并进入<b>“实验室”</b>页面。\n\n
 <b>3. 开启调节开关</b>\n
 打开<b>“超级岛字数上限调节”</b>。\n\n
-<b>4. 回到自定义设置微调</b>\n
-返回<b>“设置 → 自定义设置”</b>（找到你使用的音乐应用规则），此时可以看到左右两侧分别出现了<b>“字数上限”</b>调节选项。根据实际使用情况调整数值——减少摄像头一侧的字数上限即可避免重叠。\n\n
+<b>4. 回到“胶囊与通知”微调</b>\n
+返回<b>“设置 → 胶囊与通知”</b>，此时可以看到出现了<b>“字数上限”</b>调节选项。根据实际使用情况调整数值——减少摄像头一侧的字数上限即可避免重叠。\n\n
 你可以反复尝试不同的数值，直到歌词能够舒适地避开摄像头区域。</string>
     <string name="faq_cat_feedback">反馈与日志类</string>
     <string name="faq_q_unresolved">Q：以上内容都无法解决我的问题，怎么办？</string>
@@ -778,26 +778,26 @@
     <string name="diag_header_system">设备环境</string>
     <string name="diag_header_advanced">兼容性检查</string>
     <string name="diag_lab_super_island_advanced_style_title">小米超级岛高级样式</string>
-    <string name="diag_lab_super_island_advanced_style_desc">开启后，个性化设置里的“通知样式”将显示“高级样式（Beta）”选项</string>
+    <string name="diag_lab_super_island_advanced_style_desc">开启后，“胶囊与通知”页里的“通知样式”将显示“高级样式（Beta）”选项</string>
     <string name="diag_lab_super_island_text_limits_title">超级岛字数上限调节</string>
-    <string name="diag_lab_super_island_text_limits_desc">开启后，个性化设置的胶囊页会显示左右两侧字数上限调节。</string>
+    <string name="diag_lab_super_island_text_limits_desc">开启后，“胶囊与通知”页会显示左右两侧字数上限调节。</string>
     <string name="diag_lab_super_island_relaxed_text_limits_title">超级岛字数上限放宽</string>
     <string name="diag_lab_super_island_relaxed_text_limits_desc">开启后，超级岛字数上限调节可使用更大的范围。适合无中置遮挡设备自行测试。</string>
     <string name="diag_lab_live_update_text_limits_title">Live Update 字数上限调节</string>
-    <string name="diag_lab_live_update_text_limits_desc">开启后，个性化设置的胶囊页会显示 Live Update 歌词字数上限调节。</string>
+    <string name="diag_lab_live_update_text_limits_desc">开启后，“胶囊与通知”页会显示 Live Update 歌词字数上限调节。</string>
     <string name="diag_lab_experiment_updates_title">接收测试版本</string>
     <string name="diag_lab_experiment_updates_desc">显示 Experiment 通道，并接收来自测试分支的实验版本。</string>
     <string name="diag_lab_scroll_end_haptic_title">边缘滚动触感反馈</string>
     <string name="diag_lab_scroll_end_haptic_desc">滚动到列表边缘时，获得触感反馈。</string>
     <string name="diag_lab_floating_lyrics_title">桌面歌词</string>
-    <string name="diag_lab_floating_lyrics_desc">开启后，个性化设置里将显示桌面歌词入口</string>
+    <string name="diag_lab_floating_lyrics_desc">开启后，设置页将显示桌面歌词入口</string>
     <string name="diag_lab_feed_source_title">公告源</string>
     <string name="diag_lab_feed_source_desc">选择优先使用的社区 feed 源；如果失败，应用会自动回退到另一个源。</string>
     <string name="diag_lab_feed_source_github">GitHub</string>
     <string name="diag_lab_feed_source_gitee">Gitee</string>
     <string name="diag_lab_super_island_dialog_title">开启高级样式实验功能？</string>
-    <string name="diag_lab_super_island_dialog_message">该样式仍处于实验阶段，部分设备可能需要 Root 环境才能正常显示。开启后，请前往“个性化设置”中的通知页自行切换到“高级样式（Beta）”。</string>
-    <string name="diag_lab_super_island_dialog_confirm">前往个性化设置</string>
+    <string name="diag_lab_super_island_dialog_message">该样式仍处于实验阶段，部分设备可能需要 Root 环境才能正常显示。开启后，请前往“胶囊与通知”页自行切换到“高级样式（Beta）”。</string>
+    <string name="diag_lab_super_island_dialog_confirm">前往胶囊与通知</string>
     <string name="diag_lab_live_update_text_limits_dialog_title">开启 Live Update 字数上限调节？</string>
     <string name="diag_lab_live_update_text_limits_dialog_message">Live Update 似乎存在系统规定的字数限制。如果文本超过系统规定上限，通知可能无法被提升为胶囊态。请仅在愿意自行测试并回退数值时开启。</string>
     <string name="diag_lab_live_update_text_limits_dialog_confirm">开启</string>
