@@ -1049,7 +1049,9 @@
 
     <string name="settings_floating_lyrics">桌面歌词</string>
     <string name="settings_floating_lyrics_enabled">开启桌面歌词</string>
-    <string name="settings_floating_lyrics_enabled_desc">在屏幕上悬浮显示歌词，支持极简和展开模式</string>
+    <string name="settings_floating_lyrics_enabled_desc">开启桌面歌词功能（也可在实验室中关闭）；关闭后入口与悬浮歌词都会隐藏</string>
+    <string name="settings_floating_lyrics_show">显示桌面歌词</string>
+    <string name="settings_floating_lyrics_show_desc">在屏幕上悬浮显示歌词，支持极简和展开模式</string>
     <string name="settings_floating_show_album_art">显示专辑图</string>
     <string name="settings_floating_show_album_art_desc">在歌词左侧显示当前播放歌曲的专辑图</string>
     <string name="settings_floating_text_stroke">文字描边</string>

@@ -113,15 +113,11 @@ fun CustomSettingsScreen(
     val prefs = remember { context.getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE) }
     val uiState by viewModel.uiState.collectAsState()
     val scope = rememberCoroutineScope()
-    var floatingLyricsLabEnabled by remember(uiState.floatingLyricsLabEnabled) {
-        mutableStateOf(uiState.floatingLyricsLabEnabled)
-    }
-    
     val orderedTabs = buildList {
         if (CustomSettingsTab.CAPSULE in tabs) add(CustomSettingsTab.CAPSULE)
         if (CustomSettingsTab.NOTIFICATION in tabs) add(CustomSettingsTab.NOTIFICATION)
         if (CustomSettingsTab.APP_UI in tabs) add(CustomSettingsTab.APP_UI)
-        if (CustomSettingsTab.DESKTOP_LYRICS in tabs && floatingLyricsLabEnabled) {
+        if (CustomSettingsTab.DESKTOP_LYRICS in tabs) {
             add(CustomSettingsTab.DESKTOP_LYRICS)
         }
     }

@@ -1058,7 +1058,9 @@ Within the log interface, select the share/export icon. You can specify a timefr
 
     <string name="settings_floating_lyrics">Floating</string>
     <string name="settings_floating_lyrics_enabled">Enable Floating Lyrics</string>
-    <string name="settings_floating_lyrics_enabled_desc">Show floating lyrics on screen, supports minimal and expanded modes</string>
+    <string name="settings_floating_lyrics_enabled_desc">Enables the Desktop Lyrics feature (also available in the Lab); turning it off hides the entry and the floating lyrics</string>
+    <string name="settings_floating_lyrics_show">Show Desktop Lyrics</string>
+    <string name="settings_floating_lyrics_show_desc">Show floating lyrics on screen, supports minimal and expanded modes</string>
     <string name="settings_floating_show_album_art">Show Album Art</string>
     <string name="settings_floating_show_album_art_desc">Display current album art on the left of lyrics</string>
     <string name="settings_floating_text_stroke">Text Outline</string>

@@ -38,6 +38,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.islandlyrics.core.settings.LabFeatureManager
 import com.example.islandlyrics.R
 import com.example.islandlyrics.ui.miuix.blur.MiuixBlurDialog
 import com.example.islandlyrics.ui.overlay.floating.FloatingLyricsDisplayConfig
@@ -61,7 +62,8 @@ import kotlin.math.roundToInt
 fun MiuixFloatingLyricsSettingsSubScreen(prefs: SharedPreferences, scope: CoroutineScope) {
     val context = LocalContext.current
 
-    var enabled by remember { mutableStateOf(prefs.getBoolean(FloatingLyricsRenderer.PREF_KEY, false)) }
+    var featureEnabled by remember { mutableStateOf(LabFeatureManager.isFloatingLyricsEnabled(context)) }
+    var showLyrics by remember { mutableStateOf(prefs.getBoolean(FloatingLyricsRenderer.PREF_KEY, false)) }
     var showAlbumArt by remember { mutableStateOf(prefs.getBoolean(FloatingLyricsRenderer.PREF_SHOW_ALBUM_ART, true)) }
     var followAlbumColor by remember { mutableStateOf(prefs.getBoolean(FloatingLyricsRenderer.PREF_FOLLOW_ALBUM_COLOR, true)) }
     var textStroke by remember { mutableStateOf(prefs.getBoolean(FloatingLyricsRenderer.PREF_TEXT_STROKE, true)) }
@@ -111,21 +113,33 @@ fun MiuixFloatingLyricsSettingsSubScreen(prefs: SharedPreferences, scope: Corout
         SuperSwitch(
             title = stringResource(R.string.settings_floating_lyrics_enabled),
             summary = stringResource(R.string.settings_floating_lyrics_enabled_desc),
-            checked = enabled,
+            checked = featureEnabled,
+            onCheckedChange = { enabled ->
+                featureEnabled = enabled
+                LabFeatureManager.setFloatingLyricsEnabled(context, enabled)
+                if (!enabled) {
+                    showLyrics = false
+                }
+            }
+        )
+        SuperSwitch(
+            title = stringResource(R.string.settings_floating_lyrics_show),
+            summary = stringResource(R.string.settings_floating_lyrics_show_desc),
+            checked = showLyrics,
             onCheckedChange = {
-                enabled = it
+                showLyrics = it
                 if (it && !Settings.canDrawOverlays(context)) {
                     context.startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION).apply {
                         data = "package:${context.packageName}".toUri()
                     })
-                    enabled = false
+                    showLyrics = false
                 } else {
                     prefs.edit { putBoolean(FloatingLyricsRenderer.PREF_KEY, it) }
                 }
             }
         )
 
-        if (enabled) {
+        if (showLyrics) {
             SuperSwitch(
                 title = stringResource(R.string.settings_floating_show_album_art),
                 summary = stringResource(R.string.settings_floating_show_album_art_desc),
