@@ -135,7 +135,7 @@ fun SettingsScreen(
     val backupImportSuccessWithCacheFormat = stringResource(R.string.settings_backup_import_success_with_cache)
     val backupImportFailedText = stringResource(R.string.settings_backup_import_failed)
     val devModeEnabled by LyricRepository.getInstance().devModeEnabled.observeAsState(false)
-    val floatingLyricsLabEnabled = remember { LabFeatureManager.isFloatingLyricsEnabled(prefs) }
+    var floatingLyricsLabEnabled by remember { mutableStateOf(LabFeatureManager.isFloatingLyricsEnabled(prefs)) }
     val offlineModeEnabled = OfflineModeManager.isEnabled(context)
 
     // Backup category selection states
@@ -270,10 +270,18 @@ fun SettingsScreen(
             if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
                 notificationGranted = checkNotificationPermission()
                 postNotificationGranted = checkPostNotificationPermission()
+                floatingLyricsLabEnabled = LabFeatureManager.isFloatingLyricsEnabled(prefs)
             }
         }
+        val prefListener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+            if (key == LabFeatureManager.KEY_FLOATING_LYRICS_ENABLED) {
+                floatingLyricsLabEnabled = LabFeatureManager.isFloatingLyricsEnabled(prefs)
+            }
+        }
+        prefs.registerOnSharedPreferenceChangeListener(prefListener)
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose {
+            prefs.unregisterOnSharedPreferenceChangeListener(prefListener)
             lifecycleOwner.lifecycle.removeObserver(observer)
         }
     }

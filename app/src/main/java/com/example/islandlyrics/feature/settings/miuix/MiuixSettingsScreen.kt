@@ -135,7 +135,7 @@ fun MiuixSettingsScreen(
     val backupImportSuccessWithCacheFormat = stringResource(R.string.settings_backup_import_success_with_cache)
     val backupImportFailedText = stringResource(R.string.settings_backup_import_failed)
     val devModeEnabled by LyricRepository.getInstance().devModeEnabled.observeAsState(false)
-    val floatingLyricsLabEnabled = remember { LabFeatureManager.isFloatingLyricsEnabled(prefs) }
+    var floatingLyricsLabEnabled by remember { mutableStateOf(LabFeatureManager.isFloatingLyricsEnabled(prefs)) }
 
     // Backup category selection states
     var showExportCategoryDialog by remember { mutableStateOf(false) }
@@ -247,10 +247,20 @@ fun MiuixSettingsScreen(
             if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
                 notificationGranted = checkNotificationPermission()
                 postNotificationGranted = checkPostNotificationPermission()
+                floatingLyricsLabEnabled = LabFeatureManager.isFloatingLyricsEnabled(prefs)
             }
         }
+        val prefListener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+            if (key == LabFeatureManager.KEY_FLOATING_LYRICS_ENABLED) {
+                floatingLyricsLabEnabled = LabFeatureManager.isFloatingLyricsEnabled(prefs)
+            }
+        }
+        prefs.registerOnSharedPreferenceChangeListener(prefListener)
         lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+        onDispose {
+            prefs.unregisterOnSharedPreferenceChangeListener(prefListener)
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
     }
 
     LaunchedEffect(listState) {

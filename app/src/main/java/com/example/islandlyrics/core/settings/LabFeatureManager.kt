@@ -32,7 +32,7 @@ object LabFeatureManager {
     private const val KEY_SUPER_ISLAND_TEXT_LIMITS_ENABLED = "lab_super_island_text_limits_enabled"
     private const val KEY_SUPER_ISLAND_RELAXED_TEXT_LIMITS_ENABLED = "lab_super_island_relaxed_text_limits_enabled"
     const val KEY_LIVE_UPDATE_TEXT_LIMITS_ENABLED = "lab_live_update_text_limits_enabled"
-    private const val KEY_FLOATING_LYRICS_ENABLED = "lab_floating_lyrics_enabled"
+    const val KEY_FLOATING_LYRICS_ENABLED = "lab_floating_lyrics_enabled"
     private const val KEY_FLOATING_LYRICS_MIGRATED = "lab_floating_lyrics_migrated"
     private const val KEY_EXPERIMENT_UPDATES_ENABLED = "lab_experiment_updates_enabled"
     private const val KEY_EXPERIMENT_UPDATES_MIGRATED = "lab_experiment_updates_migrated"
