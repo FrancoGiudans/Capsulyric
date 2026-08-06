@@ -262,12 +262,12 @@ jobs:
           echo "============================================"
 
       # ============================================================
-      # Step 3: Set up JDK 21
+      # Step 3: Set up JDK 26
       # ============================================================
-      - name: Set up JDK 21
+      - name: Set up JDK 26
         uses: actions/setup-java@v5
         with:
-          java-version: '21'
+          java-version: '26'
           distribution: 'temurin'
 
       # ============================================================
@@ -306,7 +306,7 @@ jobs:
           STD_APK=$(find ${{ steps.meta.outputs.apk_dir }} -name "*.apk" ! -name "*-signed.apk" | head -n 1)
           echo "Signing: ${STD_APK}"
 
-          ${ANDROID_HOME}/build-tools/34.0.0/apksigner sign \
+          ${ANDROID_HOME}/build-tools/37.0.0/apksigner sign \
             --ks release.keystore \
             --ks-key-alias "$KEY_ALIAS" \
             --ks-pass env:KEY_STORE_PASSWORD \
