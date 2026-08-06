@@ -64,8 +64,4 @@ dependencies {
     implementation(libs.hiddenapibypass)
 
     debugImplementation(libs.ui.tooling)
-    debugImplementation(libs.ui.test.manifest)
-    androidTestImplementation(libs.androidx.test.ext.junit)
-    androidTestImplementation(libs.androidx.test.core.ktx)
-    androidTestImplementation(libs.androidx.test.runner)
 }
