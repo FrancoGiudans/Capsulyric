@@ -1,0 +1,17 @@
+plugins {
+    id("com.android.library")
+}
+
+android {
+    namespace = "com.example.islandlyrics.hiddenapi"
+    compileSdk = 37
+
+    defaultConfig {
+        minSdk = 35
+    }
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_26
+        targetCompatibility = JavaVersion.VERSION_26
+    }
+}
