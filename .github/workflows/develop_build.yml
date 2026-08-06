@@ -152,8 +152,10 @@ jobs:
           rm release.keystore
 
       - name: Generate MD5 Checksum
+        id: md5
         run: |
-          (cd app/build/outputs/apk/prerelease/ && md5sum app-prerelease-signed.apk > app-prerelease-signed.apk.md5)
+          MD5_VALUE=$(md5sum app/build/outputs/apk/prerelease/app-prerelease-signed.apk | awk '{print $1}')
+          echo "md5=${MD5_VALUE}" >> "$GITHUB_OUTPUT"
 
 
       - name: Upload Signed Artifact
@@ -162,7 +164,6 @@ jobs:
           name: Capsulyric-${{ needs.resolve_mode.outputs.channel }}-Signed
           path: |
             app/build/outputs/apk/prerelease/app-prerelease-signed.apk
-            app/build/outputs/apk/prerelease/app-prerelease-signed.apk.md5
 
       - name: Generate Experiment Metadata
         if: |
@@ -209,6 +210,7 @@ jobs:
           echo "- **Version:** \`${DISPLAY_VERSION}\`" >> canary_body.md
           echo "- **Latest Commit:** \`${SHORT_SHA}\`" >> canary_body.md
           echo "- **Branch:** \`${BRANCH_NAME}\`" >> canary_body.md
+          echo "- **MD5:** \`${{ steps.md5.outputs.md5 }}\`" >> canary_body.md
           echo "" >> canary_body.md
           echo "### Changes since last Experiment release" >> canary_body.md
           
@@ -223,10 +225,6 @@ jobs:
             # Add a compare link
             echo -e "\n\n**Full Comparison:** [${PREV_SHA:0:7}...${SHORT_SHA}](https://github.com/${{ github.repository }}/compare/${PREV_SHA}...${SHORT_SHA})" >> canary_body.md
           fi
-          echo "" >> canary_body.md
-          echo "> [!NOTE]" >> canary_body.md
-          echo "> 本次发布的 MD5 校验文件已同步上传。" >> canary_body.md
-          echo "> The MD5 checksum file for this release has been uploaded." >> canary_body.md
           echo "" >> canary_body.md
           echo "---" >> canary_body.md
 
@@ -263,7 +261,6 @@ jobs:
           target_commitish: ${{ steps.meta.outputs.branch_name }}
           files: |
             app/build/outputs/apk/prerelease/app-prerelease-signed.apk
-            app/build/outputs/apk/prerelease/app-prerelease-signed.apk.md5
           prerelease: true
           make_latest: false
         env:

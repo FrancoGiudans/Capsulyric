@@ -130,18 +130,15 @@ jobs:
             BUILD_TYPE="Prerelease"
             APK_DIR="app/build/outputs/apk/prerelease"
             SIGNED_APK="${APK_DIR}/app-prerelease-signed.apk"
-            MD5_FILE="${APK_DIR}/app-prerelease-signed.apk.md5"
           else
             BUILD_TYPE="Release"
             APK_DIR="app/build/outputs/apk/release"
             SIGNED_APK="${APK_DIR}/app-release-signed.apk"
-            MD5_FILE="${APK_DIR}/app-release-signed.apk.md5"
           fi
 
           echo "build_type=${BUILD_TYPE}" >> $GITHUB_OUTPUT
           echo "apk_dir=${APK_DIR}" >> $GITHUB_OUTPUT
           echo "signed_apk=${SIGNED_APK}" >> $GITHUB_OUTPUT
-          echo "md5_file=${MD5_FILE}" >> $GITHUB_OUTPUT
 
           # --- Parse CHANGELOG.md (line-number-based, avoids awk Unicode regex issues) ---
 
@@ -200,7 +197,6 @@ jobs:
             BUILD_TYPE="Prerelease"
             APK_DIR="app/build/outputs/apk/prerelease"
             SIGNED_APK="${APK_DIR}/app-prerelease-signed.apk"
-            MD5_FILE="${APK_DIR}/app-prerelease-signed.apk.md5"
 
             # Recompute version name and tag with the new channel
             VERSION_NAME="${VERSION_PREFIX}.${CHANNEL}_C${COMMIT_COUNT}"
@@ -212,7 +208,6 @@ jobs:
             echo "build_type=${BUILD_TYPE}" >> $GITHUB_OUTPUT
             echo "apk_dir=${APK_DIR}" >> $GITHUB_OUTPUT
             echo "signed_apk=${SIGNED_APK}" >> $GITHUB_OUTPUT
-            echo "md5_file=${MD5_FILE}" >> $GITHUB_OUTPUT
           fi
           echo "is_prerelease=${IS_PRERELEASE}" >> $GITHUB_OUTPUT
 
@@ -326,23 +321,21 @@ jobs:
       # Step 7: Generate MD5 Checksum
       # ============================================================
       - name: Generate MD5 Checksum
+        id: md5
         run: |
-          (cd ${{ steps.meta.outputs.apk_dir }} && md5sum $(basename ${{ steps.meta.outputs.signed_apk }}) > $(basename ${{ steps.meta.outputs.md5_file }}))
+          MD5_VALUE=$(md5sum "${{ steps.meta.outputs.signed_apk }}" | awk '{print $1}')
+          echo "md5=${MD5_VALUE}" >> "$GITHUB_OUTPUT"
 
       # ============================================================
-      # Step 7.5: Rename Artifacts
+      # Step 7.5: Rename APK
       # ============================================================
-      - name: Rename Artifacts
+      - name: Rename APK
         id: artifacts
         run: |
           FINAL_APK="Capsulyric-${{ steps.meta.outputs.version_name }}.apk"
-          FINAL_MD5="${FINAL_APK}.md5"
           mv "${{ steps.meta.outputs.signed_apk }}" "$FINAL_APK"
-          mv "${{ steps.meta.outputs.md5_file }}" "$FINAL_MD5"
           echo "Renamed APK: ${FINAL_APK}"
-          echo "Renamed MD5: ${FINAL_MD5}"
           echo "apk=${FINAL_APK}" >> $GITHUB_OUTPUT
-          echo "md5=${FINAL_MD5}" >> $GITHUB_OUTPUT
 
       # ============================================================
       # Step 8: Create Git Tag
@@ -420,18 +413,13 @@ jobs:
           ## Release Metadata
           - **Version:** \`${{ steps.meta.outputs.version_name }}\`
           - **Codename:** \`${{ steps.meta.outputs.codename }}\`
+          - **MD5:** \`${{ steps.md5.outputs.md5 }}\`
 
           ---
 
           ENDOFBODY
 
           cat /tmp/auto_notes.md >> release_body.md
-
-          cat >> release_body.md << 'ENDOFBODY'
-
-          > [!NOTE]
-          > MD5 checksum file uploaded with this release.
-          ENDOFBODY
 
           echo "=== Release body preview (first 40 lines) ==="
           head -n 40 release_body.md
@@ -450,7 +438,6 @@ jobs:
           discussion_category_name: announcements
           files: |
             ${{ steps.artifacts.outputs.apk }}
-            ${{ steps.artifacts.outputs.md5 }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -463,4 +450,3 @@ jobs:
           name: Capsulyric-${{ steps.meta.outputs.channel }}-Signed
           path: |
             ${{ steps.artifacts.outputs.apk }}
-            ${{ steps.artifacts.outputs.md5 }}
