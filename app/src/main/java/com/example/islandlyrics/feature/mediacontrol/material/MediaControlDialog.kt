@@ -134,7 +134,12 @@ fun MediaControlDialog(onDismiss: () -> Unit) {
 
     val repoLyric by repo.liveLyric.observeAsState()
     val repoProgress by repo.liveProgress.observeAsState()
-    val showOnlineLyricRematch = !OfflineModeManager.isEnabled(context) && isOnlineLyricSource(repoLyric?.apiPath)
+    val repoParsedLyrics by repo.liveParsedLyrics.observeAsState()
+    val repoLyricResolveState by repo.liveLyricResolveState.observeAsState(LyricRepository.LyricResolveState.PENDING)
+    val showOnlineLyricRematch = !OfflineModeManager.isEnabled(context) &&
+        (isOnlineLyricSource(repoLyric?.apiPath) ||
+            isOnlineLyricSource(repoParsedLyrics?.apiPath) ||
+            (repoLyric?.lyric.isNullOrBlank() && repoParsedLyrics?.lines.isNullOrEmpty()))
 
     // Transition State for Enter/Exit animations
     val visibleState = remember { MutableTransitionState(true) }
@@ -247,6 +252,8 @@ fun MediaControlDialog(onDismiss: () -> Unit) {
                                     context = context,
                                     isPrimary = isPrimary,
                                     primaryLyric = if (isPrimary) repoLyric?.lyric else null,
+                                    primaryHasTimeline = isPrimary && repoParsedLyrics?.lines?.isNotEmpty() == true,
+                                    primaryLyricResolveState = repoLyricResolveState,
                                     primaryProgress = if (isPrimary) repoProgress else null,
                                     showOnlineLyricRematch = isPrimary && showOnlineLyricRematch,
                                     onOpenOnlineLyricRematch = {
@@ -311,6 +318,8 @@ fun MediaSessionCard(
 
     isPrimary: Boolean,
     primaryLyric: String?,
+    primaryHasTimeline: Boolean,
+    primaryLyricResolveState: LyricRepository.LyricResolveState,
     primaryProgress: LyricRepository.PlaybackProgress?,
     showOnlineLyricRematch: Boolean,
     onOpenOnlineLyricRematch: () -> Unit
@@ -525,7 +534,16 @@ fun MediaSessionCard(
                 MaterialLyricPanel(
                     lyric = effectiveLyric,
                     emptyText = if (isPrimary) {
-                        stringResource(R.string.main_waiting_for_lyrics)
+                        when {
+                            primaryHasTimeline -> stringResource(
+                                R.string.main_lyrics_sync_placeholder_fmt,
+                                formatPlaybackTime(position),
+                                formatPlaybackTime(duration)
+                            )
+                            primaryLyricResolveState == LyricRepository.LyricResolveState.NOT_FOUND ->
+                                stringResource(R.string.main_lyrics_not_found)
+                            else -> stringResource(R.string.main_waiting_for_lyrics)
+                        }
                     } else {
                         stringResource(R.string.main_lyrics_unavailable)
                     }
@@ -647,6 +665,13 @@ fun MediaSessionCard(
 
 private fun isOnlineLyricSource(apiPath: String?): Boolean {
     return apiPath == "Online API" || apiPath == "Online Cache"
+}
+
+private fun formatPlaybackTime(ms: Long): String {
+    val totalSeconds = (ms / 1000L).coerceAtLeast(0L)
+    val minutes = totalSeconds / 60
+    val seconds = totalSeconds % 60
+    return "%02d:%02d".format(minutes, seconds)
 }
 
 @Composable

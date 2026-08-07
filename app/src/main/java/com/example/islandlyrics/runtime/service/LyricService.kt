@@ -102,7 +102,14 @@ class LyricService : Service() {
 
                     if (rule.useOnlineLyrics) {
                         AppLogger.getInstance().log(TAG, "Static metadata detected -> Triggering online fetch")
-                        onlineLyricSource.fetchFor(title, artist, pkg)
+                        onlineLyricSource.fetchFor(title, artist, pkg) { found ->
+                            val repo = LyricRepository.getInstance()
+                            if (found) {
+                                repo.updateLyricResolveState(LyricRepository.LyricResolveState.FOUND)
+                            } else {
+                                repo.reportLyricResolveFailed()
+                            }
+                        }
                         return@Observer
                     } else {
                         AppLogger.getInstance().log(TAG, "Static metadata detected but online fetch disabled")
@@ -178,6 +185,7 @@ class LyricService : Service() {
     private fun resetForTrackChange(info: LyricRepository.MediaInfo) {
         val repo = LyricRepository.getInstance()
         repo.updateLyric("", info.packageName, "System")
+        repo.updateLyricResolveState(LyricRepository.LyricResolveState.PENDING)
         repo.updateParsedLyrics(
             lines = emptyList(),
             hasSyllable = false,

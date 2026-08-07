@@ -163,6 +163,7 @@ fun MainScreen(
     val repoProgress by repo.liveProgress.observeAsState()
     val repoParsedLyrics by repo.liveParsedLyrics.observeAsState()
     val repoCurrentLine by repo.liveCurrentLine.observeAsState()
+    val repoLyricResolveState by repo.liveLyricResolveState.observeAsState(LyricRepository.LyricResolveState.PENDING)
 
     val prefs = remember { AppPreferences.of(context) }
     val onlineLyricCacheStore = remember(context) { OnlineLyricCacheStore(context) }
@@ -349,12 +350,17 @@ fun MainScreen(
                                     )
                                 } else null,
                                 primaryIsInstrumental = isPrimary && isCurrentTrackInstrumental,
+                                primaryHasTimeline = isPrimary && repoParsedLyrics?.lines?.isNotEmpty() == true,
+                                primaryLyricResolveState = repoLyricResolveState,
                                 primaryAlbumArt = if (isPrimary) repoAlbumArt else null,
                                 primaryProgress = if (isPrimary) repoProgress else null,
                                 primaryIsPlaying = if (isPrimary) repoPlaying else null,
                                 showOnlineLyricRematch = isPrimary &&
                                     !OfflineModeManager.isEnabled(context) &&
-                                    (isCurrentTrackInstrumental || isOnlineLyricSource(repoLyric?.apiPath)),
+                                    (isCurrentTrackInstrumental ||
+                                        isOnlineLyricSource(repoLyric?.apiPath) ||
+                                        isOnlineLyricSource(repoParsedLyrics?.apiPath) ||
+                                        (repoLyric?.lyric.isNullOrBlank() && repoParsedLyrics?.lines.isNullOrEmpty())),
                                 onOpenOnlineLyricRematch = onOpenOnlineLyricRematch,
                                 minCardHeight = minCardHeight,
                                 onHeightMeasured = { measuredHeight ->
@@ -479,6 +485,8 @@ private fun MediaSessionCard(
     primaryLyric: String?,
     primaryLyricSource: String?,
     primaryIsInstrumental: Boolean,
+    primaryHasTimeline: Boolean,
+    primaryLyricResolveState: LyricRepository.LyricResolveState,
     primaryAlbumArt: Bitmap?,
     primaryProgress: LyricRepository.PlaybackProgress?,
     primaryIsPlaying: Boolean?,
@@ -716,10 +724,16 @@ private fun MediaSessionCard(
             LyricPanel(
                 lyric = lyric,
                 emptyText = if (isPrimary) {
-                    if (primaryIsInstrumental) {
-                        stringResource(R.string.main_no_lyrics)
-                    } else {
-                        stringResource(R.string.main_waiting_for_lyrics)
+                    when {
+                        primaryIsInstrumental -> stringResource(R.string.main_no_lyrics)
+                        primaryHasTimeline -> stringResource(
+                            R.string.main_lyrics_sync_placeholder_fmt,
+                            formatPlaybackTime(position),
+                            formatPlaybackTime(duration)
+                        )
+                        primaryLyricResolveState == LyricRepository.LyricResolveState.NOT_FOUND ->
+                            stringResource(R.string.main_lyrics_not_found)
+                        else -> stringResource(R.string.main_waiting_for_lyrics)
                     }
                 } else {
                     stringResource(R.string.main_lyrics_unavailable)
@@ -1012,6 +1026,13 @@ private fun formatPrimaryLyricSource(
 
 private fun isOnlineLyricSource(apiPath: String?): Boolean {
     return apiPath == "Online API" || apiPath == "Online Cache"
+}
+
+private fun formatPlaybackTime(ms: Long): String {
+    val totalSeconds = (ms / 1000L).coerceAtLeast(0L)
+    val minutes = totalSeconds / 60
+    val seconds = totalSeconds % 60
+    return "%02d:%02d".format(minutes, seconds)
 }
 
 private fun isPrimarySession(

@@ -40,6 +40,7 @@ class MetadataLyricFetchCoordinator(
     ) {
         val rule = ParserRuleHelper.getRuleForPackage(context, info.packageName)
             ?: ParserRuleHelper.createDefaultRule(info.packageName)
+        val repo = LyricRepository.getInstance()
 
         AppLogger.getInstance().log(
             TAG,
@@ -48,22 +49,40 @@ class MetadataLyricFetchCoordinator(
 
         if (!trackChanged) return
 
+        val markResolveFinished = { found: Boolean ->
+            if (found) {
+                repo.updateLyricResolveState(LyricRepository.LyricResolveState.FOUND)
+            } else {
+                repo.reportLyricResolveFailed()
+            }
+        }
+
         if (rule.useOnlineLyrics) {
             if (rule.useLocalLyrics) {
                 localLyricSource.fetchFor(info.title, info.artist, info.packageName) { found ->
-                    if (!found && !rule.usesCarProtocol) {
+                    if (found) {
+                        repo.updateLyricResolveState(LyricRepository.LyricResolveState.FOUND)
+                    } else if (!rule.usesCarProtocol) {
                         AppLogger.getInstance().log(TAG, "[${info.packageName}] Local miss, triggering online fetch...")
-                        onlineLyricSource.fetchFor(info.title, info.artist, info.packageName)
+                        onlineLyricSource.fetchFor(info.title, info.artist, info.packageName, onResolve = markResolveFinished)
+                    } else {
+                        repo.reportLyricResolveFailed()
                     }
                 }
             } else if (!rule.usesCarProtocol) {
                 AppLogger.getInstance().log(TAG, "[${info.packageName}] Non-CarProtocol app, triggering fetch...")
-                onlineLyricSource.fetchFor(info.title, info.artist, info.packageName)
+                onlineLyricSource.fetchFor(info.title, info.artist, info.packageName, onResolve = markResolveFinished)
             } else {
                 AppLogger.getInstance().log(TAG, "[${info.packageName}] CarProtocol app, waiting for lyric observer trigger...")
             }
         } else if (rule.useLocalLyrics) {
-            localLyricSource.fetchFor(info.title, info.artist, info.packageName) { _ -> }
+            localLyricSource.fetchFor(info.title, info.artist, info.packageName) { found ->
+                if (found) {
+                    repo.updateLyricResolveState(LyricRepository.LyricResolveState.FOUND)
+                } else {
+                    repo.reportLyricResolveFailed()
+                }
+            }
         }
     }
 

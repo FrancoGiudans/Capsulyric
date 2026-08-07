@@ -25,6 +25,8 @@
     <string name="main_waiting_for_lyrics">Waiting for lyrics...</string>
     <string name="main_no_lyrics">No lyrics yet</string>
     <string name="main_lyrics_unavailable">Lyrics are unavailable for this session.</string>
+    <string name="main_lyrics_not_found">No lyrics found for this track.</string>
+    <string name="main_lyrics_sync_placeholder_fmt">Syncing lyrics · %1$s / %2$s</string>
     <string name="action_previous">Previous</string>
     <string name="action_play">Play</string>
     <string name="dialog_diagnostics_title">Diagnostics</string>

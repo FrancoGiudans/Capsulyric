@@ -92,10 +92,11 @@ class OnlineLyricSource(private val context: Context) {
      * Triggers an online lyric fetch for the given track.
      * A concurrent fetch for a previous track is cancelled automatically.
      */
-    fun fetchFor(title: String, artist: String, packageName: String) {
+    fun fetchFor(title: String, artist: String, packageName: String, onResolve: ((found: Boolean) -> Unit)? = null) {
         if (OfflineModeManager.isEnabled(context)) {
             AppLogger.getInstance().i(TAG, "[$packageName] Offline mode enabled — skipped")
             cancel()
+            onResolve?.invoke(false)
             return
         }
 
@@ -104,6 +105,7 @@ class OnlineLyricSource(private val context: Context) {
 
         if (!rule.useOnlineLyrics) {
             AppLogger.getInstance().d(TAG, "[$packageName] Online lyrics disabled by rule — skipped")
+            onResolve?.invoke(false)
             return
         }
 
@@ -122,6 +124,7 @@ class OnlineLyricSource(private val context: Context) {
                 timelineCapability = LyricRepository.TimelineCapability.NONE
             )
             LyricRepository.getInstance().updateCurrentLine(null)
+            onResolve?.invoke(true)
             return
         }
 
@@ -130,6 +133,7 @@ class OnlineLyricSource(private val context: Context) {
 
         if (queryTitle.isBlank() || queryArtist.isBlank()) {
             AppLogger.getInstance().log(TAG, "Missing title/artist — cannot fetch")
+            onResolve?.invoke(false)
             return
         }
 
@@ -171,6 +175,7 @@ class OnlineLyricSource(private val context: Context) {
                             apiPath = "Online Cache",
                             timelineCapability = LyricRepository.TimelineCapability.MULTI_LINE
                         )
+                        onResolve?.invoke(true)
                         return@launch
                     }
                 }
@@ -231,13 +236,16 @@ class OnlineLyricSource(private val context: Context) {
                             apiPath = "Online API",
                             timelineCapability = LyricRepository.TimelineCapability.MULTI_LINE
                         )
+                    onResolve?.invoke(true)
                 } else {
                     AppLogger.getInstance().i(TAG, "Online fetch: no usable result")
+                    onResolve?.invoke(false)
                 }
             } catch (e: kotlinx.coroutines.CancellationException) {
                 AppLogger.getInstance().d(TAG, "Online fetch cancelled (song changed)")
             } catch (e: Exception) {
                 AppLogger.getInstance().e(TAG, "Online fetch error: ${e.message}")
+                onResolve?.invoke(false)
             }
         }
     }

@@ -25,6 +25,8 @@
     <string name="main_waiting_for_lyrics">正在等待歌词同步...</string>
     <string name="main_no_lyrics">暂无歌词</string>
     <string name="main_lyrics_unavailable">这个会话当前没有可用歌词。</string>
+    <string name="main_lyrics_not_found">未检索到歌词</string>
+    <string name="main_lyrics_sync_placeholder_fmt">正在同步歌词 · %1$s / %2$s</string>
     <string name="action_previous">上一首</string>
     <string name="action_play">播放</string>
     <string name="dialog_diagnostics_title">诊断信息</string>

@@ -90,6 +90,10 @@ class LyricRepository private constructor() {
     val liveProgress = MutableLiveData<PlaybackProgress?>()
     val liveAlbumArt = MutableLiveData<Bitmap?>()
     val liveSuperLyricDebug = MutableLiveData<SuperLyricDebugInfo?>()
+
+    // Resolution state: distinguishes "still resolving" from "definitely no lyrics"
+    enum class LyricResolveState { PENDING, FOUND, NOT_FOUND }
+    val liveLyricResolveState = MutableLiveData(LyricResolveState.PENDING)
     
     // Parsed lyrics from online sources (for syllable-based scrolling)
     data class ParsedLyricsInfo(
@@ -152,6 +156,25 @@ class LyricRepository private constructor() {
         ) ?: return
 
         postOrSet(liveLyric, acceptedInfo)
+        if (acceptedInfo.lyric.isNotBlank()) {
+            updateLyricResolveState(LyricResolveState.FOUND)
+        }
+    }
+
+    fun updateLyricResolveState(state: LyricResolveState) {
+        if (liveLyricResolveState.value != state) {
+            postOrSet(liveLyricResolveState, state)
+        }
+    }
+
+    /**
+     * Marks a lyric-resolution attempt as finished without a result.
+     * If content arrived from another source meanwhile, keeps FOUND.
+     */
+    fun reportLyricResolveFailed() {
+        val hasContent = liveLyric.value?.lyric?.isNotBlank() == true ||
+            liveParsedLyrics.value?.lines?.isNotEmpty() == true
+        updateLyricResolveState(if (hasContent) LyricResolveState.FOUND else LyricResolveState.NOT_FOUND)
     }
 
     fun updateLyricSidecars(
@@ -186,6 +209,7 @@ class LyricRepository private constructor() {
             postOrSet(liveLyric, LyricInfo("", packageName, "System"))
             postOrSet(liveParsedLyrics, null)
             postOrSet(liveCurrentLine, null)
+            updateLyricResolveState(LyricResolveState.PENDING)
         }
 
         AppLogger.getInstance().log("Repo", "📝 Metadata Update: $title - $artist [$packageName]")
@@ -225,6 +249,9 @@ class LyricRepository private constructor() {
             candidate = info
         ) ?: return
         liveParsedLyrics.postValue(acceptedInfo)
+        if (acceptedInfo.lines.isNotEmpty()) {
+            updateLyricResolveState(LyricResolveState.FOUND)
+        }
         AppLogger.getInstance().log(
             "Repo",
             "📝 Parsed lyrics updated: ${lines.size} lines, syllable: $hasSyllable, capability=$timelineCapability"
