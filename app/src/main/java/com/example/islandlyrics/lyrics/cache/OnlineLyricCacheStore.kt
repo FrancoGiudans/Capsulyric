@@ -86,7 +86,8 @@ class OnlineLyricCacheStore(context: Context) {
         val matchOverride: MatchOverride?,
         val cachedLyricUpdatedAt: Long? = null,
         val cachedProviderLabel: String? = null,
-        val isInstrumental: Boolean = false
+        val isInstrumental: Boolean = false,
+        val isAlbumInstrumental: Boolean = false
     )
 
     enum class QuerySource {
@@ -96,6 +97,13 @@ class OnlineLyricCacheStore(context: Context) {
     }
 
     // ── Index entry: lightweight metadata stored in index.json ──
+    // ── Album-level instrumental mark (stored in album_instrumental.json) ──
+    private data class AlbumInstrumentalMark(
+        val album: String,
+        val artist: String,
+        val updatedAt: Long
+    )
+
     private data class IndexEntry(
         val packageName: String,
         val title: String,
@@ -154,6 +162,7 @@ class OnlineLyricCacheStore(context: Context) {
     private val storeDir = File(appContext.filesDir, "cache_store")
     private val entriesDir = File(storeDir, "lyrics")
     private val indexFile = File(storeDir, "index.json")
+    private val albumMarksFile = File(storeDir, "album_instrumental.json")
 
     // ── v1 legacy file (for migration) ──
     private val legacyStoreFile = File(storeDir, "online_lyric_cache.json")
@@ -219,6 +228,7 @@ class OnlineLyricCacheStore(context: Context) {
             !cacheEntry.instrumental &&
             !cacheEntry.lyrics.isNullOrBlank() &&
             cacheEntry.parsedLines.isNotEmpty()
+        val albumInstrumental = isAlbumInstrumental(mediaInfo)
         return CurrentSongCacheState(
             effectiveTitle = effective.first,
             effectiveArtist = effective.second,
@@ -226,7 +236,8 @@ class OnlineLyricCacheStore(context: Context) {
             matchOverride = matchOverride,
             cachedLyricUpdatedAt = if (canUseCachedLyric) cacheEntry.cachedAt else null,
             cachedProviderLabel = if (canUseCachedLyric) cacheEntry.api else null,
-            isInstrumental = cacheEntry?.instrumental == true
+            isInstrumental = cacheEntry?.instrumental == true || albumInstrumental,
+            isAlbumInstrumental = albumInstrumental
         )
     }
 
@@ -367,6 +378,34 @@ class OnlineLyricCacheStore(context: Context) {
                 updatedAt = System.currentTimeMillis()
             )
             writeEntryFile(cleared)
+        }
+    }
+
+    fun markAlbumInstrumental(mediaInfo: LyricRepository.MediaInfo) {
+        synchronized(lock) {
+            ensureMigrated()
+            val album = mediaInfo.album.trim()
+            val artist = mediaInfo.artist.ifBlank { mediaInfo.rawArtist }.trim()
+            if (album.isBlank() || artist.isBlank()) return
+            val marks = readAlbumMarks()
+            marks[albumMarkKey(mediaInfo.packageName, album, artist)] = AlbumInstrumentalMark(
+                album = album,
+                artist = artist,
+                updatedAt = System.currentTimeMillis()
+            )
+            writeAlbumMarks(marks)
+        }
+    }
+
+    fun clearAlbumInstrumentalMarker(mediaInfo: LyricRepository.MediaInfo) {
+        synchronized(lock) {
+            ensureMigrated()
+            val album = mediaInfo.album.trim()
+            val artist = mediaInfo.artist.ifBlank { mediaInfo.rawArtist }.trim()
+            if (album.isBlank() || artist.isBlank()) return
+            val marks = readAlbumMarks()
+            marks.remove(albumMarkKey(mediaInfo.packageName, album, artist))
+            writeAlbumMarks(marks)
         }
     }
 
@@ -643,6 +682,59 @@ class OnlineLyricCacheStore(context: Context) {
     }
 
     // ── Index I/O ────────────────────────────────────────────────────
+
+    // ── Album-level instrumental marks ───────────────────────────────
+
+    private fun isAlbumInstrumental(mediaInfo: LyricRepository.MediaInfo): Boolean {
+        val album = mediaInfo.album.trim()
+        val artist = mediaInfo.artist.ifBlank { mediaInfo.rawArtist }.trim()
+        if (album.isBlank() || artist.isBlank()) return false
+        return readAlbumMarks().containsKey(albumMarkKey(mediaInfo.packageName, album, artist))
+    }
+
+    private fun readAlbumMarks(): MutableMap<String, AlbumInstrumentalMark> {
+        if (!albumMarksFile.exists()) return mutableMapOf()
+        return runCatching {
+            val root = JSONObject(albumMarksFile.readText(Charsets.UTF_8))
+            val marksJson = root.optJSONObject("marks") ?: return mutableMapOf()
+            val map = mutableMapOf<String, AlbumInstrumentalMark>()
+            for (key in marksJson.keys()) {
+                val obj = marksJson.getJSONObject(key)
+                map[key] = AlbumInstrumentalMark(
+                    album = obj.optString("album"),
+                    artist = obj.optString("artist"),
+                    updatedAt = obj.optLong("updatedAt", System.currentTimeMillis())
+                )
+            }
+            map
+        }.getOrDefault(mutableMapOf())
+    }
+
+    private fun writeAlbumMarks(marks: Map<String, AlbumInstrumentalMark>) {
+        storeDir.mkdirs()
+        val marksJson = JSONObject()
+        for ((key, mark) in marks) {
+            marksJson.put(key, JSONObject().apply {
+                put("album", mark.album)
+                put("artist", mark.artist)
+                put("updatedAt", mark.updatedAt)
+            })
+        }
+        val root = JSONObject().apply {
+            put("version", 1)
+            put("marks", marksJson)
+        }
+        albumMarksFile.writeText(root.toString(), Charsets.UTF_8)
+    }
+
+    private fun albumMarkKey(packageName: String, album: String, artist: String): String {
+        val payload = listOf(
+            packageName.trim().lowercase(),
+            normalizeKey(album),
+            normalizeKey(artist)
+        ).joinToString("|")
+        return sha256(payload)
+    }
 
     private fun readIndex(): MutableMap<String, IndexEntry> {
         if (!indexFile.exists()) return mutableMapOf()

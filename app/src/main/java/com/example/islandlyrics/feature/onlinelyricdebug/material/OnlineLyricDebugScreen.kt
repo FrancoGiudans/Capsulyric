@@ -119,13 +119,14 @@ fun OnlineLyricDebugScreen(
     val querySourceLabel by viewModel.querySourceLabel.observeAsState("")
     val cacheStatus by viewModel.cacheStatus.observeAsState()
     val isInstrumental by viewModel.isInstrumental.observeAsState(false)
+    val isAlbumInstrumental by viewModel.isAlbumInstrumental.observeAsState(false)
 
     var dialogTitle by remember { mutableStateOf<String?>(null) }
     var dialogText by remember { mutableStateOf("") }
     var dialogResult by remember { mutableStateOf<OnlineLyricFetcher.LyricResult?>(null) }
     var dialogRole by remember { mutableStateOf<OnlineLyricDebugViewModel.ResultRole?>(null) }
 
-    LaunchedEffect(mediaInfo?.packageName, mediaInfo?.title, mediaInfo?.artist) {
+    LaunchedEffect(mediaInfo?.packageName, mediaInfo?.title, mediaInfo?.artist, mediaInfo?.album) {
         if (mediaInfo != null) {
             viewModel.syncProviderOrderFromCurrentRule()
             viewModel.syncCurrentSongQuery()
@@ -191,6 +192,7 @@ fun OnlineLyricDebugScreen(
                             albumArt = albumArt,
                             title = mediaInfo?.title.orEmpty(),
                             artist = mediaInfo?.artist.orEmpty(),
+                            album = mediaInfo?.album.orEmpty(),
                             duration = duration,
                             currentLyric = liveLyric?.lyric.orEmpty()
                         )
@@ -205,26 +207,52 @@ fun OnlineLyricDebugScreen(
                             Text(stringResource(R.string.online_lyric_rematch_current_playback_action))
                         }
                         Spacer(modifier = Modifier.height(8.dp))
-                        TextButton(
-                            onClick = {
-                                if (isInstrumental) {
-                                    viewModel.clearCurrentSongInstrumentalMarker()
-                                } else {
-                                    viewModel.markCurrentSongInstrumental()
-                                }
-                            },
-                            enabled = !isFetching,
-                            modifier = Modifier.fillMaxWidth()
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Text(
-                                stringResource(
+                            TextButton(
+                                onClick = {
                                     if (isInstrumental) {
-                                        R.string.online_lyric_rematch_clear_instrumental
+                                        viewModel.clearCurrentSongInstrumentalMarker()
                                     } else {
-                                        R.string.online_lyric_rematch_mark_instrumental
+                                        viewModel.markCurrentSongInstrumental()
                                     }
+                                },
+                                enabled = !isFetching,
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text(
+                                    stringResource(
+                                        if (isInstrumental) {
+                                            R.string.online_lyric_rematch_clear_instrumental
+                                        } else {
+                                            R.string.online_lyric_rematch_mark_instrumental
+                                        }
+                                    )
                                 )
-                            )
+                            }
+                            TextButton(
+                                onClick = {
+                                    if (isAlbumInstrumental) {
+                                        viewModel.clearCurrentAlbumInstrumentalMarker()
+                                    } else {
+                                        viewModel.markCurrentAlbumInstrumental()
+                                    }
+                                },
+                                enabled = !isFetching && !mediaInfo?.album.isNullOrBlank(),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text(
+                                    stringResource(
+                                        if (isAlbumInstrumental) {
+                                            R.string.online_lyric_rematch_clear_album_instrumental
+                                        } else {
+                                            R.string.online_lyric_rematch_mark_album_instrumental
+                                        }
+                                    )
+                                )
+                            }
                         }
                     }
                 }
@@ -445,6 +473,7 @@ fun OnlineLyricDebugScreen(
             }
         )
     }
+
 }
 
 @Composable
@@ -452,6 +481,7 @@ private fun CurrentPlaybackContent(
     albumArt: Bitmap?,
     title: String,
     artist: String,
+    album: String,
     duration: Long,
     currentLyric: String
 ) {
@@ -491,6 +521,13 @@ private fun CurrentPlaybackContent(
             Text(
                 text = artist.ifBlank { stringResource(R.string.media_control_unknown_artist) },
                 style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                text = album.ifBlank { stringResource(R.string.online_lyric_rematch_unknown_album) },
+                style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis

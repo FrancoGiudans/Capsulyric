@@ -865,6 +865,9 @@ Within the log interface, select the share/export icon. You can specify a timefr
     <string name="online_lyric_rematch_current_playback_action">Use Current Playback and Rematch</string>
     <string name="online_lyric_rematch_mark_instrumental">This Song Is Instrumental</string>
     <string name="online_lyric_rematch_clear_instrumental">Clear Instrumental Mark</string>
+    <string name="online_lyric_rematch_mark_album_instrumental">This Album Is Instrumental</string>
+    <string name="online_lyric_rematch_clear_album_instrumental">Clear Album Instrumental Mark</string>
+    <string name="online_lyric_rematch_unknown_album">Unknown Album</string>
     <string name="online_lyric_rematch_result_title">Fetched Lyrics</string>
     <string name="online_lyric_rematch_result_source_fmt">Source: %1$s</string>
     <string name="online_lyric_rematch_effective_query_fmt">Current query: %1$s / %2$s</string>
@@ -956,6 +959,10 @@ Within the log interface, select the share/export icon. You can specify a timefr
     <string name="online_lyric_debug_instrumental_status">Current song is marked instrumental. Online lyrics will be skipped</string>
     <string name="online_lyric_debug_instrumental_marked">Marked current song as instrumental and switched to no-lyrics state</string>
     <string name="online_lyric_debug_instrumental_cleared">Cleared the instrumental mark</string>
+    <string name="online_lyric_debug_album_instrumental_status">Current album is marked instrumental. Online lyrics will be skipped</string>
+    <string name="online_lyric_debug_album_instrumental_marked">Marked the whole album as instrumental (album: %1$s) and switched to no-lyrics state</string>
+    <string name="online_lyric_debug_album_instrumental_cleared">Cleared the album instrumental mark</string>
+    <string name="online_lyric_debug_error_no_album">Current song has no album info, cannot mark the album</string>
     <string name="online_lyric_debug_cache_hit">This result came from lyric cache</string>
     <string name="online_lyric_debug_all_apis_failed">All APIs returned no result</string>
     <string name="online_lyric_debug_cache_switched_fmt">Switched to %1$s and refreshed lyric cache</string>

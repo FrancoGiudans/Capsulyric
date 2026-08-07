@@ -856,6 +856,9 @@
     <string name="online_lyric_rematch_current_playback_action">使用当前播放信息重新匹配</string>
     <string name="online_lyric_rematch_mark_instrumental">这首歌是纯音乐</string>
     <string name="online_lyric_rematch_clear_instrumental">取消纯音乐标记</string>
+    <string name="online_lyric_rematch_mark_album_instrumental">这张专辑均是纯音乐</string>
+    <string name="online_lyric_rematch_clear_album_instrumental">取消专辑纯音乐标记</string>
+    <string name="online_lyric_rematch_unknown_album">未知专辑</string>
     <string name="online_lyric_rematch_result_title">重新获取到的歌词</string>
     <string name="online_lyric_rematch_result_source_fmt">来源: %1$s</string>
     <string name="online_lyric_rematch_effective_query_fmt">当前查询: %1$s / %2$s</string>
@@ -947,6 +950,10 @@
     <string name="online_lyric_debug_instrumental_status">当前歌曲已标记为纯音乐，将跳过在线歌词匹配</string>
     <string name="online_lyric_debug_instrumental_marked">已将当前歌曲标记为纯音乐，并采用无歌词处理</string>
     <string name="online_lyric_debug_instrumental_cleared">已取消纯音乐标记</string>
+    <string name="online_lyric_debug_album_instrumental_status">当前专辑已标记为纯音乐，将跳过在线歌词匹配</string>
+    <string name="online_lyric_debug_album_instrumental_marked">已将整张专辑标记为纯音乐（专辑：%1$s），并采用无歌词处理</string>
+    <string name="online_lyric_debug_album_instrumental_cleared">已取消专辑纯音乐标记</string>
+    <string name="online_lyric_debug_error_no_album">当前歌曲没有专辑信息，无法标记整张专辑</string>
     <string name="online_lyric_debug_cache_hit">本次结果来自歌词缓存</string>
     <string name="online_lyric_debug_all_apis_failed">所有API都未返回结果</string>
     <string name="online_lyric_debug_cache_switched_fmt">已切换到 %1$s 并刷新歌词缓存</string>

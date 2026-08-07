@@ -45,7 +45,8 @@ class LyricRepository private constructor() {
         val packageName: String,
         val duration: Long,
         val rawTitle: String = title,
-        val rawArtist: String = artist
+        val rawArtist: String = artist,
+        val album: String = ""
     )
 
     // Atomic Lyric Container
@@ -170,9 +171,10 @@ class LyricRepository private constructor() {
         packageName: String,
         duration: Long,
         rawTitle: String = title,
-        rawArtist: String = artist
+        rawArtist: String = artist,
+        album: String = ""
     ) {
-        val newInfo = MediaInfo(title, artist, packageName, duration, rawTitle, rawArtist)
+        val newInfo = MediaInfo(title, artist, packageName, duration, rawTitle, rawArtist, album)
         if (liveMetadata.value == newInfo) return
 
         // Detect song change to clear old lyrics

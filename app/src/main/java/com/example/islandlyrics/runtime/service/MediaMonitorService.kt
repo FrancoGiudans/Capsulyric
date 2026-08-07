@@ -539,6 +539,7 @@ class MediaMonitorService : NotificationListenerService() {
         
         val rawTitle = metadata.getString(MediaMetadata.METADATA_KEY_TITLE)
         val rawArtist = metadata.getString(MediaMetadata.METADATA_KEY_ARTIST)
+        val album = metadata.getString(MediaMetadata.METADATA_KEY_ALBUM).orEmpty()
         val duration = metadata.getLong(MediaMetadata.METADATA_KEY_DURATION)
 
         // (Suggestion logic moved to updateMetadataForSuggestion)
@@ -597,7 +598,6 @@ class MediaMonitorService : NotificationListenerService() {
         // Apply parsing rules if enabled
         if (rule != null && rule.enabled) {
 
-            val album = metadata.getString(MediaMetadata.METADATA_KEY_ALBUM)
             // --- Anti-False-Positive Heuristics ---
             val isInstrumental = rawTitle?.contains("Instrument", ignoreCase = true) == true ||
                                  rawTitle?.contains("纯音乐") == true ||
@@ -755,7 +755,8 @@ class MediaMonitorService : NotificationListenerService() {
             packageName = pkg,
             duration = duration,
             rawTitle = rawTitle ?: finalTitle ?: "Unknown",
-            rawArtist = rawArtist ?: finalArtist ?: "Unknown"
+            rawArtist = rawArtist ?: finalArtist ?: "Unknown",
+            album = album
         )
 
         // Update Lyric if available
