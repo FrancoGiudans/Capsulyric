@@ -66,22 +66,18 @@ internal object SuperIslandDualLineTextResolver {
         val romanization = candidate(currentLine?.romanization)
         val nextLyric = candidate(state.lyricPresentation.nextLine?.text)
 
-        val parts = LinkedHashSet<String>()
+        // 按优先级顺序返回第一个可用内容（而非全部拼接）
         for (mode in modes) {
             val value = when (mode) {
                 SuperIslandSecondaryTextMode.TRANSLATION -> translation
                 SuperIslandSecondaryTextMode.ROMANIZATION -> romanization
                 SuperIslandSecondaryTextMode.NEXT_LYRIC -> nextLyric
             }
-            if (value != null) parts.add(value)
+            if (value != null) return value
         }
         // 兜底：所选内容均不可用时，按翻译→罗马音→下一句的顺序取第一个可用内容
-        if (parts.isEmpty()) {
-            sequenceOf(translation, romanization, nextLyric)
-                .filterNotNull()
-                .firstOrNull()
-                ?.let { parts.add(it) }
-        }
-        return parts.joinToString(" / ").ifEmpty { null }
+        return sequenceOf(translation, romanization, nextLyric)
+            .filterNotNull()
+            .firstOrNull()
     }
 }
