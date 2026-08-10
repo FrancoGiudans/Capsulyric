@@ -78,6 +78,7 @@ import top.yukonga.miuix.kmp.preference.OverlayDropdownPreference as SuperDropdo
 import top.yukonga.miuix.kmp.preference.SwitchPreference as SuperSwitch
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import com.example.islandlyrics.feature.update.miuix.MiuixUpdateDialog
+import com.example.islandlyrics.core.settings.LauncherAliasManager
 import com.example.islandlyrics.core.settings.SettingsBackupManager
 import com.example.islandlyrics.core.settings.SettingsBackupManager.ParserConflict
 import com.example.islandlyrics.core.settings.BackupCategories
@@ -421,6 +422,7 @@ fun MiuixSettingsScreen(
 
                     // Hide Recents
                     var hideRecentsEnabled by remember { mutableStateOf(prefs.getBoolean("hide_recents_enabled", false)) }
+                    var launcherHidden by remember { mutableStateOf(LauncherAliasManager.isHidden(context)) }
                     SuperSwitch(
                         title = stringResource(R.string.settings_hide_recents),
                         summary = stringResource(R.string.settings_hide_recents_desc),
@@ -428,6 +430,22 @@ fun MiuixSettingsScreen(
                         onCheckedChange = {
                             hideRecentsEnabled = it
                             prefs.edit { putBoolean("hide_recents_enabled", it) }
+                        }
+                    )
+                    SuperSwitch(
+                        title = stringResource(R.string.settings_hide_launcher),
+                        summary = stringResource(R.string.settings_hide_launcher_desc),
+                        checked = launcherHidden,
+                        onCheckedChange = { newValue ->
+                            if (newValue) {
+                                LauncherAliasManager.showHiddenWarningDialog(context) {
+                                    launcherHidden = true
+                                    LauncherAliasManager.setAliasEnabled(context, false)
+                                }
+                            } else {
+                                launcherHidden = false
+                                LauncherAliasManager.setAliasEnabled(context, true)
+                            }
                         }
                     )
                 }

@@ -87,6 +87,7 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import com.example.islandlyrics.lyrics.state.LyricRepository
 import com.example.islandlyrics.ui.theme.material.materialPageContainerColor
 import com.example.islandlyrics.ui.theme.material.neutralMaterialTopBarColors
+import com.example.islandlyrics.core.settings.LauncherAliasManager
 import com.example.islandlyrics.core.settings.SettingsBackupManager
 import com.example.islandlyrics.core.settings.SettingsBackupManager.ParserConflict
 import com.example.islandlyrics.core.settings.BackupCategories
@@ -327,6 +328,7 @@ fun SettingsScreen(
         }
         var recommendMediaAppEnabled by remember { mutableStateOf(prefs.getBoolean("recommend_media_app", true)) }
         var hideRecentsEnabled by remember { mutableStateOf(prefs.getBoolean("hide_recents_enabled", false)) }
+        var launcherHidden by remember { mutableStateOf(LauncherAliasManager.isHidden(context)) }
         var newPlayingAppAlertEnabled by remember { mutableStateOf(prefs.getBoolean(NewPlayingAppNotifier.PREF_ENABLED, false)) }
 
         LazyColumn(
@@ -434,6 +436,23 @@ fun SettingsScreen(
                         onCheckedChange = {
                             hideRecentsEnabled = it
                             prefs.edit { putBoolean("hide_recents_enabled", it) }
+                        }
+                    )
+                    SettingsCardDivider()
+                    SettingsSwitchItem(
+                        title = stringResource(R.string.settings_hide_launcher),
+                        subtitle = stringResource(R.string.settings_hide_launcher_desc),
+                        checked = launcherHidden,
+                        onCheckedChange = { newValue ->
+                            if (newValue) {
+                                LauncherAliasManager.showHiddenWarningDialog(context) {
+                                    launcherHidden = true
+                                    LauncherAliasManager.setAliasEnabled(context, false)
+                                }
+                            } else {
+                                launcherHidden = false
+                                LauncherAliasManager.setAliasEnabled(context, true)
+                            }
                         }
                     )
                 }

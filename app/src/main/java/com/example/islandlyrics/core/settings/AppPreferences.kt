@@ -59,6 +59,7 @@ object AppPreferences {
         const val IS_SETUP_COMPLETE = "is_setup_complete"
         const val RECOMMEND_MEDIA_APP = "recommend_media_app"
         const val HIDE_RECENTS_ENABLED = "hide_recents_enabled"
+        const val LAUNCHER_ALIAS_HIDDEN = "launcher_alias_hidden"
         const val CARD_BLUR_ENABLED = "card_blur_enabled"
         const val PREDICTIVE_BACK_ENABLED = "predictive_back_enabled"
         const val PREDICTIVE_BACK_ANIMATION_MODE = "predictive_back_animation_mode"
@@ -199,3 +200,4 @@ object AppPreferences {
     fun isLastFmEnabled(prefs: SharedPreferences): Boolean =
         prefs.getBoolean(Keys.LASTFM_ENABLED, false)
 }
+

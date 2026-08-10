@@ -388,6 +388,19 @@
     <string name="dialog_feedback_wps_desc">可能需要登录。</string>
     <string name="dialog_feedback_wjx">问卷星</string>
     <string name="dialog_feedback_wjx_desc">无需登录。</string>
+    <string name="settings_hide_launcher">隐藏桌面图标</string>
+    <string name="settings_hide_launcher_desc">从桌面启动器中移除 Capsulyric 图标</string>
+    <string name="tile_capsulyric_label">Capsulyric</string>
+    <string name="dialog_hide_launcher_title">图标即将被隐藏</string>
+    <string name="dialog_hide_launcher_message">隐藏后，你可以通过以下方式打开 Capsulyric：
+
+· 下拉控制中心的 Capsulyric 磁贴（推荐先添加）
+· 在任意浏览器地址栏输入 capsulyric://settings
+· 系统设置 → 应用管理 → Capsulyric → 管理空间</string>
+    <string name="dialog_hide_launcher_btn_add_tile_and_hide">添加磁贴并隐藏</string>
+    <string name="dialog_hide_launcher_btn_hide_now">直接隐藏</string>
+    <string name="dialog_hide_launcher_btn_cancel">取消</string>
+    <string name="toast_add_tile_manually">请手动添加 Capsulyric 磁贴：下拉通知栏 → 编辑 → 找到 Capsulyric</string>
     <string name="settings_hide_recents">隐藏后台窗口</string>
     <string name="settings_hide_recents_desc">划到后台时自动从最近任务中移除</string>
     <string name="settings_backup_export">导出配置</string>

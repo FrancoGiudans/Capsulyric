@@ -435,6 +435,19 @@
     <string name="dialog_feedback_wjx_desc">No login required.</string>
     <string name="settings_hide_recents">Hide from Recents</string>
     <string name="settings_hide_recents_desc">Automatically remove from recents when app goes to background</string>
+    <string name="settings_hide_launcher">Hide App Icon</string>
+    <string name="settings_hide_launcher_desc">Remove Capsulyric from the home screen launcher</string>
+    <string name="tile_capsulyric_label">Capsulyric</string>
+    <string name="dialog_hide_launcher_title">App icon will be hidden</string>
+    <string name="dialog_hide_launcher_message">After hiding, you can still open Capsulyric via:
+
+· Quick Settings tile (recommended to add first)
+· Type capsulyric://settings in any browser
+· System Settings → Apps → Capsulyric → Manage Space</string>
+    <string name="dialog_hide_launcher_btn_add_tile_and_hide">Add Tile &amp; Hide</string>
+    <string name="dialog_hide_launcher_btn_hide_now">Hide Now</string>
+    <string name="dialog_hide_launcher_btn_cancel">Cancel</string>
+    <string name="toast_add_tile_manually">Please manually add the Capsulyric tile: pull down notification bar → edit → find Capsulyric</string>
     <string name="settings_backup_export">Export Settings</string>
     <string name="settings_backup_export_desc">Export current app settings to a ZIP backup file</string>
     <string name="settings_backup_import">Import Settings</string>
