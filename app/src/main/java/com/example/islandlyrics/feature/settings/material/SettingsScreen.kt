@@ -153,6 +153,7 @@ fun SettingsScreen(
 
     // Parser conflict resolution state
     var showParserConflictDialog by remember { mutableStateOf(false) }
+    var showHideLauncherDialog by remember { mutableStateOf(false) }
     var parserConflicts by remember { mutableStateOf<List<ParserConflict>>(emptyList()) }
     var pendingConflictImportUri by remember { mutableStateOf<Uri?>(null) }
     var pendingConflictSelections by remember { mutableStateOf(setOf<String>()) }
@@ -445,10 +446,7 @@ fun SettingsScreen(
                         checked = launcherHidden,
                         onCheckedChange = { newValue ->
                             if (newValue) {
-                                LauncherAliasManager.showHiddenWarningDialog(context) {
-                                    launcherHidden = true
-                                    LauncherAliasManager.setAliasEnabled(context, false)
-                                }
+                                showHideLauncherDialog = true
                             } else {
                                 launcherHidden = false
                                 LauncherAliasManager.setAliasEnabled(context, true)
@@ -649,6 +647,29 @@ fun SettingsScreen(
             )
         }
 
+
+        if (showHideLauncherDialog) {
+            AlertDialog(
+                onDismissRequest = { showHideLauncherDialog = false },
+                title = { Text(stringResource(R.string.dialog_hide_launcher_title)) },
+                text = { Text(stringResource(R.string.dialog_hide_launcher_message)) },
+                confirmButton = {
+                    TextButton(onClick = {
+                        showHideLauncherDialog = false
+                        launcherHidden = true
+                        LauncherAliasManager.setAliasEnabled(context, false)
+                        LauncherAliasManager.showAddTileToast(context)
+                    }) {
+                        Text(stringResource(R.string.dialog_hide_launcher_btn_hide_now))
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showHideLauncherDialog = false }) {
+                        Text(stringResource(R.string.dialog_hide_launcher_btn_cancel))
+                    }
+                }
+            )
+        }
         if (showIconStyleDialog) {
             IconStyleSelectionDialog(
                 currentStyle = iconStyle,

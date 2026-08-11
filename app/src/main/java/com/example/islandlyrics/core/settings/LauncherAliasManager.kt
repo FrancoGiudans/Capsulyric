@@ -22,13 +22,9 @@
 
 package com.example.islandlyrics.core.settings
 
-import android.app.Dialog
 import android.content.ComponentName
 import android.content.Context
 import android.content.pm.PackageManager
-import android.graphics.Color
-import android.graphics.drawable.ColorDrawable
-import android.widget.Button
 import android.widget.Toast
 import androidx.core.content.edit
 import com.example.islandlyrics.R
@@ -54,7 +50,7 @@ object LauncherAliasManager {
      * When disabled, the app icon disappears from the launcher.
      */
     fun setAliasEnabled(context: Context, enabled: Boolean) {
-        val componentName = ComponentName(context, ".LauncherAlias")
+        val componentName = ComponentName(context, "com.example.islandlyrics.LauncherAlias")
         val pm = context.packageManager
         pm.setComponentEnabledSetting(
             componentName,
@@ -66,46 +62,9 @@ object LauncherAliasManager {
     }
 
     /**
-     * Show a warning dialog before hiding the launcher icon.
-     * Explains the three alternative entry points.
+     * Show a toast guiding the user to manually add the Quick Settings tile.
      */
-    fun showHiddenWarningDialog(
-        context: Context,
-        onConfirmed: () -> Unit
-    ) {
-        val dialog = Dialog(context)
-        dialog.setContentView(R.layout.dialog_hide_launcher_warning)
-        dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
-
-        val btnAddTile = dialog.findViewById<Button>(R.id.btn_add_tile_and_hide)
-        val btnHideNow = dialog.findViewById<Button>(R.id.btn_hide_now)
-        val btnCancel = dialog.findViewById<Button>(R.id.btn_cancel)
-
-        btnAddTile.setOnClickListener {
-            requestAddTile(context)
-            onConfirmed()
-            dialog.dismiss()
-        }
-
-        btnHideNow.setOnClickListener {
-            onConfirmed()
-            dialog.dismiss()
-        }
-
-        btnCancel.setOnClickListener {
-            dialog.dismiss()
-        }
-
-        dialog.show()
-    }
-
-    /**
-     * Request the system to show the "Add Tile" dialog for the Quick Settings tile.
-     * Available on Android 13+ (API 33+). Since minSdk=35, this is always available.
-     */
-    private fun requestAddTile(context: Context) {
-        // requestAddTileService requires system-level permission on some devices;
-        // fall back to showing a toast that guides the user to add the tile manually.
+    fun showAddTileToast(context: Context) {
         Toast.makeText(
             context,
             context.getString(R.string.toast_add_tile_manually),

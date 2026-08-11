@@ -24,26 +24,22 @@ package com.example.islandlyrics.runtime.service
 
 import android.app.PendingIntent
 import android.content.Intent
-import android.os.Build
 import android.service.quicksettings.Tile
 import android.service.quicksettings.TileService
-import com.example.islandlyrics.core.settings.LauncherAliasManager
 import com.example.islandlyrics.feature.main.MainActivity
 
 /**
  * Quick Settings tile entry point for Capsulyric.
  * When the launcher icon is hidden, users can still open the app via this tile.
+ * The tile is always displayed in the inactive (off) state since it is a simple
+ * click-to-open action, not a toggle.
  */
 class CapsulyricTileService : TileService() {
 
     override fun onStartListening() {
         super.onStartListening()
         val tile = qsTile ?: return
-        tile.state = if (LauncherAliasManager.isHidden(this)) {
-            Tile.STATE_ACTIVE
-        } else {
-            Tile.STATE_INACTIVE
-        }
+        tile.state = Tile.STATE_INACTIVE
         tile.updateTile()
     }
 

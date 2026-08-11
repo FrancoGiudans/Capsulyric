@@ -104,6 +104,11 @@
             android:label="@string/parser_edit"
             android:theme="@style/Theme.IslandLyrics.Translucent"
             android:parentActivityName="com.example.islandlyrics.feature.parserrule.ParserRuleActivity" />
+        <activity
+            android:name="com.example.islandlyrics.feature.parserrule.ParserRuleSourceConfigActivity"
+            android:label="@string/parser_source_config_title"
+            android:theme="@style/Theme.IslandLyrics.Translucent"
+            android:parentActivityName="com.example.islandlyrics.feature.parserrule.ParserRuleEditorActivity" />
         <service
             android:name=".runtime.service.LyricService"
             android:exported="false"

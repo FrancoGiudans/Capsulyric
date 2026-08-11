@@ -216,6 +216,8 @@ fun MiuixSettingsScreen(
 
     val showPrivacyDialog = remember { mutableStateOf(false) }
     val showFeedbackPopup = remember { mutableStateOf(false) }
+    val showHideLauncherDialog = remember { mutableStateOf(false) }
+    var launcherHidden by remember { mutableStateOf(LauncherAliasManager.isHidden(context)) }
 
     MiuixBackHandler(enabled = showPrivacyDialog.value) { showPrivacyDialog.value = false }
     MiuixBackHandler(enabled = showFeedbackPopup.value) { showFeedbackPopup.value = false }
@@ -422,7 +424,6 @@ fun MiuixSettingsScreen(
 
                     // Hide Recents
                     var hideRecentsEnabled by remember { mutableStateOf(prefs.getBoolean("hide_recents_enabled", false)) }
-                    var launcherHidden by remember { mutableStateOf(LauncherAliasManager.isHidden(context)) }
                     SuperSwitch(
                         title = stringResource(R.string.settings_hide_recents),
                         summary = stringResource(R.string.settings_hide_recents_desc),
@@ -438,10 +439,7 @@ fun MiuixSettingsScreen(
                         checked = launcherHidden,
                         onCheckedChange = { newValue ->
                             if (newValue) {
-                                LauncherAliasManager.showHiddenWarningDialog(context) {
-                                    launcherHidden = true
-                                    LauncherAliasManager.setAliasEnabled(context, false)
-                                }
+                                showHideLauncherDialog.value = true
                             } else {
                                 launcherHidden = false
                                 LauncherAliasManager.setAliasEnabled(context, true)
@@ -638,6 +636,45 @@ fun MiuixSettingsScreen(
             }
         }
 
+
+        // Hide launcher icon confirmation dialog
+        MiuixBlurDialog(
+            title = stringResource(R.string.dialog_hide_launcher_title),
+            show = showHideLauncherDialog.value,
+            onDismissRequest = { showHideLauncherDialog.value = false }
+        ) {
+            androidx.compose.material3.Text(
+                text = stringResource(R.string.dialog_hide_launcher_message),
+                color = MiuixTheme.colorScheme.onSurface,
+                fontSize = MiuixTheme.textStyles.body2.fontSize,
+                modifier = Modifier.padding(bottom = 24.dp)
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                TextButton(
+                    text = stringResource(R.string.dialog_hide_launcher_btn_cancel),
+                    onClick = { showHideLauncherDialog.value = false },
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.textButtonColors(
+                        textColor = MiuixTheme.colorScheme.onSurfaceVariantActions
+                    )
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                TextButton(
+                    text = stringResource(R.string.dialog_hide_launcher_btn_hide_now),
+                    onClick = {
+                        showHideLauncherDialog.value = false
+                        launcherHidden = true
+                        LauncherAliasManager.setAliasEnabled(context, false)
+                        LauncherAliasManager.showAddTileToast(context)
+                    },
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.textButtonColorsPrimary()
+                )
+            }
+        }
         if (updateReleaseInfo != null) {
             MiuixUpdateDialog(
                 show = true,
