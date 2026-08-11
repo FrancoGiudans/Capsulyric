@@ -254,7 +254,8 @@ fun FloatingLyricsSettingsSubScreen(prefs: SharedPreferences) {
             Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
                 Text(
                     text = stringResource(R.string.settings_floating_text_size) + ": ${textSizeSp.toInt()}sp",
-                    style = MaterialTheme.typography.bodyLarge
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Slider(

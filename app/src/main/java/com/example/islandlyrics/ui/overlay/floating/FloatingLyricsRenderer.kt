@@ -47,7 +47,9 @@ import androidx.core.graphics.drawable.toDrawable
 import androidx.core.view.isNotEmpty
 import com.example.islandlyrics.R
 import com.example.islandlyrics.core.settings.AppPreferences
+import com.example.islandlyrics.core.settings.LabFeatureManager
 import com.example.islandlyrics.lyrics.state.LyricRepository
+import com.example.islandlyrics.ui.overlay.model.WordProgressCalculator
 import com.example.islandlyrics.ui.overlay.model.SecondaryTextMode
 
 /**
@@ -147,6 +149,25 @@ class FloatingLyricsRenderer(private val context: Context) {
 
     private val collapseRunnable = Runnable { switchToMinimal() }
 
+    // ── 逐字平滑动画：悬浮窗专属高频刷新队列（30/60 FPS） ────────────────────
+    // 与全局 120ms 显示循环解耦：只负责当前句的逐字进度插值渲染。
+    private val wordAnimationHandler = Handler(Looper.getMainLooper())
+    private var wordAnimationActive = false
+    private var lastBasePosition = -1L
+    private var lastBasePositionAtElapsed = 0L
+
+    private val wordAnimationRunnable = object : Runnable {
+        override fun run() {
+            if (!isRunning) return
+            if (!shouldRunWordAnimation()) {
+                wordAnimationActive = false
+                return
+            }
+            computeAndApplyWordProgress()
+            wordAnimationHandler.postDelayed(this, wordAnimationIntervalMs())
+        }
+    }
+
     private data class ViewSnapshot(
         val lyric: String,
         val title: String,
@@ -167,7 +188,7 @@ class FloatingLyricsRenderer(private val context: Context) {
             PREF_TEXT_SIZE, PREF_TEXT_COLOR, PREF_FOLLOW_ALBUM_COLOR, 
             PREF_SHOW_ALBUM_ART, PREF_TEXT_STROKE, PREF_TEXT_BACKGROUND,
             PREF_DISPLAY_MODE, PREF_SECONDARY_TEXT_MODES, PREF_SHOW_NEIGHBOR_LINE, PREF_NEIGHBOR_ALIGNMENT,
-            PREF_WORD_HIGHLIGHT -> {
+            PREF_WORD_HIGHLIGHT, LabFeatureManager.KEY_FLOATING_WORD_HIGH_FPS_ENABLED -> {
                 mainHandler.post {
                     loadPrefs()
                     lastState?.let { applyState(it) }
@@ -279,6 +300,7 @@ class FloatingLyricsRenderer(private val context: Context) {
 
     private fun detachWindow() {
         mainHandler.removeCallbacks(collapseRunnable)
+        stopWordAnimation()
         settingsPopup?.dismiss()
         try { rootView?.let { wm?.removeView(it) } } catch (_: Exception) {}
         rootView = null; wm = null; windowParams = null
@@ -975,7 +997,8 @@ class FloatingLyricsRenderer(private val context: Context) {
             enableTextStroke = style.enableTextStroke,
             enableTextBackground = style.enableTextBackground,
             displayConfig = displayConfig,
-            presentationHash = state.lyricPresentation.hashCode()
+            // 逐字进度由高频队列独占更新，快照比较时排除，避免全局 120ms 渲染覆盖
+            presentationHash = state.lyricPresentation.copy(wordProgress = null).hashCode()
         )
         if (snapshot == lastAppliedSnapshot) {
             return
@@ -1017,6 +1040,86 @@ class FloatingLyricsRenderer(private val context: Context) {
         btnPlayPause?.setImageResource(if (isPlaying) R.drawable.ic_pause else R.drawable.ic_play_arrow)
         btnPlayPause?.setOnClickListener {
             actionController.sendMediaAction(if (isPlaying) "ACTION_MEDIA_PAUSE" else "ACTION_MEDIA_PLAY")
+        }
+
+        syncWordAnimation()
+    }
+
+    // ── 逐字平滑动画（高频队列） ──────────────────────────────────────────────
+
+    private fun syncWordAnimation() {
+        val shouldRun = shouldRunWordAnimation()
+        if (shouldRun) {
+            if (!wordAnimationActive) {
+                wordAnimationActive = true
+                lastBasePosition = -1L
+                lastBasePositionAtElapsed = 0L
+                wordAnimationHandler.removeCallbacks(wordAnimationRunnable)
+                wordAnimationHandler.post(wordAnimationRunnable)
+            }
+        } else {
+            stopWordAnimation()
+        }
+    }
+
+    private fun stopWordAnimation() {
+        wordAnimationActive = false
+        wordAnimationHandler.removeCallbacks(wordAnimationRunnable)
+    }
+
+    private fun shouldRunWordAnimation(): Boolean = isRunning &&
+        LyricRepository.getInstance().isPlaying.value == true &&
+        displayConfig.wordHighlight &&
+        lastState?.lyricPresentation?.currentLine?.hasSyllables == true
+
+    private fun wordAnimationIntervalMs(): Long =
+        if (LabFeatureManager.isFloatingWordHighFpsEnabled(prefs())) 16L else 33L
+
+    private fun computeAndApplyWordProgress() {
+        val state = lastState ?: return
+        val currentLine = state.lyricPresentation.currentLine ?: return
+        if (!currentLine.hasSyllables) return
+
+        val playing = LyricRepository.getInstance().isPlaying.value == true
+        val position = resolveInterpolatedPosition(playing)
+        val wordProgress = WordProgressCalculator.compute(
+            text = currentLine.text,
+            startTime = currentLine.startTime,
+            endTime = currentLine.endTime,
+            syllables = currentLine.syllables,
+            position = position
+        ) ?: return
+
+        val updatedState = state.copy(
+            lyricPresentation = state.lyricPresentation.copy(wordProgress = wordProgress)
+        )
+        val style = styleStore.style
+        val actualColor = style.textColor(state.albumColor)
+        val lyric = resolveFloatingFallbackLyric(state)
+        minimalContentView?.render(updatedState, style, displayConfig, actualColor, lyric)
+        expandedContentView?.render(updatedState, style, displayConfig, actualColor, lyric)
+    }
+
+    /**
+     * 本地外推播放位置：以最近一次派发的进度为基准，按播放速度线性推进，
+     * 使高频队列不依赖 200ms/250ms 粒度阶梯的 liveProgress 派发。
+     * 收到新的派发值（seek/切歌/恢复）时自动重同步基准。
+     */
+    private fun resolveInterpolatedPosition(playing: Boolean): Long {
+        val now = SystemClock.elapsedRealtime()
+        val repoProgress = LyricRepository.getInstance().liveProgress.value
+        if (repoProgress != null) {
+            if (lastBasePosition < 0 || repoProgress.position != lastBasePosition) {
+                lastBasePosition = repoProgress.position
+                lastBasePositionAtElapsed = now
+            }
+        }
+        return if (playing) {
+            if (lastBasePosition < 0) 0L else lastBasePosition + (now - lastBasePositionAtElapsed)
+        } else {
+            // 暂停期间冻结基准时间，恢复播放后不会把暂停时长计入外推
+            lastBasePositionAtElapsed = now
+            lastBasePosition.coerceAtLeast(0L)
         }
     }
 

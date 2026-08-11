@@ -29,6 +29,7 @@ import com.example.islandlyrics.ui.overlay.capsule.LyricCapsuleHandler
 import com.example.islandlyrics.ui.overlay.config.OverlayRenderDefaults
 import com.example.islandlyrics.ui.overlay.model.UIState
 import com.example.islandlyrics.ui.overlay.model.LyricPresentation
+import com.example.islandlyrics.ui.overlay.model.WordProgressCalculator
 import android.content.Context
 import com.example.islandlyrics.core.platform.RomUtils
 import com.example.islandlyrics.lyrics.online.OnlineLyricFetcher
@@ -603,20 +604,13 @@ class LyricDisplayManager(private val context: Context) {
     private fun buildWordProgress(
         line: OnlineLyricFetcher.LyricLine?,
         position: Long
-    ): LyricPresentation.WordProgress? {
-        val syllables = line?.syllables?.takeIf { it.isNotEmpty() } ?: return null
-        val sungSyllables = syllables.filter { it.startTime <= position }
-        val lineDuration = line.endTime - line.startTime
-        val lineProgress = if (lineDuration > 0) {
-            ((position - line.startTime).toFloat() / lineDuration.toFloat()).coerceIn(0f, 1f)
-        } else {
-            0f
-        }
-        return LyricPresentation.WordProgress(
-            sungText = sungSyllables.joinToString("") { it.text },
-            sungSyllableCount = sungSyllables.size,
-            totalSyllableCount = syllables.size,
-            lineProgress = lineProgress
+    ): LyricPresentation.WordProgress? = line?.let {
+        WordProgressCalculator.compute(
+            text = it.text,
+            startTime = it.startTime,
+            endTime = it.endTime,
+            syllables = it.syllables,
+            position = position
         )
     }
 

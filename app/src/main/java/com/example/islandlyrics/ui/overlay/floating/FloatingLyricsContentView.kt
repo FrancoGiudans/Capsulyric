@@ -118,26 +118,57 @@ internal class FloatingLyricsContentView(context: Context) : LinearLayout(contex
         progress: LyricPresentation.WordProgress,
         textColor: Int
     ): CharSequence {
-        val sungLength = progress.sungText.length.coerceIn(0, text.length)
-        if (sungLength <= 0) return text
+        val syllableProgresses = progress.syllables
+        if (syllableProgresses.isEmpty()) {
+            // 无逐字数据回退：按已唱字符前缀高亮
+            val sungLength = progress.sungText.length.coerceIn(0, text.length)
+            if (sungLength <= 0) return text
+            return SpannableString(text).apply {
+                setSpan(
+                    ForegroundColorSpan(textColor),
+                    0,
+                    sungLength,
+                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+                )
+                if (sungLength < text.length) {
+                    setSpan(
+                        ForegroundColorSpan(withAlpha(textColor, 0.42f)),
+                        sungLength,
+                        text.length,
+                        Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+                    )
+                }
+            }
+        }
 
+        // 逐音节平滑过渡：已唱完全亮，当前音节按 progress 插值（smoothstep 缓动），未唱保持暗色
         return SpannableString(text).apply {
-            setSpan(
-                ForegroundColorSpan(textColor),
-                0,
-                sungLength,
-                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
-            )
-            if (sungLength < text.length) {
+            var lastEnd = 0
+            syllableProgresses.forEach { syllable ->
+                val start = syllable.charStart.coerceIn(0, text.length)
+                val end = syllable.charEnd.coerceIn(start, text.length)
+                val eased = smoothStep(syllable.progress.coerceIn(0f, 1f))
+                val alpha = 0.42f + (eased * 0.58f)
+                setSpan(
+                    ForegroundColorSpan(withAlpha(textColor, alpha)),
+                    start,
+                    end,
+                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+                )
+                lastEnd = end
+            }
+            if (lastEnd < text.length) {
                 setSpan(
                     ForegroundColorSpan(withAlpha(textColor, 0.42f)),
-                    sungLength,
+                    lastEnd,
                     text.length,
                     Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
                 )
             }
         }
     }
+
+    private fun smoothStep(value: Float): Float = value * value * (3f - 2f * value)
 
     private fun hideSecondaryViews() {
         mainLyricTv.visibility = GONE

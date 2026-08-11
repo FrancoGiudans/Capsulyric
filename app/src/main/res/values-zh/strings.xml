@@ -829,6 +829,8 @@
     <string name="diag_lab_scroll_end_haptic_desc">滚动到列表边缘时，获得触感反馈。</string>
     <string name="diag_lab_floating_lyrics_title">桌面歌词</string>
     <string name="diag_lab_floating_lyrics_desc">开启后，设置页将显示桌面歌词入口</string>
+    <string name="diag_lab_floating_word_high_fps_title">桌面歌词高帧率动画</string>
+    <string name="diag_lab_floating_word_high_fps_desc">以 60 FPS 刷新桌面歌词逐字动画（默认 30 FPS），更流畅但更耗电</string>
     <string name="diag_lab_feed_source_title">公告源</string>
     <string name="diag_lab_feed_source_desc">选择优先使用的社区 feed 源；如果失败，应用会自动回退到另一个源。</string>
     <string name="diag_lab_feed_source_github">GitHub</string>

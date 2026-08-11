@@ -33,6 +33,7 @@ object LabFeatureManager {
     private const val KEY_SUPER_ISLAND_RELAXED_TEXT_LIMITS_ENABLED = "lab_super_island_relaxed_text_limits_enabled"
     const val KEY_LIVE_UPDATE_TEXT_LIMITS_ENABLED = "lab_live_update_text_limits_enabled"
     const val KEY_FLOATING_LYRICS_ENABLED = "lab_floating_lyrics_enabled"
+    const val KEY_FLOATING_WORD_HIGH_FPS_ENABLED = "lab_floating_word_high_fps_enabled"
     private const val KEY_FLOATING_LYRICS_MIGRATED = "lab_floating_lyrics_migrated"
     private const val KEY_EXPERIMENT_UPDATES_ENABLED = "lab_experiment_updates_enabled"
     private const val KEY_EXPERIMENT_UPDATES_MIGRATED = "lab_experiment_updates_migrated"
@@ -221,6 +222,18 @@ object LabFeatureManager {
             editor.putBoolean(AppPreferences.Keys.FLOATING_LYRICS_ENABLED, false)
         }
         editor.apply()
+    }
+
+    fun isFloatingWordHighFpsEnabled(context: Context): Boolean =
+        context.prefs().getBoolean(KEY_FLOATING_WORD_HIGH_FPS_ENABLED, false)
+
+    fun isFloatingWordHighFpsEnabled(prefs: SharedPreferences): Boolean =
+        prefs.getBoolean(KEY_FLOATING_WORD_HIGH_FPS_ENABLED, false)
+
+    fun setFloatingWordHighFpsEnabled(context: Context, enabled: Boolean) {
+        context.prefs().edit()
+            .putBoolean(KEY_FLOATING_WORD_HIGH_FPS_ENABLED, enabled)
+            .apply()
     }
 
     fun isExperimentUpdatesEnabled(context: Context): Boolean {

@@ -63,6 +63,18 @@ data class LyricPresentation(
         val sungText: String,
         val sungSyllableCount: Int,
         val totalSyllableCount: Int,
-        val lineProgress: Float
-    )
+        val lineProgress: Float,
+        /**
+         * 逐音节进度，供悬浮窗高频队列做平滑插值渲染。
+         * 无逐字数据时为空列表，渲染端回退到字符前缀高亮。
+         */
+        val syllables: List<SyllableProgress> = emptyList()
+    ) {
+        data class SyllableProgress(
+            val text: String,
+            val charStart: Int,
+            val charEnd: Int,
+            val progress: Float
+        )
+    }
 }

@@ -253,7 +253,8 @@ fun MiuixFloatingLyricsSettingsSubScreen(prefs: SharedPreferences, scope: Corout
             Text(
                 text = "${stringResource(R.string.settings_floating_text_size)}: ${textSizeSp.toInt()}sp",
                 fontSize = 15.sp,
-                fontWeight = FontWeight.Medium
+                fontWeight = FontWeight.Medium,
+                color = MiuixTheme.colorScheme.onSurface
             )
             Spacer(modifier = Modifier.height(12.dp))
             Slider(

@@ -819,6 +819,8 @@ Within the log interface, select the share/export icon. You can specify a timefr
     <string name="diag_lab_scroll_end_haptic_desc">Use the same end-of-list haptic feedback as the miuix demo when scrolling reaches an edge.</string>
     <string name="diag_lab_floating_lyrics_title">Desktop Lyrics</string>
     <string name="diag_lab_floating_lyrics_desc">When enabled, the Desktop Lyrics entry will appear in Settings</string>
+    <string name="diag_lab_floating_word_high_fps_title">Desktop Lyrics High-FPS Animation</string>
+    <string name="diag_lab_floating_word_high_fps_desc">Renders the word-by-word highlight at 60 FPS (default 30 FPS) for smoother motion, at higher battery cost</string>
     <string name="diag_lab_feed_source_title">Announcement Source</string>
     <string name="diag_lab_feed_source_desc">Choose the preferred community feed source. If it fails, the app automatically falls back to the other source.</string>
     <string name="diag_lab_feed_source_github">GitHub</string>
