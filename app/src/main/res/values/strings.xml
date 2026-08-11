@@ -439,11 +439,10 @@
     <string name="settings_hide_launcher_desc">Remove Capsulyric from the home screen launcher</string>
     <string name="tile_capsulyric_label">Capsulyric</string>
     <string name="dialog_hide_launcher_title">App icon will be hidden</string>
-    <string name="dialog_hide_launcher_message">After hiding, you can still open Capsulyric via:
-
-· Quick Settings tile (recommended to add first)
-· Type capsulyric://settings in any browser
-· System Settings → Apps → Capsulyric → Manage Space</string>
+    <string name="dialog_hide_launcher_message">After hiding, you can still open Capsulyric via: \n
+· Quick Settings tile \n
+· Type capsulyric://settings in any browser \n
+· System Settings → Apps → Capsulyric → Manage Space (on some devices such as HyperOS, this button may only appear after tapping "Clear Data")</string>
     <string name="dialog_hide_launcher_btn_add_tile_and_hide">Add Tile &amp; Hide</string>
     <string name="dialog_hide_launcher_btn_hide_now">Hide Now</string>
     <string name="dialog_hide_launcher_btn_cancel">Cancel</string>
@@ -631,6 +630,11 @@ Experiment with different values until the lyrics fit comfortably around the cam
 <b>2. Export ZIP Package</b>\n
 Within the log interface, select the share/export icon. You can specify a timeframe for data capture. The application will aggregate environment context and system logs into a ZIP file. Please ensure this file is attached when submitting a GitHub Issue or feedback form.</string>
 
+
+    <string name="faq_q_hide_launcher_entry">Q: After hiding the app icon, how can I reopen Capsulyric?</string>
+    <string name="faq_a_hide_launcher_entry">A: After hiding the launcher icon, you can still open Capsulyric in the following ways:\n\n<b>1. Quick Settings Tile</b>\nPull down the notification shade, tap the Capsulyric tile to open the app directly.\n\n<b>2. URL Scheme</b>\nType <b>capsulyric://settings</b> in any browser address bar and tap it to launch the app.\n\n<b>3. Manage Space</b>\nGo to <b>System Settings → Apps → Capsulyric → Manage Space</b> to open the app. On some devices (e.g. HyperOS), the Manage Space button may only appear after tapping "Clear Data".</string>
+    <string name="faq_q_no_pinyin_translation">Q: Why am I not receiving romanization/translation lyrics?</string>
+    <string name="faq_a_no_pinyin_translation">A: Romanization and translation lyrics are currently only available through <b>Online Lyrics</b> and the <b>Lyricon API</b>.\n\nPlease also make sure you have enabled the corresponding options in the parser rule for the target app:\n\n1. Open <b>Parser Rules</b> and find the rule for your music app.\n\n2. Enable <b>"Accept Translation"</b> and/or <b>"Accept Romanization"</b>.\n\n3. If using online lyrics, ensure the lyric source supports translation or romanization fields.</string>
 
     <!-- Notification Action Buttons -->
     <string name="action_pause">Pause</string>

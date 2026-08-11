@@ -67,7 +67,8 @@ fun FAQScreen(onBack: () -> Unit) {
                     QAItem(context.resources.getText(R.string.settings_prerelease_desc), context.resources.getText(R.string.dialog_prerelease_desc_message)),
                     if (com.example.islandlyrics.core.platform.RomUtils.isHyperOsVersionAtLeast(3, 0, 0) || android.os.Build.VERSION.SDK_INT >= 36) {
                         QAItem(context.resources.getText(R.string.faq_q_island_modes), context.resources.getText(R.string.faq_a_island_modes))
-                    } else null
+                    } else null,
+                    QAItem(context.resources.getText(R.string.faq_q_hide_launcher_entry), context.resources.getText(R.string.faq_a_hide_launcher_entry))
                 )
             ),
             FAQCategory(
@@ -86,7 +87,8 @@ fun FAQScreen(onBack: () -> Unit) {
                     QAItem(context.resources.getText(R.string.faq_q_no_lyrics), context.resources.getText(R.string.faq_a_no_lyrics)),
                     QAItem(context.resources.getText(R.string.faq_q_service_error), context.resources.getText(R.string.faq_a_service_error)),
                     QAItem(context.resources.getText(R.string.faq_q_how_to_diagnostics), context.resources.getText(R.string.faq_a_how_to_diagnostics)),
-                    QAItem(context.resources.getText(R.string.faq_q_island_camera_overlap), context.resources.getText(R.string.faq_a_island_camera_overlap))
+                    QAItem(context.resources.getText(R.string.faq_q_island_camera_overlap), context.resources.getText(R.string.faq_a_island_camera_overlap)),
+                    QAItem(context.resources.getText(R.string.faq_q_no_pinyin_translation), context.resources.getText(R.string.faq_a_no_pinyin_translation))
                 )
             ),
             FAQCategory(

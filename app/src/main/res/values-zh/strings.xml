@@ -65,7 +65,7 @@
     <string name="settings_theme_color_source_default">默认主题色</string>
     <string name="settings_theme_color_source_custom">自选主题色</string>
     <string name="settings_color_default">默认颜色</string>
-    <string name="settings_theme_color_edit_hint">先点“编辑”再改调色盘，避免误触。</string>
+    <string name="settings_theme_color_edit_hint">先点“编辑”再改调色盘</string>
     <string name="settings_theme_color_editing_hint">这里会实时预览颜色，点“应用”后保存，点“取消”恢复之前的颜色。</string>
     <string name="settings_theme_custom_color_global_tint">全局着色</string>
     <string name="settings_theme_custom_color_global_tint_desc">基于莫奈取色，为应用整体着色。</string>
@@ -78,7 +78,15 @@
     <string name="dialog_btn_cancel">取消</string>
     <string name="dialog_delete_confirm">确认删除 %s 吗？</string>
     <string name="dialog_privacy_title">权限使用说明</string>
-    <string name="dialog_privacy_message">本应用需要读取通知以获取歌词与播放信息。\n\n我们仅会读取媒体播放通知的内容，包括：专辑图片、歌手、歌名、专辑名，以及正在播放媒体的应用包名。\n\n上述信息仅用于以下用途：\n• 播放信息的读取和显示\n• 媒体通知歌词的提取\n• 开启在线歌词后用以匹配在线歌词\n• 开启 Last.fm 后向 Last.fm 发送正在播放与 scrobble 记录\n• 应用记录自身日志\n\n我们不会读取您的聊天消息、验证码、邮件等非媒体类通知。默认情况下数据在本机处理；只有在您明确开启在线歌词或 Last.fm 等功能时，才会发起相应网络请求。</string>
+    <string name="dialog_privacy_message">本应用需要读取通知以获取歌词与播放信息。\n\n
+    我们仅会读取媒体播放通知的内容，包括：专辑图片、歌手、歌名、专辑名，以及正在播放媒体的应用包名。\n\n
+    上述信息仅用于以下用途：\n
+    • 播放信息的读取和显示\n
+    • 媒体通知歌词的提取\n
+    • 开启在线歌词后用以匹配在线歌词\n
+    • 开启 Last.fm 后向 Last.fm 发送正在播放与 scrobble 记录\n
+    • 应用记录自身日志\n\n
+    我们不会读取您的聊天消息、验证码、邮件等非媒体类通知。默认情况下数据在本机处理；只有在您明确开启在线歌词或 Last.fm 等功能时，才会发起相应网络请求。</string>
     <string name="dialog_btn_understand">理解并授权</string>
     <string name="dialog_block_xmsf_title">提示</string>
     <string name="dialog_block_xmsf_message">开启后可能会造成耗电量增加和消息延迟，是否继续开启？</string>
@@ -86,7 +94,11 @@
 
     <!-- Guide -->
     <string name="guide_title">免 Root (0-Hook) 使用指引</string>
-    <string name="guide_message">本模式利用“通知栏歌词”或各应用的“蓝牙歌词”协议获取歌词。\n\n1. 支持 QQ音乐、小米音乐 和 网易云音乐。\n2. 网易云用户：设置 -> 工具 -> 开启“外接设备蓝牙歌词”。\n3. QQ音乐用户：设置 -> QPlay与车载音乐 -> 开启“车载蓝牙歌词”。\n4. 必须授予本应用“通知使用权”，并确保音乐 App 通知栏显示正常。</string>
+    <string name="guide_message">本模式利用“通知栏歌词”或各应用的“蓝牙歌词”协议获取歌词。\n\n
+    1. 支持 QQ音乐、小米音乐 和 网易云音乐。\n
+    2. 网易云用户：设置 -> 工具 -> 开启“外接设备蓝牙歌词”。\n
+    3. QQ音乐用户：设置 -> QPlay与车载音乐 -> 开启“车载蓝牙歌词”。\n
+    4. 必须授予本应用“通知使用权”，并确保音乐 App 通知栏显示正常。</string>
     <string name="settings_guide_item">免 Root 模式设置</string>
     
     <!-- Permissions -->
@@ -392,11 +404,10 @@
     <string name="settings_hide_launcher_desc">从桌面启动器中移除 Capsulyric 图标</string>
     <string name="tile_capsulyric_label">Capsulyric</string>
     <string name="dialog_hide_launcher_title">图标即将被隐藏</string>
-    <string name="dialog_hide_launcher_message">隐藏后，你可以通过以下方式打开 Capsulyric：
-
-· 下拉控制中心的 Capsulyric 磁贴（推荐先添加）
-· 在任意浏览器地址栏输入 capsulyric://settings
-· 系统设置 → 应用管理 → Capsulyric → 管理空间</string>
+    <string name="dialog_hide_launcher_message">隐藏后，你可以通过以下方式打开 Capsulyric：\n\n
+· 下拉控制中心的 Capsulyric 磁贴；\n
+· 在任意浏览器地址栏输入 capsulyric://settings；\n
+· 系统设置 → 应用管理 → Capsulyric → 管理空间（部分设备如 HyperOS 上需点击"清除数据"后才能看到该按钮）</string>
     <string name="dialog_hide_launcher_btn_add_tile_and_hide">添加磁贴并隐藏</string>
     <string name="dialog_hide_launcher_btn_hide_now">直接隐藏</string>
     <string name="dialog_hide_launcher_btn_cancel">取消</string>
@@ -483,7 +494,12 @@
   • <b>已获取 Root 权限</b>：建议配合 HyperCeiler 等模块解除系统的应用限制。\n
   • <b>未获取 Root 权限</b>：需通过 Shizuku 进行授权，并启用“绕过小米超级岛白名单”功能。（注：该方案由于强制系统重定向通知，可能导致间歇性耗电增加或消息延迟。）</string>
     <string name="faq_q_config_online_lyrics">Q：如何配置在线歌词？</string>
-    <string name="faq_a_config_online_lyrics">A：在线歌词适合在通知歌词不可用、歌词不完整，或者需要更准确时间轴时使用。   1. 进入“解析规则”页面，打开当前音乐应用对应的规则。   2. 开启<b>“使用在线歌词 API”</b>。   3. 如果播放器上报的原始歌名、歌手更准确，可以开启<b>“使用原始播放信息进行在线匹配”</b>。   4. 默认建议保持<b>“智能获取”</b>开启，由应用自动选择更合适的结果；如果你想手动控制来源顺序，可关闭“智能获取”后再调整<b>“在线歌词优先级”</b>。   5. 如果某一首歌始终匹配不准，可进入<b>“在线歌词调试”</b>，为当前歌曲填写“自定义匹配歌名”或“自定义匹配歌手”，然后执行一次<b>“忽略缓存并强制联网刷新”</b>。</string>
+    <string name="faq_a_config_online_lyrics">A：在线歌词适合在通知歌词不可用、歌词不完整，或者需要更准确时间轴时使用。\n\n
+1. 进入“解析规则”页面，打开当前音乐应用对应的规则。\n
+2. 开启<b>“使用在线歌词 API”</b>。\n
+3. 如果播放器上报的原始歌名、歌手更准确，可以开启<b>“使用原始播放信息进行在线匹配”</b>。\n
+4. 默认建议保持<b>“智能获取”</b>开启，由应用自动选择更合适的结果；如果你想手动控制来源顺序，可关闭“智能获取”后再调整<b>“在线歌词优先级”</b>。\n
+5. 如果某一首歌始终匹配不准，可进入<b>“在线歌词重匹配”</b>，为当前歌曲填写“自定义匹配歌名”或“自定义匹配歌手”，然后执行一次<b>“重新匹配”</b>。</string>
     <string name="faq_q_online_match_wrong">Q：为什么在线歌词搜索到的结果不对？</string>
     <string name="faq_a_online_match_wrong">A：在线歌词依赖当前歌曲的匹配信息进行搜索。如果播放器上报的歌名、歌手不完整，或者标题中包含 Live、Remix、翻唱、节目名、括号附加信息，就可能匹配到错误结果。\n\n
 你可以尝试以下方法：\n\n
@@ -546,15 +562,22 @@
 你可以反复尝试不同的数值，直到歌词能够舒适地避开摄像头区域。</string>
     <string name="faq_cat_feedback">反馈与日志类</string>
     <string name="faq_q_unresolved">Q：以上内容都无法解决我的问题，怎么办？</string>
-    <string name="faq_a_unresolved">A： 请前往反馈页面提交 Issue。   - <b>推荐渠道</b>： GitHub Issues（处理效率最高）。  - <b>备用渠道</b>： WPS 表单（可能需要登录）。   <b>重要</b>： 提交反馈时，请务必附带 <b>日志（Log）</b> 以便我们排查问题。</string>
+    <string name="faq_a_unresolved">A： 请前往反馈页面提交 Issue。\n\n
+- <b>推荐渠道</b>： GitHub Issues（处理效率最高）。\n
+- <b>备用渠道</b>： WPS 表单（可能需要登录）,问卷星\n
+<b>重要</b>： 提交反馈时，请务必附带 <b>日志（Log）</b> 以便我们排查问题。</string>
 
     <string name="faq_q_get_log">Q：如何获取与导出诊断日志？</string>
-    <string name="faq_a_get_log">A： 请参考以下标准流程：\n\n
+    <string name="faq_a_get_log">A： 请参考以下流程：\n\n
 <b>1. 激活诊断工具</b>\n
 - <b>Debug 版本</b>： 设置页直接提供 Log Console 入口。\n
 - <b>Release 版本</b>： 进入“设置 → 关于”页面，连续点击页面顶部头图 7 次，即可在应用设置底部解锁“开发者模式”分类，并从其中进入“诊断工具”。\n\n
 <b>2. 导出 ZIP 压缩包</b>\n
 进入日志界面后，点击右上角的“分享/导出”按钮。您可以根据需求选择特定的时间跨度，App 将自动对环境上下文信息与系统日志进行打包。在提交 GitHub Issue 或填写反馈单时，请务必作为附件上传此 ZIP 文件。</string>
+    <string name="faq_q_hide_launcher_entry">Q：隐藏桌面图标后如何重新打开 Capsulyric？</string>
+    <string name="faq_a_hide_launcher_entry">A：隐藏桌面图标后，你可以通过以下方式打开 Capsulyric：\n\n<b>1. 控制中心磁贴</b>\n下拉通知栏，点击 Capsulyric 磁贴即可直接打开应用。\n\n<b>2. URL Scheme</b>\n在任意浏览器地址栏输入 <b>capsulyric://settings</b> 并访问，即可唤醒应用。\n\n<b>3. 管理空间</b>\n前往<b>系统设置 → 应用管理 → Capsulyric → 管理空间</b>即可打开应用。部分设备（如 HyperOS）上，管理空间按钮需要点击"清除数据"后才能看到。</string>
+    <string name="faq_q_no_pinyin_translation">Q：为什么我接收不到拼音歌词/歌词翻译？</string>
+    <string name="faq_a_no_pinyin_translation">A：拼音歌词与歌词翻译目前仅支持通过<b>在线歌词</b>与 <b>Lyricon API</b> 获取。\n\n同时你需要在对应应用的解析规则中开启相关选项：\n\n1. 打开<b>解析规则</b>，找到对应音乐应用的规则。\n\n2. 勾选<b>接收翻译</b>和/或<b>接收拼音歌词</b>。\n\n3. 如果使用在线歌词，请确保歌词源支持翻译或拼音字段。</string>
 
     <!-- 通知设置 -->
     <string name="action_miplay">小米妙播</string>
