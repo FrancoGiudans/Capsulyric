@@ -24,6 +24,12 @@
 
 package com.example.islandlyrics.feature.settings.material
 
+
+
+import com.example.islandlyrics.ui.material.blur.MaterialBlurDropdownMenu
+
+import com.example.islandlyrics.ui.material.blur.MaterialBlurAlertDialog
+
 import android.annotation.SuppressLint
 import android.app.Activity
 import com.example.islandlyrics.R
@@ -46,10 +52,11 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.material3.*
 import androidx.compose.material3.HorizontalDivider as MaterialHorizontalDivider
 import androidx.compose.runtime.*
@@ -86,7 +93,6 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalLayoutDirection
 import com.example.islandlyrics.lyrics.state.LyricRepository
 import com.example.islandlyrics.ui.theme.material.materialPageContainerColor
-import com.example.islandlyrics.ui.theme.material.neutralMaterialTopBarColors
 import com.example.islandlyrics.core.settings.LauncherAliasManager
 import com.example.islandlyrics.core.settings.SettingsBackupManager
 import com.example.islandlyrics.core.settings.SettingsBackupManager.ParserConflict
@@ -95,6 +101,8 @@ import com.example.islandlyrics.core.settings.SettingsBackupManager.PreviewResul
 import com.example.islandlyrics.core.settings.LabFeatureManager
 import com.example.islandlyrics.runtime.service.MediaMonitorService
 import com.example.islandlyrics.runtime.playingapp.NewPlayingAppNotifier
+import com.example.islandlyrics.ui.material.blur.MaterialBlurScaffold
+import com.example.islandlyrics.ui.theme.material.MaterialBlurTopAppBar
 import androidx.core.net.toUri
 import kotlinx.coroutines.launch
 import java.util.Locale
@@ -288,10 +296,8 @@ fun SettingsScreen(
         }
     }
 
-    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 
-    Scaffold(
-        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+    MaterialBlurScaffold(
         contentWindowInsets = WindowInsets(0),
         snackbarHost = {
             Box(
@@ -304,7 +310,7 @@ fun SettingsScreen(
             }
         },
         topBar = {
-            MediumTopAppBar(
+            MaterialBlurTopAppBar(
                 title = { Text(stringResource(R.string.title_app_settings)) },
                 navigationIcon = if (showBackButton) {
                     {
@@ -315,8 +321,6 @@ fun SettingsScreen(
                 } else {
                     {}
                 },
-                scrollBehavior = scrollBehavior,
-                colors = neutralMaterialTopBarColors()
             )
         },
         containerColor = materialPageContainerColor()
@@ -333,15 +337,13 @@ fun SettingsScreen(
         var newPlayingAppAlertEnabled by remember { mutableStateOf(prefs.getBoolean(NewPlayingAppNotifier.PREF_ENABLED, false)) }
 
         LazyColumn(
-            modifier = Modifier
-                .padding(
-                    start = paddingValues.calculateStartPadding(layoutDirection),
-                    top = paddingValues.calculateTopPadding(),
-                    end = paddingValues.calculateEndPadding(layoutDirection),
-                    bottom = 0.dp
-                )
-                .fillMaxSize(),
-            contentPadding = PaddingValues(bottom = 24.dp + extraBottomPadding)
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                start = paddingValues.calculateStartPadding(layoutDirection),
+                top = paddingValues.calculateTopPadding(),
+                end = paddingValues.calculateEndPadding(layoutDirection),
+                bottom = paddingValues.calculateBottomPadding() + 24.dp + extraBottomPadding,
+            )
         ) {
             item { SettingsSectionHeader(text = stringResource(R.string.settings_core_header)) }
             item {
@@ -380,7 +382,7 @@ fun SettingsScreen(
                             onClick = { showLanguageDropdown = true }
                         )
                         Box(modifier = Modifier.matchParentSize().wrapContentSize(Alignment.CenterEnd)) {
-                            DropdownMenu(
+                            MaterialBlurDropdownMenu(
                                 expanded = showLanguageDropdown,
                                 onDismissRequest = { showLanguageDropdown = false }
                             ) {
@@ -627,7 +629,7 @@ fun SettingsScreen(
         }
 
         if (showPrivacyDialog) {
-            AlertDialog(
+            MaterialBlurAlertDialog(
                 onDismissRequest = { showPrivacyDialog = false },
                 title = { Text(stringResource(R.string.dialog_privacy_title)) },
                 text = { Text(stringResource(R.string.dialog_privacy_message)) },
@@ -649,7 +651,7 @@ fun SettingsScreen(
 
 
         if (showHideLauncherDialog) {
-            AlertDialog(
+            MaterialBlurAlertDialog(
                 onDismissRequest = { showHideLauncherDialog = false },
                 title = { Text(stringResource(R.string.dialog_hide_launcher_title)) },
                 text = { Text(stringResource(R.string.dialog_hide_launcher_message)) },
@@ -807,7 +809,7 @@ fun SettingsScreen(
 
         // Parser conflict resolution dialog
         if (showParserConflictDialog && parserConflicts.isNotEmpty()) {
-            AlertDialog(
+            MaterialBlurAlertDialog(
                 onDismissRequest = { showParserConflictDialog = false },
                 title = { Text(stringResource(R.string.backup_conflict_title)) },
                 text = {
@@ -883,7 +885,7 @@ fun SettingsScreen(
 @Composable
 fun FeedbackSelectionDialog(onDismiss: () -> Unit) {
     val context = LocalContext.current
-    AlertDialog(
+    MaterialBlurAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.dialog_feedback_title)) },
         text = {
@@ -984,7 +986,7 @@ fun NotificationClickDialog(
         "open_playing_app" to stringResource(R.string.settings_click_action_open_playing_app) to stringResource(R.string.settings_click_action_open_playing_app_desc)
     )
 
-    AlertDialog(
+    MaterialBlurAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.settings_click_action_title)) },
         text = {
@@ -1042,7 +1044,7 @@ fun DismissDelaySelectionDialog(
         5000L to R.string.dismiss_delay_5s
     )
 
-    AlertDialog(
+    MaterialBlurAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.dialog_dismiss_delay_title)) },
         text = {
@@ -1087,7 +1089,7 @@ fun LanguageSelectionDialog(onDismiss: () -> Unit) {
     )
     val context = LocalContext.current
     
-    AlertDialog(
+    MaterialBlurAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.settings_language)) },
         text = {
@@ -1132,7 +1134,7 @@ fun IconStyleSelectionDialog(
         add(Triple("album_art", R.string.icon_style_album_art, R.string.icon_style_album_art_desc))
     }
     
-    AlertDialog(
+    MaterialBlurAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.dialog_icon_style_title)) },
         text = {
@@ -1196,7 +1198,7 @@ fun NotificationActionsDialog(
         if (styleId == "miplay") isHyperOsSupported else true
     }
 
-    AlertDialog(
+    MaterialBlurAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.settings_notification_actions)) },
         text = {
@@ -1398,7 +1400,7 @@ fun CommunityDetailsDialog(
     val hasUrl = state.item.hasUrl
     val openText = state.item.actionText.takeIf { it.isNotBlank() } ?: stringResource(R.string.community_dialog_open)
 
-    AlertDialog(
+    MaterialBlurAlertDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(

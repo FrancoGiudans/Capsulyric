@@ -54,7 +54,6 @@ import androidx.compose.material.icons.filled.Home as MaterialHome
 import androidx.compose.material.icons.filled.Settings as MaterialSettings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -62,6 +61,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -73,6 +73,9 @@ import com.example.islandlyrics.R
 import com.example.islandlyrics.feature.main.MainActivity
 import com.example.islandlyrics.feature.parserrule.ParserRuleActivity
 import com.example.islandlyrics.feature.settings.SettingsActivity
+import com.example.islandlyrics.ui.material.blur.LocalMaterialBlurEnabled
+import com.example.islandlyrics.ui.material.blur.LocalMaterialBlurRadius
+import com.example.islandlyrics.ui.material.blur.materialBlurPanel
 import com.example.islandlyrics.ui.miuix.blur.LocalMiuixBlurBackdrop
 import com.example.islandlyrics.ui.miuix.blur.LocalMiuixBlurEnabled
 import top.yukonga.miuix.kmp.basic.FloatingNavigationBar
@@ -122,12 +125,31 @@ fun MaterialTopLevelNavigationBar(
     currentDestination: TopLevelDestination,
     onNavigate: (TopLevelDestination) -> Unit,
 ) {
-    Surface(
-        shape = RoundedCornerShape(26.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-        shadowElevation = 6.dp,
-        modifier = Modifier.width(300.dp)
+    val blurEnabled = LocalMaterialBlurEnabled.current
+    val blurRadius = LocalMaterialBlurRadius.current
+    val navShape = RoundedCornerShape(26.dp)
+    val navColor = MaterialTheme.colorScheme.surfaceContainerHigh
+    val navFallbackColor = navColor.copy(alpha = if (blurEnabled) 0.82f else 1f)
+    val navTint = navColor.copy(alpha = 0.46f)
+
+    Box(
+        modifier = Modifier
+            .width(300.dp)
+            .shadow(elevation = 6.dp, shape = navShape, clip = false)
+            .clip(navShape)
+            .background(navFallbackColor)
     ) {
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .materialBlurPanel(
+                    shape = navShape,
+                    radius = blurRadius,
+                    tint = navTint,
+                    backgroundColor = Color.Transparent,
+                )
+        )
+
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -266,4 +288,3 @@ fun MiuixTopLevelFloatingNavigationBar(
         }
     }
 }
-

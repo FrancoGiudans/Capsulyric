@@ -825,6 +825,8 @@
     <string name="diag_lab_miuix_blur_edge_highlight_desc">为 MIUIX 模糊组件添加玻璃质感的边缘高光。</string>
     <string name="diag_lab_live_update_text_limits_title">Live Update 字数上限调节</string>
     <string name="diag_lab_live_update_text_limits_desc">开启后，“胶囊与通知”页会显示 Live Update 歌词字数上限调节。</string>
+    <string name="diag_lab_material_blur_title">Material 页面模糊</string>
+    <string name="diag_lab_material_blur_desc">为 Material 页面启用背景模糊。不会影响 Miuix 页面。</string>
     <string name="diag_lab_experiment_updates_title">接收测试版本</string>
     <string name="diag_lab_experiment_updates_desc">显示 Experiment 通道，并接收来自测试分支的实验版本。</string>
     <string name="diag_lab_scroll_end_haptic_title">边缘滚动触感反馈</string>
@@ -843,6 +845,10 @@
     <string name="diag_lab_live_update_text_limits_dialog_title">开启 Live Update 字数上限调节？</string>
     <string name="diag_lab_live_update_text_limits_dialog_message">Live Update 似乎存在系统规定的字数限制。如果文本超过系统规定上限，通知可能无法被提升为胶囊态。请仅在愿意自行测试并回退数值时开启。</string>
     <string name="diag_lab_live_update_text_limits_dialog_confirm">开启</string>
+    <string name="diag_header_material">Material 界面</string>
+    <string name="diag_material_blur_radius_title">Material 模糊半径</string>
+    <string name="diag_material_blur_radius_value">%1$.0f dp</string>
+    <string name="diag_material_blur_radius_desc">控制 Material 页面背景模糊使用的半径。设为 0 可移除模糊半径，但不会关闭实验室开关。</string>
     
     <string name="diag_label_connection">连接状态</string>
     <string name="diag_label_controllers">总控制器数</string>

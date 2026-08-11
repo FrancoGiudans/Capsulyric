@@ -22,9 +22,15 @@
 
 package com.example.islandlyrics.feature.locallyrics.material
 
+import com.example.islandlyrics.ui.material.blur.MaterialBlurAlertDialog
+
+import com.example.islandlyrics.ui.material.blur.MaterialBlurScaffold
+import com.example.islandlyrics.ui.theme.material.MaterialBlurTopAppBar
 import android.net.Uri
 import android.widget.Toast
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -75,9 +81,9 @@ fun LocalLyricDirectoryScreen(
         reloadFiles()
     }
 
-    Scaffold(
+    MaterialBlurScaffold(
         topBar = {
-            TopAppBar(
+            MaterialBlurTopAppBar(
                 title = { Text(directoryName) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
@@ -116,11 +122,14 @@ fun LocalLyricDirectoryScreen(
         PullToRefreshBox(
             isRefreshing = isRefreshing,
             onRefresh = { isRefreshing = true },
-            modifier = Modifier.fillMaxSize().padding(top = padding.calculateTopPadding())
+            modifier = Modifier.fillMaxSize()
         ) {
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(
+                    start = padding.calculateStartPadding(androidx.compose.ui.platform.LocalLayoutDirection.current),
+                    top = padding.calculateTopPadding(),
+                    end = padding.calculateEndPadding(androidx.compose.ui.platform.LocalLayoutDirection.current),
                     bottom = padding.calculateBottomPadding() + 16.dp
                 )
             ) {
@@ -185,7 +194,7 @@ fun LocalLyricDirectoryScreen(
         }
 
         if (editTarget != null) {
-            AlertDialog(
+            MaterialBlurAlertDialog(
                 onDismissRequest = { editTarget = null },
                 title = { Text(editTarget?.fileName ?: "") },
                 text = {

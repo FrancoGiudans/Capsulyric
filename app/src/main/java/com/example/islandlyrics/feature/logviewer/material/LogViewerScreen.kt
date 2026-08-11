@@ -22,6 +22,11 @@
 
 package com.example.islandlyrics.feature.logviewer.material
 
+import com.example.islandlyrics.ui.material.blur.MaterialBlurAlertDialog
+import com.example.islandlyrics.ui.material.blur.MaterialBlurDropdownMenu
+
+import com.example.islandlyrics.ui.material.blur.MaterialBlurScaffold
+import com.example.islandlyrics.ui.theme.material.MaterialBlurTopAppBar
 import com.example.islandlyrics.core.logging.AppLogger
 import com.example.islandlyrics.core.logging.LogManager
 import androidx.compose.foundation.layout.*
@@ -47,7 +52,6 @@ import androidx.compose.ui.unit.sp
 import com.example.islandlyrics.R
 import com.example.islandlyrics.core.settings.AppPreferences
 import com.example.islandlyrics.ui.theme.material.materialPageContainerColor
-import com.example.islandlyrics.ui.theme.material.neutralMaterialTopBarColors
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -65,6 +69,8 @@ fun LogViewerScreen(
     var logs by remember { mutableStateOf<List<LogManager.LogEntry>>(emptyList()) }
     var originalLogs by remember { mutableStateOf<List<LogManager.LogEntry>>(emptyList()) }
     var showRecordLevelMenu by remember { mutableStateOf(false) }
+    var showExportDialog by remember { mutableStateOf(false) }
+    var exportToDownloads by remember { mutableStateOf(false) }
     var recordLevel by remember {
         mutableStateOf(
             AppLogger.LogLevel.fromPreference(
@@ -82,6 +88,11 @@ fun LogViewerScreen(
         AppLogger.LogLevel.WARN to levelWarnPlus,
         AppLogger.LogLevel.INFO to levelInfoPlus,
         AppLogger.LogLevel.DEBUG to levelDebugPlus
+    )
+    val exportOptions = listOf(
+        stringResource(R.string.log_viewer_time_last_1h),
+        stringResource(R.string.log_viewer_time_last_24h),
+        stringResource(R.string.log_viewer_time_all)
     )
 
     // Load logs
@@ -109,9 +120,9 @@ fun LogViewerScreen(
         }
     }
 
-    Scaffold(
+    MaterialBlurScaffold(
         topBar = {
-            TopAppBar(
+            MaterialBlurTopAppBar(
                 title = { Text(stringResource(R.string.log_viewer_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
@@ -119,45 +130,21 @@ fun LogViewerScreen(
                     }
                 },
                 actions = {
-                    val exportOptions = arrayOf(
-                        stringResource(R.string.log_viewer_time_last_1h),
-                        stringResource(R.string.log_viewer_time_last_24h),
-                        stringResource(R.string.log_viewer_time_all)
-                    )
                     // Export
                     IconButton(onClick = {
-                        com.google.android.material.dialog.MaterialAlertDialogBuilder(context)
-                            .setTitle(context.getString(R.string.log_viewer_export_title))
-                            .setItems(exportOptions) { _, which ->
-                                val timeRange = when (which) {
-                                    0 -> 60 * 60 * 1000L
-                                    1 -> 24 * 60 * 60 * 1000L
-                                    else -> -1L
-                                }
-                                LogManager.getInstance().exportLog(context, timeRange)
-                            }
-                            .show()
+                        exportToDownloads = false
+                        showExportDialog = true
                     }) {
                         Icon(Icons.Default.Share, contentDescription = stringResource(R.string.log_viewer_export))
                     }
                     // Save
                     IconButton(onClick = {
-                        com.google.android.material.dialog.MaterialAlertDialogBuilder(context)
-                            .setTitle(context.getString(R.string.log_viewer_export_title))
-                            .setItems(exportOptions) { _, which ->
-                                val timeRange = when (which) {
-                                    0 -> 60 * 60 * 1000L
-                                    1 -> 24 * 60 * 60 * 1000L
-                                    else -> -1L
-                                }
-                                LogManager.getInstance().exportLogToDownloads(context, timeRange)
-                            }
-                            .show()
+                        exportToDownloads = true
+                        showExportDialog = true
                     }) {
                         Icon(Icons.Default.Download, contentDescription = stringResource(R.string.log_viewer_save))
                     }
                 },
-                colors = neutralMaterialTopBarColors()
             )
         },
         floatingActionButton = {
@@ -228,7 +215,7 @@ fun LogViewerScreen(
                             Icon(Icons.Default.KeyboardArrowDown, contentDescription = null)
                         }
                     )
-                    DropdownMenu(
+                    MaterialBlurDropdownMenu(
                         expanded = showRecordLevelMenu,
                         onDismissRequest = { showRecordLevelMenu = false }
                     ) {
@@ -263,6 +250,42 @@ fun LogViewerScreen(
                 }
             }
         }
+    }
+
+    if (showExportDialog) {
+        MaterialBlurAlertDialog(
+            onDismissRequest = { showExportDialog = false },
+            title = { Text(stringResource(R.string.log_viewer_export_title)) },
+            text = {
+                Column {
+                    exportOptions.forEachIndexed { index, label ->
+                        TextButton(
+                            onClick = {
+                                val timeRange = when (index) {
+                                    0 -> 60 * 60 * 1000L
+                                    1 -> 24 * 60 * 60 * 1000L
+                                    else -> -1L
+                                }
+                                if (exportToDownloads) {
+                                    LogManager.getInstance().exportLogToDownloads(context, timeRange)
+                                } else {
+                                    LogManager.getInstance().exportLog(context, timeRange)
+                                }
+                                showExportDialog = false
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(label)
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showExportDialog = false }) {
+                    Text(stringResource(R.string.log_viewer_cancel))
+                }
+            }
+        )
     }
 }
 

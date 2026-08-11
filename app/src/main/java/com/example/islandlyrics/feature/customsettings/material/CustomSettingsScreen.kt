@@ -22,6 +22,13 @@
 
 package com.example.islandlyrics.feature.customsettings.material
 
+
+import com.example.islandlyrics.ui.material.blur.MaterialBlurDropdownMenu
+
+import com.example.islandlyrics.ui.material.blur.MaterialBlurAlertDialog
+
+import com.example.islandlyrics.ui.material.blur.MaterialBlurScaffold
+import com.example.islandlyrics.ui.theme.material.MaterialBlurTopAppBar
 import android.app.Activity
 import com.example.islandlyrics.ui.preview.NotificationPreview
 import com.example.islandlyrics.ui.preview.CapsulePreview
@@ -92,7 +99,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.islandlyrics.ui.theme.material.neutralMaterialTopBarColors
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
@@ -422,17 +428,16 @@ fun CustomSettingsScreen(
         customThemeColorArgb = customThemeColor.toArgb(),
         customThemeGlobalTintEnabled = materialThemeColorSource == ThemeHelper.MATERIAL_THEME_COLOR_SOURCE_CUSTOM
     ) {
-        Scaffold(
+        MaterialBlurScaffold(
             topBar = {
                 Column {
-                    TopAppBar(
+                    MaterialBlurTopAppBar(
                         title = { Text(title) },
                         navigationIcon = {
                             IconButton(onClick = onBack) {
                                 Icon(painterResource(R.drawable.ic_arrow_back), contentDescription = "Back")
                             }
                         },
-                        colors = neutralMaterialTopBarColors()
                     )
                     // Tab switcher matching LogViewer FilterChip corner radius
                     if (tabLabels.size > 1) {
@@ -525,7 +530,7 @@ fun CustomSettingsScreen(
                                         onClick = { showLyricTextDisplayModeDropdown = true }
                                     )
                                     Box(modifier = Modifier.matchParentSize().wrapContentSize(Alignment.Center)) {
-                                        DropdownMenu(
+                                        MaterialBlurDropdownMenu(
                                             expanded = showLyricTextDisplayModeDropdown,
                                             onDismissRequest = { showLyricTextDisplayModeDropdown = false }
                                         ) {
@@ -565,7 +570,7 @@ fun CustomSettingsScreen(
                                         onClick = { showOneUiCapsuleColorDropdown = true }
                                     )
                                     Box(modifier = Modifier.matchParentSize().wrapContentSize(Alignment.Center)) {
-                                        DropdownMenu(
+                                        MaterialBlurDropdownMenu(
                                             expanded = showOneUiCapsuleColorDropdown,
                                             onDismissRequest = { showOneUiCapsuleColorDropdown = false }
                                         ) {
@@ -605,7 +610,7 @@ fun CustomSettingsScreen(
                                             onClick = { showCapsuleModeDropdown = true }
                                         )
                                         Box(modifier = Modifier.matchParentSize().wrapContentSize(Alignment.Center)) {
-                                            DropdownMenu(
+                                            MaterialBlurDropdownMenu(
                                                 expanded = showCapsuleModeDropdown,
                                                 onDismissRequest = { showCapsuleModeDropdown = false }
                                             ) {
@@ -637,7 +642,7 @@ fun CustomSettingsScreen(
                                             onClick = { showIconStyleDropdown = true }
                                         )
                                         Box(modifier = Modifier.matchParentSize().wrapContentSize(Alignment.Center)) {
-                                            DropdownMenu(
+                                            MaterialBlurDropdownMenu(
                                                 expanded = showIconStyleDropdown,
                                                 onDismissRequest = { showIconStyleDropdown = false }
                                             ) {
@@ -712,7 +717,7 @@ fun CustomSettingsScreen(
                                             onClick = { showSuperIslandLyricModeDropdown = true }
                                         )
                                         Box(modifier = Modifier.matchParentSize().wrapContentSize(Alignment.Center)) {
-                                            DropdownMenu(
+                                            MaterialBlurDropdownMenu(
                                                 expanded = showSuperIslandLyricModeDropdown,
                                                 onDismissRequest = { showSuperIslandLyricModeDropdown = false }
                                             ) {
@@ -830,7 +835,7 @@ fun CustomSettingsScreen(
                                                 onClick = { showSuperIslandColorSourceDropdown = true }
                                             )
                                             Box(modifier = Modifier.matchParentSize().wrapContentSize(Alignment.Center)) {
-                                                DropdownMenu(
+                                                MaterialBlurDropdownMenu(
                                                     expanded = showSuperIslandColorSourceDropdown,
                                                     onDismissRequest = { showSuperIslandColorSourceDropdown = false }
                                                 ) {
@@ -911,7 +916,7 @@ fun CustomSettingsScreen(
                                                     onClick = { showShareFormatDropdown = true }
                                                 )
                                                 Box(modifier = Modifier.matchParentSize().wrapContentSize(Alignment.Center)) {
-                                                    DropdownMenu(
+                                                    MaterialBlurDropdownMenu(
                                                         expanded = showShareFormatDropdown,
                                                         onDismissRequest = { showShareFormatDropdown = false }
                                                     ) {
@@ -954,7 +959,7 @@ fun CustomSettingsScreen(
                                                 onClick = { showBlockXmsfModeDropdown = true }
                                             )
                                             Box(modifier = Modifier.matchParentSize().wrapContentSize(Alignment.Center)) {
-                                                DropdownMenu(
+                                                MaterialBlurDropdownMenu(
                                                     expanded = showBlockXmsfModeDropdown,
                                                     onDismissRequest = { showBlockXmsfModeDropdown = false }
                                                 ) {
@@ -1066,7 +1071,7 @@ fun CustomSettingsScreen(
                                         onClick = { showActionStyleDropdown = true }
                                     )
                                     Box(modifier = Modifier.matchParentSize().wrapContentSize(Alignment.Center)) {
-                                        DropdownMenu(
+                                        MaterialBlurDropdownMenu(
                                             expanded = showActionStyleDropdown,
                                             onDismissRequest = { showActionStyleDropdown = false }
                                         ) {
@@ -1123,7 +1128,7 @@ fun CustomSettingsScreen(
                                         onClick = { showSuperIslandNotificationStyleDropdown = true }
                                     )
                                     Box(modifier = Modifier.matchParentSize().wrapContentSize(Alignment.Center)) {
-                                        DropdownMenu(
+                                        MaterialBlurDropdownMenu(
                                             expanded = showSuperIslandNotificationStyleDropdown,
                                             onDismissRequest = { showSuperIslandNotificationStyleDropdown = false }
                                         ) {
@@ -1163,7 +1168,7 @@ fun CustomSettingsScreen(
                                             onClick = { showSuperIslandDualLineModeDropdown = true }
                                         )
                                         Box(modifier = Modifier.matchParentSize().wrapContentSize(Alignment.Center)) {
-                                            DropdownMenu(
+                                            MaterialBlurDropdownMenu(
                                                 expanded = showSuperIslandDualLineModeDropdown,
                                                 onDismissRequest = { showSuperIslandDualLineModeDropdown = false }
                                             ) {
@@ -1201,7 +1206,7 @@ fun CustomSettingsScreen(
                                         onClick = { showSuperIslandMediaButtonLayoutDropdown = true }
                                     )
                                     Box(modifier = Modifier.matchParentSize().wrapContentSize(Alignment.Center)) {
-                                        DropdownMenu(
+                                        MaterialBlurDropdownMenu(
                                             expanded = showSuperIslandMediaButtonLayoutDropdown,
                                             onDismissRequest = { showSuperIslandMediaButtonLayoutDropdown = false }
                                         ) {
@@ -1319,7 +1324,7 @@ fun CustomSettingsScreen(
                                             onClick = { showTemplate2PicSourceDropdown = true }
                                         )
                                         Box(modifier = Modifier.matchParentSize().wrapContentSize(Alignment.Center)) {
-                                            DropdownMenu(
+                                            MaterialBlurDropdownMenu(
                                                 expanded = showTemplate2PicSourceDropdown,
                                                 onDismissRequest = { showTemplate2PicSourceDropdown = false }
                                             ) {
@@ -1392,7 +1397,7 @@ fun CustomSettingsScreen(
                                     onClick = { showNotificationClickDropdown = true }
                                 )
                                 Box(modifier = Modifier.matchParentSize().wrapContentSize(Alignment.Center)) {
-                                    DropdownMenu(
+                                    MaterialBlurDropdownMenu(
                                         expanded = showNotificationClickDropdown,
                                         onDismissRequest = { showNotificationClickDropdown = false }
                                     ) {
@@ -1439,7 +1444,7 @@ fun CustomSettingsScreen(
                                     onClick = { showDismissDelayDropdown = true }
                                 )
                                 Box(modifier = Modifier.matchParentSize().wrapContentSize(Alignment.Center)) {
-                                    DropdownMenu(
+                                    MaterialBlurDropdownMenu(
                                         expanded = showDismissDelayDropdown,
                                         onDismissRequest = { showDismissDelayDropdown = false }
                                     ) {
@@ -1478,7 +1483,7 @@ fun CustomSettingsScreen(
                                         onClick = { showUiStyleDropdown = true }
                                     )
                                     Box(modifier = Modifier.matchParentSize().wrapContentSize(Alignment.Center)) {
-                                        DropdownMenu(
+                                        MaterialBlurDropdownMenu(
                                             expanded = showUiStyleDropdown,
                                             onDismissRequest = { showUiStyleDropdown = false }
                                         ) {
@@ -1579,7 +1584,7 @@ fun CustomSettingsScreen(
                                             onClick = { showThemeColorSourceDropdown = true }
                                         )
                                         Box(modifier = Modifier.matchParentSize().wrapContentSize(Alignment.Center)) {
-                                            DropdownMenu(
+                                            MaterialBlurDropdownMenu(
                                                 expanded = showThemeColorSourceDropdown,
                                                 onDismissRequest = { showThemeColorSourceDropdown = false }
                                             ) {
@@ -1655,7 +1660,7 @@ fun CustomSettingsScreen(
                                         onClick = { showPredictiveBackAnimationModeDropdown = true }
                                     )
                                     Box(modifier = Modifier.matchParentSize().wrapContentSize(Alignment.Center)) {
-                                        DropdownMenu(
+                                        MaterialBlurDropdownMenu(
                                             expanded = showPredictiveBackAnimationModeDropdown,
                                             onDismissRequest = { showPredictiveBackAnimationModeDropdown = false }
                                         ) {
@@ -1690,7 +1695,7 @@ fun CustomSettingsScreen(
                                             onClick = { showPredictiveBackAnimationDropdown = true }
                                         )
                                         Box(modifier = Modifier.matchParentSize().wrapContentSize(Alignment.Center)) {
-                                            DropdownMenu(
+                                            MaterialBlurDropdownMenu(
                                                 expanded = showPredictiveBackAnimationDropdown,
                                                 onDismissRequest = { showPredictiveBackAnimationDropdown = false }
                                             ) {
@@ -1726,7 +1731,7 @@ fun CustomSettingsScreen(
             }
 
             if (showPrivacyDialog) {
-                AlertDialog(
+                MaterialBlurAlertDialog(
                     onDismissRequest = { showPrivacyDialog = false },
                     title = { Text(stringResource(R.string.dialog_privacy_title)) },
                     text = { Text(stringResource(R.string.dialog_privacy_message)) },
@@ -1800,7 +1805,7 @@ private fun MaterialSecondaryTextModeDialog(
         }
     }
 
-    AlertDialog(
+    MaterialBlurAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.settings_super_island_secondary_text_mode)) },
         text = {
@@ -1891,7 +1896,7 @@ private fun MaterialHomeLyricSecondaryTextModeDialog(
         }
     }
 
-    AlertDialog(
+    MaterialBlurAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.settings_home_lyric_preview_title)) },
         text = {

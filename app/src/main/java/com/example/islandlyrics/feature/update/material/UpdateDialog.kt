@@ -32,7 +32,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
+import com.example.islandlyrics.ui.material.blur.MaterialBlurAlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -71,7 +71,7 @@ fun UpdateDialog(
         ReleaseDialogMode.CURRENT_VERSION_CHANGELOG -> stringResource(R.string.update_current_version_changelog_title, comparableVersion)
     }
 
-    AlertDialog(
+    MaterialBlurAlertDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(

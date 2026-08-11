@@ -28,6 +28,7 @@ import android.os.Build
 import com.example.islandlyrics.core.settings.AppPreferences
 import com.example.islandlyrics.core.theme.ThemeHelper
 import com.example.islandlyrics.ui.navigation.BaseActivity
+import com.example.islandlyrics.ui.material.blur.MaterialBlurRoot
 import androidx.activity.ComponentActivity
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -138,7 +139,9 @@ fun AppTheme(
             colorScheme = colorScheme,
             typography = AppTypography,
             shapes = AppShapes,
-            content = content
+            content = {
+                MaterialBlurRoot(content = content)
+            }
         )
     }
 }

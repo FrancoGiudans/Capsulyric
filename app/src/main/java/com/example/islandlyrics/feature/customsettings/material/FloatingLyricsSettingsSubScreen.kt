@@ -22,6 +22,8 @@
 
 package com.example.islandlyrics.feature.customsettings.material
 
+import com.example.islandlyrics.ui.material.blur.MaterialBlurAlertDialog
+
 import android.content.Intent
 import android.content.SharedPreferences
 import android.provider.Settings
@@ -305,7 +307,7 @@ fun FloatingLyricsSettingsSubScreen(prefs: SharedPreferences) {
     }
 
     if (showNeighborAlignmentDialog.value) {
-        AlertDialog(
+        MaterialBlurAlertDialog(
             onDismissRequest = { showNeighborAlignmentDialog.value = false },
             title = { Text(stringResource(R.string.settings_floating_neighbor_alignment)) },
             text = {
@@ -397,7 +399,7 @@ private fun MaterialFloatingSecondaryTextModeDialog(
         }
     }
 
-    AlertDialog(
+    MaterialBlurAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.settings_floating_secondary_text_mode)) },
         text = {

@@ -43,6 +43,8 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -53,7 +55,7 @@ import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material3.AlertDialog
+import com.example.islandlyrics.ui.material.blur.MaterialBlurAlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -62,13 +64,10 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.MediumTopAppBar
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -82,7 +81,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -106,7 +104,8 @@ import com.example.islandlyrics.feature.parserrule.withSourceSettingsFrom
 import com.example.islandlyrics.feature.settings.material.SettingsSectionHeader
 import com.example.islandlyrics.ui.navigation.PageStackHost
 import com.example.islandlyrics.ui.theme.material.materialPageContainerColor
-import com.example.islandlyrics.ui.theme.material.neutralMaterialTopBarColors
+import com.example.islandlyrics.ui.material.blur.MaterialBlurScaffold
+import com.example.islandlyrics.ui.theme.material.MaterialBlurTopAppBar
 import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -121,7 +120,6 @@ fun ParserRuleEditorScreen(
     onOpenFaq: (() -> Unit)? = null
 ) {
     val context = LocalContext.current
-    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     val enterPkgMessage = stringResource(R.string.dialog_enter_pkg)
     var state by remember(initialRule) { mutableStateOf(initialRule.toEditorState()) }
     var showOnlineSuggestionDialog by remember { mutableStateOf(false) }
@@ -188,10 +186,9 @@ fun ParserRuleEditorScreen(
     }
 
     val editorContent: @Composable () -> Unit = {
-    Scaffold(
-        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+    MaterialBlurScaffold(
         topBar = {
-            MediumTopAppBar(
+            MaterialBlurTopAppBar(
                 title = {
                     Text(
                         when {
@@ -235,8 +232,6 @@ fun ParserRuleEditorScreen(
                         }
                     }
                 },
-                scrollBehavior = scrollBehavior,
-                colors = neutralMaterialTopBarColors()
             )
         },
         containerColor = materialPageContainerColor()
@@ -244,10 +239,10 @@ fun ParserRuleEditorScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
                 .padding(horizontal = 16.dp)
                 .verticalScroll(rememberScrollState())
         ) {
+            Spacer(modifier = Modifier.height(padding.calculateTopPadding()))
             Spacer(modifier = Modifier.height(8.dp))
             if (!isTemplate) {
                 SettingsSectionHeader(stringResource(R.string.parser_app_info))
@@ -304,11 +299,12 @@ fun ParserRuleEditorScreen(
                 Text(stringResource(if (isTemplate) R.string.parser_template_save else R.string.parser_save_rule))
             }
             Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(padding.calculateBottomPadding()))
         }
     }
 
     if (showOnlineSuggestionDialog) {
-        AlertDialog(
+        MaterialBlurAlertDialog(
             onDismissRequest = { showOnlineSuggestionDialog = false },
             title = { Text(stringResource(R.string.parser_online_conflict_title)) },
             text = { Text(stringResource(R.string.parser_online_conflict_message)) },
@@ -329,7 +325,7 @@ fun ParserRuleEditorScreen(
     }
 
     if (showDeleteDialog) {
-        AlertDialog(
+        MaterialBlurAlertDialog(
             onDismissRequest = { showDeleteDialog = false },
             title = { Text(stringResource(if (isTemplate) R.string.parser_template_clear else R.string.parser_delete)) },
             text = {
@@ -447,17 +443,15 @@ fun ParserRuleSourceConfigScreen(
     onBack: () -> Unit,
     onStateChange: (ParserRuleEditorState) -> Unit
 ) {
-    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     var state by remember(initialRule) { mutableStateOf(initialRule.toEditorState()) }
     fun updateState(next: ParserRuleEditorState) {
         state = next
         onStateChange(next)
     }
 
-    Scaffold(
-        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+    MaterialBlurScaffold(
         topBar = {
-            MediumTopAppBar(
+            MaterialBlurTopAppBar(
                 title = {
                     Text(
                         when (configType) {
@@ -472,8 +466,6 @@ fun ParserRuleSourceConfigScreen(
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
-                scrollBehavior = scrollBehavior,
-                colors = neutralMaterialTopBarColors()
             )
         },
         containerColor = materialPageContainerColor()

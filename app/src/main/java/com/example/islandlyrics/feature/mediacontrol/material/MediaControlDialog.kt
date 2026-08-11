@@ -31,12 +31,15 @@ import com.example.islandlyrics.rules.ParserRuleHelper
 import com.example.islandlyrics.lyrics.state.LyricRepository
 import com.example.islandlyrics.feature.main.MainActivity
 import com.example.islandlyrics.feature.onlinelyricdebug.OnlineLyricDebugActivity
+import com.example.islandlyrics.ui.material.blur.LocalMaterialBlurEnabled
 import android.content.Intent
 import android.graphics.Bitmap
+import android.graphics.drawable.GradientDrawable
 import android.media.MediaMetadata
 import android.media.session.MediaController
 import android.media.session.MediaSessionManager
 import android.media.session.PlaybackState
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
@@ -66,6 +69,9 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.window.DialogWindowProvider
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontStyle
@@ -156,18 +162,66 @@ fun MediaControlDialog(onDismiss: () -> Unit) {
         }
     }
 
-    androidx.compose.ui.window.Dialog(onDismissRequest = triggerDismiss) {
+    val blurEnabled = LocalMaterialBlurEnabled.current
+
+    androidx.compose.ui.window.Dialog(
+        onDismissRequest = triggerDismiss,
+        properties = androidx.compose.ui.window.DialogProperties(
+            usePlatformDefaultWidth = false,
+            decorFitsSystemWindows = false
+        )
+    ) {
+        val dialogShape = RoundedCornerShape(24.dp)
+        val view = LocalView.current
+        val density = LocalDensity.current
+
+        SideEffect {
+            val window = (view.parent as? DialogWindowProvider)?.window
+            if (window != null) {
+                val cornerRadiusPx = with(density) { 24.dp.toPx() }
+                val screenWidthPx = view.resources.displayMetrics.widthPixels
+                val maxWidthPx = with(density) { 420.dp.roundToPx() }
+                val horizontalMarginPx = with(density) { 16.dp.roundToPx() }
+                val targetWidthPx = minOf(screenWidthPx - horizontalMarginPx * 2, maxWidthPx).coerceAtLeast(0)
+                window.attributes = window.attributes.apply {
+                    width = targetWidthPx
+                    height = android.view.WindowManager.LayoutParams.WRAP_CONTENT
+                }
+                window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_DIM_BEHIND)
+                window.setDimAmount(0f)
+                window.setBackgroundDrawable(
+                    GradientDrawable().apply {
+                        shape = GradientDrawable.RECTANGLE
+                        cornerRadius = cornerRadiusPx
+                        setColor(android.graphics.Color.TRANSPARENT)
+                    }
+                )
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    try {
+                        window.setBackgroundBlurRadius(
+                            if (blurEnabled && visibleState.currentState) 140 else 0
+                        )
+                    } catch (_: Exception) {}
+                }
+            }
+        }
+
         AnimatedVisibility(
             visibleState = visibleState,
             enter = EnterTransition.None,
             exit = scaleOut() + fadeOut()
         ) {
             Surface(
-                shape = RoundedCornerShape(24.dp),
-                color = MaterialTheme.colorScheme.surface,
-                tonalElevation = 6.dp,
+                shape = dialogShape,
+                color = if (blurEnabled) {
+                    MaterialTheme.colorScheme.surface.copy(alpha = 0.38f)
+                } else {
+                    MaterialTheme.colorScheme.surface
+                },
+                tonalElevation = 0.dp,
                 modifier = Modifier
                     .fillMaxWidth()
+                    .widthIn(max = 420.dp)
                     .padding(vertical = 24.dp)
                     .wrapContentHeight()
             ) {

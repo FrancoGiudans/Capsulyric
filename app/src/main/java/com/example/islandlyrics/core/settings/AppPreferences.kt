@@ -80,6 +80,7 @@ object AppPreferences {
         const val MATERIAL_THEME_COLOR_SOURCE = "material_theme_color_source"
         const val MATERIAL_THEME_CUSTOM_COLOR = "material_theme_custom_color"
         const val MATERIAL_THEME_CUSTOM_COLOR_GLOBAL_TINT = "material_theme_custom_color_global_tint"
+        const val MATERIAL_BLUR_RADIUS_DP = "material_blur_radius_dp"
         const val FLOATING_LYRICS_ENABLED = "floating_lyrics_enabled"
         const val FLOATING_TEXT_SIZE_SP = "floating_text_size_sp"
         const val FLOATING_TEXT_COLOR = "floating_text_color"
@@ -127,6 +128,7 @@ object AppPreferences {
         const val SUPER_ISLAND_SECONDARY_TEXT_MODES = "next_lyric"
         const val SUPER_ISLAND_TEMPLATE2_PIC_SOURCE = "album_art"
         const val SUPER_ISLAND_LYRIC_MODE = "standard"
+        const val MATERIAL_BLUR_RADIUS_DP = 20f
     }
 
     fun of(context: Context): SharedPreferences =
@@ -201,5 +203,9 @@ object AppPreferences {
 
     fun isLastFmEnabled(prefs: SharedPreferences): Boolean =
         prefs.getBoolean(Keys.LASTFM_ENABLED, false)
+
+    fun materialBlurRadiusDp(prefs: SharedPreferences): Float =
+        prefs.getFloat(Keys.MATERIAL_BLUR_RADIUS_DP, Defaults.MATERIAL_BLUR_RADIUS_DP)
+            .coerceIn(0f, 64f)
 }
 

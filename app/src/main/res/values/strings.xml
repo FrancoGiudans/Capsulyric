@@ -815,6 +815,8 @@ Within the log interface, select the share/export icon. You can specify a timefr
     <string name="diag_lab_miuix_blur_edge_highlight_desc">Add a glass-like highlight along the edges of MIUIX blur surfaces.</string>
     <string name="diag_lab_live_update_text_limits_title">Live Update Text Limits</string>
     <string name="diag_lab_live_update_text_limits_desc">Show a control for tuning the Live Update lyric text limit in Capsule &amp; Notification.</string>
+    <string name="diag_lab_material_blur_title">Material Page Blur</string>
+    <string name="diag_lab_material_blur_desc">Enable backdrop blur for Material pages. Miuix pages are not affected.</string>
     <string name="diag_lab_experiment_updates_title">Receive Test Builds</string>
     <string name="diag_lab_experiment_updates_desc">Show the Experiment channel and receive experimental builds from the testing branch.</string>
     <string name="diag_lab_scroll_end_haptic_title">Scroll End Haptic</string>
@@ -833,6 +835,10 @@ Within the log interface, select the share/export icon. You can specify a timefr
     <string name="diag_lab_live_update_text_limits_dialog_title">Enable Live Update text limit tuning?</string>
     <string name="diag_lab_live_update_text_limits_dialog_message">Live Update appears to have system-specific text limits. If the text exceeds the system-defined limit, the notification may fail to be promoted to capsule state. Enable this only if you are willing to test and roll back the value.</string>
     <string name="diag_lab_live_update_text_limits_dialog_confirm">Enable</string>
+    <string name="diag_header_material">Material UI</string>
+    <string name="diag_material_blur_radius_title">Material Blur Radius</string>
+    <string name="diag_material_blur_radius_value">%1$.0f dp</string>
+    <string name="diag_material_blur_radius_desc">Controls the blur radius used by Material page backdrops. Set it to 0 to remove the blur radius while keeping the experiment enabled.</string>
     
     <string name="diag_label_connection">Connection Status</string>
     <string name="diag_label_controllers">Total Controllers</string>

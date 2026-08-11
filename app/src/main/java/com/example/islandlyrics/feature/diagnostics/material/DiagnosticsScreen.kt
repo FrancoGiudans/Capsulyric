@@ -22,8 +22,14 @@
 
 package com.example.islandlyrics.feature.diagnostics.material
 
+import com.example.islandlyrics.ui.material.blur.MaterialBlurAlertDialog
+
+import com.example.islandlyrics.ui.material.blur.MaterialBlurScaffold
+import com.example.islandlyrics.ui.theme.material.MaterialBlurTopAppBar
 import android.os.Build
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -36,7 +42,6 @@ import androidx.compose.runtime.livedata.observeAsState
 import com.example.islandlyrics.lyrics.state.LyricRepository
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -52,7 +57,6 @@ import com.example.islandlyrics.feature.settings.material.SettingsSectionHeader
 import java.text.SimpleDateFormat
 import java.util.*
 import com.example.islandlyrics.ui.theme.material.materialPageContainerColor
-import com.example.islandlyrics.ui.theme.material.neutralMaterialTopBarColors
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -62,30 +66,28 @@ fun DiagnosticsScreen(
 ) {
     val context = LocalContext.current
     val locale = LocalConfiguration.current.locales[0]
-    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     val diagnostics by LyricRepository.getInstance().liveDiagnostics.observeAsState()
-
-    Scaffold(
-        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+    MaterialBlurScaffold(
         topBar = {
-            MediumTopAppBar(
+            MaterialBlurTopAppBar(
                 title = { Text(stringResource(R.string.title_diagnostics)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.online_lyric_debug_back))
                     }
                 },
-                scrollBehavior = scrollBehavior,
-                colors = neutralMaterialTopBarColors()
             )
         },
         containerColor = materialPageContainerColor()
     ) { padding ->
         LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding),
-            contentPadding = PaddingValues(bottom = 24.dp)
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                start = padding.calculateStartPadding(androidx.compose.ui.platform.LocalLayoutDirection.current),
+                top = padding.calculateTopPadding(),
+                end = padding.calculateEndPadding(androidx.compose.ui.platform.LocalLayoutDirection.current),
+                bottom = padding.calculateBottomPadding() + 24.dp,
+            )
         ) {
             if (BuildConfig.DEBUG) {
                 item { SettingsSectionHeader(text = stringResource(R.string.diag_header_debug_tools)) }
@@ -208,7 +210,7 @@ fun DiagnosticsScreen(
                     }
                 }
                 if (showDisableDialog) {
-                    AlertDialog(
+                    MaterialBlurAlertDialog(
                         onDismissRequest = { showDisableDialog = false },
                         title = { Text(stringResource(R.string.dialog_disable_diagnostics_title)) },
                         text = { Text(stringResource(R.string.dialog_disable_diagnostics_message)) },

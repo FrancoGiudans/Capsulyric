@@ -29,24 +29,23 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.wrapContentSize
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Campaign
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Poll
-import androidx.compose.material3.DropdownMenu
+import com.example.islandlyrics.ui.material.blur.MaterialBlurDropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MediumTopAppBar
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -59,15 +58,13 @@ import com.example.islandlyrics.core.network.OfflineModeManager
 import com.example.islandlyrics.core.settings.LabFeatureManager
 import com.example.islandlyrics.feature.settings.CommunityDialogState
 import com.example.islandlyrics.ui.theme.material.materialPageContainerColor
-import com.example.islandlyrics.ui.theme.material.neutralMaterialTopBarColors
+import com.example.islandlyrics.ui.material.blur.MaterialBlurScaffold
+import com.example.islandlyrics.ui.theme.material.MaterialBlurTopAppBar
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CommunityScreen(onBack: () -> Unit) {
     val context = LocalContext.current
-    val scrollBehavior = androidx.compose.material3.rememberTopAppBarState().let {
-        androidx.compose.material3.TopAppBarDefaults.enterAlwaysScrollBehavior(it)
-    }
     val offlineModeEnabled = remember { OfflineModeManager.isEnabled(context) }
     var feedSourcePriority by remember { mutableStateOf(LabFeatureManager.getFeedSourcePriority(context)) }
     var showFeedSourceDropdown by remember { mutableStateOf(false) }
@@ -86,27 +83,27 @@ fun CommunityScreen(onBack: () -> Unit) {
         }
     }
 
-    Scaffold(
-        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+    MaterialBlurScaffold(
         topBar = {
-            MediumTopAppBar(
+            MaterialBlurTopAppBar(
                 title = { Text(stringResource(R.string.settings_community_header)) },
                 navigationIcon = {
                     IconButton(onClick = { onBack() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
-                scrollBehavior = scrollBehavior,
-                colors = neutralMaterialTopBarColors()
             )
         },
         containerColor = materialPageContainerColor()
     ) { paddingValues ->
         LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues),
-            contentPadding = PaddingValues(bottom = 24.dp)
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                start = paddingValues.calculateStartPadding(androidx.compose.ui.platform.LocalLayoutDirection.current),
+                top = paddingValues.calculateTopPadding(),
+                end = paddingValues.calculateEndPadding(androidx.compose.ui.platform.LocalLayoutDirection.current),
+                bottom = paddingValues.calculateBottomPadding() + 24.dp,
+            )
         ) {
             item {
                 SettingsCard {
@@ -122,7 +119,7 @@ fun CommunityScreen(onBack: () -> Unit) {
                                 onClick = { showFeedSourceDropdown = true }
                             )
                             Box(modifier = Modifier.matchParentSize().wrapContentSize(Alignment.CenterEnd)) {
-                                DropdownMenu(
+                                MaterialBlurDropdownMenu(
                                     expanded = showFeedSourceDropdown,
                                     onDismissRequest = { showFeedSourceDropdown = false }
                                 ) {

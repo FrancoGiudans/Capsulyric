@@ -577,12 +577,14 @@ class FloatingLyricsRenderer(private val context: Context) {
         val window = popup.window ?: return
         window.setType(WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY)
         window.setGravity(Gravity.TOP or Gravity.START)
-        window.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+        window.setBackgroundDrawable(buildSettingsPopupBackground())
         window.clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
         window.addFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL)
         window.setBackgroundBlurRadius(
             if (crossWindowBlurEnabled) dpToPx(chrome.expandedBlurRadiusDp) else 0
         )
+        window.decorView.clipToOutline = true
+        window.decorView.outlineProvider = roundedOutline(16)
         settingsPopup = popup
         settingsPopupScrollView = content
         popup.show()
@@ -1040,14 +1042,16 @@ class FloatingLyricsRenderer(private val context: Context) {
 
     private fun switchToMinimal() {
         dismissSettingsPopup()
+        clearWindowBlur()
         currentState = DisplayState.MINIMAL
-        updateWindowBlur()
         minimalContainer?.visibility  = View.VISIBLE
         expandedContainer?.visibility = View.GONE
         mainHandler.removeCallbacks(collapseRunnable)
+        updateWindowBlur()
     }
 
     private fun switchToExpanded() {
+        clearWindowBlur()
         currentState = DisplayState.EXPANDED
         minimalContainer?.visibility  = View.GONE
         expandedContainer?.visibility = View.VISIBLE
@@ -1262,6 +1266,17 @@ class FloatingLyricsRenderer(private val context: Context) {
         }
     }
 
+    private fun clearWindowBlur() {
+        val window = overlayWindow ?: return
+        try {
+            window.setBackgroundBlurRadius(0)
+            window.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+            window.decorView.clipToOutline = false
+        } catch (e: Exception) {
+            Log.w(TAG, "clearWindowBlur: ${e.message}")
+        }
+    }
+
     private fun updateWindowBlur() {
         val window = overlayWindow ?: return
         val shouldBlur = currentState == DisplayState.EXPANDED && crossWindowBlurEnabled
@@ -1275,6 +1290,10 @@ class FloatingLyricsRenderer(private val context: Context) {
                     ColorDrawable(Color.TRANSPARENT)
                 }
             )
+            window.decorView.clipToOutline = shouldBlur
+            if (shouldBlur) {
+                window.decorView.outlineProvider = roundedOutline(chrome.expandedRadiusDp)
+            }
         } catch (e: Exception) {
             Log.w(TAG, "updateWindowBlur: ${e.message}")
         }

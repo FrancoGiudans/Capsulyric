@@ -22,18 +22,76 @@
 
 package com.example.islandlyrics.ui.theme.material
 
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.unit.dp
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarColors
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.ui.Modifier
 import androidx.compose.runtime.Composable
+import com.example.islandlyrics.ui.material.blur.LocalMaterialBlurEnabled
+import com.example.islandlyrics.ui.material.blur.LocalMaterialBlurRadius
+import com.example.islandlyrics.ui.material.blur.materialBlurPanel
 
 // TopAppBar blends with the page background when the large title is expanded.
 // When collapsed (scrolled), it picks up surfaceContainer for a subtle floating tint.
 @Composable
-fun neutralMaterialTopBarColors(): TopAppBarColors = TopAppBarDefaults.topAppBarColors(
-    containerColor = MaterialTheme.colorScheme.background,
-    scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer,
-)
+fun neutralMaterialTopBarColors(): TopAppBarColors {
+    val blurEnabled = LocalMaterialBlurEnabled.current
+    return TopAppBarDefaults.topAppBarColors(
+        containerColor = if (blurEnabled) Color.Transparent else MaterialTheme.colorScheme.background,
+        scrolledContainerColor = if (blurEnabled) {
+            Color.Transparent
+        } else {
+            MaterialTheme.colorScheme.surfaceContainer
+        },
+    )
+}
 
 @Composable
 fun materialPageContainerColor() = MaterialTheme.colorScheme.background
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun MaterialBlurTopAppBar(
+    title: @Composable () -> Unit,
+    onBack: (() -> Unit)? = null,
+    modifier: Modifier = Modifier,
+    navigationIcon: (@Composable () -> Unit)? = null,
+    actions: @Composable RowScope.() -> Unit = {},
+) {
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .materialBlurPanel(
+                shape = RectangleShape,
+                radius = maxOf(LocalMaterialBlurRadius.current, 28.dp),
+                tint = Color.Transparent,
+            )
+    ) {
+        TopAppBar(
+            title = title,
+            navigationIcon = navigationIcon ?: {
+                if (onBack != null) {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                }
+            },
+            actions = actions,
+            colors = neutralMaterialTopBarColors(),
+            modifier = Modifier.fillMaxWidth(),
+        )
+    }
+}

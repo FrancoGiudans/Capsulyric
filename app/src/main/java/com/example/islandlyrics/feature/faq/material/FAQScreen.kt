@@ -22,6 +22,8 @@
 
 package com.example.islandlyrics.feature.faq.material
 
+import com.example.islandlyrics.ui.material.blur.MaterialBlurScaffold
+import com.example.islandlyrics.ui.theme.material.MaterialBlurTopAppBar
 import android.text.method.LinkMovementMethod
 import com.example.islandlyrics.R
 import com.example.islandlyrics.feature.settings.material.SettingsSectionHeader
@@ -30,6 +32,8 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -41,13 +45,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.example.islandlyrics.ui.theme.material.materialPageContainerColor
-import com.example.islandlyrics.ui.theme.material.neutralMaterialTopBarColors
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -101,11 +103,9 @@ fun FAQScreen(onBack: () -> Unit) {
         )
     }
 
-    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
-    Scaffold(
-        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+    MaterialBlurScaffold(
         topBar = {
-            MediumTopAppBar(
+            MaterialBlurTopAppBar(
                 title = { Text(stringResource(R.string.faq_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
@@ -115,16 +115,18 @@ fun FAQScreen(onBack: () -> Unit) {
                         )
                     }
                 },
-                scrollBehavior = scrollBehavior,
-                colors = neutralMaterialTopBarColors()
             )
         },
         containerColor = materialPageContainerColor()
     ) { paddingValues ->
         LazyColumn(
-            modifier = Modifier
-                .padding(paddingValues)
-                .fillMaxSize()
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                start = paddingValues.calculateStartPadding(androidx.compose.ui.platform.LocalLayoutDirection.current),
+                top = paddingValues.calculateTopPadding(),
+                end = paddingValues.calculateEndPadding(androidx.compose.ui.platform.LocalLayoutDirection.current),
+                bottom = paddingValues.calculateBottomPadding(),
+            )
         ) {
             faqData.forEach { category ->
                 item {

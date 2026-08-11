@@ -25,17 +25,17 @@ package com.example.islandlyrics.feature.lab.material
 import android.content.Intent
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.AlertDialog
+import com.example.islandlyrics.ui.material.blur.MaterialBlurAlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -55,7 +55,8 @@ import com.example.islandlyrics.feature.settings.material.SettingsCardDivider
 import com.example.islandlyrics.feature.settings.material.SettingsSectionHeader
 import com.example.islandlyrics.feature.settings.material.SettingsSwitchItem
 import com.example.islandlyrics.ui.theme.material.materialPageContainerColor
-import com.example.islandlyrics.ui.theme.material.neutralMaterialTopBarColors
+import com.example.islandlyrics.ui.material.blur.MaterialBlurScaffold
+import com.example.islandlyrics.ui.theme.material.MaterialBlurTopAppBar
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -83,6 +84,9 @@ fun LabScreen(
     var floatingWordHighFpsEnabled by remember {
         mutableStateOf(LabFeatureManager.isFloatingWordHighFpsEnabled(context))
     }
+    var materialBlurEnabled by remember {
+        mutableStateOf(LabFeatureManager.isMaterialBlurEnabled(context))
+    }
     var experimentUpdatesEnabled by remember {
         mutableStateOf(LabFeatureManager.isExperimentUpdatesEnabled(context))
     }
@@ -90,25 +94,27 @@ fun LabScreen(
     var showAdvancedStyleDialog by remember { mutableStateOf(false) }
     var showLiveUpdateTextLimitsDialog by remember { mutableStateOf(false) }
 
-    Scaffold(
+    MaterialBlurScaffold(
         topBar = {
-            TopAppBar(
+            MaterialBlurTopAppBar(
                 title = { Text(stringResource(R.string.title_lab)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.online_lyric_debug_back))
                     }
                 },
-                colors = neutralMaterialTopBarColors()
             )
         },
         containerColor = materialPageContainerColor()
     ) { padding ->
         androidx.compose.foundation.lazy.LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding),
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 24.dp)
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                start = padding.calculateStartPadding(androidx.compose.ui.platform.LocalLayoutDirection.current),
+                top = padding.calculateTopPadding(),
+                end = padding.calculateEndPadding(androidx.compose.ui.platform.LocalLayoutDirection.current),
+                bottom = padding.calculateBottomPadding() + 24.dp,
+            )
         ) {
             item {
                 Text(
@@ -191,6 +197,16 @@ fun LabScreen(
                     )
                     SettingsCardDivider()
                     SettingsSwitchItem(
+                        title = stringResource(R.string.diag_lab_material_blur_title),
+                        subtitle = stringResource(R.string.diag_lab_material_blur_desc),
+                        checked = materialBlurEnabled,
+                        onCheckedChange = {
+                            materialBlurEnabled = it
+                            LabFeatureManager.setMaterialBlurEnabled(context, it)
+                        }
+                    )
+                    SettingsCardDivider()
+                    SettingsSwitchItem(
                         title = stringResource(R.string.diag_lab_floating_lyrics_title),
                         subtitle = stringResource(R.string.diag_lab_floating_lyrics_desc),
                         checked = floatingLyricsLabEnabled,
@@ -232,7 +248,7 @@ fun LabScreen(
     }
 
     if (showOfflineModeDialog) {
-        AlertDialog(
+        MaterialBlurAlertDialog(
             onDismissRequest = { showOfflineModeDialog = false },
             title = { Text(stringResource(R.string.settings_full_offline_mode_dialog_title)) },
             text = { Text(stringResource(R.string.settings_full_offline_mode_dialog_message)) },
@@ -256,7 +272,7 @@ fun LabScreen(
     }
 
     if (showAdvancedStyleDialog) {
-        AlertDialog(
+        MaterialBlurAlertDialog(
             onDismissRequest = { showAdvancedStyleDialog = false },
             title = { Text(stringResource(R.string.diag_lab_super_island_dialog_title)) },
             text = { Text(stringResource(R.string.diag_lab_super_island_dialog_message)) },
@@ -282,7 +298,7 @@ fun LabScreen(
     }
 
     if (showLiveUpdateTextLimitsDialog) {
-        AlertDialog(
+        MaterialBlurAlertDialog(
             onDismissRequest = { showLiveUpdateTextLimitsDialog = false },
             title = { Text(stringResource(R.string.diag_lab_live_update_text_limits_dialog_title)) },
             text = { Text(stringResource(R.string.diag_lab_live_update_text_limits_dialog_message)) },

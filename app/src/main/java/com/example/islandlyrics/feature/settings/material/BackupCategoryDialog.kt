@@ -22,6 +22,9 @@
 
 package com.example.islandlyrics.feature.settings.material
 
+
+import com.example.islandlyrics.ui.material.blur.MaterialBlurAlertDialog
+
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
@@ -115,7 +118,7 @@ fun BackupCategoryDialog(
     val allChecked = leafCheckedCount() == totalLeafCount
     val someChecked = leafCheckedCount() > 0
 
-    AlertDialog(
+    MaterialBlurAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(titleRes)) },
         text = {

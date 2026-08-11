@@ -41,6 +41,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentSize
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -52,20 +54,17 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.Poll
 import androidx.compose.material.icons.filled.Sync
-import androidx.compose.material3.AlertDialog
+import com.example.islandlyrics.ui.material.blur.MaterialBlurAlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.DropdownMenu
+import com.example.islandlyrics.ui.material.blur.MaterialBlurDropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.MediumTopAppBar
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -77,7 +76,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ColorFilter
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -95,7 +93,8 @@ import com.example.islandlyrics.feature.settings.ReleaseDialogState
 import com.example.islandlyrics.feature.update.material.UpdateDialog
 import com.example.islandlyrics.lyrics.state.LyricRepository
 import com.example.islandlyrics.ui.theme.material.materialPageContainerColor
-import com.example.islandlyrics.ui.theme.material.neutralMaterialTopBarColors
+import com.example.islandlyrics.ui.material.blur.MaterialBlurScaffold
+import com.example.islandlyrics.ui.theme.material.MaterialBlurTopAppBar
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -113,7 +112,6 @@ fun AboutScreen(
     onReleaseLookupMessageDismiss: () -> Unit = {}
 ) {
     val context = LocalContext.current
-    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 
     val devModeEnabled by LyricRepository.getInstance().devModeEnabled.observeAsState(false)
     val offlineModeEnabled = remember { OfflineModeManager.isEnabled(context) }
@@ -150,27 +148,27 @@ fun AboutScreen(
         }
     }
 
-    Scaffold(
-        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+    MaterialBlurScaffold(
         topBar = {
-            MediumTopAppBar(
+            MaterialBlurTopAppBar(
                 title = { Text(stringResource(R.string.about_title)) },
                 navigationIcon = {
                     IconButton(onClick = { onBack?.invoke() ?: (context as? Activity)?.finish() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
-                scrollBehavior = scrollBehavior,
-                colors = neutralMaterialTopBarColors()
             )
         },
         containerColor = materialPageContainerColor()
     ) { paddingValues ->
         LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues),
-            contentPadding = PaddingValues(bottom = 24.dp)
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                start = paddingValues.calculateStartPadding(androidx.compose.ui.platform.LocalLayoutDirection.current),
+                top = paddingValues.calculateTopPadding(),
+                end = paddingValues.calculateEndPadding(androidx.compose.ui.platform.LocalLayoutDirection.current),
+                bottom = paddingValues.calculateBottomPadding() + 24.dp,
+            )
         ) {
             item {
                 MaterialAboutHeader(
@@ -228,7 +226,7 @@ fun AboutScreen(
                                 onClick = { showChannelDropdown = true }
                             )
                             Box(modifier = Modifier.matchParentSize().wrapContentSize(Alignment.CenterEnd)) {
-                                DropdownMenu(
+                                MaterialBlurDropdownMenu(
                                     expanded = showChannelDropdown,
                                     onDismissRequest = { showChannelDropdown = false }
                                 ) {
@@ -312,7 +310,7 @@ fun AboutScreen(
         }
 
         if (releaseLookupMessage != null) {
-            AlertDialog(
+            MaterialBlurAlertDialog(
                 onDismissRequest = onReleaseLookupMessageDismiss,
                 title = { Text(stringResource(R.string.update_current_version_changelog_unavailable_title)) },
                 text = { Text(releaseLookupMessage) },

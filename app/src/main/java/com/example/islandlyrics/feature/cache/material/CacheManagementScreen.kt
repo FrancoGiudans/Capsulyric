@@ -32,6 +32,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -49,16 +51,14 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.AlertDialog
+import com.example.islandlyrics.ui.material.blur.MaterialBlurAlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -70,7 +70,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -90,7 +89,8 @@ import com.example.islandlyrics.feature.cache.filterByCacheQuery
 import com.example.islandlyrics.feature.settings.material.SettingsCardDivider
 import com.example.islandlyrics.feature.settings.material.SettingsSwitchItem
 import com.example.islandlyrics.ui.theme.material.materialPageContainerColor
-import com.example.islandlyrics.ui.theme.material.neutralMaterialTopBarColors
+import com.example.islandlyrics.ui.material.blur.MaterialBlurScaffold
+import com.example.islandlyrics.ui.theme.material.MaterialBlurTopAppBar
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -103,7 +103,6 @@ fun CacheManagementScreen(
 ) {
     val context = LocalContext.current
     val dirManager = remember { LocalLyricDirectoryManager.getInstance(context) }
-    val scrollBehavior = androidx.compose.material3.TopAppBarDefaults.pinnedScrollBehavior()
     val lyricStats by viewModel.lyricStats.observeAsState(OnlineLyricCacheStore.LyricCacheStats())
     val lyricEntries by viewModel.lyricEntries.observeAsState(emptyList())
     val imageStats by viewModel.imageStats.observeAsState(AppImageCacheManager.ImageCacheStats())
@@ -148,10 +147,9 @@ fun CacheManagementScreen(
         onBackCompleted = { viewModel.exitSelectionMode() }
     )
 
-    Scaffold(
-        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+    MaterialBlurScaffold(
         topBar = {
-            TopAppBar(
+            MaterialBlurTopAppBar(
                 title = {
                     Text(
                         if (isSelectionMode) {
@@ -192,18 +190,19 @@ fun CacheManagementScreen(
                         }
                     }
                 },
-                colors = neutralMaterialTopBarColors(),
-                scrollBehavior = scrollBehavior
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
         containerColor = materialPageContainerColor()
     ) { padding ->
         LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding),
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(24.dp),
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                start = padding.calculateStartPadding(androidx.compose.ui.platform.LocalLayoutDirection.current) + 24.dp,
+                top = padding.calculateTopPadding() + 24.dp,
+                end = padding.calculateEndPadding(androidx.compose.ui.platform.LocalLayoutDirection.current) + 24.dp,
+                bottom = padding.calculateBottomPadding() + 24.dp,
+            ),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             item {
@@ -367,7 +366,7 @@ fun CacheManagementScreen(
     }
 
     pendingDeleteEntryId?.let { entryId ->
-        AlertDialog(
+        MaterialBlurAlertDialog(
             onDismissRequest = { pendingDeleteEntryId = null },
             title = { Text(stringResource(R.string.cache_management_delete_confirm_title)) },
             text = {
@@ -397,7 +396,7 @@ fun CacheManagementScreen(
     }
 
     if (showDeleteSelectedDialog) {
-        AlertDialog(
+        MaterialBlurAlertDialog(
             onDismissRequest = { showDeleteSelectedDialog = false },
             title = { Text(stringResource(R.string.cache_management_delete_selected_confirm_title)) },
             text = {

@@ -22,6 +22,10 @@
 
 package com.example.islandlyrics.feature.parserrule.material
 
+import com.example.islandlyrics.ui.material.blur.MaterialBlurAlertDialog
+
+import com.example.islandlyrics.ui.material.blur.MaterialBlurScaffold
+import com.example.islandlyrics.ui.theme.material.MaterialBlurTopAppBar
 import androidx.compose.foundation.clickable
 import com.example.islandlyrics.R
 import com.example.islandlyrics.core.network.OfflineModeManager
@@ -32,6 +36,8 @@ import com.example.islandlyrics.lyrics.state.LyricRepository
 import com.example.islandlyrics.lyrics.online.provider.OnlineLyricProvider
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.Icons
@@ -44,7 +50,6 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -52,7 +57,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.islandlyrics.ui.navigation.OverlaySheetHost
 import com.example.islandlyrics.ui.theme.material.materialPageContainerColor
-import com.example.islandlyrics.ui.theme.material.neutralMaterialTopBarColors
 import kotlinx.coroutines.delay
 
 private data class InlineParserRuleEditorState(
@@ -133,7 +137,6 @@ fun ParserRuleScreen(
         inlineEditorVisible = false
     }
 
-    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 
     LaunchedEffect(inlineEditorVisible) {
         if (inlineEditorVisible) {
@@ -149,11 +152,10 @@ fun ParserRuleScreen(
         visible = inlineEditorVisible && inlineEditorState != null,
         onDismissRequest = ::closeRuleEditor,
         content = {
-            Scaffold(
-                modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+            MaterialBlurScaffold(
                 contentWindowInsets = WindowInsets(0),
                 topBar = {
-                    MediumTopAppBar(
+                    MaterialBlurTopAppBar(
                         title = { Text(stringResource(R.string.parser_rule_title)) },
                         navigationIcon = if (showBackButton) {
                             {
@@ -178,8 +180,6 @@ fun ParserRuleScreen(
                                 )
                             }
                         },
-                        scrollBehavior = scrollBehavior,
-                        colors = neutralMaterialTopBarColors()
                     )
                 },
                 floatingActionButton = {
@@ -241,13 +241,12 @@ fun ParserRuleScreen(
                 containerColor = materialPageContainerColor()
             ) { padding ->
                 LazyColumn(
-                    modifier = Modifier
-                        .padding(padding)
-                        .fillMaxSize(),
-                    contentPadding = PaddingValues(
-                        start = 16.dp,
-                        end = 16.dp,
-                        bottom = 80.dp + extraBottomPadding
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                        start = padding.calculateStartPadding(androidx.compose.ui.platform.LocalLayoutDirection.current) + 16.dp,
+                        top = padding.calculateTopPadding() + 8.dp,
+                        end = padding.calculateEndPadding(androidx.compose.ui.platform.LocalLayoutDirection.current) + 16.dp,
+                        bottom = padding.calculateBottomPadding() + 80.dp + extraBottomPadding,
                     ),
                     verticalArrangement = Arrangement.spacedBy(0.dp)
                 ) {
@@ -360,7 +359,7 @@ fun ParserRuleScreen(
     )
 
     if (showDeleteDialog.value != null) {
-        AlertDialog(
+        MaterialBlurAlertDialog(
             onDismissRequest = { showDeleteDialog.value = null },
             title = { Text(stringResource(R.string.parser_delete)) },
             text = {

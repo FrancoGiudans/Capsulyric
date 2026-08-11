@@ -45,6 +45,7 @@ import com.example.islandlyrics.feature.locallyrics.LocalLyricDirectoryActivity
 import com.example.islandlyrics.feature.settings.material.SettingsCard
 import com.example.islandlyrics.feature.settings.material.SettingsCardDivider
 import com.example.islandlyrics.feature.settings.material.SettingsSectionHeader
+import com.example.islandlyrics.ui.material.blur.MaterialBlurAlertDialog
 
 @Composable
 fun LocalLyricDirectoriesSection(
@@ -125,7 +126,7 @@ fun LocalLyricDirectoriesSection(
     }
 
     if (showRemoveDialog != null) {
-        AlertDialog(
+        MaterialBlurAlertDialog(
             onDismissRequest = { showRemoveDialog = null },
             title = {
                 Text(

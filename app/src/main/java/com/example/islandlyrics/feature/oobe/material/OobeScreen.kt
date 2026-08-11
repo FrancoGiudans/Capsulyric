@@ -22,6 +22,9 @@
 
 package com.example.islandlyrics.feature.oobe.material
 
+import com.example.islandlyrics.ui.material.blur.MaterialBlurAlertDialog
+
+import com.example.islandlyrics.ui.material.blur.MaterialBlurScaffold
 import android.Manifest
 import com.example.islandlyrics.feature.settings.SettingsActivity
 import com.example.islandlyrics.feature.customsettings.CustomSettingsActivity
@@ -92,12 +95,13 @@ fun OobeScreen(onFinish: () -> Unit) {
 
     val snackbarHostState = remember { SnackbarHostState() }
 
-    Scaffold(
+    MaterialBlurScaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         bottomBar = {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .navigationBarsPadding()
                     .padding(24.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
@@ -416,7 +420,7 @@ fun PermissionsStep(
 
     // Privacy / Scope Dialog for Notification Listener
     if (showListenerScopeDialog) {
-        AlertDialog(
+        MaterialBlurAlertDialog(
             onDismissRequest = { showListenerScopeDialog = false },
             title = {
                 Text(
@@ -634,7 +638,7 @@ fun AppSetupStep() {
     }
 
     if (showGuideDialog) {
-        AlertDialog(
+        MaterialBlurAlertDialog(
             onDismissRequest = { showGuideDialog = false },
             title = {
                 Text(
