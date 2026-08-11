@@ -28,11 +28,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.unit.dp
 import top.yukonga.miuix.kmp.blur.Backdrop
 import top.yukonga.miuix.kmp.blur.BlendColorEntry
 import top.yukonga.miuix.kmp.blur.BlurBlendMode
 import top.yukonga.miuix.kmp.blur.BlurColors
 import top.yukonga.miuix.kmp.blur.BlurDefaults
+import top.yukonga.miuix.kmp.blur.highlight.BloomStroke
+import top.yukonga.miuix.kmp.blur.highlight.Highlight
+import top.yukonga.miuix.kmp.blur.highlight.LightPosition
+import top.yukonga.miuix.kmp.blur.highlight.LightSource
 import top.yukonga.miuix.kmp.blur.textureBlur
 import top.yukonga.miuix.kmp.shader.isRenderEffectSupported
 import top.yukonga.miuix.kmp.theme.MiuixTheme
@@ -51,6 +56,22 @@ internal object MiuixBlurStyleDefaults {
     const val DialogNoiseCoefficient = 0.0045f
     const val DialogBorderAlpha = 0.06f
 }
+
+private val MiuixUniformEdgeHighlight = Highlight(
+    width = 1.dp,
+    style = BloomStroke(
+        color = Color.White.copy(alpha = 0.18f),
+        innerBlurRadius = 0.dp,
+        primaryLight = LightSource(
+            position = LightPosition(0.5f, 0.5f, -0.5f),
+            intensity = 0f,
+        ),
+        secondaryLight = LightSource(
+            position = LightPosition(0.5f, 0.95f, -0.5f),
+            intensity = 0f,
+        ),
+    ),
+)
 
 @Composable
 internal fun miuixBlurColors(
@@ -97,6 +118,14 @@ internal fun miuixDialogBlurColors(
 }
 
 @Composable
+internal fun miuixBlurHighlight(): Highlight? {
+    if (!LocalMiuixBlurEdgeHighlightEnabled.current) {
+        return null
+    }
+    return MiuixUniformEdgeHighlight
+}
+
+@Composable
 internal fun Modifier.miuixSurfaceBlur(
     enabled: Boolean,
     backdrop: Backdrop?,
@@ -116,7 +145,8 @@ internal fun Modifier.miuixSurfaceBlur(
             shape = shape,
             blurRadius = blurRadius,
             noiseCoefficient = noiseCoefficient,
-            colors = colors
+            colors = colors,
+            highlight = miuixBlurHighlight()
         )
     } else {
         background(fallbackColor, shape)

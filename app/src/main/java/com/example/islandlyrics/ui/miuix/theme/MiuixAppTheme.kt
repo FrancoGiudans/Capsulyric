@@ -23,11 +23,13 @@
 package com.example.islandlyrics.ui.miuix.theme
 
 import com.example.islandlyrics.ui.miuix.blur.LocalMiuixBlurEnabled
+import com.example.islandlyrics.ui.miuix.blur.LocalMiuixBlurEdgeHighlightEnabled
 
 import android.app.Activity
 import android.content.Context
 import android.content.SharedPreferences
 import com.example.islandlyrics.core.settings.AppPreferences
+import com.example.islandlyrics.core.settings.LabFeatureManager
 import com.example.islandlyrics.core.theme.ThemeHelper
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
@@ -77,6 +79,9 @@ fun MiuixAppTheme(
     var followSystem by remember { mutableStateOf(prefs.getBoolean(AppPreferences.Keys.THEME_FOLLOW_SYSTEM, true)) }
     var forceDark by remember { mutableStateOf(prefs.getBoolean(AppPreferences.Keys.THEME_DARK_MODE, false)) }
     var cardBlurEnabled by remember { mutableStateOf(prefs.getBoolean(AppPreferences.Keys.CARD_BLUR_ENABLED, false)) }
+    var blurEdgeHighlightEnabled by remember {
+        mutableStateOf(LabFeatureManager.isMiuixBlurEdgeHighlightEnabled(context))
+    }
     var customThemeColorArgb by remember { mutableStateOf(prefs.getInt(AppPreferences.Keys.THEME_CUSTOM_COLOR, 0xFF3482FF.toInt())) }
     var customThemeColorSource by remember {
         mutableStateOf(
@@ -100,6 +105,10 @@ fun MiuixAppTheme(
                 AppPreferences.Keys.THEME_FOLLOW_SYSTEM -> followSystem = prefs.getBoolean(AppPreferences.Keys.THEME_FOLLOW_SYSTEM, true)
                 AppPreferences.Keys.THEME_DARK_MODE -> forceDark = prefs.getBoolean(AppPreferences.Keys.THEME_DARK_MODE, false)
                 AppPreferences.Keys.CARD_BLUR_ENABLED -> cardBlurEnabled = prefs.getBoolean(AppPreferences.Keys.CARD_BLUR_ENABLED, false)
+                LabFeatureManager.KEY_MIUIX_BLUR_EDGE_HIGHLIGHT_ENABLED -> {
+                    blurEdgeHighlightEnabled =
+                        LabFeatureManager.isMiuixBlurEdgeHighlightEnabled(prefs)
+                }
                 AppPreferences.Keys.THEME_CUSTOM_COLOR -> customThemeColorArgb = prefs.getInt(AppPreferences.Keys.THEME_CUSTOM_COLOR, 0xFF3482FF.toInt())
                 MIUIX_THEME_COLOR_SOURCE_PREF_KEY, AppPreferences.Keys.THEME_CUSTOM_COLOR_GLOBAL_TINT -> {
                     customThemeColorSource = prefs.getString(
@@ -162,7 +171,8 @@ fun MiuixAppTheme(
 
     androidx.compose.runtime.CompositionLocalProvider(
         LocalNavigationEventDispatcherOwner provides navigationEventDispatcherOwner,
-        LocalMiuixBlurEnabled provides cardBlurEnabled
+        LocalMiuixBlurEnabled provides cardBlurEnabled,
+        LocalMiuixBlurEdgeHighlightEnabled provides blurEdgeHighlightEnabled
     ) {
         MiuixTheme(controller = controller) {
             if (backDispatcherOwner != null) {

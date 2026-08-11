@@ -35,3 +35,7 @@ val LocalMiuixBlurBackdrop = compositionLocalOf<Backdrop?> { null }
  */
 val LocalMiuixBlurEnabled = compositionLocalOf { false }
 
+/**
+ * CompositionLocal to provide the global MIUIX blur edge highlight state.
+ */
+val LocalMiuixBlurEdgeHighlightEnabled = compositionLocalOf { false }

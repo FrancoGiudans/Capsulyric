@@ -811,6 +811,8 @@ Within the log interface, select the share/export icon. You can specify a timefr
     <string name="diag_lab_super_island_text_limits_desc">Show controls for tuning the left and right Super Island text limits in Capsule &amp; Notification.</string>
     <string name="diag_lab_super_island_relaxed_text_limits_title">Relax Super Island Text Limits</string>
     <string name="diag_lab_super_island_relaxed_text_limits_desc">Allow larger ranges in Super Island text limit controls. Intended for testing on devices without a centered cutout.</string>
+    <string name="diag_lab_miuix_blur_edge_highlight_title">MIUIX Blur Edge Highlight</string>
+    <string name="diag_lab_miuix_blur_edge_highlight_desc">Add a glass-like highlight along the edges of MIUIX blur surfaces.</string>
     <string name="diag_lab_live_update_text_limits_title">Live Update Text Limits</string>
     <string name="diag_lab_live_update_text_limits_desc">Show a control for tuning the Live Update lyric text limit in Capsule &amp; Notification.</string>
     <string name="diag_lab_experiment_updates_title">Receive Test Builds</string>

@@ -92,6 +92,9 @@ fun MiuixLabScreen(
     var scrollEndHapticEnabled by remember {
         mutableStateOf(LabFeatureManager.isScrollEndHapticEnabled(context))
     }
+    var blurEdgeHighlightEnabled by remember {
+        mutableStateOf(LabFeatureManager.isMiuixBlurEdgeHighlightEnabled(context))
+    }
     val showOfflineModeDialog = remember { mutableStateOf(false) }
     val showAdvancedStyleDialog = remember { mutableStateOf(false) }
     val showLiveUpdateTextLimitsDialog = remember { mutableStateOf(false) }
@@ -204,6 +207,16 @@ fun MiuixLabScreen(
                         )
 
                     }
+
+                    SuperSwitch(
+                        title = stringResource(R.string.diag_lab_miuix_blur_edge_highlight_title),
+                        summary = stringResource(R.string.diag_lab_miuix_blur_edge_highlight_desc),
+                        checked = blurEdgeHighlightEnabled,
+                        onCheckedChange = {
+                            blurEdgeHighlightEnabled = it
+                            LabFeatureManager.setMiuixBlurEdgeHighlightEnabled(context, it)
+                        }
+                    )
 
                     SuperSwitch(
                         title = stringResource(R.string.diag_lab_live_update_text_limits_title),

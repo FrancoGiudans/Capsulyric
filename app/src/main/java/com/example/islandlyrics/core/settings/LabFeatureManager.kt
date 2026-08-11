@@ -39,6 +39,8 @@ object LabFeatureManager {
     private const val KEY_EXPERIMENT_UPDATES_MIGRATED = "lab_experiment_updates_migrated"
     private const val KEY_FEED_SOURCE_PRIORITY = "lab_feed_source_priority"
     const val KEY_SCROLL_END_HAPTIC_ENABLED = "lab_scroll_end_haptic_enabled"
+    const val KEY_MIUIX_BLUR_EDGE_HIGHLIGHT_ENABLED =
+        "lab_miuix_blur_edge_highlight_enabled"
 
     const val SUPER_ISLAND_STYLE_STANDARD = "standard"
     const val SUPER_ISLAND_STYLE_ADVANCED = "advanced_beta"
@@ -280,6 +282,18 @@ object LabFeatureManager {
         ensureInitialized(prefs)
         prefs.edit()
             .putBoolean(KEY_SCROLL_END_HAPTIC_ENABLED, enabled)
+            .apply()
+    }
+
+    fun isMiuixBlurEdgeHighlightEnabled(context: Context): Boolean =
+        isMiuixBlurEdgeHighlightEnabled(context.prefs())
+
+    fun isMiuixBlurEdgeHighlightEnabled(prefs: SharedPreferences): Boolean =
+        prefs.getBoolean(KEY_MIUIX_BLUR_EDGE_HIGHLIGHT_ENABLED, false)
+
+    fun setMiuixBlurEdgeHighlightEnabled(context: Context, enabled: Boolean) {
+        context.prefs().edit()
+            .putBoolean(KEY_MIUIX_BLUR_EDGE_HIGHLIGHT_ENABLED, enabled)
             .apply()
     }
 
