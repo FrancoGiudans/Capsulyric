@@ -1104,6 +1104,8 @@
     <string name="settings_floating_text_background">极简模式底纹</string>
     <string name="settings_floating_text_background_desc">在折叠（极简）状态下为文字后方加入灰色底纹</string>
     <string name="settings_floating_display_mode">显示模式</string>
+    <string name="settings_floating_secondary_text_mode">第二行内容</string>
+    <string name="settings_floating_secondary_text_mode_summary">次要文本：%1$s</string>
     <string name="settings_floating_mode_single">原文</string>
     <string name="settings_floating_mode_single_desc">仅显示当前歌词句</string>
     <string name="settings_floating_mode_romanization">拼音歌词</string>
@@ -1123,6 +1125,8 @@
     <string name="settings_floating_show_translation_desc">当前歌词提供翻译时，将翻译显示在原文下方</string>
     <string name="settings_floating_show_neighbor_line">显示当前句和下一句</string>
     <string name="settings_floating_show_neighbor_line_desc">完整时间轴歌词会显示当前句与下一句；当前句为最后一句时显示上一句与当前句</string>
+    <string name="settings_floating_show_second_line">显示第二行歌词</string>
+    <string name="settings_floating_show_second_line_desc">在当前句下方显示第二行歌词，按所选优先级取第一个可用内容（下一句歌词/翻译/罗马音）</string>
     <string name="settings_floating_split_neighbor_alignment">双行左右分布</string>
     <string name="settings_floating_split_neighbor_alignment_desc">将上下两句分别靠左右排列，而不是居中排列</string>
     <string name="settings_floating_word_highlight">逐字高亮</string>

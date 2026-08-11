@@ -1094,6 +1094,8 @@ Within the log interface, select the share/export icon. You can specify a timefr
     <string name="settings_floating_text_background">Minimal Mode Background</string>
     <string name="settings_floating_text_background_desc">Add a subtle dark background behind text in minimal state</string>
     <string name="settings_floating_display_mode">Display Mode</string>
+    <string name="settings_floating_secondary_text_mode">Second line content</string>
+    <string name="settings_floating_secondary_text_mode_summary">Secondary text: %1$s</string>
     <string name="settings_floating_mode_single">Original</string>
     <string name="settings_floating_mode_single_desc">Show only the current lyric line</string>
     <string name="settings_floating_mode_romanization">Romanization</string>
@@ -1113,6 +1115,8 @@ Within the log interface, select the share/export icon. You can specify a timefr
     <string name="settings_floating_show_translation_desc">Place translated lyrics below the current line when available</string>
     <string name="settings_floating_show_neighbor_line">Show Current and Next Line</string>
     <string name="settings_floating_show_neighbor_line_desc">For full lyric timelines, show the current line with the next line; at the end, show previous and current</string>
+    <string name="settings_floating_show_second_line">Show second lyric line</string>
+    <string name="settings_floating_show_second_line_desc">Show a second lyric line below the current one, resolved by the selected priority order (next line / translation / romanization)</string>
     <string name="settings_floating_split_neighbor_alignment">Split Two-Line Alignment</string>
     <string name="settings_floating_split_neighbor_alignment_desc">Align the upper and lower lyric lines to opposite sides instead of centering them</string>
     <string name="settings_floating_word_highlight">Word Highlight</string>

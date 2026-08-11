@@ -16,8 +16,8 @@
  *  *
  *  * You should have received a copy of the GNU General Public License
  *  * along with Capsulyric. If not, see <https://www.gnu.org/licenses/>.
- *
- *
+ *  *
+ *  *
  */
 
 package com.example.islandlyrics.feature.customsettings.miuix
@@ -28,33 +28,49 @@ import android.provider.Settings
 import android.widget.Toast
 import androidx.core.content.edit
 import androidx.core.net.toUri
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.DragHandle
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import com.example.islandlyrics.core.settings.LabFeatureManager
 import com.example.islandlyrics.R
 import com.example.islandlyrics.ui.miuix.blur.MiuixBlurDialog
 import com.example.islandlyrics.ui.overlay.floating.FloatingLyricsDisplayConfig
-import com.example.islandlyrics.ui.overlay.floating.FloatingLyricsDisplayMode
 import com.example.islandlyrics.ui.overlay.floating.FloatingLyricsNeighborAlignment
 import com.example.islandlyrics.ui.overlay.floating.FloatingLyricsRenderer
+import com.example.islandlyrics.ui.overlay.model.SecondaryTextMode
 import kotlinx.coroutines.CoroutineScope
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.ButtonDefaults
-import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TextButton
 import top.yukonga.miuix.kmp.basic.Slider
 import top.yukonga.miuix.kmp.preference.ArrowPreference as SuperArrow
 import top.yukonga.miuix.kmp.preference.CheckboxPreference
 import top.yukonga.miuix.kmp.preference.OverlayDropdownPreference as SuperDropdown
 import top.yukonga.miuix.kmp.preference.SwitchPreference as SuperSwitch
+import top.yukonga.miuix.kmp.theme.MiuixTheme
 import kotlin.math.roundToInt
 
 @Composable
@@ -68,14 +84,14 @@ fun MiuixFloatingLyricsSettingsSubScreen(prefs: SharedPreferences, scope: Corout
     var followAlbumColor by remember { mutableStateOf(prefs.getBoolean(FloatingLyricsRenderer.PREF_FOLLOW_ALBUM_COLOR, true)) }
     var textStroke by remember { mutableStateOf(prefs.getBoolean(FloatingLyricsRenderer.PREF_TEXT_STROKE, true)) }
     var textBackground by remember { mutableStateOf(prefs.getBoolean(FloatingLyricsRenderer.PREF_TEXT_BACKGROUND, false)) }
-    var displayModes by remember {
+    var secondaryTextModes by remember {
         mutableStateOf(
-            FloatingLyricsDisplayConfig.readDisplayModes(prefs)
+            FloatingLyricsDisplayConfig.readSecondaryTextModes(prefs).map { it.preferenceValue }
         )
     }
-    var showNeighborLine by remember {
+    var showSecondLine by remember {
         mutableStateOf(
-            FloatingLyricsDisplayConfig.readShowNeighborLine(prefs)
+            FloatingLyricsDisplayConfig.readShowSecondLine(prefs)
         )
     }
     var neighborAlignment by remember {
@@ -85,7 +101,7 @@ fun MiuixFloatingLyricsSettingsSubScreen(prefs: SharedPreferences, scope: Corout
             )
         )
     }
-    val showDisplayModeDialog = remember { mutableStateOf(false) }
+    val showSecondaryTextModeDialog = remember { mutableStateOf(false) }
     var wordHighlight by remember { mutableStateOf(prefs.getBoolean(FloatingLyricsRenderer.PREF_WORD_HIGHLIGHT, true)) }
     
     var textSizeSp by remember { mutableFloatStateOf(prefs.getFloat(FloatingLyricsRenderer.PREF_TEXT_SIZE, 15f)) }
@@ -94,20 +110,6 @@ fun MiuixFloatingLyricsSettingsSubScreen(prefs: SharedPreferences, scope: Corout
     }
     var floatingTextColorEditing by remember { mutableStateOf(false) }
     var floatingTextColorSnapshot by remember { mutableStateOf(customTextColor) }
-    val keepOneText = stringResource(R.string.settings_home_lyric_preview_keep_one)
-
-    fun setDisplayMode(mode: FloatingLyricsDisplayMode, checked: Boolean) {
-        val nextModes = FloatingLyricsDisplayMode.toggledModes(displayModes, mode, checked)
-        if (nextModes == null) {
-            Toast.makeText(context, keepOneText, Toast.LENGTH_SHORT).show()
-            return
-        }
-        displayModes = nextModes
-        prefs.edit {
-            putString(FloatingLyricsRenderer.PREF_DISPLAY_MODE, FloatingLyricsDisplayMode.preferenceValue(nextModes))
-            putBoolean(FloatingLyricsRenderer.PREF_SHOW_NEIGHBOR_LINE, showNeighborLine)
-        }
-    }
 
     Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
         SuperSwitch(
@@ -170,19 +172,19 @@ fun MiuixFloatingLyricsSettingsSubScreen(prefs: SharedPreferences, scope: Corout
             }
         )
 
-        FloatingDisplayModeSelector(
-            selectedModes = displayModes,
-            onClick = { showDisplayModeDialog.value = true }
-        )
-
         SuperSwitch(
-            title = stringResource(R.string.settings_floating_show_neighbor_line),
-            summary = stringResource(R.string.settings_floating_show_neighbor_line_desc),
-            checked = showNeighborLine,
+            title = stringResource(R.string.settings_floating_show_second_line),
+            summary = stringResource(R.string.settings_floating_show_second_line_desc),
+            checked = showSecondLine,
             onCheckedChange = {
-                showNeighborLine = it
+                showSecondLine = it
                 prefs.edit { putBoolean(FloatingLyricsRenderer.PREF_SHOW_NEIGHBOR_LINE, it) }
             }
+        )
+
+        FloatingSecondaryTextSelector(
+            secondaryTextModes = secondaryTextModes,
+            onClick = { showSecondaryTextModeDialog.value = true }
         )
 
         FloatingNeighborAlignmentSelector(
@@ -281,50 +283,32 @@ fun MiuixFloatingLyricsSettingsSubScreen(prefs: SharedPreferences, scope: Corout
         }
     }
 
-    if (showDisplayModeDialog.value) {
-        MiuixBlurDialog(
-            show = true,
-            title = stringResource(R.string.settings_floating_display_mode),
-            onDismissRequest = { showDisplayModeDialog.value = false }
-        ) {
-            Column(modifier = Modifier.fillMaxWidth()) {
-                CheckboxPreference(
-                    title = stringResource(R.string.settings_floating_mode_single),
-                    checked = FloatingLyricsDisplayMode.LYRIC in displayModes,
-                    onCheckedChange = { setDisplayMode(FloatingLyricsDisplayMode.LYRIC, it) }
-                )
-                CheckboxPreference(
-                    title = stringResource(R.string.settings_floating_mode_translation),
-                    checked = FloatingLyricsDisplayMode.TRANSLATION in displayModes,
-                    onCheckedChange = { setDisplayMode(FloatingLyricsDisplayMode.TRANSLATION, it) }
-                )
-                CheckboxPreference(
-                    title = stringResource(R.string.settings_floating_mode_romanization),
-                    checked = FloatingLyricsDisplayMode.ROMANIZATION in displayModes,
-                    onCheckedChange = { setDisplayMode(FloatingLyricsDisplayMode.ROMANIZATION, it) }
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                TextButton(
-                    text = stringResource(R.string.backup_dialog_confirm),
-                    onClick = { showDisplayModeDialog.value = false },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.textButtonColorsPrimary()
+    if (showSecondaryTextModeDialog.value) {
+        MiuixFloatingSecondaryTextModeDialog(
+            selectedModes = secondaryTextModes,
+            onDismiss = { showSecondaryTextModeDialog.value = false },
+            onCommit = { modes ->
+                secondaryTextModes = modes
+                SecondaryTextMode.write(
+                    prefs,
+                    FloatingLyricsDisplayConfig.KEY_SECONDARY_TEXT_MODES,
+                    modes.mapNotNull { SecondaryTextMode.from(it) }
                 )
             }
-        }
+        )
     }
 }
 
 @Composable
-private fun FloatingDisplayModeSelector(
-    selectedModes: Set<FloatingLyricsDisplayMode>,
+private fun FloatingSecondaryTextSelector(
+    secondaryTextModes: List<String>,
     onClick: () -> Unit
 ) {
     SuperArrow(
-        title = stringResource(R.string.settings_floating_display_mode),
+        title = stringResource(R.string.settings_floating_secondary_text_mode),
         summary = stringResource(
-            R.string.settings_home_lyric_preview_summary_fmt,
-            selectedModes.labelForFloatingDisplayMode()
+            R.string.settings_floating_secondary_text_mode_summary,
+            secondaryTextModes.labelForFloatingSecondaryText()
         ),
         onClick = onClick
     )
@@ -353,19 +337,204 @@ private fun FloatingNeighborAlignmentSelector(
 }
 
 @Composable
-private fun Set<FloatingLyricsDisplayMode>.labelForFloatingDisplayMode(): String {
-    val labels = buildList {
-        if (FloatingLyricsDisplayMode.LYRIC in this@labelForFloatingDisplayMode) {
-            add(stringResource(R.string.settings_floating_mode_single))
-        }
-        if (FloatingLyricsDisplayMode.TRANSLATION in this@labelForFloatingDisplayMode) {
-            add(stringResource(R.string.settings_floating_mode_translation))
-        }
-        if (FloatingLyricsDisplayMode.ROMANIZATION in this@labelForFloatingDisplayMode) {
-            add(stringResource(R.string.settings_floating_mode_romanization))
+private fun MiuixFloatingSecondaryTextModeDialog(
+    selectedModes: List<String>,
+    onDismiss: () -> Unit,
+    onCommit: (List<String>) -> Unit
+) {
+    val context = LocalContext.current
+    val keepOneText = stringResource(R.string.settings_home_lyric_preview_keep_one)
+    var modes by remember(selectedModes) { mutableStateOf(selectedModes) }
+    var draggingMode by remember { mutableStateOf<String?>(null) }
+
+    fun toggle(mode: SecondaryTextMode, checked: Boolean) {
+        val prefValue = mode.preferenceValue
+        if (checked) {
+            if (prefValue !in modes) {
+                modes = modes + prefValue
+            }
+        } else {
+            if (modes.size <= 1) {
+                Toast.makeText(context, keepOneText, Toast.LENGTH_SHORT).show()
+                return
+            }
+            modes = modes - prefValue
         }
     }
+
+    MiuixBlurDialog(
+        show = true,
+        title = stringResource(R.string.settings_floating_secondary_text_mode),
+        onDismissRequest = onDismiss
+    ) {
+        Column(modifier = Modifier.fillMaxWidth()) {
+            SecondaryTextMode.entries.forEach { mode ->
+                CheckboxPreference(
+                    title = stringResource(mode.labelRes()),
+                    checked = mode.preferenceValue in modes,
+                    onCheckedChange = { toggle(mode, it) }
+                )
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = stringResource(R.string.settings_super_island_secondary_text_priority),
+                color = MiuixTheme.colorScheme.onSurfaceSecondary,
+                fontSize = MiuixTheme.textStyles.body2.fontSize,
+                modifier = Modifier.padding(horizontal = 16.dp)
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            val rowHeight = 52.dp
+            val orderedModes = modes.mapNotNull { SecondaryTextMode.from(it) }
+            Box(modifier = Modifier.fillMaxWidth().height(rowHeight * orderedModes.size)) {
+                orderedModes.forEachIndexed { index, mode ->
+                    key(mode.preferenceValue) {
+                        MiuixSecondaryModeDragRow(
+                            label = stringResource(mode.labelRes()),
+                            index = index,
+                            rowHeight = rowHeight,
+                            itemCount = orderedModes.size,
+                            isDragging = draggingMode == mode.preferenceValue,
+                            onDragStart = { draggingMode = mode.preferenceValue },
+                            onDragMove = { from, to ->
+                                modes = modes.moveItem(from, to)
+                            },
+                            onDragCancel = { draggingMode = null },
+                            onDragEnd = { draggingMode = null }
+                        )
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+            TextButton(
+                text = stringResource(R.string.backup_dialog_confirm),
+                onClick = {
+                    val finalModes = orderedModes
+                        .ifEmpty { listOf(SecondaryTextMode.NEXT_LYRIC) }
+                        .map { it.preferenceValue }
+                    onCommit(finalModes)
+                    onDismiss()
+                },
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.textButtonColorsPrimary()
+            )
+        }
+    }
+}
+
+@Composable
+private fun MiuixSecondaryModeDragRow(
+    label: String,
+    index: Int,
+    rowHeight: Dp,
+    itemCount: Int,
+    isDragging: Boolean,
+    onDragStart: () -> Unit,
+    onDragMove: (Int, Int) -> Unit,
+    onDragCancel: () -> Unit,
+    onDragEnd: () -> Unit
+) {
+    var dragOffset by remember { mutableFloatStateOf(0f) }
+    val currentIndex by rememberUpdatedState(index)
+    val rowHeightPx = with(LocalDensity.current) { rowHeight.toPx() }
+    val animatedY by animateDpAsState(
+        targetValue = rowHeight * index,
+        animationSpec = spring(stiffness = 650f, dampingRatio = 0.85f),
+        label = "secondaryModeReorderY"
+    )
+    val baseY = if (isDragging) rowHeight * index else animatedY
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(rowHeight)
+            .offset {
+                IntOffset(
+                    x = 0,
+                    y = baseY.roundToPx() + if (isDragging) dragOffset.roundToInt() else 0
+                )
+            }
+            .zIndex(if (isDragging) 1f else 0f)
+            .graphicsLayer {
+                alpha = if (isDragging) 0.92f else 1f
+                scaleX = if (isDragging) 1.01f else 1f
+                scaleY = if (isDragging) 1.01f else 1f
+            }
+            .then(
+                if (isDragging) {
+                    Modifier
+                        .background(
+                            color = MiuixTheme.colorScheme.surfaceVariant.copy(alpha = 0.82f),
+                            shape = RoundedCornerShape(8.dp)
+                        )
+                        .padding(horizontal = 12.dp)
+                } else {
+                    Modifier.padding(horizontal = 16.dp)
+                }
+            ),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            label,
+            modifier = Modifier.weight(1f),
+            color = MiuixTheme.colorScheme.onSurface
+        )
+        Icon(
+            Icons.Default.DragHandle,
+            contentDescription = stringResource(R.string.action_drag_sort),
+            tint = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+            modifier = Modifier
+                .size(40.dp)
+                .padding(8.dp)
+                .pointerInput(itemCount) {
+                    detectDragGestures(
+                        onDragStart = {
+                            dragOffset = 0f
+                            onDragStart()
+                        },
+                        onDragEnd = {
+                            dragOffset = 0f
+                            onDragEnd()
+                        },
+                        onDragCancel = {
+                            dragOffset = 0f
+                            onDragCancel()
+                        },
+                        onDrag = { change, dragAmount ->
+                            change.consume()
+                            dragOffset += dragAmount.y
+                            val from = currentIndex
+                            val target = (from + (dragOffset / rowHeightPx).roundToInt()).coerceIn(0, itemCount - 1)
+                            if (target != from) {
+                                dragOffset -= (target - from) * rowHeightPx
+                                onDragMove(from, target)
+                            }
+                        }
+                    )
+                }
+        )
+    }
+}
+
+@Composable
+private fun List<String>.labelForFloatingSecondaryText(): String {
+    val labels = mapNotNull { mode ->
+        SecondaryTextMode.from(mode)?.let { stringResource(it.labelRes()) }
+    }
     return labels.ifEmpty {
-        listOf(stringResource(R.string.settings_floating_mode_single))
+        listOf(stringResource(SecondaryTextMode.NEXT_LYRIC.labelRes()))
     }.joinToString(" / ")
+}
+
+@Composable
+private fun SecondaryTextMode.labelRes(): Int = when (this) {
+    SecondaryTextMode.NEXT_LYRIC -> R.string.super_island_secondary_text_next_lyric
+    SecondaryTextMode.ROMANIZATION -> R.string.super_island_secondary_text_romanization
+    SecondaryTextMode.TRANSLATION -> R.string.super_island_secondary_text_translation
+}
+
+private fun <T> List<T>.moveItem(from: Int, to: Int): List<T> {
+    if (from == to || from !in indices || to !in indices) return this
+    return toMutableList().apply {
+        val item = removeAt(from)
+        add(to, item)
+    }
 }

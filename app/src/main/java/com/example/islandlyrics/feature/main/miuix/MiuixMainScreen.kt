@@ -139,6 +139,17 @@ fun MiuixMainScreen(
     val repoParsedLyrics by repo.liveParsedLyrics.observeAsState()
     val repoCurrentLine by repo.liveCurrentLine.observeAsState()
     val repoLyricResolveState by repo.liveLyricResolveState.observeAsState(LyricRepository.LyricResolveState.PENDING)
+    val repoNextLine = remember(repoParsedLyrics, repoCurrentLine) {
+        val lines = repoParsedLyrics?.lines
+        if (lines.isNullOrEmpty() || repoCurrentLine == null) {
+            null
+        } else {
+            val index = lines.indexOfFirst {
+                it === repoCurrentLine || it.startTime == repoCurrentLine?.startTime
+            }
+            if (index >= 0 && index + 1 < lines.size) lines[index + 1] else null
+        }
+    }
 
     var activeControllers by remember { mutableStateOf<List<MediaController>>(emptyList()) }
 
@@ -147,7 +158,7 @@ fun MiuixMainScreen(
             if (key == AppPreferences.Keys.THEME_DYNAMIC_COLOR) {
                 dynamicThemeEnabled = prefs.getBoolean(AppPreferences.Keys.THEME_DYNAMIC_COLOR, true)
             }
-            if (key == AppPreferences.Keys.HOME_LYRIC_PREVIEW_DISPLAY_MODES) {
+            if (key == AppPreferences.Keys.HOME_LYRIC_PREVIEW_SECONDARY_MODES) {
                 homeLyricPreviewDisplayModes = HomeLyricPreviewDisplay.read(prefs)
             }
         }
@@ -356,7 +367,8 @@ fun MiuixMainScreen(
                                     HomeLyricPreviewDisplay.previewText(
                                         modes = homeLyricPreviewDisplayModes,
                                         currentLine = repoCurrentLine,
-                                        lyricInfo = repoLyric
+                                        lyricInfo = repoLyric,
+                                        nextLine = repoNextLine
                                     )
                                 } else {
                                     null

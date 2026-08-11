@@ -42,6 +42,7 @@ import com.example.islandlyrics.ui.overlay.superisland.config.SuperIslandColorSo
 import com.example.islandlyrics.ui.overlay.superisland.config.SuperIslandDualLineMode
 import com.example.islandlyrics.ui.overlay.superisland.config.SuperIslandSecondaryTextMode
 import com.example.islandlyrics.ui.overlay.superisland.config.SuperIslandTemplate2PicSource
+import com.example.islandlyrics.ui.overlay.model.SecondaryTextMode
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -153,7 +154,10 @@ class CustomSettingsViewModel(application: Application) : AndroidViewModel(appli
             is CustomSettingsAction.SetPredictiveBackAnimationStyle ->
                 PredictiveBackAnimationStyle.write(prefs, action.value)
             is CustomSettingsAction.SetHomeLyricPreviewDisplayModes ->
-                HomeLyricPreviewDisplay.write(prefs, action.value)
+                HomeLyricPreviewDisplay.write(
+                    prefs,
+                    action.value.mapNotNull { SecondaryTextMode.from(it) }
+                )
         }
         refresh()
     }
@@ -210,7 +214,7 @@ class CustomSettingsViewModel(application: Application) : AndroidViewModel(appli
             predictiveBackEnabled = prefs.getBoolean(PREF_PREDICTIVE_BACK_ENABLED, true),
             predictiveBackAnimationMode = PredictiveBackAnimationMode.read(prefs),
             predictiveBackAnimationStyle = PredictiveBackAnimationStyle.read(prefs),
-            homeLyricPreviewDisplayModes = HomeLyricPreviewDisplay.read(prefs),
+            homeLyricPreviewDisplayModes = HomeLyricPreviewDisplay.read(prefs).map { it.preferenceValue },
             monetEnabled = prefs.getBoolean(AppPreferences.Keys.THEME_DYNAMIC_COLOR, true),
             customThemeGlobalTintEnabled = prefs.getBoolean(AppPreferences.Keys.THEME_CUSTOM_COLOR_GLOBAL_TINT, false),
             cardBlurEnabled = prefs.getBoolean(AppPreferences.Keys.CARD_BLUR_ENABLED, false)

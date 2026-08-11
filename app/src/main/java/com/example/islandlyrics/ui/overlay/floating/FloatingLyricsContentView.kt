@@ -31,25 +31,20 @@ import android.text.style.ForegroundColorSpan
 import android.view.Gravity
 import android.widget.LinearLayout
 import com.example.islandlyrics.ui.overlay.model.LyricPresentation
+import com.example.islandlyrics.ui.overlay.model.SecondaryTextResolver
 import com.example.islandlyrics.ui.overlay.model.UIState
 import com.example.islandlyrics.ui.overlay.views.OutlineTextView
 import kotlin.math.max
 
 internal class FloatingLyricsContentView(context: Context) : LinearLayout(context) {
-    private val topNeighborTv = lyricTextView()
-    private val romanizationTv = lyricTextView()
     private val mainLyricTv = lyricTextView()
-    private val translationTv = lyricTextView()
-    private val bottomNeighborTv = lyricTextView()
+    private val secondaryTv = lyricTextView()
 
     init {
         orientation = VERTICAL
         gravity = Gravity.CENTER
-        addView(topNeighborTv, matchWidth())
-        addView(romanizationTv, matchWidth())
         addView(mainLyricTv, matchWidth())
-        addView(translationTv, matchWidth())
-        addView(bottomNeighborTv, matchWidth())
+        addView(secondaryTv, matchWidth())
     }
 
     fun render(
@@ -70,80 +65,36 @@ internal class FloatingLyricsContentView(context: Context) : LinearLayout(contex
             return
         }
 
-        val pair = resolveLinePair(presentation, displayConfig)
-        val currentGravity = resolveCurrentGravity(pair, displayConfig)
-
-        pair.topNeighbor?.let {
-            renderNeighbor(topNeighborTv, it, style, textColor, pair.topGravity)
+        // 第二行歌词：采用模板2的多选优先级系统，仅显示第一个可用的选中内容
+        val secondaryText = if (displayConfig.showSecondLine) {
+            SecondaryTextResolver.resolve(
+                modes = displayConfig.secondaryTextModes,
+                translation = currentLine.translation,
+                romanization = currentLine.romanization,
+                nextLyric = presentation.nextLine?.text
+            )
+        } else {
+            null
         }
 
-        renderCurrentLine(
-            currentLine = currentLine,
-            presentation = presentation,
-            style = style,
-            displayConfig = displayConfig,
-            textColor = textColor,
-            gravity = currentGravity
-        )
+        val splitAlignment =
+            displayConfig.neighborAlignment == FloatingLyricsNeighborAlignment.SPLIT_START_END &&
+                secondaryText != null
+        val mainGravity = if (splitAlignment) Gravity.START else Gravity.CENTER
+        val secondaryGravity = if (splitAlignment) Gravity.END else Gravity.CENTER
 
-        pair.bottomNeighbor?.let {
-            renderNeighbor(bottomNeighborTv, it, style, textColor, pair.bottomGravity)
-        }
-    }
-
-    private fun renderCurrentLine(
-        currentLine: LyricPresentation.DisplayLine,
-        presentation: LyricPresentation,
-        style: FloatingLyricsStyle,
-        displayConfig: FloatingLyricsDisplayConfig,
-        textColor: Int,
-        gravity: Int
-    ) {
-        val sidecarSize = max(10f, style.textSizeSp * 0.72f)
-        val lines = buildList {
-            if (FloatingLyricsDisplayMode.ROMANIZATION in displayConfig.displayModes &&
-                !currentLine.romanization.isNullOrBlank()
-            ) {
-                add(LyricLayer(romanizationTv, currentLine.romanization, sidecarSize, 0.74f, false))
-            }
-            if (FloatingLyricsDisplayMode.LYRIC in displayConfig.displayModes) {
-                add(LyricLayer(mainLyricTv, currentLine.text, style.textSizeSp, 1f, true))
-            }
-            if (FloatingLyricsDisplayMode.TRANSLATION in displayConfig.displayModes &&
-                !currentLine.translation.isNullOrBlank()
-            ) {
-                add(LyricLayer(translationTv, currentLine.translation, sidecarSize, 0.74f, false))
-            }
+        applyTextStyle(mainLyricTv, style, textColor, style.textSizeSp, mainGravity, alpha = 1f)
+        mainLyricTv.text = if (displayConfig.wordHighlight && presentation.wordProgress != null) {
+            highlightedText(currentLine.text, presentation.wordProgress, textColor)
+        } else {
+            currentLine.text
         }
 
-        val visibleLines = lines.ifEmpty {
-            listOf(LyricLayer(mainLyricTv, currentLine.text, style.textSizeSp, 1f, true))
+        if (secondaryText != null) {
+            val sidecarSize = max(10f, style.textSizeSp * 0.72f)
+            applyTextStyle(secondaryTv, style, textColor, sidecarSize, secondaryGravity, alpha = 0.74f)
+            secondaryTv.text = secondaryText
         }
-
-        visibleLines.forEachIndexed { index, line ->
-            val lineGravity = resolveLayerGravity(index, visibleLines.size, displayConfig, gravity)
-            applyTextStyle(line.target, style, textColor, line.textSize, lineGravity, alpha = line.alpha)
-            line.target.text = if (line.highlight &&
-                displayConfig.wordHighlight &&
-                presentation.wordProgress != null
-            ) {
-                highlightedText(line.text, presentation.wordProgress, textColor)
-            } else {
-                line.text
-            }
-        }
-    }
-
-    private fun renderNeighbor(
-        target: OutlineTextView,
-        line: LyricPresentation.DisplayLine,
-        style: FloatingLyricsStyle,
-        textColor: Int,
-        gravity: Int
-    ) {
-        applyTextStyle(target, style, textColor, max(10f, style.textSizeSp * 0.86f), gravity, alpha = 0.68f)
-        target.text = line.text
-        target.visibility = VISIBLE
     }
 
     private fun applyTextStyle(
@@ -189,64 +140,8 @@ internal class FloatingLyricsContentView(context: Context) : LinearLayout(contex
     }
 
     private fun hideSecondaryViews() {
-        topNeighborTv.visibility = GONE
-        romanizationTv.visibility = GONE
         mainLyricTv.visibility = GONE
-        translationTv.visibility = GONE
-        bottomNeighborTv.visibility = GONE
-    }
-
-    private fun resolveLinePair(
-        presentation: LyricPresentation,
-        displayConfig: FloatingLyricsDisplayConfig
-    ): LinePair {
-        val center = Gravity.CENTER
-        if (!displayConfig.showNeighborLine || !presentation.canShowNeighborLine) {
-            return LinePair(topGravity = center, bottomGravity = center)
-        }
-
-        val splitAlignment = displayConfig.neighborAlignment == FloatingLyricsNeighborAlignment.SPLIT_START_END
-        val topGravity = if (splitAlignment) Gravity.START else center
-        val bottomGravity = if (splitAlignment) Gravity.END else center
-        val next = presentation.nextLine
-        return if (next != null) {
-            LinePair(
-                bottomNeighbor = next,
-                currentOnTop = true,
-                topGravity = topGravity,
-                bottomGravity = bottomGravity
-            )
-        } else {
-            LinePair(
-                topNeighbor = presentation.previousLine,
-                currentOnTop = false,
-                topGravity = topGravity,
-                bottomGravity = bottomGravity
-            )
-        }
-    }
-
-    private fun resolveCurrentGravity(pair: LinePair, displayConfig: FloatingLyricsDisplayConfig): Int {
-        if (!displayConfig.showNeighborLine ||
-            displayConfig.neighborAlignment != FloatingLyricsNeighborAlignment.SPLIT_START_END
-        ) {
-            return Gravity.CENTER
-        }
-        return if (pair.currentOnTop) pair.topGravity else pair.bottomGravity
-    }
-
-    private fun resolveLayerGravity(
-        index: Int,
-        count: Int,
-        displayConfig: FloatingLyricsDisplayConfig,
-        fallbackGravity: Int
-    ): Int {
-        if (count != 2 ||
-            displayConfig.neighborAlignment != FloatingLyricsNeighborAlignment.SPLIT_START_END
-        ) {
-            return fallbackGravity
-        }
-        return if (index == 0) Gravity.START else Gravity.END
+        secondaryTv.visibility = GONE
     }
 
     private fun lyricTextView(): OutlineTextView {
@@ -272,19 +167,4 @@ internal class FloatingLyricsContentView(context: Context) : LinearLayout(contex
         )
     }
 
-    private data class LinePair(
-        val topNeighbor: LyricPresentation.DisplayLine? = null,
-        val bottomNeighbor: LyricPresentation.DisplayLine? = null,
-        val currentOnTop: Boolean = true,
-        val topGravity: Int,
-        val bottomGravity: Int
-    )
-
-    private data class LyricLayer(
-        val target: OutlineTextView,
-        val text: String,
-        val textSize: Float,
-        val alpha: Float,
-        val highlight: Boolean
-    )
 }

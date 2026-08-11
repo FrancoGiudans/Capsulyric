@@ -16,8 +16,8 @@
  *  *
  *  * You should have received a copy of the GNU General Public License
  *  * along with Capsulyric. If not, see <https://www.gnu.org/licenses/>.
- *
- *
+ *  *
+ *  *
  */
 
 package com.example.islandlyrics.feature.customsettings.material
@@ -28,14 +28,31 @@ import android.provider.Settings
 import android.widget.Toast
 import androidx.core.content.edit
 import androidx.core.net.toUri
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import com.example.islandlyrics.core.settings.LabFeatureManager
 import com.example.islandlyrics.R
 import com.example.islandlyrics.feature.settings.material.SettingsCard
@@ -43,13 +60,10 @@ import com.example.islandlyrics.feature.settings.material.SettingsCardDivider
 import com.example.islandlyrics.feature.settings.material.SettingsSwitchItem
 import com.example.islandlyrics.feature.settings.material.SettingsTextItem
 import com.example.islandlyrics.ui.overlay.floating.FloatingLyricsDisplayConfig
-import com.example.islandlyrics.ui.overlay.floating.FloatingLyricsDisplayMode
 import com.example.islandlyrics.ui.overlay.floating.FloatingLyricsNeighborAlignment
 import com.example.islandlyrics.ui.overlay.floating.FloatingLyricsRenderer
-import androidx.compose.foundation.clickable
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
+import com.example.islandlyrics.ui.overlay.model.SecondaryTextMode
+import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -62,14 +76,14 @@ fun FloatingLyricsSettingsSubScreen(prefs: SharedPreferences) {
     var followAlbumColor by remember { mutableStateOf(prefs.getBoolean(FloatingLyricsRenderer.PREF_FOLLOW_ALBUM_COLOR, true)) }
     var textStroke by remember { mutableStateOf(prefs.getBoolean(FloatingLyricsRenderer.PREF_TEXT_STROKE, true)) }
     var textBackground by remember { mutableStateOf(prefs.getBoolean(FloatingLyricsRenderer.PREF_TEXT_BACKGROUND, false)) }
-    var displayModes by remember {
+    var secondaryTextModes by remember {
         mutableStateOf(
-            FloatingLyricsDisplayConfig.readDisplayModes(prefs)
+            FloatingLyricsDisplayConfig.readSecondaryTextModes(prefs).map { it.preferenceValue }
         )
     }
-    var showNeighborLine by remember {
+    var showSecondLine by remember {
         mutableStateOf(
-            FloatingLyricsDisplayConfig.readShowNeighborLine(prefs)
+            FloatingLyricsDisplayConfig.readShowSecondLine(prefs)
         )
     }
     var neighborAlignment by remember {
@@ -79,7 +93,7 @@ fun FloatingLyricsSettingsSubScreen(prefs: SharedPreferences) {
             )
         )
     }
-    val showDisplayModeDialog = remember { mutableStateOf(false) }
+    val showSecondaryTextModeDialog = remember { mutableStateOf(false) }
     val showNeighborAlignmentDialog = remember { mutableStateOf(false) }
     var wordHighlight by remember { mutableStateOf(prefs.getBoolean(FloatingLyricsRenderer.PREF_WORD_HIGHLIGHT, true)) }
     var textSizeSp by remember { mutableFloatStateOf(prefs.getFloat(FloatingLyricsRenderer.PREF_TEXT_SIZE, 15f)) }
@@ -90,19 +104,6 @@ fun FloatingLyricsSettingsSubScreen(prefs: SharedPreferences) {
     var floatingTextColorEditing by remember { mutableStateOf(false) }
     var floatingTextColorSnapshot by remember { mutableStateOf(customTextColor) }
     val keepOneText = stringResource(R.string.settings_home_lyric_preview_keep_one)
-
-    fun setDisplayMode(mode: FloatingLyricsDisplayMode, checked: Boolean) {
-        val nextModes = FloatingLyricsDisplayMode.toggledModes(displayModes, mode, checked)
-        if (nextModes == null) {
-            Toast.makeText(context, keepOneText, Toast.LENGTH_SHORT).show()
-            return
-        }
-        displayModes = nextModes
-        prefs.edit {
-            putString(FloatingLyricsRenderer.PREF_DISPLAY_MODE, FloatingLyricsDisplayMode.preferenceValue(nextModes))
-            putBoolean(FloatingLyricsRenderer.PREF_SHOW_NEIGHBOR_LINE, showNeighborLine)
-        }
-    }
 
     SettingsCard {
         SettingsSwitchItem(
@@ -170,20 +171,20 @@ fun FloatingLyricsSettingsSubScreen(prefs: SharedPreferences) {
             )
 
             SettingsCardDivider()
-            FloatingDisplayModeSelector(
-                selectedModes = displayModes,
-                onClick = { showDisplayModeDialog.value = true }
+            SettingsSwitchItem(
+                title = stringResource(R.string.settings_floating_show_second_line),
+                subtitle = stringResource(R.string.settings_floating_show_second_line_desc),
+                checked = showSecondLine,
+                onCheckedChange = {
+                    showSecondLine = it
+                    prefs.edit { putBoolean(FloatingLyricsRenderer.PREF_SHOW_NEIGHBOR_LINE, it) }
+                }
             )
 
             SettingsCardDivider()
-            SettingsSwitchItem(
-                title = stringResource(R.string.settings_floating_show_neighbor_line),
-                subtitle = stringResource(R.string.settings_floating_show_neighbor_line_desc),
-                checked = showNeighborLine,
-                onCheckedChange = {
-                    showNeighborLine = it
-                    prefs.edit { putBoolean(FloatingLyricsRenderer.PREF_SHOW_NEIGHBOR_LINE, it) }
-                }
+            FloatingSecondaryTextSelector(
+                secondaryTextModes = secondaryTextModes,
+                onClick = { showSecondaryTextModeDialog.value = true }
             )
 
             SettingsCardDivider()
@@ -287,33 +288,17 @@ fun FloatingLyricsSettingsSubScreen(prefs: SharedPreferences) {
         }
     }
 
-    if (showDisplayModeDialog.value) {
-        AlertDialog(
-            onDismissRequest = { showDisplayModeDialog.value = false },
-            title = { Text(stringResource(R.string.settings_floating_display_mode)) },
-            text = {
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    FloatingDisplayModeOption(
-                        title = stringResource(R.string.settings_floating_mode_single),
-                        checked = FloatingLyricsDisplayMode.LYRIC in displayModes,
-                        onCheckedChange = { setDisplayMode(FloatingLyricsDisplayMode.LYRIC, it) }
-                    )
-                    FloatingDisplayModeOption(
-                        title = stringResource(R.string.settings_floating_mode_translation),
-                        checked = FloatingLyricsDisplayMode.TRANSLATION in displayModes,
-                        onCheckedChange = { setDisplayMode(FloatingLyricsDisplayMode.TRANSLATION, it) }
-                    )
-                    FloatingDisplayModeOption(
-                        title = stringResource(R.string.settings_floating_mode_romanization),
-                        checked = FloatingLyricsDisplayMode.ROMANIZATION in displayModes,
-                        onCheckedChange = { setDisplayMode(FloatingLyricsDisplayMode.ROMANIZATION, it) }
-                    )
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = { showDisplayModeDialog.value = false }) {
-                    Text(stringResource(R.string.backup_dialog_confirm))
-                }
+    if (showSecondaryTextModeDialog.value) {
+        MaterialFloatingSecondaryTextModeDialog(
+            selectedModes = secondaryTextModes,
+            onDismiss = { showSecondaryTextModeDialog.value = false },
+            onCommit = { modes ->
+                secondaryTextModes = modes
+                SecondaryTextMode.write(
+                    prefs,
+                    FloatingLyricsDisplayConfig.KEY_SECONDARY_TEXT_MODES,
+                    modes.mapNotNull { SecondaryTextMode.from(it) }
+                )
             }
         )
     }
@@ -358,13 +343,13 @@ fun FloatingLyricsSettingsSubScreen(prefs: SharedPreferences) {
 }
 
 @Composable
-private fun FloatingDisplayModeSelector(
-    selectedModes: Set<FloatingLyricsDisplayMode>,
+private fun FloatingSecondaryTextSelector(
+    secondaryTextModes: List<String>,
     onClick: () -> Unit
 ) {
     SettingsTextItem(
-        title = stringResource(R.string.settings_floating_display_mode),
-        value = selectedModes.labelForFloatingDisplayMode(),
+        title = stringResource(R.string.settings_floating_secondary_text_mode),
+        value = secondaryTextModes.labelForFloatingSecondaryText(),
         onClick = onClick
     )
 }
@@ -386,26 +371,185 @@ private fun FloatingNeighborAlignmentSelector(
 }
 
 @Composable
-private fun FloatingDisplayModeOption(
-    title: String,
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit
+private fun MaterialFloatingSecondaryTextModeDialog(
+    selectedModes: List<String>,
+    onDismiss: () -> Unit,
+    onCommit: (List<String>) -> Unit
 ) {
+    val context = LocalContext.current
+    val keepOneText = stringResource(R.string.settings_home_lyric_preview_keep_one)
+    var modes by remember(selectedModes) { mutableStateOf(selectedModes) }
+    var draggingMode by remember { mutableStateOf<String?>(null) }
+
+    fun toggle(mode: SecondaryTextMode, checked: Boolean) {
+        val prefValue = mode.preferenceValue
+        if (checked) {
+            if (prefValue !in modes) {
+                modes = modes + prefValue
+            }
+        } else {
+            if (modes.size <= 1) {
+                Toast.makeText(context, keepOneText, Toast.LENGTH_SHORT).show()
+                return
+            }
+            modes = modes - prefValue
+        }
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.settings_floating_secondary_text_mode)) },
+        text = {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                SecondaryTextMode.entries.forEach { mode ->
+                    MaterialHomeLyricPreviewOption(
+                        title = stringResource(mode.materialLabelRes()),
+                        checked = mode.preferenceValue in modes,
+                        onCheckedChange = { toggle(mode, it) }
+                    )
+                }
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = stringResource(R.string.settings_super_island_secondary_text_priority),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(start = 48.dp)
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                val rowHeight = 48.dp
+                val orderedModes = modes.mapNotNull { SecondaryTextMode.from(it) }
+                Box(modifier = Modifier.fillMaxWidth().height(rowHeight * orderedModes.size)) {
+                    orderedModes.forEachIndexed { index, mode ->
+                        key(mode.preferenceValue) {
+                            MaterialSecondaryModeDragRow(
+                                label = stringResource(mode.materialLabelRes()),
+                                index = index,
+                                rowHeight = rowHeight,
+                                itemCount = orderedModes.size,
+                                isDragging = draggingMode == mode.preferenceValue,
+                                onDragStart = { draggingMode = mode.preferenceValue },
+                                onDragMove = { from, to ->
+                                    modes = modes.moveItem(from, to)
+                                },
+                                onDragCancel = { draggingMode = null },
+                                onDragEnd = { draggingMode = null }
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    val finalModes = modes
+                        .mapNotNull { SecondaryTextMode.from(it) }
+                        .ifEmpty { listOf(SecondaryTextMode.NEXT_LYRIC) }
+                        .map { it.preferenceValue }
+                    onCommit(finalModes)
+                    onDismiss()
+                }
+            ) {
+                Text(stringResource(R.string.backup_dialog_confirm))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.dialog_btn_cancel))
+            }
+        }
+    )
+}
+
+@Composable
+private fun MaterialSecondaryModeDragRow(
+    label: String,
+    index: Int,
+    rowHeight: Dp,
+    itemCount: Int,
+    isDragging: Boolean,
+    onDragStart: () -> Unit,
+    onDragMove: (Int, Int) -> Unit,
+    onDragCancel: () -> Unit,
+    onDragEnd: () -> Unit
+) {
+    var dragOffset by remember { mutableFloatStateOf(0f) }
+    val currentIndex by rememberUpdatedState(index)
+    val rowHeightPx = with(LocalDensity.current) { rowHeight.toPx() }
+    val animatedY by animateDpAsState(
+        targetValue = rowHeight * index,
+        animationSpec = spring(stiffness = 650f, dampingRatio = 0.85f),
+        label = "secondaryModeReorderY"
+    )
+    val baseY = if (isDragging) rowHeight * index else animatedY
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp),
+            .height(rowHeight)
+            .offset {
+                IntOffset(
+                    x = 0,
+                    y = baseY.roundToPx() + if (isDragging) dragOffset.roundToInt() else 0
+                )
+            }
+            .zIndex(if (isDragging) 1f else 0f)
+            .graphicsLayer {
+                alpha = if (isDragging) 0.92f else 1f
+                scaleX = if (isDragging) 1.01f else 1f
+                scaleY = if (isDragging) 1.01f else 1f
+            }
+            .then(
+                if (isDragging) {
+                    Modifier
+                        .background(
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.82f),
+                            shape = RoundedCornerShape(8.dp)
+                        )
+                        .padding(horizontal = 12.dp)
+                } else {
+                    Modifier.padding(start = 48.dp)
+                }
+            ),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Checkbox(
-            checked = checked,
-            onCheckedChange = onCheckedChange
-        )
-        Spacer(modifier = Modifier.width(8.dp))
         Text(
-            text = title,
-            style = MaterialTheme.typography.bodyLarge,
+            label,
+            modifier = Modifier.weight(1f),
             color = MaterialTheme.colorScheme.onSurface
+        )
+        Icon(
+            Icons.Default.DragHandle,
+            contentDescription = stringResource(R.string.action_drag_sort),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier
+                .size(40.dp)
+                .padding(8.dp)
+                .pointerInput(itemCount) {
+                    detectDragGestures(
+                        onDragStart = {
+                            dragOffset = 0f
+                            onDragStart()
+                        },
+                        onDragEnd = {
+                            dragOffset = 0f
+                            onDragEnd()
+                        },
+                        onDragCancel = {
+                            dragOffset = 0f
+                            onDragCancel()
+                        },
+                        onDrag = { change, dragAmount ->
+                            change.consume()
+                            dragOffset += dragAmount.y
+                            val from = currentIndex
+                            val target = (from + (dragOffset / rowHeightPx).roundToInt()).coerceIn(0, itemCount - 1)
+                            if (target != from) {
+                                dragOffset -= (target - from) * rowHeightPx
+                                onDragMove(from, target)
+                            }
+                        }
+                    )
+                }
         )
     }
 }
@@ -438,19 +582,51 @@ private fun FloatingRadioRow(
 }
 
 @Composable
-private fun Set<FloatingLyricsDisplayMode>.labelForFloatingDisplayMode(): String {
-    val labels = buildList {
-        if (FloatingLyricsDisplayMode.LYRIC in this@labelForFloatingDisplayMode) {
-            add(stringResource(R.string.settings_floating_mode_single))
-        }
-        if (FloatingLyricsDisplayMode.TRANSLATION in this@labelForFloatingDisplayMode) {
-            add(stringResource(R.string.settings_floating_mode_translation))
-        }
-        if (FloatingLyricsDisplayMode.ROMANIZATION in this@labelForFloatingDisplayMode) {
-            add(stringResource(R.string.settings_floating_mode_romanization))
-        }
+private fun List<String>.labelForFloatingSecondaryText(): String {
+    val labels = mapNotNull { mode ->
+        SecondaryTextMode.from(mode)?.let { stringResource(it.materialLabelRes()) }
     }
     return labels.ifEmpty {
-        listOf(stringResource(R.string.settings_floating_mode_single))
+        listOf(stringResource(SecondaryTextMode.NEXT_LYRIC.materialLabelRes()))
     }.joinToString(" / ")
+}
+
+@Composable
+private fun SecondaryTextMode.materialLabelRes(): Int = when (this) {
+    SecondaryTextMode.NEXT_LYRIC -> R.string.super_island_secondary_text_next_lyric
+    SecondaryTextMode.ROMANIZATION -> R.string.super_island_secondary_text_romanization
+    SecondaryTextMode.TRANSLATION -> R.string.super_island_secondary_text_translation
+}
+
+@Composable
+private fun MaterialHomeLyricPreviewOption(
+    title: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Checkbox(
+            checked = checked,
+            onCheckedChange = onCheckedChange
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+            text = title,
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+    }
+}
+
+private fun <T> List<T>.moveItem(from: Int, to: Int): List<T> {
+    if (from == to || from !in indices || to !in indices) return this
+    return toMutableList().apply {
+        val item = removeAt(from)
+        add(to, item)
+    }
 }

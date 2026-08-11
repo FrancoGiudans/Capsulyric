@@ -75,7 +75,7 @@ data class CustomSettingsUiState(
     val predictiveBackEnabled: Boolean = true,
     val predictiveBackAnimationMode: PredictiveBackAnimationMode = PredictiveBackAnimationMode.default,
     val predictiveBackAnimationStyle: PredictiveBackAnimationStyle = PredictiveBackAnimationStyle.default,
-    val homeLyricPreviewDisplayModes: Set<String> = setOf("lyric"),
+    val homeLyricPreviewDisplayModes: List<String> = listOf("next_lyric"),
     val monetEnabled: Boolean = true,
     val customThemeGlobalTintEnabled: Boolean = false,
     val cardBlurEnabled: Boolean = false
@@ -128,5 +128,5 @@ sealed interface CustomSettingsAction {
     data class SetPredictiveBackEnabled(val value: Boolean) : CustomSettingsAction
     data class SetPredictiveBackAnimationMode(val value: PredictiveBackAnimationMode) : CustomSettingsAction
     data class SetPredictiveBackAnimationStyle(val value: PredictiveBackAnimationStyle) : CustomSettingsAction
-    data class SetHomeLyricPreviewDisplayModes(val value: Set<String>) : CustomSettingsAction
+    data class SetHomeLyricPreviewDisplayModes(val value: List<String>) : CustomSettingsAction
 }

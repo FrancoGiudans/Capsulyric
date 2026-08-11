@@ -24,23 +24,25 @@ package com.example.islandlyrics.ui.overlay.floating
 
 import android.content.SharedPreferences
 import com.example.islandlyrics.core.settings.AppPreferences
+import com.example.islandlyrics.ui.overlay.model.SecondaryTextMode
 
 internal data class FloatingLyricsDisplayConfig(
-    val displayModes: Set<FloatingLyricsDisplayMode>,
-    val showNeighborLine: Boolean,
+    val secondaryTextModes: List<SecondaryTextMode>,
+    val showSecondLine: Boolean,
     val neighborAlignment: FloatingLyricsNeighborAlignment,
     val wordHighlight: Boolean
 ) {
     companion object {
         const val KEY_DISPLAY_MODE = AppPreferences.Keys.FLOATING_DISPLAY_MODE
+        const val KEY_SECONDARY_TEXT_MODES = AppPreferences.Keys.FLOATING_SECONDARY_TEXT_MODES
         const val KEY_SHOW_NEIGHBOR_LINE = "floating_show_neighbor_line"
         const val KEY_NEIGHBOR_ALIGNMENT = AppPreferences.Keys.FLOATING_NEIGHBOR_ALIGNMENT
         const val KEY_WORD_HIGHLIGHT = AppPreferences.Keys.FLOATING_WORD_HIGHLIGHT
 
         fun from(prefs: SharedPreferences): FloatingLyricsDisplayConfig {
             return FloatingLyricsDisplayConfig(
-                displayModes = readDisplayModes(prefs),
-                showNeighborLine = readShowNeighborLine(prefs),
+                secondaryTextModes = readSecondaryTextModes(prefs),
+                showSecondLine = readShowSecondLine(prefs),
                 neighborAlignment = FloatingLyricsNeighborAlignment.from(
                     prefs.getString(KEY_NEIGHBOR_ALIGNMENT, FloatingLyricsNeighborAlignment.CENTER.value)
                 ),
@@ -48,17 +50,38 @@ internal data class FloatingLyricsDisplayConfig(
             )
         }
 
-        fun readDisplayModes(prefs: SharedPreferences): Set<FloatingLyricsDisplayMode> {
-            return FloatingLyricsDisplayMode.from(prefs.all[KEY_DISPLAY_MODE])
+        /**
+         * 读取第二行内容的多选优先级列表。
+         * 首次使用（尚未写入新键）时，将旧版「显示模式 + 双行歌词」配置迁移为新的优先级列表。
+         */
+        fun readSecondaryTextModes(prefs: SharedPreferences): List<SecondaryTextMode> {
+            if (prefs.getString(KEY_SECONDARY_TEXT_MODES, null) != null) {
+                return SecondaryTextMode.read(prefs, KEY_SECONDARY_TEXT_MODES)
+            }
+            val legacyModes = FloatingLyricsDisplayMode.from(prefs.all[KEY_DISPLAY_MODE])
+            val modes = LinkedHashSet<SecondaryTextMode>()
+            if (FloatingLyricsDisplayMode.TRANSLATION in legacyModes) {
+                modes.add(SecondaryTextMode.TRANSLATION)
+            }
+            if (FloatingLyricsDisplayMode.ROMANIZATION in legacyModes) {
+                modes.add(SecondaryTextMode.ROMANIZATION)
+            }
+            if (readShowSecondLine(prefs) || modes.isEmpty()) {
+                modes.add(SecondaryTextMode.NEXT_LYRIC)
+            }
+            return modes.toList().ifEmpty { SecondaryTextMode.DEFAULT }
         }
 
-        fun readShowNeighborLine(prefs: SharedPreferences): Boolean {
+        fun readShowSecondLine(prefs: SharedPreferences): Boolean {
             return if (prefs.contains(KEY_SHOW_NEIGHBOR_LINE)) {
                 prefs.all[KEY_SHOW_NEIGHBOR_LINE] as? Boolean ?: false
             } else {
                 FloatingLyricsDisplayMode.hasLegacyNeighborLine(prefs.all[KEY_DISPLAY_MODE])
             }
         }
+
+        /** 旧版键名兼容读取（迁移前仍可被旧逻辑引用）。 */
+        fun readShowNeighborLine(prefs: SharedPreferences): Boolean = readShowSecondLine(prefs)
     }
 }
 

@@ -48,6 +48,7 @@ import androidx.core.view.isNotEmpty
 import com.example.islandlyrics.R
 import com.example.islandlyrics.core.settings.AppPreferences
 import com.example.islandlyrics.lyrics.state.LyricRepository
+import com.example.islandlyrics.ui.overlay.model.SecondaryTextMode
 
 /**
  * FloatingLyricsRenderer
@@ -74,6 +75,7 @@ class FloatingLyricsRenderer(private val context: Context) {
         const val PREF_TEXT_STROKE     = FloatingLyricsStyleStore.KEY_TEXT_STROKE
         const val PREF_TEXT_BACKGROUND = FloatingLyricsStyleStore.KEY_TEXT_BACKGROUND
         const val PREF_DISPLAY_MODE = FloatingLyricsDisplayConfig.KEY_DISPLAY_MODE
+        const val PREF_SECONDARY_TEXT_MODES = FloatingLyricsDisplayConfig.KEY_SECONDARY_TEXT_MODES
         const val PREF_SHOW_NEIGHBOR_LINE = FloatingLyricsDisplayConfig.KEY_SHOW_NEIGHBOR_LINE
         const val PREF_NEIGHBOR_ALIGNMENT = FloatingLyricsDisplayConfig.KEY_NEIGHBOR_ALIGNMENT
         const val PREF_WORD_HIGHLIGHT = FloatingLyricsDisplayConfig.KEY_WORD_HIGHLIGHT
@@ -164,7 +166,7 @@ class FloatingLyricsRenderer(private val context: Context) {
         when (key) {
             PREF_TEXT_SIZE, PREF_TEXT_COLOR, PREF_FOLLOW_ALBUM_COLOR, 
             PREF_SHOW_ALBUM_ART, PREF_TEXT_STROKE, PREF_TEXT_BACKGROUND,
-            PREF_DISPLAY_MODE, PREF_SHOW_NEIGHBOR_LINE, PREF_NEIGHBOR_ALIGNMENT,
+            PREF_DISPLAY_MODE, PREF_SECONDARY_TEXT_MODES, PREF_SHOW_NEIGHBOR_LINE, PREF_NEIGHBOR_ALIGNMENT,
             PREF_WORD_HIGHLIGHT -> {
                 mainHandler.post {
                     loadPrefs()
@@ -567,10 +569,10 @@ class FloatingLyricsRenderer(private val context: Context) {
             onToggle = { value -> prefs().edit { putBoolean(PREF_TEXT_BACKGROUND, value) } },
             anchor = anchor
         ))
-        addSettingsPopupRow(list, buildDisplayModePopupRow(anchor))
+        addSettingsPopupRow(list, buildSecondaryTextModePopupRow(anchor))
         addSettingsPopupRow(list, buildBooleanPopupRow(
-            title = context.getString(R.string.settings_floating_show_neighbor_line),
-            currentValue = { displayConfig.showNeighborLine },
+            title = context.getString(R.string.settings_floating_show_second_line),
+            currentValue = { displayConfig.showSecondLine },
             onToggle = { value -> prefs().edit { putBoolean(PREF_SHOW_NEIGHBOR_LINE, value) } },
             anchor = anchor
         ))
@@ -678,33 +680,30 @@ class FloatingLyricsRenderer(private val context: Context) {
         }
     }
 
-    private fun buildDisplayModePopupRow(anchor: View): View {
+    private fun buildSecondaryTextModePopupRow(anchor: View): View {
         return LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
             minimumHeight = dpToPx(58)
             setPadding(dpToPx(16), dpToPx(10), dpToPx(16), dpToPx(10))
 
-            addView(buildSettingsPopupTitle(context.getString(R.string.settings_floating_display_mode)), matchW())
+            addView(buildSettingsPopupTitle(context.getString(R.string.settings_floating_secondary_text_mode)), matchW())
 
             val row = LinearLayout(context).apply {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER_VERTICAL
             }
-            FloatingLyricsDisplayMode.optionOrder.forEach { mode ->
+            SecondaryTextMode.entries.forEach { mode ->
                 row.addView(buildPopupChip(
-                    text = displayModeLabel(mode),
-                    selected = mode in displayConfig.displayModes,
+                    text = secondaryTextModeLabel(mode),
+                    selected = mode.preferenceValue in displayConfig.secondaryTextModes.map { it.preferenceValue },
                     onClick = {
-                        val nextModes = FloatingLyricsDisplayMode.toggledModes(
-                            displayConfig.displayModes,
+                        val nextModes = toggleSecondaryTextMode(
+                            displayConfig.secondaryTextModes,
                             mode,
-                            mode !in displayConfig.displayModes
+                            mode.preferenceValue in displayConfig.secondaryTextModes.map { it.preferenceValue }
                         ) ?: return@buildPopupChip
                         applyPopupSetting(anchor) {
-                            prefs().edit {
-                                putString(PREF_DISPLAY_MODE, FloatingLyricsDisplayMode.preferenceValue(nextModes))
-                                putBoolean(PREF_SHOW_NEIGHBOR_LINE, displayConfig.showNeighborLine)
-                            }
+                            SecondaryTextMode.write(prefs(), PREF_SECONDARY_TEXT_MODES, nextModes)
                         }
                     }
                 ), LinearLayout.LayoutParams(0, dpToPx(34), 1f).apply {
@@ -902,11 +901,33 @@ class FloatingLyricsRenderer(private val context: Context) {
         return context.getString(if (value) R.string.floating_settings_on else R.string.floating_settings_off)
     }
 
-    private fun displayModeLabel(mode: FloatingLyricsDisplayMode): String {
+    private fun toggleSecondaryTextMode(
+        currentModes: List<SecondaryTextMode>,
+        mode: SecondaryTextMode,
+        checked: Boolean
+    ): List<SecondaryTextMode>? {
+        val next = currentModes.toMutableList()
+        if (checked) {
+            if (mode !in next) next.add(mode)
+            return next
+        }
+        if (next.size <= 1) {
+            android.widget.Toast.makeText(
+                context,
+                R.string.settings_home_lyric_preview_keep_one,
+                android.widget.Toast.LENGTH_SHORT
+            ).show()
+            return null
+        }
+        next.remove(mode)
+        return next
+    }
+
+    private fun secondaryTextModeLabel(mode: SecondaryTextMode): String {
         return when (mode) {
-            FloatingLyricsDisplayMode.LYRIC -> context.getString(R.string.settings_floating_mode_single)
-            FloatingLyricsDisplayMode.ROMANIZATION -> context.getString(R.string.settings_floating_mode_romanization)
-            FloatingLyricsDisplayMode.TRANSLATION -> context.getString(R.string.settings_floating_mode_translation)
+            SecondaryTextMode.NEXT_LYRIC -> context.getString(R.string.super_island_secondary_text_next_lyric)
+            SecondaryTextMode.ROMANIZATION -> context.getString(R.string.super_island_secondary_text_romanization)
+            SecondaryTextMode.TRANSLATION -> context.getString(R.string.super_island_secondary_text_translation)
         }
     }
 

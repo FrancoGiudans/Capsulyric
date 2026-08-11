@@ -48,8 +48,8 @@ import com.example.islandlyrics.core.settings.LabFeatureManager
 import com.example.islandlyrics.core.theme.ThemeHelper
 import com.example.islandlyrics.core.platform.RomUtils
 import com.example.islandlyrics.runtime.service.LyricService
-import com.example.islandlyrics.feature.main.HomeLyricPreviewDisplay
 import com.example.islandlyrics.feature.main.MainActivity
+import com.example.islandlyrics.ui.overlay.model.SecondaryTextMode
 import com.example.islandlyrics.feature.customsettings.CustomSettingsAction
 import com.example.islandlyrics.feature.customsettings.CustomSettingsTab
 import com.example.islandlyrics.feature.customsettings.CustomSettingsViewModel
@@ -280,7 +280,6 @@ fun MiuixCustomSettingsScreen(
     } else {
         capsuleRenderMode
     }
-    val homeLyricPreviewKeepOneText = stringResource(R.string.settings_home_lyric_preview_keep_one)
     val superIslandEnabled = effectiveCapsuleRenderMode == CapsuleRenderMode.XIAOMI_SUPER_ISLAND
     val islandStyleCapsuleEnabled = superIslandEnabled
     /**
@@ -345,20 +344,6 @@ fun MiuixCustomSettingsScreen(
         val action = "ACTION_SET_CAPSULE_RENDER_MODE"
         val intent = Intent(context, LyricService::class.java).setAction(action)
         context.startService(intent)
-    }
-
-    fun setHomeLyricPreviewDisplayMode(mode: String, checked: Boolean) {
-        val nextModes = HomeLyricPreviewDisplay.toggledModes(homeLyricPreviewDisplayModes, mode, checked)
-        if (nextModes == null) {
-            Toast.makeText(
-                context,
-                homeLyricPreviewKeepOneText,
-                Toast.LENGTH_SHORT
-            ).show()
-            return
-        }
-        homeLyricPreviewDisplayModes = nextModes
-        viewModel.dispatch(CustomSettingsAction.SetHomeLyricPreviewDisplayModes(nextModes))
     }
 
     LaunchedEffect(Unit) {
@@ -1350,42 +1335,16 @@ fun MiuixCustomSettingsScreen(
             }
         }
         if (showHomeLyricPreviewDialog) {
-            MiuixBlurDialog(
-                show = true,
-                title = stringResource(R.string.settings_home_lyric_preview_title),
-                onDismissRequest = { showHomeLyricPreviewDialog = false }
-            ) {
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    CheckboxPreference(
-                        title = stringResource(R.string.lyric_text_display_mode_lyric),
-                        checked = HomeLyricPreviewDisplay.LYRIC in homeLyricPreviewDisplayModes,
-                        onCheckedChange = {
-                            setHomeLyricPreviewDisplayMode(HomeLyricPreviewDisplay.LYRIC, it)
-                        }
-                    )
-                    CheckboxPreference(
-                        title = stringResource(R.string.lyric_text_display_mode_translation),
-                        checked = HomeLyricPreviewDisplay.TRANSLATION in homeLyricPreviewDisplayModes,
-                        onCheckedChange = {
-                            setHomeLyricPreviewDisplayMode(HomeLyricPreviewDisplay.TRANSLATION, it)
-                        }
-                    )
-                    CheckboxPreference(
-                        title = stringResource(R.string.lyric_text_display_mode_romanization),
-                        checked = HomeLyricPreviewDisplay.ROMANIZATION in homeLyricPreviewDisplayModes,
-                        onCheckedChange = {
-                            setHomeLyricPreviewDisplayMode(HomeLyricPreviewDisplay.ROMANIZATION, it)
-                        }
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    TextButton(
-                        text = stringResource(R.string.backup_dialog_confirm),
-                        onClick = { showHomeLyricPreviewDialog = false },
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = ButtonDefaults.textButtonColorsPrimary()
+            MiuixHomeLyricSecondaryTextModeDialog(
+                selectedModes = homeLyricPreviewDisplayModes,
+                onDismiss = { showHomeLyricPreviewDialog = false },
+                onCommit = { modes ->
+                    homeLyricPreviewDisplayModes = modes
+                    viewModel.dispatch(
+                        CustomSettingsAction.SetHomeLyricPreviewDisplayModes(modes)
                     )
                 }
-            }
+            )
         }
         if (showSecondaryTextModeDialog) {
             MiuixSecondaryTextModeDialog(
@@ -1395,6 +1354,91 @@ fun MiuixCustomSettingsScreen(
                     secondaryTextModes = modes
                     viewModel.dispatch(CustomSettingsAction.SetSuperIslandSecondaryTextModes(modes))
                 }
+            )
+        }
+    }
+}
+
+@Composable
+private fun MiuixHomeLyricSecondaryTextModeDialog(
+    selectedModes: List<String>,
+    onDismiss: () -> Unit,
+    onCommit: (List<String>) -> Unit
+) {
+    val context = LocalContext.current
+    val keepOneText = stringResource(R.string.settings_home_lyric_preview_keep_one)
+    var modes by remember(selectedModes) { mutableStateOf(selectedModes) }
+    var draggingMode by remember { mutableStateOf<String?>(null) }
+
+    fun toggle(mode: SecondaryTextMode, checked: Boolean) {
+        val prefValue = mode.preferenceValue
+        if (checked) {
+            if (prefValue !in modes) {
+                modes = modes + prefValue
+            }
+        } else {
+            if (modes.size <= 1) {
+                Toast.makeText(context, keepOneText, Toast.LENGTH_SHORT).show()
+                return
+            }
+            modes = modes - prefValue
+        }
+    }
+
+    MiuixBlurDialog(
+        show = true,
+        title = stringResource(R.string.settings_home_lyric_preview_title),
+        onDismissRequest = onDismiss
+    ) {
+        Column(modifier = Modifier.fillMaxWidth()) {
+            SecondaryTextMode.entries.forEach { mode ->
+                CheckboxPreference(
+                    title = stringResource(mode.labelRes()),
+                    checked = mode.preferenceValue in modes,
+                    onCheckedChange = { toggle(mode, it) }
+                )
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = stringResource(R.string.settings_super_island_secondary_text_priority),
+                color = MiuixTheme.colorScheme.onSurfaceSecondary,
+                fontSize = MiuixTheme.textStyles.body2.fontSize,
+                modifier = Modifier.padding(horizontal = 16.dp)
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            val rowHeight = 52.dp
+            val orderedModes = modes.mapNotNull { SecondaryTextMode.from(it) }
+            Box(modifier = Modifier.fillMaxWidth().height(rowHeight * orderedModes.size)) {
+                orderedModes.forEachIndexed { index, mode ->
+                    key(mode.preferenceValue) {
+                        MiuixSecondaryModeDragRow(
+                            label = stringResource(mode.labelRes()),
+                            index = index,
+                            rowHeight = rowHeight,
+                            itemCount = orderedModes.size,
+                            isDragging = draggingMode == mode.preferenceValue,
+                            onDragStart = { draggingMode = mode.preferenceValue },
+                            onDragMove = { from, to ->
+                                modes = modes.moveItem(from, to)
+                            },
+                            onDragCancel = { draggingMode = null },
+                            onDragEnd = { draggingMode = null }
+                        )
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+            TextButton(
+                text = stringResource(R.string.backup_dialog_confirm),
+                onClick = {
+                    val finalModes = orderedModes
+                        .ifEmpty { listOf(SecondaryTextMode.NEXT_LYRIC) }
+                        .map { it.preferenceValue }
+                    onCommit(finalModes)
+                    onDismiss()
+                },
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.textButtonColorsPrimary()
             )
         }
     }
@@ -1584,6 +1628,13 @@ private fun SuperIslandSecondaryTextMode.labelRes(): Int = when (this) {
     SuperIslandSecondaryTextMode.TRANSLATION -> R.string.super_island_secondary_text_translation
 }
 
+@Composable
+private fun SecondaryTextMode.labelRes(): Int = when (this) {
+    SecondaryTextMode.NEXT_LYRIC -> R.string.super_island_secondary_text_next_lyric
+    SecondaryTextMode.ROMANIZATION -> R.string.super_island_secondary_text_romanization
+    SecondaryTextMode.TRANSLATION -> R.string.super_island_secondary_text_translation
+}
+
 private fun <T> List<T>.moveItem(from: Int, to: Int): List<T> {
     if (from == to || from !in indices || to !in indices) return this
     return toMutableList().apply {
@@ -1686,20 +1737,12 @@ private fun snapXmsfBypassDuration(durationMs: Int): Int {
 }
 
 @Composable
-private fun Set<String>.labelForHomeLyricPreview(): String {
-    val labels = buildList {
-        if (HomeLyricPreviewDisplay.LYRIC in this@labelForHomeLyricPreview) {
-            add(stringResource(R.string.lyric_text_display_mode_lyric))
-        }
-        if (HomeLyricPreviewDisplay.TRANSLATION in this@labelForHomeLyricPreview) {
-            add(stringResource(R.string.lyric_text_display_mode_translation))
-        }
-        if (HomeLyricPreviewDisplay.ROMANIZATION in this@labelForHomeLyricPreview) {
-            add(stringResource(R.string.lyric_text_display_mode_romanization))
-        }
+private fun List<String>.labelForHomeLyricPreview(): String {
+    val labels = mapNotNull { mode ->
+        SecondaryTextMode.from(mode)?.let { stringResource(it.labelRes()) }
     }
     return labels.ifEmpty {
-        listOf(stringResource(R.string.lyric_text_display_mode_lyric))
+        listOf(stringResource(SecondaryTextMode.NEXT_LYRIC.labelRes()))
     }.joinToString(" / ")
 }
 
