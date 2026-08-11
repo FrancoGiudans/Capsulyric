@@ -484,13 +484,24 @@ class LyricDisplayManager(private val context: Context) {
         val currentLineIndex = parsedState.currentLineIndex(position)
         val trackKey = "${metaInfo?.title}|${metaInfo?.artist}|${metaInfo?.packageName}"
 
-        // Reuse cached presentation if line index and track haven't changed
+        // Reuse cached presentation if line index and track haven't changed.
+        // 逐字进度（wordProgress）随播放位置实时变化，不能随缓存冻结：
+        // 缓存命中时仅重新计算 wordProgress，其余行数据继续复用。
         if (cachedPresentation != null &&
             currentLineIndex == cachedPresentationLineIndex &&
             trackKey == cachedPresentationTrackKey &&
             !useGapContext
         ) {
-            return cachedPresentation!!
+            val cached = cachedPresentation!!
+            val freshWordProgress = buildWordProgress(
+                parsedState.lines?.getOrNull(currentLineIndex),
+                position
+            )
+            return if (freshWordProgress == cached.wordProgress) {
+                cached
+            } else {
+                cached.copy(wordProgress = freshWordProgress)
+            }
         }
 
         // Invalidate cache on track change
