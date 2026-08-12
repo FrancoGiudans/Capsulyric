@@ -1,4 +1,18 @@
 /*
+ * This file is part of Capsulyric (IslandLyrics).
+ * Portions of this file are derived from or based on compose-miuix-ui/miuix
+ * (https://github.com/compose-miuix-ui/miuix), version 0.9.3.
+ *
+ * Original: Copyright 2025, compose-miuix-ui contributors
+ * Original license: Apache License 2.0 (full text: LICENSES/Apache-2.0.txt)
+ *
+ * Upstream source: AndroidX Compose Material 3: Scaffold, AlertDialog, DropdownMenu (https://developer.android.com/jetpack/androidx/releases/compose-material3, Copyright The Android Open Source Project, Apache License 2.0); and miuix-blur: layerBackdrop, textureBlur, rememberLayerBackdrop (Copyright 2025, compose-miuix-ui contributors, Apache License 2.0)
+ *
+ * Modifications by FrancoGiudans for Capsulyric (IslandLyrics):
+ *   - Combined Material 3 components with miuix-blur backdrop/texture blur (MaterialBlurRoot, MaterialBlurScaffold, MaterialBlurAlertDialog, MaterialBlurDropdownMenu).
+ */
+
+/*
  *
  *  * Copyright (c) 2026 FrancoGiudans
  *  *

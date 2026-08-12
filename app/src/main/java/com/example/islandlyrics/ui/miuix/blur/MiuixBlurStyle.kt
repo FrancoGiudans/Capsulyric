@@ -1,4 +1,18 @@
 /*
+ * This file is part of Capsulyric (IslandLyrics).
+ * Portions of this file are derived from or based on compose-miuix-ui/miuix
+ * (https://github.com/compose-miuix-ui/miuix), version 0.9.3.
+ *
+ * Original: Copyright 2025, compose-miuix-ui contributors
+ * Original license: Apache License 2.0 (full text: LICENSES/Apache-2.0.txt)
+ *
+ * Upstream source: miuix-blur style APIs: BlurDefaults, BlurColors, BlendColorEntry, textureBlur, Highlight, BloomStroke, LightSource
+ *
+ * Modifications by FrancoGiudans for Capsulyric (IslandLyrics):
+ *   - Custom blur color/highlight presets built on miuix-blur defaults.
+ */
+
+/*
  *
  *  * Copyright (c) 2026 FrancoGiudans
  *  *
