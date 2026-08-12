@@ -99,6 +99,7 @@ import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.Velocity
@@ -179,7 +180,7 @@ fun MiuixBlurBottomSheet(
     onDismissRequest: (() -> Unit)? = null,
     onDismissFinished: (() -> Unit)? = null,
     outsideMargin: DpSize = DpSize(0.dp, 0.dp),
-    insideMargin: DpSize = DpSize(24.dp, 0.dp),
+    insideMargin: DpSize = DpSize(24.dp, 18.dp),
     defaultWindowInsetsPadding: Boolean = true,
     dragHandleColor: Color = MiuixTheme.colorScheme.onSurfaceVariantSummary.copy(alpha = 0.2f),
     allowDismiss: Boolean = true,
@@ -943,14 +944,19 @@ private fun BlurBottomSheetTitleAndActionsRow(
             startAction?.invoke()
         }
 
-        // Title text
+        // Title text (constrained so long titles never overlap the actions)
         title?.let {
             Text(
                 text = it,
-                modifier = Modifier.align(Alignment.Center),
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .fillMaxWidth()
+                    .padding(horizontal = 52.dp),
                 fontSize = MiuixTheme.textStyles.title4.fontSize,
                 fontWeight = FontWeight.Medium,
                 textAlign = TextAlign.Center,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
                 color = MiuixTheme.colorScheme.onSurface,
             )
         }

@@ -60,12 +60,11 @@ import com.example.islandlyrics.rules.ParserRule
 import com.example.islandlyrics.rules.ParserRuleHelper
 import com.example.islandlyrics.lyrics.online.provider.OnlineLyricProvider
 import com.example.islandlyrics.feature.parserrule.ParserRuleEditorState
-import com.example.islandlyrics.feature.parserrule.ParserRuleSourceConfigActivity
 import com.example.islandlyrics.feature.parserrule.ParserRuleSourceConfigType
 import com.example.islandlyrics.feature.parserrule.toEditorState
 import com.example.islandlyrics.feature.parserrule.toRule
 import com.example.islandlyrics.feature.parserrule.withSourceSettingsFrom
-import com.example.islandlyrics.ui.navigation.PageStackHost
+import com.example.islandlyrics.ui.miuix.blur.MiuixBlurBottomSheet
 import com.example.islandlyrics.ui.miuix.blur.MiuixBlurDialog
 import com.example.islandlyrics.ui.miuix.blur.MiuixBlurScaffold
 import com.example.islandlyrics.ui.miuix.blur.MiuixBlurSmallTopAppBar
@@ -85,6 +84,10 @@ import top.yukonga.miuix.kmp.basic.TextField
 import top.yukonga.miuix.kmp.basic.rememberTopAppBarState
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
 import com.example.islandlyrics.ui.miuix.preference.BlurOverlayDropdownPreference as SuperDropdown
+import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.extended.Close
+import top.yukonga.miuix.kmp.icon.extended.Ok
+import top.yukonga.miuix.kmp.preference.ArrowPreference as SuperArrow
 import top.yukonga.miuix.kmp.preference.SwitchPreference as SuperSwitch
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.MiuixPopupUtils.Companion.MiuixPopupHost
@@ -105,7 +108,8 @@ fun MiuixParserRuleEditorScreen(
     var state by remember(initialRule) { mutableStateOf(initialRule.toEditorState()) }
     var showOnlineSuggestionDialog by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
-    val templateConfigType = remember { mutableStateOf<ParserRuleSourceConfigType?>(null) }
+    var sourceConfigSheet by remember { mutableStateOf<ParserRuleSourceConfigType?>(null) }
+    var showOnlineProviderOrderSheet by remember { mutableStateOf(false) }
     val canPersistSourceSettings = !isTemplate && !isNewRule && state.packageName.isNotBlank()
 
     DisposableEffect(canPersistSourceSettings, state.packageName) {
@@ -151,20 +155,7 @@ fun MiuixParserRuleEditorScreen(
     }
 
     fun openSourceConfig(type: ParserRuleSourceConfigType) {
-        if (isTemplate) {
-            templateConfigType.value = type
-            return
-        }
-        if (state.packageName.isBlank()) {
-            Toast.makeText(context, enterPkgMessage, Toast.LENGTH_SHORT).show()
-            return
-        }
-        context.startActivity(
-            Intent(context, ParserRuleSourceConfigActivity::class.java).apply {
-                putExtra(ParserRuleSourceConfigActivity.EXTRA_PACKAGE_NAME, state.packageName)
-                putExtra(ParserRuleSourceConfigActivity.EXTRA_CONFIG_TYPE, type.name)
-            }
-        )
+        sourceConfigSheet = type
     }
 
     val editorContent: @Composable () -> Unit = {
@@ -350,26 +341,55 @@ fun MiuixParserRuleEditorScreen(
     }
     }
 
-    if (isTemplate) {
-        val editingTemplateConfigType = templateConfigType.value
-        PageStackHost(
-            stack = listOfNotNull(editingTemplateConfigType),
-            onPop = { templateConfigType.value = null },
-            backdropColor = MiuixTheme.colorScheme.surface,
-            modifier = Modifier.fillMaxSize(),
-            backgroundContent = { editorContent() },
-            pageContent = { configType ->
-                MiuixParserRuleSourceConfigScreen(
-                    configType = configType,
-                    initialRule = state.toRule(initialRule),
-                    onBack = { templateConfigType.value = null },
-                    onStateChange = { state = it }
-                )
+    editorContent()
+
+    val sourceConfigSheetType = sourceConfigSheet
+    if (sourceConfigSheetType != null) {
+        MiuixBlurBottomSheet(
+            show = true,
+            title = when (sourceConfigSheetType) {
+                ParserRuleSourceConfigType.NOTIFICATION -> stringResource(R.string.parser_car_protocol)
+                ParserRuleSourceConfigType.ONLINE -> stringResource(R.string.settings_use_online_lyrics)
+                ParserRuleSourceConfigType.LYRICON -> stringResource(R.string.parser_lyricon_lyric)
+            },
+            onDismissRequest = {
+                sourceConfigSheet = null
+                showOnlineProviderOrderSheet = false
+            },
+            startAction = {
+                IconButton(onClick = {
+                    sourceConfigSheet = null
+                    showOnlineProviderOrderSheet = false
+                }) {
+                    Icon(
+                        imageVector = MiuixIcons.Close,
+                        contentDescription = stringResource(R.string.backup_dialog_cancel),
+                        tint = MiuixTheme.colorScheme.onSurfaceVariantActions
+                    )
+                }
             }
-        )
-    } else {
-        editorContent()
+        ) {
+            when (sourceConfigSheetType) {
+                ParserRuleSourceConfigType.NOTIFICATION ->
+                    MiuixNotificationSourceConfigPage(state, ::updateSourceState)
+                ParserRuleSourceConfigType.ONLINE ->
+                    MiuixOnlineSourceConfigPage(
+                        state = state,
+                        onStateChange = ::updateSourceState,
+                        onOpenProviderOrder = { showOnlineProviderOrderSheet = true }
+                    )
+                ParserRuleSourceConfigType.LYRICON ->
+                    MiuixLyriconSourceConfigPage(state, ::updateSourceState)
+            }
+        }
     }
+
+    MiuixOnlineProviderOrderSheet(
+        state = state,
+        onStateChange = ::updateSourceState,
+        show = showOnlineProviderOrderSheet,
+        onDismiss = { showOnlineProviderOrderSheet = false }
+    )
 }
 
 @Composable
@@ -445,6 +465,7 @@ fun MiuixParserRuleSourceConfigScreen(
         state = next
         onStateChange(next)
     }
+    var showProviderOrderSheet by remember { mutableStateOf(false) }
 
     MiuixBlurScaffold(
         topBar = {
@@ -484,12 +505,23 @@ fun MiuixParserRuleSourceConfigScreen(
             item {
                 when (configType) {
                     ParserRuleSourceConfigType.NOTIFICATION -> MiuixNotificationSourceConfigPage(state, ::updateState)
-                    ParserRuleSourceConfigType.ONLINE -> MiuixOnlineSourceConfigPage(state, ::updateState)
+                    ParserRuleSourceConfigType.ONLINE -> MiuixOnlineSourceConfigPage(
+                        state = state,
+                        onStateChange = ::updateState,
+                        onOpenProviderOrder = { showProviderOrderSheet = true }
+                    )
                     ParserRuleSourceConfigType.LYRICON -> MiuixLyriconSourceConfigPage(state, ::updateState)
                 }
             }
         }
     }
+
+    MiuixOnlineProviderOrderSheet(
+        state = state,
+        onStateChange = ::updateState,
+        show = showProviderOrderSheet,
+        onDismiss = { showProviderOrderSheet = false }
+    )
 }
 
 @Composable
@@ -526,8 +558,10 @@ fun MiuixNotificationSourceConfigPage(
 fun MiuixOnlineSourceConfigPage(
     state: ParserRuleEditorState,
     onStateChange: (ParserRuleEditorState) -> Unit,
+    onOpenProviderOrder: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
     Column(modifier = modifier) {
         Spacer(modifier = Modifier.height(12.dp))
         Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
@@ -555,7 +589,16 @@ fun MiuixOnlineSourceConfigPage(
                 checked = state.receiveOnlineRomanization,
                 onCheckedChange = { onStateChange(state.copy(receiveOnlineRomanization = it)) }
             )
-            MiuixOnlineProviderOrderEditor(state, onStateChange)
+            if (!state.useSmartOnlineLyricSelection) {
+                val orderSummary = state.onlineLyricProviderOrder
+                    .filterNot { it in state.onlineLyricDisabledProviders }
+                    .joinToString(" > ") { it.displayName(context) }
+                SuperArrow(
+                    title = stringResource(R.string.parser_online_priority),
+                    summary = stringResource(R.string.parser_online_priority_summary, orderSummary),
+                    onClick = onOpenProviderOrder
+                )
+            }
         }
     }
 }
@@ -629,51 +672,74 @@ private fun MiuixSwitchArrowPreference(
 }
 
 @Composable
-private fun MiuixOnlineProviderOrderEditor(
+private fun MiuixOnlineProviderOrderSheet(
     state: ParserRuleEditorState,
-    onStateChange: (ParserRuleEditorState) -> Unit
+    onStateChange: (ParserRuleEditorState) -> Unit,
+    show: Boolean,
+    onDismiss: () -> Unit
 ) {
     val context = LocalContext.current
-    if (state.useSmartOnlineLyricSelection) return
 
-    Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
-        Text(stringResource(R.string.parser_online_priority))
-        Spacer(modifier = Modifier.height(8.dp))
-        MiuixBlurReorderablePanel(
-            items = state.onlineLyricProviderOrder.map { provider ->
-                MiuixReorderableListItem(
-                    id = provider.id,
-                    title = provider.displayName(context),
-                    checked = provider !in state.onlineLyricDisabledProviders
+    MiuixBlurBottomSheet(
+        show = show,
+        title = stringResource(R.string.parser_online_priority),
+        onDismissRequest = onDismiss,
+        startAction = {
+            IconButton(onClick = onDismiss) {
+                Icon(
+                    imageVector = MiuixIcons.Close,
+                    contentDescription = stringResource(R.string.backup_dialog_cancel),
+                    tint = MiuixTheme.colorScheme.onSurfaceVariantActions
                 )
-            },
-            onMove = { from, to ->
-                onStateChange(
-                    state.copy(
-                        onlineLyricProviderOrder = state.onlineLyricProviderOrder.moveItem(from, to)
+            }
+        },
+        endAction = {
+            IconButton(onClick = onDismiss) {
+                Icon(
+                    imageVector = MiuixIcons.Ok,
+                    contentDescription = stringResource(R.string.backup_dialog_confirm),
+                    tint = MiuixTheme.colorScheme.primary
+                )
+            }
+        }
+    ) {
+        Column(modifier = Modifier.fillMaxWidth()) {
+            MiuixBlurReorderablePanel(
+                items = state.onlineLyricProviderOrder.map { provider ->
+                    MiuixReorderableListItem(
+                        id = provider.id,
+                        title = provider.displayName(context),
+                        checked = provider !in state.onlineLyricDisabledProviders
                     )
-                )
-            },
-            onCheckedChange = { id, checked ->
-                val provider = OnlineLyricProvider.fromId(id) ?: return@MiuixBlurReorderablePanel
-                val nextDisabled = if (checked) {
-                    state.onlineLyricDisabledProviders - provider
-                } else {
-                    state.onlineLyricDisabledProviders + provider
-                }
-                onStateChange(state.copy(onlineLyricDisabledProviders = nextDisabled))
-            },
-            onReset = {
-                onStateChange(
-                    state.copy(
-                        onlineLyricProviderOrder = OnlineLyricProvider.defaultOrderForPackage(state.packageName),
-                        onlineLyricDisabledProviders = emptySet()
+                },
+                onMove = { from, to ->
+                    onStateChange(
+                        state.copy(
+                            onlineLyricProviderOrder = state.onlineLyricProviderOrder.moveItem(from, to)
+                        )
                     )
-                )
-            },
-            resetLabel = stringResource(R.string.parser_reset_online_priority),
-            modifier = Modifier.fillMaxWidth()
-        )
+                },
+                onCheckedChange = { id, checked ->
+                    val provider = OnlineLyricProvider.fromId(id) ?: return@MiuixBlurReorderablePanel
+                    val nextDisabled = if (checked) {
+                        state.onlineLyricDisabledProviders - provider
+                    } else {
+                        state.onlineLyricDisabledProviders + provider
+                    }
+                    onStateChange(state.copy(onlineLyricDisabledProviders = nextDisabled))
+                },
+                onReset = {
+                    onStateChange(
+                        state.copy(
+                            onlineLyricProviderOrder = OnlineLyricProvider.defaultOrderForPackage(state.packageName),
+                            onlineLyricDisabledProviders = emptySet()
+                        )
+                    )
+                },
+                resetLabel = stringResource(R.string.parser_reset_online_priority),
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
     }
 }
 
