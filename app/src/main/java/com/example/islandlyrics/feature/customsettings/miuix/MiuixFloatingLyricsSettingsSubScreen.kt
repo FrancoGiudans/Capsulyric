@@ -28,35 +28,22 @@ import android.provider.Settings
 import android.widget.Toast
 import androidx.core.content.edit
 import androidx.core.net.toUri
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.spring
-import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.DragHandle
-import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.zIndex
 import com.example.islandlyrics.core.settings.LabFeatureManager
 import com.example.islandlyrics.R
-import com.example.islandlyrics.ui.miuix.blur.MiuixBlurDialog
+import com.example.islandlyrics.ui.miuix.blur.MiuixBlurBottomSheet
+import com.example.islandlyrics.ui.miuix.reorderable.MiuixBlurReorderablePanel
+import com.example.islandlyrics.ui.miuix.reorderable.MiuixReorderableListItem
 import com.example.islandlyrics.ui.overlay.floating.FloatingLyricsDisplayConfig
 import com.example.islandlyrics.ui.overlay.floating.FloatingLyricsNeighborAlignment
 import com.example.islandlyrics.ui.overlay.floating.FloatingLyricsRenderer
@@ -67,7 +54,6 @@ import top.yukonga.miuix.kmp.basic.ButtonDefaults
 import top.yukonga.miuix.kmp.basic.TextButton
 import top.yukonga.miuix.kmp.basic.Slider
 import top.yukonga.miuix.kmp.preference.ArrowPreference as SuperArrow
-import top.yukonga.miuix.kmp.preference.CheckboxPreference
 import com.example.islandlyrics.ui.miuix.preference.BlurOverlayDropdownPreference as SuperDropdown
 import top.yukonga.miuix.kmp.preference.SwitchPreference as SuperSwitch
 import top.yukonga.miuix.kmp.theme.MiuixTheme
@@ -285,7 +271,7 @@ fun MiuixFloatingLyricsSettingsSubScreen(prefs: SharedPreferences, scope: Corout
     }
 
     if (showSecondaryTextModeDialog.value) {
-        MiuixFloatingSecondaryTextModeDialog(
+        MiuixFloatingSecondaryTextModeBottomSheet(
             selectedModes = secondaryTextModes,
             onDismiss = { showSecondaryTextModeDialog.value = false },
             onCommit = { modes ->
@@ -336,9 +322,8 @@ private fun FloatingNeighborAlignmentSelector(
         onSelectedIndexChange = { index -> onAlignmentSelected(alignments[index]) }
     )
 }
-
 @Composable
-private fun MiuixFloatingSecondaryTextModeDialog(
+private fun MiuixFloatingSecondaryTextModeBottomSheet(
     selectedModes: List<String>,
     onDismiss: () -> Unit,
     onCommit: (List<String>) -> Unit
@@ -346,70 +331,46 @@ private fun MiuixFloatingSecondaryTextModeDialog(
     val context = LocalContext.current
     val keepOneText = stringResource(R.string.settings_home_lyric_preview_keep_one)
     var modes by remember(selectedModes) { mutableStateOf(selectedModes) }
-    var draggingMode by remember { mutableStateOf<String?>(null) }
-
-    fun toggle(mode: SecondaryTextMode, checked: Boolean) {
-        val prefValue = mode.preferenceValue
-        if (checked) {
-            if (prefValue !in modes) {
-                modes = modes + prefValue
-            }
-        } else {
-            if (modes.size <= 1) {
-                Toast.makeText(context, keepOneText, Toast.LENGTH_SHORT).show()
-                return
-            }
-            modes = modes - prefValue
-        }
+    var modeOrder by remember(selectedModes) {
+        mutableStateOf(floatingSecondaryTextOrderOf(selectedModes))
     }
 
-    MiuixBlurDialog(
+    MiuixBlurBottomSheet(
         show = true,
         title = stringResource(R.string.settings_floating_secondary_text_mode),
         onDismissRequest = onDismiss
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
-            SecondaryTextMode.entries.forEach { mode ->
-                CheckboxPreference(
-                    title = stringResource(mode.labelRes()),
-                    checked = mode.preferenceValue in modes,
-                    onCheckedChange = { toggle(mode, it) }
-                )
-            }
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = stringResource(R.string.settings_super_island_secondary_text_priority),
-                color = MiuixTheme.colorScheme.onSurfaceSecondary,
-                fontSize = MiuixTheme.textStyles.body2.fontSize,
-                modifier = Modifier.padding(horizontal = 16.dp)
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            val rowHeight = 52.dp
-            val orderedModes = modes.mapNotNull { SecondaryTextMode.from(it) }
-            Box(modifier = Modifier.fillMaxWidth().height(rowHeight * orderedModes.size)) {
-                orderedModes.forEachIndexed { index, mode ->
-                    key(mode.preferenceValue) {
-                        MiuixSecondaryModeDragRow(
-                            label = stringResource(mode.labelRes()),
-                            index = index,
-                            rowHeight = rowHeight,
-                            itemCount = orderedModes.size,
-                            isDragging = draggingMode == mode.preferenceValue,
-                            onDragStart = { draggingMode = mode.preferenceValue },
-                            onDragMove = { from, to ->
-                                modes = modes.moveItem(from, to)
-                            },
-                            onDragCancel = { draggingMode = null },
-                            onDragEnd = { draggingMode = null }
-                        )
+            MiuixBlurReorderablePanel(
+                items = modeOrder.map { id ->
+                    MiuixReorderableListItem(
+                        id = id,
+                        title = stringResource(SecondaryTextMode.from(id)!!.labelRes()),
+                        checked = id in modes
+                    )
+                },
+                onMove = { from, to ->
+                    modeOrder = modeOrder.toMutableList().apply { add(to, removeAt(from)) }
+                    modes = modeOrder.filter { it in modes }
+                },
+                onCheckedChange = { id, checked ->
+                    if (checked) {
+                        modes = modeOrder.filter { it == id || it in modes }
+                    } else {
+                        if (modes.size <= 1) {
+                            Toast.makeText(context, keepOneText, Toast.LENGTH_SHORT).show()
+                            return@MiuixBlurReorderablePanel
+                        }
+                        modes = modes - id
                     }
-                }
-            }
+                },
+                modifier = Modifier.fillMaxWidth()
+            )
             Spacer(modifier = Modifier.height(16.dp))
             TextButton(
                 text = stringResource(R.string.backup_dialog_confirm),
                 onClick = {
-                    val finalModes = orderedModes
+                    val finalModes = modes.mapNotNull { SecondaryTextMode.from(it) }
                         .ifEmpty { listOf(SecondaryTextMode.NEXT_LYRIC) }
                         .map { it.preferenceValue }
                     onCommit(finalModes)
@@ -419,99 +380,6 @@ private fun MiuixFloatingSecondaryTextModeDialog(
                 colors = ButtonDefaults.textButtonColorsPrimary()
             )
         }
-    }
-}
-
-@Composable
-private fun MiuixSecondaryModeDragRow(
-    label: String,
-    index: Int,
-    rowHeight: Dp,
-    itemCount: Int,
-    isDragging: Boolean,
-    onDragStart: () -> Unit,
-    onDragMove: (Int, Int) -> Unit,
-    onDragCancel: () -> Unit,
-    onDragEnd: () -> Unit
-) {
-    var dragOffset by remember { mutableFloatStateOf(0f) }
-    val currentIndex by rememberUpdatedState(index)
-    val rowHeightPx = with(LocalDensity.current) { rowHeight.toPx() }
-    val animatedY by animateDpAsState(
-        targetValue = rowHeight * index,
-        animationSpec = spring(stiffness = 650f, dampingRatio = 0.85f),
-        label = "secondaryModeReorderY"
-    )
-    val baseY = if (isDragging) rowHeight * index else animatedY
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(rowHeight)
-            .offset {
-                IntOffset(
-                    x = 0,
-                    y = baseY.roundToPx() + if (isDragging) dragOffset.roundToInt() else 0
-                )
-            }
-            .zIndex(if (isDragging) 1f else 0f)
-            .graphicsLayer {
-                alpha = if (isDragging) 0.92f else 1f
-                scaleX = if (isDragging) 1.01f else 1f
-                scaleY = if (isDragging) 1.01f else 1f
-            }
-            .then(
-                if (isDragging) {
-                    Modifier
-                        .background(
-                            color = MiuixTheme.colorScheme.surfaceVariant.copy(alpha = 0.82f),
-                            shape = RoundedCornerShape(8.dp)
-                        )
-                        .padding(horizontal = 12.dp)
-                } else {
-                    Modifier.padding(horizontal = 16.dp)
-                }
-            ),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            label,
-            modifier = Modifier.weight(1f),
-            color = MiuixTheme.colorScheme.onSurface
-        )
-        Icon(
-            Icons.Default.DragHandle,
-            contentDescription = stringResource(R.string.action_drag_sort),
-            tint = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-            modifier = Modifier
-                .size(40.dp)
-                .padding(8.dp)
-                .pointerInput(itemCount) {
-                    detectDragGestures(
-                        onDragStart = {
-                            dragOffset = 0f
-                            onDragStart()
-                        },
-                        onDragEnd = {
-                            dragOffset = 0f
-                            onDragEnd()
-                        },
-                        onDragCancel = {
-                            dragOffset = 0f
-                            onDragCancel()
-                        },
-                        onDrag = { change, dragAmount ->
-                            change.consume()
-                            dragOffset += dragAmount.y
-                            val from = currentIndex
-                            val target = (from + (dragOffset / rowHeightPx).roundToInt()).coerceIn(0, itemCount - 1)
-                            if (target != from) {
-                                dragOffset -= (target - from) * rowHeightPx
-                                onDragMove(from, target)
-                            }
-                        }
-                    )
-                }
-        )
     }
 }
 
@@ -532,10 +400,9 @@ private fun SecondaryTextMode.labelRes(): Int = when (this) {
     SecondaryTextMode.TRANSLATION -> R.string.super_island_secondary_text_translation
 }
 
-private fun <T> List<T>.moveItem(from: Int, to: Int): List<T> {
-    if (from == to || from !in indices || to !in indices) return this
-    return toMutableList().apply {
-        val item = removeAt(from)
-        add(to, item)
-    }
+private fun floatingSecondaryTextOrderOf(modes: List<String>): List<String> {
+    val result = LinkedHashSet<String>()
+    modes.forEach { mode -> SecondaryTextMode.from(mode)?.let { result.add(it.preferenceValue) } }
+    SecondaryTextMode.entries.forEach { result.add(it.preferenceValue) }
+    return result.toList()
 }
