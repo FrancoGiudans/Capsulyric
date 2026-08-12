@@ -434,6 +434,7 @@ fun ParserRuleItem(
     val context = androidx.compose.ui.platform.LocalContext.current
     val onlineOrderSummary = if (!offlineModeEnabled && rule.useOnlineLyrics && !rule.useSmartOnlineLyricSelection) {
         OnlineLyricProvider.normalizeOrder(rule.onlineLyricProviderOrder)
+            .filterNot { it.id in rule.onlineLyricDisabledProviders }
             .joinToString(" > ") { it.displayName(context) }
     } else {
         null

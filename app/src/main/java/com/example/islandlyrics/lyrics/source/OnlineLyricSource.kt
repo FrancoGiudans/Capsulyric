@@ -188,7 +188,8 @@ class OnlineLyricSource(private val context: Context) {
                     } else {
                         rule.onlineLyricProviderOrder
                     },
-                    useSmartSelection = rule.useSmartOnlineLyricSelection
+                    useSmartSelection = rule.useSmartOnlineLyricSelection,
+                    disabledProviderIds = rule.onlineLyricDisabledProviders
                 )
                 val result = outcome.bestResult
 

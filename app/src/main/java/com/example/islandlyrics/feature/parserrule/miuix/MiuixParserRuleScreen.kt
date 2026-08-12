@@ -473,6 +473,7 @@ fun MiuixParserRuleItem(
             Spacer(modifier = Modifier.height(6.dp))
             if (!offlineModeEnabled && rule.useOnlineLyrics && !rule.useSmartOnlineLyricSelection) {
                 val orderSummary = OnlineLyricProvider.normalizeOrder(rule.onlineLyricProviderOrder)
+                    .filterNot { it.id in rule.onlineLyricDisabledProviders }
                     .joinToString(" > ") { it.displayName(context) }
                 Text(
                     text = stringResource(R.string.parser_online_priority_summary, orderSummary),

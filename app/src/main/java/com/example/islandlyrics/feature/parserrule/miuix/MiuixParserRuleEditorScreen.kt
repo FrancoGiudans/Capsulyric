@@ -24,23 +24,15 @@ package com.example.islandlyrics.feature.parserrule.miuix
 
 import android.content.Intent
 import android.widget.Toast
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.spring
-import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.detectDragGestures
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.verticalScroll
@@ -48,30 +40,19 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.IntOffset
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.zIndex
 import com.example.islandlyrics.R
 import com.example.islandlyrics.core.network.OfflineModeManager
 import com.example.islandlyrics.rules.FieldOrder
@@ -90,6 +71,8 @@ import com.example.islandlyrics.ui.miuix.blur.MiuixBlurScaffold
 import com.example.islandlyrics.ui.miuix.blur.MiuixBlurSmallTopAppBar
 import com.example.islandlyrics.ui.miuix.blur.MiuixBlurTopAppBar
 import com.example.islandlyrics.ui.miuix.effects.miuixPageScroll
+import com.example.islandlyrics.ui.miuix.reorderable.MiuixBlurReorderablePanel
+import com.example.islandlyrics.ui.miuix.reorderable.MiuixReorderableListItem
 import top.yukonga.miuix.kmp.basic.BasicComponent
 import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.basic.Card
@@ -105,7 +88,6 @@ import com.example.islandlyrics.ui.miuix.preference.BlurOverlayDropdownPreferenc
 import top.yukonga.miuix.kmp.preference.SwitchPreference as SuperSwitch
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.MiuixPopupUtils.Companion.MiuixPopupHost
-import kotlin.math.roundToInt
 
 @Composable
 fun MiuixParserRuleEditorScreen(
@@ -156,6 +138,7 @@ fun MiuixParserRuleEditorScreen(
                     receiveOnlineTranslation = next.receiveOnlineTranslation,
                     receiveOnlineRomanization = next.receiveOnlineRomanization,
                     onlineLyricProviderOrder = next.onlineLyricProviderOrder.map { it.id },
+                    onlineLyricDisabledProviders = next.onlineLyricDisabledProviders.map { it.id }.toSet(),
                     useSuperLyricApi = next.useSuperLyricApi,
                     useLyricGetterApi = next.useLyricGetterApi,
                     useLyriconApi = next.useLyriconApi,
@@ -651,136 +634,40 @@ private fun MiuixOnlineProviderOrderEditor(
     Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
         Text(stringResource(R.string.parser_online_priority))
         Spacer(modifier = Modifier.height(8.dp))
-        var order by remember { mutableStateOf(state.onlineLyricProviderOrder) }
-        var draggingProvider by remember { mutableStateOf<OnlineLyricProvider?>(null) }
-        LaunchedEffect(state.onlineLyricProviderOrder) {
-            if (draggingProvider == null && order != state.onlineLyricProviderOrder) {
-                order = state.onlineLyricProviderOrder
-            }
-        }
-        val rowHeight = 52.dp
-        Box(modifier = Modifier.fillMaxWidth().height(rowHeight * order.size)) {
-            order.forEachIndexed { index, provider ->
-            key(provider.id) {
-                MiuixDraggableProviderRow(
-                        label = provider.displayName(context),
-                    index = index,
-                        rowHeight = rowHeight,
-                        itemCount = order.size,
-                    isDragging = draggingProvider == provider,
-                        onDragStart = {
-                            draggingProvider = provider
-                        },
-                        onDragMove = { from, to -> order = order.moveItem(from, to) },
-                    onDragCancel = {
-                            order = state.onlineLyricProviderOrder
-                        draggingProvider = null
-                    },
-                    onDragEnd = {
-                            val nextOrder = order
-                        draggingProvider = null
-                            if (nextOrder != state.onlineLyricProviderOrder) {
-                                onStateChange(state.copy(onlineLyricProviderOrder = nextOrder))
-                        }
-                    }
+        MiuixBlurReorderablePanel(
+            items = state.onlineLyricProviderOrder.map { provider ->
+                MiuixReorderableListItem(
+                    id = provider.id,
+                    title = provider.displayName(context),
+                    checked = provider !in state.onlineLyricDisabledProviders
                 )
-            }
-            }
-        }
-        Button(
-            onClick = { onStateChange(state.copy(onlineLyricProviderOrder = OnlineLyricProvider.defaultOrderForPackage(state.packageName))) },
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text(stringResource(R.string.parser_reset_online_priority))
-        }
-    }
-}
-
-@Composable
-private fun MiuixDraggableProviderRow(
-    label: String,
-    index: Int,
-    rowHeight: Dp,
-    itemCount: Int,
-    isDragging: Boolean,
-    onDragStart: () -> Unit,
-    onDragMove: (Int, Int) -> Unit,
-    onDragCancel: () -> Unit,
-    onDragEnd: () -> Unit
-) {
-    var dragOffset by remember { mutableFloatStateOf(0f) }
-    val currentIndex by rememberUpdatedState(index)
-    val rowHeightPx = with(LocalDensity.current) { rowHeight.toPx() }
-    val animatedY by animateDpAsState(
-        targetValue = rowHeight * index,
-        animationSpec = spring(stiffness = 650f, dampingRatio = 0.85f),
-        label = "providerReorderY"
-    )
-    val baseY = if (isDragging) rowHeight * index else animatedY
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(rowHeight)
-            .offset {
-                IntOffset(
-                    x = 0,
-                    y = baseY.roundToPx() + if (isDragging) dragOffset.roundToInt() else 0
-                )
-            }
-            .zIndex(if (isDragging) 1f else 0f)
-            .graphicsLayer {
-                alpha = if (isDragging) 0.92f else 1f
-                scaleX = if (isDragging) 1.01f else 1f
-                scaleY = if (isDragging) 1.01f else 1f
-            }
-            .then(
-                if (isDragging) {
-                    Modifier
-                        .background(
-                            color = MiuixTheme.colorScheme.surfaceVariant.copy(alpha = 0.82f),
-                            shape = RoundedCornerShape(8.dp)
-                        )
-                        .padding(horizontal = 12.dp)
-                } else {
-                    Modifier
-                }
-            ),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(label, modifier = Modifier.weight(1f))
-        androidx.compose.material3.Icon(
-            Icons.Default.DragHandle,
-            contentDescription = stringResource(R.string.action_drag_sort),
-            tint = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-            modifier = Modifier
-                .size(40.dp)
-                .padding(8.dp)
-                .pointerInput(itemCount) {
-                    detectDragGestures(
-                        onDragStart = {
-                            dragOffset = 0f
-                            onDragStart()
-                        },
-                        onDragEnd = {
-                            dragOffset = 0f
-                            onDragEnd()
-                        },
-                        onDragCancel = {
-                            dragOffset = 0f
-                            onDragCancel()
-                        },
-                        onDrag = { change, dragAmount ->
-                            change.consume()
-                            dragOffset += dragAmount.y
-                                val from = currentIndex
-                                val target = (from + (dragOffset / rowHeightPx).roundToInt()).coerceIn(0, itemCount - 1)
-                                if (target != from) {
-                                    dragOffset -= (target - from) * rowHeightPx
-                                    onDragMove(from, target)
-                                }
-                        }
+            },
+            onMove = { from, to ->
+                onStateChange(
+                    state.copy(
+                        onlineLyricProviderOrder = state.onlineLyricProviderOrder.moveItem(from, to)
                     )
+                )
+            },
+            onCheckedChange = { id, checked ->
+                val provider = OnlineLyricProvider.fromId(id) ?: return@MiuixBlurReorderablePanel
+                val nextDisabled = if (checked) {
+                    state.onlineLyricDisabledProviders - provider
+                } else {
+                    state.onlineLyricDisabledProviders + provider
                 }
+                onStateChange(state.copy(onlineLyricDisabledProviders = nextDisabled))
+            },
+            onReset = {
+                onStateChange(
+                    state.copy(
+                        onlineLyricProviderOrder = OnlineLyricProvider.defaultOrderForPackage(state.packageName),
+                        onlineLyricDisabledProviders = emptySet()
+                    )
+                )
+            },
+            resetLabel = stringResource(R.string.parser_reset_online_priority),
+            modifier = Modifier.fillMaxWidth()
         )
     }
 }
@@ -792,5 +679,3 @@ private fun <T> List<T>.moveItem(from: Int, to: Int): List<T> {
         add(to, item)
     }
 }
-
-

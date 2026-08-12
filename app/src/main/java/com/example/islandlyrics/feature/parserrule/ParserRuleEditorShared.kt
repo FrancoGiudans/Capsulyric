@@ -45,6 +45,7 @@ data class ParserRuleEditorState(
     val receiveOnlineTranslation: Boolean,
     val receiveOnlineRomanization: Boolean,
     val onlineLyricProviderOrder: List<OnlineLyricProvider>,
+    val onlineLyricDisabledProviders: Set<OnlineLyricProvider> = emptySet(),
     val useSuperLyricApi: Boolean,
     val useLyricGetterApi: Boolean,
     val useLyriconApi: Boolean,
@@ -66,6 +67,9 @@ fun ParserRule.toEditorState(): ParserRuleEditorState = ParserRuleEditorState(
     receiveOnlineTranslation = receiveOnlineTranslation,
     receiveOnlineRomanization = receiveOnlineRomanization,
     onlineLyricProviderOrder = OnlineLyricProvider.normalizeOrder(onlineLyricProviderOrder),
+    onlineLyricDisabledProviders = OnlineLyricProvider.normalizeDisabledIds(onlineLyricDisabledProviders)
+        .mapNotNull(OnlineLyricProvider::fromId)
+        .toSet(),
     useSuperLyricApi = useSuperLyricApi,
     useLyricGetterApi = useLyricGetterApi,
     useLyriconApi = useLyriconApi,
@@ -85,6 +89,7 @@ fun ParserRuleEditorState.withSourceSettingsFrom(source: ParserRuleEditorState):
     receiveOnlineTranslation = source.receiveOnlineTranslation,
     receiveOnlineRomanization = source.receiveOnlineRomanization,
     onlineLyricProviderOrder = source.onlineLyricProviderOrder,
+    onlineLyricDisabledProviders = source.onlineLyricDisabledProviders,
     useSuperLyricApi = source.useSuperLyricApi,
     useLyricGetterApi = source.useLyricGetterApi,
     useLyriconApi = source.useLyriconApi,
@@ -107,6 +112,7 @@ fun ParserRuleEditorState.toRule(previousRule: ParserRule?): ParserRule = Parser
     receiveOnlineTranslation = receiveOnlineTranslation,
     receiveOnlineRomanization = receiveOnlineRomanization,
     onlineLyricProviderOrder = onlineLyricProviderOrder.map { it.id },
+    onlineLyricDisabledProviders = onlineLyricDisabledProviders.map { it.id }.toSet(),
     useSuperLyricApi = useSuperLyricApi,
     useLyricGetterApi = useLyricGetterApi,
     useLyriconApi = useLyriconApi,

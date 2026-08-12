@@ -58,6 +58,7 @@ import androidx.compose.material.icons.filled.Check
 import com.example.islandlyrics.ui.material.blur.MaterialBlurAlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
@@ -157,6 +158,7 @@ fun ParserRuleEditorScreen(
                     receiveOnlineTranslation = next.receiveOnlineTranslation,
                     receiveOnlineRomanization = next.receiveOnlineRomanization,
                     onlineLyricProviderOrder = next.onlineLyricProviderOrder.map { it.id },
+                    onlineLyricDisabledProviders = next.onlineLyricDisabledProviders.map { it.id }.toSet(),
                     useSuperLyricApi = next.useSuperLyricApi,
                     useLyricGetterApi = next.useLyricGetterApi,
                     useLyriconApi = next.useLyriconApi,
@@ -656,11 +658,13 @@ private fun OnlineProviderOrderEditor(
     Text(stringResource(R.string.parser_online_priority), color = MaterialTheme.colorScheme.primary)
     Spacer(modifier = Modifier.height(8.dp))
     var order by remember { mutableStateOf(state.onlineLyricProviderOrder) }
+    var disabledProviders by remember { mutableStateOf(state.onlineLyricDisabledProviders) }
     var draggingProvider by remember { mutableStateOf<OnlineLyricProvider?>(null) }
-    LaunchedEffect(state.onlineLyricProviderOrder) {
+    LaunchedEffect(state.onlineLyricProviderOrder, state.onlineLyricDisabledProviders) {
         if (draggingProvider == null && order != state.onlineLyricProviderOrder) {
             order = state.onlineLyricProviderOrder
         }
+        disabledProviders = state.onlineLyricDisabledProviders
     }
     val rowHeight = 52.dp
     Box(modifier = Modifier.fillMaxWidth().height(rowHeight * order.size)) {
@@ -668,6 +672,16 @@ private fun OnlineProviderOrderEditor(
             key(provider.id) {
                 DraggableProviderRow(
                     label = provider.displayName(context),
+                    checked = provider !in disabledProviders,
+                    onCheckedChange = { checked ->
+                        val nextDisabled = if (checked) {
+                            disabledProviders - provider
+                        } else {
+                            disabledProviders + provider
+                        }
+                        disabledProviders = nextDisabled
+                        onStateChange(state.copy(onlineLyricDisabledProviders = nextDisabled))
+                    },
                     index = index,
                     rowHeight = rowHeight,
                     itemCount = order.size,
@@ -691,7 +705,14 @@ private fun OnlineProviderOrderEditor(
             }
         }
     }
-    TextButton(onClick = { onStateChange(state.copy(onlineLyricProviderOrder = OnlineLyricProvider.defaultOrderForPackage(state.packageName))) }) {
+    TextButton(onClick = {
+        onStateChange(
+            state.copy(
+                onlineLyricProviderOrder = OnlineLyricProvider.defaultOrderForPackage(state.packageName),
+                onlineLyricDisabledProviders = emptySet()
+            )
+        )
+    }) {
         Icon(Icons.Default.Refresh, contentDescription = null)
         Spacer(modifier = Modifier.width(8.dp))
         Text(stringResource(R.string.parser_reset_online_priority))
@@ -701,6 +722,8 @@ private fun OnlineProviderOrderEditor(
 @Composable
 private fun DraggableProviderRow(
     label: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
     index: Int,
     rowHeight: Dp,
     itemCount: Int,
@@ -749,6 +772,11 @@ private fun DraggableProviderRow(
             ),
         verticalAlignment = Alignment.CenterVertically
     ) {
+        Checkbox(
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+            modifier = Modifier.padding(end = 4.dp)
+        )
         Text(label, modifier = Modifier.weight(1f))
         Icon(
             Icons.Default.DragHandle,

@@ -71,6 +71,10 @@ enum class OnlineLyricProvider(
             }
             return resolved
         }
+
+        /** Keeps only ids that map to a known [OnlineLyricProvider]. */
+        fun normalizeDisabledIds(ids: Set<String>?): Set<String> =
+            ids.orEmpty().mapNotNull(::fromId).map { it.id }.toSet()
     }
 
     fun displayName(context: android.content.Context): String = context.getString(nameResId)

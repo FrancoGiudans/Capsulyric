@@ -47,6 +47,7 @@ data class ParserRule(
     val receiveOnlineTranslation: Boolean = false,
     val receiveOnlineRomanization: Boolean = false,
     val onlineLyricProviderOrder: List<String> = emptyList(),
+    val onlineLyricDisabledProviders: Set<String> = emptySet(),
     val useSuperLyricApi: Boolean = false,     // Whether to use SuperLyric API callbacks
     val useLyricGetterApi: Boolean = false,    // Whether to use Lyric Getter API broadcasts
     val useLyriconApi: Boolean = false,        // Whether to subscribe to Lyricon active-player lyrics

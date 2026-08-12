@@ -126,9 +126,10 @@ class OnlineLyricFetcher(
         title: String,
         artist: String,
         providerOrderIds: List<String> = OnlineLyricProvider.defaultIds(),
-        useSmartSelection: Boolean = true
+        useSmartSelection: Boolean = true,
+        disabledProviderIds: Set<String> = emptySet()
     ): LyricResult? {
-        return fetchLyrics(title, artist, providerOrderIds, useSmartSelection).bestResult
+        return fetchLyrics(title, artist, providerOrderIds, useSmartSelection, disabledProviderIds).bestResult
     }
 
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -136,9 +137,11 @@ class OnlineLyricFetcher(
         title: String,
         artist: String,
         providerOrderIds: List<String> = OnlineLyricProvider.defaultIds(),
-        useSmartSelection: Boolean = true
+        useSmartSelection: Boolean = true,
+        disabledProviderIds: Set<String> = emptySet()
     ): FetchOutcome {
         val providerOrder = OnlineLyricProvider.normalizeOrder(providerOrderIds)
+            .filterNot { it.id in disabledProviderIds }
         val query = LyricQuery(title = title, artist = artist)
         if (!networkAllowed()) {
             AppLogger.getInstance().i("OnlineLyric", "Offline mode enabled, online lyric fetch blocked")

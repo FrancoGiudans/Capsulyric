@@ -116,6 +116,13 @@ object ParserRuleHelper {
                             receiveOnlineTranslation = obj.optBoolean("receiveOnlineTranslation", false),
                             receiveOnlineRomanization = obj.optBoolean("receiveOnlineRomanization", false),
                             onlineLyricProviderOrder = OnlineLyricProvider.normalizeOrder(providerOrder).map { it.id },
+                            onlineLyricDisabledProviders = OnlineLyricProvider.normalizeDisabledIds(
+                                obj.optJSONArray("onlineLyricDisabledProviders")?.let { arr ->
+                                    buildSet {
+                                        for (index in 0 until arr.length()) add(arr.optString(index))
+                                    }
+                                }
+                            ),
                             useSuperLyricApi = obj.optBoolean("useSuperLyricApi", false),
                             useLyricGetterApi = obj.optBoolean("useLyricGetterApi", false),
                             useLyriconApi = obj.optBoolean("useLyriconApi", false),
@@ -293,6 +300,10 @@ object ParserRuleHelper {
                 "onlineLyricProviderOrder",
                 JSONArray(OnlineLyricProvider.normalizeOrder(rule.onlineLyricProviderOrder).map { it.id })
             )
+            put(
+                "onlineLyricDisabledProviders",
+                JSONArray(OnlineLyricProvider.normalizeDisabledIds(rule.onlineLyricDisabledProviders).sorted())
+            )
             put("useSuperLyricApi", rule.useSuperLyricApi)
             put("useLyricGetterApi", rule.useLyricGetterApi)
             put("useLyriconApi", rule.useLyriconApi)
@@ -337,6 +348,13 @@ object ParserRuleHelper {
             receiveOnlineTranslation = obj.optBoolean("receiveOnlineTranslation", false),
             receiveOnlineRomanization = obj.optBoolean("receiveOnlineRomanization", false),
             onlineLyricProviderOrder = OnlineLyricProvider.normalizeOrder(providerOrder).map { it.id },
+            onlineLyricDisabledProviders = OnlineLyricProvider.normalizeDisabledIds(
+                obj.optJSONArray("onlineLyricDisabledProviders")?.let { arr ->
+                    buildSet {
+                        for (index in 0 until arr.length()) add(arr.optString(index))
+                    }
+                }
+            ),
             useSuperLyricApi = obj.optBoolean("useSuperLyricApi", false),
             useLyricGetterApi = obj.optBoolean("useLyricGetterApi", false),
             useLyriconApi = obj.optBoolean("useLyriconApi", false),
@@ -383,6 +401,7 @@ object ParserRuleHelper {
             receiveOnlineTranslation = template.receiveOnlineTranslation,
             receiveOnlineRomanization = template.receiveOnlineRomanization,
             onlineLyricProviderOrder = OnlineLyricProvider.normalizeOrder(template.onlineLyricProviderOrder).map { it.id },
+            onlineLyricDisabledProviders = OnlineLyricProvider.normalizeDisabledIds(template.onlineLyricDisabledProviders),
             useSuperLyricApi = template.useSuperLyricApi,
             useLyricGetterApi = template.useLyricGetterApi,
             useLyriconApi = template.useLyriconApi,
