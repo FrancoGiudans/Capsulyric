@@ -157,7 +157,12 @@ fun MiuixBlurReorderablePanel(
     val backdrop = LocalMiuixBlurBackdrop.current
     val blurEnabled = LocalMiuixBlurEnabled.current && backdrop != null
     val embeddedInBlurSurface = LocalMiuixBlurSurfaceActive.current
-    val useTextureBlur = !embeddedInBlurSurface && blurEnabled
+    // The host (e.g. MiuixBlurScaffold) provides the backdrop and renders this panel
+    // inside that backdrop's layer. Applying textureBlur with the same backdrop would
+    // make the renderer recursively capture the panel itself and overflow the native
+    // RenderThread stack (SIGSEGV). When a host backdrop exists the host owns the
+    // blur, so the panel keeps a plain surface background instead.
+    val useTextureBlur = !embeddedInBlurSurface && blurEnabled && backdrop == null
     val currentItems = rememberUpdatedState(items)
     val currentOnMove = rememberUpdatedState(onMove)
     var draggedItemId by remember { mutableStateOf<String?>(null) }
