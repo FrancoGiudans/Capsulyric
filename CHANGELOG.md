@@ -12,7 +12,7 @@ Set to `true` to force a pre-release build regardless of commit message.
 -->
 
 ## Release Metadata
-- **Preview**: `true`
+- **Preview**: `false`
 
 ## 🇨🇳 更新日志
 <img src="screenshots/logo26.8.png" width="100%" />

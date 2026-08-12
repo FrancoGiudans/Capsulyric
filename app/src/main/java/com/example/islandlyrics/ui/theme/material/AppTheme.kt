@@ -140,7 +140,15 @@ fun AppTheme(
             typography = AppTypography,
             shapes = AppShapes,
             content = {
-                MaterialBlurRoot(content = content)
+                // Material3's MaterialTheme does not provide a themed LocalContentColor in this
+                // Compose version (it defaults to Color.Black). Without an explicit color, plain
+                // Text/Icon stay black and become invisible in dark mode. Provide the Material
+                // onBackground so uncolored text/icons adapt to the current theme.
+                CompositionLocalProvider(
+                    LocalContentColor provides colorScheme.onBackground
+                ) {
+                    MaterialBlurRoot(content = content)
+                }
             }
         )
     }

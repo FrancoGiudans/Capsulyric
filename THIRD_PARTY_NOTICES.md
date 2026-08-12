@@ -57,10 +57,6 @@ The self-wrapped controls below are **modified from or built on** the correspond
 
 - This project is released under [GPL-3.0](LICENSE). Apache-2.0 is compatible with GPL-3.0, so the combined work may remain GPL-3.0; the Apache-2.0 attribution requirements below still apply to the files listed above.
 - 本项目基于 [GPL-3.0](LICENSE) 发布。Apache-2.0 与 GPL-3.0 兼容，合并后的作品仍可按 GPL-3.0 发布；但上述文件仍需满足 Apache-2.0 的署名要求。
-- Per Apache-2.0 §4, redistributing modified source files requires retaining the original copyright notices and stating that changes were made. The upstream attribution for every derived file is centralized in this document. The individual file headers currently carry only the project's own GPL-3.0 header and still need the upstream notice added (recommended follow-up).
-- 依据 Apache-2.0 §4，再分发修改后的源码文件需保留原版权声明并注明已作修改。目前所有派生文件的上游归属集中记录于本文档；各文件头部目前仅含项目自身的 GPL-3.0 声明，建议后续补充上游声明（推荐跟进项）。
-- `.vscode/` contains local reference copies of miuix/haze etc. for development only; it is gitignored and not distributed with the repository.
-- `.vscode/` 下的 miuix/haze 等源码副本仅供本地开发参考，已被 `.gitignore` 忽略，不随仓库分发。
 - The in-app license page (`OpenSourceLicensesActivity`, built with aboutlibraries) lists miuix and other Gradle dependencies together with their licenses.
 - 应用内「开源许可」页面（`OpenSourceLicensesActivity`，基于 aboutlibraries）会列出 miuix 等 Gradle 依赖及其协议。
 

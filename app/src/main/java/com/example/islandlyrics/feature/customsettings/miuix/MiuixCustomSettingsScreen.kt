@@ -78,6 +78,9 @@ import kotlinx.coroutines.launch
 import java.util.Locale
 import top.yukonga.miuix.kmp.basic.*
 import top.yukonga.miuix.kmp.basic.ButtonDefaults
+import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.extended.Ok
+import top.yukonga.miuix.kmp.icon.extended.Close
 import top.yukonga.miuix.kmp.preference.ArrowPreference as SuperArrow
 import com.example.islandlyrics.ui.miuix.preference.BlurOverlayDropdownPreference as SuperDropdown
 import top.yukonga.miuix.kmp.preference.SwitchPreference as SuperSwitch
@@ -1361,7 +1364,33 @@ private fun MiuixHomeLyricSecondaryTextModeBottomSheet(
     MiuixBlurBottomSheet(
         show = true,
         title = stringResource(R.string.settings_home_lyric_preview_title),
-        onDismissRequest = onDismiss
+        onDismissRequest = onDismiss,
+        startAction = {
+            IconButton(onClick = onDismiss) {
+                Icon(
+                    imageVector = MiuixIcons.Close,
+                    contentDescription = stringResource(R.string.backup_dialog_cancel),
+                    tint = MiuixTheme.colorScheme.onSurfaceVariantActions
+                )
+            }
+        },
+        endAction = {
+            IconButton(
+                onClick = {
+                    val finalModes = modes.mapNotNull { SecondaryTextMode.from(it) }
+                        .ifEmpty { listOf(SecondaryTextMode.NEXT_LYRIC) }
+                        .map { it.preferenceValue }
+                    onCommit(finalModes)
+                    onDismiss()
+                }
+            ) {
+                Icon(
+                    imageVector = MiuixIcons.Ok,
+                    contentDescription = stringResource(R.string.backup_dialog_confirm),
+                    tint = MiuixTheme.colorScheme.primary
+                )
+            }
+        }
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
             MiuixBlurReorderablePanel(
@@ -1389,19 +1418,6 @@ private fun MiuixHomeLyricSecondaryTextModeBottomSheet(
                 },
                 modifier = Modifier.fillMaxWidth()
             )
-            Spacer(modifier = Modifier.height(16.dp))
-            TextButton(
-                text = stringResource(R.string.backup_dialog_confirm),
-                onClick = {
-                    val finalModes = modes.mapNotNull { SecondaryTextMode.from(it) }
-                        .ifEmpty { listOf(SecondaryTextMode.NEXT_LYRIC) }
-                        .map { it.preferenceValue }
-                    onCommit(finalModes)
-                    onDismiss()
-                },
-                modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.textButtonColorsPrimary()
-            )
         }
     }
 }
@@ -1422,7 +1438,33 @@ private fun MiuixSecondaryTextModeBottomSheet(
     MiuixBlurBottomSheet(
         show = true,
         title = stringResource(R.string.settings_super_island_secondary_text_mode),
-        onDismissRequest = onDismiss
+        onDismissRequest = onDismiss,
+        startAction = {
+            IconButton(onClick = onDismiss) {
+                Icon(
+                    imageVector = MiuixIcons.Close,
+                    contentDescription = stringResource(R.string.backup_dialog_cancel),
+                    tint = MiuixTheme.colorScheme.onSurfaceVariantActions
+                )
+            }
+        },
+        endAction = {
+            IconButton(
+                onClick = {
+                    val finalModes = modes.mapNotNull { SuperIslandSecondaryTextMode.from(it) }
+                        .ifEmpty { listOf(SuperIslandSecondaryTextMode.NEXT_LYRIC) }
+                        .map { it.preferenceValue }
+                    onCommit(finalModes)
+                    onDismiss()
+                }
+            ) {
+                Icon(
+                    imageVector = MiuixIcons.Ok,
+                    contentDescription = stringResource(R.string.backup_dialog_confirm),
+                    tint = MiuixTheme.colorScheme.primary
+                )
+            }
+        }
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
             MiuixBlurReorderablePanel(
@@ -1449,19 +1491,6 @@ private fun MiuixSecondaryTextModeBottomSheet(
                     }
                 },
                 modifier = Modifier.fillMaxWidth()
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-            TextButton(
-                text = stringResource(R.string.backup_dialog_confirm),
-                onClick = {
-                    val finalModes = modes.mapNotNull { SuperIslandSecondaryTextMode.from(it) }
-                        .ifEmpty { listOf(SuperIslandSecondaryTextMode.NEXT_LYRIC) }
-                        .map { it.preferenceValue }
-                    onCommit(finalModes)
-                    onDismiss()
-                },
-                modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.textButtonColorsPrimary()
             )
         }
     }

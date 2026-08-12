@@ -53,6 +53,11 @@ import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.ButtonDefaults
 import top.yukonga.miuix.kmp.basic.TextButton
 import top.yukonga.miuix.kmp.basic.Slider
+import top.yukonga.miuix.kmp.basic.Icon
+import top.yukonga.miuix.kmp.basic.IconButton
+import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.extended.Ok
+import top.yukonga.miuix.kmp.icon.extended.Close
 import top.yukonga.miuix.kmp.preference.ArrowPreference as SuperArrow
 import com.example.islandlyrics.ui.miuix.preference.BlurOverlayDropdownPreference as SuperDropdown
 import top.yukonga.miuix.kmp.preference.SwitchPreference as SuperSwitch
@@ -338,7 +343,33 @@ private fun MiuixFloatingSecondaryTextModeBottomSheet(
     MiuixBlurBottomSheet(
         show = true,
         title = stringResource(R.string.settings_floating_secondary_text_mode),
-        onDismissRequest = onDismiss
+        onDismissRequest = onDismiss,
+        startAction = {
+            IconButton(onClick = onDismiss) {
+                Icon(
+                    imageVector = MiuixIcons.Close,
+                    contentDescription = stringResource(R.string.backup_dialog_cancel),
+                    tint = MiuixTheme.colorScheme.onSurfaceVariantActions
+                )
+            }
+        },
+        endAction = {
+            IconButton(
+                onClick = {
+                    val finalModes = modes.mapNotNull { SecondaryTextMode.from(it) }
+                        .ifEmpty { listOf(SecondaryTextMode.NEXT_LYRIC) }
+                        .map { it.preferenceValue }
+                    onCommit(finalModes)
+                    onDismiss()
+                }
+            ) {
+                Icon(
+                    imageVector = MiuixIcons.Ok,
+                    contentDescription = stringResource(R.string.backup_dialog_confirm),
+                    tint = MiuixTheme.colorScheme.primary
+                )
+            }
+        }
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
             MiuixBlurReorderablePanel(
@@ -365,19 +396,6 @@ private fun MiuixFloatingSecondaryTextModeBottomSheet(
                     }
                 },
                 modifier = Modifier.fillMaxWidth()
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-            TextButton(
-                text = stringResource(R.string.backup_dialog_confirm),
-                onClick = {
-                    val finalModes = modes.mapNotNull { SecondaryTextMode.from(it) }
-                        .ifEmpty { listOf(SecondaryTextMode.NEXT_LYRIC) }
-                        .map { it.preferenceValue }
-                    onCommit(finalModes)
-                    onDismiss()
-                },
-                modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.textButtonColorsPrimary()
             )
         }
     }

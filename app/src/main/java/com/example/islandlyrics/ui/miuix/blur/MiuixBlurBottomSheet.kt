@@ -175,7 +175,7 @@ fun MiuixBlurBottomSheet(
     endAction: @Composable (() -> Unit)? = null,
     enableWindowDim: Boolean = true,
     cornerRadius: Dp = 28.dp,
-    sheetMaxWidth: Dp = 640.dp,
+    sheetMaxWidth: Dp = 420.dp,
     onDismissRequest: (() -> Unit)? = null,
     onDismissFinished: (() -> Unit)? = null,
     outsideMargin: DpSize = DpSize(0.dp, 0.dp),
