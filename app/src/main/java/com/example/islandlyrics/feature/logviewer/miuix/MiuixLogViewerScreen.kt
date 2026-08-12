@@ -30,15 +30,12 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.FilterList
-import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.*
+import androidx.core.content.edit
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -89,7 +86,7 @@ fun MiuixLogViewerScreen(
         )
     }
     var originalLogs by remember { mutableStateOf<List<LogManager.LogEntry>>(emptyList()) }
-    var currentAction by remember { mutableStateOf(LogAction.SHARE) }
+    val currentAction = remember { mutableStateOf(LogAction.SHARE) }
     val showExportDialog = remember { mutableStateOf(false) }
     val showClearDialog = remember { mutableStateOf(false) }
     val levelError = stringResource(R.string.log_viewer_level_error)
@@ -148,7 +145,7 @@ fun MiuixLogViewerScreen(
                     // Export
                     IconButton(
                         onClick = { 
-                            currentAction = LogAction.SHARE
+                            currentAction.value = LogAction.SHARE
                             showExportDialog.value = true 
                         },
                         modifier = Modifier.padding(end = 4.dp)
@@ -162,7 +159,7 @@ fun MiuixLogViewerScreen(
                     // Save
                     IconButton(
                         onClick = {
-                            currentAction = LogAction.SAVE
+                            currentAction.value = LogAction.SAVE
                             showExportDialog.value = true
                         },
                         modifier = Modifier.padding(end = 4.dp)
@@ -251,10 +248,9 @@ fun MiuixLogViewerScreen(
                         onSelectedIndexChange = { index ->
                             val level = recordLevelOptions[index].first
                             recordLevel = level
-                            AppPreferences.of(context)
-                                .edit()
-                                .putString(AppPreferences.Keys.LOG_RECORD_LEVEL, level.preferenceValue)
-                                .apply()
+                            AppPreferences.of(context).edit {
+                                putString(AppPreferences.Keys.LOG_RECORD_LEVEL, level.preferenceValue)
+                            }
                             AppLogger.getInstance().setMinimumLevel(level)
                         }
                     )
@@ -285,7 +281,7 @@ fun MiuixLogViewerScreen(
         }
 
         // Export Dialog — must be inside Scaffold lambda for MiuixPopupHost
-        var selectedIndex by remember { mutableStateOf(1) }
+        var selectedIndex by remember { mutableIntStateOf(1) }
         val exportOptions = listOf(
             stringResource(R.string.log_viewer_time_last_1h),
             stringResource(R.string.log_viewer_time_last_24h),
@@ -303,6 +299,7 @@ fun MiuixLogViewerScreen(
                     title = stringResource(R.string.log_viewer_time_range),
                     items = exportOptions,
                     selectedIndex = selectedIndex,
+                    renderInRootScaffold = false,
                     onSelectedIndexChange = { selectedIndex = it }
                 )
                 Spacer(modifier = Modifier.height(16.dp))
@@ -313,14 +310,14 @@ fun MiuixLogViewerScreen(
                         modifier = Modifier.weight(1f)
                     )
                     TextButton(
-                        text = if (currentAction == LogAction.SHARE) stringResource(R.string.log_viewer_export) else stringResource(R.string.log_viewer_save),
+                        text = if (currentAction.value == LogAction.SHARE) stringResource(R.string.log_viewer_export) else stringResource(R.string.log_viewer_save),
                         onClick = {
                             val timeRange = when (selectedIndex) {
                                 0 -> 60 * 60 * 1000L
                                 1 -> 24 * 60 * 60 * 1000L
                                 else -> -1L
                             }
-                            if (currentAction == LogAction.SHARE) {
+                            if (currentAction.value == LogAction.SHARE) {
                                 LogManager.getInstance().exportLog(context, timeRange)
                             } else {
                                 LogManager.getInstance().exportLogToDownloads(context, timeRange)
