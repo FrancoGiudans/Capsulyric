@@ -606,7 +606,11 @@ private fun MiuixSwitchArrowPreference(
             }
         },
         endActions = {
-            IconButton(onClick = onArrowClick, enabled = enabled) {
+            IconButton(
+                onClick = onArrowClick,
+                enabled = enabled,
+                modifier = Modifier.align(Alignment.CenterVertically)
+            ) {
                 androidx.compose.material3.Icon(
                     Icons.AutoMirrored.Filled.KeyboardArrowRight,
                     contentDescription = null,
@@ -617,7 +621,8 @@ private fun MiuixSwitchArrowPreference(
             Switch(
                 checked = checked,
                 onCheckedChange = onCheckedChange,
-                enabled = enabled
+                enabled = enabled,
+                modifier = Modifier.align(Alignment.CenterVertically)
             )
         }
     )
