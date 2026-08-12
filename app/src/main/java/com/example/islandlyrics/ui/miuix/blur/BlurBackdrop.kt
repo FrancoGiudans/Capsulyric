@@ -53,3 +53,11 @@ val LocalMiuixBlurEnabled = compositionLocalOf { false }
  * CompositionLocal to provide the global MIUIX blur edge highlight state.
  */
 val LocalMiuixBlurEdgeHighlightEnabled = compositionLocalOf { false }
+
+/**
+ * Marks that the current composition is already rendered on a blurred
+ * surface (for example inside a [top.yukonga.miuix.kmp.blur.textureBlur]
+ * panel or a Miuix blur dialog). Child surfaces that can render their own
+ * blur should inherit the host surface instead of stacking another blur.
+ */
+val LocalMiuixBlurSurfaceActive = compositionLocalOf { false }

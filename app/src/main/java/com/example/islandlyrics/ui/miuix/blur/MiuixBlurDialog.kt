@@ -257,30 +257,32 @@ fun MiuixBlurDialog(
                         vertical = 22.dp + insideMargin.height
                     )
 
-                Box(modifier = panelModifier) {
-                    MiuixTheme(colors = dialogContentColors) {
-                        Column {
-                            if (!title.isNullOrBlank()) {
-                                Text(
-                                    text = title,
-                                    color = MiuixTheme.colorScheme.onSurface,
-                                    fontSize = MiuixTheme.textStyles.title3.fontSize
-                                )
-                            }
-                            if (!summary.isNullOrBlank()) {
+                CompositionLocalProvider(LocalMiuixBlurSurfaceActive provides true) {
+                    Box(modifier = panelModifier) {
+                        MiuixTheme(colors = dialogContentColors) {
+                            Column {
                                 if (!title.isNullOrBlank()) {
-                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Text(
+                                        text = title,
+                                        color = MiuixTheme.colorScheme.onSurface,
+                                        fontSize = MiuixTheme.textStyles.title3.fontSize
+                                    )
                                 }
-                                Text(
-                                    text = summary,
-                                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-                                    fontSize = MiuixTheme.textStyles.body2.fontSize
-                                )
+                                if (!summary.isNullOrBlank()) {
+                                    if (!title.isNullOrBlank()) {
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                    }
+                                    Text(
+                                        text = summary,
+                                        color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                                        fontSize = MiuixTheme.textStyles.body2.fontSize
+                                    )
+                                }
+                                if (!title.isNullOrBlank() || !summary.isNullOrBlank()) {
+                                    Spacer(modifier = Modifier.height(20.dp))
+                                }
+                                content()
                             }
-                            if (!title.isNullOrBlank() || !summary.isNullOrBlank()) {
-                                Spacer(modifier = Modifier.height(20.dp))
-                            }
-                            content()
                         }
                     }
                 }
@@ -290,4 +292,3 @@ fun MiuixBlurDialog(
     }
 
 }
-
