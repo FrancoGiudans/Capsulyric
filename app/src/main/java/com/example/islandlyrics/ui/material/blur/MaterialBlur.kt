@@ -88,6 +88,7 @@ import top.yukonga.miuix.kmp.blur.rememberLayerBackdrop
 import top.yukonga.miuix.kmp.basic.FabPosition as MiuixFabPosition
 import top.yukonga.miuix.kmp.basic.Scaffold as MiuixScaffold
 import top.yukonga.miuix.kmp.blur.textureBlur
+import top.yukonga.miuix.kmp.shader.isRenderEffectSupported
 
 val LocalMaterialBlurEnabled = compositionLocalOf { false }
 val LocalMaterialBlurRadius = compositionLocalOf { 20.dp }
@@ -137,7 +138,9 @@ fun Modifier.materialBlurPanel(
 ): Modifier {
     val backdrop = LocalMiuixBlurBackdrop.current
     val blurEnabled = LocalMiuixBlurEnabled.current
-    if (!blurEnabled || backdrop == null) return this
+    if (!enabled || !blurEnabled || backdrop == null || !isRenderEffectSupported()) {
+        return background(backgroundColor, shape)
+    }
     return clip(shape).textureBlur(
         backdrop = backdrop,
         shape = shape,
@@ -252,24 +255,28 @@ fun MaterialBlurAlertDialog(
     properties: DialogProperties = DialogProperties(),
 ) {
     val blurEnabled = LocalMaterialBlurEnabled.current
+    val canBlur = blurEnabled &&
+        LocalMiuixBlurBackdrop.current != null &&
+        isRenderEffectSupported()
     Material3AlertDialog(
         onDismissRequest = onDismissRequest,
         confirmButton = confirmButton,
         modifier = modifier.materialBlurPanel(
             shape = shape,
-            enabled = blurEnabled,
+            enabled = canBlur,
             tint = containerColor.copy(alpha = MaterialBlurDialogTintAlpha),
+            backgroundColor = containerColor,
         ),
         dismissButton = dismissButton,
         icon = icon,
         title = title,
         text = text,
         shape = shape,
-        containerColor = if (blurEnabled) Color.Transparent else containerColor,
+        containerColor = if (canBlur) Color.Transparent else containerColor,
         iconContentColor = iconContentColor,
         titleContentColor = titleContentColor,
         textContentColor = textContentColor,
-        tonalElevation = if (blurEnabled) 0.dp else tonalElevation,
+        tonalElevation = if (canBlur) 0.dp else tonalElevation,
         properties = properties,
     )
 }
@@ -290,20 +297,24 @@ fun MaterialBlurDropdownMenu(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val blurEnabled = LocalMaterialBlurEnabled.current
+    val canBlur = blurEnabled &&
+        LocalMiuixBlurBackdrop.current != null &&
+        isRenderEffectSupported()
     Material3DropdownMenu(
         expanded = expanded,
         onDismissRequest = onDismissRequest,
         modifier = modifier.materialBlurPanel(
             shape = shape,
-            enabled = blurEnabled,
+            enabled = canBlur,
             tint = containerColor.copy(alpha = MaterialBlurDialogTintAlpha),
+            backgroundColor = containerColor,
         ),
         offset = offset,
         scrollState = scrollState,
         properties = properties,
         shape = shape,
-        containerColor = if (blurEnabled) Color.Transparent else containerColor,
-        tonalElevation = if (blurEnabled) 0.dp else tonalElevation,
+        containerColor = if (canBlur) Color.Transparent else containerColor,
+        tonalElevation = if (canBlur) 0.dp else tonalElevation,
         shadowElevation = shadowElevation,
         border = border,
         content = content,
