@@ -243,6 +243,12 @@ fun MiuixCustomSettingsScreen(
         )
     }
     var cardBlurEnabled by remember(uiState.cardBlurEnabled) { mutableStateOf(uiState.cardBlurEnabled) }
+    var scrollEndHapticEnabled by remember {
+        mutableStateOf(LabFeatureManager.isScrollEndHapticEnabled(context))
+    }
+    var blurEdgeHighlightEnabled by remember {
+        mutableStateOf(LabFeatureManager.isMiuixBlurEdgeHighlightEnabled(context))
+    }
     var blockXmsfMode by remember { mutableStateOf(XmsfBypassMode.read(prefs)) }
     var blockXmsfCustomDurationMs by remember { mutableIntStateOf(XmsfBypassMode.readCustomDurationMs(prefs)) }
 
@@ -1311,6 +1317,28 @@ fun MiuixCustomSettingsScreen(
                                             viewModel.dispatch(CustomSettingsAction.SetCardBlurEnabled(it))
                                         }
                                     )
+                                    if (miuixEnabled && cardBlurEnabled) {
+                                        SuperSwitch(
+                                            title = stringResource(R.string.settings_edge_highlight_texture_title),
+                                            summary = stringResource(R.string.settings_edge_highlight_texture_desc),
+                                            checked = blurEdgeHighlightEnabled,
+                                            onCheckedChange = {
+                                                blurEdgeHighlightEnabled = it
+                                                LabFeatureManager.setMiuixBlurEdgeHighlightEnabled(context, it)
+                                            }
+                                        )
+                                    }
+                                    if (miuixEnabled) {
+                                        SuperSwitch(
+                                            title = stringResource(R.string.settings_edge_scroll_haptic_title),
+                                            summary = stringResource(R.string.settings_edge_scroll_haptic_desc),
+                                            checked = scrollEndHapticEnabled,
+                                            onCheckedChange = {
+                                                scrollEndHapticEnabled = it
+                                                LabFeatureManager.setScrollEndHapticEnabled(context, it)
+                                            }
+                                        )
+                                    }
                                 }
                             }
                         }
