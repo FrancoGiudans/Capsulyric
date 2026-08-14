@@ -79,8 +79,16 @@ object SuperIslandColorSource {
     fun resolveColor(source: String, albumColor: Int, customColor: Int): Int {
         return when (source) {
             ALBUM_ART -> albumColor
-            ALBUM_ART_READABLE_WEAK -> ensureReadable(albumColor, WEAK_MINIMUM_CONTRAST)
-            ALBUM_ART_READABLE_STRONG -> ensureReadable(albumColor, STRONG_MINIMUM_CONTRAST)
+            ALBUM_ART_READABLE_WEAK -> ensureReadable(
+                color = albumColor,
+                minimumContrast = WEAK_MINIMUM_CONTRAST,
+                minimumWhiteRatio = WEAK_WHITE_RATIO
+            )
+            ALBUM_ART_READABLE_STRONG -> ensureReadable(
+                color = albumColor,
+                minimumContrast = STRONG_MINIMUM_CONTRAST,
+                minimumWhiteRatio = STRONG_WHITE_RATIO
+            )
             CUSTOM -> customColor
             else -> DEFAULT_NEUTRAL_COLOR
         }
@@ -89,10 +97,15 @@ object SuperIslandColorSource {
     private fun isLegacyEnabled(prefs: SharedPreferences): Boolean =
         prefs.getBoolean(AppPreferences.Keys.SUPER_ISLAND_TEXT_COLOR_ENABLED, false)
 
-    private fun ensureReadable(color: Int, minimumContrast: Double): Int {
-        if (ColorUtils.calculateContrast(color, Color.BLACK) >= minimumContrast) return color
+    private fun ensureReadable(
+        color: Int,
+        minimumContrast: Double,
+        minimumWhiteRatio: Float
+    ): Int {
+        val baseColor = ColorUtils.blendARGB(color, Color.WHITE, minimumWhiteRatio)
+        if (ColorUtils.calculateContrast(baseColor, Color.BLACK) >= minimumContrast) return baseColor
 
-        var low = 0f
+        var low = minimumWhiteRatio
         var high = 1f
         repeat(20) {
             val ratio = (low + high) / 2f
@@ -108,4 +121,6 @@ object SuperIslandColorSource {
 
     private const val WEAK_MINIMUM_CONTRAST = 3.0
     private const val STRONG_MINIMUM_CONTRAST = 4.5
+    private const val WEAK_WHITE_RATIO = 0.20f
+    private const val STRONG_WHITE_RATIO = 0.70f
 }
