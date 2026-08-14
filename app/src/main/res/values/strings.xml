@@ -412,10 +412,13 @@
     <string name="ui_style_miuix">Miuix</string>
     <string name="settings_disable_scrolling_desc">Displays static text only. Prevents ALL scrolling, regardless of lyric type.</string>
     <string name="settings_super_island_colorize">Colorize Capsule Content</string>
-    <string name="settings_super_island_colorize_desc">Apply color to Super Island lyrics, playback info, capsule edge, and progress bar.</string>
+    <string name="settings_super_island_colorize_desc">Choose how Super Island lyrics, playback info, capsule edge, and progress bar are colored.</string>
     <string name="settings_super_island_color_source">Color Source</string>
-    <string name="settings_super_island_color_source_desc">Choose whether capsule colors come from album art or a custom color.</string>
-    <string name="settings_super_island_color_source_album_art">Album Art Color</string>
+    <string name="settings_super_island_color_source_desc">Choose a color mode for Super Island content.</string>
+    <string name="settings_super_island_color_source_off">Off</string>
+    <string name="settings_super_island_color_source_album_art">Album Art Color (Original)</string>
+    <string name="settings_super_island_color_source_album_art_readable_weak">Album Art Color (Readability Boost · Light)</string>
+    <string name="settings_super_island_color_source_album_art_readable_strong">Album Art Color (Readability Boost · Strong)</string>
     <string name="settings_super_island_color_source_custom">Custom Color</string>
     <string name="settings_super_island_custom_color">Capsule Custom Color</string>
     <string name="settings_super_island_share">Enable Drag-and-Drop Sharing</string>

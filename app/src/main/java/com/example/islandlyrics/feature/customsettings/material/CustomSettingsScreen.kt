@@ -801,94 +801,80 @@ fun CustomSettingsScreen(
                                     }
 
                                     SettingsCardDivider()
-                                    SettingsSwitchItem(
-                                        title = stringResource(R.string.settings_super_island_colorize),
-                                        subtitle = stringResource(R.string.settings_super_island_colorize_desc),
-                                        checked = superIslandTextColorEnabled,
-                                        onCheckedChange = {
-                                            if (!it && superIslandColorEditing) {
+                                    val colorSources = SuperIslandColorSource.values
+                                    val colorSourceLabels = listOf(
+                                        stringResource(R.string.settings_super_island_color_source_off),
+                                        stringResource(R.string.settings_super_island_color_source_album_art),
+                                        stringResource(R.string.settings_super_island_color_source_album_art_readable_weak),
+                                        stringResource(R.string.settings_super_island_color_source_album_art_readable_strong),
+                                        stringResource(R.string.settings_super_island_color_source_custom)
+                                    )
+                                    val currentColorSourceIndex =
+                                        colorSources.indexOf(superIslandColorSource).takeIf { it >= 0 } ?: 0
+
+                                    Box(modifier = Modifier.fillMaxWidth()) {
+                                        SettingsTextItem(
+                                            title = stringResource(R.string.settings_super_island_colorize),
+                                            subtitle = stringResource(R.string.settings_super_island_colorize_desc),
+                                            value = colorSourceLabels[currentColorSourceIndex],
+                                            onClick = { showSuperIslandColorSourceDropdown = true }
+                                        )
+                                        Box(modifier = Modifier.matchParentSize().wrapContentSize(Alignment.Center)) {
+                                            MaterialBlurDropdownMenu(
+                                                expanded = showSuperIslandColorSourceDropdown,
+                                                onDismissRequest = { showSuperIslandColorSourceDropdown = false }
+                                            ) {
+                                                colorSourceLabels.forEachIndexed { index, label ->
+                                                    DropdownMenuItem(
+                                                        text = { Text(label) },
+                                                        onClick = {
+                                                            if (superIslandColorEditing) {
+                                                                superIslandCustomColor = superIslandColorSnapshot
+                                                                superIslandColorEditing = false
+                                                            }
+                                                            val newSource = colorSources[index]
+                                                            superIslandColorSource = newSource
+                                                            superIslandTextColorEnabled =
+                                                                SuperIslandColorSource.isColorized(newSource)
+                                                            viewModel.dispatch(CustomSettingsAction.SetSuperIslandColorSource(newSource))
+                                                            showSuperIslandColorSourceDropdown = false
+                                                        }
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    if (superIslandColorSource == SuperIslandColorSource.CUSTOM) {
+                                        SettingsCardDivider()
+                                        MaterialEditableColorSection(
+                                            title = stringResource(R.string.settings_super_island_custom_color),
+                                            color = superIslandCustomColor,
+                                            isEditing = superIslandColorEditing,
+                                            defaultActionText = stringResource(R.string.settings_color_default),
+                                            onStartEditing = {
+                                                superIslandColorSnapshot = superIslandCustomColor
+                                                superIslandColorEditing = true
+                                            },
+                                            onColorChanged = { color ->
+                                                superIslandCustomColor = color
+                                            },
+                                            onApply = {
+                                                viewModel.dispatch(CustomSettingsAction.SetSuperIslandCustomColor(superIslandCustomColor.toArgb()))
+                                                superIslandColorEditing = false
+                                            },
+                                            onCancel = {
                                                 superIslandCustomColor = superIslandColorSnapshot
                                                 superIslandColorEditing = false
+                                            },
+                                            onUseDefault = {
+                                                val defaultColor = Color(SuperIslandColorSource.DEFAULT_CUSTOM_COLOR)
+                                                superIslandCustomColor = defaultColor
+                                                superIslandColorSnapshot = defaultColor
+                                                viewModel.dispatch(CustomSettingsAction.SetSuperIslandCustomColor(defaultColor.toArgb()))
+                                                superIslandColorEditing = false
                                             }
-                                            superIslandTextColorEnabled = it
-                                            progressColorEnabled = it
-                                            viewModel.dispatch(CustomSettingsAction.SetSuperIslandTextColorEnabled(it))
-                                            viewModel.dispatch(CustomSettingsAction.SetProgressColorEnabled(it))
-                                        }
-                                    )
-
-                                    if (superIslandTextColorEnabled) {
-                                        val colorSources = SuperIslandColorSource.values
-                                        val colorSourceLabels = listOf(
-                                            stringResource(R.string.settings_super_island_color_source_album_art),
-                                            stringResource(R.string.settings_super_island_color_source_custom)
                                         )
-                                        val currentColorSourceIndex =
-                                            colorSources.indexOf(superIslandColorSource).takeIf { it >= 0 } ?: 0
-
-                                        SettingsCardDivider()
-                                        Box(modifier = Modifier.fillMaxWidth()) {
-                                            SettingsTextItem(
-                                                title = stringResource(R.string.settings_super_island_color_source),
-                                                subtitle = stringResource(R.string.settings_super_island_color_source_desc),
-                                                value = colorSourceLabels[currentColorSourceIndex],
-                                                onClick = { showSuperIslandColorSourceDropdown = true }
-                                            )
-                                            Box(modifier = Modifier.matchParentSize().wrapContentSize(Alignment.Center)) {
-                                                MaterialBlurDropdownMenu(
-                                                    expanded = showSuperIslandColorSourceDropdown,
-                                                    onDismissRequest = { showSuperIslandColorSourceDropdown = false }
-                                                ) {
-                                                    colorSourceLabels.forEachIndexed { index, label ->
-                                                        DropdownMenuItem(
-                                                            text = { Text(label) },
-                                                            onClick = {
-                                                                if (superIslandColorEditing) {
-                                                                    superIslandCustomColor = superIslandColorSnapshot
-                                                                    superIslandColorEditing = false
-                                                                }
-                                                                val newSource = colorSources[index]
-                                                                superIslandColorSource = newSource
-                                                                viewModel.dispatch(CustomSettingsAction.SetSuperIslandColorSource(newSource))
-                                                                showSuperIslandColorSourceDropdown = false
-                                                            }
-                                                        )
-                                                    }
-                                                }
-                                            }
-                                        }
-
-                                        if (superIslandColorSource == SuperIslandColorSource.CUSTOM) {
-                                            SettingsCardDivider()
-                                            MaterialEditableColorSection(
-                                                title = stringResource(R.string.settings_super_island_custom_color),
-                                                color = superIslandCustomColor,
-                                                isEditing = superIslandColorEditing,
-                                                defaultActionText = stringResource(R.string.settings_color_default),
-                                                onStartEditing = {
-                                                    superIslandColorSnapshot = superIslandCustomColor
-                                                    superIslandColorEditing = true
-                                                },
-                                                onColorChanged = { color ->
-                                                    superIslandCustomColor = color
-                                                },
-                                                onApply = {
-                                                    viewModel.dispatch(CustomSettingsAction.SetSuperIslandCustomColor(superIslandCustomColor.toArgb()))
-                                                    superIslandColorEditing = false
-                                                },
-                                                onCancel = {
-                                                    superIslandCustomColor = superIslandColorSnapshot
-                                                    superIslandColorEditing = false
-                                                },
-                                                onUseDefault = {
-                                                    val defaultColor = Color(SuperIslandColorSource.DEFAULT_CUSTOM_COLOR)
-                                                    superIslandCustomColor = defaultColor
-                                                    superIslandColorSnapshot = defaultColor
-                                                    viewModel.dispatch(CustomSettingsAction.SetSuperIslandCustomColor(defaultColor.toArgb()))
-                                                    superIslandColorEditing = false
-                                                }
-                                            )
-                                        }
                                     }
 
                                     SettingsCardDivider()
@@ -1047,6 +1033,8 @@ fun CustomSettingsScreen(
                                  actionStyle = effectiveActionStyle,
                                  superIslandEnabled = superIslandEnabled,
                                  superIslandTextColorEnabled = superIslandTextColorEnabled,
+                                 superIslandColorSource = superIslandColorSource,
+                                 superIslandCustomColor = superIslandCustomColor,
                                  superIslandMediaButtonLayout = superIslandMediaButtonLayout,
                                  superIslandNotificationStyle = superIslandNotificationStyle,
                                  superIslandLyricMode = superIslandLyricMode,

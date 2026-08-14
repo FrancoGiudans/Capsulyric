@@ -62,7 +62,7 @@ internal class SuperIslandPreferencesCache(
         private set
     var fullLyricShowLeftCover = true
         private set
-    var colorSource = SuperIslandColorSource.ALBUM_ART
+    var colorSource = SuperIslandColorSource.OFF
         private set
     var customColor = 0xFF3482FF.toInt()
         private set
@@ -86,9 +86,14 @@ internal class SuperIslandPreferencesCache(
                 clickStyle = AppPreferences.notificationClickStyle(p)
                 onClickStyleChanged()
             }
-            AppPreferences.Keys.SUPER_ISLAND_TEXT_COLOR_ENABLED ->
-                textColorEnabled = AppPreferences.isSuperIslandTextColorEnabled(p)
-            SuperIslandColorSource.PREF_KEY -> colorSource = SuperIslandColorSource.read(p)
+            AppPreferences.Keys.SUPER_ISLAND_TEXT_COLOR_ENABLED -> {
+                colorSource = SuperIslandColorSource.read(p)
+                textColorEnabled = SuperIslandColorSource.isColorized(colorSource)
+            }
+            SuperIslandColorSource.PREF_KEY -> {
+                colorSource = SuperIslandColorSource.read(p)
+                textColorEnabled = SuperIslandColorSource.isColorized(colorSource)
+            }
             SuperIslandColorSource.CUSTOM_COLOR_PREF_KEY -> customColor = SuperIslandColorSource.readCustomColor(p)
             AppPreferences.Keys.SUPER_ISLAND_SHARE_ENABLED ->
                 shareEnabled = AppPreferences.isSuperIslandShareEnabled(p)
@@ -141,8 +146,8 @@ internal class SuperIslandPreferencesCache(
 
     private fun load() {
         clickStyle = AppPreferences.notificationClickStyle(prefs)
-        textColorEnabled = AppPreferences.isSuperIslandTextColorEnabled(prefs)
         colorSource = SuperIslandColorSource.read(prefs)
+        textColorEnabled = SuperIslandColorSource.isColorized(colorSource)
         customColor = SuperIslandColorSource.readCustomColor(prefs)
         shareEnabled = AppPreferences.isSuperIslandShareEnabled(prefs)
         shareFormat = AppPreferences.superIslandShareFormat(prefs)
