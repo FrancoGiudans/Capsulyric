@@ -67,6 +67,12 @@ internal class SuperIslandRenderStateTracker {
         lastFocusParam = ""
     }
 
+    fun forceNotify(reason: String) {
+        isFirstNotification = true
+        firstNotificationReason = reason
+        lastFocusParam = ""
+    }
+
     fun prepare(
         state: UIState,
         displayLyric: String,

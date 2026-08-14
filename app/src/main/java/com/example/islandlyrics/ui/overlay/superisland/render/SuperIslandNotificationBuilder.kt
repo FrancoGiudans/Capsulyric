@@ -26,6 +26,7 @@ import android.app.Notification
 import android.app.PendingIntent
 import android.content.Context
 import com.example.islandlyrics.R
+import com.example.islandlyrics.runtime.foreground.LockScreenNotificationPolicy
 
 internal class SuperIslandNotificationBuilder(
     private val context: Context,
@@ -38,7 +39,7 @@ internal class SuperIslandNotificationBuilder(
             .setSmallIcon(R.drawable.ic_music_note)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
-            .setVisibility(Notification.VISIBILITY_PUBLIC)
+            .setVisibility(LockScreenNotificationPolicy.visibility(context))
             .setContentIntent(contentIntent)
     }
 

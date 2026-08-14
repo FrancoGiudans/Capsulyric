@@ -171,6 +171,9 @@ fun MiuixCustomSettingsScreen(
     var dismissDelay by remember(uiState.dismissDelayMs) { mutableLongStateOf(uiState.dismissDelayMs) }
 
     var progressColorEnabled by remember(uiState.progressColorEnabled) { mutableStateOf(uiState.progressColorEnabled) }
+    var lockScreenHideNotification by remember(uiState.lockScreenHideNotification) {
+        mutableStateOf(uiState.lockScreenHideNotification)
+    }
     var disableScrolling by remember(uiState.disableScrolling) { mutableStateOf(uiState.disableScrolling) }
     var lyricTextDisplayMode by remember(uiState.lyricTextDisplayMode) { mutableStateOf(uiState.lyricTextDisplayMode) }
     var oneuiCapsuleColorMode by remember(uiState.oneuiCapsuleColorMode) { mutableStateOf(uiState.oneuiCapsuleColorMode) }
@@ -1090,6 +1093,16 @@ fun MiuixCustomSettingsScreen(
                                             }
                                         }
                                     }
+
+                                    SuperSwitch(
+                                        title = stringResource(R.string.settings_lock_screen_hide_notification),
+                                        summary = stringResource(R.string.settings_lock_screen_hide_notification_desc),
+                                        checked = lockScreenHideNotification,
+                                        onCheckedChange = {
+                                            lockScreenHideNotification = it
+                                            viewModel.dispatch(CustomSettingsAction.SetLockScreenHideNotification(it))
+                                        }
+                                    )
 
                                     val clickStyleItems = listOf(
                                         Triple("default",

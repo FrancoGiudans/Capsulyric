@@ -35,6 +35,7 @@ import com.example.islandlyrics.R
 import com.example.islandlyrics.core.logging.AppLogger
 import com.example.islandlyrics.core.settings.LabFeatureManager
 import com.example.islandlyrics.lyrics.state.LyricRepository
+import com.example.islandlyrics.runtime.foreground.LockScreenNotificationPolicy
 import com.example.islandlyrics.runtime.service.LyricService
 import com.example.islandlyrics.ui.overlay.model.UIState
 import com.example.islandlyrics.ui.overlay.superisland.cache.SuperIslandIconCache
@@ -68,6 +69,9 @@ class SuperIslandHandler(
 
     var isRunning = false
         private set
+
+    private var lastState: UIState? = null
+    private var lastNotifiedVisibility = Notification.VISIBILITY_PUBLIC
 
     private val scope = CoroutineScope(Dispatchers.Main + Job())
     private val intentFactory = SuperIslandIntentFactory(context)
@@ -123,6 +127,12 @@ class SuperIslandHandler(
         notificationDispatcher.resetState()
     }
 
+    fun refreshVisibility() {
+        if (!isRunning) return
+        val state = lastState ?: return
+        render(state)
+    }
+
     fun stop() {
         if (!isRunning) return
         isRunning = false
@@ -154,10 +164,13 @@ class SuperIslandHandler(
     fun render(state: UIState) {
         if (!isRunning) return
 
+        lastState = state
         val displayLyric = state.displayLyric
         val subText = if (state.artist.isNotBlank()) "${state.title} - ${state.artist}" else state.title
         val progressPercent = state.progressCurrent
         val albumColor = state.albumColor
+        val notificationVisibility = LockScreenNotificationPolicy.visibility(context)
+        val visibilityChanged = notificationVisibility != lastNotifiedVisibility
         // 显示模式的次要文本仅在模板2（标准样式 + 无按键 + 不显示进度条）时使用
         val secondaryText = if (effectiveActionStyle == ACTION_STYLE_TEMPLATE2) {
             SuperIslandDualLineTextResolver.resolveSecondary(
@@ -183,6 +196,10 @@ class SuperIslandHandler(
             )
         } else {
             null
+        }
+
+        if (visibilityChanged) {
+            renderStateTracker.forceNotify("lockScreenVisibility")
         }
 
         val renderDecision = renderStateTracker.prepare(
@@ -271,6 +288,7 @@ class SuperIslandHandler(
             ?: "Capsulyric"
         val notificationText = subText.ifEmpty { context.getString(R.string.channel_live_lyrics) }
         val notificationBuilder = notificationBuilder.createBase(cachedContentIntent)
+            .setVisibility(notificationVisibility)
             .setContentTitle(notificationTitle)
             .setContentText(notificationText)
             .setSubText(if (state.mediaPackage.isNotBlank()) state.mediaPackage else null)
@@ -317,6 +335,7 @@ class SuperIslandHandler(
             customDurationMs = preferences.xmsfCustomDurationMs
         )
         renderStateTracker.markFirstNotificationSent()
+        lastNotifiedVisibility = notificationVisibility
     }
 
     private fun buildTrackKey(state: UIState): String {

@@ -51,6 +51,7 @@ internal class LyricCapsuleNotificationBuilder(
         progressPercent: Int,
         iconFrame: LyricCapsuleIconFrame,
         albumColor: Int,
+        visibility: Int,
         intents: LyricCapsuleIntents
     ): Notification {
         val builder = applyImmediateForegroundBehavior(
@@ -59,7 +60,7 @@ internal class LyricCapsuleNotificationBuilder(
             .setSmallIcon(R.drawable.ic_music_note)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
-            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .setVisibility(visibility)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
 
         builder.setContentIntent(intents.contentIntent)

@@ -87,6 +87,8 @@ class CustomSettingsViewModel(application: Application) : AndroidViewModel(appli
                 prefs.edit { putBoolean(AppPreferences.Keys.PROGRESS_BAR_COLOR_ENABLED, action.value) }
             is CustomSettingsAction.SetDisableScrolling ->
                 prefs.edit { putBoolean(AppPreferences.Keys.DISABLE_LYRIC_SCROLLING, action.value) }
+            is CustomSettingsAction.SetLockScreenHideNotification ->
+                prefs.edit { putBoolean(AppPreferences.Keys.NOTIFICATION_LOCK_SCREEN_HIDDEN, action.value) }
             is CustomSettingsAction.ApplySuperIslandScrollForce ->
                 applySuperIslandScrollForce(
                     force = action.force,
@@ -200,6 +202,7 @@ class CustomSettingsViewModel(application: Application) : AndroidViewModel(appli
             dismissDelayMs = prefs.getLong("notification_dismiss_delay", 0L),
             progressColorEnabled = AppPreferences.isProgressBarColorEnabled(prefs),
             disableScrolling = AppPreferences.isLyricScrollingDisabled(prefs),
+            lockScreenHideNotification = AppPreferences.isLockScreenNotificationHidden(prefs),
             lyricTextDisplayMode = LyricTextDisplayMode.read(prefs),
             oneuiCapsuleColorMode = OneUiCapsuleColorMode.read(prefs),
             capsuleRenderMode = CapsuleRenderMode.read(prefs),

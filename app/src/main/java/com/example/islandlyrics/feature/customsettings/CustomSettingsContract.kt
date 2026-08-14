@@ -61,6 +61,7 @@ data class CustomSettingsUiState(
     val dismissDelayMs: Long = 0L,
     val progressColorEnabled: Boolean = false,
     val disableScrolling: Boolean = false,
+    val lockScreenHideNotification: Boolean = false,
     val lyricTextDisplayMode: String = "lyric",
     val oneuiCapsuleColorMode: String = "black",
     val capsuleRenderMode: CapsuleRenderMode = CapsuleRenderMode.XIAOMI_SUPER_ISLAND,
@@ -94,6 +95,7 @@ sealed interface CustomSettingsAction {
     data class SetDismissDelay(val value: Long) : CustomSettingsAction
     data class SetProgressColorEnabled(val value: Boolean) : CustomSettingsAction
     data class SetDisableScrolling(val value: Boolean) : CustomSettingsAction
+    data class SetLockScreenHideNotification(val value: Boolean) : CustomSettingsAction
     data class ApplySuperIslandScrollForce(
         val force: Boolean,
         val restoreLegacyState: Boolean,

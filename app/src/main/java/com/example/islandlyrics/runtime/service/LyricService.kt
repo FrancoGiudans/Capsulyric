@@ -225,6 +225,19 @@ class LyricService : Service() {
         }
     }
 
+    private val lockScreenReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            val action = intent?.action
+            if (action == Intent.ACTION_SCREEN_OFF ||
+                action == Intent.ACTION_SCREEN_ON ||
+                action == Intent.ACTION_USER_PRESENT
+            ) {
+                AppLogger.getInstance().log(TAG, "Lock screen state changed: $action")
+                refreshLockScreenVisibility()
+            }
+        }
+    }
+
     private val prefsListener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { p, key ->
         if (key == CapsuleRenderMode.PREF_KEY ||
             (key == AppPreferences.Keys.SUPER_ISLAND_ENABLED_LEGACY && !p.contains(CapsuleRenderMode.PREF_KEY))
@@ -242,6 +255,8 @@ class LyricService : Service() {
             onlineLyricSource.cancel()
         } else if (key == "parser_rules_json") {
             syncPushLyricSources()
+        } else if (key == AppPreferences.Keys.NOTIFICATION_LOCK_SCREEN_HIDDEN) {
+            refreshLockScreenVisibility()
         }
     }
 
@@ -323,6 +338,13 @@ class LyricService : Service() {
         // Register refresh receiver
         val refreshFilter = IntentFilter(LyricRepository.ACTION_REFRESH_DIAGNOSTICS)
         registerReceiver(refreshReceiver, refreshFilter, Context.RECEIVER_NOT_EXPORTED)
+
+        val lockScreenFilter = IntentFilter().apply {
+            addAction(Intent.ACTION_SCREEN_OFF)
+            addAction(Intent.ACTION_SCREEN_ON)
+            addAction(Intent.ACTION_USER_PRESENT)
+        }
+        registerReceiver(lockScreenReceiver, lockScreenFilter, Context.RECEIVER_EXPORTED)
 
         AppPreferences.of(this).registerOnSharedPreferenceChangeListener(prefsListener)
 
@@ -438,6 +460,7 @@ class LyricService : Service() {
         try {
             mediaCommandRouter.unregister()
             unregisterReceiver(refreshReceiver)
+            unregisterReceiver(lockScreenReceiver)
         } catch (e: Exception) {
             AppLogger.getInstance().e(TAG, "Failed to unregister receivers: ${e.message}")
         }
@@ -459,6 +482,10 @@ class LyricService : Service() {
         intent.putExtra("status", status)
         intent.setPackage(packageName)
         sendBroadcast(intent)
+    }
+
+    private fun refreshLockScreenVisibility() {
+        renderModeCoordinator?.refreshLockScreenVisibility()
     }
 
     @Suppress("UNUSED_PARAMETER")

@@ -629,6 +629,8 @@
     <string name="settings_progress_color">为进度条着色</string>
     <string name="settings_progress_color_desc">从专辑封面提取颜色应用到通知进度条</string>
     <string name="settings_dismiss_delay_title">消失延迟</string>
+    <string name="settings_lock_screen_hide_notification">锁屏不显示通知</string>
+    <string name="settings_lock_screen_hide_notification_desc">锁屏或灭屏时隐藏歌词通知内容</string>
     <string name="settings_dismiss_delay_desc">播放停止后延迟隐藏通知的时间</string>
     <string name="dismiss_delay_immediate">立即消失</string>
     <string name="dismiss_delay_1s">1 秒</string>

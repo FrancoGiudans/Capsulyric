@@ -29,6 +29,7 @@ import android.content.Context
 import com.example.islandlyrics.BuildConfig
 import com.example.islandlyrics.R
 import com.example.islandlyrics.core.logging.LogManager
+import com.example.islandlyrics.runtime.foreground.LockScreenNotificationPolicy
 import com.example.islandlyrics.runtime.service.LyricService
 import com.example.islandlyrics.ui.overlay.capsule.config.LyricCapsulePreferencesCache
 import com.example.islandlyrics.ui.overlay.capsule.intent.LyricCapsuleIntentFactory
@@ -59,6 +60,8 @@ class LyricCapsuleHandler(
     private var lastNotifiedProgress = -1
     private var lastNotifyTime = 0L
     private var isFirstNotification = true
+    private var lastState: UIState? = null
+    private var lastNotifiedVisibility = Notification.VISIBILITY_PUBLIC
     
     private val preferences = LyricCapsulePreferencesCache(
         context = context,
@@ -117,6 +120,12 @@ class LyricCapsuleHandler(
 
     fun isRunning() = isRunning
 
+    fun refreshVisibility() {
+        if (!isRunning) return
+        val state = lastState ?: return
+        render(state)
+    }
+
     private fun createChannel() {
         val channel = NotificationChannel(
             CHANNEL_ID,
@@ -157,10 +166,13 @@ class LyricCapsuleHandler(
     fun render(state: UIState) {
         if (!isRunning) return
 
+        lastState = state
         val displayLyric = state.displayLyric
         val currentProgress = state.progressCurrent
         val iconFrame = calculateDynamicIconFrame(state.title, state.artist)
         val displayTitle = if (state.artist.isNotBlank()) "${state.title} - ${state.artist}" else state.title
+        val notificationVisibility = LockScreenNotificationPolicy.visibility(context)
+        val visibilityChanged = notificationVisibility != lastNotifiedVisibility
 
         val lyricChanged = displayLyric != lastNotifiedLyric
         val fullLyricChanged = state.fullLyric != lastNotifiedFullLyric
@@ -169,6 +181,7 @@ class LyricCapsuleHandler(
         val progressChangedEnough = kotlin.math.abs(currentProgress - lastNotifiedProgress) >= PROGRESS_NOTIFY_STEP_PERCENT
         val now = android.os.SystemClock.elapsedRealtime()
         if (!isFirstNotification && !lyricChanged && !fullLyricChanged && !titleChanged && !iconChanged &&
+            !visibilityChanged &&
             (!progressChangedEnough || now - lastNotifyTime < PROGRESS_NOTIFY_INTERVAL_MS)) {
             return
         }
@@ -193,8 +206,10 @@ class LyricCapsuleHandler(
                 progressPercent = currentProgress,
                 iconFrame = iconFrame,
                 albumColor = state.albumColor,
+                visibility = notificationVisibility,
                 intents = cachedIntents
             )
+            lastNotifiedVisibility = notificationVisibility
 
             if (BuildConfig.DEBUG) {
                 LogManager.getInstance().d(

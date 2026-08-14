@@ -690,6 +690,8 @@ Within the log interface, select the share/export icon. You can specify a timefr
     <string name="settings_progress_color">Colorize Progress Bar</string>
     <string name="settings_progress_color_desc">Extract album art color for notification progress bar</string>
     <string name="settings_dismiss_delay_title">Dismiss Delay</string>
+    <string name="settings_lock_screen_hide_notification">Hide notification on lock screen</string>
+    <string name="settings_lock_screen_hide_notification_desc">Hide live lyric notification content while the screen is locked or off</string>
     <string name="settings_dismiss_delay_desc">Delay before hiding notification after playback stops</string>
     <string name="dismiss_delay_immediate">Immediately</string>
     <string name="dismiss_delay_1s">1 Second</string>

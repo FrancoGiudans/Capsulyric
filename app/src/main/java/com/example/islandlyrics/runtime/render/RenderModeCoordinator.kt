@@ -123,6 +123,13 @@ class RenderModeCoordinator(
         }
     }
 
+    fun refreshLockScreenVisibility() {
+        when (mode) {
+            CapsuleRenderMode.XIAOMI_SUPER_ISLAND -> superIslandHandler.refreshVisibility()
+            CapsuleRenderMode.LIVE_UPDATE -> capsuleHandler?.refreshVisibility()
+        }
+    }
+
     private fun stopInactiveHandlers() {
         if (mode != CapsuleRenderMode.LIVE_UPDATE && capsuleHandler?.isRunning() == true) {
             capsuleHandler.stop()

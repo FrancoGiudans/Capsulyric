@@ -220,7 +220,7 @@ internal class LyricForegroundController(
             .setContentText("")
             .setOngoing(true)
             .setOnlyAlertOnce(true)
-            .setVisibility(Notification.VISIBILITY_PUBLIC)
+            .setVisibility(LockScreenNotificationPolicy.visibility(service))
             .setContentIntent(createMainActivityIntent())
             .build()
     }
@@ -237,7 +237,7 @@ internal class LyricForegroundController(
             .setSubText(subText)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
-            .setVisibility(Notification.VISIBILITY_PUBLIC)
+            .setVisibility(LockScreenNotificationPolicy.visibility(service))
             .setContentIntent(createMainActivityIntent())
 
         if (Build.VERSION.SDK_INT >= 36) {

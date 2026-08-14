@@ -41,6 +41,7 @@ import androidx.core.content.edit
 import com.example.islandlyrics.R
 import com.example.islandlyrics.core.logging.AppLogger
 import com.example.islandlyrics.core.settings.AppPreferences
+import com.example.islandlyrics.runtime.foreground.LockScreenNotificationPolicy
 import com.example.islandlyrics.rules.ParserRuleHelper
 import com.example.islandlyrics.feature.main.MainActivity
 import com.example.islandlyrics.runtime.service.MediaMonitorService
@@ -107,6 +108,7 @@ object NewPlayingAppNotifier {
             .setOnlyAlertOnce(false)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setCategory(NotificationCompat.CATEGORY_RECOMMENDATION)
+            .setVisibility(LockScreenNotificationPolicy.visibility(context))
             .addAction(
                 0,
                 context.getString(R.string.new_playing_app_action_add),
