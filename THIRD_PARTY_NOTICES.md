@@ -28,16 +28,25 @@ The self-wrapped controls below are **modified from or built on** the correspond
 | `ui/miuix/blur/MiuixBlurBottomSheet.kt` | `OverlayBottomSheet` (`overlay/OverlayBottomSheet.kt`) + `miuix-blur` | 修改 (modified) |
 | `ui/miuix/blur/MiuixBlurPopupHost.kt` | `MiuixPopupUtils.MiuixPopupHost` (`utils/MiuixPopupUtils.kt`) | 封装 (wrapper) |
 | `ui/miuix/blur/MiuixBlurScaffold.kt` | `Scaffold` (`basic/Scaffold.kt`) + `miuix-blur` `layerBackdrop` | 封装 (wrapper) |
-| `ui/miuix/blur/MiuixBlurStyle.kt` | `miuix-blur`: `BlurDefaults`, `BlurColors`, `BlendColorEntry`, `textureBlur`, `Highlight`, `BloomStroke`, `LightSource` | 基于 API 自研 (built on) |
+| `ui/miuix/blur/MiuixBlurStyle.kt` | `miuix-blur`: `BlurDefaults`, `BlurColors`, `BlendColorEntry`, `textureBlur`, `Highlight`, `BloomStroke`, `LightSource` | 基于上游公开 API 实现 (implemented using upstream public APIs) |
 | `ui/miuix/blur/MiuixBlurTopAppBar.kt` | `TopAppBar` / `SmallTopAppBar` (`basic/TopAppBar.kt`) + `miuix-blur` | 修改 (modified) |
-| `ui/miuix/effects/MiuixAuroraBackground.kt` | `miuix-blur`: `RuntimeShader`, `asBrush` | 基于 API 自研 (built on) |
-| `ui/miuix/effects/MiuixScrollEffects.kt` | `ScrollBehavior` (`basic`), `overScrollVertical` (`utils`) | 基于 API 自研 (built on) |
+| `ui/miuix/effects/MiuixAuroraBackground.kt` | `miuix-blur`: `RuntimeShader`, `asBrush` | 基于上游公开 API 实现 (implemented using upstream public APIs) |
+| `ui/miuix/effects/MiuixScrollEffects.kt` | `ScrollBehavior` (`basic`), `overScrollVertical` (`utils`) | 基于上游公开 API 实现 (implemented using upstream public APIs) |
 | `ui/miuix/navigation/MiuixBackIcon.kt` | `Icon`, `MiuixIcons`, `MiuixTheme` | 封装 (wrapper) |
-| `ui/miuix/navigation/MiuixBackHandler.kt` | — (based on `androidx.navigationevent`) | 自研 (original) |
+| `ui/miuix/navigation/MiuixBackHandler.kt` | — (based on `androidx.navigationevent`) | 未使用第三方源码 (no third-party source) |
 | `ui/miuix/preference/BlurOverlayDropdownPreference.kt` | `miuix-preference`: `OverlayDropdownPreference` (`preference/OverlayDropdownPreference.kt`), `OverlayDropdownPopup` (`popup/OverlayDropdownPopup.kt`) + `miuix-blur` | 修改 (modified) |
-| `ui/miuix/reorderable/MiuixBlurReorderablePanel.kt` | miuix basic components: `Card`, `CardDefaults`, `Icon`, `Text` + `miuix-blur` styles | 基于 API 自研 (built on) |
-| `ui/miuix/theme/MiuixAppTheme.kt` | miuix theme: `MiuixTheme`, `ThemeController`, `ColorSchemeMode`, `ThemePaletteStyle`, `darkColorScheme`, `lightColorScheme` | 基于 API 自研 (built on) |
-| `ui/miuix/theme/MiuixTopBarStyle.kt` | `MiuixTheme` | 自研 (original) |
+| `ui/miuix/reorderable/MiuixBlurReorderablePanel.kt` | miuix basic components: `Card`, `CardDefaults`, `Icon`, `Text` + `miuix-blur` styles | 基于上游公开 API 实现 (implemented using upstream public APIs) |
+| `ui/miuix/theme/MiuixAppTheme.kt` | miuix theme: `MiuixTheme`, `ThemeController`, `ColorSchemeMode`, `ThemePaletteStyle`, `darkColorScheme`, `lightColorScheme` | 基于上游公开 API 实现 (implemented using upstream public APIs) |
+| `ui/miuix/theme/MiuixTopBarStyle.kt` | `MiuixTheme` | 基于上游公开 API 实现 (implemented using upstream public APIs) |
+
+类型说明 / Type legend:
+
+| Type / 类型 | Meaning / 含义 |
+| --- | --- |
+| 修改 (modified) | 拷贝并修改了上游源码，按 Apache-2.0 §4 需保留上游版权并注明修改 / copied and modified upstream source code |
+| 封装 (wrapper) | 未拷贝源码，仅对上游组件做薄包装 / thin wrapper delegating to upstream components, no source copied |
+| 基于上游公开 API 实现 (implemented using upstream public APIs) | 未拷贝源码，仅调用上游公开 API/组件自行实现 / original implementation using upstream public APIs, no source copied |
+| 未使用第三方源码 (no third-party source) | 未拷贝任何第三方项目源码，仅基于系统/androidx API（列入仅为说明审计覆盖范围）/ no third-party source copied; uses system/androidx APIs only (listed to document audit coverage) |
 
 ## 2. Material 3 (AndroidX Compose) — Apache-2.0
 
@@ -49,7 +58,7 @@ The self-wrapped controls below are **modified from or built on** the correspond
 
 | File / 文件 | Based on / 上游来源 | Type / 类型 |
 | --- | --- | --- |
-| `ui/material/blur/MaterialBlur.kt` | material3: `Scaffold`, `AlertDialog`, `DropdownMenu` + `miuix-blur`: `layerBackdrop`, `textureBlur`, `rememberLayerBackdrop` | 组合封装 (combined wrapper) |
+| `ui/material/blur/MaterialBlur.kt` | material3: `Scaffold`, `AlertDialog`, `DropdownMenu` + `miuix-blur`: `layerBackdrop`, `textureBlur`, `rememberLayerBackdrop` | 基于上游公开 API 组合实现 (combined implementation using upstream public APIs) |
 
 ---
 
