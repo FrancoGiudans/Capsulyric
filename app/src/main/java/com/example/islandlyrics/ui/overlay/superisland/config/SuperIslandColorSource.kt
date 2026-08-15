@@ -21,27 +21,49 @@
  */
 
 package com.example.islandlyrics.ui.overlay.superisland.config
+
+import android.graphics.Color
 import android.content.SharedPreferences
+import androidx.core.graphics.ColorUtils
+import com.example.islandlyrics.core.settings.AppPreferences
 
 object SuperIslandColorSource {
     const val PREF_KEY = "super_island_color_source"
     const val CUSTOM_COLOR_PREF_KEY = "super_island_custom_color"
 
+    const val OFF = "off"
     const val ALBUM_ART = "album_art"
+    const val ALBUM_ART_READABLE_WEAK = "album_art_readable_weak"
+    const val ALBUM_ART_READABLE_STRONG = "album_art_readable_strong"
     const val CUSTOM = "custom"
 
     const val DEFAULT_CUSTOM_COLOR = 0xFF3482FF.toInt()
+    const val DEFAULT_NEUTRAL_COLOR = 0xFF757575.toInt()
 
-    val values = listOf(ALBUM_ART, CUSTOM)
+    val values = listOf(
+        OFF,
+        ALBUM_ART,
+        ALBUM_ART_READABLE_WEAK,
+        ALBUM_ART_READABLE_STRONG,
+        CUSTOM
+    )
 
     fun read(prefs: SharedPreferences): String {
-        return prefs.getString(PREF_KEY, ALBUM_ART)
-            ?.takeIf { it in values }
-            ?: ALBUM_ART
+        val source = prefs.getString(PREF_KEY, null)
+        return when (source) {
+            OFF, ALBUM_ART_READABLE_WEAK, ALBUM_ART_READABLE_STRONG -> source
+            ALBUM_ART, CUSTOM -> if (isLegacyEnabled(prefs)) source else OFF
+            null -> if (isLegacyEnabled(prefs)) ALBUM_ART else OFF
+            else -> if (isLegacyEnabled(prefs)) ALBUM_ART else OFF
+        }
     }
 
     fun write(prefs: SharedPreferences, source: String) {
-        prefs.edit().putString(PREF_KEY, source.takeIf { it in values } ?: ALBUM_ART).apply()
+        val normalizedSource = source.takeIf { it in values } ?: OFF
+        prefs.edit()
+            .putString(PREF_KEY, normalizedSource)
+            .putBoolean(AppPreferences.Keys.SUPER_ISLAND_TEXT_COLOR_ENABLED, normalizedSource != OFF)
+            .apply()
     }
 
     fun readCustomColor(prefs: SharedPreferences): Int {
@@ -52,7 +74,53 @@ object SuperIslandColorSource {
         prefs.edit().putInt(CUSTOM_COLOR_PREF_KEY, color).apply()
     }
 
+    fun isColorized(source: String): Boolean = source != OFF
+
     fun resolveColor(source: String, albumColor: Int, customColor: Int): Int {
-        return if (source == CUSTOM) customColor else albumColor
+        return when (source) {
+            ALBUM_ART -> albumColor
+            ALBUM_ART_READABLE_WEAK -> ensureReadable(
+                color = albumColor,
+                minimumContrast = WEAK_MINIMUM_CONTRAST,
+                minimumWhiteRatio = WEAK_WHITE_RATIO
+            )
+            ALBUM_ART_READABLE_STRONG -> ensureReadable(
+                color = albumColor,
+                minimumContrast = STRONG_MINIMUM_CONTRAST,
+                minimumWhiteRatio = STRONG_WHITE_RATIO
+            )
+            CUSTOM -> customColor
+            else -> DEFAULT_NEUTRAL_COLOR
+        }
     }
+
+    private fun isLegacyEnabled(prefs: SharedPreferences): Boolean =
+        prefs.getBoolean(AppPreferences.Keys.SUPER_ISLAND_TEXT_COLOR_ENABLED, false)
+
+    private fun ensureReadable(
+        color: Int,
+        minimumContrast: Double,
+        minimumWhiteRatio: Float
+    ): Int {
+        val baseColor = ColorUtils.blendARGB(color, Color.WHITE, minimumWhiteRatio)
+        if (ColorUtils.calculateContrast(baseColor, Color.BLACK) >= minimumContrast) return baseColor
+
+        var low = minimumWhiteRatio
+        var high = 1f
+        repeat(20) {
+            val ratio = (low + high) / 2f
+            val candidate = ColorUtils.blendARGB(color, Color.WHITE, ratio)
+            if (ColorUtils.calculateContrast(candidate, Color.BLACK) >= minimumContrast) {
+                high = ratio
+            } else {
+                low = ratio
+            }
+        }
+        return ColorUtils.blendARGB(color, Color.WHITE, high)
+    }
+
+    private const val WEAK_MINIMUM_CONTRAST = 3.0
+    private const val STRONG_MINIMUM_CONTRAST = 4.5
+    private const val WEAK_WHITE_RATIO = 0.20f
+    private const val STRONG_WHITE_RATIO = 0.70f
 }

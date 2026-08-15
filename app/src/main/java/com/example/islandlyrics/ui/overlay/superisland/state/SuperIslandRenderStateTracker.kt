@@ -47,6 +47,7 @@ internal class SuperIslandRenderStateTracker {
     private var lastFocusParam = ""
     private var lastNotifyTime = 0L
     private var lastAppliedAlbumColor = 0
+    private var lastAppliedColorMode = ""
 
     fun resetForStart() {
         lastSentDisplayLyric = ""
@@ -60,6 +61,7 @@ internal class SuperIslandRenderStateTracker {
         isFirstNotification = true
         firstNotificationReason = "initial"
         lastAppliedAlbumColor = 0
+        lastAppliedColorMode = ""
         lastFocusParam = ""
     }
 
@@ -78,6 +80,7 @@ internal class SuperIslandRenderStateTracker {
         displayLyric: String,
         progressPercent: Int,
         accentColor: Int,
+        colorMode: String = "",
         extraContentSignature: String = ""
     ): SuperIslandRenderDecision? {
         val trackChanged = state.title != lastSentTitle || state.artist != lastSentArtist
@@ -94,7 +97,7 @@ internal class SuperIslandRenderStateTracker {
             lastFocusParam = ""
         }
 
-        val colorChanged = accentColor != lastAppliedAlbumColor
+        val colorChanged = accentColor != lastAppliedAlbumColor || colorMode != lastAppliedColorMode
 
         val lyricLineChanged = !isFirstNotification && !trackChanged
                 && state.fullLyric.isNotEmpty() && state.fullLyric != lastSentFullLyric
@@ -141,10 +144,12 @@ internal class SuperIslandRenderStateTracker {
         progressPercent: Int,
         subText: String,
         accentColor: Int,
+        colorMode: String = "",
         extraContentSignature: String = "",
         focusSignature: String
     ) {
         lastAppliedAlbumColor = accentColor
+        lastAppliedColorMode = colorMode
         lastFocusParam = focusSignature
         lastSentDisplayLyric = displayLyric
         lastSentFullLyric = state.fullLyric

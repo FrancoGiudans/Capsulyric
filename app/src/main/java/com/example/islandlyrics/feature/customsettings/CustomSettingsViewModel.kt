@@ -110,7 +110,10 @@ class CustomSettingsViewModel(application: Application) : AndroidViewModel(appli
             is CustomSettingsAction.SetLiveUpdateTextLimit ->
                 prefs.edit { putFloat(LiveUpdateTextLimitConfig.KEY_CHARS, action.value) }
             is CustomSettingsAction.SetSuperIslandTextColorEnabled ->
-                prefs.edit { putBoolean(AppPreferences.Keys.SUPER_ISLAND_TEXT_COLOR_ENABLED, action.value) }
+                SuperIslandColorSource.write(
+                    prefs,
+                    if (action.value) SuperIslandColorSource.ALBUM_ART else SuperIslandColorSource.OFF
+                )
             is CustomSettingsAction.SetSuperIslandColorSource ->
                 SuperIslandColorSource.write(prefs, action.value)
             is CustomSettingsAction.SetSuperIslandCustomColor ->
@@ -176,6 +179,7 @@ class CustomSettingsViewModel(application: Application) : AndroidViewModel(appli
     private fun readState(): CustomSettingsUiState {
         val app = getApplication<Application>()
         LabFeatureManager.ensureInitialized(prefs)
+        val superIslandColorSource = SuperIslandColorSource.read(prefs)
         return CustomSettingsUiState(
             floatingLyricsLabEnabled = LabFeatureManager.isFloatingLyricsEnabled(prefs),
             followSystem = ThemeHelper.getFollowSystem(app),
@@ -208,8 +212,8 @@ class CustomSettingsViewModel(application: Application) : AndroidViewModel(appli
             capsuleRenderMode = CapsuleRenderMode.read(prefs),
             superIslandLyricMode = AppPreferences.superIslandLyricMode(prefs),
             superIslandFullLyricShowLeftCover = AppPreferences.isSuperIslandFullLyricLeftCoverEnabled(prefs),
-            superIslandTextColorEnabled = AppPreferences.isSuperIslandTextColorEnabled(prefs),
-            superIslandColorSource = SuperIslandColorSource.read(prefs),
+            superIslandTextColorEnabled = SuperIslandColorSource.isColorized(superIslandColorSource),
+            superIslandColorSource = superIslandColorSource,
             superIslandCustomColor = SuperIslandColorSource.readCustomColor(prefs),
             superIslandShareEnabled = AppPreferences.isSuperIslandShareEnabled(prefs),
             superIslandShareFormat = AppPreferences.superIslandShareFormat(prefs),

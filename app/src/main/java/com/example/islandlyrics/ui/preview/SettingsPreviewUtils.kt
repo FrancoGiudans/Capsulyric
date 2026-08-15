@@ -125,11 +125,14 @@ fun CapsulePreview(
         )
     )
     
-    val superIslandAccentColor = if (superIslandColorSource == SuperIslandColorSource.CUSTOM) {
-        superIslandCustomColor
-    } else {
-        extractedColor ?: Color(0xFF3482FF)
-    }
+    val superIslandAccentColor = Color(
+        SuperIslandColorSource.resolveColor(
+            source = superIslandColorSource,
+            albumColor = previewAlbumColor,
+            customColor = superIslandCustomColor.toArgb()
+        )
+    )
+    val superIslandColorized = SuperIslandColorSource.isColorized(superIslandColorSource)
 
     if (superIslandEnabled) {
         val showLeftCover = albumArt != null &&
@@ -179,7 +182,7 @@ fun CapsulePreview(
                 }
                 Text(
                     text = leftText,
-                    color = if (superIslandTextColorEnabled) superIslandAccentColor else Color.White,
+                    color = if (superIslandColorized) superIslandAccentColor else Color.White,
                     fontWeight = FontWeight.Bold,
                     fontSize = 14.sp,
                     maxLines = 1,
@@ -189,7 +192,7 @@ fun CapsulePreview(
                 Spacer(modifier = Modifier.width(14.dp))
                 Text(
                     text = rightText,
-                    color = if (superIslandTextColorEnabled) superIslandAccentColor else Color.White,
+                    color = if (superIslandColorized) superIslandAccentColor else Color.White,
                     fontWeight = FontWeight.Bold,
                     fontSize = 14.sp,
                     maxLines = 1,
@@ -319,6 +322,8 @@ fun NotificationPreview(
     actionStyle: String,
     superIslandEnabled: Boolean = false,
     superIslandTextColorEnabled: Boolean = false,
+    superIslandColorSource: String = SuperIslandColorSource.OFF,
+    superIslandCustomColor: Color = Color(0xFF3482FF),
     superIslandMediaButtonLayout: String = "two_button",
     superIslandNotificationStyle: String = "standard",
     superIslandLyricMode: String = "standard",
@@ -395,8 +400,24 @@ fun NotificationPreview(
     }
     
     val barColor = if (progressColorEnabled && extractedColor != null) extractedColor!! else MaterialTheme.colorScheme.primary
-    val textColor = if (superIslandTextColorEnabled && extractedColor != null) extractedColor!! else Color.White
-    val secondaryTextColor = if (superIslandTextColorEnabled && extractedColor != null) extractedColor!!.copy(alpha = 0.8f) else Color(0xFFB0B0B0)
+    val superIslandAccentColor = Color(
+        SuperIslandColorSource.resolveColor(
+            source = superIslandColorSource,
+            albumColor = extractedColor?.toArgb() ?: SuperIslandColorSource.DEFAULT_CUSTOM_COLOR,
+            customColor = superIslandCustomColor.toArgb()
+        )
+    )
+    val superIslandColorized = SuperIslandColorSource.isColorized(superIslandColorSource)
+    val textColor = when {
+        superIslandEnabled && superIslandColorized -> superIslandAccentColor
+        !superIslandEnabled && superIslandTextColorEnabled && extractedColor != null -> extractedColor!!
+        else -> Color.White
+    }
+    val secondaryTextColor = when {
+        superIslandEnabled && superIslandColorized -> superIslandAccentColor.copy(alpha = 0.8f)
+        !superIslandEnabled && superIslandTextColorEnabled && extractedColor != null -> extractedColor!!.copy(alpha = 0.8f)
+        else -> Color(0xFFB0B0B0)
+    }
 
     if (superIslandEnabled) {
         // Premium Super Island Style Notification Preview
@@ -493,7 +514,7 @@ fun NotificationPreview(
                             CircularProgressIndicator(
                                 progress = { progress },
                                 strokeWidth = 3.dp,
-                                color = if (progressColorEnabled) barColor else Color.White,
+                                color = if (superIslandColorized) superIslandAccentColor else Color.White,
                                 trackColor = if (showAdvancedStyle) Color.White.copy(alpha = 0.18f) else Color.Transparent,
                                 modifier = Modifier.fillMaxSize()
                             )
@@ -723,8 +744,8 @@ fun NotificationPreview(
                                 .fillMaxWidth()
                                 .height(4.dp)
                                 .clip(RoundedCornerShape(2.dp)),
-                            color = if (progressColorEnabled) barColor else Color.Gray.copy(alpha = 0.6f),
-                            trackColor = if (progressColorEnabled) barColor.copy(alpha = 0.2f) else Color(0xFF1A2633)
+                            color = if (superIslandColorized) superIslandAccentColor else Color.Gray.copy(alpha = 0.6f),
+                            trackColor = if (superIslandColorized) superIslandAccentColor.copy(alpha = 0.2f) else Color(0xFF1A2633)
                         )
                     }
                 }
