@@ -750,10 +750,13 @@
     <string name="settings_super_island_left_text_limit">左侧歌词字数上限</string>
     <string name="settings_live_update_text_limit">Live Update 歌词字数上限</string>
     <string name="settings_super_island_colorize">为胶囊内容着色</string>
-    <string name="settings_super_island_colorize_desc">为超级岛中的歌词、播放信息、胶囊边缘和进度条着色。</string>
+    <string name="settings_super_island_colorize_desc">选择超级岛歌词、播放信息、边缘/进度环和进度条的着色方式。</string>
     <string name="settings_super_island_color_source">取色来源</string>
-    <string name="settings_super_island_color_source_desc">选择胶囊颜色使用专辑封面取色还是自定义取色。</string>
-    <string name="settings_super_island_color_source_album_art">专辑封面取色</string>
+    <string name="settings_super_island_color_source_desc">选择超级岛内容的颜色模式。</string>
+    <string name="settings_super_island_color_source_off">关闭</string>
+    <string name="settings_super_island_color_source_album_art">专辑封面取色（原色）</string>
+    <string name="settings_super_island_color_source_album_art_readable_weak">专辑封面取色（可读性增强·弱）</string>
+    <string name="settings_super_island_color_source_album_art_readable_strong">专辑封面取色（可读性增强·强）</string>
     <string name="settings_super_island_color_source_custom">自定义取色</string>
     <string name="settings_super_island_custom_color">胶囊自定义颜色</string>
     <string name="settings_super_island_share">开启拖拽分享</string>

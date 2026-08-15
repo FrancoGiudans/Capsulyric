@@ -73,6 +73,7 @@ object BackupCategories {
             SubGroup("capsule_color_share", listOf(
                 "super_island_text_color_enabled",
                 "super_island_color_source",
+                "super_island_custom_color",
                 "super_island_share_enabled",
                 "super_island_share_format"
             ))

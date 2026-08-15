@@ -190,6 +190,7 @@ class SuperIslandHandler(
             displayLyric = displayLyric,
             progressPercent = progressPercent,
             accentColor = accentColor,
+            colorMode = preferences.colorSource,
             extraContentSignature = dualLineText?.signature.orEmpty()
         ) ?: return
 
@@ -213,9 +214,9 @@ class SuperIslandHandler(
         )
 
         val hexColor = String.format("#FF%06X", 0xFFFFFF and accentColor)
-        val showHighlightColor = preferences.textColorEnabled 
+        val showHighlightColor = SuperIslandColorSource.isColorized(preferences.colorSource)
         val ringColor = if (showHighlightColor) hexColor else "#757575"
-        val progressBarColor = if (preferences.progressBarColorEnabled) hexColor else "#757575"
+        val progressBarColor = if (showHighlightColor) hexColor else "#757575"
         val packageName = state.mediaPackage.ifEmpty { context.packageName }
         val titleWithArtist = if (state.artist.isNotBlank()) "${state.title} - ${state.artist}" else state.title
         val template2Icon = resolveTemplate2Icon()
@@ -296,6 +297,7 @@ class SuperIslandHandler(
             progressPercent = progressPercent,
             subText = subText,
             accentColor = accentColor,
+            colorMode = preferences.colorSource,
             extraContentSignature = dualLineText?.signature.orEmpty(),
             focusSignature = focusSignature
         )
