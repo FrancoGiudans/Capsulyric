@@ -22,44 +22,56 @@
 
 package com.example.islandlyrics.ui.overlay.superisland.config
 
-import android.graphics.Color
 import android.content.SharedPreferences
+import android.graphics.Color
 import androidx.core.graphics.ColorUtils
 import com.example.islandlyrics.core.settings.AppPreferences
 
 object SuperIslandColorSource {
     const val PREF_KEY = "super_island_color_source"
     const val CUSTOM_COLOR_PREF_KEY = "super_island_custom_color"
+    const val SMART_CONTRAST_PREF_KEY = "super_island_smart_min_contrast"
+    const val SMART_WHITE_RATIO_PREF_KEY = "super_island_smart_white_ratio"
 
     const val OFF = "off"
     const val ALBUM_ART = "album_art"
-    const val ALBUM_ART_READABLE_WEAK = "album_art_readable_weak"
-    const val ALBUM_ART_READABLE_STRONG = "album_art_readable_strong"
+    const val ALBUM_ART_SMART = "album_art_smart"
     const val CUSTOM = "custom"
 
     const val DEFAULT_CUSTOM_COLOR = 0xFF3482FF.toInt()
     const val DEFAULT_NEUTRAL_COLOR = 0xFF757575.toInt()
+    const val SMART_CONTRAST_MIN = 3.0f
+    const val SMART_CONTRAST_MAX = 6.0f
+    const val SMART_CONTRAST_DEFAULT = 4.5f
+    const val SMART_WHITE_RATIO_MIN = 0.0f
+    const val SMART_WHITE_RATIO_MAX = 0.5f
+    const val SMART_WHITE_RATIO_DEFAULT = 0.20f
 
-    val values = listOf(
-        OFF,
-        ALBUM_ART,
-        ALBUM_ART_READABLE_WEAK,
-        ALBUM_ART_READABLE_STRONG,
-        CUSTOM
-    )
+    private const val LEGACY_READABLE_WEAK = "album_art_readable_weak"
+    private const val LEGACY_READABLE_STRONG = "album_art_readable_strong"
+
+    val values = listOf(OFF, ALBUM_ART, ALBUM_ART_SMART, CUSTOM)
 
     fun read(prefs: SharedPreferences): String {
-        val source = prefs.getString(PREF_KEY, null)
+        val raw = prefs.getString(PREF_KEY, null)
+        val source = when (raw) {
+            LEGACY_READABLE_WEAK, LEGACY_READABLE_STRONG -> ALBUM_ART_SMART
+            OFF, ALBUM_ART, ALBUM_ART_SMART, CUSTOM -> raw
+            else -> null
+        }
         return when (source) {
-            OFF, ALBUM_ART_READABLE_WEAK, ALBUM_ART_READABLE_STRONG -> source
-            ALBUM_ART, CUSTOM -> if (isLegacyEnabled(prefs)) source else OFF
+            OFF -> OFF
             null -> if (isLegacyEnabled(prefs)) ALBUM_ART else OFF
-            else -> if (isLegacyEnabled(prefs)) ALBUM_ART else OFF
+            else -> if (isLegacyEnabled(prefs)) source else OFF
         }
     }
 
     fun write(prefs: SharedPreferences, source: String) {
-        val normalizedSource = source.takeIf { it in values } ?: OFF
+        val migratedSource = when (source) {
+            LEGACY_READABLE_WEAK, LEGACY_READABLE_STRONG -> ALBUM_ART_SMART
+            else -> source
+        }
+        val normalizedSource = migratedSource.takeIf { it in values } ?: OFF
         prefs.edit()
             .putString(PREF_KEY, normalizedSource)
             .putBoolean(AppPreferences.Keys.SUPER_ISLAND_TEXT_COLOR_ENABLED, normalizedSource != OFF)
@@ -74,20 +86,41 @@ object SuperIslandColorSource {
         prefs.edit().putInt(CUSTOM_COLOR_PREF_KEY, color).apply()
     }
 
+    fun readSmartMinContrast(prefs: SharedPreferences): Float =
+        prefs.getFloat(SMART_CONTRAST_PREF_KEY, SMART_CONTRAST_DEFAULT)
+            .coerceIn(SMART_CONTRAST_MIN, SMART_CONTRAST_MAX)
+
+    fun writeSmartMinContrast(prefs: SharedPreferences, value: Float) {
+        prefs.edit()
+            .putFloat(SMART_CONTRAST_PREF_KEY, value.coerceIn(SMART_CONTRAST_MIN, SMART_CONTRAST_MAX))
+            .apply()
+    }
+
+    fun readSmartWhiteRatio(prefs: SharedPreferences): Float =
+        prefs.getFloat(SMART_WHITE_RATIO_PREF_KEY, SMART_WHITE_RATIO_DEFAULT)
+            .coerceIn(SMART_WHITE_RATIO_MIN, SMART_WHITE_RATIO_MAX)
+
+    fun writeSmartWhiteRatio(prefs: SharedPreferences, value: Float) {
+        prefs.edit()
+            .putFloat(SMART_WHITE_RATIO_PREF_KEY, value.coerceIn(SMART_WHITE_RATIO_MIN, SMART_WHITE_RATIO_MAX))
+            .apply()
+    }
+
     fun isColorized(source: String): Boolean = source != OFF
 
-    fun resolveColor(source: String, albumColor: Int, customColor: Int): Int {
+    fun resolveColor(
+        source: String,
+        albumColor: Int,
+        customColor: Int,
+        smartMinimumContrast: Float = SMART_CONTRAST_DEFAULT,
+        smartWhiteRatio: Float = SMART_WHITE_RATIO_DEFAULT
+    ): Int {
         return when (source) {
             ALBUM_ART -> albumColor
-            ALBUM_ART_READABLE_WEAK -> ensureReadable(
+            ALBUM_ART_SMART -> ensureReadable(
                 color = albumColor,
-                minimumContrast = WEAK_MINIMUM_CONTRAST,
-                minimumWhiteRatio = WEAK_WHITE_RATIO
-            )
-            ALBUM_ART_READABLE_STRONG -> ensureReadable(
-                color = albumColor,
-                minimumContrast = STRONG_MINIMUM_CONTRAST,
-                minimumWhiteRatio = STRONG_WHITE_RATIO
+                minimumContrast = smartMinimumContrast.toDouble(),
+                minimumWhiteRatio = smartWhiteRatio
             )
             CUSTOM -> customColor
             else -> DEFAULT_NEUTRAL_COLOR
@@ -119,8 +152,4 @@ object SuperIslandColorSource {
         return ColorUtils.blendARGB(color, Color.WHITE, high)
     }
 
-    private const val WEAK_MINIMUM_CONTRAST = 3.0
-    private const val STRONG_MINIMUM_CONTRAST = 4.5
-    private const val WEAK_WHITE_RATIO = 0.20f
-    private const val STRONG_WHITE_RATIO = 0.70f
 }

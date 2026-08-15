@@ -23,7 +23,11 @@
 package com.example.islandlyrics.feature.lab.material
 
 import android.content.Intent
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
@@ -34,6 +38,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -45,10 +50,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import kotlin.math.roundToInt
 import com.example.islandlyrics.R
 import com.example.islandlyrics.core.network.OfflineModeManager
 import com.example.islandlyrics.core.platform.RomUtils
+import com.example.islandlyrics.core.settings.AppPreferences
 import com.example.islandlyrics.core.settings.LabFeatureManager
+import com.example.islandlyrics.ui.overlay.superisland.config.SuperIslandColorSource
 import com.example.islandlyrics.feature.customsettings.CustomSettingsActivity
 import com.example.islandlyrics.feature.settings.material.SettingsCard
 import com.example.islandlyrics.feature.settings.material.SettingsCardDivider
@@ -74,6 +82,12 @@ fun LabScreen(
     }
     var superIslandRelaxedTextLimitsEnabled by remember {
         mutableStateOf(LabFeatureManager.isSuperIslandRelaxedTextLimitsEnabled(context))
+    }
+    var superIslandSmartMinContrast by remember {
+        mutableStateOf(SuperIslandColorSource.readSmartMinContrast(AppPreferences.of(context)))
+    }
+    var superIslandSmartWhiteRatio by remember {
+        mutableStateOf(SuperIslandColorSource.readSmartWhiteRatio(AppPreferences.of(context)))
     }
     var liveUpdateTextLimitsEnabled by remember {
         mutableStateOf(LabFeatureManager.isLiveUpdateTextLimitsEnabled(context))
@@ -180,6 +194,74 @@ fun LabScreen(
                                 LabFeatureManager.setSuperIslandRelaxedTextLimitsEnabled(context, it)
                             }
                         )
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 24.dp, vertical = 8.dp)
+                        ) {
+                            Text(
+                                text = stringResource(R.string.diag_lab_super_island_smart_contrast_title) +
+                                    ": " + String.format(java.util.Locale.US, "%.1f", superIslandSmartMinContrast),
+                                style = MaterialTheme.typography.bodyLarge
+                            )
+                            Text(
+                                text = stringResource(R.string.diag_lab_super_island_smart_contrast_desc),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Slider(
+                                value = superIslandSmartMinContrast,
+                                onValueChange = { raw ->
+                                    val stepped = ((raw * 10f).roundToInt() / 10f)
+                                        .coerceIn(
+                                            SuperIslandColorSource.SMART_CONTRAST_MIN,
+                                            SuperIslandColorSource.SMART_CONTRAST_MAX
+                                        )
+                                    superIslandSmartMinContrast = stepped
+                                    SuperIslandColorSource.writeSmartMinContrast(
+                                        AppPreferences.of(context),
+                                        stepped
+                                    )
+                                },
+                                valueRange = SuperIslandColorSource.SMART_CONTRAST_MIN..SuperIslandColorSource.SMART_CONTRAST_MAX,
+                                steps = ((SuperIslandColorSource.SMART_CONTRAST_MAX - SuperIslandColorSource.SMART_CONTRAST_MIN) / 0.1f).toInt() - 1
+                            )
+                        }
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 24.dp, vertical = 8.dp)
+                        ) {
+                            Text(
+                                text = stringResource(R.string.diag_lab_super_island_smart_white_title) +
+                                    ": ${(superIslandSmartWhiteRatio * 100).roundToInt()}%",
+                                style = MaterialTheme.typography.bodyLarge
+                            )
+                            Text(
+                                text = stringResource(R.string.diag_lab_super_island_smart_white_desc),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Slider(
+                                value = superIslandSmartWhiteRatio,
+                                onValueChange = { raw ->
+                                    val stepped = ((raw * 20f).roundToInt() / 20f)
+                                        .coerceIn(
+                                            SuperIslandColorSource.SMART_WHITE_RATIO_MIN,
+                                            SuperIslandColorSource.SMART_WHITE_RATIO_MAX
+                                        )
+                                    superIslandSmartWhiteRatio = stepped
+                                    SuperIslandColorSource.writeSmartWhiteRatio(
+                                        AppPreferences.of(context),
+                                        stepped
+                                    )
+                                },
+                                valueRange = SuperIslandColorSource.SMART_WHITE_RATIO_MIN..SuperIslandColorSource.SMART_WHITE_RATIO_MAX,
+                                steps = ((SuperIslandColorSource.SMART_WHITE_RATIO_MAX - SuperIslandColorSource.SMART_WHITE_RATIO_MIN) / 0.05f).toInt() - 1
+                            )
+                        }
                         SettingsCardDivider()
                     }
                     SettingsSwitchItem(

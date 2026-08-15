@@ -37,10 +37,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import kotlin.math.roundToInt
 import com.example.islandlyrics.R
 import com.example.islandlyrics.core.network.OfflineModeManager
 import com.example.islandlyrics.core.platform.RomUtils
+import com.example.islandlyrics.core.settings.AppPreferences
 import com.example.islandlyrics.core.settings.LabFeatureManager
+import com.example.islandlyrics.ui.overlay.superisland.config.SuperIslandColorSource
 import com.example.islandlyrics.feature.customsettings.CustomSettingsActivity
 import com.example.islandlyrics.ui.miuix.navigation.MiuixBackHandler
 import com.example.islandlyrics.ui.miuix.navigation.MiuixBackIcon
@@ -52,6 +56,8 @@ import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
 import top.yukonga.miuix.kmp.basic.ButtonDefaults
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.IconButton
+import top.yukonga.miuix.kmp.basic.Slider
+import top.yukonga.miuix.kmp.basic.SliderDefaults
 import top.yukonga.miuix.kmp.basic.SmallTitle
 import top.yukonga.miuix.kmp.basic.TextButton
 import top.yukonga.miuix.kmp.basic.rememberTopAppBarState
@@ -76,6 +82,12 @@ fun MiuixLabScreen(
     }
     var superIslandRelaxedTextLimitsEnabled by remember {
         mutableStateOf(LabFeatureManager.isSuperIslandRelaxedTextLimitsEnabled(context))
+    }
+    var superIslandSmartMinContrast by remember {
+        mutableStateOf(SuperIslandColorSource.readSmartMinContrast(AppPreferences.of(context)))
+    }
+    var superIslandSmartWhiteRatio by remember {
+        mutableStateOf(SuperIslandColorSource.readSmartWhiteRatio(AppPreferences.of(context)))
     }
     var liveUpdateTextLimitsEnabled by remember {
         mutableStateOf(LabFeatureManager.isLiveUpdateTextLimitsEnabled(context))
@@ -190,6 +202,74 @@ fun MiuixLabScreen(
                                 LabFeatureManager.setSuperIslandRelaxedTextLimitsEnabled(context, it)
                             }
                         )
+
+                        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp)) {
+                            Text(
+                                text = stringResource(R.string.diag_lab_super_island_smart_contrast_title) +
+                                    ": " + String.format(java.util.Locale.US, "%.1f", superIslandSmartMinContrast),
+                                color = MiuixTheme.colorScheme.onSurface,
+                                fontSize = 15.sp
+                            )
+                            Text(
+                                text = stringResource(R.string.diag_lab_super_island_smart_contrast_desc),
+                                color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                                fontSize = 13.sp
+                            )
+                            Spacer(modifier = Modifier.height(10.dp))
+                            Slider(
+                                value = superIslandSmartMinContrast,
+                                onValueChange = { raw ->
+                                    val stepped = ((raw * 10f).roundToInt() / 10f)
+                                        .coerceIn(
+                                            SuperIslandColorSource.SMART_CONTRAST_MIN,
+                                            SuperIslandColorSource.SMART_CONTRAST_MAX
+                                        )
+                                    superIslandSmartMinContrast = stepped
+                                    SuperIslandColorSource.writeSmartMinContrast(
+                                        AppPreferences.of(context),
+                                        stepped
+                                    )
+                                },
+                                valueRange = SuperIslandColorSource.SMART_CONTRAST_MIN..SuperIslandColorSource.SMART_CONTRAST_MAX,
+                                steps = ((SuperIslandColorSource.SMART_CONTRAST_MAX - SuperIslandColorSource.SMART_CONTRAST_MIN) / 0.1f).toInt() - 1,
+                                hapticEffect = SliderDefaults.SliderHapticEffect.Step,
+                                showKeyPoints = true
+                            )
+                        }
+
+                        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp)) {
+                            Text(
+                                text = stringResource(R.string.diag_lab_super_island_smart_white_title) +
+                                    ": ${(superIslandSmartWhiteRatio * 100).roundToInt()}%",
+                                color = MiuixTheme.colorScheme.onSurface,
+                                fontSize = 15.sp
+                            )
+                            Text(
+                                text = stringResource(R.string.diag_lab_super_island_smart_white_desc),
+                                color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                                fontSize = 13.sp
+                            )
+                            Spacer(modifier = Modifier.height(10.dp))
+                            Slider(
+                                value = superIslandSmartWhiteRatio,
+                                onValueChange = { raw ->
+                                    val stepped = ((raw * 20f).roundToInt() / 20f)
+                                        .coerceIn(
+                                            SuperIslandColorSource.SMART_WHITE_RATIO_MIN,
+                                            SuperIslandColorSource.SMART_WHITE_RATIO_MAX
+                                        )
+                                    superIslandSmartWhiteRatio = stepped
+                                    SuperIslandColorSource.writeSmartWhiteRatio(
+                                        AppPreferences.of(context),
+                                        stepped
+                                    )
+                                },
+                                valueRange = SuperIslandColorSource.SMART_WHITE_RATIO_MIN..SuperIslandColorSource.SMART_WHITE_RATIO_MAX,
+                                steps = ((SuperIslandColorSource.SMART_WHITE_RATIO_MAX - SuperIslandColorSource.SMART_WHITE_RATIO_MIN) / 0.05f).toInt() - 1,
+                                hapticEffect = SliderDefaults.SliderHapticEffect.Step,
+                                showKeyPoints = true
+                            )
+                        }
 
                     }
 
