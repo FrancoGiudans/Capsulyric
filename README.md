@@ -10,7 +10,7 @@
 
 Capsulyric is an Android app that displays now-playing lyrics on the status bar, notification, and lock-screen area through **Live Update (Android 16+)** and/or **Xiaomi Super Island (HyperOS 3.0+)**. It gathers lyrics from media notifications, online services, and local `.lrc` files, with support for translations and romanization.
 
-Capsulyric 是一款 Android 歌词应用，通过**实况通知（Android 16+）** 和/或 **小米超级岛（HyperOS 3.0+）** 在状态栏、通知栏与锁屏区域显示正在播放的歌词。支持从媒体通知、在线服务与本地 `.lrc` 文件获取歌词，并支持翻译与罗马音。
+Capsulyric 是一款 Android 歌词应用，通过**实况通知（Android 16+）** 和/或 **小米超级岛（HyperOS 3.0+）** 在状态栏、通知栏与锁屏区域显示正在播放的歌词。支持从媒体通知、在线服务与本地 `.lrc` 文件获取歌词，并支持翻译与拼音歌词。
 
 > [!NOTE]
 > This project has entered the Long Term Slacking (LTS) phase. The core experience is now relatively stable. Future update frequency will be significantly reduced, and new feature development will proceed at a slower pace.\
@@ -38,7 +38,7 @@ Capsulyric 是一款 Android 歌词应用，通过**实况通知（Android 16+�
 - **Live Update (实况通知)** — System-level dynamic lyrics in the notification and lock-screen area. / 系统级实况通知，在通知栏与锁屏区域显示动态歌词。
 - **Xiaomi Super Island (小米超级岛)** — Native island display on HyperOS 3.0+. / HyperOS 3.0+ 原生超级岛展示。
 - **Multiple lyric sources (多歌词源)** — Media notifications, online lyrics, Superlyric, Lyric Getter, Lyricon, and local `.lrc`. / 通知栏、在线歌词、Superlyric、Lyric Getter、Lyricon 与本地 `.lrc` 多来源获取。
-- **Translations & romanization (翻译与罗马音)** — Available with Online Lyrics enabled. / 开启在线歌词后支持翻译与罗马音。
+- **Translations & romanization (翻译与拼音歌词)** — Available with Online Lyrics enabled. / 开启在线歌词后支持翻译与拼音歌词。
 
 ---
 
@@ -102,7 +102,7 @@ Capsulyric 是一款 Android 歌词应用，通过**实况通知（Android 16+�
 | Method / 方式 | Description / 说明 |
 | :--- | :--- |
 | **Media Notification** | Detects lyrics from standard notifications. / 从标准通知栏提取。 |
-| **Online Lyrics** | Fetches from online servers. Supports translations & romanization. / 从互联网服务器获取，支持翻译与罗马音。 |
+| **Online Lyrics** | Fetches from online servers. Supports translations & romanization. / 从互联网服务器获取，支持翻译与拼音歌词。 |
 | **Superlyric API** | High accuracy (Root/LSPosed required). / 准确度高（需 Root/LSPosed）。 |
 | **Lyric Getter** | Supports Meizu & LSPatch (non-root). / 支持魅族状态栏歌词及免 Root 注入。 |
 | **Lyricon API** | Root/LSPosed required. / 需 Root/LSPosed。 |

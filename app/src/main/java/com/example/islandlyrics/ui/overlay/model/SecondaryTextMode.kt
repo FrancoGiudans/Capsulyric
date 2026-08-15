@@ -64,7 +64,7 @@ enum class SecondaryTextMode(val preferenceValue: String) {
 
 /**
  * 按优先级顺序解析第二行歌词：第一个可用的选中类型胜出；
- * 全部不可用时兜底按 翻译→罗马音→下一句 的顺序取第一个可用内容。
+ * 全部不可用时兜底按 翻译→拼音歌词→下一句 的顺序取第一个可用内容。
  */
 internal object SecondaryTextResolver {
     fun isPlaceholder(text: String?): Boolean =

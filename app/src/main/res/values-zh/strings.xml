@@ -594,10 +594,10 @@
     <string name="super_island_notification_style_advanced_beta">高级样式（Beta）</string>
     <string name="super_island_notification_style_advanced_lyrics_dual">高级双行歌词</string>
     <string name="settings_super_island_dual_line_mode">第二行内容</string>
-    <string name="settings_super_island_dual_line_mode_desc">翻译和罗马音需要在解析规则中启用对应来源。</string>
+    <string name="settings_super_island_dual_line_mode_desc">翻译和拼音歌词需要在解析规则中启用对应来源。</string>
     <string name="super_island_dual_line_mode_next_lyric">当前歌词 + 下一句歌词</string>
     <string name="super_island_dual_line_mode_translation">歌词 + 翻译</string>
-    <string name="super_island_dual_line_mode_romanization">歌词 + 罗马音</string>
+    <string name="super_island_dual_line_mode_romanization">歌词 + 拼音歌词</string>
     <string name="settings_super_island_media_button_layout">播放按键布局</string>
     <string name="super_island_media_button_layout_two">双按键</string>
     <string name="super_island_media_button_layout_two_desc">播放/暂停、下一首</string>
@@ -612,7 +612,7 @@
     <string name="settings_super_island_secondary_text_priority">显示顺序（拖动排序）</string>
     <string name="super_island_secondary_text_next_lyric">下一句歌词</string>
     <string name="super_island_secondary_text_translation">翻译</string>
-    <string name="super_island_secondary_text_romanization">罗马音</string>
+    <string name="super_island_secondary_text_romanization">拼音歌词</string>
     <string name="settings_super_island_template2_pic_source">图形来源</string>
     <string name="super_island_template2_pic_album_art">专辑图</string>
     <string name="super_island_template2_pic_album_art_desc">使用当前播放歌曲的专辑图</string>
@@ -1146,7 +1146,7 @@
     <string name="settings_floating_show_neighbor_line">显示当前句和下一句</string>
     <string name="settings_floating_show_neighbor_line_desc">完整时间轴歌词会显示当前句与下一句；当前句为最后一句时显示上一句与当前句</string>
     <string name="settings_floating_show_second_line">显示第二行歌词</string>
-    <string name="settings_floating_show_second_line_desc">在当前句下方显示第二行歌词，按所选优先级取第一个可用内容（下一句歌词/翻译/罗马音）</string>
+    <string name="settings_floating_show_second_line_desc">在当前句下方显示第二行歌词，按所选优先级取第一个可用内容（下一句歌词/翻译/拼音歌词）</string>
     <string name="settings_floating_split_neighbor_alignment">双行左右分布</string>
     <string name="settings_floating_split_neighbor_alignment_desc">将上下两句分别靠左右排列，而不是居中排列</string>
     <string name="settings_floating_word_highlight">逐字高亮</string>

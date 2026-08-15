@@ -75,7 +75,7 @@ internal object SuperIslandDualLineTextResolver {
             }
             if (value != null) return value
         }
-        // 兜底：所选内容均不可用时，按翻译→罗马音→下一句的顺序取第一个可用内容
+        // 兜底：所选内容均不可用时，按翻译→拼音歌词→下一句的顺序取第一个可用内容
         return sequenceOf(translation, romanization, nextLyric)
             .filterNotNull()
             .firstOrNull()
