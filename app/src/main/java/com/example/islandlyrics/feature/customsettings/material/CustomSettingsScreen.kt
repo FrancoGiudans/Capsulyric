@@ -497,9 +497,10 @@ fun CustomSettingsScreen(
                                 superIslandEnabled = superIslandEnabled,
                                 superIslandLyricMode = superIslandLyricMode,
                                 superIslandFullLyricShowLeftCover = superIslandFullLyricShowLeftCover,
-                                superIslandTextColorEnabled = superIslandTextColorEnabled,
                                 superIslandColorSource = superIslandColorSource,
-                                superIslandCustomColor = superIslandCustomColor
+                                superIslandCustomColor = superIslandCustomColor,
+                                superIslandSmartMinContrast = uiState.superIslandSmartMinContrast,
+                                superIslandSmartWhiteRatio = uiState.superIslandSmartWhiteRatio
                             )
                             Spacer(modifier = Modifier.height(16.dp))
 
@@ -804,45 +805,85 @@ fun CustomSettingsScreen(
                                     }
 
                                     SettingsCardDivider()
-                                    val colorSources = SuperIslandColorSource.values
-                                    val colorSourceLabels = listOf(
-                                        stringResource(R.string.settings_super_island_color_source_off),
-                                        stringResource(R.string.settings_super_island_color_source_album_art),
-                                        stringResource(R.string.settings_super_island_color_source_album_art_readable_weak),
-                                        stringResource(R.string.settings_super_island_color_source_album_art_readable_strong),
-                                        stringResource(R.string.settings_super_island_color_source_custom)
+                                    SettingsSwitchItem(
+                                        title = stringResource(R.string.settings_super_island_colorize),
+                                        subtitle = stringResource(R.string.settings_super_island_colorize_desc),
+                                        checked = superIslandTextColorEnabled,
+                                        onCheckedChange = { enabled ->
+                                            if (!enabled && superIslandColorEditing) {
+                                                superIslandCustomColor = superIslandColorSnapshot
+                                                superIslandColorEditing = false
+                                            }
+                                            val newSource = if (enabled && superIslandColorSource == SuperIslandColorSource.OFF) {
+                                                SuperIslandColorSource.ALBUM_ART_SMART
+                                            } else {
+                                                superIslandColorSource
+                                            }
+                                            superIslandColorSource = newSource
+                                            superIslandTextColorEnabled = enabled
+                                            viewModel.dispatch(CustomSettingsAction.SetSuperIslandColorSource(newSource))
+                                        }
                                     )
-                                    val currentColorSourceIndex =
-                                        colorSources.indexOf(superIslandColorSource).takeIf { it >= 0 } ?: 0
 
-                                    Box(modifier = Modifier.fillMaxWidth()) {
-                                        SettingsTextItem(
-                                            title = stringResource(R.string.settings_super_island_colorize),
-                                            subtitle = stringResource(R.string.settings_super_island_colorize_desc),
-                                            value = colorSourceLabels[currentColorSourceIndex],
-                                            onClick = { showSuperIslandColorSourceDropdown = true }
+                                    if (superIslandTextColorEnabled) {
+                                        val colorSourceOptions = listOf(
+                                            Triple(
+                                                SuperIslandColorSource.ALBUM_ART,
+                                                R.string.settings_super_island_color_source_album_art,
+                                                R.string.settings_super_island_color_source_album_art_desc
+                                            ),
+                                            Triple(
+                                                SuperIslandColorSource.ALBUM_ART_SMART,
+                                                R.string.settings_super_island_color_source_album_art_smart,
+                                                R.string.settings_super_island_color_source_album_art_smart_desc
+                                            ),
+                                            Triple(
+                                                SuperIslandColorSource.CUSTOM,
+                                                R.string.settings_super_island_color_source_custom,
+                                                R.string.settings_super_island_color_source_custom_desc
+                                            )
                                         )
-                                        Box(modifier = Modifier.matchParentSize().wrapContentSize(Alignment.Center)) {
-                                            MaterialBlurDropdownMenu(
-                                                expanded = showSuperIslandColorSourceDropdown,
-                                                onDismissRequest = { showSuperIslandColorSourceDropdown = false }
-                                            ) {
-                                                colorSourceLabels.forEachIndexed { index, label ->
-                                                    DropdownMenuItem(
-                                                        text = { Text(label) },
-                                                        onClick = {
-                                                            if (superIslandColorEditing) {
-                                                                superIslandCustomColor = superIslandColorSnapshot
-                                                                superIslandColorEditing = false
+                                        val colorSources = colorSourceOptions.map { it.first }
+                                        val colorSourceLabels = colorSourceOptions.map { stringResource(it.second) }
+                                        val currentColorSourceIndex =
+                                            colorSources.indexOf(superIslandColorSource).takeIf { it >= 0 } ?: 0
+
+                                        SettingsCardDivider()
+                                        Box(modifier = Modifier.fillMaxWidth()) {
+                                            SettingsTextItem(
+                                                title = stringResource(R.string.settings_super_island_color_source),
+                                                subtitle = stringResource(R.string.settings_super_island_color_source_desc),
+                                                value = colorSourceLabels[currentColorSourceIndex],
+                                                onClick = { showSuperIslandColorSourceDropdown = true }
+                                            )
+                                            Box(modifier = Modifier.matchParentSize().wrapContentSize(Alignment.Center)) {
+                                                MaterialBlurDropdownMenu(
+                                                    expanded = showSuperIslandColorSourceDropdown,
+                                                    onDismissRequest = { showSuperIslandColorSourceDropdown = false }
+                                                ) {
+                                                    colorSourceOptions.forEach { (mode, nameId, descId) ->
+                                                        DropdownMenuItem(
+                                                            text = {
+                                                                Column {
+                                                                    Text(stringResource(nameId))
+                                                                    Text(
+                                                                        text = stringResource(descId),
+                                                                        style = MaterialTheme.typography.bodySmall,
+                                                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                                    )
+                                                                }
+                                                            },
+                                                            onClick = {
+                                                                if (superIslandColorEditing) {
+                                                                    superIslandCustomColor = superIslandColorSnapshot
+                                                                    superIslandColorEditing = false
+                                                                }
+                                                                superIslandColorSource = mode
+                                                                viewModel.dispatch(CustomSettingsAction.SetSuperIslandColorSource(mode))
+                                                                showSuperIslandColorSourceDropdown = false
                                                             }
-                                                            val newSource = colorSources[index]
-                                                            superIslandColorSource = newSource
-                                                            superIslandTextColorEnabled =
-                                                                SuperIslandColorSource.isColorized(newSource)
-                                                            viewModel.dispatch(CustomSettingsAction.SetSuperIslandColorSource(newSource))
-                                                            showSuperIslandColorSourceDropdown = false
-                                                        }
-                                                    )
+                                                        )
+                                                    }
                                                 }
                                             }
                                         }
@@ -1035,9 +1076,10 @@ fun CustomSettingsScreen(
                                  progressColorEnabled = progressColorEnabled,
                                  actionStyle = effectiveActionStyle,
                                  superIslandEnabled = superIslandEnabled,
-                                 superIslandTextColorEnabled = superIslandTextColorEnabled,
                                  superIslandColorSource = superIslandColorSource,
                                  superIslandCustomColor = superIslandCustomColor,
+                                 superIslandSmartMinContrast = uiState.superIslandSmartMinContrast,
+                                 superIslandSmartWhiteRatio = uiState.superIslandSmartWhiteRatio,
                                  superIslandMediaButtonLayout = superIslandMediaButtonLayout,
                                  superIslandNotificationStyle = superIslandNotificationStyle,
                                  superIslandLyricMode = superIslandLyricMode,

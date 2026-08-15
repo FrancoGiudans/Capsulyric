@@ -74,6 +74,8 @@ object BackupCategories {
                 "super_island_text_color_enabled",
                 "super_island_color_source",
                 "super_island_custom_color",
+                "super_island_smart_min_contrast",
+                "super_island_smart_white_ratio",
                 "super_island_share_enabled",
                 "super_island_share_format"
             ))

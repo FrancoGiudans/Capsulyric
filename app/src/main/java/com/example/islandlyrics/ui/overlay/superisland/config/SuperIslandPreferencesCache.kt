@@ -39,8 +39,6 @@ internal class SuperIslandPreferencesCache(
         private set
     var shareFormat = "format_1"
         private set
-    var progressBarColorEnabled = false
-        private set
     var actionStyle = "disabled"
         private set
     var mediaButtonLayout = "two_button"
@@ -65,6 +63,10 @@ internal class SuperIslandPreferencesCache(
     var colorSource = SuperIslandColorSource.OFF
         private set
     var customColor = 0xFF3482FF.toInt()
+        private set
+    var smartMinContrast = SuperIslandColorSource.SMART_CONTRAST_DEFAULT
+        private set
+    var smartWhiteRatio = SuperIslandColorSource.SMART_WHITE_RATIO_DEFAULT
         private set
     var rightTextWeight = SuperIslandLyricLayout.calculateWeight("七七七七七七七")
         private set
@@ -95,12 +97,14 @@ internal class SuperIslandPreferencesCache(
                 textColorEnabled = SuperIslandColorSource.isColorized(colorSource)
             }
             SuperIslandColorSource.CUSTOM_COLOR_PREF_KEY -> customColor = SuperIslandColorSource.readCustomColor(p)
+            SuperIslandColorSource.SMART_CONTRAST_PREF_KEY ->
+                smartMinContrast = SuperIslandColorSource.readSmartMinContrast(p)
+            SuperIslandColorSource.SMART_WHITE_RATIO_PREF_KEY ->
+                smartWhiteRatio = SuperIslandColorSource.readSmartWhiteRatio(p)
             AppPreferences.Keys.SUPER_ISLAND_SHARE_ENABLED ->
                 shareEnabled = AppPreferences.isSuperIslandShareEnabled(p)
             AppPreferences.Keys.SUPER_ISLAND_SHARE_FORMAT ->
                 shareFormat = AppPreferences.superIslandShareFormat(p)
-            AppPreferences.Keys.PROGRESS_BAR_COLOR_ENABLED ->
-                progressBarColorEnabled = AppPreferences.isProgressBarColorEnabled(p)
             AppPreferences.Keys.NOTIFICATION_ACTIONS_STYLE ->
                 actionStyle = AppPreferences.notificationActionsStyle(p)
             AppPreferences.Keys.SUPER_ISLAND_MEDIA_BUTTON_LAYOUT ->
@@ -149,9 +153,10 @@ internal class SuperIslandPreferencesCache(
         colorSource = SuperIslandColorSource.read(prefs)
         textColorEnabled = SuperIslandColorSource.isColorized(colorSource)
         customColor = SuperIslandColorSource.readCustomColor(prefs)
+        smartMinContrast = SuperIslandColorSource.readSmartMinContrast(prefs)
+        smartWhiteRatio = SuperIslandColorSource.readSmartWhiteRatio(prefs)
         shareEnabled = AppPreferences.isSuperIslandShareEnabled(prefs)
         shareFormat = AppPreferences.superIslandShareFormat(prefs)
-        progressBarColorEnabled = AppPreferences.isProgressBarColorEnabled(prefs)
         actionStyle = AppPreferences.notificationActionsStyle(prefs)
         mediaButtonLayout = AppPreferences.superIslandMediaButtonLayout(prefs)
         notificationStyle = AppPreferences.superIslandNotificationStyle(prefs)

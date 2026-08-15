@@ -449,9 +449,10 @@ fun MiuixCustomSettingsScreen(
                                     superIslandEnabled = superIslandEnabled,
                                     superIslandLyricMode = superIslandLyricMode,
                                     superIslandFullLyricShowLeftCover = superIslandFullLyricShowLeftCover,
-                                    superIslandTextColorEnabled = superIslandTextColorEnabled,
                                     superIslandColorSource = superIslandColorSource,
-                                    superIslandCustomColor = superIslandCustomColor
+                                    superIslandCustomColor = superIslandCustomColor,
+                                    superIslandSmartMinContrast = uiState.superIslandSmartMinContrast,
+                                    superIslandSmartWhiteRatio = uiState.superIslandSmartWhiteRatio
                                 )
                             }
                             item { Spacer(modifier = Modifier.height(16.dp)) }
@@ -632,34 +633,71 @@ fun MiuixCustomSettingsScreen(
                                                 }
                                             }
 
-                                            val colorSources = SuperIslandColorSource.values
-                                            val colorSourceLabels = listOf(
-                                                stringResource(R.string.settings_super_island_color_source_off),
-                                                stringResource(R.string.settings_super_island_color_source_album_art),
-                                                stringResource(R.string.settings_super_island_color_source_album_art_readable_weak),
-                                                stringResource(R.string.settings_super_island_color_source_album_art_readable_strong),
-                                                stringResource(R.string.settings_super_island_color_source_custom)
-                                            )
-                                            val currentColorSourceIndex =
-                                                colorSources.indexOf(superIslandColorSource).takeIf { it >= 0 } ?: 0
-
-                                            SuperDropdown(
+                                            SuperSwitch(
                                                 title = stringResource(R.string.settings_super_island_colorize),
                                                 summary = stringResource(R.string.settings_super_island_colorize_desc),
-                                                items = colorSourceLabels,
-                                                selectedIndex = currentColorSourceIndex,
-                                                onSelectedIndexChange = { index ->
-                                                    if (superIslandColorEditing) {
+                                                checked = superIslandTextColorEnabled,
+                                                onCheckedChange = { enabled ->
+                                                    if (!enabled && superIslandColorEditing) {
                                                         superIslandCustomColor = superIslandColorSnapshot
                                                         superIslandColorEditing = false
                                                     }
-                                                    val newSource = colorSources[index]
+                                                    val newSource = if (enabled && superIslandColorSource == SuperIslandColorSource.OFF) {
+                                                        SuperIslandColorSource.ALBUM_ART_SMART
+                                                    } else {
+                                                        superIslandColorSource
+                                                    }
                                                     superIslandColorSource = newSource
-                                                    superIslandTextColorEnabled =
-                                                        SuperIslandColorSource.isColorized(newSource)
+                                                    superIslandTextColorEnabled = enabled
                                                     viewModel.dispatch(CustomSettingsAction.SetSuperIslandColorSource(newSource))
                                                 }
                                             )
+
+                                            if (superIslandTextColorEnabled) {
+                                                val colorSourceOptions = listOf(
+                                                    Triple(
+                                                        SuperIslandColorSource.ALBUM_ART,
+                                                        R.string.settings_super_island_color_source_album_art,
+                                                        R.string.settings_super_island_color_source_album_art_desc
+                                                    ),
+                                                    Triple(
+                                                        SuperIslandColorSource.ALBUM_ART_SMART,
+                                                        R.string.settings_super_island_color_source_album_art_smart,
+                                                        R.string.settings_super_island_color_source_album_art_smart_desc
+                                                    ),
+                                                    Triple(
+                                                        SuperIslandColorSource.CUSTOM,
+                                                        R.string.settings_super_island_color_source_custom,
+                                                        R.string.settings_super_island_color_source_custom_desc
+                                                    )
+                                                )
+                                                val colorSources = colorSourceOptions.map { it.first }
+                                                val colorSourceLabels = colorSourceOptions.map { stringResource(it.second) }
+                                                val currentColorSourceIndex =
+                                                    colorSources.indexOf(superIslandColorSource).takeIf { it >= 0 } ?: 0
+
+                                                SuperDropdown(
+                                                    title = stringResource(R.string.settings_super_island_color_source),
+                                                    summary = stringResource(R.string.settings_super_island_color_source_desc),
+                                                    entry = DropdownEntry(
+                                                        items = colorSourceOptions.map { (mode, nameId, descId) ->
+                                                            DropdownItem(
+                                                                text = stringResource(nameId),
+                                                                summary = stringResource(descId),
+                                                                selected = superIslandColorSource == mode,
+                                                                onClick = {
+                                                                    if (superIslandColorEditing) {
+                                                                        superIslandCustomColor = superIslandColorSnapshot
+                                                                        superIslandColorEditing = false
+                                                                    }
+                                                                    superIslandColorSource = mode
+                                                                    viewModel.dispatch(CustomSettingsAction.SetSuperIslandColorSource(mode))
+                                                                }
+                                                            )
+                                                        }
+                                                    )
+                                                )
+                                            }
 
                                             if (superIslandColorSource == SuperIslandColorSource.CUSTOM) {
                                                 MiuixEditableColorSection(
@@ -826,11 +864,12 @@ fun MiuixCustomSettingsScreen(
                             item {
                                 NotificationPreview(
                                     progressColorEnabled = progressColorEnabled,
-                                    actionStyle = effectiveActionStyle,
+                                     actionStyle = effectiveActionStyle,
                                      superIslandEnabled = superIslandEnabled,
-                                     superIslandTextColorEnabled = superIslandTextColorEnabled,
                                      superIslandColorSource = superIslandColorSource,
                                      superIslandCustomColor = superIslandCustomColor,
+                                     superIslandSmartMinContrast = uiState.superIslandSmartMinContrast,
+                                     superIslandSmartWhiteRatio = uiState.superIslandSmartWhiteRatio,
                                      superIslandMediaButtonLayout = superIslandMediaButtonLayout,
                                     superIslandNotificationStyle = superIslandNotificationStyle,
                                     superIslandLyricMode = superIslandLyricMode,

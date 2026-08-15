@@ -26,6 +26,7 @@ import android.graphics.Bitmap
 import com.example.islandlyrics.R
 import com.example.islandlyrics.lyrics.state.LyricRepository
 import com.example.islandlyrics.ui.overlay.config.OneUiCapsuleColorMode
+import com.example.islandlyrics.ui.overlay.config.OverlayRenderDefaults
 import com.example.islandlyrics.ui.overlay.superisland.config.SuperIslandColorSource
 import com.example.islandlyrics.ui.overlay.superisland.config.SuperIslandLyricLayout
 import android.graphics.Color as AndroidColor
@@ -82,9 +83,10 @@ fun CapsulePreview(
     superIslandEnabled: Boolean = false,
     superIslandLyricMode: String = "standard",
     superIslandFullLyricShowLeftCover: Boolean = true,
-    superIslandTextColorEnabled: Boolean = false,
     superIslandColorSource: String = SuperIslandColorSource.ALBUM_ART,
-    superIslandCustomColor: Color = Color(0xFF3482FF)
+    superIslandCustomColor: Color = Color(0xFF3482FF),
+    superIslandSmartMinContrast: Float = SuperIslandColorSource.SMART_CONTRAST_DEFAULT,
+    superIslandSmartWhiteRatio: Float = SuperIslandColorSource.SMART_WHITE_RATIO_DEFAULT
 ) {
     val repo = remember { LyricRepository.getInstance() }
     val metadata by repo.liveMetadata.observeAsState()
@@ -128,8 +130,10 @@ fun CapsulePreview(
     val superIslandAccentColor = Color(
         SuperIslandColorSource.resolveColor(
             source = superIslandColorSource,
-            albumColor = previewAlbumColor,
-            customColor = superIslandCustomColor.toArgb()
+            albumColor = extractedColor?.toArgb() ?: OverlayRenderDefaults.COLOR_PRIMARY,
+            customColor = superIslandCustomColor.toArgb(),
+            smartMinimumContrast = superIslandSmartMinContrast,
+            smartWhiteRatio = superIslandSmartWhiteRatio
         )
     )
     val superIslandColorized = SuperIslandColorSource.isColorized(superIslandColorSource)
@@ -321,9 +325,10 @@ fun NotificationPreview(
     progressColorEnabled: Boolean,
     actionStyle: String,
     superIslandEnabled: Boolean = false,
-    superIslandTextColorEnabled: Boolean = false,
     superIslandColorSource: String = SuperIslandColorSource.OFF,
     superIslandCustomColor: Color = Color(0xFF3482FF),
+    superIslandSmartMinContrast: Float = SuperIslandColorSource.SMART_CONTRAST_DEFAULT,
+    superIslandSmartWhiteRatio: Float = SuperIslandColorSource.SMART_WHITE_RATIO_DEFAULT,
     superIslandMediaButtonLayout: String = "two_button",
     superIslandNotificationStyle: String = "standard",
     superIslandLyricMode: String = "standard",
@@ -403,20 +408,18 @@ fun NotificationPreview(
     val superIslandAccentColor = Color(
         SuperIslandColorSource.resolveColor(
             source = superIslandColorSource,
-            albumColor = extractedColor?.toArgb() ?: SuperIslandColorSource.DEFAULT_CUSTOM_COLOR,
-            customColor = superIslandCustomColor.toArgb()
+            albumColor = extractedColor?.toArgb() ?: OverlayRenderDefaults.COLOR_PRIMARY,
+            customColor = superIslandCustomColor.toArgb(),
+            smartMinimumContrast = superIslandSmartMinContrast,
+            smartWhiteRatio = superIslandSmartWhiteRatio
         )
     )
     val superIslandColorized = SuperIslandColorSource.isColorized(superIslandColorSource)
-    val textColor = when {
-        superIslandEnabled && superIslandColorized -> superIslandAccentColor
-        !superIslandEnabled && superIslandTextColorEnabled && extractedColor != null -> extractedColor!!
-        else -> Color.White
-    }
-    val secondaryTextColor = when {
-        superIslandEnabled && superIslandColorized -> superIslandAccentColor.copy(alpha = 0.8f)
-        !superIslandEnabled && superIslandTextColorEnabled && extractedColor != null -> extractedColor!!.copy(alpha = 0.8f)
-        else -> Color(0xFFB0B0B0)
+    val textColor = if (superIslandEnabled && superIslandColorized) superIslandAccentColor else Color.White
+    val secondaryTextColor = if (superIslandEnabled && superIslandColorized) {
+        superIslandAccentColor.copy(alpha = 0.8f)
+    } else {
+        Color(0xFFB0B0B0)
     }
 
     if (superIslandEnabled) {

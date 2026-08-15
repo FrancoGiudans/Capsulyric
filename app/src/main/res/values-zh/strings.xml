@@ -755,11 +755,12 @@
     <string name="settings_super_island_colorize_desc">选择超级岛歌词、播放信息、边缘/进度环和进度条的着色方式。</string>
     <string name="settings_super_island_color_source">取色来源</string>
     <string name="settings_super_island_color_source_desc">选择超级岛内容的颜色模式。</string>
-    <string name="settings_super_island_color_source_off">关闭</string>
     <string name="settings_super_island_color_source_album_art">专辑封面取色（原色）</string>
-    <string name="settings_super_island_color_source_album_art_readable_weak">专辑封面取色（可读性增强·弱）</string>
-    <string name="settings_super_island_color_source_album_art_readable_strong">专辑封面取色（可读性增强·强）</string>
+    <string name="settings_super_island_color_source_album_art_smart">智能取色</string>
     <string name="settings_super_island_color_source_custom">自定义取色</string>
+    <string name="settings_super_island_color_source_album_art_desc">完全使用封面提取的颜色，不自动调整。</string>
+    <string name="settings_super_island_color_source_album_art_smart_desc">深色自动提亮以保证可读性，亮色保持原样。</string>
+    <string name="settings_super_island_color_source_custom_desc">使用手动选择的颜色，不做自动调整。</string>
     <string name="settings_super_island_custom_color">胶囊自定义颜色</string>
     <string name="settings_super_island_share">开启拖拽分享</string>
     <string name="settings_super_island_share_desc">允许长按拖拽超级岛以分享歌词卡片</string>
@@ -826,6 +827,10 @@
     <string name="diag_lab_super_island_text_limits_desc">开启后，“胶囊与通知”页会显示左右两侧字数上限调节。</string>
     <string name="diag_lab_super_island_relaxed_text_limits_title">超级岛字数上限放宽</string>
     <string name="diag_lab_super_island_relaxed_text_limits_desc">开启后，超级岛字数上限调节可使用更大的范围。适合无中置遮挡设备自行测试。</string>
+    <string name="diag_lab_super_island_smart_contrast_title">智能取色目标对比度</string>
+    <string name="diag_lab_super_island_smart_contrast_desc">调高会让深色封面提亮得更明显，4.5 是普通文本的推荐值。</string>
+    <string name="diag_lab_super_island_smart_white_title">智能取色最低混白比例</string>
+    <string name="diag_lab_super_island_smart_white_desc">控制提亮后保留原色调的程度，越高颜色越浅。</string>
     <string name="settings_edge_highlight_texture_title">边缘高光质感</string>
     <string name="settings_edge_highlight_texture_desc">为 MIUIX 模糊组件添加玻璃质感的边缘高光。</string>
     <string name="diag_lab_live_update_text_limits_title">Live Update 字数上限调节</string>

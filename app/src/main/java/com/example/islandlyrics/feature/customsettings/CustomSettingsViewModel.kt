@@ -109,11 +109,6 @@ class CustomSettingsViewModel(application: Application) : AndroidViewModel(appli
                 prefs.edit { putFloat(action.key, action.value) }
             is CustomSettingsAction.SetLiveUpdateTextLimit ->
                 prefs.edit { putFloat(LiveUpdateTextLimitConfig.KEY_CHARS, action.value) }
-            is CustomSettingsAction.SetSuperIslandTextColorEnabled ->
-                SuperIslandColorSource.write(
-                    prefs,
-                    if (action.value) SuperIslandColorSource.ALBUM_ART else SuperIslandColorSource.OFF
-                )
             is CustomSettingsAction.SetSuperIslandColorSource ->
                 SuperIslandColorSource.write(prefs, action.value)
             is CustomSettingsAction.SetSuperIslandCustomColor ->
@@ -215,6 +210,8 @@ class CustomSettingsViewModel(application: Application) : AndroidViewModel(appli
             superIslandTextColorEnabled = SuperIslandColorSource.isColorized(superIslandColorSource),
             superIslandColorSource = superIslandColorSource,
             superIslandCustomColor = SuperIslandColorSource.readCustomColor(prefs),
+            superIslandSmartMinContrast = SuperIslandColorSource.readSmartMinContrast(prefs),
+            superIslandSmartWhiteRatio = SuperIslandColorSource.readSmartWhiteRatio(prefs),
             superIslandShareEnabled = AppPreferences.isSuperIslandShareEnabled(prefs),
             superIslandShareFormat = AppPreferences.superIslandShareFormat(prefs),
             miuixEnabled = prefs.getBoolean(AppPreferences.Keys.UI_USE_MIUIX, true),

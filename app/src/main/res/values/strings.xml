@@ -415,11 +415,12 @@
     <string name="settings_super_island_colorize_desc">Choose how Super Island lyrics, playback info, capsule edge, and progress bar are colored.</string>
     <string name="settings_super_island_color_source">Color Source</string>
     <string name="settings_super_island_color_source_desc">Choose a color mode for Super Island content.</string>
-    <string name="settings_super_island_color_source_off">Off</string>
     <string name="settings_super_island_color_source_album_art">Album Art Color (Original)</string>
-    <string name="settings_super_island_color_source_album_art_readable_weak">Album Art Color (Readability Boost · Light)</string>
-    <string name="settings_super_island_color_source_album_art_readable_strong">Album Art Color (Readability Boost · Strong)</string>
+    <string name="settings_super_island_color_source_album_art_smart">Album Art Color (Smart)</string>
     <string name="settings_super_island_color_source_custom">Custom Color</string>
+    <string name="settings_super_island_color_source_album_art_desc">Use the extracted album art color as-is, without adjustment.</string>
+    <string name="settings_super_island_color_source_album_art_smart_desc">Brightens dark colors automatically for readability and keeps bright colors unchanged.</string>
+    <string name="settings_super_island_color_source_custom_desc">Use a manually chosen color without automatic adjustment.</string>
     <string name="settings_super_island_custom_color">Capsule Custom Color</string>
     <string name="settings_super_island_share">Enable Drag-and-Drop Sharing</string>
     <string name="settings_super_island_share_desc">Allow dragging Super Island to share lyrics.</string>
@@ -816,6 +817,10 @@ Within the log interface, select the share/export icon. You can specify a timefr
     <string name="diag_lab_super_island_text_limits_desc">Show controls for tuning the left and right Super Island text limits in Capsule &amp; Notification.</string>
     <string name="diag_lab_super_island_relaxed_text_limits_title">Relax Super Island Text Limits</string>
     <string name="diag_lab_super_island_relaxed_text_limits_desc">Allow larger ranges in Super Island text limit controls. Intended for testing on devices without a centered cutout.</string>
+    <string name="diag_lab_super_island_smart_contrast_title">Smart Color Contrast Target</string>
+    <string name="diag_lab_super_island_smart_contrast_desc">Higher values brighten dark album colors more; 4.5 is recommended for regular text.</string>
+    <string name="diag_lab_super_island_smart_white_title">Smart Color Minimum White Mix</string>
+    <string name="diag_lab_super_island_smart_white_desc">Controls how much original hue remains after brightening; higher values produce lighter colors.</string>
     <string name="settings_edge_highlight_texture_title">Edge Highlight Texture</string>
     <string name="settings_edge_highlight_texture_desc">Add a glass-like highlight along the edges of MIUIX blur surfaces.</string>
     <string name="diag_lab_live_update_text_limits_title">Live Update Text Limits</string>

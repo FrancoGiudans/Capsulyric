@@ -183,7 +183,9 @@ class SuperIslandHandler(
         val accentColor = SuperIslandColorSource.resolveColor(
             source = preferences.colorSource,
             albumColor = albumColor,
-            customColor = preferences.customColor
+            customColor = preferences.customColor,
+            smartMinimumContrast = preferences.smartMinContrast,
+            smartWhiteRatio = preferences.smartWhiteRatio
         )
 
         val dualLineText = if (preferences.notificationStyle == "advanced_lyrics_dual") {

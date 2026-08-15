@@ -70,6 +70,8 @@ data class CustomSettingsUiState(
     val superIslandTextColorEnabled: Boolean = false,
     val superIslandColorSource: String = "album_art",
     val superIslandCustomColor: Int = 0xFF3482FF.toInt(),
+    val superIslandSmartMinContrast: Float = 4.5f,
+    val superIslandSmartWhiteRatio: Float = 0.20f,
     val superIslandShareEnabled: Boolean = true,
     val superIslandShareFormat: String = "format_1",
     val miuixEnabled: Boolean = true,
@@ -108,7 +110,6 @@ sealed interface CustomSettingsAction {
     data class SetSuperIslandFullLyricShowLeftCover(val value: Boolean) : CustomSettingsAction
     data class SetSuperIslandTextLimit(val key: String, val value: Float) : CustomSettingsAction
     data class SetLiveUpdateTextLimit(val value: Float) : CustomSettingsAction
-    data class SetSuperIslandTextColorEnabled(val value: Boolean) : CustomSettingsAction
     data class SetSuperIslandColorSource(val value: String) : CustomSettingsAction
     data class SetSuperIslandCustomColor(val value: Int) : CustomSettingsAction
     data class SetSuperIslandShareEnabled(val value: Boolean) : CustomSettingsAction
