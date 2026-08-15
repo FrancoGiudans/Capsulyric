@@ -131,7 +131,7 @@ import top.yukonga.miuix.kmp.blur.layerBackdrop
 import top.yukonga.miuix.kmp.blur.rememberLayerBackdrop
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.MiuixPopupUtils.Companion.MiuixPopupHost
-import top.yukonga.miuix.kmp.basic.Snackbar as MiuixSnackbar
+import com.example.islandlyrics.ui.miuix.blur.MiuixBlurSnackbar
 import top.yukonga.miuix.kmp.basic.SnackbarDuration as MiuixSnackbarDuration
 import top.yukonga.miuix.kmp.basic.SnackbarHost as MiuixSnackbarHost
 import top.yukonga.miuix.kmp.basic.SnackbarHostState as MiuixSnackbarHostState
@@ -643,7 +643,7 @@ class MainActivity : BaseActivity() {
                         modifier = Modifier
                             .align(Alignment.BottomCenter)
                             .padding(bottom = if (targetBottomBarVisible) 82.dp else 16.dp),
-                        content = { data -> MiuixSnackbar(data = data) }
+                        content = { data -> MiuixBlurSnackbar(data = data) }
                     )
 
                     if (updateReleaseInfo != null) {

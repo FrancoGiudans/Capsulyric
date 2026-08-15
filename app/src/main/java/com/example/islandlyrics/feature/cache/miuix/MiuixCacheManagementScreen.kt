@@ -72,7 +72,7 @@ import top.yukonga.miuix.kmp.basic.Checkbox
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.InputField
-import top.yukonga.miuix.kmp.basic.Snackbar as MiuixSnackbar
+import com.example.islandlyrics.ui.miuix.blur.MiuixBlurSnackbar
 import top.yukonga.miuix.kmp.basic.SnackbarHost as MiuixSnackbarHost
 import top.yukonga.miuix.kmp.basic.SnackbarHostState as MiuixSnackbarHostState
 import top.yukonga.miuix.kmp.basic.SearchBar
@@ -196,7 +196,7 @@ fun MiuixCacheManagementScreen(
         snackbarHost = {
             MiuixSnackbarHost(
                 state = snackbarHostState,
-                content = { data -> MiuixSnackbar(data = data) }
+                content = { data -> MiuixBlurSnackbar(data = data) }
             )
         },
         popupHost = { MiuixPopupHost() }

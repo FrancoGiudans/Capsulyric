@@ -74,6 +74,9 @@ internal object MiuixBlurStyleDefaults {
     const val BottomSheetBlurRadius = 72f
     const val BottomSheetNoiseCoefficient = 0.0045f
     const val BottomSheetBorderAlpha = 0.06f
+
+    const val SnackbarBlurRadius = 72f
+    const val SnackbarNoiseCoefficient = 0.0045f
 }
 
 private fun uniformEdgeHighlight(width: Dp, alpha: Float): Highlight = Highlight(

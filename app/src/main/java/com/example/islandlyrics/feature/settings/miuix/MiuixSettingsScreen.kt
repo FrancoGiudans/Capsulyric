@@ -89,7 +89,7 @@ import com.example.islandlyrics.runtime.service.MediaMonitorService
 import com.example.islandlyrics.runtime.playingapp.NewPlayingAppNotifier
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
-import top.yukonga.miuix.kmp.basic.Snackbar as MiuixSnackbar
+import com.example.islandlyrics.ui.miuix.blur.MiuixBlurSnackbar
 import top.yukonga.miuix.kmp.basic.SnackbarHost as MiuixSnackbarHost
 import top.yukonga.miuix.kmp.basic.SnackbarHostState as MiuixSnackbarHostState
 import java.util.Locale
@@ -327,7 +327,7 @@ fun MiuixSettingsScreen(
             ) {
                 MiuixSnackbarHost(
                     state = snackbarHostState,
-                    content = { data -> MiuixSnackbar(data = data) }
+                    content = { data -> MiuixBlurSnackbar(data = data) }
                 )
             }
         },

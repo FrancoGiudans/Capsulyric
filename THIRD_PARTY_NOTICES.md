@@ -28,6 +28,7 @@ The self-wrapped controls below are **modified from or built on** the correspond
 | `ui/miuix/blur/MiuixBlurBottomSheet.kt` | `OverlayBottomSheet` (`overlay/OverlayBottomSheet.kt`) + `miuix-blur` | 修改 (modified) |
 | `ui/miuix/blur/MiuixBlurPopupHost.kt` | `MiuixPopupUtils.MiuixPopupHost` (`utils/MiuixPopupUtils.kt`) | 封装 (wrapper) |
 | `ui/miuix/blur/MiuixBlurScaffold.kt` | `Scaffold` (`basic/Scaffold.kt`) + `miuix-blur` `layerBackdrop` | 封装 (wrapper) |
+| `ui/miuix/blur/MiuixBlurSnackbar.kt` | `Snackbar` (`basic/Snackbar.kt`) + `miuix-blur` | 修改 (modified) |
 | `ui/miuix/blur/MiuixBlurStyle.kt` | `miuix-blur`: `BlurDefaults`, `BlurColors`, `BlendColorEntry`, `textureBlur`, `Highlight`, `BloomStroke`, `LightSource` | 基于上游公开 API 实现 (implemented using upstream public APIs) |
 | `ui/miuix/blur/MiuixBlurTopAppBar.kt` | `TopAppBar` / `SmallTopAppBar` (`basic/TopAppBar.kt`) + `miuix-blur` | 修改 (modified) |
 | `ui/miuix/effects/MiuixAuroraBackground.kt` | `miuix-blur`: `RuntimeShader`, `asBrush` | 基于上游公开 API 实现 (implemented using upstream public APIs) |
