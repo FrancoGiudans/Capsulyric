@@ -46,6 +46,10 @@ class LastFmSecureStore(context: Context) {
         )
     }
 
+    internal fun hasBackupData(): Boolean {
+        return prefs.contains(KEY_API_KEY) && prefs.contains(KEY_API_SECRET)
+    }
+
     fun saveApiCredentials(apiKey: String, apiSecret: String) {
         prefs.edit {
             putEncrypted(this, KEY_API_KEY, apiKey.trim())
@@ -59,6 +63,18 @@ class LastFmSecureStore(context: Context) {
         prefs.edit {
             putEncrypted(this, KEY_SESSION_KEY, sessionKey.trim())
             putEncrypted(this, KEY_USERNAME, username.orEmpty().trim())
+            remove(KEY_PENDING_TOKEN)
+        }
+    }
+
+    internal fun restoreFromBackup(credentials: LastFmCredentials) {
+        require(credentials.hasApiCredentials) { "Last.fm API credentials are required" }
+
+        prefs.edit {
+            putEncrypted(this, KEY_API_KEY, credentials.apiKey.trim())
+            putEncrypted(this, KEY_API_SECRET, credentials.apiSecret.trim())
+            putEncrypted(this, KEY_SESSION_KEY, credentials.sessionKey.orEmpty().trim())
+            putEncrypted(this, KEY_USERNAME, credentials.username.orEmpty().trim())
             remove(KEY_PENDING_TOKEN)
         }
     }

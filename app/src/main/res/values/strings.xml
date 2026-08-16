@@ -304,7 +304,7 @@
     <string name="settings_use_superlyric_api_desc">(Reserved) Enhanced lyric API integration</string>
     <string name="lastfm_title">Last.fm</string>
     <string name="lastfm_settings_summary">Scrobble selected music apps with your own Last.fm API credentials</string>
-    <string name="lastfm_description">Capsulyric only scrobbles apps that have Last.fm enabled in parser rules. Track title, artist, album, duration, and timestamp may be sent to Last.fm. API credentials and session keys are encrypted on this device and are excluded from app exports and Android backups.</string>
+    <string name="lastfm_description">Capsulyric only scrobbles apps that have Last.fm enabled in parser rules. Track title, artist, album, duration, and timestamp may be sent to Last.fm. API credentials and session keys are encrypted on this device and excluded from Android backups. They are excluded from normal app exports and are included only when you explicitly select encrypted sensitive-data backup and provide a backup password.</string>
     <string name="lastfm_setup_title">Setup guide</string>
     <string name="lastfm_setup_steps">1. Create a Last.fm API account and copy the API key and shared secret.\n2. Paste both credentials here and save them.\n3. Open Last.fm authorization, approve Capsulyric in the browser, then return and finish the connection.</string>
     <string name="lastfm_create_api_key">Create Last.fm API key</string>
@@ -458,8 +458,10 @@
     <string name="settings_backup_header">Backup &amp; Restore</string>
     <string name="settings_backup_export_success">Backed up %1$d settings</string>
     <string name="settings_backup_export_success_with_cache">Backed up %1$d settings, %2$d lyric cache entries</string>
+    <string name="settings_backup_export_success_with_sensitive">Backed up %1$d settings, %2$d lyric cache entries, and %3$d sensitive items</string>
     <string name="settings_backup_import_success">Restored %1$d settings</string>
     <string name="settings_backup_import_success_with_cache">Restored %1$d settings, %2$d lyric cache entries</string>
+    <string name="settings_backup_import_success_with_sensitive">Restored %1$d settings, %2$d lyric cache entries, and %3$d sensitive items</string>
     <string name="settings_backup_export_failed">Settings export failed</string>
     <string name="settings_backup_import_failed">Settings restore failed</string>
     <!-- Backup Category Dialog -->
@@ -472,6 +474,15 @@
     <string name="backup_dialog_cancel">Cancel</string>
     <string name="backup_dialog_preview_title">Import preview</string>
     <string name="backup_dialog_preview_summary">This backup contains %1$d categories, %2$d settings</string>
+    <string name="backup_sensitive_password_export_title">Protect sensitive data</string>
+    <string name="backup_sensitive_password_import_title">Unlock sensitive data</string>
+    <string name="backup_sensitive_password_export_description">Create a password to encrypt the selected sensitive data. This password is not saved and cannot be recovered.</string>
+    <string name="backup_sensitive_password_import_description">Enter the password used to encrypt the selected sensitive data.</string>
+    <string name="backup_sensitive_password">Backup password</string>
+    <string name="backup_sensitive_password_confirm">Confirm backup password</string>
+    <string name="backup_sensitive_password_required">Enter a backup password</string>
+    <string name="backup_sensitive_password_mismatch">Passwords do not match</string>
+    <string name="backup_sensitive_password_invalid">Incorrect password or corrupted sensitive data</string>
     <string name="backup_conflict_title">Parser Rule Conflicts</string>
     <string name="backup_conflict_description">The following apps already have rules.\nCheck apps to IMPORT (replace existing)</string>
     <string name="backup_conflict_apply">Apply</string>
@@ -482,6 +493,7 @@
     <string name="backup_cat_parser_rules">Parser Rules</string>
     <string name="backup_cat_advanced">Advanced</string>
     <string name="backup_cat_lyric_cache">Cached Lyrics</string>
+    <string name="backup_cat_sensitive_data">Sensitive Data</string>
     <string name="backup_sub_capsule_style">Style &amp; Mode</string>
     <string name="backup_sub_capsule_layout">Layout &amp; Text</string>
     <string name="backup_sub_capsule_color_share">Color &amp; Sharing</string>
@@ -497,6 +509,7 @@
     <string name="backup_sub_general_lyric_display">Lyric Display</string>
     <string name="backup_sub_general_lastfm">Last.fm preference</string>
     <string name="backup_sub_parser_all">All Rules</string>
+    <string name="backup_sub_sensitive_lastfm">Last.fm credentials</string>
     <string name="backup_sub_advanced_lab">Lab Features</string>
     <string name="backup_sub_advanced_offline">Offline Mode</string>
     <string name="backup_sub_advanced_dev">Developer</string>
