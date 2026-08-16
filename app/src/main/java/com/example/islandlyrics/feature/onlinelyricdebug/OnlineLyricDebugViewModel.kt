@@ -23,6 +23,7 @@
 package com.example.islandlyrics.feature.onlinelyricdebug
 
 import android.app.Application
+import android.text.format.DateUtils
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
@@ -32,6 +33,7 @@ import com.example.islandlyrics.core.network.OfflineModeManager
 import com.example.islandlyrics.lyrics.state.LyricRepository
 import com.example.islandlyrics.rules.ParserRuleHelper
 import com.example.islandlyrics.lyrics.online.OnlineLyricFetcher
+import com.example.islandlyrics.lyrics.online.OnlineLyricFetchSnapshotStore
 import com.example.islandlyrics.lyrics.cache.OnlineLyricCacheStore
 import com.example.islandlyrics.lyrics.online.parser.OnlineLyricSidecarMerger
 import com.example.islandlyrics.lyrics.online.provider.OnlineLyricProvider
@@ -83,6 +85,7 @@ class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(app
 
     private val _usedCleanTitleFallback = MutableLiveData(false)
     val usedCleanTitleFallback: LiveData<Boolean> = _usedCleanTitleFallback
+    private var hydratedSnapshotKey: String? = null
 
     private val _dialogAttempt = MutableLiveData<OnlineLyricFetcher.ProviderAttempt?>(null)
     val dialogAttempt: LiveData<OnlineLyricFetcher.ProviderAttempt?> = _dialogAttempt
@@ -368,6 +371,27 @@ class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(app
         }
         applyResultToRepository(mediaInfo, combinedResult)
         setSelectionState(mainResult, translationResult, romanResult)
+        val previousSnapshot = OnlineLyricFetchSnapshotStore.get(
+            mediaInfo.packageName,
+            queryTitle,
+            queryArtist
+        )
+        OnlineLyricFetchSnapshotStore.save(
+            OnlineLyricFetchSnapshotStore.Snapshot(
+                packageName = mediaInfo.packageName,
+                queryTitle = queryTitle,
+                queryArtist = queryArtist,
+                fetchedAt = previousSnapshot?.fetchedAt ?: System.currentTimeMillis(),
+                bestResult = combinedResult,
+                attempts = _attempts.value.orEmpty(),
+                usedCleanTitleFallback = _usedCleanTitleFallback.value == true
+            )
+        )
+        hydratedSnapshotKey = OnlineLyricFetchSnapshotStore.buildKey(
+            mediaInfo.packageName,
+            queryTitle,
+            queryArtist
+        )
         _cacheStatus.value = cacheMessage ?: s(R.string.online_lyric_debug_cache_written_fmt, combinedResult.api)
     }
 
@@ -449,6 +473,35 @@ class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(app
                     useRawMetadata = rule.useRawMetadataForOnlineMatching
                 )
             }
+            val snapshot = if (!state.isInstrumental) {
+                OnlineLyricFetchSnapshotStore.get(
+                    mediaInfo.packageName,
+                    state.effectiveTitle,
+                    state.effectiveArtist
+                )
+            } else {
+                null
+            }
+            val cachedHit = snapshot?.let {
+                withContext(Dispatchers.IO) {
+                    cacheStore.getCachedLyric(
+                        mediaInfo,
+                        state.effectiveTitle,
+                        state.effectiveArtist
+                    )
+                }
+            }
+            val snapshotKey = OnlineLyricFetchSnapshotStore.buildKey(
+                mediaInfo.packageName,
+                state.effectiveTitle,
+                state.effectiveArtist
+            )
+            if (hydratedSnapshotKey != snapshotKey) {
+                hydratedSnapshotKey = null
+                _attempts.value = emptyList()
+                _usedCleanTitleFallback.value = false
+                clearSelectionState()
+            }
             _customMatchTitle.value = state.matchOverride?.title.orEmpty()
             _customMatchArtist.value = state.matchOverride?.artist.orEmpty()
             _effectiveQuery.value = state.effectiveTitle to state.effectiveArtist
@@ -459,21 +512,43 @@ class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(app
                 OnlineLyricCacheStore.QuerySource.RAW_METADATA -> s(R.string.online_lyric_debug_query_source_raw)
                 OnlineLyricCacheStore.QuerySource.DEFAULT_METADATA -> s(R.string.online_lyric_debug_query_source_default)
             }
-            _cacheStatus.value = when {
-                state.isInstrumental -> {
-                    if (state.isAlbumInstrumental) {
-                        s(R.string.online_lyric_debug_album_instrumental_status)
-                    } else {
-                        s(R.string.online_lyric_debug_instrumental_status)
-                    }
-                }
-                state.cachedLyricUpdatedAt != null -> {
-                    s(
-                        R.string.online_lyric_debug_cached_provider_fmt,
-                        state.cachedProviderLabel ?: s(R.string.online_lyric_debug_cached_default_provider)
+            if (snapshot != null) {
+                hydratedSnapshotKey = snapshotKey
+                _attempts.value = snapshot.attempts
+                _usedCleanTitleFallback.value = snapshot.usedCleanTitleFallback
+                val main = cachedHit?.result ?: snapshot.bestResult
+                if (main != null) {
+                    setSelectionState(
+                        mainResult = main,
+                        translationResult = main.takeIf { !it.translationLyrics.isNullOrBlank() },
+                        romanResult = main.takeIf { !it.romanLyrics.isNullOrBlank() }
                     )
                 }
-                else -> s(R.string.online_lyric_debug_no_cached_lyric)
+                _cacheStatus.value = s(
+                    R.string.online_lyric_debug_snapshot_status,
+                    DateUtils.getRelativeTimeSpanString(
+                        snapshot.fetchedAt,
+                        System.currentTimeMillis(),
+                        DateUtils.MINUTE_IN_MILLIS
+                    )
+                )
+            } else {
+                _cacheStatus.value = when {
+                    state.isInstrumental -> {
+                        if (state.isAlbumInstrumental) {
+                            s(R.string.online_lyric_debug_album_instrumental_status)
+                        } else {
+                            s(R.string.online_lyric_debug_instrumental_status)
+                        }
+                    }
+                    state.cachedLyricUpdatedAt != null -> {
+                        s(
+                            R.string.online_lyric_debug_cached_provider_fmt,
+                            state.cachedProviderLabel ?: s(R.string.online_lyric_debug_cached_default_provider)
+                        )
+                    }
+                    else -> s(R.string.online_lyric_debug_no_cached_lyric)
+                }
             }
         }
     }
@@ -666,6 +741,7 @@ class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(app
                             romanResult = cacheHit.result.takeIf { !it.romanLyrics.isNullOrBlank() }
                         )
                         _attempts.value = emptyList()
+                        hydratedSnapshotKey = null
                         _cacheStatus.value = s(R.string.online_lyric_debug_cache_hit)
                         applyResultToRepository(mediaInfo, cacheHit.result, apiPath = "Online Cache")
                         return@launch
@@ -684,6 +760,22 @@ class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(app
                 )
                 _attempts.value = outcome.attempts
                 _usedCleanTitleFallback.value = outcome.usedCleanTitleFallback
+                OnlineLyricFetchSnapshotStore.save(
+                    OnlineLyricFetchSnapshotStore.Snapshot(
+                        packageName = mediaInfo.packageName,
+                        queryTitle = queryTitle,
+                        queryArtist = queryArtist,
+                        fetchedAt = System.currentTimeMillis(),
+                        bestResult = outcome.bestResult,
+                        attempts = outcome.attempts,
+                        usedCleanTitleFallback = outcome.usedCleanTitleFallback
+                    )
+                )
+                hydratedSnapshotKey = OnlineLyricFetchSnapshotStore.buildKey(
+                    mediaInfo.packageName,
+                    queryTitle,
+                    queryArtist
+                )
                 if (outcome.bestResult == null) {
                     clearSelectionState()
                     _error.value = s(R.string.online_lyric_debug_all_apis_failed)

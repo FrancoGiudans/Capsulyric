@@ -30,6 +30,7 @@ import com.example.islandlyrics.rules.ParserRuleHelper
 import com.example.islandlyrics.lyrics.state.LyricRepository
 import com.example.islandlyrics.lyrics.cache.OnlineLyricCacheStore
 import com.example.islandlyrics.lyrics.online.OnlineLyricFetcher
+import com.example.islandlyrics.lyrics.online.OnlineLyricFetchSnapshotStore
 import com.example.islandlyrics.lyrics.online.provider.OnlineLyricProvider
 import com.example.islandlyrics.lyrics.online.parser.OnlineLyricSidecarMerger
 import kotlinx.coroutines.CoroutineScope
@@ -209,6 +210,18 @@ class OnlineLyricSource(private val context: Context) {
                         "⚠️ Stale fetch discarded (song changed). Expected: $pendingTitle")
                     return@launch
                 }
+
+                OnlineLyricFetchSnapshotStore.save(
+                    OnlineLyricFetchSnapshotStore.Snapshot(
+                        packageName = packageName,
+                        queryTitle = queryTitle,
+                        queryArtist = queryArtist,
+                        fetchedAt = System.currentTimeMillis(),
+                        bestResult = outcome.bestResult,
+                        attempts = outcome.attempts,
+                        usedCleanTitleFallback = outcome.usedCleanTitleFallback
+                    )
+                )
 
                 if (result != null &&
                     result.parsedLines != null &&

@@ -1000,6 +1000,7 @@
     <string name="online_lyric_debug_cached_provider_fmt">已缓存歌词: %1$s</string>
     <string name="online_lyric_debug_cached_default_provider">在线歌词</string>
     <string name="online_lyric_debug_no_cached_lyric">当前歌曲暂无歌词缓存</string>
+    <string name="online_lyric_debug_snapshot_status">结果来自最近自动抓取（%1$s前）· 可重新匹配</string>
     <string name="online_lyric_debug_error_no_song">没有可用的歌曲信息</string>
     <string name="online_lyric_debug_error_empty_override">请至少填写歌名或歌手中的一项</string>
     <string name="online_lyric_debug_imported_current_playback">已导入当前播放信息到自定义匹配输入框，点击保存到缓存后生效</string>

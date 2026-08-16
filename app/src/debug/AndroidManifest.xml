@@ -15,6 +15,13 @@
             android:name="com.example.islandlyrics.feature.qqroman.QqRomanDebugActivity"
             android:label="罗马音/翻译调试"
             android:parentActivityName="com.example.islandlyrics.feature.diagnostics.DiagnosticsActivity" />
+        <receiver
+            android:name=".TestPlaybackInjector"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.example.islandlyrics.debug.PUSH_PLAYBACK" />
+            </intent-filter>
+        </receiver>
 
     </application>
 </manifest>
