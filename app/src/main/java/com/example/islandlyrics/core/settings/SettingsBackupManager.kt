@@ -25,11 +25,14 @@ package com.example.islandlyrics.core.settings
 import android.content.Context
 import android.net.Uri
 import androidx.core.content.edit
+import com.example.islandlyrics.integration.lastfm.LastFmCredentials
+import com.example.islandlyrics.integration.lastfm.LastFmSecureStore
 import com.example.islandlyrics.lyrics.cache.OnlineLyricCacheStore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
+import java.io.ByteArrayOutputStream
 import java.io.File
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
@@ -43,12 +46,17 @@ object SettingsBackupManager {
     private const val PREF_PARSER_RULES = AppPreferences.Keys.PARSER_RULES_JSON
     private const val PREF_PARSER_RULE_TEMPLATE = AppPreferences.Keys.PARSER_RULE_TEMPLATE_JSON
     private const val SCHEMA_VERSION = 2
+    private const val SENSITIVE_SCHEMA_VERSION = 1
+    const val SENSITIVE_CATEGORY_ID = "sensitive_data"
+    const val SENSITIVE_LASTFM_ID = "sensitive_lastfm"
     private val FILE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMdd_HH_mm_ss", Locale.US)
+    private val supportedSensitiveItemIds = setOf(SENSITIVE_LASTFM_ID)
 
     data class ExportResult(
         val success: Boolean,
         val exportedCount: Int,
         val lyricCacheCount: Int = 0,
+        val sensitiveItemCount: Int = 0,
         val error: String? = null
     )
 
@@ -56,6 +64,7 @@ object SettingsBackupManager {
         val success: Boolean,
         val importedCount: Int,
         val lyricCacheCount: Int = 0,
+        val sensitiveItemCount: Int = 0,
         val error: String? = null,
         /** Parser rule conflicts detected (empty = no conflicts or resolved). */
         val parserConflicts: List<ParserConflict> = emptyList()
@@ -75,11 +84,41 @@ object SettingsBackupManager {
         val lyricCacheEntryCount: Int = 0,
         /** Whether the file is a ZIP archive (vs legacy JSON). */
         val isZip: Boolean = false,
+        /** Sensitive item IDs declared by an encrypted ZIP entry. */
+        val sensitiveItemIds: Set<String> = emptySet(),
         val error: String? = null
     )
 
     fun buildExportFileName(now: LocalDateTime = LocalDateTime.now()): String {
         return "Capsulyric_${now.format(FILE_TIME_FORMATTER)}.zip"
+    }
+
+    fun sensitiveExportCategory(context: Context): BackupCategories.Category? {
+        val itemIds = if (LastFmSecureStore(context).hasBackupData()) {
+            setOf(SENSITIVE_LASTFM_ID)
+        } else {
+            emptySet()
+        }
+        return sensitiveCategory(itemIds)
+    }
+
+    fun sensitiveImportCategory(preview: PreviewResult): BackupCategories.Category? {
+        return sensitiveCategory(preview.sensitiveItemIds.intersect(supportedSensitiveItemIds))
+    }
+
+    fun selectedSensitiveItemIds(leafIds: Set<String>): Set<String> {
+        return leafIds.intersect(supportedSensitiveItemIds)
+    }
+
+    private fun sensitiveCategory(itemIds: Set<String>): BackupCategories.Category? {
+        if (itemIds.isEmpty()) return null
+        return BackupCategories.Category(
+            id = SENSITIVE_CATEGORY_ID,
+            keyPatterns = emptyList(),
+            subGroups = itemIds.sorted().map { itemId ->
+                BackupCategories.SubGroup(itemId, emptyList())
+            }
+        )
     }
 
     // ── v1 (legacy, full export) ────────────────────────────────────────
@@ -110,52 +149,78 @@ object SettingsBackupManager {
 
     /**
      * Export settings (and optionally lyric cache) as a ZIP archive.
-     * ZIP contains: settings.json + optionally lyric_cache/
+     * ZIP contains: settings.json + optionally lyric_cache/ and sensitive_data.json.
      */
     suspend fun exportToZip(
         context: Context,
         uri: Uri,
         selectedLeafIds: Set<String>,
-        includeLyricCache: Boolean
+        includeLyricCache: Boolean,
+        selectedSensitiveItemIds: Set<String> = emptySet(),
+        sensitivePassword: CharArray? = null
     ): ExportResult = withContext(Dispatchers.IO) {
-        runCatching {
-            val tempDir = File(context.cacheDir, "backup_export_${System.currentTimeMillis()}")
-            tempDir.mkdirs()
-            try {
-                // 1. Write settings.json
-                val settingsJson = buildSettingsJson(context, selectedLeafIds)
-                val settingsFile = File(tempDir, "settings.json")
-                settingsFile.writeText(settingsJson.toString(2), Charsets.UTF_8)
-                val settingsCount = countKeysInJson(settingsJson)
-
-                // 2. Export lyric cache if requested
-                var cacheCount = 0
-                if (includeLyricCache) {
-                    val cacheStore = OnlineLyricCacheStore(context)
-                    cacheCount = cacheStore.exportCacheToDir(tempDir)
+        try {
+            runCatching {
+                val sensitiveItemIds = validateSensitiveSelection(selectedSensitiveItemIds)
+                val encryptedSensitiveData = if (sensitiveItemIds.isEmpty()) {
+                    null
+                } else {
+                    val password = requireNotNull(sensitivePassword) {
+                        "A sensitive backup password is required"
+                    }
+                    require(password.isNotEmpty()) { "A sensitive backup password is required" }
+                    SensitiveBackupVault.encrypt(
+                        buildSensitivePayload(context, sensitiveItemIds),
+                        sensitiveItemIds,
+                        password
+                    )
                 }
 
-                // 3. Create ZIP (explicit finish+flush for ContentResolver streams)
-                context.contentResolver.openOutputStream(uri)?.use { output ->
-                    ZipOutputStream(output).use { zip ->
-                        addFileToZip(zip, settingsFile)
-                        if (includeLyricCache) {
-                            val cacheDir = File(tempDir, "lyric_cache")
-                            if (cacheDir.exists()) {
-                                addDirToZip(zip, cacheDir)
-                            }
-                        }
-                        zip.finish()
-                        output.flush()
-                    }
-                } ?: throw IllegalStateException("openOutputStream returned null")
+                val tempDir = File(context.cacheDir, "backup_export_${System.currentTimeMillis()}")
+                tempDir.mkdirs()
+                try {
+                    val settingsJson = buildSettingsJson(context, selectedLeafIds)
+                    val settingsFile = File(tempDir, "settings.json")
+                    settingsFile.writeText(settingsJson.toString(2), Charsets.UTF_8)
+                    val settingsCount = countKeysInJson(settingsJson)
 
-                ExportResult(success = true, exportedCount = settingsCount, lyricCacheCount = cacheCount)
-            } finally {
-                tempDir.deleteRecursively()
+                    var cacheCount = 0
+                    if (includeLyricCache) {
+                        val cacheStore = OnlineLyricCacheStore(context)
+                        cacheCount = cacheStore.exportCacheToDir(tempDir)
+                    }
+
+                    context.contentResolver.openOutputStream(uri)?.use { output ->
+                        ZipOutputStream(output).use { zip ->
+                            addFileToZip(zip, settingsFile)
+                            encryptedSensitiveData?.let {
+                                addTextToZip(zip, SensitiveBackupVault.ZIP_ENTRY_NAME, it)
+                            }
+                            if (includeLyricCache) {
+                                val cacheDir = File(tempDir, "lyric_cache")
+                                if (cacheDir.exists()) {
+                                    addDirToZip(zip, cacheDir)
+                                }
+                            }
+                            zip.finish()
+                            output.flush()
+                        }
+                    } ?: throw IllegalStateException("openOutputStream returned null")
+
+                    ExportResult(
+                        success = true,
+                        exportedCount = settingsCount,
+                        lyricCacheCount = cacheCount,
+                        sensitiveItemCount = sensitiveItemIds.size
+                    )
+                } finally {
+                    tempDir.deleteRecursively()
+                }
+            }.getOrElse {
+                ExportResult(success = false, exportedCount = 0, error = it.message)
             }
-        }.getOrElse {
-            ExportResult(success = false, exportedCount = 0, error = it.message)
+        } finally {
+            sensitivePassword?.fill('\u0000')
         }
     }
 
@@ -165,69 +230,97 @@ object SettingsBackupManager {
     suspend fun importFromZip(
         context: Context,
         uri: Uri,
-        selectedLeafIds: Set<String>
+        selectedLeafIds: Set<String>,
+        selectedSensitiveItemIds: Set<String> = emptySet(),
+        sensitivePassword: CharArray? = null
     ): ImportResult = withContext(Dispatchers.IO) {
-        runCatching {
-            val tempDir = File(context.cacheDir, "backup_import_${System.currentTimeMillis()}")
-            tempDir.mkdirs()
-            try {
-                // 1. Extract ZIP
-                context.contentResolver.openInputStream(uri)?.use { input ->
-                    ZipInputStream(input).use { zip ->
-                        var entry = zip.nextEntry
-                        while (entry != null) {
-                            val targetFile = File(tempDir, entry.name)
-                            // Prevent zip-slip attacks
-                            if (!targetFile.canonicalPath.startsWith(tempDir.canonicalPath)) {
-                                entry = zip.nextEntry
-                                continue
-                            }
-                            if (entry.isDirectory) {
-                                targetFile.mkdirs()
-                            } else {
-                                targetFile.parentFile?.mkdirs()
-                                targetFile.outputStream().use { fileOut ->
-                                    zip.copyTo(fileOut)
+        try {
+            runCatching {
+                val sensitiveItemIds = validateSensitiveSelection(selectedSensitiveItemIds)
+                val sensitiveImport = if (sensitiveItemIds.isEmpty()) {
+                    null
+                } else {
+                    val password = requireNotNull(sensitivePassword) {
+                        "A sensitive backup password is required"
+                    }
+                    require(password.isNotEmpty()) { "A sensitive backup password is required" }
+                    prepareSensitiveImport(context, uri, sensitiveItemIds, password)
+                }
+
+                val tempDir = File(context.cacheDir, "backup_import_${System.currentTimeMillis()}")
+                tempDir.mkdirs()
+                try {
+                    context.contentResolver.openInputStream(uri)?.use { input ->
+                        ZipInputStream(input).use { zip ->
+                            var entry = zip.nextEntry
+                            while (entry != null) {
+                                if (entry.name == SensitiveBackupVault.ZIP_ENTRY_NAME) {
+                                    zip.closeEntry()
+                                    entry = zip.nextEntry
+                                    continue
                                 }
+
+                                val targetFile = File(tempDir, entry.name)
+                                if (!isSafeZipTarget(tempDir, targetFile)) {
+                                    zip.closeEntry()
+                                    entry = zip.nextEntry
+                                    continue
+                                }
+                                if (entry.isDirectory) {
+                                    targetFile.mkdirs()
+                                } else {
+                                    targetFile.parentFile?.mkdirs()
+                                    targetFile.outputStream().use { fileOut ->
+                                        zip.copyTo(fileOut)
+                                    }
+                                }
+                                zip.closeEntry()
+                                entry = zip.nextEntry
                             }
-                            zip.closeEntry()
-                            entry = zip.nextEntry
+                        }
+                    } ?: throw IllegalStateException("openInputStream returned null")
+
+                    val settingsFile = File(tempDir, "settings.json")
+                    if (!settingsFile.exists()) {
+                        ImportResult(
+                            success = false,
+                            importedCount = 0,
+                            error = "settings.json not found in ZIP"
+                        )
+                    } else {
+                        val settingsResult = importSettingsFromJson(
+                            context,
+                            settingsFile.readText(Charsets.UTF_8),
+                            selectedLeafIds
+                        )
+                        if (!settingsResult.success) {
+                            settingsResult
+                        } else {
+                            val cacheDir = File(tempDir, "lyric_cache")
+                            var cacheCount = 0
+                            if (cacheDir.exists() && selectedLeafIds.contains("lyric_cache")) {
+                                val cacheStore = OnlineLyricCacheStore(context)
+                                cacheCount = cacheStore.importCacheFromDir(tempDir)
+                            }
+                            sensitiveImport?.let { restoreSensitiveImport(context, it) }
+
+                            ImportResult(
+                                success = true,
+                                importedCount = settingsResult.importedCount,
+                                lyricCacheCount = cacheCount,
+                                sensitiveItemCount = sensitiveItemIds.size,
+                                parserConflicts = settingsResult.parserConflicts
+                            )
                         }
                     }
-                } ?: throw IllegalStateException("openInputStream returned null")
-
-                // 2. Import settings from settings.json
-                val settingsFile = File(tempDir, "settings.json")
-                if (!settingsFile.exists()) {
-                    return@withContext ImportResult(
-                        success = false, importedCount = 0,
-                        error = "settings.json not found in ZIP"
-                    )
+                } finally {
+                    tempDir.deleteRecursively()
                 }
-
-                val settingsResult = importSettingsFromJson(
-                    context, settingsFile.readText(Charsets.UTF_8), selectedLeafIds
-                )
-
-                // 3. Import lyric cache if present
-                val cacheDir = File(tempDir, "lyric_cache")
-                var cacheCount = 0
-                if (cacheDir.exists() && selectedLeafIds.contains("lyric_cache")) {
-                    val cacheStore = OnlineLyricCacheStore(context)
-                    cacheCount = cacheStore.importCacheFromDir(tempDir)
-                }
-
-                ImportResult(
-                    success = settingsResult.success,
-                    importedCount = settingsResult.importedCount,
-                    lyricCacheCount = cacheCount,
-                    parserConflicts = settingsResult.parserConflicts
-                )
-            } finally {
-                tempDir.deleteRecursively()
+            }.getOrElse {
+                ImportResult(success = false, importedCount = 0, error = it.message)
             }
-        }.getOrElse {
-            ImportResult(success = false, importedCount = 0, error = it.message)
+        } finally {
+            sensitivePassword?.fill('\u0000')
         }
     }
 
@@ -276,6 +369,26 @@ object SettingsBackupManager {
             }
         }.getOrElse {
             PreviewResult(success = false, error = it.message)
+        }
+    }
+
+    suspend fun verifySensitiveImport(
+        context: Context,
+        uri: Uri,
+        selectedSensitiveItemIds: Set<String>,
+        sensitivePassword: CharArray
+    ): Boolean = withContext(Dispatchers.IO) {
+        try {
+            val sensitiveItemIds = validateSensitiveSelection(selectedSensitiveItemIds)
+            if (sensitiveItemIds.isEmpty() || sensitivePassword.isEmpty()) {
+                return@withContext false
+            }
+            prepareSensitiveImport(context, uri, sensitiveItemIds, sensitivePassword)
+            true
+        } catch (_: Exception) {
+            false
+        } finally {
+            sensitivePassword.fill('\u0000')
         }
     }
 
@@ -360,6 +473,106 @@ object SettingsBackupManager {
         }
         return count
     }
+
+    private fun validateSensitiveSelection(selectedSensitiveItemIds: Set<String>): Set<String> {
+        require(supportedSensitiveItemIds.containsAll(selectedSensitiveItemIds)) {
+            "Unsupported sensitive backup item"
+        }
+        return selectedSensitiveItemIds.toSet()
+    }
+
+    private fun buildSensitivePayload(context: Context, itemIds: Set<String>): JSONObject {
+        val records = JSONObject()
+        if (SENSITIVE_LASTFM_ID in itemIds) {
+            val credentials = LastFmSecureStore(context).getCredentials()
+            require(credentials.hasApiCredentials) { "No Last.fm credentials are available to export" }
+
+            val lastFmRecord = JSONObject()
+                .put("version", 1)
+                .put("api_key", credentials.apiKey)
+                .put("api_secret", credentials.apiSecret)
+            credentials.sessionKey?.takeIf { it.isNotBlank() }?.let {
+                lastFmRecord.put("session_key", it)
+            }
+            credentials.username?.takeIf { it.isNotBlank() }?.let {
+                lastFmRecord.put("username", it)
+            }
+            records.put(SENSITIVE_LASTFM_ID, lastFmRecord)
+        }
+
+        return JSONObject()
+            .put("schema_version", SENSITIVE_SCHEMA_VERSION)
+            .put("records", records)
+    }
+
+    private fun prepareSensitiveImport(
+        context: Context,
+        uri: Uri,
+        selectedSensitiveItemIds: Set<String>,
+        sensitivePassword: CharArray
+    ): SensitiveImportData {
+        val serializedVault = readZipEntryText(
+            context,
+            uri,
+            SensitiveBackupVault.ZIP_ENTRY_NAME,
+            SensitiveBackupVault.MAX_ENVELOPE_BYTES
+        ) ?: throw IllegalArgumentException("Sensitive backup data not found in ZIP")
+        val decryptedVault = SensitiveBackupVault.decrypt(serializedVault, sensitivePassword)
+        require(decryptedVault.itemIds.containsAll(selectedSensitiveItemIds)) {
+            "Selected sensitive backup data is not available"
+        }
+
+        val payload = decryptedVault.payload
+        require(payload.optInt("schema_version", -1) == SENSITIVE_SCHEMA_VERSION) {
+            "Unsupported sensitive backup payload"
+        }
+        val records = payload.optJSONObject("records") ?: throw IllegalArgumentException(
+            "Invalid sensitive backup payload"
+        )
+
+        val lastFmCredentials = if (SENSITIVE_LASTFM_ID in selectedSensitiveItemIds) {
+            parseLastFmCredentials(records)
+        } else {
+            null
+        }
+        return SensitiveImportData(lastFmCredentials)
+    }
+
+    private fun parseLastFmCredentials(records: JSONObject): LastFmCredentials {
+        val record = records.optJSONObject(SENSITIVE_LASTFM_ID)
+            ?: throw IllegalArgumentException("Last.fm backup data is missing")
+        require(record.optInt("version", -1) == 1) { "Unsupported Last.fm backup data" }
+
+        val apiKey = requiredString(record, "api_key", 4 * 1024)
+        val apiSecret = requiredString(record, "api_secret", 4 * 1024)
+        val sessionKey = optionalString(record, "session_key", 8 * 1024)
+        val username = optionalString(record, "username", 1024)
+        require(username == null || sessionKey != null) { "Invalid Last.fm backup data" }
+        return LastFmCredentials(apiKey, apiSecret, sessionKey, username)
+    }
+
+    private fun requiredString(record: JSONObject, key: String, maxLength: Int): String {
+        return optionalString(record, key, maxLength)
+            ?: throw IllegalArgumentException("Invalid sensitive backup data")
+    }
+
+    private fun optionalString(record: JSONObject, key: String, maxLength: Int): String? {
+        if (!record.has(key) || record.isNull(key)) return null
+        val value = record.opt(key) as? String
+            ?: throw IllegalArgumentException("Invalid sensitive backup data")
+        require(value.isNotBlank() && value.length <= maxLength) { "Invalid sensitive backup data" }
+        return value
+    }
+
+    private fun restoreSensitiveImport(context: Context, data: SensitiveImportData) {
+        data.lastFmCredentials?.let { credentials ->
+            LastFmSecureStore(context).restoreFromBackup(credentials)
+        }
+    }
+
+    private data class SensitiveImportData(
+        val lastFmCredentials: LastFmCredentials?
+    )
 
     /**
      * Import settings from raw JSON text (shared by legacy JSON path and ZIP path).
@@ -493,12 +706,26 @@ object SettingsBackupManager {
         tempDir.mkdirs()
         try {
             var hasLyricCache = false
+            val sensitiveItemIds = runCatching {
+                readZipEntryText(
+                    context,
+                    uri,
+                    SensitiveBackupVault.ZIP_ENTRY_NAME,
+                    SensitiveBackupVault.MAX_ENVELOPE_BYTES
+                )?.let { SensitiveBackupVault.readItemIds(it) } ?: emptySet()
+            }.getOrDefault(emptySet())
             context.contentResolver.openInputStream(uri)?.use { input ->
                 ZipInputStream(input).use { zip ->
                     var entry = zip.nextEntry
                     while (entry != null) {
+                        if (entry.name == SensitiveBackupVault.ZIP_ENTRY_NAME) {
+                            zip.closeEntry()
+                            entry = zip.nextEntry
+                            continue
+                        }
                         val targetFile = File(tempDir, entry.name)
-                        if (!targetFile.canonicalPath.startsWith(tempDir.canonicalPath)) {
+                        if (!isSafeZipTarget(tempDir, targetFile)) {
+                            zip.closeEntry()
                             entry = zip.nextEntry
                             continue
                         }
@@ -523,7 +750,8 @@ object SettingsBackupManager {
             val jsonPreview = previewJsonFromText(settingsFile.readText(Charsets.UTF_8))
             return jsonPreview.copy(
                 lyricCacheEntryCount = if (hasLyricCache) -1 else 0,
-                isZip = true
+                isZip = true,
+                sensitiveItemIds = sensitiveItemIds
             )
         } finally {
             tempDir.deleteRecursively()
@@ -582,6 +810,12 @@ object SettingsBackupManager {
         zip.closeEntry()
     }
 
+    private fun addTextToZip(zip: ZipOutputStream, entryName: String, text: String) {
+        zip.putNextEntry(ZipEntry(entryName))
+        zip.write(text.toByteArray(Charsets.UTF_8))
+        zip.closeEntry()
+    }
+
     /** Recursively add lyric cache files to a ZIP output stream. */
     private fun addDirToZip(zip: ZipOutputStream, dir: File) {
         dir.walkTopDown().forEach { file ->
@@ -596,6 +830,50 @@ object SettingsBackupManager {
                 zip.closeEntry()
             }
         }
+    }
+
+    private fun readZipEntryText(
+        context: Context,
+        uri: Uri,
+        entryName: String,
+        maxBytes: Int
+    ): String? {
+        context.contentResolver.openInputStream(uri)?.use { input ->
+            ZipInputStream(input).use { zip ->
+                var entry = zip.nextEntry
+                while (entry != null) {
+                    if (!entry.isDirectory && entry.name == entryName) {
+                        val bytes = readBoundedZipEntry(zip, maxBytes)
+                        zip.closeEntry()
+                        return String(bytes, Charsets.UTF_8)
+                    }
+                    zip.closeEntry()
+                    entry = zip.nextEntry
+                }
+            }
+        } ?: throw IllegalStateException("openInputStream returned null")
+        return null
+    }
+
+    private fun readBoundedZipEntry(zip: ZipInputStream, maxBytes: Int): ByteArray {
+        require(maxBytes > 0)
+        val output = ByteArrayOutputStream(minOf(maxBytes, DEFAULT_BUFFER_SIZE))
+        val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+        var totalBytes = 0
+        while (true) {
+            val count = zip.read(buffer)
+            if (count <= 0) break
+            totalBytes += count
+            require(totalBytes <= maxBytes) { "ZIP entry is too large" }
+            output.write(buffer, 0, count)
+        }
+        return output.toByteArray()
+    }
+
+    private fun isSafeZipTarget(tempDir: File, targetFile: File): Boolean {
+        val rootPath = tempDir.canonicalFile.path
+        val targetPath = targetFile.canonicalFile.path
+        return targetPath == rootPath || targetPath.startsWith(rootPath + File.separator)
     }
 
     private fun wrapValue(value: Any?): JSONObject? {

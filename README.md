@@ -163,9 +163,9 @@ Capsulyric 是一款 Android 歌词应用，通过**实况通知（Android 16+�
 <details>
 <summary><b>Q5: How to backup/restore settings? (如何备份/恢复设置？)</b></summary>
 
-> **EN:** Go to Settings → Backup & Restore. Supports granular category selection (Capsule, Notifications, Appearance, General, Parser Rules, Advanced, etc.) for export/import.
+> **EN:** Go to Settings → Backup & Restore. Supports granular category selection (Capsule, Notifications, Appearance, General, Parser Rules, Advanced, etc.) for export/import. Sensitive data such as Last.fm credentials can be included only through an optional password-encrypted backup entry.
 >
-> **CN:** 前往 设置 → 备份与恢复，支持按类别（胶囊、通知、外观、通用、解析规则、高级等）选择导出或导入。
+> **CN:** 前往 设置 → 备份与恢复，支持按类别（胶囊、通知、外观、通用、解析规则、高级等）选择导出或导入。Last.fm 等敏感凭据只有在主动选择并设置备份口令后，才会写入加密备份项。
 </details>
 
 <details>
@@ -198,7 +198,7 @@ Capsulyric 是一款 Android 歌词应用，通过**实况通知（Android 16+�
 - Used solely for: playback display, lyric extraction, online lyric matching, Last.fm scrobbles, and diagnostics. / 仅用于：播放信息显示、歌词提取、在线匹配、Last.fm 记录与应用自身日志。
 - Never reads chat messages, verification codes, emails, or other non-media notifications. / 不读取聊天消息、验证码、邮件等非媒体通知。
 - On-device processing by default; network requests only for features you explicitly enable (Online Lyrics, Last.fm). / 默认本机处理；仅在明确开启在线歌词或 Last.fm 时联网。
-- Last.fm credentials: encrypted with Android Keystore-backed AES-GCM, excluded from exports and Android backup/device-transfer rules. / Last.fm 凭据：Android Keystore AES-GCM 加密，排除在导出与 Android 备份/迁移之外。
+- Last.fm credentials: encrypted with Android Keystore-backed AES-GCM and excluded from Android backup/device-transfer rules. Normal exports omit them; an optional, password-encrypted manual backup entry can include them. / Last.fm 凭据：Android Keystore AES-GCM 加密，并排除在 Android 备份/设备迁移之外。常规导出不会包含这些数据；只有主动选择并设置备份口令时，才会写入加密的手动备份项。
 
 Full privacy policy / 完整隐私说明: [PRIVACY.md](docs/PRIVACY.md)
 

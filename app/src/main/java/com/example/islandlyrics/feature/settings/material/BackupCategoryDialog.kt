@@ -302,6 +302,7 @@ fun categoryLabel(catId: String): String {
         "parser_rules" -> stringResource(R.string.backup_cat_parser_rules)
         "lyric_cache" -> stringResource(R.string.backup_cat_lyric_cache)
         "advanced" -> stringResource(R.string.backup_cat_advanced)
+        "sensitive_data" -> stringResource(R.string.backup_cat_sensitive_data)
         else -> catId
     }
 }
@@ -327,6 +328,7 @@ fun subGroupLabel(subId: String): String {
         "advanced_offline" -> stringResource(R.string.backup_sub_advanced_offline)
         "advanced_lyric_dir" -> stringResource(R.string.backup_sub_advanced_lyric_dir)
         "parser_all" -> stringResource(R.string.backup_sub_parser_all)
+        "sensitive_lastfm" -> stringResource(R.string.backup_sub_sensitive_lastfm)
         else -> subId
     }
 }

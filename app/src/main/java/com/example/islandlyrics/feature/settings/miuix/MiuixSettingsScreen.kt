@@ -61,6 +61,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.example.islandlyrics.ui.miuix.blur.MiuixBlurDialog
 import com.example.islandlyrics.ui.miuix.blur.MiuixBlurScaffold
@@ -131,10 +132,13 @@ fun MiuixSettingsScreen(
     val listState = rememberLazyListState()
     val backupExportSuccessFormat = stringResource(R.string.settings_backup_export_success)
     val backupExportSuccessWithCacheFormat = stringResource(R.string.settings_backup_export_success_with_cache)
+    val backupExportSuccessWithSensitiveFormat = stringResource(R.string.settings_backup_export_success_with_sensitive)
     val backupExportFailedText = stringResource(R.string.settings_backup_export_failed)
     val backupImportSuccessFormat = stringResource(R.string.settings_backup_import_success)
     val backupImportSuccessWithCacheFormat = stringResource(R.string.settings_backup_import_success_with_cache)
+    val backupImportSuccessWithSensitiveFormat = stringResource(R.string.settings_backup_import_success_with_sensitive)
     val backupImportFailedText = stringResource(R.string.settings_backup_import_failed)
+    val sensitivePasswordInvalidText = stringResource(R.string.backup_sensitive_password_invalid)
     val devModeEnabled by LyricRepository.getInstance().devModeEnabled.observeAsState(false)
     var floatingLyricsLabEnabled by remember { mutableStateOf(LabFeatureManager.isFloatingLyricsEnabled(prefs)) }
 
@@ -145,10 +149,16 @@ fun MiuixSettingsScreen(
             if (c.subGroups.isNotEmpty()) c.subGroups.map { it.id } else listOf(c.id)
         }.toSet())
     }
+    var selectedSensitiveExportItems by remember { mutableStateOf(emptySet<String>()) }
+    var pendingSensitiveExportPassword by remember { mutableStateOf<CharArray?>(null) }
+    var showSensitiveExportPasswordDialog by remember { mutableStateOf(false) }
     var showImportPreviewDialog by remember { mutableStateOf(false) }
     var importPreviewResult by remember { mutableStateOf<PreviewResult?>(null) }
     var pendingImportUri by remember { mutableStateOf<Uri?>(null) }
     var selectedImportCategories by remember { mutableStateOf(setOf<String>()) }
+    var selectedSensitiveImportItems by remember { mutableStateOf(emptySet<String>()) }
+    var pendingSensitiveImportPassword by remember { mutableStateOf<CharArray?>(null) }
+    var showSensitiveImportPasswordDialog by remember { mutableStateOf(false) }
 
     var showParserConflictDialog by remember { mutableStateOf(false) }
     var parserConflicts by remember { mutableStateOf<List<ParserConflict>>(emptyList()) }
@@ -156,15 +166,99 @@ fun MiuixSettingsScreen(
     var pendingConflictSelections by remember { mutableStateOf(setOf<String>()) }
     var conflictKeepExisting by remember { mutableStateOf(setOf<String>()) }
 
+    fun importBackup(
+        uri: Uri,
+        preview: PreviewResult,
+        selectedLeafIds: Set<String>,
+        selectedSensitiveItemIds: Set<String>,
+        sensitivePassword: CharArray? = null
+    ) {
+        coroutineScope.launch {
+            val result = try {
+                if (preview.isZip) {
+                    SettingsBackupManager.importFromZip(
+                        context,
+                        uri,
+                        selectedLeafIds,
+                        selectedSensitiveItemIds,
+                        sensitivePassword
+                    )
+                } else {
+                    SettingsBackupManager.importSelected(context, uri, selectedLeafIds)
+                }
+            } finally {
+                if (!preview.isZip) sensitivePassword?.fill('\u0000')
+            }
+            if (result.success && result.parserConflicts.isNotEmpty()) {
+                parserConflicts = result.parserConflicts
+                pendingConflictImportUri = uri
+                pendingConflictSelections = selectedLeafIds
+                conflictKeepExisting = emptySet()
+                showParserConflictDialog = true
+            } else {
+                val message = if (result.success) {
+                    if (result.sensitiveItemCount > 0) {
+                        String.format(
+                            Locale.getDefault(),
+                            backupImportSuccessWithSensitiveFormat,
+                            result.importedCount,
+                            result.lyricCacheCount,
+                            result.sensitiveItemCount
+                        )
+                    } else if (result.lyricCacheCount > 0) {
+                        String.format(
+                            Locale.getDefault(),
+                            backupImportSuccessWithCacheFormat,
+                            result.importedCount,
+                            result.lyricCacheCount
+                        )
+                    } else {
+                        String.format(Locale.getDefault(), backupImportSuccessFormat, result.importedCount)
+                    }
+                } else {
+                    backupImportFailedText
+                }
+                snackbarHostState.showSnackbar(message = message)
+            }
+            selectedSensitiveImportItems = emptySet()
+            pendingImportUri = null
+            importPreviewResult = null
+        }
+    }
+
     val exportSettingsLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument("application/zip")
     ) { uri ->
-        if (uri == null) return@rememberLauncherForActivityResult
+        if (uri == null) {
+            pendingSensitiveExportPassword?.fill('\u0000')
+            pendingSensitiveExportPassword = null
+            selectedSensitiveExportItems = emptySet()
+            return@rememberLauncherForActivityResult
+        }
+        val sensitivePassword = pendingSensitiveExportPassword
+        pendingSensitiveExportPassword = null
+        val sensitiveItemIds = selectedSensitiveExportItems
+        selectedSensitiveExportItems = emptySet()
         coroutineScope.launch {
             val includeLyricCache = selectedExportCategories.contains("lyric_cache")
-            val result = SettingsBackupManager.exportToZip(context, uri, selectedExportCategories, includeLyricCache)
+            val result = SettingsBackupManager.exportToZip(
+                context,
+                uri,
+                selectedExportCategories,
+                includeLyricCache,
+                sensitiveItemIds,
+                sensitivePassword
+            )
             val message = if (result.success) {
-                if (result.lyricCacheCount > 0) {
+                if (result.sensitiveItemCount > 0) {
+                    String.format(
+                        Locale.getDefault(),
+                        backupExportSuccessWithSensitiveFormat,
+                        result.exportedCount,
+                        result.lyricCacheCount,
+                        result.sensitiveItemCount
+                    )
+                } else if (result.lyricCacheCount > 0) {
                     String.format(Locale.getDefault(), backupExportSuccessWithCacheFormat, result.exportedCount, result.lyricCacheCount)
                 } else {
                     String.format(Locale.getDefault(), backupExportSuccessFormat, result.exportedCount)
@@ -684,85 +778,158 @@ fun MiuixSettingsScreen(
             )
         }
 
+        val exportPublicCategories = BackupCategories.ALL_CATEGORIES.map { cat ->
+            if (cat.id == "parser_rules") cat.copy(subGroups = BackupCategories.parserAppSubGroups(context))
+            else cat
+        }
+        val exportCategories = exportPublicCategories + listOfNotNull(
+            SettingsBackupManager.sensitiveExportCategory(context)
+        )
+        val defaultExportLeafIds = exportPublicCategories.flatMap { category ->
+            if (category.subGroups.isNotEmpty()) category.subGroups.map { it.id } else listOf(category.id)
+        }.toSet()
+
         // Backup category export dialog
         MiuixBackupCategoryDialog(
             show = showExportCategoryDialog,
             titleRes = R.string.backup_dialog_export_title,
-            categories = BackupCategories.ALL_CATEGORIES.map { cat ->
-                if (cat.id == "parser_rules") cat.copy(subGroups = BackupCategories.parserAppSubGroups(context))
-                else cat
-            }.also { cats ->
-                // Default to all leaf IDs for export
-                if (showExportCategoryDialog) {
-                    selectedExportCategories = cats.flatMap { c ->
-                        if (c.subGroups.isNotEmpty()) c.subGroups.map { it.id } else listOf(c.id)
-                    }.toSet()
+            categories = exportCategories,
+            initialSelected = if (showExportCategoryDialog) defaultExportLeafIds else emptySet(),
+            onConfirm = { selected ->
+                val sensitiveItemIds = SettingsBackupManager.selectedSensitiveItemIds(selected)
+                selectedExportCategories = selected - sensitiveItemIds
+                selectedSensitiveExportItems = sensitiveItemIds
+                showExportCategoryDialog = false
+                if (sensitiveItemIds.isEmpty()) {
+                    exportSettingsLauncher.launch(SettingsBackupManager.buildExportFileName())
+                } else {
+                    showSensitiveExportPasswordDialog = true
                 }
             },
-            initialSelected = if (showExportCategoryDialog) selectedExportCategories else emptySet(),
-            onConfirm = { selected ->
-                selectedExportCategories = selected
+            onDismiss = {
+                selectedSensitiveExportItems = emptySet()
                 showExportCategoryDialog = false
-                exportSettingsLauncher.launch(SettingsBackupManager.buildExportFileName())
-            },
-            onDismiss = { showExportCategoryDialog = false }
+            }
         )
 
         // Backup category import preview dialog
+        val importPublicCategories = BackupCategories.ALL_CATEGORIES.map { cat ->
+            when (cat.id) {
+                "parser_rules" -> {
+                    val uri = pendingImportUri
+                    val parserJson = if (uri != null) {
+                        remember(uri) { ParserBackupPreviewReader.readBlocking(context, uri) }
+                    } else null
+                    cat.copy(subGroups = BackupCategories.parserAppSubGroupsFromJson(parserJson))
+                }
+                else -> cat
+            }
+        }
+        val importCategories = importPublicCategories + listOfNotNull(
+            importPreviewResult?.let { SettingsBackupManager.sensitiveImportCategory(it) }
+        )
         MiuixBackupCategoryDialog(
             show = showImportPreviewDialog && importPreviewResult != null,
             titleRes = R.string.backup_dialog_import_title,
-            categories = BackupCategories.ALL_CATEGORIES.map { cat ->
-                when (cat.id) {
-                    "parser_rules" -> {
-                        val uri = pendingImportUri
-                        val parserJson = if (uri != null) {
-                            remember(uri) { ParserBackupPreviewReader.readBlocking(context, uri) }
-                        } else null
-                        cat.copy(subGroups = BackupCategories.parserAppSubGroupsFromJson(parserJson))
-                    }
-                    else -> cat
-                }
-            },
+            categories = importCategories,
             categoryKeyCounts = importPreviewResult?.categoryCounts,
             initialSelected = selectedImportCategories,
             onConfirm = { selected ->
+                val sensitiveItemIds = SettingsBackupManager.selectedSensitiveItemIds(selected)
+                val selectedLeafIds = selected - sensitiveItemIds
                 selectedImportCategories = selected
                 showImportPreviewDialog = false
                 val uri = pendingImportUri ?: return@MiuixBackupCategoryDialog
-                val isZip = importPreviewResult?.isZip == true
-                coroutineScope.launch {
-                    val result = if (isZip) {
-                        SettingsBackupManager.importFromZip(context, uri, selected)
-                    } else {
-                        SettingsBackupManager.importSelected(context, uri, selected)
-                    }
-                    if (result.success && result.parserConflicts.isNotEmpty()) {
-                        parserConflicts = result.parserConflicts
-                        pendingConflictImportUri = uri
-                        pendingConflictSelections = selected
-                        conflictKeepExisting = emptySet()
-                        showParserConflictDialog = true
-                    } else {
-                        val message = if (result.success) {
-                            if (result.lyricCacheCount > 0) {
-                                String.format(Locale.getDefault(), backupImportSuccessWithCacheFormat, result.importedCount, result.lyricCacheCount)
-                            } else {
-                                String.format(Locale.getDefault(), backupImportSuccessFormat, result.importedCount)
-                            }
-                        } else backupImportFailedText
-                        snackbarHostState.showSnackbar(message = message)
-                    }
-                    pendingImportUri = null
-                    importPreviewResult = null
+                val preview = importPreviewResult ?: return@MiuixBackupCategoryDialog
+                if (sensitiveItemIds.isEmpty()) {
+                    selectedSensitiveImportItems = emptySet()
+                    importBackup(uri, preview, selectedLeafIds, emptySet())
+                } else {
+                    selectedSensitiveImportItems = sensitiveItemIds
+                    showSensitiveImportPasswordDialog = true
                 }
             },
             onDismiss = {
                 showImportPreviewDialog = false
                 pendingImportUri = null
                 importPreviewResult = null
+                selectedSensitiveImportItems = emptySet()
             }
         )
+
+        if (showSensitiveExportPasswordDialog) {
+            MiuixSensitiveBackupPasswordDialog(
+                title = stringResource(R.string.backup_sensitive_password_export_title),
+                description = stringResource(R.string.backup_sensitive_password_export_description),
+                requireConfirmation = true,
+                onSubmit = { password ->
+                    pendingSensitiveExportPassword?.fill('\u0000')
+                    pendingSensitiveExportPassword = password.toCharArray()
+                    null
+                },
+                onSuccess = {
+                    showSensitiveExportPasswordDialog = false
+                    exportSettingsLauncher.launch(SettingsBackupManager.buildExportFileName())
+                },
+                onDismiss = {
+                    pendingSensitiveExportPassword?.fill('\u0000')
+                    pendingSensitiveExportPassword = null
+                    selectedSensitiveExportItems = emptySet()
+                    showSensitiveExportPasswordDialog = false
+                }
+            )
+        }
+
+        if (showSensitiveImportPasswordDialog) {
+            MiuixSensitiveBackupPasswordDialog(
+                title = stringResource(R.string.backup_sensitive_password_import_title),
+                description = stringResource(R.string.backup_sensitive_password_import_description),
+                requireConfirmation = false,
+                onSubmit = { password ->
+                    val uri = pendingImportUri
+                    val preview = importPreviewResult
+                    if (uri == null || preview == null || !SettingsBackupManager.verifySensitiveImport(
+                            context,
+                            uri,
+                            selectedSensitiveImportItems,
+                            password.toCharArray()
+                        )
+                    ) {
+                        sensitivePasswordInvalidText
+                    } else {
+                        pendingSensitiveImportPassword?.fill('\u0000')
+                        pendingSensitiveImportPassword = password.toCharArray()
+                        null
+                    }
+                },
+                onSuccess = {
+                    showSensitiveImportPasswordDialog = false
+                    val uri = pendingImportUri
+                    val preview = importPreviewResult
+                    val password = pendingSensitiveImportPassword
+                    pendingSensitiveImportPassword = null
+                    if (uri != null && preview != null && password != null) {
+                        val sensitiveItemIds = selectedSensitiveImportItems
+                        importBackup(
+                            uri,
+                            preview,
+                            selectedImportCategories - sensitiveItemIds,
+                            sensitiveItemIds,
+                            password
+                        )
+                    } else {
+                        password?.fill('\u0000')
+                        showImportPreviewDialog = true
+                    }
+                },
+                onDismiss = {
+                    pendingSensitiveImportPassword?.fill('\u0000')
+                    pendingSensitiveImportPassword = null
+                    showSensitiveImportPasswordDialog = false
+                    showImportPreviewDialog = true
+                }
+            )
+        }
 
         // Parser conflict dialog (MIUIX)
         if (showParserConflictDialog && parserConflicts.isNotEmpty()) {
@@ -846,6 +1013,121 @@ fun MiuixSettingsScreen(
                         )
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MiuixSensitiveBackupPasswordDialog(
+    title: String,
+    description: String,
+    requireConfirmation: Boolean,
+    onSubmit: suspend (String) -> String?,
+    onSuccess: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    val coroutineScope = rememberCoroutineScope()
+    val requiredText = stringResource(R.string.backup_sensitive_password_required)
+    val mismatchText = stringResource(R.string.backup_sensitive_password_mismatch)
+    val submitFailedText = stringResource(R.string.backup_sensitive_password_invalid)
+    var password by remember { mutableStateOf("") }
+    var confirmation by remember { mutableStateOf("") }
+    var error by remember { mutableStateOf<String?>(null) }
+    var submitting by remember { mutableStateOf(false) }
+
+    MiuixBlurDialog(
+        title = title,
+        show = true,
+        onDismissRequest = {
+            if (!submitting) onDismiss()
+        }
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text(
+                text = description,
+                color = MiuixTheme.colorScheme.onSurfaceSecondary,
+                fontSize = MiuixTheme.textStyles.body2.fontSize
+            )
+            TextField(
+                value = password,
+                onValueChange = {
+                    password = it
+                    error = null
+                },
+                label = stringResource(R.string.backup_sensitive_password),
+                visualTransformation = PasswordVisualTransformation(),
+                modifier = Modifier.fillMaxWidth()
+            )
+            if (requireConfirmation) {
+                TextField(
+                    value = confirmation,
+                    onValueChange = {
+                        confirmation = it
+                        error = null
+                    },
+                    label = stringResource(R.string.backup_sensitive_password_confirm),
+                    visualTransformation = PasswordVisualTransformation(),
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+            error?.let {
+                Text(
+                    text = it,
+                    color = MiuixTheme.colorScheme.error,
+                    fontSize = MiuixTheme.textStyles.body2.fontSize
+                )
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                TextButton(
+                    text = stringResource(R.string.backup_dialog_cancel),
+                    onClick = {
+                        if (!submitting) onDismiss()
+                    },
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.textButtonColors(
+                        textColor = MiuixTheme.colorScheme.onSurfaceVariantActions
+                    )
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                TextButton(
+                    text = stringResource(R.string.backup_dialog_confirm),
+                    onClick = {
+                        if (!submitting) {
+                            when {
+                                password.isBlank() -> error = requiredText
+                                requireConfirmation && password != confirmation -> error = mismatchText
+                                else -> {
+                                    coroutineScope.launch {
+                                        submitting = true
+                                        val submitError = try {
+                                            onSubmit(password)
+                                        } catch (_: Exception) {
+                                            submitFailedText
+                                        }
+                                        submitting = false
+                                        if (submitError == null) {
+                                            password = ""
+                                            confirmation = ""
+                                            error = null
+                                            onSuccess()
+                                        } else {
+                                            error = submitError
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.textButtonColorsPrimary()
+                )
             }
         }
     }

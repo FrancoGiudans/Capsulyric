@@ -302,7 +302,7 @@
     <string name="settings_use_online_lyrics_desc">从多个在线源(酷狗/网易/LrcApi)获取带时间轴的歌词</string>
     <string name="lastfm_title">Last.fm</string>
     <string name="lastfm_settings_summary">使用你自己的 Last.fm API 凭据记录已选择的播放器播放历史</string>
-    <string name="lastfm_description">Capsulyric 只会记录在解析规则中开启了 Last.fm 的播放器。歌名、歌手、专辑、时长和播放时间可能会发送给 Last.fm。API 凭据和 session key 会加密保存在本机，并排除在应用导出和 Android 备份之外。</string>
+    <string name="lastfm_description">Capsulyric 只会记录在解析规则中开启了 Last.fm 的播放器。歌名、歌手、专辑、时长和播放时间可能会发送给 Last.fm。API 凭据和 session key 会加密保存在本机，并排除在 Android 备份之外。常规应用导出不会包含这些数据；只有主动选择“敏感数据”并设置备份口令时，才会导出加密后的凭据。</string>
     <string name="lastfm_setup_title">使用指引</string>
     <string name="lastfm_setup_steps">1. 前往 Last.fm 创建 API 账号，并复制 API key 与 Shared secret。\n2. 将两项凭据粘贴到此页面并保存。\n3. 打开 Last.fm 授权页，在浏览器中允许 Capsulyric，然后回到这里完成连接。</string>
     <string name="lastfm_create_api_key">申请 Last.fm API key</string>
@@ -421,8 +421,10 @@
     <string name="settings_backup_header">备份与恢复</string>
     <string name="settings_backup_export_success">已备份 %1$d 项设置</string>
     <string name="settings_backup_export_success_with_cache">已备份 %1$d 项设置，%2$d 条歌词缓存</string>
+    <string name="settings_backup_export_success_with_sensitive">已备份 %1$d 项设置、%2$d 条歌词缓存和 %3$d 项敏感数据</string>
     <string name="settings_backup_import_success">已还原 %1$d 项设置</string>
     <string name="settings_backup_import_success_with_cache">已还原 %1$d 项设置，%2$d 条歌词缓存</string>
+    <string name="settings_backup_import_success_with_sensitive">已还原 %1$d 项设置、%2$d 条歌词缓存和 %3$d 项敏感数据</string>
     <string name="settings_backup_export_failed">配置导出失败</string>
     <string name="settings_backup_import_failed">配置还原失败</string>
     <!-- Backup Category Dialog -->
@@ -435,6 +437,15 @@
     <string name="backup_dialog_cancel">取消</string>
     <string name="backup_dialog_preview_title">导入预览</string>
     <string name="backup_dialog_preview_summary">此备份包含 %1$d 个类别，共 %2$d 项设置</string>
+    <string name="backup_sensitive_password_export_title">保护敏感数据</string>
+    <string name="backup_sensitive_password_import_title">解锁敏感数据</string>
+    <string name="backup_sensitive_password_export_description">请设置口令以加密所选敏感数据。应用不会保存该口令，遗忘后无法恢复。</string>
+    <string name="backup_sensitive_password_import_description">请输入加密所选敏感数据时使用的备份口令。</string>
+    <string name="backup_sensitive_password">备份口令</string>
+    <string name="backup_sensitive_password_confirm">确认备份口令</string>
+    <string name="backup_sensitive_password_required">请输入备份口令</string>
+    <string name="backup_sensitive_password_mismatch">两次输入的口令不一致</string>
+    <string name="backup_sensitive_password_invalid">备份密码错误或者备份数据已损坏</string>
     <string name="backup_conflict_title">解析规则冲突</string>
     <string name="backup_conflict_description">以下应用已存在规则\n勾选应用以导入（替换现有规则）</string>
     <string name="backup_conflict_apply">应用</string>
@@ -445,6 +456,7 @@
     <string name="backup_cat_parser_rules">解析规则</string>
     <string name="backup_cat_advanced">高级功能</string>
     <string name="backup_cat_lyric_cache">已缓存的歌词</string>
+    <string name="backup_cat_sensitive_data">敏感数据</string>
     <string name="backup_sub_capsule_style">样式与模式</string>
     <string name="backup_sub_capsule_layout">布局与文字</string>
     <string name="backup_sub_capsule_color_share">颜色与分享</string>
@@ -460,6 +472,7 @@
     <string name="backup_sub_general_lyric_display">歌词显示</string>
     <string name="backup_sub_general_lastfm">Last.fm 开关</string>
     <string name="backup_sub_parser_all">所有规则</string>
+    <string name="backup_sub_sensitive_lastfm">Last.fm 凭据</string>
     <string name="backup_sub_advanced_lab">实验室功能</string>
     <string name="backup_sub_advanced_offline">离线模式</string>
     <string name="backup_sub_advanced_dev">开发者选项</string>
