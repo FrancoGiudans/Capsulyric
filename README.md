@@ -199,6 +199,7 @@ Capsulyric 是一款 Android 歌词应用，通过**实况通知（Android 16+�
 - Never reads chat messages, verification codes, emails, or other non-media notifications. / 不读取聊天消息、验证码、邮件等非媒体通知。
 - On-device processing by default; network requests only for features you explicitly enable (Online Lyrics, Last.fm). / 默认本机处理；仅在明确开启在线歌词或 Last.fm 时联网。
 - Last.fm credentials: encrypted with Android Keystore-backed AES-GCM and excluded from Android backup/device-transfer rules. Normal exports omit them; an optional, password-encrypted manual backup entry can include them. / Last.fm 凭据：Android Keystore AES-GCM 加密，并排除在 Android 备份/设备迁移之外。常规导出不会包含这些数据；只有主动选择并设置备份口令时，才会写入加密的手动备份项。
+- Apple Music lyrics require an optional login token (media-user-token); it is encrypted on-device with Android Keystore AES-GCM, excluded from normal exports, and may be included only in a password-encrypted sensitive backup. / Apple Music 歌词需要可选的登录凭据（media-user-token）；该凭据以 Android Keystore AES-GCM 加密存储于本机，不随常规设置导出，仅在密码加密的敏感备份中可选包含。
 
 Full privacy policy / 完整隐私说明: [PRIVACY.md](docs/PRIVACY.md)
 

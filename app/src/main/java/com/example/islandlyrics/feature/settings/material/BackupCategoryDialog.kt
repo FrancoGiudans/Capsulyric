@@ -329,6 +329,7 @@ fun subGroupLabel(subId: String): String {
         "advanced_lyric_dir" -> stringResource(R.string.backup_sub_advanced_lyric_dir)
         "parser_all" -> stringResource(R.string.backup_sub_parser_all)
         "sensitive_lastfm" -> stringResource(R.string.backup_sub_sensitive_lastfm)
+        "sensitive_apple_music" -> stringResource(R.string.backup_sub_sensitive_apple_music)
         else -> subId
     }
 }

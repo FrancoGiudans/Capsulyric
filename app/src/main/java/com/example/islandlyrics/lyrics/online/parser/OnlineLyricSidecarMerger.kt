@@ -28,12 +28,15 @@
 package com.example.islandlyrics.lyrics.online.parser
 
 import com.example.islandlyrics.lyrics.online.OnlineLyricFetcher
-import com.example.islandlyrics.lyrics.online.provider.OnlineLyricProvider
 
 import com.example.islandlyrics.rules.ParserRule
 import kotlin.math.abs
 
 internal object OnlineLyricSidecarMerger {
+
+    /** 附加歌词类型：翻译 / 拼音 */
+    enum class SidecarKind { TRANSLATION, ROMANIZATION }
+
     fun withSidecars(
         result: OnlineLyricFetcher.LyricResult,
         rule: ParserRule
@@ -55,11 +58,98 @@ internal object OnlineLyricSidecarMerger {
         result: OnlineLyricFetcher.LyricResult,
         rule: ParserRule
     ): Boolean {
-        val providerSupportsSidecars = result.provider in listOf(OnlineLyricProvider.QQMusic, OnlineLyricProvider.Netease)
-        if (!providerSupportsSidecars) return false
         val missingTranslation = rule.receiveOnlineTranslation && result.translationLyrics.isNullOrBlank()
         val missingRomanization = rule.receiveOnlineRomanization && result.romanLyrics.isNullOrBlank()
         return missingTranslation || missingRomanization
+    }
+
+    /**
+     * 从所有携带 [kind] 附加歌词的 provider 结果中选择来源。
+     *
+     * 选择标准只要求 sidecar 匹配当前播放信息（标题/歌手）即可，不做行数、
+     * 来源等质量评分——翻译/拼音歌词本身不是逐字的，有就是有、没有就是没有。
+     * 匹配候选优先；主歌词来源在候选内优先（时间轴天然对齐）。
+     */
+    fun selectBestSidecarSource(
+        attempts: List<OnlineLyricFetcher.ProviderAttempt>,
+        preferredMain: OnlineLyricFetcher.LyricResult?,
+        kind: SidecarKind,
+        targetTitle: String,
+        targetArtist: String
+    ): OnlineLyricFetcher.LyricResult? {
+        val candidates = attempts.mapNotNull { it.result }
+            .filter { !sidecarContent(it, kind).isNullOrBlank() }
+        if (candidates.isEmpty()) return null
+
+        val matching = candidates.filter { matchesQuery(it, targetTitle, targetArtist) }
+        val pool = if (matching.isNotEmpty()) matching else candidates
+        return pool.maxWithOrNull(compareBy { it == preferredMain })
+    }
+
+    private fun sidecarContent(
+        result: OnlineLyricFetcher.LyricResult,
+        kind: SidecarKind
+    ): String? = when (kind) {
+        SidecarKind.TRANSLATION -> result.translationLyrics
+        SidecarKind.ROMANIZATION -> result.romanLyrics
+    }
+
+    /** sidecar 内容是否对应当前播放的歌曲：标题匹配（忽略大小写/包含关系），歌手有 token 交集。 */
+    private fun matchesQuery(
+        result: OnlineLyricFetcher.LyricResult,
+        targetTitle: String,
+        targetArtist: String
+    ): Boolean {
+        val matchedTitle = result.matchedTitle?.trim().orEmpty()
+        if (targetTitle.isNotBlank() && matchedTitle.isNotBlank()) {
+            val titleMatches = matchedTitle.equals(targetTitle, ignoreCase = true) ||
+                matchedTitle.contains(targetTitle, ignoreCase = true) ||
+                targetTitle.contains(matchedTitle, ignoreCase = true)
+            if (!titleMatches) return false
+        }
+        if (targetArtist.isNotBlank()) {
+            val matchedArtist = result.matchedArtist?.trim().orEmpty()
+            if (matchedArtist.isNotBlank() && !artistTokensOverlap(targetArtist, matchedArtist)) {
+                return false
+            }
+        }
+        return true
+    }
+
+    private fun artistTokensOverlap(left: String, right: String): Boolean {
+        val tokensLeft = left.split("/", "&", ",", "、", "x", ";", "feat", "ft")
+            .map { it.trim().lowercase() }.filter { it.isNotBlank() }.toSet()
+        val tokensRight = right.split("/", "&", ",", "、", "x", ";", "feat", "ft")
+            .map { it.trim().lowercase() }.filter { it.isNotBlank() }.toSet()
+        if (tokensLeft.isEmpty() || tokensRight.isEmpty()) return true
+        return tokensLeft.intersect(tokensRight).isNotEmpty()
+    }
+
+    /**
+     * Merges translation/romanization sidecars requested by [rule] into [main].
+     *
+     * 翻译与拼音各自从所有 provider 尝试中按"匹配当前播放信息"选取来源
+     * （见 [selectBestSidecarSource]），不局限于主歌词来源自身。
+     */
+    fun mergeSidecarsFromAttempts(
+        main: OnlineLyricFetcher.LyricResult,
+        attempts: List<OnlineLyricFetcher.ProviderAttempt>,
+        rule: ParserRule,
+        targetTitle: String,
+        targetArtist: String
+    ): OnlineLyricFetcher.LyricResult {
+        val translation = if (rule.receiveOnlineTranslation) {
+            selectBestSidecarSource(attempts, main, SidecarKind.TRANSLATION, targetTitle, targetArtist)?.translationLyrics
+        } else {
+            null
+        }
+        val roman = if (rule.receiveOnlineRomanization) {
+            selectBestSidecarSource(attempts, main, SidecarKind.ROMANIZATION, targetTitle, targetArtist)?.romanLyrics
+        } else {
+            null
+        }
+        if (translation == main.translationLyrics && roman == main.romanLyrics) return main
+        return main.copy(translationLyrics = translation, romanLyrics = roman)
     }
 
     private data class SidecarTimeline(

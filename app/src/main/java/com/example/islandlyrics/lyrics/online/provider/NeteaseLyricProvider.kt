@@ -31,6 +31,9 @@ import com.example.islandlyrics.lyrics.online.OnlineLyricFetcher
 import com.example.islandlyrics.lyrics.online.crypto.NeteaseEapiCrypto
 import com.example.islandlyrics.lyrics.online.network.OnlineLyricHttpClient
 import com.example.islandlyrics.lyrics.online.parser.OnlineLyricParser
+import com.example.islandlyrics.lyrics.online.parser.YrcParser
+import com.example.islandlyrics.lyrics.online.selection.CandidateMatcher
+import com.example.islandlyrics.lyrics.online.selection.SearchCandidate
 
 import com.example.islandlyrics.core.logging.AppLogger
 import kotlinx.coroutines.Dispatchers
@@ -55,15 +58,17 @@ internal class NeteaseLyricProvider(
                     return@withContext null
                 }
 
-                val firstSong = songs.getJSONObject(0)
-                val matchedTitle = firstSong.optString("name", "")
-                val songId = firstSong.optLong("id", 0)
-                val artists = firstSong.optJSONArray("artists")
-                val matchedArtist = if (artists != null && artists.length() > 0) {
-                    artists.getJSONObject(0).optString("name", "")
-                } else {
-                    ""
+                val candidates = buildList {
+                    for (index in 0 until songs.length()) {
+                        songs.optJSONObject(index)?.let { add(NeteaseSongCandidate(it)) }
+                    }
                 }
+                val best = CandidateMatcher.pickBest(candidates, title, artist)
+                    ?: return@withContext null
+                val firstSong = best.song
+                val matchedTitle = best.matchedTitle
+                val matchedArtist = best.matchedArtist
+                val songId = firstSong.optLong("id", 0)
 
                 if (songId == 0L) {
                     return@withContext null
@@ -78,6 +83,7 @@ internal class NeteaseLyricProvider(
 
                 val lyricJson = JSONObject(lyricResponse)
                 val lyricContent = lyricJson.optLyricText("lrc")
+                val yrcContent = lyricJson.optLyricText("yrc")
                 val translationContent = lyricJson.optLyricText("tlyric")
                     .ifBlank { lyricJson.optLyricText("ytlrc") }
                 val romanContent = lyricJson.optLyricText("romalrc")
@@ -87,12 +93,18 @@ internal class NeteaseLyricProvider(
                     return@withContext null
                 }
 
-                val parsedLines = OnlineLyricParser.parseLrcLyrics(lyricContent)
+                // YRC 逐字优先：eapi 返回的 yrc 字段若为逐字形态则用逐字解析
+                val hasSyllable = yrcContent.isNotBlank() && YrcParser.isYrcContent(yrcContent)
+                val parsedLines = if (hasSyllable) {
+                    OnlineLyricParser.parseYrcLyrics(yrcContent)
+                } else {
+                    OnlineLyricParser.parseLrcLyrics(lyricContent)
+                }
                 OnlineLyricFetcher.LyricResult(
                     api = "Netease",
-                    lyrics = lyricContent,
+                    lyrics = if (hasSyllable) yrcContent else lyricContent,
                     parsedLines = parsedLines,
-                    hasSyllable = false,
+                    hasSyllable = hasSyllable,
                     provider = OnlineLyricProvider.Netease,
                     matchedTitle = matchedTitle,
                     matchedArtist = matchedArtist,
@@ -115,7 +127,7 @@ internal class NeteaseLyricProvider(
                 "kv" to "0",
                 "tv" to "0",
                 "rv" to "0",
-                "yv" to "0",
+                "yv" to "1",
                 "ytv" to "0",
                 "yrv" to "0",
                 "csrf_token" to ""
@@ -169,6 +181,27 @@ internal class NeteaseLyricProvider(
 
     private fun String.encodeURL(): String =
         URLEncoder.encode(this, "UTF-8")
+
+    private class NeteaseSongCandidate(
+        val song: JSONObject
+    ) : SearchCandidate {
+        override val matchedTitle: String
+            get() = song.optString("name", "")
+
+        override val matchedArtist: String
+            get() = song.optJSONArray("artists")
+                ?.let { artists ->
+                    buildString {
+                        for (index in 0 until artists.length()) {
+                            val name = artists.optJSONObject(index)?.optString("name").orEmpty()
+                            if (name.isBlank()) continue
+                            if (isNotEmpty()) append("/")
+                            append(name)
+                        }
+                    }
+                }
+                .orEmpty()
+    }
 
     private companion object {
         private const val NETEASE_USER_AGENT =

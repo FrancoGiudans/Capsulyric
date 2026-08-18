@@ -192,13 +192,25 @@ fun MiuixLastFmSettingsScreen(onBack: () -> Unit) {
                 Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
                     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         Text(
-                            text = stringResource(R.string.lastfm_description),
+                            text = stringResource(R.string.lastfm_privacy_title),
+                            color = MiuixTheme.colorScheme.primary
+                        )
+                        Text(
+                            text = stringResource(R.string.lastfm_privacy_body),
+                            color = MiuixTheme.colorScheme.onSurfaceSecondary
+                        )
+                        Text(
+                            text = stringResource(R.string.lastfm_security_title),
+                            color = MiuixTheme.colorScheme.primary
+                        )
+                        Text(
+                            text = stringResource(R.string.lastfm_security_body),
                             color = MiuixTheme.colorScheme.onSurfaceSecondary
                         )
                         if (!credentials.isConnected) {
                             Text(
                                 text = stringResource(R.string.lastfm_setup_title),
-                                color = MiuixTheme.colorScheme.onSurface
+                                color = MiuixTheme.colorScheme.primary
                             )
                             Text(
                                 text = stringResource(R.string.lastfm_setup_steps),

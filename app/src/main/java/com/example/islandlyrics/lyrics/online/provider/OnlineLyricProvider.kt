@@ -31,7 +31,9 @@ enum class OnlineLyricProvider(
     SodaMusic("soda_music", com.example.islandlyrics.R.string.provider_soda_music),
     Lrclib("lrclib", com.example.islandlyrics.R.string.provider_lrclib),
     Netease("netease", com.example.islandlyrics.R.string.provider_netease_music),
-    LrcApi("lrc_api", com.example.islandlyrics.R.string.provider_lrcapi);
+    LrcApi("lrc_api", com.example.islandlyrics.R.string.provider_lrcapi),
+    AppleMusic("apple_music", com.example.islandlyrics.R.string.provider_apple_music),
+    Musixmatch("musixmatch", com.example.islandlyrics.R.string.provider_musixmatch);
 
     companion object {
         fun fromId(id: String?): OnlineLyricProvider? {
@@ -39,7 +41,9 @@ enum class OnlineLyricProvider(
             return entries.firstOrNull { it.id.equals(id, ignoreCase = true) }
         }
 
-        fun defaultOrder(): List<OnlineLyricProvider> = listOf(QQMusic, Netease, Kugou, SodaMusic, LrcApi, Lrclib)
+        fun defaultOrder(): List<OnlineLyricProvider> = listOf(
+            QQMusic, Netease, Kugou, SodaMusic, LrcApi, Lrclib, AppleMusic, Musixmatch
+        )
 
         fun defaultIds(): List<String> = defaultOrder().map { it.id }
 
@@ -48,6 +52,7 @@ enum class OnlineLyricProvider(
                 "com.tencent.qqmusic" -> QQMusic
                 "com.netease.cloudmusic" -> Netease
                 "com.kugou.android" -> Kugou
+                "com.apple.android.music" -> AppleMusic
                 else -> null
             }
             return preferred?.let { provider ->

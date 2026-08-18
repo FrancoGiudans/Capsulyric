@@ -609,6 +609,13 @@ fun MiuixSettingsScreen(
                                 ?: context.startActivity(Intent(context, LastFmSettingsActivity::class.java))
                             }
                         )
+                        SuperArrow(
+                            title = stringResource(R.string.apple_music_settings_title),
+                            summary = stringResource(R.string.apple_music_settings_summary),
+                            onClick = {
+                                context.startActivity(Intent(context, com.example.islandlyrics.feature.applemusic.AppleMusicSettingsActivity::class.java))
+                            }
+                        )
                     }
                 }
             }

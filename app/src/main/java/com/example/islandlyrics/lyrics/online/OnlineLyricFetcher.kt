@@ -28,9 +28,11 @@
 package com.example.islandlyrics.lyrics.online
 
 import com.example.islandlyrics.lyrics.online.network.OnlineLyricHttpClient
+import com.example.islandlyrics.lyrics.online.provider.AppleMusicLyricProvider
 import com.example.islandlyrics.lyrics.online.provider.KugouLyricProvider
 import com.example.islandlyrics.lyrics.online.provider.LrcApiLyricProvider
 import com.example.islandlyrics.lyrics.online.provider.LrclibLyricProvider
+import com.example.islandlyrics.lyrics.online.provider.MusixmatchLyricProvider
 import com.example.islandlyrics.lyrics.online.provider.NeteaseLyricProvider
 import com.example.islandlyrics.lyrics.online.provider.OnlineLyricProvider
 import com.example.islandlyrics.lyrics.online.provider.QqMusicLyricProvider
@@ -48,7 +50,8 @@ import javax.net.ssl.HostnameVerifier
  * 支持从多个在线源(酷狗/网易/LrcApi)获取带时间轴的歌词
  */
 class OnlineLyricFetcher(
-    private val networkAllowed: () -> Boolean = { true }
+    private val networkAllowed: () -> Boolean = { true },
+    private val musixmatchTokenStore: com.example.islandlyrics.lyrics.online.provider.MusixmatchTokenStore? = null
 ) {
 
     data class LyricQuery(
@@ -117,6 +120,8 @@ class OnlineLyricFetcher(
     private val neteaseProvider = NeteaseLyricProvider(httpClient)
     private val kugouProvider = KugouLyricProvider(httpClient)
     private val qqMusicProvider = QqMusicLyricProvider(httpClient)
+    private val appleMusicProvider = AppleMusicLyricProvider()
+    private val musixmatchProvider = MusixmatchLyricProvider(httpClient, musixmatchTokenStore)
     private val selector = OnlineLyricSelector(::cleanTitle)
     
     /**
@@ -127,9 +132,14 @@ class OnlineLyricFetcher(
         artist: String,
         providerOrderIds: List<String> = OnlineLyricProvider.defaultIds(),
         useSmartSelection: Boolean = true,
-        disabledProviderIds: Set<String> = emptySet()
+        disabledProviderIds: Set<String> = emptySet(),
+        appleMusicStorefront: String? = null,
+        appleMusicLanguage: String? = null
     ): LyricResult? {
-        return fetchLyrics(title, artist, providerOrderIds, useSmartSelection, disabledProviderIds).bestResult
+        return fetchLyrics(
+            title, artist, providerOrderIds, useSmartSelection, disabledProviderIds,
+            appleMusicStorefront, appleMusicLanguage
+        ).bestResult
     }
 
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -138,7 +148,9 @@ class OnlineLyricFetcher(
         artist: String,
         providerOrderIds: List<String> = OnlineLyricProvider.defaultIds(),
         useSmartSelection: Boolean = true,
-        disabledProviderIds: Set<String> = emptySet()
+        disabledProviderIds: Set<String> = emptySet(),
+        appleMusicStorefront: String? = null,
+        appleMusicLanguage: String? = null
     ): FetchOutcome {
         val providerOrder = OnlineLyricProvider.normalizeOrder(providerOrderIds)
             .filterNot { it.id in disabledProviderIds }
@@ -147,7 +159,12 @@ class OnlineLyricFetcher(
             AppLogger.getInstance().i("OnlineLyric", "Offline mode enabled, online lyric fetch blocked")
             return FetchOutcome(query, null, emptyList(), false)
         }
-        val exactAttempts = fetchAllProviders(query, providerOrder, usedCleanTitleFallback = false)
+        // 首个成功 provider（用于 LrcApi 短路：已有源成功则不再请求免费源）
+        val firstSuccess = java.util.concurrent.atomic.AtomicReference<OnlineLyricProvider?>(null)
+        val exactAttempts = fetchAllProviders(
+            query, providerOrder, usedCleanTitleFallback = false, firstSuccess,
+            appleMusicStorefront, appleMusicLanguage
+        )
         val exactBest = selector.selectBestResult(exactAttempts, title, artist, providerOrder, useSmartSelection)
         if (exactBest != null) {
             return FetchOutcome(query, exactBest, exactAttempts, false)
@@ -157,7 +174,10 @@ class OnlineLyricFetcher(
         if (cleanTitle != title) {
             AppLogger.getInstance().i("OnlineLyric", "精确搜索未找到，尝试清理标题: $cleanTitle")
             val cleanQuery = query.copy(title = cleanTitle)
-            val cleanAttempts = fetchAllProviders(cleanQuery, providerOrder, usedCleanTitleFallback = true)
+            val cleanAttempts = fetchAllProviders(
+                cleanQuery, providerOrder, usedCleanTitleFallback = true, firstSuccess,
+                appleMusicStorefront, appleMusicLanguage
+            )
             return FetchOutcome(
                 query = query,
                 bestResult = selector.selectBestResult(cleanAttempts, cleanTitle, artist, providerOrder, useSmartSelection),
@@ -173,12 +193,19 @@ class OnlineLyricFetcher(
     private suspend fun fetchAllProviders(
         query: LyricQuery,
         providerOrder: List<OnlineLyricProvider>,
-        usedCleanTitleFallback: Boolean
+        usedCleanTitleFallback: Boolean,
+        firstSuccess: java.util.concurrent.atomic.AtomicReference<OnlineLyricProvider?>,
+        appleMusicStorefront: String?,
+        appleMusicLanguage: String?
     ): List<ProviderAttempt> {
         return withContext(Dispatchers.IO) {
             try {
                 val deferreds = providerOrder.map { provider ->
                     async {
+                        // LrcApi 短路：已有其他源成功则跳过（免费源避免重复请求）
+                        if (provider == OnlineLyricProvider.LrcApi && firstSuccess.get() != null) {
+                            return@async null
+                        }
                         val startedAt = System.currentTimeMillis()
                         val result = when (provider) {
                             OnlineLyricProvider.QQMusic -> qqMusicProvider.fetch(query.title, query.artist)
@@ -187,6 +214,15 @@ class OnlineLyricFetcher(
                             OnlineLyricProvider.Lrclib -> lrclibProvider.fetch(query.title, query.artist)
                             OnlineLyricProvider.Netease -> neteaseProvider.fetch(query.title, query.artist)
                             OnlineLyricProvider.LrcApi -> lrcApiProvider.fetch(query.title, query.artist)
+                            OnlineLyricProvider.AppleMusic -> appleMusicProvider.fetch(
+                                query.title, query.artist,
+                                storefront = appleMusicStorefront,
+                                language = appleMusicLanguage
+                            )
+                            OnlineLyricProvider.Musixmatch -> musixmatchProvider.fetch(query.title, query.artist)
+                        }
+                        if (result?.lyrics?.isNotBlank() == true) {
+                            firstSuccess.compareAndSet(null, provider)
                         }
                         ProviderAttempt(
                             provider = provider,

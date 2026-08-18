@@ -24,6 +24,7 @@ package com.example.islandlyrics.ui.overlay.superisland.config
 internal data class SuperIslandLyricRenderConfig(
     val lyricMode: String,
     val fullLyricShowLeftCover: Boolean,
+    val standardLyricShowLeftCover: Boolean,
     val rightTextWeight: Int,
     val leftWithCoverTextWeight: Int,
     val leftNoCoverTextWeight: Int
@@ -33,6 +34,7 @@ internal fun SuperIslandPreferencesCache.toLyricRenderConfig(): SuperIslandLyric
     return SuperIslandLyricRenderConfig(
         lyricMode = lyricMode,
         fullLyricShowLeftCover = fullLyricShowLeftCover,
+        standardLyricShowLeftCover = standardLyricShowLeftCover,
         rightTextWeight = rightTextWeight,
         leftWithCoverTextWeight = leftWithCoverTextWeight,
         leftNoCoverTextWeight = leftNoCoverTextWeight

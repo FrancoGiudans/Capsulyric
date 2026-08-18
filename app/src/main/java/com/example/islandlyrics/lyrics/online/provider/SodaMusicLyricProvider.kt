@@ -25,6 +25,8 @@ package com.example.islandlyrics.lyrics.online.provider
 import com.example.islandlyrics.lyrics.online.OnlineLyricFetcher
 import com.example.islandlyrics.lyrics.online.network.OnlineLyricHttpClient
 import com.example.islandlyrics.lyrics.online.parser.OnlineLyricParser
+import com.example.islandlyrics.lyrics.online.selection.CandidateMatcher
+import com.example.islandlyrics.lyrics.online.selection.SearchCandidate
 
 import com.example.islandlyrics.core.logging.AppLogger
 import kotlinx.coroutines.Dispatchers
@@ -45,35 +47,31 @@ internal class SodaMusicLyricProvider(
                 val resultGroups = searchJson.optJSONArray("result_groups")
                 if (resultGroups == null || resultGroups.length() == 0) return@withContext null
 
-                var firstTrack: JSONObject? = null
+                var tracks: List<JSONObject> = emptyList()
                 for (groupIndex in 0 until resultGroups.length()) {
                     val group = resultGroups.optJSONObject(groupIndex) ?: continue
                     val data = group.optJSONArray("data") ?: continue
+                    val groupTracks = mutableListOf<JSONObject>()
                     for (itemIndex in 0 until data.length()) {
                         val item = data.optJSONObject(itemIndex) ?: continue
                         val meta = item.optJSONObject("meta")
                         if (meta?.optString("item_type") != "track") continue
-                        firstTrack = item.optJSONObject("entity")?.optJSONObject("track")
-                        if (firstTrack != null) break
+                        item.optJSONObject("entity")?.optJSONObject("track")?.let { groupTracks.add(it) }
                     }
-                    if (firstTrack != null) break
+                    if (groupTracks.isNotEmpty()) {
+                        tracks = groupTracks
+                        break
+                    }
                 }
+                if (tracks.isEmpty()) return@withContext null
 
-                if (firstTrack == null) return@withContext null
-
+                val candidates = tracks.map { SodaTrackCandidate(it) }
+                val best = CandidateMatcher.pickBest(candidates, title, artist)
+                    ?: return@withContext null
+                val firstTrack = best.track
                 val trackId = firstTrack.optString("id", "")
-                val matchedTitle = firstTrack.optString("name", "")
-                val artists = firstTrack.optJSONArray("artists")
-                val matchedArtist = buildString {
-                    if (artists != null) {
-                        for (index in 0 until artists.length()) {
-                            val name = artists.optJSONObject(index)?.optString("name").orEmpty()
-                            if (name.isBlank()) continue
-                            if (isNotEmpty()) append("/")
-                            append(name)
-                        }
-                    }
-                }
+                val matchedTitle = best.matchedTitle
+                val matchedArtist = best.matchedArtist
 
                 if (trackId.isBlank()) {
                     return@withContext OnlineLyricFetcher.LyricResult(
@@ -140,6 +138,27 @@ internal class SodaMusicLyricProvider(
 
     private fun String.encodeURL(): String =
         URLEncoder.encode(this, "UTF-8")
+
+    private class SodaTrackCandidate(
+        val track: JSONObject
+    ) : SearchCandidate {
+        override val matchedTitle: String
+            get() = track.optString("name", "")
+
+        override val matchedArtist: String
+            get() = track.optJSONArray("artists")
+                ?.let { artists ->
+                    buildString {
+                        for (index in 0 until artists.length()) {
+                            val name = artists.optJSONObject(index)?.optString("name").orEmpty()
+                            if (name.isBlank()) continue
+                            if (isNotEmpty()) append("/")
+                            append(name)
+                        }
+                    }
+                }
+                .orEmpty()
+    }
 }
 
 

@@ -198,23 +198,23 @@ class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(app
     private fun selectBestSidecarResult(
         attempts: List<OnlineLyricFetcher.ProviderAttempt>,
         preferredMain: OnlineLyricFetcher.LyricResult?,
-        role: ResultRole
+        role: ResultRole,
+        targetTitle: String,
+        targetArtist: String
     ): OnlineLyricFetcher.LyricResult? {
-        if (preferredMain != null && hasRequestedSidecar(preferredMain, role)) return preferredMain
-        return attempts
-            .mapNotNull { it.result }
-            .firstOrNull { it.error == null && hasRequestedSidecar(it, role) }
-    }
-
-    private fun hasRequestedSidecar(
-        result: OnlineLyricFetcher.LyricResult,
-        role: ResultRole
-    ): Boolean {
-        return when (role) {
-            ResultRole.MAIN -> isUsableMainResult(result)
-            ResultRole.TRANSLATION -> !result.translationLyrics.isNullOrBlank()
-            ResultRole.ROMANIZATION -> !result.romanLyrics.isNullOrBlank()
+        val kind = when (role) {
+            ResultRole.TRANSLATION -> OnlineLyricSidecarMerger.SidecarKind.TRANSLATION
+            ResultRole.ROMANIZATION -> OnlineLyricSidecarMerger.SidecarKind.ROMANIZATION
+            ResultRole.MAIN -> return preferredMain
         }
+        // 与自检索路径共用同一套 sidecar 选择：只要求匹配当前播放信息
+        return OnlineLyricSidecarMerger.selectBestSidecarSource(
+            attempts = attempts,
+            preferredMain = preferredMain,
+            kind = kind,
+            targetTitle = targetTitle,
+            targetArtist = targetArtist
+        )
     }
 
     private fun buildCombinedResult(
@@ -783,12 +783,16 @@ class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(app
                     val translationResult = selectBestSidecarResult(
                         attempts = outcome.attempts,
                         preferredMain = outcome.bestResult,
-                        role = ResultRole.TRANSLATION
+                        role = ResultRole.TRANSLATION,
+                        targetTitle = queryTitle,
+                        targetArtist = queryArtist
                     )
                     val romanResult = selectBestSidecarResult(
                         attempts = outcome.attempts,
                         preferredMain = outcome.bestResult,
-                        role = ResultRole.ROMANIZATION
+                        role = ResultRole.ROMANIZATION,
+                        targetTitle = queryTitle,
+                        targetArtist = queryArtist
                     )
                     persistAndApplySelection(
                         mediaInfo = mediaInfo,

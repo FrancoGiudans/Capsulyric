@@ -30,6 +30,8 @@ package com.example.islandlyrics.lyrics.online.provider
 import com.example.islandlyrics.lyrics.online.OnlineLyricFetcher
 import com.example.islandlyrics.lyrics.online.network.OnlineLyricHttpClient
 import com.example.islandlyrics.lyrics.online.parser.OnlineLyricParser
+import com.example.islandlyrics.lyrics.online.selection.CandidateMatcher
+import com.example.islandlyrics.lyrics.online.selection.SearchCandidate
 
 import android.util.Base64
 import com.example.islandlyrics.core.logging.AppLogger
@@ -62,9 +64,16 @@ internal class KugouLyricProvider(
                     return@withContext null
                 }
 
-                val firstSong = infoArray.getJSONObject(0)
-                val matchedTitle = firstSong.optString("songname", "")
-                val matchedArtist = firstSong.optString("singername", "")
+                val searchCandidates = buildList {
+                    for (index in 0 until infoArray.length()) {
+                        infoArray.optJSONObject(index)?.let { add(KugouSongCandidate(it)) }
+                    }
+                }
+                val best = CandidateMatcher.pickBest(searchCandidates, title, artist)
+                    ?: return@withContext null
+                val firstSong = best.song
+                val matchedTitle = best.matchedTitle
+                val matchedArtist = best.matchedArtist
                 val hash = firstSong.optString("hash", "")
                 if (hash.isEmpty()) {
                     return@withContext OnlineLyricFetcher.LyricResult(
@@ -216,6 +225,16 @@ internal class KugouLyricProvider(
 
     private fun String.encodeURL(): String =
         URLEncoder.encode(this, "UTF-8")
+
+    private class KugouSongCandidate(
+        val song: JSONObject
+    ) : SearchCandidate {
+        override val matchedTitle: String
+            get() = song.optString("songname", "")
+
+        override val matchedArtist: String
+            get() = song.optString("singername", "")
+    }
 }
 
 

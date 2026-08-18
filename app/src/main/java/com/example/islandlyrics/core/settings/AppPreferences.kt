@@ -47,6 +47,7 @@ object AppPreferences {
         const val SUPER_ISLAND_TEMPLATE2_CUSTOM_PIC_URI = "super_island_template2_custom_pic_uri"
         const val SUPER_ISLAND_LYRIC_MODE = "super_island_lyric_mode"
         const val SUPER_ISLAND_FULL_LYRIC_SHOW_LEFT_COVER = "super_island_full_lyric_show_left_cover"
+        const val SUPER_ISLAND_STANDARD_SHOW_LEFT_COVER = "super_island_standard_show_left_cover"
         const val XMSF_NETWORK_MODE = "block_xmsf_network_mode"
         const val XMSF_NETWORK_LEGACY = "block_xmsf_network"
         const val XMSF_NETWORK_CUSTOM_DURATION_MS = "block_xmsf_network_custom_duration_ms"
@@ -114,6 +115,8 @@ object AppPreferences {
         const val NEW_PLAYING_APP_ALERT_ALERTED_PACKAGES = "new_playing_app_alert_alerted_packages"
         const val NEW_PLAYING_APP_ALERT_LAST_NOTIFY_TIME = "new_playing_app_alert_last_notify_time"
         const val LASTFM_ENABLED = "lastfm_enabled"
+        const val APPLE_MUSIC_STOREFRONT = "apple_music_storefront"
+        const val APPLE_MUSIC_LANGUAGE = "apple_music_language"
         const val NOTIFICATION_LOCK_SCREEN_HIDDEN = "notification_lock_screen_hidden"
     }
 
@@ -129,6 +132,7 @@ object AppPreferences {
         const val SUPER_ISLAND_SECONDARY_TEXT_MODES = "next_lyric"
         const val SUPER_ISLAND_TEMPLATE2_PIC_SOURCE = "album_art"
         const val SUPER_ISLAND_LYRIC_MODE = "standard"
+        const val SUPER_ISLAND_STANDARD_SHOW_LEFT_COVER = true
         const val MATERIAL_BLUR_RADIUS_DP = 20f
     }
 
@@ -196,6 +200,9 @@ object AppPreferences {
     fun isSuperIslandFullLyricLeftCoverEnabled(prefs: SharedPreferences): Boolean =
         prefs.getBoolean(Keys.SUPER_ISLAND_FULL_LYRIC_SHOW_LEFT_COVER, true)
 
+    fun isSuperIslandStandardShowLeftCoverEnabled(prefs: SharedPreferences): Boolean =
+        prefs.getBoolean(Keys.SUPER_ISLAND_STANDARD_SHOW_LEFT_COVER, Defaults.SUPER_ISLAND_STANDARD_SHOW_LEFT_COVER)
+
     fun isDevModeEnabled(prefs: SharedPreferences): Boolean =
         prefs.getBoolean(Keys.DEV_MODE_ENABLED, false)
 
@@ -204,6 +211,12 @@ object AppPreferences {
 
     fun isLastFmEnabled(prefs: SharedPreferences): Boolean =
         prefs.getBoolean(Keys.LASTFM_ENABLED, false)
+
+    fun appleMusicStorefront(prefs: SharedPreferences): String =
+        prefs.getString(Keys.APPLE_MUSIC_STOREFRONT, "cn") ?: "cn"
+
+    fun appleMusicLanguage(prefs: SharedPreferences): String =
+        prefs.getString(Keys.APPLE_MUSIC_LANGUAGE, "zh-Hans") ?: "zh-Hans"
 
     fun isLockScreenNotificationHidden(prefs: SharedPreferences): Boolean =
         prefs.getBoolean(Keys.NOTIFICATION_LOCK_SCREEN_HIDDEN, false)

@@ -31,6 +31,9 @@ import com.example.islandlyrics.lyrics.online.OnlineLyricFetcher
 import com.example.islandlyrics.lyrics.online.crypto.QqLyricPayloadDecoder
 import com.example.islandlyrics.lyrics.online.network.OnlineLyricHttpClient
 import com.example.islandlyrics.lyrics.online.parser.OnlineLyricParser
+import com.example.islandlyrics.lyrics.online.parser.QrcParser
+import com.example.islandlyrics.lyrics.online.selection.CandidateMatcher
+import com.example.islandlyrics.lyrics.online.selection.SearchCandidate
 
 import android.util.Base64
 import com.example.islandlyrics.core.logging.AppLogger
@@ -71,22 +74,18 @@ internal class QqMusicLyricProvider(
 
                 if (songs == null || songs.length() == 0) return@withContext null
 
-                val firstSong = songs.getJSONObject(0)
+                val candidates = buildList {
+                    for (index in 0 until songs.length()) {
+                        songs.optJSONObject(index)?.let { add(QqSongCandidate(it)) }
+                    }
+                }
+                val best = CandidateMatcher.pickBest(candidates, title, artist)
+                    ?: return@withContext null
+                val firstSong = best.song
                 val songId = firstSong.optString("id", "")
                 val songMid = firstSong.optString("mid", "")
-                val matchedTitle = firstSong.optString("title", firstSong.optString("name", ""))
-                val matchedArtist = firstSong.optJSONArray("singer")
-                    ?.let { singers ->
-                        buildString {
-                            for (index in 0 until singers.length()) {
-                                val name = singers.optJSONObject(index)?.optString("name").orEmpty()
-                                if (name.isBlank()) continue
-                                if (isNotEmpty()) append("/")
-                                append(name)
-                            }
-                        }
-                    }
-                    .orEmpty()
+                val matchedTitle = best.matchedTitle
+                val matchedArtist = best.matchedArtist
 
                 if (songMid.isBlank()) {
                     return@withContext OnlineLyricFetcher.LyricResult(
@@ -145,12 +144,19 @@ internal class QqMusicLyricProvider(
                     )
                 }
 
-                val parsedLines = OnlineLyricParser.parseLrcLyrics(mergedContent)
+                // QRC 逐字优先：lyric_download.fcg 的 content 字段解密后若为 QRC 形态则用逐字解析
+                val qrcContent = downloadExtras.qrcContent
+                val hasSyllable = QrcParser.isQrcContent(qrcContent)
+                val parsedLines = if (hasSyllable) {
+                    OnlineLyricParser.parseQrcLyrics(qrcContent)
+                } else {
+                    OnlineLyricParser.parseLrcLyrics(mergedContent)
+                }
                 OnlineLyricFetcher.LyricResult(
                     api = "QQMusic",
-                    lyrics = mergedContent,
+                    lyrics = if (hasSyllable) qrcContent else mergedContent,
                     parsedLines = parsedLines,
-                    hasSyllable = false,
+                    hasSyllable = hasSyllable,
                     provider = OnlineLyricProvider.QQMusic,
                     matchedTitle = matchedTitle,
                     matchedArtist = matchedArtist,
@@ -164,6 +170,7 @@ internal class QqMusicLyricProvider(
         }
 
     private data class QqLyricExtras(
+        val qrcContent: String = "",
         val translation: String = "",
         val romanization: String = ""
     )
@@ -184,9 +191,11 @@ internal class QqMusicLyricProvider(
                 .replace("<!--", "")
                 .replace("-->", "")
                 .trim()
+            val rawContent = QqLyricPayloadDecoder.extractTagContent(response, "content").orEmpty()
             val rawTranslationPayload = QqLyricPayloadDecoder.extractTagContent(response, "contentts").orEmpty()
             val rawRomanPayload = QqLyricPayloadDecoder.extractTagContent(response, "contentroma").orEmpty()
             QqLyricExtras(
+                qrcContent = QqLyricPayloadDecoder.decodeDownloadPayload(rawContent),
                 translation = QqLyricPayloadDecoder.decodeDownloadPayload(rawTranslationPayload),
                 romanization = QqLyricPayloadDecoder.decodeDownloadPayload(rawRomanPayload)
             )
@@ -223,6 +232,27 @@ internal class QqMusicLyricProvider(
             .replace("\n", "\\n")
             .replace("\r", "\\r")
             .replace("\t", "\\t")
+    }
+
+    private class QqSongCandidate(
+        val song: JSONObject
+    ) : SearchCandidate {
+        override val matchedTitle: String
+            get() = song.optString("title", song.optString("name", ""))
+
+        override val matchedArtist: String
+            get() = song.optJSONArray("singer")
+                ?.let { singers ->
+                    buildString {
+                        for (index in 0 until singers.length()) {
+                            val name = singers.optJSONObject(index)?.optString("name").orEmpty()
+                            if (name.isBlank()) continue
+                            if (isNotEmpty()) append("/")
+                            append(name)
+                        }
+                    }
+                }
+                .orEmpty()
     }
 }
 

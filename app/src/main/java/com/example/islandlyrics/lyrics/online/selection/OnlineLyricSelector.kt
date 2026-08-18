@@ -97,6 +97,8 @@ internal class OnlineLyricSelector(
             OnlineLyricProvider.Lrclib -> 8
             OnlineLyricProvider.LrcApi -> 8
             OnlineLyricProvider.Netease -> 9
+            OnlineLyricProvider.AppleMusic -> 9
+            OnlineLyricProvider.Musixmatch -> 8
         }
 
         score += scoreTitleMatch(targetTitle, result.matchedTitle)

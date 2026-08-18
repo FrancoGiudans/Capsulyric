@@ -232,6 +232,9 @@ fun CustomSettingsScreen(
     var superIslandFullLyricShowLeftCover by remember(uiState.superIslandFullLyricShowLeftCover) {
         mutableStateOf(uiState.superIslandFullLyricShowLeftCover)
     }
+    var superIslandStandardShowLeftCover by remember(uiState.superIslandStandardShowLeftCover) {
+        mutableStateOf(uiState.superIslandStandardShowLeftCover)
+    }
     var superIslandTextColorEnabled by remember(uiState.superIslandTextColorEnabled) {
         mutableStateOf(uiState.superIslandTextColorEnabled)
     }
@@ -497,6 +500,7 @@ fun CustomSettingsScreen(
                                 superIslandEnabled = superIslandEnabled,
                                 superIslandLyricMode = superIslandLyricMode,
                                 superIslandFullLyricShowLeftCover = superIslandFullLyricShowLeftCover,
+                                superIslandStandardShowLeftCover = superIslandStandardShowLeftCover,
                                 superIslandColorSource = superIslandColorSource,
                                 superIslandCustomColor = superIslandCustomColor,
                                 superIslandSmartMinContrast = uiState.superIslandSmartMinContrast,
@@ -756,6 +760,19 @@ fun CustomSettingsScreen(
                                             onCheckedChange = {
                                                 superIslandFullLyricShowLeftCover = it
                                                 viewModel.dispatch(CustomSettingsAction.SetSuperIslandFullLyricShowLeftCover(it))
+                                            }
+                                        )
+                                    }
+
+                                    if (superIslandLyricMode == "standard") {
+                                        SettingsCardDivider()
+                                        SettingsSwitchItem(
+                                            title = stringResource(R.string.settings_super_island_standard_show_left_cover),
+                                            subtitle = stringResource(R.string.settings_super_island_standard_show_left_cover_desc),
+                                            checked = superIslandStandardShowLeftCover,
+                                            onCheckedChange = {
+                                                superIslandStandardShowLeftCover = it
+                                                viewModel.dispatch(CustomSettingsAction.SetSuperIslandStandardShowLeftCover(it))
                                             }
                                         )
                                     }

@@ -33,6 +33,12 @@ import okhttp3.Response
 import java.io.IOException
 import kotlin.coroutines.resume
 
+/** HTTP 响应（含状态码）。用于需要区分 401/403/429 等错误场景的调用方。 */
+internal data class HttpResult(
+    val statusCode: Int,
+    val body: String
+)
+
 internal class OnlineLyricHttpClient(
     private val client: OkHttpClient,
     private val networkAllowed: () -> Boolean = { true }
@@ -53,6 +59,28 @@ internal class OnlineLyricHttpClient(
 
                 override fun onResponse(call: okhttp3.Call, response: Response) {
                     continuation.resume(response.body.string())
+                }
+            })
+        }
+    }
+
+    /** 同 [get]，但返回状态码 + body，供需要区分 HTTP 错误的调用方使用。 */
+    suspend fun getDetailed(
+        url: String,
+        headers: Map<String, String> = emptyMap()
+    ): HttpResult? {
+        if (!networkAllowed()) return null
+        return suspendCancellableCoroutine { continuation ->
+            val request = Request.Builder().url(url).apply {
+                headers.forEach { (key, value) -> header(key, value) }
+            }.build()
+            client.newCall(request).enqueue(object : Callback {
+                override fun onFailure(call: okhttp3.Call, e: IOException) {
+                    continuation.resume(null)
+                }
+
+                override fun onResponse(call: okhttp3.Call, response: Response) {
+                    continuation.resume(HttpResult(response.code, response.body.string()))
                 }
             })
         }

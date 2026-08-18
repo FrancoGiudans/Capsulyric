@@ -304,6 +304,8 @@ object ParserRuleHelper {
                 "onlineLyricDisabledProviders",
                 JSONArray(OnlineLyricProvider.normalizeDisabledIds(rule.onlineLyricDisabledProviders).sorted())
             )
+            put("appleMusicStorefrontOverride", rule.appleMusicStorefrontOverride)
+            put("appleMusicLanguageOverride", rule.appleMusicLanguageOverride)
             put("useSuperLyricApi", rule.useSuperLyricApi)
             put("useLyricGetterApi", rule.useLyricGetterApi)
             put("useLyriconApi", rule.useLyriconApi)
@@ -355,6 +357,8 @@ object ParserRuleHelper {
                     }
                 }
             ),
+            appleMusicStorefrontOverride = obj.optString("appleMusicStorefrontOverride", "").ifBlank { null },
+            appleMusicLanguageOverride = obj.optString("appleMusicLanguageOverride", "").ifBlank { null },
             useSuperLyricApi = obj.optBoolean("useSuperLyricApi", false),
             useLyricGetterApi = obj.optBoolean("useLyricGetterApi", false),
             useLyriconApi = obj.optBoolean("useLyriconApi", false),

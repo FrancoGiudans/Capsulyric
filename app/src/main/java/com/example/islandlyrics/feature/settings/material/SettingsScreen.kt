@@ -626,6 +626,15 @@ fun SettingsScreen(
                                 ?: context.startActivity(Intent(context, LastFmSettingsActivity::class.java))
                             }
                         )
+                        SettingsCardDivider()
+                        SettingsActionItem(
+                            title = stringResource(R.string.apple_music_settings_title),
+                            summary = stringResource(R.string.apple_music_settings_summary),
+                            icon = Icons.Filled.Link,
+                            onClick = {
+                                context.startActivity(Intent(context, com.example.islandlyrics.feature.applemusic.AppleMusicSettingsActivity::class.java))
+                            }
+                        )
                     }
                 }
             }

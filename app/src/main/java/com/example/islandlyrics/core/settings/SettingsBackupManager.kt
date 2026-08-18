@@ -25,6 +25,7 @@ package com.example.islandlyrics.core.settings
 import android.content.Context
 import android.net.Uri
 import androidx.core.content.edit
+import com.example.islandlyrics.integration.applemusic.AppleMusicSecureStore
 import com.example.islandlyrics.integration.lastfm.LastFmCredentials
 import com.example.islandlyrics.integration.lastfm.LastFmSecureStore
 import com.example.islandlyrics.lyrics.cache.OnlineLyricCacheStore
@@ -49,8 +50,9 @@ object SettingsBackupManager {
     private const val SENSITIVE_SCHEMA_VERSION = 1
     const val SENSITIVE_CATEGORY_ID = "sensitive_data"
     const val SENSITIVE_LASTFM_ID = "sensitive_lastfm"
+    const val SENSITIVE_APPLE_MUSIC_ID = "sensitive_apple_music"
     private val FILE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMdd_HH_mm_ss", Locale.US)
-    private val supportedSensitiveItemIds = setOf(SENSITIVE_LASTFM_ID)
+    private val supportedSensitiveItemIds = setOf(SENSITIVE_LASTFM_ID, SENSITIVE_APPLE_MUSIC_ID)
 
     data class ExportResult(
         val success: Boolean,
@@ -94,10 +96,9 @@ object SettingsBackupManager {
     }
 
     fun sensitiveExportCategory(context: Context): BackupCategories.Category? {
-        val itemIds = if (LastFmSecureStore(context).hasBackupData()) {
-            setOf(SENSITIVE_LASTFM_ID)
-        } else {
-            emptySet()
+        val itemIds = buildSet {
+            if (LastFmSecureStore(context).hasBackupData()) add(SENSITIVE_LASTFM_ID)
+            if (AppleMusicSecureStore(context).hasMediaUserToken()) add(SENSITIVE_APPLE_MUSIC_ID)
         }
         return sensitiveCategory(itemIds)
     }
@@ -499,6 +500,16 @@ object SettingsBackupManager {
             }
             records.put(SENSITIVE_LASTFM_ID, lastFmRecord)
         }
+        if (SENSITIVE_APPLE_MUSIC_ID in itemIds) {
+            val mediaUserToken = AppleMusicSecureStore(context).getMediaUserToken()
+            require(!mediaUserToken.isNullOrBlank()) { "No Apple Music media-user-token is available to export" }
+            records.put(
+                SENSITIVE_APPLE_MUSIC_ID,
+                JSONObject()
+                    .put("version", 1)
+                    .put("media_user_token", mediaUserToken)
+            )
+        }
 
         return JSONObject()
             .put("schema_version", SENSITIVE_SCHEMA_VERSION)
@@ -535,7 +546,12 @@ object SettingsBackupManager {
         } else {
             null
         }
-        return SensitiveImportData(lastFmCredentials)
+        val appleMusicMediaUserToken = if (SENSITIVE_APPLE_MUSIC_ID in selectedSensitiveItemIds) {
+            parseAppleMusicMediaUserToken(records)
+        } else {
+            null
+        }
+        return SensitiveImportData(lastFmCredentials, appleMusicMediaUserToken)
     }
 
     private fun parseLastFmCredentials(records: JSONObject): LastFmCredentials {
@@ -549,6 +565,13 @@ object SettingsBackupManager {
         val username = optionalString(record, "username", 1024)
         require(username == null || sessionKey != null) { "Invalid Last.fm backup data" }
         return LastFmCredentials(apiKey, apiSecret, sessionKey, username)
+    }
+
+    private fun parseAppleMusicMediaUserToken(records: JSONObject): String {
+        val record = records.optJSONObject(SENSITIVE_APPLE_MUSIC_ID)
+            ?: throw IllegalArgumentException("Apple Music backup data is missing")
+        require(record.optInt("version", -1) == 1) { "Unsupported Apple Music backup data" }
+        return requiredString(record, "media_user_token", 16 * 1024)
     }
 
     private fun requiredString(record: JSONObject, key: String, maxLength: Int): String {
@@ -568,10 +591,15 @@ object SettingsBackupManager {
         data.lastFmCredentials?.let { credentials ->
             LastFmSecureStore(context).restoreFromBackup(credentials)
         }
+        data.appleMusicMediaUserToken?.let { token ->
+            AppleMusicSecureStore(context).restoreFromBackup(token)
+            com.example.islandlyrics.lyrics.online.provider.AppleMusicStateCache.setMediaUserToken(token)
+        }
     }
 
     private data class SensitiveImportData(
-        val lastFmCredentials: LastFmCredentials?
+        val lastFmCredentials: LastFmCredentials?,
+        val appleMusicMediaUserToken: String? = null
     )
 
     /**

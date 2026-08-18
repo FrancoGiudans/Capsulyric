@@ -83,6 +83,7 @@ fun CapsulePreview(
     superIslandEnabled: Boolean = false,
     superIslandLyricMode: String = "standard",
     superIslandFullLyricShowLeftCover: Boolean = true,
+    superIslandStandardShowLeftCover: Boolean = true,
     superIslandColorSource: String = SuperIslandColorSource.ALBUM_ART,
     superIslandCustomColor: Color = Color(0xFF3482FF),
     superIslandSmartMinContrast: Float = SuperIslandColorSource.SMART_CONTRAST_DEFAULT,
@@ -139,8 +140,10 @@ fun CapsulePreview(
     val superIslandColorized = SuperIslandColorSource.isColorized(superIslandColorSource)
 
     if (superIslandEnabled) {
-        val showLeftCover = albumArt != null &&
-            (superIslandLyricMode != "full" || superIslandFullLyricShowLeftCover)
+        val showLeftCover = albumArt != null && when (superIslandLyricMode) {
+            "full" -> superIslandFullLyricShowLeftCover
+            else -> superIslandStandardShowLeftCover
+        }
         val split = SuperIslandLyricLayout.splitFullLyric(currentLyric, showLeftCover)
         val leftText = when (superIslandLyricMode) {
             "full" -> split.left.ifEmpty { "♪" }

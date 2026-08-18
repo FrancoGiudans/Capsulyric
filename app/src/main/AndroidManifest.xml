@@ -70,6 +70,17 @@
             android:theme="@style/Theme.IslandLyrics.Translucent"
             android:parentActivityName="com.example.islandlyrics.feature.settings.SettingsActivity" />
         <activity
+            android:name="com.example.islandlyrics.feature.applemusic.AppleMusicSettingsActivity"
+            android:label="@string/apple_music_settings_title"
+            android:theme="@style/Theme.IslandLyrics.Translucent"
+            android:parentActivityName="com.example.islandlyrics.feature.settings.SettingsActivity" />
+        <activity
+            android:name="com.example.islandlyrics.feature.applemusic.AppleMusicLoginActivity"
+            android:label="@string/apple_music_web_login_title"
+            android:theme="@style/Theme.IslandLyrics.Translucent"
+            android:exported="false"
+            android:parentActivityName="com.example.islandlyrics.feature.applemusic.AppleMusicSettingsActivity" />
+        <activity
             android:name="com.example.islandlyrics.feature.settings.AboutActivity"
             android:label="@string/about_title"
             android:theme="@style/Theme.IslandLyrics.Translucent"

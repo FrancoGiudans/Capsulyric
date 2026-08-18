@@ -105,6 +105,8 @@ class CustomSettingsViewModel(application: Application) : AndroidViewModel(appli
                 prefs.edit { putString(AppPreferences.Keys.SUPER_ISLAND_LYRIC_MODE, action.value) }
             is CustomSettingsAction.SetSuperIslandFullLyricShowLeftCover ->
                 prefs.edit { putBoolean(AppPreferences.Keys.SUPER_ISLAND_FULL_LYRIC_SHOW_LEFT_COVER, action.value) }
+            is CustomSettingsAction.SetSuperIslandStandardShowLeftCover ->
+                prefs.edit { putBoolean(AppPreferences.Keys.SUPER_ISLAND_STANDARD_SHOW_LEFT_COVER, action.value) }
             is CustomSettingsAction.SetSuperIslandTextLimit ->
                 prefs.edit { putFloat(action.key, action.value) }
             is CustomSettingsAction.SetLiveUpdateTextLimit ->
@@ -207,6 +209,7 @@ class CustomSettingsViewModel(application: Application) : AndroidViewModel(appli
             capsuleRenderMode = CapsuleRenderMode.read(prefs),
             superIslandLyricMode = AppPreferences.superIslandLyricMode(prefs),
             superIslandFullLyricShowLeftCover = AppPreferences.isSuperIslandFullLyricLeftCoverEnabled(prefs),
+            superIslandStandardShowLeftCover = AppPreferences.isSuperIslandStandardShowLeftCoverEnabled(prefs),
             superIslandTextColorEnabled = SuperIslandColorSource.isColorized(superIslandColorSource),
             superIslandColorSource = superIslandColorSource,
             superIslandCustomColor = SuperIslandColorSource.readCustomColor(prefs),

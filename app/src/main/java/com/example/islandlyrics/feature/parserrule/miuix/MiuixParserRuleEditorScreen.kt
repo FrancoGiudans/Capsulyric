@@ -55,6 +55,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.example.islandlyrics.R
 import com.example.islandlyrics.core.network.OfflineModeManager
+import com.example.islandlyrics.core.settings.AppPreferences
 import com.example.islandlyrics.rules.FieldOrder
 import com.example.islandlyrics.rules.ParserRule
 import com.example.islandlyrics.rules.ParserRuleHelper
@@ -143,6 +144,8 @@ fun MiuixParserRuleEditorScreen(
                     receiveOnlineRomanization = next.receiveOnlineRomanization,
                     onlineLyricProviderOrder = next.onlineLyricProviderOrder.map { it.id },
                     onlineLyricDisabledProviders = next.onlineLyricDisabledProviders.map { it.id }.toSet(),
+                    appleMusicStorefrontOverride = next.appleMusicStorefrontOverride,
+                    appleMusicLanguageOverride = next.appleMusicLanguageOverride,
                     useSuperLyricApi = next.useSuperLyricApi,
                     useLyricGetterApi = next.useLyricGetterApi,
                     useLyriconApi = next.useLyriconApi,
@@ -597,6 +600,96 @@ fun MiuixOnlineSourceConfigPage(
                     title = stringResource(R.string.parser_online_priority),
                     summary = stringResource(R.string.parser_online_priority_summary, orderSummary),
                     onClick = onOpenProviderOrder
+                )
+            }
+            MiuixAppleMusicOverrideSection(state, onStateChange)
+        }
+    }
+}
+
+private val appleStorefrontOptions = listOf(
+    "us" to R.string.apple_music_storefront_us,
+    "cn" to R.string.apple_music_storefront_cn,
+    "jp" to R.string.apple_music_storefront_jp,
+    "hk" to R.string.apple_music_storefront_hk,
+    "gb" to R.string.apple_music_storefront_gb
+)
+
+private val appleLanguageOptions = listOf(
+    "en-US" to R.string.apple_music_language_en_us,
+    "zh-Hans" to R.string.apple_music_language_zh_hans,
+    "zh-Hant" to R.string.apple_music_language_zh_hant,
+    "ja" to R.string.apple_music_language_ja
+)
+
+@Composable
+private fun MiuixAppleMusicOverrideSection(
+    state: ParserRuleEditorState,
+    onStateChange: (ParserRuleEditorState) -> Unit
+) {
+    val context = LocalContext.current
+    var expanded by remember { mutableStateOf(false) }
+    val overrideActive =
+        state.appleMusicStorefrontOverride != null || state.appleMusicLanguageOverride != null
+
+    SuperArrow(
+        title = stringResource(R.string.parser_apple_music_override),
+        summary = if (overrideActive) {
+            stringResource(R.string.apple_music_custom_override)
+        } else {
+            stringResource(R.string.apple_music_follow_global)
+        },
+        onClick = { expanded = !expanded }
+    )
+    if (expanded) {
+        Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+            SuperSwitch(
+                title = stringResource(R.string.apple_music_follow_global),
+                summary = stringResource(R.string.parser_apple_music_override_desc),
+                checked = !overrideActive,
+                onCheckedChange = { follow ->
+                    if (follow) {
+                        onStateChange(
+                            state.copy(
+                                appleMusicStorefrontOverride = null,
+                                appleMusicLanguageOverride = null
+                            )
+                        )
+                    } else {
+                        val prefs = AppPreferences.of(context)
+                        onStateChange(
+                            state.copy(
+                                appleMusicStorefrontOverride = AppPreferences.appleMusicStorefront(prefs),
+                                appleMusicLanguageOverride = AppPreferences.appleMusicLanguage(prefs)
+                            )
+                        )
+                    }
+                }
+            )
+            if (overrideActive) {
+                SuperDropdown(
+                    title = stringResource(R.string.apple_music_storefront),
+                    items = appleStorefrontOptions.map { stringResource(it.second) },
+                    selectedIndex = appleStorefrontOptions
+                        .indexOfFirst { it.first == state.appleMusicStorefrontOverride }
+                        .coerceAtLeast(0),
+                    onSelectedIndexChange = { index ->
+                        onStateChange(
+                            state.copy(appleMusicStorefrontOverride = appleStorefrontOptions[index].first)
+                        )
+                    }
+                )
+                SuperDropdown(
+                    title = stringResource(R.string.apple_music_language),
+                    items = appleLanguageOptions.map { stringResource(it.second) },
+                    selectedIndex = appleLanguageOptions
+                        .indexOfFirst { it.first == state.appleMusicLanguageOverride }
+                        .coerceAtLeast(0),
+                    onSelectedIndexChange = { index ->
+                        onStateChange(
+                            state.copy(appleMusicLanguageOverride = appleLanguageOptions[index].first)
+                        )
+                    }
                 )
             }
         }

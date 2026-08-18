@@ -79,7 +79,7 @@ internal object SuperIslandBigAreaRenderer {
             return
         }
 
-        val showLeftCover = islandKey != null
+        val showLeftCover = config.standardLyricShowLeftCover && islandKey != null
         if (preferMetadataLayout) {
             applyMetadataLayout(
                 config = config,

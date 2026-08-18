@@ -48,6 +48,9 @@ data class ParserRule(
     val receiveOnlineRomanization: Boolean = false,
     val onlineLyricProviderOrder: List<String> = emptyList(),
     val onlineLyricDisabledProviders: Set<String> = emptySet(),
+    // Apple Music 地区/语言覆盖（null = 跟随全局设置）
+    val appleMusicStorefrontOverride: String? = null,
+    val appleMusicLanguageOverride: String? = null,
     val useSuperLyricApi: Boolean = false,     // Whether to use SuperLyric API callbacks
     val useLyricGetterApi: Boolean = false,    // Whether to use Lyric Getter API broadcasts
     val useLyriconApi: Boolean = false,        // Whether to subscribe to Lyricon active-player lyrics

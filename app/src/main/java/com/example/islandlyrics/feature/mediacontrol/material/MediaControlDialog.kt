@@ -25,10 +25,13 @@ package com.example.islandlyrics.feature.mediacontrol.material
 import android.content.Context
 import com.example.islandlyrics.R
 import com.example.islandlyrics.core.network.OfflineModeManager
+import com.example.islandlyrics.core.settings.AppPreferences
 import com.example.islandlyrics.core.platform.RomUtils
 import com.example.islandlyrics.runtime.service.MediaMonitorService
 import com.example.islandlyrics.rules.ParserRuleHelper
+import com.example.islandlyrics.lyrics.cache.OnlineLyricCacheStore
 import com.example.islandlyrics.lyrics.state.LyricRepository
+import com.example.islandlyrics.feature.main.HomeLyricPreviewDisplay
 import com.example.islandlyrics.feature.main.MainActivity
 import com.example.islandlyrics.feature.onlinelyricdebug.OnlineLyricDebugActivity
 import com.example.islandlyrics.ui.material.blur.LocalMaterialBlurEnabled
@@ -83,7 +86,9 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.palette.graphics.Palette
 import com.google.android.material.progressindicator.LinearProgressIndicator
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
@@ -141,7 +146,58 @@ fun MediaControlDialog(onDismiss: () -> Unit) {
     val repoLyric by repo.liveLyric.observeAsState()
     val repoProgress by repo.liveProgress.observeAsState()
     val repoParsedLyrics by repo.liveParsedLyrics.observeAsState()
+    val repoCurrentLine by repo.liveCurrentLine.observeAsState()
     val repoLyricResolveState by repo.liveLyricResolveState.observeAsState(LyricRepository.LyricResolveState.PENDING)
+    val homeLyricPreviewModes = remember { HomeLyricPreviewDisplay.read(AppPreferences.of(context)) }
+    val repoNextLine = remember(repoParsedLyrics, repoCurrentLine) {
+        val lines = repoParsedLyrics?.lines
+        if (lines.isNullOrEmpty() || repoCurrentLine == null) {
+            null
+        } else {
+            val index = lines.indexOfFirst {
+                it === repoCurrentLine || it.startTime == repoCurrentLine?.startTime
+            }
+            if (index >= 0 && index + 1 < lines.size) lines[index + 1] else null
+        }
+    }
+    val homeLyricPreview = HomeLyricPreviewDisplay.previewText(
+        modes = homeLyricPreviewModes,
+        currentLine = repoCurrentLine,
+        lyricInfo = repoLyric,
+        nextLine = repoNextLine
+    )
+    val onlineLyricCacheStore = remember(context) { OnlineLyricCacheStore(context) }
+    var isCurrentTrackInstrumental by remember { mutableStateOf(false) }
+    LaunchedEffect(
+        repoMetadata?.packageName,
+        repoMetadata?.title,
+        repoMetadata?.artist,
+        repoMetadata?.rawTitle,
+        repoMetadata?.rawArtist,
+        repoLyric?.apiPath,
+        repoLyric?.lyric
+    ) {
+        val mediaInfo = repoMetadata
+        isCurrentTrackInstrumental = if (mediaInfo == null) {
+            false
+        } else {
+            withContext(Dispatchers.IO) {
+                val rule = ParserRuleHelper.getRuleForPackage(context, mediaInfo.packageName)
+                    ?: ParserRuleHelper.createDefaultRule(mediaInfo.packageName)
+                onlineLyricCacheStore.getCurrentSongState(
+                    mediaInfo = mediaInfo,
+                    fallbackTitle = mediaInfo.title,
+                    fallbackArtist = mediaInfo.artist,
+                    useRawMetadata = rule.useRawMetadataForOnlineMatching
+                ).isInstrumental
+            }
+        }
+    }
+    val primaryLyricSource = formatPrimaryLyricSource(
+        apiPath = repoLyric?.apiPath,
+        sourceLabel = repoParsedLyrics?.sourceLabel,
+        sourceApp = repoLyric?.sourceApp
+    )
     val showOnlineLyricRematch = !OfflineModeManager.isEnabled(context) &&
         (isOnlineLyricSource(repoLyric?.apiPath) ||
             isOnlineLyricSource(repoParsedLyrics?.apiPath) ||
@@ -305,10 +361,12 @@ fun MediaControlDialog(onDismiss: () -> Unit) {
                                     controller = controller,
                                     context = context,
                                     isPrimary = isPrimary,
-                                    primaryLyric = if (isPrimary) repoLyric?.lyric else null,
+                                    primaryLyric = if (isPrimary) homeLyricPreview else null,
                                     primaryHasTimeline = isPrimary && repoParsedLyrics?.lines?.isNotEmpty() == true,
                                     primaryLyricResolveState = repoLyricResolveState,
                                     primaryProgress = if (isPrimary) repoProgress else null,
+                                    primaryLyricSource = if (isPrimary) primaryLyricSource else null,
+                                    primaryIsInstrumental = isPrimary && isCurrentTrackInstrumental,
                                     showOnlineLyricRematch = isPrimary && showOnlineLyricRematch,
                                     onOpenOnlineLyricRematch = {
                                         context.startActivity(Intent(context, OnlineLyricDebugActivity::class.java))
@@ -375,6 +433,8 @@ fun MediaSessionCard(
     primaryHasTimeline: Boolean,
     primaryLyricResolveState: LyricRepository.LyricResolveState,
     primaryProgress: LyricRepository.PlaybackProgress?,
+    primaryLyricSource: String?,
+    primaryIsInstrumental: Boolean,
     showOnlineLyricRematch: Boolean,
     onOpenOnlineLyricRematch: () -> Unit
 ) {
@@ -580,6 +640,20 @@ fun MediaSessionCard(
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
+                        val primaryStatus = when {
+                            isPrimary && primaryIsInstrumental -> stringResource(R.string.main_instrumental_marked)
+                            isPrimary && !primaryLyricSource.isNullOrBlank() ->
+                                stringResource(R.string.main_lyric_source_fmt, primaryLyricSource)
+                            else -> null
+                        }
+                        if (primaryStatus != null) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = primaryStatus,
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
                     }
                 }
 
@@ -589,6 +663,7 @@ fun MediaSessionCard(
                     lyric = effectiveLyric,
                     emptyText = if (isPrimary) {
                         when {
+                            primaryIsInstrumental -> stringResource(R.string.main_no_lyrics)
                             primaryHasTimeline -> stringResource(
                                 R.string.main_lyrics_sync_placeholder_fmt,
                                 formatPlaybackTime(position),
@@ -719,6 +794,25 @@ fun MediaSessionCard(
 
 private fun isOnlineLyricSource(apiPath: String?): Boolean {
     return apiPath == "Online API" || apiPath == "Online Cache"
+}
+
+private fun formatPrimaryLyricSource(
+    apiPath: String?,
+    sourceLabel: String?,
+    sourceApp: String?
+): String? {
+    val label = sourceLabel?.trim().takeUnless { it.isNullOrBlank() }
+        ?: sourceApp?.trim().takeUnless { it.isNullOrBlank() }
+    return when (apiPath) {
+        "Online API" -> label?.let { "$it [在线]" } ?: "在线歌词"
+        "Online Cache" -> label?.let { "$it [缓存]" } ?: "在线歌词缓存"
+        "Local LRC" -> label ?: "本地歌词"
+        "Lyricon" -> label?.let { "$it [Lyricon]" } ?: "Lyricon"
+        "SuperLyric" -> label?.let { "$it [SuperLyric]" } ?: "SuperLyric"
+        "Lyric Getter" -> label?.let { "$it [Lyric Getter]" } ?: "Lyric Getter"
+        "Notification" -> label?.let { "$it [通知歌词]" } ?: "通知歌词"
+        else -> label ?: apiPath?.trim().takeUnless { it.isNullOrBlank() }
+    }
 }
 
 private fun formatPlaybackTime(ms: Long): String {

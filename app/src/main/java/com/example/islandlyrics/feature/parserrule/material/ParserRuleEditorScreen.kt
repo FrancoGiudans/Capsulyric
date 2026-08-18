@@ -55,11 +55,16 @@ import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import com.example.islandlyrics.ui.material.blur.MaterialBlurAlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
@@ -92,6 +97,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import com.example.islandlyrics.R
 import com.example.islandlyrics.core.network.OfflineModeManager
+import com.example.islandlyrics.core.settings.AppPreferences
 import com.example.islandlyrics.rules.FieldOrder
 import com.example.islandlyrics.rules.ParserRule
 import com.example.islandlyrics.rules.ParserRuleHelper
@@ -159,6 +165,8 @@ fun ParserRuleEditorScreen(
                     receiveOnlineRomanization = next.receiveOnlineRomanization,
                     onlineLyricProviderOrder = next.onlineLyricProviderOrder.map { it.id },
                     onlineLyricDisabledProviders = next.onlineLyricDisabledProviders.map { it.id }.toSet(),
+                    appleMusicStorefrontOverride = next.appleMusicStorefrontOverride,
+                    appleMusicLanguageOverride = next.appleMusicLanguageOverride,
                     useSuperLyricApi = next.useSuperLyricApi,
                     useLyricGetterApi = next.useLyricGetterApi,
                     useLyriconApi = next.useLyriconApi,
@@ -569,6 +577,7 @@ fun MaterialOnlineSourceConfigPage(
                 onCheckedChange = { onStateChange(state.copy(receiveOnlineRomanization = it)) }
             )
             OnlineProviderOrderEditor(state, onStateChange)
+            AppleMusicOverrideEditor(state, onStateChange)
         }
         Spacer(modifier = Modifier.height(24.dp))
     }
@@ -812,6 +821,148 @@ private fun DraggableProviderRow(
                     )
                 }
         )
+    }
+}
+
+private val appleStorefrontOptions = listOf(
+    "us" to R.string.apple_music_storefront_us,
+    "cn" to R.string.apple_music_storefront_cn,
+    "jp" to R.string.apple_music_storefront_jp,
+    "hk" to R.string.apple_music_storefront_hk,
+    "gb" to R.string.apple_music_storefront_gb
+)
+
+private val appleLanguageOptions = listOf(
+    "en-US" to R.string.apple_music_language_en_us,
+    "zh-Hans" to R.string.apple_music_language_zh_hans,
+    "zh-Hant" to R.string.apple_music_language_zh_hant,
+    "ja" to R.string.apple_music_language_ja
+)
+
+@Composable
+private fun AppleMusicOverrideEditor(
+    state: ParserRuleEditorState,
+    onStateChange: (ParserRuleEditorState) -> Unit
+) {
+    val context = LocalContext.current
+    var expanded by remember { mutableStateOf(false) }
+    val overrideActive =
+        state.appleMusicStorefrontOverride != null || state.appleMusicLanguageOverride != null
+
+    Spacer(modifier = Modifier.height(12.dp))
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { expanded = !expanded }
+            .padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = stringResource(R.string.parser_apple_music_override),
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Text(
+                text = if (overrideActive) {
+                    stringResource(R.string.apple_music_custom_override)
+                } else {
+                    stringResource(R.string.apple_music_follow_global)
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        Icon(
+            if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+    if (expanded) {
+        Text(
+            text = stringResource(R.string.parser_apple_music_override_desc),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        SwitchRow(
+            title = stringResource(R.string.apple_music_follow_global),
+            subtitle = null,
+            checked = !overrideActive,
+            onCheckedChange = { follow ->
+                if (follow) {
+                    onStateChange(
+                        state.copy(
+                            appleMusicStorefrontOverride = null,
+                            appleMusicLanguageOverride = null
+                        )
+                    )
+                } else {
+                    val prefs = AppPreferences.of(context)
+                    onStateChange(
+                        state.copy(
+                            appleMusicStorefrontOverride = AppPreferences.appleMusicStorefront(prefs),
+                            appleMusicLanguageOverride = AppPreferences.appleMusicLanguage(prefs)
+                        )
+                    )
+                }
+            }
+        )
+        if (overrideActive) {
+            AppleOverrideDropdown(
+                title = stringResource(R.string.apple_music_storefront),
+                options = appleStorefrontOptions,
+                value = state.appleMusicStorefrontOverride.orEmpty(),
+                onSelect = { onStateChange(state.copy(appleMusicStorefrontOverride = it)) }
+            )
+            AppleOverrideDropdown(
+                title = stringResource(R.string.apple_music_language),
+                options = appleLanguageOptions,
+                value = state.appleMusicLanguageOverride.orEmpty(),
+                onSelect = { onStateChange(state.copy(appleMusicLanguageOverride = it)) }
+            )
+        }
+    }
+}
+
+@Composable
+private fun AppleOverrideDropdown(
+    title: String,
+    options: List<Pair<String, Int>>,
+    value: String,
+    onSelect: (String) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.weight(1f)
+        )
+        Text(
+            text = options.firstOrNull { it.first == value }?.let { stringResource(it.second) } ?: value,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.primary
+        )
+        IconButton(onClick = { expanded = true }) {
+            Icon(Icons.Filled.ArrowDropDown, contentDescription = null)
+        }
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            options.forEach { (optionValue, labelRes) ->
+                DropdownMenuItem(
+                    text = { Text(stringResource(labelRes)) },
+                    onClick = {
+                        expanded = false
+                        onSelect(optionValue)
+                    }
+                )
+            }
+        }
     }
 }
 

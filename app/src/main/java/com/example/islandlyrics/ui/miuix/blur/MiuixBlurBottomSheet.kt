@@ -61,7 +61,9 @@ import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
@@ -165,7 +167,9 @@ import kotlin.math.abs
  * @param renderInRootScaffold Kept for API compatibility with
  *   [top.yukonga.miuix.kmp.overlay.OverlayBottomSheet]; this implementation
  *   always renders in a dedicated window.
- * @param content The content of the bottom sheet.
+ * @param content The content of the bottom sheet. The content area is already vertically
+ *   scrollable (drag handle and title stay fixed); avoid nesting another vertically scrollable
+ *   container (e.g. LazyColumn) as the root of [content].
  */
 @Composable
 fun MiuixBlurBottomSheet(
@@ -512,6 +516,7 @@ private fun BlurBottomSheetPanel(
     // Do NOT use windowHeight as a remember key — IME resize would recreate handlers and trigger dismiss.
     val currentWindowHeight by rememberUpdatedState(windowHeight)
     val coroutineScope = rememberCoroutineScope()
+    val contentScrollState = rememberScrollState()
 
     val settlingJob = remember { mutableStateOf<Job?>(null) }
     val isSettling = remember { mutableStateOf(false) }
@@ -790,8 +795,14 @@ private fun BlurBottomSheetPanel(
                         },
                     )
 
-                    CompositionLocalProvider(LocalDismissState provides dismissState) {
-                        content()
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .verticalScroll(contentScrollState),
+                    ) {
+                        CompositionLocalProvider(LocalDismissState provides dismissState) {
+                            content()
+                        }
                     }
                 }
             }

@@ -67,6 +67,7 @@ data class CustomSettingsUiState(
     val capsuleRenderMode: CapsuleRenderMode = CapsuleRenderMode.XIAOMI_SUPER_ISLAND,
     val superIslandLyricMode: String = "standard",
     val superIslandFullLyricShowLeftCover: Boolean = true,
+    val superIslandStandardShowLeftCover: Boolean = true,
     val superIslandTextColorEnabled: Boolean = false,
     val superIslandColorSource: String = "album_art",
     val superIslandCustomColor: Int = 0xFF3482FF.toInt(),
@@ -108,6 +109,7 @@ sealed interface CustomSettingsAction {
     data class SetCapsuleRenderMode(val value: CapsuleRenderMode) : CustomSettingsAction
     data class SetSuperIslandLyricMode(val value: String) : CustomSettingsAction
     data class SetSuperIslandFullLyricShowLeftCover(val value: Boolean) : CustomSettingsAction
+    data class SetSuperIslandStandardShowLeftCover(val value: Boolean) : CustomSettingsAction
     data class SetSuperIslandTextLimit(val key: String, val value: Float) : CustomSettingsAction
     data class SetLiveUpdateTextLimit(val value: Float) : CustomSettingsAction
     data class SetSuperIslandColorSource(val value: String) : CustomSettingsAction

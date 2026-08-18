@@ -36,6 +36,7 @@ internal object OnlineLyricParser {
         val trimmed = content.trimStart()
         return when {
             trimmed.startsWith("<tt") -> parseTtmlLyrics(content)
+            QrcParser.isQrcContent(trimmed) -> QrcParser.parseQrcLyrics(content)
             else -> parseBracketWordLyrics(content)
         }
     }
@@ -45,10 +46,23 @@ internal object OnlineLyricParser {
         if (trimmed.startsWith("<tt")) return true
         if (lyricTypeHint?.contains("word", ignoreCase = true) == true) return true
         if (lyricTypeHint?.contains("syllable", ignoreCase = true) == true) return true
+        if (QrcParser.isQrcContent(trimmed)) return true
 
         val bracketWordRegex = Regex("""(?m)^\[\d+(?:,\d+)?]\s*(?:<\d+,\d+,\d+>[^<\r\n]*)+""")
         return bracketWordRegex.containsMatchIn(content)
     }
+
+    /** QQ QRC 逐字歌词入口。 */
+    fun parseQrcLyrics(content: String): List<OnlineLyricFetcher.LyricLine> =
+        QrcParser.parseQrcLyrics(content)
+
+    /** 网易 YRC 逐字歌词入口。 */
+    fun parseYrcLyrics(content: String): List<OnlineLyricFetcher.LyricLine> =
+        YrcParser.parseYrcLyrics(content)
+
+    /** Musixmatch richsync 逐字歌词入口。 */
+    fun parseMusixmatchRichsync(content: String): List<OnlineLyricFetcher.LyricLine> =
+        MusixmatchRichsyncParser.parseRichsync(content)
 
     fun parseKrcLyrics(krcContent: String): List<OnlineLyricFetcher.LyricLine> {
         val lines = mutableListOf<OnlineLyricFetcher.LyricLine>()
@@ -213,7 +227,7 @@ internal object OnlineLyricParser {
         return Regex("""\[\d{2}:\d{2}\.\d{2,3}]""").containsMatchIn(content)
     }
 
-    private fun parseTtmlLyrics(ttmlContent: String): List<OnlineLyricFetcher.LyricLine> {
+    internal fun parseTtmlLyrics(ttmlContent: String): List<OnlineLyricFetcher.LyricLine> {
         val lines = mutableListOf<OnlineLyricFetcher.LyricLine>()
         val lineRegex = Regex("<p\\b([^>]*)>(.*?)</p>", DOT_MATCHES_ALL)
         val spanRegex = Regex("<span\\b([^>]*)>(.*?)</span>", DOT_MATCHES_ALL)
@@ -225,13 +239,23 @@ internal object OnlineLyricParser {
             val lineEnd = parseFlexibleTimeToMs(lineAttributes["end"])
 
             val syllables = mutableListOf<OnlineLyricFetcher.SyllableInfo>()
+            // 先收集 span 原始数据（begin/end/text），end 缺失时用行 end 或下一 span begin 兜底
+            val spanData = mutableListOf<Triple<Long, Long?, String>>()
             for (spanMatch in spanRegex.findAll(lineBody)) {
                 val spanAttributes = parseXmlAttributes(spanMatch.groupValues[1])
                 val start = parseFlexibleTimeToMs(spanAttributes["begin"]) ?: continue
-                val end = parseFlexibleTimeToMs(spanAttributes["end"]) ?: continue
+                val end = parseFlexibleTimeToMs(spanAttributes["end"])
                 val text = decodeXmlText(stripXmlTags(spanMatch.groupValues[2])).trim()
                 if (text.isBlank()) continue
-                syllables.add(OnlineLyricFetcher.SyllableInfo(start, end, text))
+                spanData.add(Triple(start, end, text))
+            }
+            for ((index, span) in spanData.withIndex()) {
+                val (start, end, text) = span
+                val effectiveEnd = end
+                    ?: spanData.getOrNull(index + 1)?.first
+                    ?: lineEnd
+                    ?: (start + 500)
+                syllables.add(OnlineLyricFetcher.SyllableInfo(start, effectiveEnd, text))
             }
 
             val text = decodeXmlText(stripXmlTags(lineBody))

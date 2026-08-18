@@ -60,6 +60,8 @@ internal class SuperIslandPreferencesCache(
         private set
     var fullLyricShowLeftCover = true
         private set
+    var standardLyricShowLeftCover = true
+        private set
     var colorSource = SuperIslandColorSource.OFF
         private set
     var customColor = 0xFF3482FF.toInt()
@@ -125,6 +127,8 @@ internal class SuperIslandPreferencesCache(
                 lyricMode = sanitizeLyricMode(AppPreferences.superIslandLyricMode(p))
             AppPreferences.Keys.SUPER_ISLAND_FULL_LYRIC_SHOW_LEFT_COVER ->
                 fullLyricShowLeftCover = AppPreferences.isSuperIslandFullLyricLeftCoverEnabled(p)
+            AppPreferences.Keys.SUPER_ISLAND_STANDARD_SHOW_LEFT_COVER ->
+                standardLyricShowLeftCover = AppPreferences.isSuperIslandStandardShowLeftCoverEnabled(p)
             SuperIslandTextLimitConfig.KEY_RIGHT_CHARS,
             SuperIslandTextLimitConfig.KEY_LEFT_WITH_COVER_CHARS,
             SuperIslandTextLimitConfig.KEY_LEFT_NO_COVER_CHARS,
@@ -167,6 +171,7 @@ internal class SuperIslandPreferencesCache(
         template2CustomPicUri = SuperIslandTemplate2PicSource.readCustomPicUri(prefs)
         lyricMode = sanitizeLyricMode(AppPreferences.superIslandLyricMode(prefs))
         fullLyricShowLeftCover = AppPreferences.isSuperIslandFullLyricLeftCoverEnabled(prefs)
+        standardLyricShowLeftCover = AppPreferences.isSuperIslandStandardShowLeftCoverEnabled(prefs)
         loadTextLimits(prefs)
         xmsfBypassMode = XmsfBypassMode.read(prefs)
         xmsfCustomDurationMs = XmsfBypassMode.readCustomDurationMs(prefs)
