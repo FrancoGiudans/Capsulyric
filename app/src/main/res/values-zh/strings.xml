@@ -511,6 +511,7 @@
     <string name="backup_sub_notif_dynamic_icon">动态图标</string>
     <string name="backup_sub_notif_floating">悬浮歌词</string>
     <string name="backup_sub_notif_appearance">胶囊颜色</string>
+    <string name="backup_sub_notif_alert">新播放应用提醒</string>
     <string name="backup_sub_appearance_theme">主题颜色</string>
     <string name="backup_sub_appearance_blur">模糊效果</string>
     <string name="backup_sub_appearance_ui_style">界面风格</string>
@@ -518,6 +519,7 @@
     <string name="backup_sub_general_behavior">行为设置</string>
     <string name="backup_sub_general_lyric_display">歌词显示</string>
     <string name="backup_sub_general_lastfm">Last.fm 开关</string>
+    <string name="backup_sub_general_apple_music">Apple Music 设置</string>
     <string name="backup_sub_parser_all">所有规则</string>
     <string name="backup_sub_sensitive_lastfm">Last.fm 凭据</string>
     <string name="backup_sub_sensitive_apple_music">Apple Music 登录凭据</string>
@@ -525,6 +527,8 @@
     <string name="backup_sub_advanced_offline">离线模式</string>
     <string name="backup_sub_advanced_dev">开发者选项</string>
     <string name="backup_sub_advanced_lyric_dir">本地歌词目录</string>
+    <string name="backup_sub_advanced_updates">更新设置</string>
+    <string name="backup_sub_advanced_xmsf">XMSF 网络绕过</string>
     <!-- FAQ Strings -->
     <string name="settings_predictive_back_desc">在滑动返回时预览上一个界面。</string>
     <string name="summary_view_logs">查看日志文件</string>

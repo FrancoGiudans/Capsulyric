@@ -4,10 +4,16 @@
         <exclude
             domain="sharedpref"
             path="LastFmSecurePrefs.xml" />
+        <exclude
+            domain="sharedpref"
+            path="AppleMusicSecurePrefs.xml" />
     </cloud-backup>
     <device-transfer>
         <exclude
             domain="sharedpref"
             path="LastFmSecurePrefs.xml" />
+        <exclude
+            domain="sharedpref"
+            path="AppleMusicSecurePrefs.xml" />
     </device-transfer>
 </data-extraction-rules>

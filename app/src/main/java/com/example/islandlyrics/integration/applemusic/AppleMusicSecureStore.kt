@@ -46,7 +46,12 @@ class AppleMusicSecureStore(context: Context) {
 
     fun getMediaUserToken(): String? = readEncrypted(KEY_MEDIA_USER_TOKEN)
 
-    fun hasMediaUserToken(): Boolean = prefs.contains(KEY_MEDIA_USER_TOKEN)
+    /**
+     * 是否存在可成功解密的 media-user-token。
+     * 设备迁移/系统备份恢复后，密文可能无法用本机 Keystore 解密，
+     * 此时应视为未登录（重新登录覆盖），而不应将其列入可导出项。
+     */
+    fun hasMediaUserToken(): Boolean = getMediaUserToken()?.isNotBlank() == true
 
     fun saveMediaUserToken(token: String) {
         prefs.edit { putEncrypted(this, KEY_MEDIA_USER_TOKEN, token.trim()) }

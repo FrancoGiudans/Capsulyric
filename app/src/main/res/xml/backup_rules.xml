@@ -3,4 +3,7 @@
     <exclude
         domain="sharedpref"
         path="LastFmSecurePrefs.xml" />
+    <exclude
+        domain="sharedpref"
+        path="AppleMusicSecurePrefs.xml" />
 </full-backup-content>

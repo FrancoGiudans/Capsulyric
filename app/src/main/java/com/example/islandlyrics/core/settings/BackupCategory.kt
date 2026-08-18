@@ -90,7 +90,9 @@ object BackupCategories {
         id = "notifications",
         keyPatterns = listOf(
             "notification_*", "dynamic_icon_*", "floating_*",
-            "progress_bar_color_enabled", "oneui_capsule_color_mode"
+            "progress_bar_color_enabled", "oneui_capsule_color_mode",
+            AppPreferences.Keys.NEW_PLAYING_APP_ALERT_ENABLED,
+            AppPreferences.Keys.NEW_PLAYING_APP_ALERT_IGNORED_PACKAGES
         ),
         subGroups = listOf(
             SubGroup("notif_behavior", listOf(
@@ -105,6 +107,10 @@ object BackupCategories {
             )),
             SubGroup("notif_appearance", listOf(
                 "progress_bar_color_enabled", "oneui_capsule_color_mode"
+            )),
+            SubGroup("notif_alert", listOf(
+                AppPreferences.Keys.NEW_PLAYING_APP_ALERT_ENABLED,
+                AppPreferences.Keys.NEW_PLAYING_APP_ALERT_IGNORED_PACKAGES
             ))
         )
     )
@@ -117,11 +123,19 @@ object BackupCategories {
         id = "appearance",
         keyPatterns = listOf(
             "theme_*", "card_blur_enabled", "ui_use_miuix",
-            "home_lyric_preview_display_modes", "home_lyric_preview_secondary_modes"
+            "home_lyric_preview_display_modes", "home_lyric_preview_secondary_modes",
+            AppPreferences.Keys.MIUIX_THEME_COLOR_SOURCE, "material_theme_*",
+            AppPreferences.Keys.MATERIAL_BLUR_RADIUS_DP
         ),
         subGroups = listOf(
-            SubGroup("appearance_theme", listOf("theme_*")),
-            SubGroup("appearance_blur", listOf("card_blur_enabled")),
+            SubGroup("appearance_theme", listOf(
+                "theme_*",
+                AppPreferences.Keys.MIUIX_THEME_COLOR_SOURCE, "material_theme_*"
+            )),
+            SubGroup("appearance_blur", listOf(
+                "card_blur_enabled",
+                AppPreferences.Keys.MATERIAL_BLUR_RADIUS_DP
+            )),
             SubGroup("appearance_ui_style", listOf(
                 "ui_use_miuix",
                 "home_lyric_preview_display_modes",
@@ -142,7 +156,9 @@ object BackupCategories {
             "predictive_back_animation_style",
             "service_enabled",
             "lyric_text_display_mode", "disable_lyric_scrolling",
-            AppPreferences.Keys.LASTFM_ENABLED
+            AppPreferences.Keys.LASTFM_ENABLED,
+            AppPreferences.Keys.APPLE_MUSIC_STOREFRONT,
+            AppPreferences.Keys.APPLE_MUSIC_LANGUAGE
         ),
         subGroups = listOf(
             SubGroup("general_language", listOf("language_code")),
@@ -154,7 +170,11 @@ object BackupCategories {
             SubGroup("general_lyric_display", listOf(
                 "lyric_text_display_mode", "disable_lyric_scrolling"
             )),
-            SubGroup("general_lastfm", listOf(AppPreferences.Keys.LASTFM_ENABLED))
+            SubGroup("general_lastfm", listOf(AppPreferences.Keys.LASTFM_ENABLED)),
+            SubGroup("general_apple_music", listOf(
+                AppPreferences.Keys.APPLE_MUSIC_STOREFRONT,
+                AppPreferences.Keys.APPLE_MUSIC_LANGUAGE
+            ))
         )
     )
 
@@ -194,18 +214,40 @@ object BackupCategories {
         keyPatterns = listOf(
             "lab_*", "fully_offline_mode",
             "dev_mode_enabled", "log_record_level",
-            "lyric_directories", "whitelist_json",
-            "local_lyric_custom_matches", "local_lyric_export_dir",
-            "local_lyric_export_match_sync"
+            AppPreferences.Keys.WHITELIST_JSON,
+            AppPreferences.Keys.LOCAL_LYRIC_DIRECTORIES_JSON,
+            AppPreferences.Keys.LOCAL_LYRIC_CUSTOM_MATCHES_JSON,
+            AppPreferences.Keys.LOCAL_LYRIC_EXPORT_DIRECTORY_URI,
+            AppPreferences.Keys.LOCAL_LYRIC_EXPORT_MATCH_SYNC_ENABLED,
+            AppPreferences.Keys.AUTO_CHECK_UPDATES,
+            AppPreferences.Keys.ALLOW_PRERELEASE_UPDATES,
+            AppPreferences.Keys.PRERELEASE_CHANNEL,
+            AppPreferences.Keys.UPDATE_CHANNEL,
+            AppPreferences.Keys.XMSF_NETWORK_MODE,
+            AppPreferences.Keys.XMSF_NETWORK_LEGACY,
+            AppPreferences.Keys.XMSF_NETWORK_CUSTOM_DURATION_MS
         ),
         subGroups = listOf(
             SubGroup("advanced_lab", listOf("lab_*")),
             SubGroup("advanced_offline", listOf("fully_offline_mode")),
             SubGroup("advanced_dev", listOf("dev_mode_enabled", "log_record_level")),
             SubGroup("advanced_lyric_dir", listOf(
-                "lyric_directories", "whitelist_json",
-                "local_lyric_custom_matches", "local_lyric_export_dir",
-                "local_lyric_export_match_sync"
+                AppPreferences.Keys.WHITELIST_JSON,
+                AppPreferences.Keys.LOCAL_LYRIC_DIRECTORIES_JSON,
+                AppPreferences.Keys.LOCAL_LYRIC_CUSTOM_MATCHES_JSON,
+                AppPreferences.Keys.LOCAL_LYRIC_EXPORT_DIRECTORY_URI,
+                AppPreferences.Keys.LOCAL_LYRIC_EXPORT_MATCH_SYNC_ENABLED
+            )),
+            SubGroup("advanced_updates", listOf(
+                AppPreferences.Keys.AUTO_CHECK_UPDATES,
+                AppPreferences.Keys.ALLOW_PRERELEASE_UPDATES,
+                AppPreferences.Keys.PRERELEASE_CHANNEL,
+                AppPreferences.Keys.UPDATE_CHANNEL
+            )),
+            SubGroup("advanced_xmsf", listOf(
+                AppPreferences.Keys.XMSF_NETWORK_MODE,
+                AppPreferences.Keys.XMSF_NETWORK_LEGACY,
+                AppPreferences.Keys.XMSF_NETWORK_CUSTOM_DURATION_MS
             ))
         )
     )

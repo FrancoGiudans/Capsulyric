@@ -550,6 +550,7 @@
     <string name="backup_sub_notif_dynamic_icon">Dynamic Icon</string>
     <string name="backup_sub_notif_floating">Floating Lyrics</string>
     <string name="backup_sub_notif_appearance">Capsule Color</string>
+    <string name="backup_sub_notif_alert">New playback app alerts</string>
     <string name="backup_sub_appearance_theme">Theme Colors</string>
     <string name="backup_sub_appearance_blur">Blur Effect</string>
     <string name="backup_sub_appearance_ui_style">UI Style</string>
@@ -557,6 +558,7 @@
     <string name="backup_sub_general_behavior">Behavior</string>
     <string name="backup_sub_general_lyric_display">Lyric Display</string>
     <string name="backup_sub_general_lastfm">Last.fm preference</string>
+    <string name="backup_sub_general_apple_music">Apple Music settings</string>
     <string name="backup_sub_parser_all">All Rules</string>
     <string name="backup_sub_sensitive_lastfm">Last.fm credentials</string>
     <string name="backup_sub_sensitive_apple_music">Apple Music login token</string>
@@ -564,6 +566,8 @@
     <string name="backup_sub_advanced_offline">Offline Mode</string>
     <string name="backup_sub_advanced_dev">Developer</string>
     <string name="backup_sub_advanced_lyric_dir">Local Lyric Directories</string>
+    <string name="backup_sub_advanced_updates">Update settings</string>
+    <string name="backup_sub_advanced_xmsf">XMSF network bypass</string>
     <string name="settings_predictive_back">Predictive Back Gesture</string>
     <string name="settings_predictive_back_desc">Show a preview of the previous screen when swiping back.</string>
     <string name="settings_predictive_back_animation_mode">Back Animation Mode</string>
