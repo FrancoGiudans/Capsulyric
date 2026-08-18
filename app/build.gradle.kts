@@ -9,6 +9,15 @@ apply(from = rootProject.file("gradle/scripts/versioning.gradle"))
 apply(from = rootProject.file("gradle/scripts/signing.gradle"))
 apply(from = rootProject.file("gradle/scripts/android-app.gradle"))
 
+// Override license metadata for libraries whose POM/license data is not
+// resolved correctly by aboutlibraries (JitPack artifacts with hashed
+// license ids). Overrides live in app/config/libraries/*.json.
+aboutLibraries {
+    collect {
+        configPath = file("config")
+    }
+}
+
 dependencies {
     compileOnly(project(":hidden-api"))
     implementation(libs.`super`.lyric.api)

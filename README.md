@@ -244,6 +244,8 @@ cd Capsulyric
 
 Licensed under [GPL-3.0](LICENSE). / 基于 [GPL-3.0](LICENSE) 开源协议。
 
+Third-party license texts are collected in [LICENSES/](LICENSES/); the full inventory of third-party components (source-tree embeddings and direct Gradle dependencies) is documented in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). / 第三方许可证全文见 [LICENSES/](LICENSES/)；完整第三方组件清单（源码嵌入与直接依赖）见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
+
 ---
 
 ## Credits (致谢)
@@ -252,8 +254,10 @@ Licensed under [GPL-3.0](LICENSE). / 基于 [GPL-3.0](LICENSE) 开源协议。
 - [HChenX/SuperLyricAPI](https://github.com/HChenX/SuperLyricApi) (LGPL-2.1)
 - [xiaowine/Lyric Getter API](https://github.com/xiaowine/Lyric-Getter-Api) (LGPL-2.1)
 - [wxxsfxyzm/InstallerX Revive](https://github.com/wxxsfxyzm/InstallerX-Revived) (GPL-3.0)
-- [WXRTW/Lyricify-Lyrics-Helper](https://github.com/WXRIW/Lyricify-Lyrics-Helper) (Apache-2.0)
+- [WXRIW/Lyricify-Lyrics-Helper](https://github.com/WXRIW/Lyricify-Lyrics-Helper) (Apache-2.0)
 - [compose-miuix-ui/miuix](https://github.com/compose-miuix-ui/miuix) (Apache-2.0)
   - The self-wrapped controls under `app/src/main/java/com/example/islandlyrics/ui/miuix/` and `ui/material/` (e.g. `MiuixBlurDialog`, `MiuixBlurBottomSheet`, `BlurOverlayDropdownPreference`, `MaterialBlur*`) are modified from or built on miuix components (`OverlayDialog`, `OverlayBottomSheet`, `OverlayDropdownPreference`, `TopAppBar`/`Scaffold`, `MiuixPopupUtils`) and `miuix-blur`. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). 
   - 自封装控件（如 `MiuixBlurDialog`、`MiuixBlurBottomSheet`、`BlurOverlayDropdownPreference`、`MaterialBlur*`）修改自或基于 miuix 组件与 `miuix-blur`，详见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
 - [xzakota/HyperNotification](https://github.com/xzakota/HyperNotification) (Apache-2.0)
+- Ported/adapted source embeddings (Lyricify-Lyrics-Helper online lyric providers, InstallerX Revived Shizuku helpers, AOSP hidden API stubs) and the full direct-dependency list are documented in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+- 移植/改编的第三方源码（Lyricify-Lyrics-Helper 在线歌词提供方、InstallerX Revived Shizuku 辅助、AOSP hidden API stub）及完整直接依赖清单均记录于 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
