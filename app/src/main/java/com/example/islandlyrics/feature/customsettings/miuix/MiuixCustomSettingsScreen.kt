@@ -291,6 +291,8 @@ fun MiuixCustomSettingsScreen(
      */
     val effectiveActionStyle = if (superIslandEnabled) {
         when {
+            superIslandNotificationStyle == LabFeatureManager.SUPER_ISLAND_STYLE_ADVANCED ||
+                superIslandNotificationStyle == LabFeatureManager.SUPER_ISLAND_STYLE_ADVANCED_LYRICS_DUAL -> "media_controls"
             superIslandMediaButtonLayout == "no_button" &&
                 !superIslandShowProgressBar &&
                 superIslandNotificationStyle == LabFeatureManager.SUPER_ISLAND_STYLE_STANDARD -> "template2"
@@ -922,10 +924,7 @@ fun MiuixCustomSettingsScreen(
                                         )
 
                                         // 进度条颜色（实时更新胶囊保留原逻辑）
-                                        if (actionStyle == "disabled" || (actionStyle == "media_controls" &&
-                                                (superIslandNotificationStyle == LabFeatureManager.SUPER_ISLAND_STYLE_ADVANCED ||
-                                                        superIslandNotificationStyle == LabFeatureManager.SUPER_ISLAND_STYLE_ADVANCED_LYRICS_DUAL))
-                                        ) {
+                                        if (actionStyle == "disabled" || actionStyle == "media_controls") {
                                             SuperSwitch(
                                                 title = stringResource(R.string.settings_progress_color),
                                                 summary = stringResource(R.string.settings_progress_color_desc),
@@ -992,41 +991,43 @@ fun MiuixCustomSettingsScreen(
                                             )
                                         }
 
-                                        // 3. 播放按键布局（无按键置顶）
-                                        val buttonLayoutItems = listOf(
-                                            Triple(
-                                                "no_button",
-                                                stringResource(R.string.super_island_media_button_layout_none),
-                                                stringResource(R.string.super_island_media_button_layout_none_desc)
-                                            ),
-                                            Triple(
-                                                "two_button",
-                                                stringResource(R.string.super_island_media_button_layout_two),
-                                                stringResource(R.string.super_island_media_button_layout_two_desc)
-                                            ),
-                                            Triple(
-                                                "three_button",
-                                                stringResource(R.string.super_island_media_button_layout_three),
-                                                stringResource(R.string.super_island_media_button_layout_three_desc)
+                                        // 3. 播放按键布局（仅标准样式时显示）
+                                        if (superIslandNotificationStyle == LabFeatureManager.SUPER_ISLAND_STYLE_STANDARD) {
+                                            val buttonLayoutItems = listOf(
+                                                Triple(
+                                                    "no_button",
+                                                    stringResource(R.string.super_island_media_button_layout_none),
+                                                    stringResource(R.string.super_island_media_button_layout_none_desc)
+                                                ),
+                                                Triple(
+                                                    "two_button",
+                                                    stringResource(R.string.super_island_media_button_layout_two),
+                                                    stringResource(R.string.super_island_media_button_layout_two_desc)
+                                                ),
+                                                Triple(
+                                                    "three_button",
+                                                    stringResource(R.string.super_island_media_button_layout_three),
+                                                    stringResource(R.string.super_island_media_button_layout_three_desc)
+                                                )
                                             )
-                                        )
 
-                                        SuperDropdown(
-                                            title = stringResource(R.string.settings_super_island_media_button_layout),
-                                            entry = DropdownEntry(
-                                                items = buttonLayoutItems.map { (layoutId, name, desc) ->
-                                                    DropdownItem(
-                                                        text = name,
-                                                        summary = desc,
-                                                        selected = superIslandMediaButtonLayout == layoutId,
-                                                        onClick = {
-                                                            superIslandMediaButtonLayout = layoutId
-                                                            viewModel.dispatch(CustomSettingsAction.SetSuperIslandMediaButtonLayout(layoutId))
-                                                        }
-                                                    )
-                                                }
+                                            SuperDropdown(
+                                                title = stringResource(R.string.settings_super_island_media_button_layout),
+                                                entry = DropdownEntry(
+                                                    items = buttonLayoutItems.map { (layoutId, name, desc) ->
+                                                        DropdownItem(
+                                                            text = name,
+                                                            summary = desc,
+                                                            selected = superIslandMediaButtonLayout == layoutId,
+                                                            onClick = {
+                                                                superIslandMediaButtonLayout = layoutId
+                                                                viewModel.dispatch(CustomSettingsAction.SetSuperIslandMediaButtonLayout(layoutId))
+                                                            }
+                                                        )
+                                                    }
+                                                )
                                             )
-                                        )
+                                        }
 
                                         // 4. 显示进度条（仅标准样式 + 无按键时出现）
                                         if (superIslandNotificationStyle == LabFeatureManager.SUPER_ISLAND_STYLE_STANDARD &&
@@ -1068,11 +1069,11 @@ fun MiuixCustomSettingsScreen(
                                             )
                                         }
 
-                                        // 6. 进度条颜色（显示进度条开启且进度可见时）
-                                        if (superIslandShowProgressBar &&
-                                            (effectiveActionStyle == "disabled" || (effectiveActionStyle == "media_controls" &&
-                                                    (superIslandNotificationStyle == LabFeatureManager.SUPER_ISLAND_STYLE_ADVANCED ||
-                                                            superIslandNotificationStyle == LabFeatureManager.SUPER_ISLAND_STYLE_ADVANCED_LYRICS_DUAL)))
+                                        // 6. 进度条颜色（高级样式始终显示；标准样式在进度可见时显示）
+                                        if ((superIslandNotificationStyle == LabFeatureManager.SUPER_ISLAND_STYLE_ADVANCED ||
+                                                superIslandNotificationStyle == LabFeatureManager.SUPER_ISLAND_STYLE_ADVANCED_LYRICS_DUAL) ||
+                                            (superIslandShowProgressBar &&
+                                                (effectiveActionStyle == "disabled" || effectiveActionStyle == "media_controls"))
                                         ) {
                                             SuperSwitch(
                                                 title = stringResource(R.string.settings_progress_color),

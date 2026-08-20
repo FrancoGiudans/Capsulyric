@@ -240,8 +240,8 @@ class SuperIslandHandler(
         val titleWithArtist = if (state.artist.isNotBlank()) "${state.title} - ${state.artist}" else state.title
         val template2Icon = resolveTemplate2Icon()
 
-        val customExpandEnabled = (preferences.notificationStyle == "advanced_beta" ||
-            preferences.notificationStyle == "advanced_lyrics_dual") &&
+        val customExpandEnabled = (preferences.notificationStyle == LabFeatureManager.SUPER_ISLAND_STYLE_ADVANCED ||
+            preferences.notificationStyle == LabFeatureManager.SUPER_ISLAND_STYLE_ADVANCED_LYRICS_DUAL) &&
             effectiveActionStyle == "media_controls"
 
         val standardExtras = standardFocusBuilder.build(
@@ -354,6 +354,9 @@ class SuperIslandHandler(
      */
     private val effectiveActionStyle: String
         get() = when {
+            preferences.notificationStyle == LabFeatureManager.SUPER_ISLAND_STYLE_ADVANCED ||
+                preferences.notificationStyle == LabFeatureManager.SUPER_ISLAND_STYLE_ADVANCED_LYRICS_DUAL ->
+                "media_controls"
             preferences.mediaButtonLayout == "no_button" &&
                 !preferences.showProgressBar &&
                 preferences.notificationStyle == LabFeatureManager.SUPER_ISLAND_STYLE_STANDARD ->

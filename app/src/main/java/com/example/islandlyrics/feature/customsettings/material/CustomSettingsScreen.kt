@@ -317,6 +317,8 @@ fun CustomSettingsScreen(
      */
     val effectiveActionStyle = if (superIslandEnabled) {
         when {
+            superIslandNotificationStyle == LabFeatureManager.SUPER_ISLAND_STYLE_ADVANCED ||
+                superIslandNotificationStyle == LabFeatureManager.SUPER_ISLAND_STYLE_ADVANCED_LYRICS_DUAL -> "media_controls"
             superIslandMediaButtonLayout == "no_button" &&
                 !superIslandShowProgressBar &&
                 superIslandNotificationStyle == LabFeatureManager.SUPER_ISLAND_STYLE_STANDARD -> "template2"
@@ -1147,10 +1149,7 @@ fun CustomSettingsScreen(
                                     }
                                 }
                                 // 进度条颜色（实时更新胶囊保留原逻辑）
-                                if (actionStyle == "disabled" || (actionStyle == "media_controls" &&
-                                        (superIslandNotificationStyle == LabFeatureManager.SUPER_ISLAND_STYLE_ADVANCED ||
-                                                superIslandNotificationStyle == LabFeatureManager.SUPER_ISLAND_STYLE_ADVANCED_LYRICS_DUAL))
-                                ) {
+                                if (actionStyle == "disabled" || actionStyle == "media_controls") {
                                     SettingsCardDivider()
                                     SettingsSwitchItem(
                                         title = stringResource(R.string.settings_progress_color),
@@ -1242,59 +1241,61 @@ fun CustomSettingsScreen(
                                     }
                                 }
 
-                                // 2. 播放按键布局（无按键置顶）
-                                val layoutDisplayName = when (superIslandMediaButtonLayout) {
-                                    "three_button" -> stringResource(R.string.super_island_media_button_layout_three)
-                                    "no_button" -> stringResource(R.string.super_island_media_button_layout_none)
-                                    else -> stringResource(R.string.super_island_media_button_layout_two)
-                                }
-                                SettingsCardDivider()
-                                Box(modifier = Modifier.fillMaxWidth()) {
-                                    SettingsTextItem(
-                                        title = stringResource(R.string.settings_super_island_media_button_layout),
-                                        value = layoutDisplayName,
-                                        onClick = { showSuperIslandMediaButtonLayoutDropdown = true }
-                                    )
-                                    Box(modifier = Modifier.matchParentSize().wrapContentSize(Alignment.Center)) {
-                                        MaterialBlurDropdownMenu(
-                                            expanded = showSuperIslandMediaButtonLayoutDropdown,
-                                            onDismissRequest = { showSuperIslandMediaButtonLayoutDropdown = false }
-                                        ) {
-                                            val layoutOptions = listOf(
-                                                Triple(
-                                                    "no_button",
-                                                    R.string.super_island_media_button_layout_none,
-                                                    R.string.super_island_media_button_layout_none_desc
-                                                ),
-                                                Triple(
-                                                    "two_button",
-                                                    R.string.super_island_media_button_layout_two,
-                                                    R.string.super_island_media_button_layout_two_desc
-                                                ),
-                                                Triple(
-                                                    "three_button",
-                                                    R.string.super_island_media_button_layout_three,
-                                                    R.string.super_island_media_button_layout_three_desc
+                                // 2. 播放按键布局（仅标准样式时显示）
+                                if (superIslandNotificationStyle == LabFeatureManager.SUPER_ISLAND_STYLE_STANDARD) {
+                                    val layoutDisplayName = when (superIslandMediaButtonLayout) {
+                                        "three_button" -> stringResource(R.string.super_island_media_button_layout_three)
+                                        "no_button" -> stringResource(R.string.super_island_media_button_layout_none)
+                                        else -> stringResource(R.string.super_island_media_button_layout_two)
+                                    }
+                                    SettingsCardDivider()
+                                    Box(modifier = Modifier.fillMaxWidth()) {
+                                        SettingsTextItem(
+                                            title = stringResource(R.string.settings_super_island_media_button_layout),
+                                            value = layoutDisplayName,
+                                            onClick = { showSuperIslandMediaButtonLayoutDropdown = true }
+                                        )
+                                        Box(modifier = Modifier.matchParentSize().wrapContentSize(Alignment.Center)) {
+                                            MaterialBlurDropdownMenu(
+                                                expanded = showSuperIslandMediaButtonLayoutDropdown,
+                                                onDismissRequest = { showSuperIslandMediaButtonLayoutDropdown = false }
+                                            ) {
+                                                val layoutOptions = listOf(
+                                                    Triple(
+                                                        "no_button",
+                                                        R.string.super_island_media_button_layout_none,
+                                                        R.string.super_island_media_button_layout_none_desc
+                                                    ),
+                                                    Triple(
+                                                        "two_button",
+                                                        R.string.super_island_media_button_layout_two,
+                                                        R.string.super_island_media_button_layout_two_desc
+                                                    ),
+                                                    Triple(
+                                                        "three_button",
+                                                        R.string.super_island_media_button_layout_three,
+                                                        R.string.super_island_media_button_layout_three_desc
+                                                    )
                                                 )
-                                            )
-                                            layoutOptions.forEach { (layoutId, nameId, descId) ->
-                                                DropdownMenuItem(
-                                                    text = {
-                                                        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                                                            Text(stringResource(nameId))
-                                                            Text(
-                                                                text = stringResource(descId),
-                                                                style = MaterialTheme.typography.bodySmall,
-                                                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                                                            )
+                                                layoutOptions.forEach { (layoutId, nameId, descId) ->
+                                                    DropdownMenuItem(
+                                                        text = {
+                                                            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                                                Text(stringResource(nameId))
+                                                                Text(
+                                                                    text = stringResource(descId),
+                                                                    style = MaterialTheme.typography.bodySmall,
+                                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                                )
+                                                            }
+                                                        },
+                                                        onClick = {
+                                                            superIslandMediaButtonLayout = layoutId
+                                                            viewModel.dispatch(CustomSettingsAction.SetSuperIslandMediaButtonLayout(layoutId))
+                                                            showSuperIslandMediaButtonLayoutDropdown = false
                                                         }
-                                                    },
-                                                    onClick = {
-                                                        superIslandMediaButtonLayout = layoutId
-                                                        viewModel.dispatch(CustomSettingsAction.SetSuperIslandMediaButtonLayout(layoutId))
-                                                        showSuperIslandMediaButtonLayoutDropdown = false
-                                                    }
-                                                )
+                                                    )
+                                                }
                                             }
                                         }
                                     }
@@ -1337,11 +1338,11 @@ fun CustomSettingsScreen(
                                     )
                                 }
 
-                                // 5. 进度条颜色（显示进度条开启且进度可见时）
-                                if (superIslandShowProgressBar &&
-                                    (effectiveActionStyle == "disabled" || (effectiveActionStyle == "media_controls" &&
-                                            (superIslandNotificationStyle == LabFeatureManager.SUPER_ISLAND_STYLE_ADVANCED ||
-                                                    superIslandNotificationStyle == LabFeatureManager.SUPER_ISLAND_STYLE_ADVANCED_LYRICS_DUAL)))
+                                // 5. 进度条颜色（高级样式始终显示；标准样式在进度可见时显示）
+                                if ((superIslandNotificationStyle == LabFeatureManager.SUPER_ISLAND_STYLE_ADVANCED ||
+                                        superIslandNotificationStyle == LabFeatureManager.SUPER_ISLAND_STYLE_ADVANCED_LYRICS_DUAL) ||
+                                    (superIslandShowProgressBar &&
+                                        (effectiveActionStyle == "disabled" || effectiveActionStyle == "media_controls"))
                                 ) {
                                     SettingsCardDivider()
                                     SettingsSwitchItem(
