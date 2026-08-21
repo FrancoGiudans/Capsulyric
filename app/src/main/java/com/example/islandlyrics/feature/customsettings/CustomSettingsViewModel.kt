@@ -127,6 +127,8 @@ class CustomSettingsViewModel(application: Application) : AndroidViewModel(appli
                 prefs.edit { putString(AppPreferences.Keys.SUPER_ISLAND_MEDIA_BUTTON_LAYOUT, action.value) }
             is CustomSettingsAction.SetSuperIslandShowProgressBar ->
                 prefs.edit { putBoolean(AppPreferences.Keys.SUPER_ISLAND_SHOW_PROGRESS_BAR, action.value) }
+            is CustomSettingsAction.SetLiveUpdateShowProgressBar ->
+                prefs.edit { putBoolean(AppPreferences.Keys.LIVE_UPDATE_SHOW_PROGRESS_BAR, action.value) }
             is CustomSettingsAction.SetSuperIslandSecondaryTextModes -> {
                 val modes = action.value.mapNotNull { SuperIslandSecondaryTextMode.from(it) }
                 SuperIslandSecondaryTextMode.write(prefs, modes)
@@ -191,6 +193,7 @@ class CustomSettingsViewModel(application: Application) : AndroidViewModel(appli
             superIslandNotificationStyle = LabFeatureManager.sanitizeSuperIslandNotificationStyle(app),
             superIslandDualLineMode = SuperIslandDualLineMode.read(prefs),
             superIslandShowProgressBar = AppPreferences.isSuperIslandShowProgressBar(prefs),
+            liveUpdateShowProgressBar = AppPreferences.isLiveUpdateShowProgressBar(prefs),
             superIslandSecondaryTextModes = SuperIslandSecondaryTextMode.read(prefs).map { it.preferenceValue },
             superIslandTemplate2PicSource = SuperIslandTemplate2PicSource.read(prefs).preferenceValue,
             superIslandTemplate2CustomPicUri = SuperIslandTemplate2PicSource.readCustomPicUri(prefs),

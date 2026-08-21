@@ -44,6 +44,7 @@ import com.example.islandlyrics.ui.overlay.superisland.config.SuperIslandTemplat
 import com.example.islandlyrics.ui.overlay.superisland.config.SuperIslandTextLimitConfig
 import com.example.islandlyrics.R
 import com.example.islandlyrics.core.platform.XmsfBypassMode
+import com.example.islandlyrics.core.settings.AppPreferences
 import com.example.islandlyrics.core.settings.LabFeatureManager
 import com.example.islandlyrics.core.theme.ThemeHelper
 import com.example.islandlyrics.core.platform.RomUtils
@@ -142,6 +143,9 @@ fun MiuixCustomSettingsScreen(
     }
     var superIslandShowProgressBar by remember(uiState.superIslandShowProgressBar) {
         mutableStateOf(uiState.superIslandShowProgressBar)
+    }
+    var liveUpdateShowProgressBar by remember(uiState.liveUpdateShowProgressBar) {
+        mutableStateOf(uiState.liveUpdateShowProgressBar)
     }
     var secondaryTextModes by remember(uiState.superIslandSecondaryTextModes) {
         mutableStateOf(uiState.superIslandSecondaryTextModes)
@@ -356,6 +360,7 @@ fun MiuixCustomSettingsScreen(
         superIslandRelaxedTextLimitsLabEnabled = LabFeatureManager.isSuperIslandRelaxedTextLimitsEnabled(prefs)
         liveUpdateTextLimitsLabEnabled = LabFeatureManager.isLiveUpdateTextLimitsEnabled(prefs)
         liveUpdateTextChars = LiveUpdateTextLimitConfig.chars(prefs)
+        liveUpdateShowProgressBar = AppPreferences.isLiveUpdateShowProgressBar(prefs)
         superIslandNotificationStyle = LabFeatureManager.sanitizeSuperIslandNotificationStyle(context)
     }
     LaunchedEffect(forceDisableScrollingForSuperIslandLyricMode) {
@@ -892,7 +897,7 @@ fun MiuixCustomSettingsScreen(
                                     superIslandNotificationStyle = superIslandNotificationStyle,
                                     superIslandLyricMode = superIslandLyricMode,
                                     superIslandFullLyricShowLeftCover = superIslandFullLyricShowLeftCover,
-                                    showProgressBar = superIslandShowProgressBar,
+                                    showProgressBar = if (superIslandEnabled) superIslandShowProgressBar else liveUpdateShowProgressBar,
                                     template2PicSource = template2PicSource
                                 )
                             }
@@ -923,8 +928,19 @@ fun MiuixCustomSettingsScreen(
                                             }
                                         )
 
-                                        // 进度条颜色（实时更新胶囊保留原逻辑）
-                                        if (actionStyle == "disabled" || actionStyle == "media_controls") {
+                                        // 显示进度条（实时更新胶囊）
+                                        SuperSwitch(
+                                            title = stringResource(R.string.settings_live_update_show_progress_bar),
+                                            summary = stringResource(R.string.settings_live_update_show_progress_bar_desc),
+                                            checked = liveUpdateShowProgressBar,
+                                            onCheckedChange = {
+                                                liveUpdateShowProgressBar = it
+                                                viewModel.dispatch(CustomSettingsAction.SetLiveUpdateShowProgressBar(it))
+                                            }
+                                        )
+
+                                        // 进度条颜色（实时更新胶囊保留原逻辑，仅在显示进度条时可见）
+                                        if (liveUpdateShowProgressBar && (actionStyle == "disabled" || actionStyle == "media_controls")) {
                                             SuperSwitch(
                                                 title = stringResource(R.string.settings_progress_color),
                                                 summary = stringResource(R.string.settings_progress_color_desc),

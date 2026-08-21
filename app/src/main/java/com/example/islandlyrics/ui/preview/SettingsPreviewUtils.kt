@@ -821,46 +821,48 @@ fun NotificationPreview(
                     overflow = TextOverflow.Ellipsis
                 )
 
-                Spacer(modifier = Modifier.height(16.dp))
-
                 // PROGRESS BAR
-                LinearProgressIndicator(
-                    progress = { progress },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(6.dp)
-                        .clip(RoundedCornerShape(3.dp)),
-                    color = barColor,
-                    trackColor = Color(0xFF454545) // Darker gray track
-                )
-
-                Spacer(modifier = Modifier.height(12.dp))
+                if (showProgressBar) {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    LinearProgressIndicator(
+                        progress = { progress },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(6.dp)
+                            .clip(RoundedCornerShape(3.dp)),
+                        color = barColor,
+                        trackColor = Color(0xFF454545) // Darker gray track
+                    )
+                }
 
                 // ACTIONS
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Start
-                ) {
-                    if (actionStyle == "miplay") {
-                        TextButton(onClick = {}) {
-                            Text("Mi Play", color = Color(0xFF5E97F6), fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
-                        }
-                    } else {
-                        // Standard Controls
-                        TextButton(
-                            onClick = {},
-                            contentPadding = PaddingValues(horizontal = 0.dp)
-                        ) {
-                            Text("Pause", color = Color(0xFF8AB4F8), fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
-                        }
+                if (actionStyle != "disabled") {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Start
+                    ) {
+                        if (actionStyle == "miplay") {
+                            TextButton(onClick = {}) {
+                                Text("Mi Play", color = Color(0xFF5E97F6), fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
+                            }
+                        } else {
+                            // Standard Controls
+                            TextButton(
+                                onClick = {},
+                                contentPadding = PaddingValues(horizontal = 0.dp)
+                            ) {
+                                Text("Pause", color = Color(0xFF8AB4F8), fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
+                            }
 
-                        Spacer(modifier = Modifier.width(24.dp))
+                            Spacer(modifier = Modifier.width(24.dp))
 
-                        TextButton(
-                            onClick = {},
-                            contentPadding = PaddingValues(horizontal = 0.dp)
-                        ) {
-                            Text("Next", color = Color(0xFF8AB4F8), fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
+                            TextButton(
+                                onClick = {},
+                                contentPadding = PaddingValues(horizontal = 0.dp)
+                            ) {
+                                Text("Next", color = Color(0xFF8AB4F8), fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
+                            }
                         }
                     }
                 }

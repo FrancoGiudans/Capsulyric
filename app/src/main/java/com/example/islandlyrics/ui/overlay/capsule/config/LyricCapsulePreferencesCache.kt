@@ -31,9 +31,12 @@ import com.example.islandlyrics.ui.overlay.config.OneUiCapsuleColorMode
 internal class LyricCapsulePreferencesCache(
     context: Context,
     private val onActionsChanged: () -> Unit,
-    private val onDynamicIconStyleChanged: () -> Unit
+    private val onDynamicIconStyleChanged: () -> Unit,
+    private val onPreferencesChanged: () -> Unit = {}
 ) {
     var actionStyle = "disabled"
+        private set
+    var showProgressBar = true
         private set
     var useAlbumColor = false
         private set
@@ -58,8 +61,14 @@ internal class LyricCapsulePreferencesCache(
                 actionStyle = AppPreferences.notificationActionsStyle(p)
                 onActionsChanged()
             }
-            AppPreferences.Keys.PROGRESS_BAR_COLOR_ENABLED ->
+            AppPreferences.Keys.LIVE_UPDATE_SHOW_PROGRESS_BAR -> {
+                showProgressBar = AppPreferences.isLiveUpdateShowProgressBar(p)
+                onPreferencesChanged()
+            }
+            AppPreferences.Keys.PROGRESS_BAR_COLOR_ENABLED -> {
                 useAlbumColor = AppPreferences.isProgressBarColorEnabled(p)
+                onPreferencesChanged()
+            }
             AppPreferences.Keys.DYNAMIC_ICON_STYLE -> {
                 iconStyle = AppPreferences.dynamicIconStyle(p)
                 useDynamicIcon = iconStyle != "disabled"
@@ -72,6 +81,7 @@ internal class LyricCapsulePreferencesCache(
             "oneui_capsule_color_enabled",
             OneUiCapsuleColorMode.PREF_KEY -> {
                 oneUiCapsuleColorMode = OneUiCapsuleColorMode.read(p)
+                onPreferencesChanged()
             }
             LabFeatureManager.KEY_LIVE_UPDATE_TEXT_LIMITS_ENABLED,
             LiveUpdateTextLimitConfig.KEY_CHARS -> {
@@ -79,6 +89,7 @@ internal class LyricCapsulePreferencesCache(
                 liveUpdateTextWeight = LiveUpdateTextLimitConfig.weightForChars(
                     LiveUpdateTextLimitConfig.chars(p)
                 )
+                onPreferencesChanged()
             }
         }
     }
@@ -94,6 +105,7 @@ internal class LyricCapsulePreferencesCache(
 
     private fun load() {
         actionStyle = AppPreferences.notificationActionsStyle(prefs)
+        showProgressBar = AppPreferences.isLiveUpdateShowProgressBar(prefs)
         useAlbumColor = AppPreferences.isProgressBarColorEnabled(prefs)
         iconStyle = AppPreferences.dynamicIconStyle(prefs)
         useDynamicIcon = iconStyle != "disabled"

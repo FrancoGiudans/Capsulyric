@@ -65,8 +65,15 @@ class LyricCapsuleHandler(
     
     private val preferences = LyricCapsulePreferencesCache(
         context = context,
-        onActionsChanged = { rebuildCachedIntents() },
-        onDynamicIconStyleChanged = { dynamicIconCache.release() }
+        onActionsChanged = {
+            rebuildCachedIntents()
+            refresh()
+        },
+        onDynamicIconStyleChanged = {
+            dynamicIconCache.release()
+            refresh()
+        },
+        onPreferencesChanged = { refresh() }
     )
     private val intentFactory = LyricCapsuleIntentFactory(context)
     private val dynamicIconCache = LyricCapsuleDynamicIconCache(context)
@@ -126,6 +133,17 @@ class LyricCapsuleHandler(
         render(state)
     }
 
+    fun refresh() {
+        if (!isRunning) return
+        val state = lastState ?: return
+        lastNotifiedLyric = ""
+        lastNotifiedFullLyric = ""
+        lastNotifiedTitle = ""
+        lastNotifiedProgress = -1
+        lastNotifyTime = 0L
+        render(state)
+    }
+
     private fun createChannel() {
         val channel = NotificationChannel(
             CHANNEL_ID,
@@ -180,9 +198,9 @@ class LyricCapsuleHandler(
         val iconChanged = iconFrame.text != lastNotifiedIconText
         val progressChangedEnough = kotlin.math.abs(currentProgress - lastNotifiedProgress) >= PROGRESS_NOTIFY_STEP_PERCENT
         val now = android.os.SystemClock.elapsedRealtime()
+        val shouldNotifyProgress = preferences.showProgressBar && progressChangedEnough && (now - lastNotifyTime >= PROGRESS_NOTIFY_INTERVAL_MS)
         if (!isFirstNotification && !lyricChanged && !fullLyricChanged && !titleChanged && !iconChanged &&
-            !visibilityChanged &&
-            (!progressChangedEnough || now - lastNotifyTime < PROGRESS_NOTIFY_INTERVAL_MS)) {
+            !visibilityChanged && !shouldNotifyProgress) {
             return
         }
         if (!isFirstNotification && (lyricChanged || fullLyricChanged || titleChanged || iconChanged) &&

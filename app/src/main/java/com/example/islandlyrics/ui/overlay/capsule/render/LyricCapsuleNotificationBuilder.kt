@@ -124,25 +124,27 @@ internal class LyricCapsuleNotificationBuilder(
             }
 
             if (Build.VERSION.SDK_INT >= 36) {
-                if (progressPercent >= 0) {
-                    val segment = NotificationCompat.ProgressStyle.Segment(100)
-                    segment.setColor(barColor)
+                if (preferences.showProgressBar) {
+                    if (progressPercent >= 0) {
+                        val segment = NotificationCompat.ProgressStyle.Segment(100)
+                        segment.setColor(barColor)
 
-                    val progressStyle = NotificationCompat.ProgressStyle()
-                        .setProgressSegments(arrayListOf(segment))
-                        .setStyledByProgress(true)
-                        .setProgress(progressPercent.coerceIn(0, 100))
+                        val progressStyle = NotificationCompat.ProgressStyle()
+                            .setProgressSegments(arrayListOf(segment))
+                            .setStyledByProgress(true)
+                            .setProgress(progressPercent.coerceIn(0, 100))
 
-                    builder.setStyle(progressStyle)
-                } else {
-                    val segment = NotificationCompat.ProgressStyle.Segment(100)
-                    segment.setColor(barColorIndeterminate)
+                        builder.setStyle(progressStyle)
+                    } else {
+                        val segment = NotificationCompat.ProgressStyle.Segment(100)
+                        segment.setColor(barColorIndeterminate)
 
-                    val progressStyle = NotificationCompat.ProgressStyle()
-                        .setProgressSegments(arrayListOf(segment))
-                        .setProgressIndeterminate(true)
+                        val progressStyle = NotificationCompat.ProgressStyle()
+                            .setProgressSegments(arrayListOf(segment))
+                            .setProgressIndeterminate(true)
 
-                    builder.setStyle(progressStyle)
+                        builder.setStyle(progressStyle)
+                    }
                 }
 
                 val shortCriticalText = SuperIslandLyricLayout.takeByWeight(

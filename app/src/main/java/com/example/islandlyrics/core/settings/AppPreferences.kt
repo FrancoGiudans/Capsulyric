@@ -31,6 +31,7 @@ object AppPreferences {
     object Keys {
         const val NOTIFICATION_ACTIONS_STYLE = "notification_actions_style"
         const val NOTIFICATION_CLICK_STYLE = "notification_click_style"
+        const val LIVE_UPDATE_SHOW_PROGRESS_BAR = "live_update_show_progress_bar"
         const val PROGRESS_BAR_COLOR_ENABLED = "progress_bar_color_enabled"
         const val DYNAMIC_ICON_STYLE = "dynamic_icon_style"
         const val DISABLE_LYRIC_SCROLLING = "disable_lyric_scrolling"
@@ -123,6 +124,7 @@ object AppPreferences {
     object Defaults {
         const val NOTIFICATION_ACTIONS_STYLE = "disabled"
         const val NOTIFICATION_CLICK_STYLE = "default"
+        const val LIVE_UPDATE_SHOW_PROGRESS_BAR = true
         const val DYNAMIC_ICON_STYLE = "disabled"
         const val SUPER_ISLAND_SHARE_FORMAT = "format_1"
         const val SUPER_ISLAND_MEDIA_BUTTON_LAYOUT = "two_button"
@@ -146,6 +148,9 @@ object AppPreferences {
     fun notificationClickStyle(prefs: SharedPreferences): String =
         prefs.getString(Keys.NOTIFICATION_CLICK_STYLE, Defaults.NOTIFICATION_CLICK_STYLE)
             ?: Defaults.NOTIFICATION_CLICK_STYLE
+
+    fun isLiveUpdateShowProgressBar(prefs: SharedPreferences): Boolean =
+        prefs.getBoolean(Keys.LIVE_UPDATE_SHOW_PROGRESS_BAR, Defaults.LIVE_UPDATE_SHOW_PROGRESS_BAR)
 
     fun isProgressBarColorEnabled(prefs: SharedPreferences): Boolean =
         prefs.getBoolean(Keys.PROGRESS_BAR_COLOR_ENABLED, false)

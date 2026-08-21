@@ -49,6 +49,7 @@ data class CustomSettingsUiState(
     val superIslandNotificationStyle: String = "standard",
     val superIslandDualLineMode: String = "translation",
     val superIslandShowProgressBar: Boolean = true,
+    val liveUpdateShowProgressBar: Boolean = true,
     val superIslandSecondaryTextModes: List<String> = listOf("next_lyric"),
     val superIslandTemplate2PicSource: String = "album_art",
     val superIslandTemplate2CustomPicUri: String? = null,
@@ -120,6 +121,7 @@ sealed interface CustomSettingsAction {
     data class SetSuperIslandDualLineMode(val value: String) : CustomSettingsAction
     data class SetSuperIslandMediaButtonLayout(val value: String) : CustomSettingsAction
     data class SetSuperIslandShowProgressBar(val value: Boolean) : CustomSettingsAction
+    data class SetLiveUpdateShowProgressBar(val value: Boolean) : CustomSettingsAction
     data class SetSuperIslandSecondaryTextModes(val value: List<String>) : CustomSettingsAction
     data class SetSuperIslandTemplate2PicSource(val value: String) : CustomSettingsAction
     data class SetSuperIslandTemplate2CustomPicUri(val value: String?) : CustomSettingsAction

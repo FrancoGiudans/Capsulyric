@@ -91,6 +91,7 @@ object BackupCategories {
         keyPatterns = listOf(
             "notification_*", "dynamic_icon_*", "floating_*",
             "progress_bar_color_enabled", "oneui_capsule_color_mode",
+            AppPreferences.Keys.LIVE_UPDATE_SHOW_PROGRESS_BAR,
             AppPreferences.Keys.NEW_PLAYING_APP_ALERT_ENABLED,
             AppPreferences.Keys.NEW_PLAYING_APP_ALERT_IGNORED_PACKAGES
         ),
@@ -106,7 +107,8 @@ object BackupCategories {
                 "floating_*"
             )),
             SubGroup("notif_appearance", listOf(
-                "progress_bar_color_enabled", "oneui_capsule_color_mode"
+                "progress_bar_color_enabled", "oneui_capsule_color_mode",
+                AppPreferences.Keys.LIVE_UPDATE_SHOW_PROGRESS_BAR
             )),
             SubGroup("notif_alert", listOf(
                 AppPreferences.Keys.NEW_PLAYING_APP_ALERT_ENABLED,

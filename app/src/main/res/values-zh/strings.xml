@@ -691,6 +691,8 @@
     <string name="settings_super_island_template2_pic_custom_none">未选择图片</string>
     <string name="settings_super_island_custom_expand_test">测试自定义展开布局</string>
     <string name="settings_super_island_custom_expand_test_desc">使用自定义超级岛展开态布局进行测试，包含横向进度条和三个播放控制按键。</string>
+    <string name="settings_live_update_show_progress_bar">显示进度条</string>
+    <string name="settings_live_update_show_progress_bar_desc">在通知中显示播放进度条。关闭后仅显示歌词文本，更适合与 Dynamic Spot 等第三方灵动岛软件搭配。</string>
     <string name="settings_progress_color">为进度条着色</string>
     <string name="settings_progress_color_desc">从专辑封面提取颜色应用到通知进度条</string>
     <string name="settings_dismiss_delay_title">消失延迟</string>
