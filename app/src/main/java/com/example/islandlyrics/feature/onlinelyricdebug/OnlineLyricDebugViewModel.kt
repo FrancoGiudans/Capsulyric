@@ -673,6 +673,109 @@ class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(app
         }
     }
 
+    /**
+     * 单独匹配翻译/拼音歌词（不改变主歌词）。
+     * 放在“重新匹配”下方，复用当前有效查询，重新抓取所有源后仅刷新 sidecar，
+     * 主歌词保持当前选中不变，避免“经常什么结果都没有”时主歌词被意外替换。
+     */
+    fun rematchSidecarLyrics() {
+        val mediaInfo = liveMetadata.value ?: run {
+            _error.value = s(R.string.online_lyric_debug_error_no_song)
+            return
+        }
+        if (OfflineModeManager.isEnabled(appContext)) {
+            _error.value = s(R.string.offline_mode_network_blocked)
+            return
+        }
+        val rule = ParserRuleHelper.getRuleForPackage(getApplication(), mediaInfo.packageName)
+            ?: ParserRuleHelper.createDefaultRule(mediaInfo.packageName)
+        viewModelScope.launch {
+            _isFetching.value = true
+            _error.value = null
+            try {
+                val currentSongState = withContext(Dispatchers.IO) {
+                    cacheStore.getCurrentSongState(
+                        mediaInfo = mediaInfo,
+                        fallbackTitle = mediaInfo.title,
+                        fallbackArtist = mediaInfo.artist,
+                        useRawMetadata = rule.useRawMetadataForOnlineMatching
+                    )
+                }
+                val queryTitle = currentSongState.effectiveTitle
+                val queryArtist = currentSongState.effectiveArtist
+                if (queryTitle.isBlank() || queryArtist.isBlank()) {
+                    _error.value = s(R.string.online_lyric_debug_error_no_song)
+                    return@launch
+                }
+                // 复用当前主结果，若无则用最佳结果兜底
+                val preserveMain = _selectedMainResult.value ?: _selectedResult.value
+                val outcome = fetcher.fetchLyrics(
+                    title = queryTitle,
+                    artist = queryArtist,
+                    providerOrderIds = if (rule.useSmartOnlineLyricSelection) {
+                        OnlineLyricProvider.defaultIds()
+                    } else {
+                        _providerOrder.value.orEmpty().map { it.id }
+                    },
+                    useSmartSelection = rule.useSmartOnlineLyricSelection
+                )
+                _attempts.value = outcome.attempts
+                _usedCleanTitleFallback.value = outcome.usedCleanTitleFallback
+                OnlineLyricFetchSnapshotStore.save(
+                    OnlineLyricFetchSnapshotStore.Snapshot(
+                        packageName = mediaInfo.packageName,
+                        queryTitle = queryTitle,
+                        queryArtist = queryArtist,
+                        fetchedAt = System.currentTimeMillis(),
+                        bestResult = outcome.bestResult,
+                        attempts = outcome.attempts,
+                        usedCleanTitleFallback = outcome.usedCleanTitleFallback
+                    )
+                )
+                val mainForSidecar = preserveMain ?: outcome.bestResult
+                if (mainForSidecar == null) {
+                    _error.value = s(R.string.online_lyric_debug_all_apis_failed)
+                    return@launch
+                }
+                val translationResult = selectBestSidecarResult(
+                    attempts = outcome.attempts,
+                    preferredMain = mainForSidecar,
+                    role = ResultRole.TRANSLATION,
+                    targetTitle = queryTitle,
+                    targetArtist = queryArtist
+                )
+                val romanResult = selectBestSidecarResult(
+                    attempts = outcome.attempts,
+                    preferredMain = mainForSidecar,
+                    role = ResultRole.ROMANIZATION,
+                    targetTitle = queryTitle,
+                    targetArtist = queryArtist
+                )
+                if (translationResult == null && romanResult == null) {
+                    _error.value = s(R.string.online_lyric_debug_no_translation_candidates)
+                    // 仍刷新 attempts 供用户查看
+                    return@launch
+                }
+                // 仅更新 sidecar，保留主歌词
+                persistAndApplySelection(
+                    mediaInfo = mediaInfo,
+                    queryTitle = queryTitle,
+                    queryArtist = queryArtist,
+                    mainResult = mainForSidecar,
+                    translationResult = translationResult ?: _selectedTranslationResult.value,
+                    romanResult = romanResult ?: _selectedRomanResult.value,
+                    cacheMessage = s(R.string.online_lyric_debug_cache_switched_fmt, mainForSidecar.api)
+                )
+                _cacheStatus.value = s(R.string.online_lyric_debug_cache_switched_fmt, mainForSidecar.api)
+            } catch (e: Exception) {
+                _error.value = s(R.string.online_lyric_debug_error_fetch_failed_fmt, e.message ?: "")
+            } finally {
+                _isFetching.value = false
+                syncCurrentSongQuery()
+            }
+        }
+    }
+
     fun fetchLyrics(forceRefresh: Boolean = false) {
         if (OfflineModeManager.isEnabled(appContext)) {
             _isFetching.value = false

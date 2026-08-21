@@ -53,26 +53,10 @@ import kotlinx.coroutines.withContext
  */
 class OnlineLyricSource(private val context: Context) {
 
-    private val fetcher    = OnlineLyricFetcher(
-        networkAllowed = { !OfflineModeManager.isEnabled(context) },
-        musixmatchTokenStore = com.example.islandlyrics.lyrics.online.provider.MusixmatchTokenStore(context)
-    )
+    private val fetcher    = OnlineLyricFetcher(networkAllowed = { !OfflineModeManager.isEnabled(context) })
     private val cacheStore = OnlineLyricCacheStore(context)
     private val scope      = CoroutineScope(Dispatchers.Main + Job())
     private var fetchJob: Job? = null
-
-    init {
-        // 将持久化的 Apple Music 地区/语言载入全局状态缓存
-        val prefs = com.example.islandlyrics.core.settings.AppPreferences.of(context)
-        com.example.islandlyrics.lyrics.online.provider.AppleMusicStateCache.setStorefrontCache(
-            com.example.islandlyrics.core.settings.AppPreferences.appleMusicStorefront(prefs),
-            com.example.islandlyrics.core.settings.AppPreferences.appleMusicLanguage(prefs)
-        )
-        // 载入 Apple Music 登录凭据（media-user-token）；未导入则为空（匿名模式）
-        com.example.islandlyrics.lyrics.online.provider.AppleMusicStateCache.setMediaUserToken(
-            com.example.islandlyrics.integration.applemusic.AppleMusicSecureStore(context).getMediaUserToken()
-        )
-    }
 
     // Track the last request so we can discard stale results
     private var pendingTitle  = ""
@@ -206,25 +190,9 @@ class OnlineLyricSource(private val context: Context) {
                         rule.onlineLyricProviderOrder
                     },
                     useSmartSelection = rule.useSmartOnlineLyricSelection,
-                    disabledProviderIds = rule.onlineLyricDisabledProviders,
-                    appleMusicStorefront = rule.appleMusicStorefrontOverride,
-                    appleMusicLanguage = rule.appleMusicLanguageOverride
+                    disabledProviderIds = rule.onlineLyricDisabledProviders
                 )
-                // 当规则开启接收翻译/拼音时，不能只依赖评分最高的结果：
-                // 其他 provider 的尝试结果里可能带有翻译/拼音（如 QQ/网易），需要一并合并。
-                val result = if (rule.receiveOnlineTranslation || rule.receiveOnlineRomanization) {
-                    outcome.bestResult?.let { best ->
-                        OnlineLyricSidecarMerger.mergeSidecarsFromAttempts(
-                            main = best,
-                            attempts = outcome.attempts,
-                            rule = rule,
-                            targetTitle = queryTitle,
-                            targetArtist = queryArtist
-                        )
-                    }
-                } else {
-                    outcome.bestResult
-                }
+                val result = outcome.bestResult
 
                 // Staleness check: ensure the song hasn't changed while we were fetching
                 val current = LyricRepository.getInstance().liveMetadata.value
@@ -243,6 +211,7 @@ class OnlineLyricSource(private val context: Context) {
                     return@launch
                 }
 
+                // 进程内抓取快照：保留所有源的 attempts 与最佳结果，供在线歌词重匹配页直接填充
                 OnlineLyricFetchSnapshotStore.save(
                     OnlineLyricFetchSnapshotStore.Snapshot(
                         packageName = packageName,

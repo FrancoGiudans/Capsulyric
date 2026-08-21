@@ -144,17 +144,27 @@ internal class QqMusicLyricProvider(
                     )
                 }
 
-                // QRC 逐字优先：lyric_download.fcg 的 content 字段解密后若为 QRC 形态则用逐字解析
+                // QRC 逐字优先：lyric_download.fcg 的 content 字段解密后若为 QRC 形态则用逐字解析；
+                // 若非 QRC 但含 [startMs,durMs] 逐行段，同样优先于 fcg_query_lyric_new 的普通 LRC，
+                // 保证 QQ 逐字/逐行数据被真正解析而不是把原文原样展示。
                 val qrcContent = downloadExtras.qrcContent
                 val hasSyllable = QrcParser.isQrcContent(qrcContent)
-                val parsedLines = if (hasSyllable) {
-                    OnlineLyricParser.parseQrcLyrics(qrcContent)
-                } else {
-                    OnlineLyricParser.parseLrcLyrics(mergedContent)
+                val lineSegmentedContent = qrcContent.takeIf {
+                    !hasSyllable && OnlineLyricParser.hasQqLineSegments(it)
+                }
+                val primaryContent = when {
+                    hasSyllable -> qrcContent
+                    lineSegmentedContent != null -> lineSegmentedContent
+                    else -> mergedContent
+                }
+                val parsedLines = when {
+                    hasSyllable -> OnlineLyricParser.parseQrcLyrics(qrcContent)
+                    lineSegmentedContent != null -> OnlineLyricParser.parseLrcLyrics(lineSegmentedContent)
+                    else -> OnlineLyricParser.parseLrcLyrics(mergedContent)
                 }
                 OnlineLyricFetcher.LyricResult(
                     api = "QQMusic",
-                    lyrics = if (hasSyllable) qrcContent else mergedContent,
+                    lyrics = primaryContent,
                     parsedLines = parsedLines,
                     hasSyllable = hasSyllable,
                     provider = OnlineLyricProvider.QQMusic,

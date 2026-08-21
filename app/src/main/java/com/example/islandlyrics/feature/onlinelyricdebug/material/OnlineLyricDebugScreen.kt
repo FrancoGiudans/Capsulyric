@@ -48,8 +48,10 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Translate
 import com.example.islandlyrics.ui.material.blur.MaterialBlurAlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -288,6 +290,16 @@ fun OnlineLyricDebugScreen(
                                 Spacer(modifier = Modifier.size(8.dp))
                                 Text(stringResource(R.string.online_lyric_rematch_action))
                             }
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedButton(
+                            onClick = { viewModel.rematchSidecarLyrics() },
+                            enabled = !isFetching && !offlineModeEnabled,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(Icons.Default.Translate, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.size(8.dp))
+                            Text(stringResource(R.string.online_lyric_rematch_sidecar_action))
                         }
                         Spacer(modifier = Modifier.height(10.dp))
                         Text(

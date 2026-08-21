@@ -27,7 +27,6 @@
 
 package com.example.islandlyrics.lyrics.online.crypto
 
-import android.text.Html
 import java.io.ByteArrayOutputStream
 import java.util.zip.Inflater
 import java.util.zip.InflaterInputStream
@@ -53,7 +52,9 @@ internal object QqLyricPayloadDecoder {
     }
 
     private fun String.isLikelyLrc(): Boolean {
-        return Regex("""(?m)^\[\d{1,2}:\d{2}(?:\.\d{1,3})?]""").containsMatchIn(this)
+        return Regex("""(?m)^\[\d{1,2}:\d{2}(?:\.\d{1,3})?]""").containsMatchIn(this) ||
+            // QQ 逐行/逐字形态：[startMs,durMs]text（无 mm:ss.xx 时间戳）
+            Regex("""(?m)^\[\d+,\d+]""").containsMatchIn(this)
     }
 
     private fun normalizeDownloadPayload(payload: String): String {
@@ -62,18 +63,39 @@ internal object QqLyricPayloadDecoder {
             return trimmed
         }
 
+        // 注意：不能用 Html.fromHtml 处理 LyricContent —— 它会把换行折叠成空格，
+        // 使 QRC 变成单行 [ti:...][0,3946]... 形态，破坏逐行/逐字解析。
+        // 这里只做实体解码，保留字面换行。
         val attrMatch = Regex("""LyricContent="([^"]*)"""").find(trimmed)
         if (attrMatch != null) {
-            return Html.fromHtml(attrMatch.groupValues[1], Html.FROM_HTML_MODE_LEGACY).toString()
+            return decodeHtmlEntities(attrMatch.groupValues[1])
         }
 
         val lyricMatch = extractTagContent(trimmed, "Lyric_1")
             ?: extractTagContent(trimmed, "lyric")
         if (!lyricMatch.isNullOrBlank()) {
-            return Html.fromHtml(lyricMatch, Html.FROM_HTML_MODE_LEGACY).toString()
+            return decodeHtmlEntities(lyricMatch)
         }
 
         return trimmed
+    }
+
+    /** 解码常见 HTML 实体，保留 \n/\r 换行（区别于 Html.fromHtml 的空格折叠）。 */
+    private fun decodeHtmlEntities(input: String): String {
+        var result = input
+            .replace("&lt;", "<")
+            .replace("&gt;", ">")
+            .replace("&amp;", "&")
+            .replace("&quot;", "\"")
+            .replace("&apos;", "'")
+            .replace("&nbsp;", " ")
+        result = Regex("""&#(\d+);""").replace(result) { match ->
+            match.groupValues[1].toIntOrNull()?.toChar()?.toString() ?: match.value
+        }
+        result = Regex("""&#[xX]([0-9a-fA-F]+);""").replace(result) { match ->
+            match.groupValues[1].toIntOrNull(16)?.toChar()?.toString() ?: match.value
+        }
+        return result
     }
 
     private fun decryptQrcPayload(encryptedLyrics: String): String {

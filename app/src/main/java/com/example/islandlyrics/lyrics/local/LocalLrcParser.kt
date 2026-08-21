@@ -105,24 +105,55 @@ object LocalLrcParser {
 
         for (line in lines) {
             if (line.isBlank()) continue
+            // 纯元数据行（整行即 [ti:] 等）直接跳过；但若行内同时含 QQ 段则不跳过，交给后续 QQ 正则处理
             if (isMetadataTag(line)) continue
 
             val timestamps = extractTimestamps(line)
-            if (timestamps.isEmpty()) continue
+            if (timestamps.isNotEmpty()) {
+                val textPart = line.replace(TIMESTAMP_REGEX, "").trim()
+                if (textPart.isBlank()) continue
 
-            val textPart = line.replace(TIMESTAMP_REGEX, "").trim()
-            if (textPart.isBlank()) continue
-
-            if (hasEsLyricTokens(textPart)) {
-                hasEsLyric = true
-                for (ts in timestamps) {
-                    parseEsLyricLine(ts, textPart)?.let { esLyricLines.add(it) }
+                if (hasEsLyricTokens(textPart)) {
+                    hasEsLyric = true
+                    for (ts in timestamps) {
+                        parseEsLyricLine(ts, textPart)?.let { esLyricLines.add(it) }
+                    }
+                } else {
+                    for (ts in timestamps) {
+                        mainLines.add(ts to textPart)
+                    }
                 }
-            } else {
-                for (ts in timestamps) {
-                    mainLines.add(ts to textPart)
-                }
+                continue
             }
+
+            // 标准 LRC 时间戳未命中时，尝试解析 QQ 行级格式 [start,duration]text（也兼容 [start] 单参）
+            // 该格式常见于 QQ 音乐 fcg_query_lyric_new 返回的逐行歌词，需与 Local 文件下载场景兼容
+            val qqRegex = Regex("""\[(\d+)(?:,(\d+))?]([^\[]*)""")
+            var qqMatched = false
+            for (m in qqRegex.findAll(line)) {
+                val startMs = m.groupValues[1].toLongOrNull() ?: continue
+                var segText = m.groupValues[3].trim()
+                if (segText.isBlank()) continue
+                // 防御性：段文本若以元数据开头则清理
+                while (segText.startsWith("[")) {
+                    val c2 = segText.indexOf("]")
+                    if (c2 == -1) break
+                    val ins2 = segText.substring(1, c2)
+                    if (ins2.startsWith("ti:") || ins2.startsWith("ar:") || ins2.startsWith("al:") || ins2.startsWith("by:") || ins2.startsWith("offset:")) {
+                        segText = segText.substring(c2 + 1).trim()
+                    } else break
+                }
+                if (segText.isEmpty()) continue
+                // QQ 行若含 <start,dur> 音节标记，则按逐字处理
+                if (hasEsLyricTokens(segText)) {
+                    hasEsLyric = true
+                    parseEsLyricLine(startMs, segText)?.let { esLyricLines.add(it) }
+                } else {
+                    mainLines.add(startMs to segText)
+                }
+                qqMatched = true
+            }
+            if (qqMatched) continue
         }
 
         if (hasEsLyric && esLyricLines.isNotEmpty()) {

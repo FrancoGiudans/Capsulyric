@@ -26,6 +26,7 @@ import android.graphics.Bitmap
 import com.example.islandlyrics.core.logging.AppLogger
 import com.example.islandlyrics.core.settings.AppPreferences
 import com.example.islandlyrics.lyrics.online.OnlineLyricFetcher
+import com.example.islandlyrics.lyrics.online.parser.OnlineLyricParser
 import com.example.islandlyrics.integration.shizuku.ShizukuUserServiceRecycler
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
@@ -158,6 +159,24 @@ class LyricRepository private constructor() {
         postOrSet(liveLyric, acceptedInfo)
         if (acceptedInfo.lyric.isNotBlank()) {
             updateLyricResolveState(LyricResolveState.FOUND)
+        }
+
+        // QQ 逐行/逐字原文（[ti:...]/[kana:...]/[startMs,durMs]text）若直接从 hook/通知等
+        // 路径进入且尚未有解析行，则按时间轴解析，避免把整段原文原样展示为“当前歌词”。
+        if (acceptedInfo.lyric.isNotBlank() &&
+            liveParsedLyrics.value?.lines?.isNotEmpty() != true &&
+            OnlineLyricParser.hasQqLineSegments(acceptedInfo.lyric)
+        ) {
+            val qqLines = OnlineLyricParser.parseLrcLyrics(acceptedInfo.lyric)
+            if (qqLines.isNotEmpty()) {
+                updateParsedLyrics(
+                    lines = qqLines,
+                    hasSyllable = false,
+                    sourceLabel = app,
+                    apiPath = apiPath,
+                    timelineCapability = TimelineCapability.MULTI_LINE
+                )
+            }
         }
     }
 

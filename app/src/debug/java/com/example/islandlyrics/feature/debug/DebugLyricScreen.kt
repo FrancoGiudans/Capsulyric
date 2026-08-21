@@ -1,7 +1,12 @@
 package com.example.islandlyrics.feature.debug
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
+import android.widget.Toast
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -110,7 +115,14 @@ fun DebugLyricScreen(
                 Text(
                     "当前歌词: ${liveLyric?.lyric?.ifBlank { "(空)" } ?: "—"}",
                     fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp
+                    fontSize = 16.sp,
+                    modifier = Modifier.clickable(enabled = !liveLyric?.lyric.isNullOrBlank()) {
+                        liveLyric?.lyric?.let { lyric ->
+                            val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                            cm.setPrimaryClip(ClipData.newPlainText("Lyric", lyric))
+                            Toast.makeText(context, "已复制", Toast.LENGTH_SHORT).show()
+                        }
+                    }
                 )
                 Text(
                     "播放应用: ${mediaInfo?.packageName ?: "—"}",
@@ -233,7 +245,15 @@ fun DebugLyricScreen(
                             }
                         }
                     }
-                    Text(resultText, color = MaterialTheme.colorScheme.onSurface)
+                    Text(
+                        resultText,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.clickable(enabled = resultText.isNotBlank()) {
+                            val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                            cm.setPrimaryClip(ClipData.newPlainText("Lyric Raw Response", resultText))
+                            Toast.makeText(context, "已复制", Toast.LENGTH_SHORT).show()
+                        }
+                    )
                 }
             }
 

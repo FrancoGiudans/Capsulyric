@@ -35,10 +35,17 @@ internal object OnlineLyricParser {
     fun parseWordLevelLyrics(content: String): List<OnlineLyricFetcher.LyricLine> {
         val trimmed = content.trimStart()
         return when {
+            // 酷狗 KRC（<x,y,z> 音节标记）优先于 QRC 判定：酷狗内容可能带 [kana:]/(x,y) 注音行，
+            // 但主歌词是 <x,y,z> 形态，不能误走 QQ 的 (x,y) 解析器（否则会把 <x,y,z> 当原文文本）。
+            hasKrcSyllableTokens(trimmed) -> parseBracketWordLyrics(content)
             trimmed.startsWith("<tt") -> parseTtmlLyrics(content)
             QrcParser.isQrcContent(trimmed) -> QrcParser.parseQrcLyrics(content)
             else -> parseBracketWordLyrics(content)
         }
+    }
+
+    private fun hasKrcSyllableTokens(content: String): Boolean {
+        return Regex("""<(\d+),(\d+),(\d+)>""").containsMatchIn(content)
     }
 
     fun isWordLevelLyrics(content: String, lyricTypeHint: String? = null): Boolean {
@@ -50,6 +57,11 @@ internal object OnlineLyricParser {
 
         val bracketWordRegex = Regex("""(?m)^\[\d+(?:,\d+)?]\s*(?:<\d+,\d+,\d+>[^<\r\n]*)+""")
         return bracketWordRegex.containsMatchIn(content)
+    }
+
+    /** 检测 QQ 逐行/逐字 `[startMs,durMs]text` 段格式（无需字级 `(x,y)` 标记）。 */
+    internal fun hasQqLineSegments(content: String): Boolean {
+        return Regex("""\[\d+,\d+][^[]*""").containsMatchIn(content)
     }
 
     /** QQ QRC 逐字歌词入口。 */
@@ -88,17 +100,72 @@ internal object OnlineLyricParser {
         val timeRegex = "\\[(\\d{2}):(\\d{2})\\.(\\d{2,3})\\]".toRegex()
 
         for (line in lrcLines) {
-            val matches = timeRegex.findAll(line)
-            val text = line.replace(timeRegex, "").trim()
-
-            for (match in matches) {
-                val minutes = match.groupValues[1].toLong()
-                val seconds = match.groupValues[2].toLong()
-                val millis = match.groupValues[3].let {
-                    if (it.length == 2) it.toLong() * 10 else it.toLong()
+            val matches = timeRegex.findAll(line).toList()
+            if (matches.isNotEmpty()) {
+                var text = line.replace(timeRegex, "").trim()
+                while (text.startsWith("[")) {
+                    val close = text.indexOf("]")
+                    if (close == -1) break
+                    val inside = text.substring(1, close)
+                    if (inside.startsWith("ti:") || inside.startsWith("ar:") || inside.startsWith("al:") || inside.startsWith("by:") || inside.startsWith("offset:")) {
+                        text = text.substring(close + 1).trim()
+                    } else break
                 }
-                val totalMs = minutes * 60000 + seconds * 1000 + millis
-                timedLines.add(Pair(totalMs, text))
+                for (match in matches) {
+                    val minutes = match.groupValues[1].toLong()
+                    val seconds = match.groupValues[2].toLong()
+                    val millis = match.groupValues[3].let {
+                        if (it.length == 2) it.toLong() * 10 else it.toLong()
+                    }
+                    val totalMs = minutes * 60000 + seconds * 1000 + millis
+                    timedLines.add(Pair(totalMs, text))
+                }
+            } else {
+                // QQ 行级逐字：[start,duration]text，同一物理行可能含多段（包括元数据挤在一行的情况）
+                val qqLineRegex = Regex("""\[(\d+)(?:,(\d+))?]([^\[]*)""")
+                var matchedAny = false
+                for (m in qqLineRegex.findAll(line)) {
+                    val startMs = m.groupValues[1].toLongOrNull() ?: continue
+                    var segText = m.groupValues[3].trim()
+                    if (segText.isBlank()) continue
+                    while (segText.startsWith("[")) {
+                        val c2 = segText.indexOf("]")
+                        if (c2 == -1) break
+                        val ins2 = segText.substring(1, c2)
+                        if (ins2.startsWith("ti:") || ins2.startsWith("ar:") || ins2.startsWith("al:") || ins2.startsWith("by:") || ins2.startsWith("offset:")) {
+                            segText = segText.substring(c2 + 1).trim()
+                        } else break
+                    }
+                    if (segText.isEmpty()) continue
+                    timedLines.add(Pair(startMs, segText))
+                    matchedAny = true
+                }
+                if (!matchedAny) {
+                    val trimmed = line.trim()
+                    val lastOpen = trimmed.lastIndexOf("[")
+                    val lastClose = trimmed.lastIndexOf("]")
+                    if (lastOpen != -1 && lastClose > lastOpen) {
+                        val insideLast = trimmed.substring(lastOpen + 1, lastClose)
+                        if ("," in insideLast) {
+                            val partsLast = insideLast.split(",")
+                            if (partsLast.size == 2) {
+                                val sLast = partsLast[0].trim().toLongOrNull()
+                                var txtLast = trimmed.substring(lastClose + 1).trim()
+                                while (txtLast.startsWith("[")) {
+                                    val c2 = txtLast.indexOf("]")
+                                    if (c2 == -1) break
+                                    val ins2 = txtLast.substring(1, c2)
+                                    if (ins2.startsWith("ti:") || ins2.startsWith("ar:") || ins2.startsWith("al:") || ins2.startsWith("by:") || ins2.startsWith("offset:")) {
+                                        txtLast = txtLast.substring(c2 + 1).trim()
+                                    } else break
+                                }
+                                if (sLast != null && txtLast.isNotEmpty()) {
+                                    timedLines.add(Pair(sLast, txtLast))
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
 
