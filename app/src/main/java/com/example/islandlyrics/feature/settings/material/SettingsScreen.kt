@@ -605,6 +605,16 @@ fun SettingsScreen(
                         icon = Icons.Filled.Folder,
                         onClick = onOpenLocalLyricDirectories
                     )
+                    SettingsCardDivider()
+                    SettingsActionItem(
+                        title = stringResource(R.string.title_cache_management),
+                        summary = stringResource(R.string.settings_cache_management_desc),
+                        icon = Icons.Filled.Storage,
+                        onClick = {
+                            onOpenCacheManagement?.invoke()
+                                ?: context.startActivity(Intent(context, com.example.islandlyrics.feature.cache.CacheManagementActivity::class.java))
+                        }
+                    )
                     if (!offlineModeEnabled) {
                         SettingsCardDivider()
                         SettingsActionItem(
@@ -703,16 +713,6 @@ fun SettingsScreen(
                             summary = stringResource(R.string.summary_diagnostics),
                             icon = Icons.Filled.BugReport,
                             onClick = onShowDiagnostics
-                        )
-                        SettingsCardDivider()
-                        SettingsActionItem(
-                            title = stringResource(R.string.title_cache_management),
-                            summary = stringResource(R.string.settings_cache_management_desc),
-                            icon = Icons.Filled.Storage,
-                            onClick = {
-                                onOpenCacheManagement?.invoke()
-                                    ?: context.startActivity(Intent(context, com.example.islandlyrics.feature.cache.CacheManagementActivity::class.java))
-                            }
                         )
                         SettingsCardDivider()
                         SettingsActionItem(

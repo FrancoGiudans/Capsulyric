@@ -101,6 +101,12 @@ class CacheManagementViewModel(application: Application) : AndroidViewModel(appl
         _selectedIds.value = _lyricEntries.value.orEmpty().map { it.id }.toSet()
     }
 
+    suspend fun getEntryDetail(entryId: String): OnlineLyricCacheStore.LyricCacheDetail? {
+        return withContext(Dispatchers.IO) {
+            lyricCacheStore.getLyricCacheDetail(entryId)
+        }
+    }
+
     fun exportEntry(entryId: String) {
         viewModelScope.launch {
             val exportData = withContext(Dispatchers.IO) { lyricCacheStore.getEntryExportData(entryId) }

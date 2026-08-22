@@ -147,7 +147,7 @@
     <string name="settings_recommend_media_app">Recommend current media app</string>
     <string name="settings_recommend_media_app_desc">Automatically recommend the current media app when entering rule settings</string>
     <string name="settings_help_about_header">Help &amp; About</string>
-    <string name="settings_developer_mode_header">Developer Mode</string>
+    <string name="settings_developer_mode_header">Debug Tools</string>
     <string name="community_about_title">Community &amp; About</string>
     <string name="settings_about_capsulyric">About Capsulyric</string>
     <string name="settings_community_header">Community</string>
@@ -564,7 +564,7 @@
     <string name="backup_sub_sensitive_apple_music">Apple Music login token</string>
     <string name="backup_sub_advanced_lab">Lab Features</string>
     <string name="backup_sub_advanced_offline">Offline Mode</string>
-    <string name="backup_sub_advanced_dev">Developer</string>
+    <string name="backup_sub_advanced_dev">Debug Tools</string>
     <string name="backup_sub_advanced_lyric_dir">Local Lyric Directories</string>
     <string name="backup_sub_advanced_updates">Update settings</string>
     <string name="backup_sub_advanced_xmsf">XMSF network bypass</string>
@@ -592,9 +592,9 @@
     <string name="lang_sys_default">System Default</string>
     <string name="lang_english">English</string>
     <string name="lang_chinese">Chinese</string>
-    <string name="toast_dev_mode_steps">Tap %1$d more times to enable diagnostics</string>
-    <string name="toast_dev_mode_enabled">Diagnostics &amp; Feedback enabled</string>
-    <string name="toast_dev_mode_already_enabled">Diagnostics already enabled</string>
+    <string name="toast_dev_mode_steps">Tap %1$d more times to enable Debug Tools</string>
+    <string name="toast_dev_mode_enabled">Debug Tools enabled</string>
+    <string name="toast_dev_mode_already_enabled">Debug Tools already enabled</string>
     <string name="toast_copied">Copied to clipboard</string>
     
     <!-- Miuix Summaries -->
@@ -653,7 +653,7 @@ Available actions include:\n\n
 4. Clear image cache as well if needed.\n\n
 If online lyric results never update, or if you already corrected the match information but still see the old result, it is recommended to delete the cache entry for that song first and fetch it again.</string>
     <string name="faq_q_access_diagnostics">Q: How to access Cache Management and Lyric Debugging?</string>
-    <string name="faq_a_access_diagnostics">A: Repeatedly tap the header image on the <b>About</b> page to unlock the <b>Developer Mode</b> section at the bottom of App Settings. The <b>Diagnostics Tool</b> entry is inside that section. Cache Management and Online Lyric Debugging pages are located within the Diagnostics Tool. Note that the <b>custom matching</b> feature is found inside the "Online Lyric Debugging" page.</string>
+    <string name="faq_a_access_diagnostics">A: <b>Cache Management</b> and <b>Online Lyric Rematch</b> (debugging) are available directly in the <b>Lyric Tools</b> section of Settings, where <b>custom matching</b> is inside the "Online Lyric Rematch" page. Repeatedly tapping the header image on the <b>About</b> page unlocks the <b>Debug Tools</b> section at the bottom of App Settings, which contains the <b>Diagnostics Tool</b> and <b>Lab</b> features.</string>
     <string name="faq_q_offline_mode_online_lyrics">Q: Does Full Offline Mode affect online lyrics?</string>
     <string name="faq_a_offline_mode_online_lyrics">A: Yes. After <b>"Full Offline Mode"</b> is enabled, all online lyric requests are disabled. Update checks and other network-dependent content are also blocked.\n\n
 If you want to use online lyrics, please turn off Full Offline Mode first.</string>
@@ -676,8 +676,7 @@ If you want to use online lyrics, please turn off Full Offline Mode first.</stri
 <b>Solution</b>: Please go to system settings and re-grant Notification Access to this app.</string>
     
     <string name="faq_q_how_to_diagnostics">Q: How to open the Diagnostics Tool?</string>
-    <string name="faq_a_how_to_diagnostics">A: Go to the <b>Settings → About</b> page and tap the page header image 7 times. This unlocks the <b>Developer Mode</b> section at the bottom of <b>App Settings</b>; open <b>"Diagnostics Tool"</b> from there.\n\n
-Once inside the Diagnostics Tool, you can access <b>Cache Management</b>, <b>Online Lyric Debugging</b>, <b>Lab</b> experimental features, and more.</string>
+    <string name="faq_a_how_to_diagnostics">A: Go to the <b>Settings → About</b> page and tap the page header image 7 times. This unlocks the <b>Debug Tools</b> section at the bottom of <b>App Settings</b>; open <b>"Diagnostics Tool"</b> from there.\n\nThe Debug Tools section contains <b>Diagnostics Tool</b>, <b>Lab</b> experimental features, and more (Cache Management and Online Lyric Rematch are available under Lyric Tools).</string>
     <string name="faq_q_island_camera_overlap">Q: Super Island lyrics overlap with the camera cutout?</string>
     <string name="faq_a_island_camera_overlap">A: This can happen when the lyric text is too long on devices with a centered punch-hole camera. To resolve this:\n\n
 <b>1. Open the Diagnostics Tool</b>\n
@@ -697,7 +696,7 @@ Experiment with different values until the lyrics fit comfortably around the cam
     <string name="faq_a_get_log">A: Please follow the standardized procedure:\n\n
 <b>1. Activate Diagnostics Tool</b>\n
 - <b>Debug Version</b>: Direct access available via the Log Console on the main screen.\n
-- <b>Release Version</b>: Go to Settings → About and tap the page header image 7 times to unlock the Developer Mode section at the bottom of App Settings, then open Diagnostics Tool from there.\n\n
+- <b>Release Version</b>: Go to Settings → About and tap the page header image 7 times to unlock the Debug Tools section at the bottom of App Settings, then open Diagnostics Tool from there.\n\n
 <b>2. Export ZIP Package</b>\n
 Within the log interface, select the share/export icon. You can specify a timeframe for data capture. The application will aggregate environment context and system logs into a ZIP file. Please ensure this file is attached when submitting a GitHub Issue or feedback form.</string>
 

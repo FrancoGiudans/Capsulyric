@@ -592,6 +592,14 @@ fun MiuixSettingsScreen(
                         summary = stringResource(R.string.settings_local_lyrics_directories),
                         onClick = onOpenLocalLyricDirectories
                     )
+                    SuperArrow(
+                        title = stringResource(R.string.title_cache_management),
+                        summary = stringResource(R.string.settings_cache_management_desc),
+                        onClick = {
+                            onOpenCacheManagement?.invoke()
+                                ?: context.startActivity(Intent(context, com.example.islandlyrics.feature.cache.CacheManagementActivity::class.java))
+                        }
+                    )
                     if (!offlineModeEnabled) {
                         SuperArrow(
                             title = stringResource(R.string.online_lyric_rematch_title),
@@ -678,14 +686,6 @@ fun MiuixSettingsScreen(
                             title = stringResource(R.string.title_diagnostics),
                             summary = stringResource(R.string.summary_diagnostics),
                             onClick = onShowDiagnostics
-                        )
-                        SuperArrow(
-                            title = stringResource(R.string.title_cache_management),
-                            summary = stringResource(R.string.settings_cache_management_desc),
-                            onClick = {
-                                onOpenCacheManagement?.invoke()
-                                    ?: context.startActivity(Intent(context, com.example.islandlyrics.feature.cache.CacheManagementActivity::class.java))
-                            }
                         )
                         SuperArrow(
                             title = stringResource(R.string.title_lab),

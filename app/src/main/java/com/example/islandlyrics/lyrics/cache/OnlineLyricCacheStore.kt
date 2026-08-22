@@ -79,6 +79,24 @@ class OnlineLyricCacheStore(context: Context) {
         val matchOverride: MatchOverride?
     )
 
+    data class LyricCacheDetail(
+        val id: String,
+        val packageName: String,
+        val title: String,
+        val artist: String,
+        val queryTitle: String,
+        val queryArtist: String,
+        val providerLabel: String,
+        val isInstrumental: Boolean,
+        val lyrics: String,
+        val translationLyrics: String?,
+        val romanLyrics: String?,
+        val hasSyllable: Boolean,
+        val hasCustomMatch: Boolean,
+        val cachedAt: Long?,
+        val updatedAt: Long
+    )
+
     data class CurrentSongCacheState(
         val effectiveTitle: String,
         val effectiveArtist: String,
@@ -494,6 +512,64 @@ class OnlineLyricCacheStore(context: Context) {
             queryArtist = entry.queryArtist.orEmpty(),
             lines = lines,
             matchOverride = entry.toMatchOverride()
+        )
+    }
+
+    fun getLyricCacheDetail(entryId: String): LyricCacheDetail? = synchronized(lock) {
+        ensureMigrated()
+        val entry = readEntryFile(entryId) ?: return null
+        val mainText = if (entry.parsedLines.isNotEmpty()) {
+            val lyricLines = entry.parsedLines
+                .map { it.text.trim() }
+                .filter { it.isNotBlank() }
+            val deduplicated = lyricLines.filterIndexed { index, text ->
+                index == 0 || text != lyricLines[index - 1]
+            }.joinToString("\n")
+            deduplicated.ifBlank { cleanLyricsText(entry.lyrics) }
+        } else {
+            cleanLyricsText(entry.lyrics)
+        }
+
+        val translationText = if (entry.parsedLines.any { !it.translation.isNullOrBlank() }) {
+            val lines = entry.parsedLines
+                .mapNotNull { it.translation?.trim() }
+                .filter { it.isNotBlank() }
+            val deduplicated = lines.filterIndexed { index, text ->
+                index == 0 || text != lines[index - 1]
+            }.joinToString("\n")
+            deduplicated.ifBlank { cleanLyricsText(entry.translationLyrics) }
+        } else {
+            cleanLyricsText(entry.translationLyrics)
+        }
+
+        val romanText = if (entry.parsedLines.any { !it.roma.isNullOrBlank() }) {
+            val lines = entry.parsedLines
+                .mapNotNull { it.roma?.trim() }
+                .filter { it.isNotBlank() }
+            val deduplicated = lines.filterIndexed { index, text ->
+                index == 0 || text != lines[index - 1]
+            }.joinToString("\n")
+            deduplicated.ifBlank { cleanLyricsText(entry.romanLyrics) }
+        } else {
+            cleanLyricsText(entry.romanLyrics)
+        }
+
+        LyricCacheDetail(
+            id = entry.id,
+            packageName = entry.packageName,
+            title = entry.title,
+            artist = entry.artist,
+            queryTitle = entry.queryTitle.orEmpty(),
+            queryArtist = entry.queryArtist.orEmpty(),
+            providerLabel = entry.api.orEmpty(),
+            isInstrumental = entry.instrumental,
+            lyrics = mainText,
+            translationLyrics = translationText.takeIf { it.isNotBlank() },
+            romanLyrics = romanText.takeIf { it.isNotBlank() },
+            hasSyllable = entry.hasSyllable || entry.parsedLines.any { !it.syllables.isNullOrEmpty() },
+            hasCustomMatch = !entry.overrideTitle.isNullOrBlank() || !entry.overrideArtist.isNullOrBlank(),
+            cachedAt = entry.cachedAt,
+            updatedAt = entry.updatedAt
         )
     }
 
@@ -1043,6 +1119,32 @@ class OnlineLyricCacheStore(context: Context) {
 
     private fun normalizeKey(value: String): String {
         return value.trim().lowercase().replace(Regex("\\s+"), " ")
+    }
+
+    private fun cleanLyricsText(content: String?): String {
+        if (content.isNullOrBlank()) return ""
+        val lineTimestampRegex = Regex("""\[\d{1,2}:\d{2}(?:\.\d{1,3})?]""")
+        val qrcHeaderRegex = Regex("""\[\d+,\d+]""")
+        val wordTokenRegex = Regex("""(?:<|\()\d+,\d+(?:,\d+)?(?:>|\))""")
+        val tagRegex = Regex("""^\[[a-zA-Z]+:.*]$""")
+        val lines = content
+            .lineSequence()
+            .map { it.trim() }
+            .filter { !tagRegex.matches(it) }
+            .map { rawLine ->
+                rawLine
+                    .replace(lineTimestampRegex, "")
+                    .replace(qrcHeaderRegex, "")
+                    .replace(wordTokenRegex, "")
+                    .trim()
+            }
+            .filter { it.isNotBlank() }
+            .toList()
+        return lines
+            .filterIndexed { index, text ->
+                index == 0 || text != lines[index - 1]
+            }
+            .joinToString("\n")
     }
 
     private fun sha256(value: String): String {

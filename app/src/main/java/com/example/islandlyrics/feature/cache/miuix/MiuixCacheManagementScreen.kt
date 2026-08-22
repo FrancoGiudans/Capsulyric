@@ -32,10 +32,13 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -43,6 +46,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -54,6 +58,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.launch
 import com.example.islandlyrics.R
 import com.example.islandlyrics.core.cache.AppImageCacheManager
 import com.example.islandlyrics.lyrics.local.LocalLyricDirectoryManager
@@ -88,6 +93,7 @@ import top.yukonga.miuix.kmp.icon.extended.Delete
 import top.yukonga.miuix.kmp.icon.extended.Download
 import top.yukonga.miuix.kmp.icon.extended.Refresh
 import top.yukonga.miuix.kmp.icon.extended.SelectAll
+import top.yukonga.miuix.kmp.icon.extended.Share
 import top.yukonga.miuix.kmp.preference.SwitchPreference as SuperSwitch
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.MiuixPopupUtils.Companion.MiuixPopupHost
@@ -124,6 +130,8 @@ fun MiuixCacheManagementScreen(
         lyricEntries.firstOrNull { it.id == pendingDeleteEntryId }
     }
     val lifecycleOwner = LocalLifecycleOwner.current
+    val coroutineScope = rememberCoroutineScope()
+    var viewingDetail by remember { mutableStateOf<OnlineLyricCacheStore.LyricCacheDetail?>(null) }
 
     LaunchedEffect(statusMessage) {
         statusMessage?.let {
@@ -177,7 +185,7 @@ fun MiuixCacheManagementScreen(
                             Icon(MiuixIcons.SelectAll, contentDescription = stringResource(R.string.cache_management_select_all), tint = MiuixTheme.colorScheme.onBackground)
                         }
                         IconButton(onClick = { viewModel.exportSelected() }) {
-                            Icon(MiuixIcons.Download, contentDescription = stringResource(R.string.cache_management_export_selected), tint = MiuixTheme.colorScheme.onBackground)
+                            Icon(MiuixIcons.Share, contentDescription = stringResource(R.string.cache_management_export_selected), tint = MiuixTheme.colorScheme.onBackground)
                         }
                         IconButton(
                             onClick = { if (selectedIds.isNotEmpty()) showDeleteSelectedDialog = true },
@@ -309,7 +317,13 @@ fun MiuixCacheManagementScreen(
                             .padding(horizontal = 12.dp, vertical = 4.dp)
                             .combinedClickable(
                                 onClick = {
-                                    if (isSelectionMode) viewModel.toggleSelection(entry.id)
+                                    if (isSelectionMode) {
+                                        viewModel.toggleSelection(entry.id)
+                                    } else {
+                                        coroutineScope.launch {
+                                            viewingDetail = viewModel.getEntryDetail(entry.id)
+                                        }
+                                    }
                                 },
                                 onLongClick = {
                                     if (!isSelectionMode) viewModel.enterSelectionMode(entry.id)
@@ -321,7 +335,7 @@ fun MiuixCacheManagementScreen(
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.Top
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
                                 if (isSelectionMode) {
                                     Checkbox(
@@ -333,18 +347,6 @@ fun MiuixCacheManagementScreen(
                                     Text("${entry.title} - ${entry.artist}", fontWeight = FontWeight.SemiBold)
                                     Text(entry.packageName, color = MiuixTheme.colorScheme.onSurfaceSecondary)
                                 }
-                                if (!isSelectionMode) {
-                                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                        TextButton(
-                                            text = stringResource(R.string.cache_management_export),
-                                            onClick = { viewModel.exportEntry(entry.id) }
-                                        )
-                                        TextButton(
-                                            text = stringResource(R.string.cache_management_delete),
-                                            onClick = { pendingDeleteEntryId = entry.id }
-                                        )
-                                    }
-                                }
                             }
                             Spacer(modifier = Modifier.height(8.dp))
                             MiuixStatRow(stringResource(R.string.cache_management_query_info), "${entry.queryTitle} / ${entry.queryArtist}")
@@ -354,6 +356,34 @@ fun MiuixCacheManagementScreen(
                             MiuixStatRow(stringResource(R.string.cache_management_updated_at), formatTimestamp(stringResource(R.string.cache_management_none), entry.updatedAt))
                             if (entry.hasCustomMatch) {
                                 Text(stringResource(R.string.cache_management_has_custom_match), color = MiuixTheme.colorScheme.primary)
+                            }
+                            if (!isSelectionMode) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.End,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    IconButton(
+                                        onClick = { viewModel.exportEntry(entry.id) },
+                                        enabled = !busy
+                                    ) {
+                                        Icon(
+                                            imageVector = MiuixIcons.Share,
+                                            contentDescription = stringResource(R.string.cache_management_export),
+                                            tint = MiuixTheme.colorScheme.onBackground
+                                        )
+                                    }
+                                    IconButton(
+                                        onClick = { pendingDeleteEntryId = entry.id },
+                                        enabled = !busy
+                                    ) {
+                                        Icon(
+                                            imageVector = MiuixIcons.Delete,
+                                            contentDescription = stringResource(R.string.cache_management_delete),
+                                            tint = MiuixTheme.colorScheme.error
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
@@ -438,7 +468,93 @@ fun MiuixCacheManagementScreen(
                 }
             }
         }
+
+        viewingDetail?.let { detail ->
+            MiuixBlurDialog(
+                title = detail.displayName(),
+                show = true,
+                renderInRootScaffold = false,
+                onDismissRequest = { viewingDetail = null }
+            ) {
+                Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp)) {
+                    if (detail.providerLabel.isNotBlank() || detail.queryTitle.isNotBlank() || detail.queryArtist.isNotBlank()) {
+                        val queryInfo = if (detail.queryTitle.isNotBlank() || detail.queryArtist.isNotBlank()) {
+                            "${detail.queryTitle} / ${detail.queryArtist}"
+                        } else ""
+                        val subtitle = listOf(detail.providerLabel, queryInfo).filter { it.isNotBlank() }.joinToString(" • ")
+                        if (subtitle.isNotBlank()) {
+                            Text(
+                                text = subtitle,
+                                fontSize = MiuixTheme.textStyles.body2.fontSize,
+                                color = MiuixTheme.colorScheme.onSurfaceSecondary
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+                        }
+                    }
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 120.dp, max = 380.dp)
+                            .verticalScroll(rememberScrollState())
+                    ) {
+                        if (detail.isInstrumental) {
+                            Text(
+                                text = stringResource(R.string.online_lyric_debug_instrumental_status),
+                                color = MiuixTheme.colorScheme.onSurfaceSecondary
+                            )
+                        } else if (detail.lyrics.isBlank()) {
+                            Text(
+                                text = stringResource(R.string.online_lyric_rematch_no_lyrics),
+                                color = MiuixTheme.colorScheme.onSurfaceSecondary
+                            )
+                        } else {
+                            Text(
+                                text = stringResource(R.string.online_lyric_debug_result_main_lyrics),
+                                fontWeight = FontWeight.SemiBold,
+                                color = MiuixTheme.colorScheme.primary
+                            )
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(text = detail.lyrics)
+                            if (!detail.translationLyrics.isNullOrBlank()) {
+                                Spacer(modifier = Modifier.height(14.dp))
+                                Text(
+                                    text = stringResource(R.string.online_lyric_debug_result_translation),
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MiuixTheme.colorScheme.primary
+                                )
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Text(text = detail.translationLyrics)
+                            }
+                            if (!detail.romanLyrics.isNullOrBlank()) {
+                                Spacer(modifier = Modifier.height(14.dp))
+                                Text(
+                                    text = stringResource(R.string.online_lyric_debug_result_romanization),
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MiuixTheme.colorScheme.primary
+                                )
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Text(text = detail.romanLyrics)
+                            }
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Button(
+                        onClick = { viewingDetail = null },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(stringResource(R.string.online_lyric_debug_close))
+                    }
+                }
+            }
+        }
     }
+}
+
+private fun OnlineLyricCacheStore.LyricCacheDetail.displayName(): String {
+    return listOf(title, artist)
+        .filter { it.isNotBlank() }
+        .joinToString(" - ")
+        .ifBlank { packageName.ifBlank { id } }
 }
 
 private fun OnlineLyricCacheStore.LyricCacheEntrySummary.displayName(): String {
