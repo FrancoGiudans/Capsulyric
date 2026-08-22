@@ -12,54 +12,48 @@ Set to `true` to force a pre-release build regardless of commit message.
 -->
 
 ## Release Metadata
-- **Preview**: `false`
+- **Preview**: `true`
 
 ## 🇨🇳 更新日志
-<img src="screenshots/logo26.8.png" width="100%" />
-
 **功能更新**
-- 新增一种小米超级岛通知样式，支持双行文本显示与右侧图片自定义
-- 支持隐藏桌面图标
-- 支持锁屏时隐藏通知
-- 新增纯音乐专辑标记功能
+- 引入 Apple Music 与 Musicmatch 在线歌词源
+- QQ 音乐源新增逐字歌词支持
+- 新增超级岛胶囊颜色模式与可读性增强功能，支持原色、智能与自定义三档取色，并提供实验室参数调校
+- 新增可选的口令加密备份功能，支持备份与恢复 Last.fm 凭据等敏感数据
+- 新增锁屏时隐藏媒体通知功能
+- Live Update 新增进度条隐藏开关
 
 **体验优化**
-- 重构设置页架构，拆分为胶囊与通知、桌面歌词、个性化设置独立页面，分离公告系统与关于页，新增本地歌词独立页面
-- 优化部分场景下的胶囊视觉样式
-- 优化miuix页面的视觉表现
-- 为material页面引入模糊效果
-- 支持公平运行内存分配策略
-- 优化桌面歌词与首页歌词的第二句展示方式
-- 优化通知设置页面布局与逻辑层级
-- 新增问卷星在线反馈渠道
-- 优化重匹配入口触发逻辑，支持首句播放前或无内容时提前进入在线歌词调整页
+- 优化在线歌词检索、评分逻辑及重匹配交互体验
+- 引入模糊 Snackbar 提示样式
+- 将超级岛调校参数纳入备份系统，并清理废弃的配置缓存
+
+**问题修复**
+- 修复超级岛相关的部分显示与交互异常
+- 修复 Material 弹窗背景消失的问题
 
 **本地化与内容**
-- 替换部分硬编码英文占位文案
-- 调整部分过时文案表述
-- 更新项目版权声明信息
+- 优化第三方开源库声明措辞及部分界面文本
+
+
 
 ## 🇬🇧 Change Log
-<img src="screenshots/logo26.8.png" width="100%" />
-
 **Feature Updates**
-- Added Xiaomi Super Island notification style with dual-line text display and customizable right-side image
-- Added Hide App Icon
-- Added Hide notification on lock screen
-- Added pure music album tagging feature
+- Integrated Apple Music and Musicmatch online lyrics providers
+- Added word-by-word lyrics support for QQ Music provider
+- Added Super Island capsule color modes and readability enhancement, supporting Original, Smart, and Custom color picking with Lab parameter tuning
+- Added optional passphrase-encrypted backup to secure sensitive data like Last.fm credentials
+- Added option to hide media notifications on the lock screen
+- Added progress bar toggle for Live Update
 
 **Enhancements**
-- Restructured Settings into independent pages for Capsule & Notifications, Desktop Lyrics, and Personalization, separated Announcements and About pages, added dedicated local lyrics entry
-- Refined Capsule visual styling in selected scenarios
-- Optimized the visual presentation of MIUI pages 
-- Introduced a blur effect to the Material page
-- Added fair runtime memory allocation support
-- Optimized the display method of secondary lyric od home lyric preview and floating lyric
-- Optimized layout and logical hierarchy of notification settings page
-- Added Wjx online feedback channel
-- Optimized re-match entry logic, allowing early access to online lyrics adjustment before the first line plays or when content is unavailable
+- Optimized online lyrics search, scoring logic, and re-match interaction
+- Introduced blurred Snackbar prompt style
+- Integrated Super Island tuning parameters into the backup system and cleared deprecated configuration caches
+
+**Fixes**
+- Resolved selected display and interaction anomalies related to Super Island
+- Fixed disappearing background issue in Material dialogs
 
 **Localization & Content**
-- Replaced hardcoded English placeholder text
-- Refined outdated interface copy for improved accuracy
-- Updated project copyright information
+- Refined wording for third-party library declarations and selected interface text
