@@ -423,6 +423,8 @@ fun SettingsScreen(
         val currentLangText = when (currentLangCode) {
             "en" -> stringResource(R.string.lang_english)
             "zh-CN" -> stringResource(R.string.lang_chinese)
+            "zh-TW" -> stringResource(R.string.lang_chinese_traditional)
+            "ja" -> stringResource(R.string.lang_japanese)
             else -> stringResource(R.string.lang_sys_default)
         }
         var recommendMediaAppEnabled by remember { mutableStateOf(prefs.getBoolean("recommend_media_app", true)) }
@@ -483,7 +485,9 @@ fun SettingsScreen(
                                 val languages = listOf(
                                     stringResource(R.string.lang_sys_default) to "",
                                     stringResource(R.string.lang_english) to "en",
-                                    stringResource(R.string.lang_chinese) to "zh-CN"
+                                    stringResource(R.string.lang_chinese) to "zh-CN",
+                                    stringResource(R.string.lang_chinese_traditional) to "zh-TW",
+                                    stringResource(R.string.lang_japanese) to "ja"
                                 )
                                 languages.forEach { (label, code) ->
                                     DropdownMenuItem(
@@ -1258,7 +1262,9 @@ fun LanguageSelectionDialog(onDismiss: () -> Unit) {
     val languages = listOf(
         stringResource(R.string.lang_sys_default) to "",
         stringResource(R.string.lang_english) to "en",
-        stringResource(R.string.lang_chinese) to "zh-CN"
+        stringResource(R.string.lang_chinese) to "zh-CN",
+        stringResource(R.string.lang_chinese_traditional) to "zh-TW",
+        stringResource(R.string.lang_japanese) to "ja"
     )
     val context = LocalContext.current
     

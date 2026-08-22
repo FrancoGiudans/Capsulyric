@@ -25,7 +25,7 @@ android {
         buildConfigField "String", "COMMUNITY_FEED_BASE_URL", "\"${appVersioning.escapeForBuildConfig(communityFeedBaseUrl)}\""
         buildConfigField "boolean", "LIVE_UPDATE_ENABLED", "true"
 
-        resConfigs "zh", "en"
+        resConfigs "zh", "en", "ja", "zh-rTW", "zh-rHK", "b+zh+Hant"
     }
 
     buildTypes {

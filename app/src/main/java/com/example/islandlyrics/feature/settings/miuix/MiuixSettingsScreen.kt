@@ -468,11 +468,13 @@ fun MiuixSettingsScreen(
                     )
 
                     // Language
-                    val langOptions = listOf("", "en", "zh-CN")
+                    val langOptions = listOf("", "en", "zh-CN", "zh-TW", "ja")
                     val langNames = listOf(
                         stringResource(R.string.lang_sys_default),
                         stringResource(R.string.lang_english),
-                        stringResource(R.string.lang_chinese)
+                        stringResource(R.string.lang_chinese),
+                        stringResource(R.string.lang_chinese_traditional),
+                        stringResource(R.string.lang_japanese)
                     )
                     val currentLangCode = ThemeHelper.getLanguage(context)
                     val currentLangIndex = langOptions.indexOf(currentLangCode).takeIf { it >= 0 } ?: 0

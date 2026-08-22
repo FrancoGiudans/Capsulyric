@@ -140,6 +140,10 @@
     <string name="settings_new_playing_app_alert">New playback app alerts</string>
     <string name="settings_new_playing_app_alert_desc">Notify when an unconfigured app starts playing, with quick actions to add or ignore it</string>
     <string name="settings_personalization_header">Personalization</string>
+    <string name="settings_personalization_theme_header">Appearance &amp; Theme</string>
+    <string name="settings_personalization_visual_effects_header">Visual Effects</string>
+    <string name="settings_personalization_gestures_header">Gestures &amp; Interaction</string>
+    <string name="settings_personalization_content_header">Content &amp; Display</string>
     <string name="page_title_personalization">Personalization Settings</string>
     <string name="tab_capsule">Capsule</string>
     <string name="tab_notification">Notification</string>
@@ -591,7 +595,9 @@
     <!-- Languages & Toasts -->
     <string name="lang_sys_default">System Default</string>
     <string name="lang_english">English</string>
-    <string name="lang_chinese">Chinese</string>
+    <string name="lang_chinese">简体中文</string>
+    <string name="lang_chinese_traditional">繁體中文</string>
+    <string name="lang_japanese">日本語</string>
     <string name="toast_dev_mode_steps">Tap %1$d more times to enable Debug Tools</string>
     <string name="toast_dev_mode_enabled">Debug Tools enabled</string>
     <string name="toast_dev_mode_already_enabled">Debug Tools already enabled</string>
@@ -899,6 +905,8 @@ Within the log interface, select the share/export icon. You can specify a timefr
     <string name="diag_lab_experiment_updates_desc">Show the Experiment channel and receive experimental builds from the testing branch.</string>
     <string name="settings_edge_scroll_haptic_title">Scroll End Haptic</string>
     <string name="settings_edge_scroll_haptic_desc">Use the same end-of-list haptic feedback as the miuix demo when scrolling reaches an edge.</string>
+    <string name="settings_miuix_floating_bottom_bar">Use Floating Bottom Bar</string>
+    <string name="settings_miuix_floating_bottom_bar_desc">Use a floating bottom bar instead of the standard navigation bar</string>
     <string name="diag_lab_floating_lyrics_title">Desktop Lyrics</string>
     <string name="diag_lab_floating_lyrics_desc">When enabled, the Desktop Lyrics entry will appear in Settings</string>
     <string name="diag_lab_floating_word_high_fps_title">Desktop Lyrics High-FPS Animation</string>

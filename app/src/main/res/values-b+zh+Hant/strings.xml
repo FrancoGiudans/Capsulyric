@@ -1,0 +1,1259 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Capsulyric</string>
+    <string name="status_active">執行中</string>
+    <string name="status_inactive">未執行</string>
+    <string name="status_idle_waiting">尚未播放...</string>
+    <string name="main_status_permission_required">需要開啟通知讀取權限</string>
+    <string name="main_music_app_fallback">音樂應用程式</string>
+    <string name="main_status_connecting_fmt">正在連接 %1$s</string>
+    <string name="main_status_session_count_fmt">已識別 %1$d 個工作階段</string>
+    <string name="main_status_service_disconnected">服務未連接，點按重試</string>
+    <string name="main_status_service_ready">背景服務已就緒</string>
+    <string name="main_now_playing_title">目前播放</string>
+    <string name="main_now_playing_subtitle_idle">等待播放器開始播歌</string>
+    <string name="main_now_playing_subtitle_active">左右滑動查看媒體工作階段</string>
+    <string name="main_app_icon_cd">應用程式圖示</string>
+    <string name="main_debug_center_cd">偵錯中心</string>
+    <string name="main_idle_card_desc">播放音樂後，這裡會顯示專輯封面、歌詞和工作階段控制項。</string>
+    <string name="main_album_art_cd">專輯封面</string>
+    <string name="main_lyric_source_fmt">歌詞來源: %1$s</string>
+    <string name="main_current_lyric_title">目前歌詞</string>
+    <string name="main_instrumental_marked">已標記為純音樂</string>
+    <string name="online_lyric_rematch_entry">重新比對線上歌詞</string>
+    <string name="online_lyric_rematch_entry_short">重新比對</string>
+    <string name="main_waiting_for_lyrics">正在等待歌詞同步...</string>
+    <string name="main_no_lyrics">暫無歌詞</string>
+    <string name="main_lyrics_unavailable">此工作階段目前沒有可用歌詞。</string>
+    <string name="main_lyrics_not_found">未檢索到歌詞</string>
+    <string name="main_lyrics_sync_placeholder_fmt">正在同步歌詞 · %1$s / %2$s</string>
+    <string name="action_previous">上一首</string>
+    <string name="action_play">播放</string>
+    <string name="dialog_diagnostics_title">診斷資訊</string>
+    <string name="dialog_whitelist_title">白名單管理</string>
+    <string name="btn_refresh_session">重新整理工作階段</string>
+    <string name="menu_github">GitHub</string>
+    <string name="menu_log">記錄</string>
+    <string name="menu_settings">設定</string>
+    <string name="title_diagnostics">診斷工具</string>
+    <string name="title_lab">實驗室</string>
+    <string name="summary_diagnostics">檢視記錄、服務狀態和系統資訊</string>
+    <string name="btn_disable_diagnostics">停用診斷工具</string>
+    <string name="dialog_disable_diagnostics_title">確認停用診斷工具？</string>
+    <string name="dialog_disable_diagnostics_message">停用後將隱藏此入口，並停止記錄偵錯層級記錄。如需重新開啟，請進入「設定 → 關於」頁面並再次連續點擊頂部橫幅圖片 7 次。</string>
+    <string name="tap_to_copy_hint">(點擊複製歌詞)</string>
+    <string name="app_version_fmt">版本: %1$s\n渠道: %2$s</string>
+    
+    <!-- UI Headers -->
+    <string name="label_playback_header">🎵 播放資訊</string>
+    <string name="label_title_prefix">歌名: </string>
+    <string name="label_artist_prefix">歌手: </string>
+    <string name="label_lyric_prefix">目前歌詞: </string>
+    <string name="label_status_prefix">狀態: </string>
+
+    <!-- Settings: Appearance -->
+    <string name="settings_header_appearance">外觀</string>
+    <string name="settings_language">語言</string>
+    <string name="settings_theme_follow_system">跟隨系統</string>
+    <string name="settings_theme_dark_mode">深色模式</string>
+    <string name="settings_theme_pure_black">純黑模式 (OLED)</string>
+    <string name="settings_theme_pure_black_desc">在深色模式下使用純黑背景</string>
+    <string name="settings_theme_dynamic_color">動態取色</string>
+    <string name="settings_theme_dynamic_color_desc">使用桌布顏色 (Material You)</string>
+    <string name="settings_theme_custom_color">自訂主題色彩</string>
+    <string name="settings_theme_color_source">主題色彩來源</string>
+    <string name="settings_theme_color_source_default">預設主題色彩</string>
+    <string name="settings_theme_color_source_custom">自訂主題色彩</string>
+    <string name="settings_color_default">預設色彩</string>
+    <string name="settings_theme_color_edit_hint">調整調色盤前請先點擊「編輯」，以避免誤觸。</string>
+    <string name="settings_theme_color_editing_hint">編輯期間可在此即時預覽效果，點擊「套用」後生效；點擊「取消」將還原為修改前的色彩。</string>
+    <string name="settings_theme_custom_color_global_tint">全域著色</string>
+    <string name="settings_theme_custom_color_global_tint_desc">使用基於 Monet 的取色演算法為整個應用程式著色。</string>
+    <string name="apply">套用</string>
+
+    <!-- Dialogs -->
+    <string name="dialog_add_whitelist">新增白名單</string>
+    <string name="dialog_enter_pkg">請輸入套件名稱</string>
+    <string name="dialog_btn_add">新增</string>
+    <string name="dialog_btn_cancel">取消</string>
+    <string name="dialog_delete_confirm">確認刪除 %s ？</string>
+    <string name="dialog_privacy_title">權限使用說明</string>
+    <string name="dialog_privacy_message">本應用程式需要讀取通知以獲取歌詞與播放資訊。\n\n
+    我們僅會讀取媒體播放通知的內容，包括：專輯圖片、歌手、歌名、專輯名，以及正在播放媒體的應用程式套件名稱。\n\n
+    上述資訊僅用於以下用途：\n
+    • 播放資訊的讀取和顯示\n
+    • 媒體通知歌詞的擷取\n
+    • 開啟線上歌詞後用以比對線上歌詞\n
+    • 開啟 Last.fm 後向 Last.fm 發送正在播放與 scrobble 記錄\n
+    • 應用程式記錄自身日誌\n\n
+    我們不會讀取您的即時訊息、驗證碼、郵件等非媒體類通知。預設情況下資料在本機處理；只有在您明確開啟線上歌詞或 Last.fm 等功能時，才會發起相應網路請求。</string>
+    <string name="dialog_btn_understand">我已知曉並授權</string>
+    <string name="dialog_block_xmsf_title">警告</string>
+    <string name="dialog_block_xmsf_message">開啟後可能會增加耗電量並導致系統推播訊息延遲。是否繼續？</string>
+    <string name="dialog_block_xmsf_confirm">仍然開啟</string>
+
+    <!-- Guide -->
+    <string name="guide_title">0-Hook 模式設定指南</string>
+    <string name="guide_message">本模式利用「通知列歌詞」或各應用程式的「藍牙歌詞」協定獲取歌詞。\n\n
+    1. 支援 QQ 音樂、小米音樂 與 網易雲音樂。\n
+    2. 網易雲使用者：設定 -> 工具 -> 開啟「外接設備藍牙歌詞」。\n
+    3. QQ 音樂使用者：設定 -> QPlay 與車載音樂 -> 開啟「車載藍牙歌詞」。\n
+    4. 必須授予本應用程式「通知讀取權限」，並確保音樂 App 通知列顯示正常。</string>
+    <string name="settings_guide_item">0-Hook 模式設定指南</string>
+    
+    <!-- Permissions -->
+    <string name="perm_cat_title">權限設定</string>
+    <string name="perm_read_notif">通知讀取權限</string>
+    <string name="perm_read_notif_desc">讀取歌詞所需的權限</string>
+    <string name="perm_post_notif">通知發送權限</string>
+    <string name="perm_post_notif_desc">發送即時歌詞通知所需的權限</string>
+    
+    <!-- General -->
+    <string name="settings_general_whitelist">白名單管理</string>
+    <string name="settings_general_battery">忽略電池最佳化</string>
+    <string name="settings_about_header">關於</string>
+    <string name="settings_about_github">GitHub 專案首頁</string>
+    <string name="title_app_settings">設定</string>
+    <string name="title_parser_whitelist_manager">解析規則</string>
+    <string name="tab_home">首頁</string>
+    <string name="tab_rules">規則</string>
+    <string name="tab_settings">設定</string>
+    <string name="settings_console_log">記錄控制台</string>
+    <string name="settings_general_header">一般</string>
+    <string name="settings_full_offline_mode">完全離線模式</string>
+    <string name="settings_full_offline_mode_desc">隱藏所有網路相關功能，並阻斷檢查更新、社群動態和線上歌詞請求</string>
+    <string name="settings_full_offline_mode_dialog_title">開啟完全離線模式？</string>
+    <string name="settings_full_offline_mode_dialog_message">開啟後將隱藏或阻斷以下應用程式內網路功能：\n\n• 線上歌詞比對與重新比對\n• Last.fm 記錄與授權\n• 檢查更新與目前版本更新記錄查詢\n• 社群動態與來源選擇\n\n外部瀏覽器連結（如 GitHub 專案首頁、問題回饋等）仍可正常開啟。</string>
+    <string name="settings_full_offline_mode_dialog_confirm">開啟</string>
+    <string name="settings_cache_management">快取管理</string>
+    <string name="settings_cache_management_desc">管理已快取的線上歌詞與遠端圖片</string>
+    <string name="settings_core_services_header">核心服務</string>
+    <string name="settings_core_header">核心</string>
+    <string name="settings_permissions_header">權限</string>
+    <string name="settings_capsule_notification">膠囊與通知</string>
+    <string name="settings_capsule_notification_title">膠囊與通知</string>
+    <string name="settings_block_xmsf">繞過超級小島白名單</string>
+    <string name="settings_block_xmsf_desc">發送通知時短暫斷開 XMSF 網路以繞過系統白名單限制（需要 Shizuku）</string>
+    <string name="settings_block_xmsf_mode">繞過模式</string>
+    <string name="settings_block_xmsf_mode_desc">在非 Root 裝置上，可透過繞過模式讓小米超級小島顯示未在小米白名單內的通知。需要 Shizuku。</string>
+    <string name="settings_block_xmsf_mode_disabled">關閉</string>
+    <string name="settings_block_xmsf_mode_disabled_desc">不修改 XMSF 聯網狀態</string>
+    <string name="settings_block_xmsf_mode_standard">標準模式</string>
+    <string name="settings_block_xmsf_mode_custom">自訂模式</string>
+    <string name="settings_block_xmsf_mode_aggressive">激進模式</string>
+    <string name="settings_block_xmsf_mode_standard_desc">發送通知時短暫斷網</string>
+    <string name="settings_block_xmsf_mode_custom_desc">可自訂 100 ms 至 500 ms 的斷網時間</string>
+    <string name="settings_block_xmsf_mode_custom_current_desc">目前斷網時間: %1$s</string>
+    <string name="settings_block_xmsf_mode_aggressive_desc">維持 XMSF 斷網直到目前曲目播放完畢</string>
+    <string name="settings_block_xmsf_custom_duration">斷網時長</string>
+    <string name="settings_block_xmsf_custom_duration_desc">僅在自訂模式下生效</string>
+    <string name="settings_block_xmsf_custom_duration_warning">較長的斷網時間可能增加耗電或延遲小米推播訊息。僅在標準模式無法及時繞過白名單時調大此數值。</string>
+    <string name="settings_block_xmsf_duration_value">%1$d ms</string>
+    <string name="settings_new_playing_app_alert">新播放應用程式提醒</string>
+    <string name="settings_new_playing_app_alert_desc">偵測到未設定的應用程式播放時發出提醒，並提供快速新增或忽略操作</string>
+    <string name="settings_personalization_header">個人化</string>
+    <string name="settings_personalization_theme_header">外觀與主題</string>
+    <string name="settings_personalization_visual_effects_header">視覺特效</string>
+    <string name="settings_personalization_gestures_header">手勢與互動</string>
+    <string name="settings_personalization_content_header">內容與展示</string>
+    <string name="page_title_personalization">個人化設定</string>
+    <string name="tab_capsule">膠囊</string>
+    <string name="tab_notification">通知</string>
+    <string name="tab_app_ui">應用程式介面</string>
+    <string name="settings_recommend_media_app">自動推薦目前播放應用程式</string>
+    <string name="settings_recommend_media_app_desc">進入規則設定時自動推薦目前正在播放的應用程式</string>
+    <string name="settings_help_about_header">說明與關於</string>
+    <string name="settings_developer_mode_header">偵錯工具</string>
+    <string name="community_about_title">社群與關於</string>
+    <string name="settings_about_capsulyric">關於 Capsulyric</string>
+    <string name="settings_community_header">社群</string>
+    <string name="open_source_licenses_header">開源授權</string>
+    <string name="open_source_licenses_title">開源授權宣告</string>
+    <string name="open_source_licenses_summary">檢視第三方開放原始碼函式庫及其授權條款</string>
+    <string name="open_source_licenses_page_desc">Capsulyric 使用以下開放原始碼函式庫建置。授權資料由構建時的相依關係圖自動產生。</string>
+    <string name="open_source_licenses_loading">正在載入函式庫清單...</string>
+    <string name="open_source_licenses_count_format">已包含 %1$d 個開源函式庫</string>
+    <string name="open_source_licenses_libraries">函式庫</string>
+    <string name="open_source_licenses_version">版本</string>
+    <string name="open_source_licenses_license">授權</string>
+    <string name="open_source_licenses_authors">作者</string>
+    <string name="open_source_licenses_project">專案</string>
+    <string name="open_source_licenses_license_text">授權條款</string>
+    <string name="open_source_licenses_open_project">開啟專案首頁</string>
+    <string name="open_source_licenses_unknown">未知</string>
+
+    <string name="settings_dynamic_icon_desc">顯示歌曲/歌手，僅支援 HyperOS 3.0.300+</string>
+    <string name="channel_live_lyrics">即時歌詞更新</string>
+    <string name="channel_live_lyrics_desc">用於狀態列即時歌詞的通知，支援膠囊與超級小島樣式。</string>
+    <string name="channel_short_live">即時通知</string>
+    <string name="channel_new_playing_app_alerts">新播放應用程式提醒</string>
+    <string name="channel_new_playing_app_alerts_desc">當未設定的應用程式開始播放時發出提醒。</string>
+    <string name="new_playing_app_notification_title">發現新播放應用程式</string>
+    <string name="new_playing_app_notification_text_fmt">%1$s (%2$s)</string>
+    <string name="new_playing_app_action_add">新增應用程式</string>
+    <string name="new_playing_app_action_ignore">不再提醒</string>
+    <string name="new_playing_app_added_to_rules">已將 %1$s 新增至規則</string>
+    <string name="cancel">取消</string>
+
+    <!-- OneUI Capsule Settings -->
+    <string name="settings_oneui_capsule_color">One UI 膠囊背景色彩</string>
+    <string name="settings_oneui_capsule_color_desc">選擇 One UI 即時膠囊使用的背景色彩模式。</string>
+    <string name="oneui_capsule_color_mode_black">黑色</string>
+    <string name="oneui_capsule_color_mode_transparent">透明</string>
+    <string name="oneui_capsule_color_mode_translucent_black">半透明黑</string>
+    <string name="oneui_capsule_color_mode_album">跟隨專輯封面</string>
+
+    <!-- 通知解析规则 -->
+    <string name="parser_rule_title">解析規則</string>
+    <string name="parser_rule_subtitle">設定如何解析音樂應用程式的通知</string>
+    <string name="parser_add_rule">新增音樂應用程式</string>
+    <string name="parser_edit">編輯</string>
+    <string name="parser_delete">刪除</string>
+    <string name="parser_package_name">套件名稱 (例如 com.example)</string>
+    <string name="parser_app_name">應用程式名稱 (選填)</string>
+    <string name="parser_car_protocol">使用媒體通知 (通知列/車載音樂) 歌詞</string>
+    <string name="parser_separator">分隔字元模式</string>
+    <string name="parser_field_order">欄位順序</string>
+    <string name="parser_separator_tight">"-" (緊湊)</string>
+    <string name="parser_separator_spaced">" - " (含空格)</string>
+    <string name="parser_separator_pipe">" | " (豎線)</string>
+    <string name="parser_separator_custom">自訂</string>
+    <string name="parser_order_artist_title">歌手-歌名</string>
+    <string name="parser_order_title_artist">歌名-歌手</string>
+    <string name="parser_lyric_settings">歌詞設定</string>
+    <string name="parser_no_rules">暫無規則</string>
+    <string name="parser_no_rules_desc">點擊右下角按鈕新增解析規則</string>
+    <string name="parser_rules_count">解析規則 (%d)</string>
+    <string name="parser_pkg_exists">該套件名稱已存在</string>
+    <string name="parser_app_info">應用程式資訊</string>
+    <string name="parser_logic_title">解析邏輯</string>
+    <string name="parser_separator_label">分隔字元</string>
+    <string name="parser_field_order_label">欄位順序</string>
+    <string name="parser_logic_header">來源與邏輯</string>
+    <string name="parser_logic_desc">歌詞來源與功能</string>
+    <string name="parser_lastfm_header">Last.fm</string>
+    <string name="parser_lastfm_scrobble">記錄至 Last.fm</string>
+    <string name="parser_lastfm_scrobble_desc">僅上傳此應用程式的播放記錄</string>
+    <string name="parser_notify_lyric_desc">從通知標題中擷取歌詞</string>
+    <string name="parser_online_lyric_desc_short">從網路 API 獲取</string>
+    <string name="parser_local_lyric">本機 LRC 檔案</string>
+    <string name="parser_local_lyric_desc_short">在設定的目錄中搜尋 .lrc 檔案</string>
+    <string name="settings_local_lyrics_title">本機歌詞</string>
+    <string name="settings_lyric_tools_header">歌詞工具</string>
+    <string name="settings_local_lyrics_directories">歌詞目錄</string>
+    <string name="settings_local_lyrics_add">新增目錄</string>
+    <string name="settings_local_lyrics_empty">尚未設定目錄，點擊新增</string>
+    <string name="settings_local_lyrics_remove_confirm">移除此目錄？</string>
+    <string name="settings_local_lyrics_remove_confirm_named">移除目錄 %s？</string>
+    <string name="export_lyric_button">匯出為 LRC</string>
+    <string name="export_lyric_success">已匯出: %1$s</string>
+    <string name="export_lyric_no_directory">請先設定本機歌詞目錄</string>
+    <string name="export_lyric_directory_not_writable">匯出目錄不可寫入，請重新選擇目錄</string>
+    <string name="export_lyric_no_lyrics">目前沒有可匯出的歌詞</string>
+    <string name="export_lyric_failed">匯出失敗</string>
+    <string name="local_lyric_dir_empty">該目錄下未找到 .lrc 檔案</string>
+    <string name="local_lyric_dir_file_count">%1$d 個檔案</string>
+    <string name="local_lyric_no_metadata">無元資料標籤</string>
+    <string name="local_lyric_custom_match_label">自訂比對: %1$s - %2$s</string>
+    <string name="local_lyric_edit_match">編輯比對</string>
+    <string name="local_lyric_edit_match_desc">指定此檔案比對的歌曲資訊</string>
+    <string name="local_lyric_metadata_hint">元資料: %1$s - %2$s</string>
+    <string name="local_lyric_match_title">歌名</string>
+    <string name="local_lyric_match_artist">歌手</string>
+    <string name="local_lyric_reset_match">重設為自動</string>
+    <string name="local_lyric_custom_match_label_short">自訂比對</string>
+    <string name="local_lyric_pull_refresh_pull">下拉即可重新整理</string>
+    <string name="local_lyric_pull_refresh_release">釋放即可重新整理</string>
+    <string name="local_lyric_pull_refresh_refreshing">正在重新整理...</string>
+    <string name="local_lyric_pull_refresh_complete">重新整理完成</string>
+    <string name="parser_online_priority">線上歌詞優先順序</string>
+    <string name="parser_online_priority_summary">線上優先順序: %1$s</string>
+    <string name="parser_reset_online_priority">重設為預設順序</string>
+    <string name="parser_smart_online_fetch">智慧歌詞選取</string>
+    <string name="parser_smart_online_fetch_desc">自動對所有來源進行評分並選取最佳結果</string>
+    <string name="action_move_up">上移</string>
+    <string name="action_move_down">下移</string>
+    <string name="action_drag_sort">拖曳排序</string>
+    <string name="parser_source_config_title">歌詞來源設定</string>
+    <string name="parser_online_conflict_disable_notify">關閉通知歌詞</string>
+    <string name="parser_super_lyric">SuperLyric API</string>
+    <string name="parser_super_lyric_desc_short">透過廣播接收</string>
+    <string name="parser_lgetter_lyric">Lyric Getter API</string>
+    <string name="parser_lgetter_lyric_desc_short">透過 Lyric Getter 廣播接收</string>
+    <string name="parser_lyricon_lyric">Lyricon API</string>
+    <string name="parser_lyricon_lyric_desc_short">訂閱 Lyricon 作用中播放器歌詞</string>
+    <string name="parser_lyric_source_config">歌詞來源設定</string>
+    <string name="parser_no_source_enabled">未啟用任何來源</string>
+    <string name="parser_receive_translation">接收翻譯</string>
+    <string name="parser_receive_romanization">接收羅馬音</string>
+    <string name="parser_online_translation_desc">目前僅 QQ 音樂與網易雲線上歌詞提供翻譯資料。</string>
+    <string name="parser_online_romanization_desc">目前僅 QQ 音樂與網易雲線上歌詞提供羅馬音資料。</string>
+    <string name="parser_lyricon_translation_desc">當作用中的 Lyricon 提供者發送翻譯欄位時接收。</string>
+    <string name="parser_lyricon_romanization_desc">當作用中的 Lyricon 提供者發送羅馬音或副歌詞欄位時接收。</string>
+    <string name="parser_save">儲存</string>
+    <string name="parser_save_rule">儲存規則</string>
+    <string name="parser_add_app_fmt">新增 %s</string>
+    <string name="parser_current_app">目前應用程式</string>
+    <string name="parser_template_title">預設規則範本</string>
+    <string name="parser_template_status_configured">已設定</string>
+    <string name="parser_template_status_not_configured">未設定</string>
+    <string name="parser_template_save">儲存範本</string>
+    <string name="parser_template_clear">清除範本</string>
+    <string name="parser_template_clear_confirm">確定清除預設規則範本？</string>
+    
+    <!-- 在线歌词设置 -->
+    <string name="settings_use_online_lyrics">使用線上歌詞 API</string>
+    <string name="settings_use_online_lyrics_desc">從多個線上來源（酷狗/網易雲/LrcApi）獲取逐字/逐行時間戳歌詞</string>
+    <string name="lastfm_title">Last.fm</string>
+    <string name="lastfm_settings_summary">使用您自己的 Last.fm API 憑證為所選音樂應用程式進行記錄</string>
+    <string name="lastfm_description">Capsulyric 僅為在解析規則中啟用了 Last.fm 的應用程式進行記錄。歌曲名稱、歌手、專輯、時長與時間戳可能會發送至 Last.fm。API 憑證與工作階段金鑰皆在裝置本機加密儲存，且排除在 Android 系統備份之外。一般應用程式資料匯出時不包含憑證，僅在您明確選擇加密敏感資料備份並輸入備份密碼時才會匯出。</string>
+    <string name="lastfm_privacy_title">資料與隱私</string>
+    <string name="lastfm_privacy_body">本應用程式僅會將歌曲名稱、歌手、專輯、時長等必要資料發送至 Last.fm。</string>
+    <string name="lastfm_security_title">憑證與安全</string>
+    <string name="lastfm_security_body">API 憑證在裝置本機加密儲存，預設排除在 Android 系統備份及一般資料匯出之外。僅在您主動選擇「敏感資料」並設定密碼時，才會產生加密的憑證備份。</string>
+    <string name="lastfm_setup_title">設定指南</string>
+    <string name="lastfm_setup_steps">1. 建立 Last.fm API 帳號並複製 API Key 與 Shared Secret。\n2. 將兩項憑證貼至此處並儲存。\n3. 開啟 Last.fm 授權，在瀏覽器中核准 Capsulyric，然後返回本頁面完成連線。</string>
+    <string name="lastfm_create_api_key">建立 Last.fm API Key</string>
+    <string name="lastfm_enable">啟用 Last.fm 記錄</string>
+    <string name="lastfm_enable_desc">同步「正在播放」與收聽記錄。需在各播放器的「解析規則」中單獨開啟。</string>
+    <string name="lastfm_api_key">API key</string>
+    <string name="lastfm_api_secret">Shared secret</string>
+    <string name="lastfm_save_credentials">儲存憑證</string>
+    <string name="lastfm_open_auth">開啟 Last.fm 授權頁</string>
+    <string name="lastfm_reauthorize">重新授權 Last.fm</string>
+    <string name="lastfm_finish_connect">完成連線</string>
+    <string name="lastfm_disconnect">中斷連線並清除憑證</string>
+    <string name="lastfm_connected_note">Capsulyric 已可為在解析規則中開啟了 Last.fm 的播放器記錄播放。只有在 Last.fm 不再接受連線，或想切換帳號時才需要重新授權。</string>
+    <string name="lastfm_connected_as">已連線為 %1$s</string>
+    <string name="lastfm_not_connected">未連線</string>
+    <string name="lastfm_saved">Last.fm 憑證已儲存</string>
+    <string name="lastfm_missing_credentials">請先填寫 API key 與 Shared secret</string>
+    <string name="lastfm_auth_opened">請在瀏覽器中授權 Capsulyric，然後返回並點擊「完成連線」</string>
+    <string name="lastfm_connect_success">Last.fm 已連線</string>
+    <string name="lastfm_connect_failed">Last.fm 連線失敗</string>
+    <string name="lastfm_disconnected">Last.fm 已中斷連線</string>
+    <string name="parser_use_raw_metadata_for_online_match">使用原始播放資訊進行線上比對</string>
+    <string name="parser_use_raw_metadata_for_online_match_desc">線上歌詞搜尋時跳過標題解析，直接使用播放器提供的原始歌名與歌手</string>
+    <string name="provider_qq_music">QQ 音樂</string>
+    <string name="provider_kugou_music">酷狗音樂</string>
+    <string name="provider_soda_music">汽水音樂</string>
+    <string name="provider_netease_music">網易雲音樂</string>
+    <string name="provider_lrcapi">LrcApi</string>
+    <string name="provider_lrclib">LRCLIB</string>
+    <string name="provider_apple_music">Apple Music</string>
+    <string name="provider_musixmatch">Musixmatch</string>
+    <string name="apple_music_settings_title">Apple Music 歌詞來源設定</string>
+    <string name="apple_music_settings_summary">設定獲取歌詞時使用的 Apple Music 登入權杖、地區和語言</string>
+    <string name="apple_music_settings_desc">設定您的 Apple Music 帳號以獲取線上歌詞。\n帳號地區將自動同步，並根據偏好語言比對在地化歌詞。\n登入的 Apple 帳號必須擁有有效的 Apple Music 訂閱。</string>
+    <string name="apple_music_storefront">地區</string>
+    <string name="apple_music_language">語言</string>
+    <string name="apple_music_storefront_us">美國</string>
+    <string name="apple_music_storefront_cn">中國大陸</string>
+    <string name="apple_music_storefront_jp">日本</string>
+    <string name="apple_music_storefront_hk">中國香港</string>
+    <string name="apple_music_storefront_gb">英國</string>
+    <string name="apple_music_language_en_us">English (US)</string>
+    <string name="apple_music_language_zh_hans">簡體中文</string>
+    <string name="apple_music_language_zh_hant">繁體中文</string>
+    <string name="apple_music_language_ja">日本語</string>
+    <string name="apple_music_follow_global">跟隨全域設定</string>
+    <string name="apple_music_custom_override">自訂</string>
+    <string name="apple_music_login_section">設定登入憑證</string>
+    <string name="apple_music_login_explain">由於 Apple API 限制，獲取歌詞需要有效的登入憑證 (token)。</string>
+    <string name="apple_music_login_expiry">憑證有有效期。若日後歌詞載入失敗，請重新登入以更新。</string>
+    <string name="apple_music_mut_label">media-user-token</string>
+    <string name="apple_music_mut_hint">貼上 media-user-token Cookie 值</string>
+    <string name="apple_music_mut_save">儲存登入</string>
+    <string name="apple_music_mut_clear">清除登入</string>
+    <string name="apple_music_mut_saved">登入已儲存</string>
+    <string name="apple_music_mut_cleared">登入已清除</string>
+    <string name="apple_music_web_login_button">使用網頁登入</string>
+    <string name="apple_music_web_login_title">登入 Apple Music</string>
+    <string name="apple_music_web_login_hint">在下方頁面登入，應用程式將自動從工作階段中讀取 media-user-token。</string>
+    <string name="apple_music_web_login_captured">已擷取 media-user-token，正在驗證…</string>
+    <string name="apple_music_web_login_valid">憑證有效，您可以關閉此頁面。</string>
+    <string name="apple_music_web_login_invalid">憑證可能無效或已過期，請重新登入或手動貼上憑證。</string>
+    <string name="apple_music_web_login_done">完成</string>
+    <string name="apple_music_mut_howto_title">如何獲取憑證</string>
+    <string name="apple_music_mut_howto_body">1. 自動獲取\n點擊下方的「使用網頁登入」按鈕即可一步獲取。\n\n2. 手動獲取\n1). 在瀏覽器中開啟 music.apple.com 並使用 Apple ID 登入。\n2). 開啟開發者工具（桌面端 Chrome/Edge: F12）→ 應用程式 (Application) → Cookies → music.apple.com。\n3). 複製 media-user-token 的值並貼到下方。</string>
+    <string name="apple_music_mut_status_checking">正在檢查憑證…</string>
+    <string name="apple_music_mut_status_valid">憑證有效。提示：若日後歌詞失效請重新登入。</string>
+    <string name="apple_music_mut_status_expired">憑證已被 Apple 拒絕（過期或無效），請透過網頁重新登入。</string>
+    <string name="apple_music_mut_status_unknown">無法驗證（請檢查網路），驗證失敗不代表憑證已過期。</string>
+    <string name="apple_music_web_login_unknown">已擷取，但無法驗證（請檢查網路）。</string>
+    <string name="parser_apple_music_override">Apple Music 覆寫</string>
+    <string name="parser_apple_music_override_desc">覆寫此應用程式中 Apple Music 歌詞使用的語言；地區一律跟隨登入的 Apple Music 帳號</string>
+    <string name="settings_use_superlyric_api">使用 SuperLyric API</string>
+    <string name="settings_use_superlyric_api_desc">（預留）增強型歌詞 API 整合</string>
+
+    <!-- 关于 & 更新检测 -->
+    <string name="about_title">關於</string>
+    <string name="about_version">版本</string>
+    <string name="about_codename">開發代號</string>
+    <string name="about_build">建置號</string>
+    <string name="about_commit">提交</string>
+    <string name="title_cache_management">快取管理</string>
+    <string name="update_check_title">檢查更新</string>
+    <string name="update_available_title">發現新版本: %s</string>
+    <string name="update_current_version">目前版本: %s</string>
+    <string name="update_current_version_changelog_title">%s 版本更新記錄</string>
+    <string name="update_current_version_changelog_title_short">目前版本更新記錄</string>
+    <string name="update_current_version_changelog_loading">正在查詢目前版本的更新記錄...</string>
+    <string name="update_current_version_changelog_unavailable_title">未找到目前版本的更新記錄</string>
+    <string name="update_current_version_changelog_unavailable_message">未能檢索到目前安裝版本對應的發布說明。\n\n可能原因：\n1. 您使用的是較早的 Experiment 測試版本。Experiment 迭代較快，舊建置的記錄可能已被清理。\n2. 當前安裝的版本未透過正式 Release 發布（如 Actions 建置、本機建置或其他分支版本）。</string>
+    <string name="update_changelog">更新內容</string>
+    <string name="update_download">下載更新</string>
+    <string name="update_view_release_page">前往發布頁面</string>
+    <string name="update_close">關閉</string>
+    <string name="update_view">檢視</string>
+    <string name="update_available_snackbar">發現新版本: %s</string>
+    <string name="update_ignore">忽略此版本</string>
+    <string name="update_no_update">已是最新版本</string>
+    <string name="update_check_failed">檢查更新失敗</string>
+    <string name="settings_auto_update">自動檢查更新</string>
+    <string name="settings_auto_update_desc">應用程式啟動時檢查新版本</string>
+
+    <!-- Main Activity -->
+    <string name="dialog_prerelease_warning_message">Preview 與 Experiment 包含未完全穩定的變更，追求穩定體驗的使用者建議維持 Stable 通道。</string>
+    <string name="settings_prerelease_channel">更新通道</string>
+    <string name="main_service_status">🔴 服務狀態: 未知</string>
+    <string name="main_system_api_status">系統與 API 狀態 (API 36)</string>
+    <string name="main_permission_check">權限檢查: 檢查中...</string>
+    <string name="main_notif_capability">Notif.hasPromotable: 等待中...</string>
+    <string name="main_notif_flag">Flag PROMOTED_ONGOING: 等待中...</string>
+    <string name="main_open_settings">開啟即時通知設定</string>
+    <string name="main_whitelist_title">白名單應用程式</string>
+    <string name="main_add_package">新增套件名稱</string>
+
+    <string name="settings_prerelease_update">更新通道</string>
+    <string name="settings_prerelease_update_desc">選擇希望接收的更新類型。Experiment 可在「實驗室」中開啟。</string>
+    <string name="dialog_prerelease_warning_title">更新通道</string>
+    <string name="settings_prerelease_desc">問: 更新通道有什麼區別？</string>
+    <string name="dialog_prerelease_desc_title">更新通道說明</string>
+    <string name="dialog_prerelease_desc_message">A：\n\n• <b>Stable</b>：僅接收正式發布版本，適合日常穩定使用。\n\n• <b>Preview</b>：接收預發布版本，並會繼續收到後續 Stable 正式版；適合希望提前體驗新功能的使用者。\n\n• <b>Experiment</b>：僅接收測試分支的 Canary 滾動建置。<b>[僅用於測試，極度不穩定]</b>。該通道不會接收 Stable 或 Preview 更新。</string>
+    
+    <!-- 动态图标样式设置 -->
+    <string name="settings_icon_style">圖示樣式</string>
+    <string name="icon_style_classic">原生音符樣式</string>
+    <string name="icon_style_classic_desc">顯示預設音樂應用程式圖示</string>
+    <string name="icon_style_advanced">高級樣式</string>
+    <string name="icon_style_advanced_desc">雙行佈局並顯示專輯封面</string>
+    <string name="icon_style_album_art">專輯封面</string>
+    <string name="icon_style_album_art_desc">將通知圖示替換為專輯封面</string>
+    <string name="dialog_icon_style_title">選擇圖示樣式</string>
+
+    <string name="settings_disable_scrolling_desc">僅顯示靜態文字。無論何種歌詞類型均不進行滾動。</string>
+    <string name="settings_feedback">意見回饋</string>
+    <string name="dialog_feedback_title">選擇意見回饋方式</string>
+    <string name="dialog_feedback_github">GitHub Issues</string>
+    <string name="dialog_feedback_github_desc">推薦方式，處理效率最高。</string>
+    <string name="dialog_feedback_wps">WPS 表單</string>
+    <string name="dialog_feedback_wps_desc">備用方式，可能需要登入。</string>
+    <string name="dialog_feedback_wjx">問卷星</string>
+    <string name="dialog_feedback_wjx_desc">免登入填寫。</string>
+    <string name="settings_hide_launcher">隱藏應用程式圖示</string>
+    <string name="settings_hide_launcher_desc">從桌面啟動器中隱藏 Capsulyric 圖示</string>
+    <string name="tile_capsulyric_label">Capsulyric</string>
+    <string name="dialog_hide_launcher_title">即將隱藏應用程式圖示</string>
+    <string name="dialog_hide_launcher_message">隱藏後，您可以透過以下方式開啟 Capsulyric：\n\n
+· 下拉控制中心中的 Capsulyric 捷徑開關；\n
+· 在任意瀏覽器網址列輸入 capsulyric://settings；\n
+· 系統設定 → 應用程式管理 → Capsulyric → 空間管理（部分裝置如 HyperOS 上需點擊「清除資料」後才會顯示該按鈕）</string>
+    <string name="dialog_hide_launcher_btn_add_tile_and_hide">新增捷徑並隱藏</string>
+    <string name="dialog_hide_launcher_btn_hide_now">立即隱藏</string>
+    <string name="dialog_hide_launcher_btn_cancel">取消</string>
+    <string name="toast_add_tile_manually">請手動新增 Capsulyric 捷徑：下拉通知列 → 編輯 → 找到 Capsulyric</string>
+    <string name="settings_hide_recents">從最近工作中隱藏</string>
+    <string name="settings_hide_recents_desc">進入背景時自動從最近工作中移除</string>
+    <string name="settings_backup_export">匯出設定</string>
+    <string name="settings_backup_export_desc">將目前應用程式設定匯出為 ZIP 備份檔案</string>
+    <string name="settings_backup_import">匯入設定</string>
+    <string name="settings_backup_import_desc">從 ZIP 備份檔案還原設定</string>
+    <string name="settings_backup_header">備份與還原</string>
+    <string name="settings_backup_export_success">已備份 %1$d 項設定</string>
+    <string name="settings_backup_export_success_with_cache">已備份 %1$d 項設定、%2$d 條歌詞快取</string>
+    <string name="settings_backup_export_success_with_sensitive">已備份 %1$d 項設定、%2$d 條歌詞快取及 %3$d 項敏感資料</string>
+    <string name="settings_backup_import_success">已還原 %1$d 項設定</string>
+    <string name="settings_backup_import_success_with_cache">已還原 %1$d 項設定、%2$d 條歌詞快取</string>
+    <string name="settings_backup_import_success_with_sensitive">已還原 %1$d 項設定、%2$d 條歌詞快取及 %3$d 項敏感資料</string>
+    <string name="settings_backup_export_failed">設定匯出失敗</string>
+    <string name="settings_backup_import_failed">設定還原失敗</string>
+    <!-- Backup Category Dialog -->
+    <string name="backup_dialog_export_title">選擇匯出資料</string>
+    <string name="backup_dialog_import_title">選擇還原資料</string>
+    <string name="backup_dialog_select_all">全選</string>
+    <string name="backup_dialog_deselect_all">取消全選</string>
+    <string name="backup_dialog_selected_count">已選取 %1$d / %2$d 項</string>
+    <string name="backup_dialog_confirm">確定</string>
+    <string name="backup_dialog_cancel">取消</string>
+    <string name="backup_dialog_preview_title">匯入預覽</string>
+    <string name="backup_dialog_preview_summary">此備份包含 %1$d 個分類、%2$d 項設定</string>
+    <string name="backup_sensitive_password_export_title">保護敏感資料</string>
+    <string name="backup_sensitive_password_import_title">解鎖敏感資料</string>
+    <string name="backup_sensitive_password_export_description">設定密碼以加密所選的敏感資料。此密碼不會儲存在裝置上，遺失後無法找回。</string>
+    <string name="backup_sensitive_password_import_description">請輸入用於加密所選敏感資料的密碼。</string>
+    <string name="backup_sensitive_password">備份密碼</string>
+    <string name="backup_sensitive_password_confirm">確認備份密碼</string>
+    <string name="backup_sensitive_password_required">請輸入備份密碼</string>
+    <string name="backup_sensitive_password_mismatch">兩次輸入的密碼不一致</string>
+    <string name="backup_sensitive_password_invalid">密碼錯誤或敏感資料已損壞</string>
+    <string name="backup_conflict_title">解析規則衝突</string>
+    <string name="backup_conflict_description">匯入的備份中含有與本機已存在套件名稱相同的規則。請選擇如何處理衝突：</string>
+    <string name="backup_conflict_apply">套用規則解決方案</string>
+    <string name="backup_cat_capsule">膠囊與小島</string>
+    <string name="backup_cat_notifications">通知與狀態列</string>
+    <string name="backup_cat_appearance">外觀與主題</string>
+    <string name="backup_cat_general">一般設定</string>
+    <string name="backup_cat_parser_rules">解析規則</string>
+    <string name="backup_cat_advanced">進階設定</string>
+    <string name="backup_cat_lyric_cache">歌詞快取</string>
+    <string name="backup_cat_sensitive_data">敏感資料（加密）</string>
+    <string name="backup_sub_capsule_style">膠囊樣式與模式</string>
+    <string name="backup_sub_capsule_layout">佈局與字數限制</string>
+    <string name="backup_sub_capsule_color_share">著色與分享格式</string>
+    <string name="backup_sub_notif_behavior">通知行為與開關</string>
+    <string name="backup_sub_notif_dynamic_icon">動態圖示樣式</string>
+    <string name="backup_sub_notif_floating">懸浮歌詞偏好</string>
+    <string name="backup_sub_notif_appearance">通知外觀細項</string>
+    <string name="backup_sub_notif_alert">新播放提醒設定</string>
+    <string name="backup_sub_appearance_theme">主題色彩與深色模式</string>
+    <string name="backup_sub_appearance_blur">模糊與材質效果</string>
+    <string name="backup_sub_appearance_ui_style">UI 風格偏好 (Material/Miuix)</string>
+    <string name="backup_sub_general_language">語言設定</string>
+    <string name="backup_sub_general_behavior">啟動器與最近工作行為</string>
+    <string name="backup_sub_general_lyric_display">歌詞偏好與滾動</string>
+    <string name="backup_sub_general_lastfm">Last.fm 設定</string>
+    <string name="backup_sub_general_apple_music">Apple Music 設定</string>
+    <string name="backup_sub_parser_all">全部應用程式解析規則</string>
+    <string name="backup_sub_sensitive_lastfm">Last.fm 憑證與工作階段</string>
+    <string name="backup_sub_sensitive_apple_music">Apple Music 權杖</string>
+    <string name="backup_sub_advanced_lab">實驗室開關與參數</string>
+    <string name="backup_sub_advanced_offline">完全離線模式</string>
+    <string name="backup_sub_advanced_dev">開發者與診斷開關</string>
+    <string name="backup_sub_advanced_lyric_dir">本機歌詞目錄清單</string>
+    <string name="backup_sub_advanced_updates">更新通道與檢查設定</string>
+    <string name="backup_sub_advanced_xmsf">XMSF 繞過參數</string>
+    <!-- FAQ Strings -->
+    <string name="settings_predictive_back_desc">在支援預覽返回手勢的系統上啟用返回動畫效果</string>
+    <string name="summary_view_logs">檢視本機運作記錄</string>
+    <string name="offline_mode_network_blocked">完全離線模式已開啟，已阻斷網路請求</string>
+    <string name="faq_title">常見問題解答</string>
+    <string name="faq_cat_guide">使用指引</string>
+    <string name="faq_cat_online">線上歌詞與快取</string>
+    <string name="faq_q_add_rule">Q：如何為我的音樂軟體新增解析規則？</string>
+    <string name="faq_a_add_rule">請按照以下步驟新增：\n\n
+1. <b>開啟應用程式設定</b>：先確認音樂應用程式內是否存在「通知列歌詞」、「媒體通知歌詞」或「車載藍牙歌詞」功能並開啟。\n\n
+2. <b>新增解析規則</b>：在解析規則頁面選擇「新增音樂應用程式」。\n
+   • 填入應用程式名稱與套件名稱。\n
+   • 若開啟了「推薦目前播放應用程式」，點擊按鈕可自動填入。\n\n
+3. <b>設定解析邏輯</b>：\n
+   • 開啟「媒體通知歌詞」開關。\n
+   • 根據通知列顯示的格式選擇正確的「分隔字元」與「順序」。\n\n
+4. <b>重新啟動生效</b>：儲存規則後，將應用程式從最近工作中移除並重新啟動。\n\n
+<b>注意</b>：若無上述功能，可嘗試開啟 SuperLyric/Lyric Getter 選項或使用「線上歌詞」作為備選。選擇 SuperLyric/Lyric Getter 需要 LSPosed 環境支援，並確認您的音樂軟體受到支援。</string>
+    <string name="faq_q_island_modes">Q：目前支援的歌詞島方案及其環境需求？</string>
+    <string name="faq_a_island_modes">A：本應用程式提供以下兩種歌詞展示方案：\n\n
+<b>1. 原生即時通知 (Live Update)</b>\n
+- <b>環境需求</b>：Android 16+ 或 HyperOS 3.0.300+。\n
+- <b>技術原理</b>：利用系統原生底層 API 實現。當應用程式處於背景或裝置鎖定螢幕時，系統將依狀態自動摺疊為膠囊形態，具有極低的能耗損耗。\n\n
+<b>2. 小米超級小島 (Super Island)</b>\n
+- <b>環境需求</b>：所有 HyperOS 版本。\n
+- <b>技術原理</b>：基於小米專有協定實現。需在「設定 → 膠囊與通知」中手動啟用「發送小米超級小島通知」。\n
+- <b>白名單突破方案</b>：\n
+  • <b>已取得 Root 權限</b>：建議配合 HyperCeiler 等模組解除系統的應用程式限制。\n
+  • <b>未取得 Root 權限</b>：需透過 Shizuku 進行授權，並啟用「繞過小米超級小島白名單」功能。（註：該方案由於強制系統重新導向通知，可能導致間歇性耗電增加或訊息延遲。）</string>
+    <string name="faq_q_config_online_lyrics">Q：如何設定線上歌詞？</string>
+    <string name="faq_a_config_online_lyrics">A：線上歌詞適合在通知歌詞不可用、歌詞不完整，或者需要更準確時間軸時使用。\n\n
+1. 進入「解析規則」頁面，開啟目前音樂應用程式對應的規則。\n
+2. 開啟<b>「使用線上歌詞 API」</b>。\n
+3. 如果播放器回報的原始歌名、歌手更準確，可以開啟<b>「使用原始播放資訊進行線上比對」</b>。\n
+4. 預設建議保持<b>「智慧獲取」</b>開啟，由應用程式自動選擇更合適的結果；如果您想手動控制來源順序，可關閉「智慧獲取」後再調整<b>「線上歌詞優先順序」</b>。\n
+5. 如果某一首歌始終比對不準，可進入<b>「線上歌詞重新比對」</b>，為目前歌曲填寫「自訂比對歌名」或「自訂比對歌手」，然後執行一次<b>「重新比對」</b>。</string>
+    <string name="faq_q_online_match_wrong">Q：為什麼線上歌詞搜尋到的結果不對？</string>
+    <string name="faq_a_online_match_wrong">A：線上歌詞仰賴目前歌曲的比對資訊進行搜尋。如果播放器回報的歌名、歌手不完整，或者標題中包含 Live、Remix、翻唱、節目名、括號附加資訊，就可能比對到錯誤結果。\n\n
+您可以嘗試以下方法：\n\n
+1. 進入<b>「線上歌詞偵錯工具」</b>，檢視目前實際使用的「比對歌名」和「比對歌手」。\n\n
+2. 手動填寫目前歌曲的「自訂比對歌名」或「自訂比對歌手」。\n\n
+3. 儲存後執行一次<b>「忽略快取並強制聯網重新整理」</b>。\n\n
+4. 如果仍然不準確，再檢查是否需要開啟<b>「使用原始播放資訊進行線上比對」</b>。</string>
+    <string name="faq_q_online_match_no_change">Q：為什麼我修改了自訂比對資訊後，歌詞還是沒變化？</string>
+    <string name="faq_a_online_match_no_change">A：自訂比對資訊會影響後續的線上搜尋和快取命中，但不會自動替換已經顯示出來的舊結果。\n\n
+如果修改後沒有變化，請依以下順序處理：\n\n
+1. 先儲存目前歌曲的自訂比對資訊。\n\n
+2. 在<b>「線上歌詞偵錯工具」</b>中執行一次<b>「忽略快取並強制聯網重新整理」</b>。\n\n
+3. 如果結果仍然沒有變化，說明目前顯示內容可能仍然來自舊快取。\n\n
+4. 此時可在快取管理中清除該歌曲對應的歌詞快取，再重新獲取。\n\n
+<b>補充</b>：自訂比對支援半覆寫。只填寫歌名或歌手中的一項時，留空項會自動使用原始播放資訊補足。</string>
+    <string name="faq_q_clear_online_cache">Q：如何清理線上歌詞快取？</string>
+    <string name="faq_a_clear_online_cache">A：應用程式提供了獨立的<b>「快取管理」</b>頁面，用於檢視和清理線上歌詞快取。\n\n
+您可以執行以下操作：\n\n
+1. 檢視目前歌詞快取項目數量、大小和更新時間。\n\n
+2. 刪除單筆歌詞快取。\n\n
+3. 清空全部歌詞快取。\n\n
+4. 必要時連同圖片快取一起清理。\n\n
+如果線上歌詞結果一直不更新，或者您已經修正了比對資訊但仍然顯示舊結果，建議先刪除對應歌曲的歌詞快取，再重新獲取。</string>
+    <string name="faq_q_access_diagnostics">Q：如何進入快取管理頁面和歌詞偵錯頁面？</string>
+    <string name="faq_a_access_diagnostics">A：<b>快取管理</b>與<b>重新比對線上歌詞</b>位於應用程式設定中的<b>「歌詞工具」</b>分類，其中<b>自訂比對</b>功能位於「重新比對線上歌詞」頁面內；同時在「關於」頁面連續點擊頂部橫幅圖片 7 次可解鎖設定底部的<b>「偵錯工具」</b>分類，<b>診斷工具</b>與<b>實驗室</b>位於其中。</string>
+    <string name="faq_q_offline_mode_online_lyrics">Q：完全離線模式會影響線上歌詞嗎？</string>
+    <string name="faq_a_offline_mode_online_lyrics">A：會。開啟<b>「完全離線模式」</b>後，所有線上歌詞請求都會被停用，同時也不會檢查更新或載入其他需要聯網的內容。\n\n
+如果您需要使用線上歌詞，請先關閉「完全離線模式」。</string>
+    <string name="faq_cat_func">功能異常排查</string>
+    <string name="faq_q_no_lyrics">Q：設定完成後歌詞島仍未正常顯示？</string>
+    <string name="faq_a_no_lyrics">A： 請依以下步驟進行標準化排查：\n\n
+1. <b>基礎權限驗證</b>： 確認已授予「通知讀取權限」。建議在系統背景工作管理中鎖定本應用程式並開啟自啟動權限，以防處理程序被系統清理。\n\n
+2. <b>播放來源觸發機制</b>：\n
+   - <b>主流音樂應用程式 (QQ/網易雲/小米等)</b>：須確保應用程式內「車載/藍牙歌詞」開關已開啟。部分版本需偵測到藍牙或耳機連線才會觸發歌詞廣播。\n
+   - <b>Apple Music</b>：鑑於其封閉特性，須配合 LSPosed 環境下的 SuperLyric 模組進行資料轉發。\n\n
+3. <b>相容性限制驗證</b>：\n
+   - <b>Live Update 模式</b>：若目前系統低於 HyperOS 3.0.300，受限於系統底層缺失，無法實現膠囊化展示。\n
+   - <b>Super Island 模式</b>：若未正確完成 Root 修補或 Shizuku 授權繞過，系統將攔截非授權應用程式的動態通知。\n\n
+4. <b>資料來源完整性</b>：線上解析方案可能受限於 API 回應延遲或版權限制而無法展示部分歌詞。\n\n
+<b>若以上排查均無結果，請進入診斷工具匯出日誌 ZIP 壓縮檔，並前往意見回饋頁面提交工單。</b></string>
+
+    <string name="faq_q_service_error">Q：為什麼首頁一直提示「無法連線至服務」？</string>
+    <string name="faq_a_service_error">A： 這通常是由於系統自動收回了權限導致的。\n\n
+<b>原因</b>： 部分系統會限制應用程式「通知讀取權限」的授權持續時間。\n
+<b>解決</b>： 請嘗試前往系統設定，重新授予本應用程式的通知讀取權限。</string>
+    
+    <string name="faq_q_how_to_diagnostics">Q：如何開啟診斷工具？</string>
+    <string name="faq_a_how_to_diagnostics">A：前往<b>「設定 → 關於」</b>頁面，連續點擊頁面頂部橫幅圖片 7 次，即可在<b>「應用程式設定」</b>頁面底部看到<b>「偵錯工具」</b>分類，點擊其中的<b>「診斷工具」</b>進入即可。\n\n「偵錯工具」分類中包含<b>診斷工具</b>以及<b>實驗室</b>實驗性功能等多項工具（「快取管理」與「重新比對線上歌詞」已位於「歌詞工具」分類）。</string>
+    <string name="faq_q_island_camera_overlap">Q：超級小島歌詞與鏡頭挖孔重疊？</string>
+    <string name="faq_a_island_camera_overlap">A：當歌詞文字較長時，可能會與螢幕頂部居中挖孔鏡頭區域發生重疊。請依以下步驟調整：\n\n
+<b>1. 開啟診斷工具</b>\n
+按照上面的方法解鎖並進入診斷工具。\n\n
+<b>2. 進入實驗室</b>\n
+在診斷工具中找到並進入<b>「實驗室」</b>頁面。\n\n
+<b>3. 開啟調節開關</b>\n
+開啟<b>「超級小島字數上限調節」</b>。\n\n
+<b>4. 回到「膠囊與通知」微調</b>\n
+返回<b>「設定 → 膠囊與通知」</b>，此時可以看到出現了<b>「字數限制」</b>調節選項。根據實際使用情況調整數值——減少鏡頭一側的字數上限即可避免重疊。\n\n
+您可以反覆嘗試不同的數值，直到歌詞能夠舒適地避開鏡頭區域。</string>
+    <string name="faq_cat_feedback">意見回饋與日誌類</string>
+    <string name="faq_q_unresolved">Q：以上內容都無法解決我的問題，該怎麼辦？</string>
+    <string name="faq_a_unresolved">A： 請前往意見回饋頁面提交 Issue。\n\n
+- <b>推薦管道</b>： GitHub Issues（處理效率最高）。\n
+- <b>備用管道</b>： WPS 表單（可能需要登入）、問卷星\n
+<b>重要</b>： 提交回饋時，請務必附帶 <b>日誌 (Log)</b> 以便我們排查問題。</string>
+
+    <string name="faq_q_get_log">Q：如何獲取與匯出診斷日誌？</string>
+    <string name="faq_a_get_log">A： 請參考以下流程：\n\n
+<b>1. 啟用診斷工具</b>\n
+- <b>Debug 版本</b>： 設定頁直接提供 Log Console 入口。\n
+- <b>Release 版本</b>： 進入「設定 → 關於」頁面，連續點擊頁面頂部橫幅圖片 7 次，即可在應用程式設定底部解鎖「偵錯工具」分類，並從其中進入「診斷工具」。\n\n
+<b>2. 匯出 ZIP 壓縮檔</b>\n
+進入日誌介面後，點擊右上角的「分享/匯出」按鈕。您可以根據需求選擇特定的時間範圍，App 將自動對環境上下文資訊與系統日誌進行打包。在提交 GitHub Issue 或填寫回饋表單時，請務必作為附件上傳此 ZIP 檔案。</string>
+    <string name="faq_q_hide_launcher_entry">Q：隱藏桌面圖示後如何開啟應用程式？</string>
+    <string name="faq_a_hide_launcher_entry">A：隱藏桌面圖示後，您可以透過以下方式開啟 Capsulyric：\n\n<b>1. 控制中心捷徑開關</b>\n下拉通知列，點擊 Capsulyric 捷徑即可直接開啟應用程式。\n\n<b>2. URL Scheme</b>\n在任意瀏覽器網址列輸入 <b>capsulyric://settings</b> 並造訪，即可喚醒應用程式。\n\n<b>3. 空間管理</b>\n前往<b>系統設定 → 應用程式管理 → Capsulyric → 空間管理</b>即可開啟應用程式。部分裝置（如 HyperOS）上，空間管理按鈕需要點擊「清除資料」後才能看到。</string>
+    <string name="faq_q_no_pinyin_translation">Q：為什麼部分歌曲沒有翻譯或羅馬音歌詞？</string>
+    <string name="faq_a_no_pinyin_translation">A：羅馬音與歌詞翻譯目前僅支援透過<b>線上歌詞</b>與 <b>Lyricon API</b> 獲取。\n\n同時您需要在對應應用程式的解析規則中開啟相關選項：\n\n1. 開啟<b>解析規則</b>，找到對應音樂應用程式的規則。\n\n2. 勾選<b>接收翻譯</b>和/或<b>接收拼音/羅馬音歌詞</b>。\n\n3. 如果使用線上歌詞，請確保歌詞來源支援翻譯或羅馬音欄位。</string>
+
+    <!-- 通知设置 -->
+    <string name="action_miplay">MiPlay</string>
+    <string name="settings_notification_header">通知設定</string>
+    <string name="settings_notification_actions">通知操作按鈕</string>
+    <string name="settings_action_style_off">關閉</string>
+    <string name="settings_action_style_off_desc">不顯示額外的操作按鈕</string>
+    <string name="settings_action_style_media">媒體控制項</string>
+    <string name="settings_action_style_media_desc">顯示上一首、播放/暫停、下一首按鈕</string>
+    <string name="settings_action_style_miplay">小米妙播 (MiPlay)</string>
+    <string name="settings_action_style_miplay_desc">顯示小米妙播投播按鈕（需系統支援）</string>
+    <string name="settings_super_island_notification_style">超級小島通知樣式</string>
+    <string name="super_island_notification_style_standard">標準樣式</string>
+    <string name="super_island_notification_style_advanced_beta">高級樣式 (Beta)</string>
+    <string name="super_island_notification_style_advanced_lyrics_dual">雙行歌詞樣式</string>
+    <string name="settings_super_island_dual_line_mode">雙行歌詞次行內容</string>
+    <string name="settings_super_island_dual_line_mode_desc">選擇雙行模式下第二行顯示的內容類型</string>
+    <string name="super_island_dual_line_mode_next_lyric">下一句歌詞</string>
+    <string name="super_island_dual_line_mode_translation">目前歌詞翻譯</string>
+    <string name="super_island_dual_line_mode_romanization">目前歌詞羅馬音</string>
+    <string name="settings_super_island_media_button_layout">小島展開媒體按鈕</string>
+    <string name="super_island_media_button_layout_two">雙按鈕 (播放 + 下一首)</string>
+    <string name="super_island_media_button_layout_two_desc">展開時顯示播放/暫停與下一首按鈕</string>
+    <string name="super_island_media_button_layout_three">三按鈕 (上一首 + 播放 + 下一首)</string>
+    <string name="super_island_media_button_layout_three_desc">展開時顯示完整的上一首、播放/暫停與下一首按鈕</string>
+    <string name="super_island_media_button_layout_none">無按鈕</string>
+    <string name="super_island_media_button_layout_none_desc">展開時不顯示媒體控制按鈕</string>
+    <string name="settings_super_island_show_progress_bar">顯示進度條</string>
+    <string name="settings_super_island_show_progress_bar_desc">在超級小島底部顯示歌曲播放進度條</string>
+    <string name="settings_super_island_secondary_text_mode">副文字顯示模式</string>
+    <string name="settings_super_island_secondary_text_mode_summary">次要文字: %1$s</string>
+    <string name="settings_super_island_secondary_text_priority">副文字優先順序</string>
+    <string name="super_island_secondary_text_next_lyric">下一句歌詞</string>
+    <string name="super_island_secondary_text_translation">歌詞翻譯</string>
+    <string name="super_island_secondary_text_romanization">羅馬音</string>
+    <string name="settings_super_island_template2_pic_source">小島展開圖片來源</string>
+    <string name="super_island_template2_pic_album_art">專輯封面</string>
+    <string name="super_island_template2_pic_album_art_desc">展開時展示目前播放歌曲的專輯封面</string>
+    <string name="super_island_template2_pic_playing_app">播放器圖示</string>
+    <string name="super_island_template2_pic_playing_app_desc">展開時展示正在播放音樂的應用程式圖示</string>
+    <string name="super_island_template2_pic_app_icon">Capsulyric 圖示</string>
+    <string name="super_island_template2_pic_app_icon_desc">展開時展示 Capsulyric 的應用程式圖示</string>
+    <string name="super_island_template2_pic_custom">自訂圖片</string>
+    <string name="super_island_template2_pic_custom_desc">展開時展示您自訂挑選的圖片</string>
+    <string name="settings_super_island_template2_pic_custom_pick">選擇本機圖片</string>
+    <string name="settings_super_island_template2_pic_custom_none">未設定自訂圖片</string>
+    <string name="settings_super_island_custom_expand_test">小島展開測試通知</string>
+    <string name="settings_super_island_custom_expand_test_desc">發送一條測試通知以預覽小島展開效果</string>
+    <string name="settings_live_update_show_progress_bar">即時通知進度條</string>
+    <string name="settings_live_update_show_progress_bar_desc">在狀態列即時通知中顯示歌曲進度條</string>
+    <string name="settings_progress_color">進度條色彩</string>
+    <string name="settings_progress_color_desc">自訂超級小島展開時播放進度條的色彩</string>
+    <string name="settings_dismiss_delay_title">播放暫停後消失延遲</string>
+    <string name="settings_lock_screen_hide_notification">螢幕鎖定時隱藏通知</string>
+    <string name="settings_lock_screen_hide_notification_desc">裝置進入螢幕鎖定狀態時自動隱藏即時歌詞通知</string>
+    <string name="settings_dismiss_delay_desc">暫停音樂後，延遲多久自動關閉超級小島與歌詞通知</string>
+    <string name="dismiss_delay_immediate">立即關閉</string>
+    <string name="dismiss_delay_1s">1 秒</string>
+    <string name="dismiss_delay_3s">3 秒</string>
+    <string name="dismiss_delay_5s">5 秒</string>
+    <string name="dialog_dismiss_delay_title">選擇延遲時間</string>
+    
+    <!-- OOBE -->
+    <string name="oobe_welcome_title">歡迎使用 Capsulyric</string>
+    <string name="oobe_welcome_subtitle">輕量、優雅的 Android 狀態列與超級小島歌詞小工具</string>
+    <string name="oobe_status_perfectly_compatible">完全相容</string>
+    <string name="oobe_warning_community_verified">社群驗證相容</string>
+    <string name="oobe_warning_untested_system">未測試系統環境</string>
+    <string name="oobe_warning_super_island_limited">超級小島功能受限</string>
+    <string name="oobe_error_unsupported_device">不支援的裝置或系統</string>
+    <string name="oobe_privacy_notice">隱私承諾：Capsulyric 僅在裝置本機處理媒體播放通知，絕不收集或上傳您的個人隱私資料。</string>
+    
+    <string name="oobe_step_permissions">權限設定</string>
+    <string name="oobe_perm_listener_title">通知讀取權限</string>
+    <string name="oobe_perm_listener_desc">用於獲取目前播放中的歌曲名稱、歌手與通知歌詞</string>
+    <string name="oobe_perm_listener_scope">僅存取媒體播放相關通知，不涉及個人訊息</string>
+    <string name="oobe_perm_post_title">通知發送權限</string>
+    <string name="oobe_perm_post_desc">用於在狀態列與超級小島顯示即時歌詞通知</string>
+    <string name="oobe_perm_battery_title">忽略電池最佳化</string>
+    <string name="oobe_perm_battery_desc">允許背景穩定持續運作，避免被系統自動清理</string>
+    <string name="oobe_btn_grant">前往授權</string>
+    <string name="oobe_btn_granted">已授權</string>
+    <string name="oobe_perm_required_hint">請完成必要權限授權以繼續</string>
+    
+    <string name="oobe_step_apps">播放器設定</string>
+    <string name="oobe_apps_intro">選擇您常用的音樂播放器並依照指南開啟車載歌詞：</string>
+    <string name="oobe_tab_qq">QQ 音樂</string>
+    <string name="oobe_tab_netease">網易雲音樂</string>
+    <string name="oobe_tab_xiaomi">小米音樂</string>
+    
+    <string name="oobe_guide_qq">1. 必須先連接藍牙音訊裝置。\n2. 進入 <b>我的</b> -&gt; <b>更多 (右上角三橫線)</b> -&gt; <b>設定</b>。\n3. 找到並開啟 <b>車載藍牙歌詞</b>。</string>
+    <string name="oobe_guide_netease">1. 必須先連接藍牙音訊裝置。\n2. 進入 <b>選單 (左上角)</b> -&gt; <b>設定</b> -&gt; <b>通用</b>。\n3. 找到並開啟 <b>外接設備藍牙歌詞</b>。</string>
+    <string name="oobe_guide_xiaomi">1. 進入 <b>我的</b> -&gt; <b>更多 (右上角三橫線)</b> -&gt; <b>通用設定</b>。\n2. 開啟 <b>通知列歌詞</b>。</string>
+    
+    <string name="oobe_online_alt_title">其他播放器？</string>
+    <string name="oobe_online_alt_desc">支援 Apple Music、Spotify、YouTube Music 等，可使用線上歌詞比對功能。</string>
+    <string name="oobe_online_alt_guide">1. 進入 <b>設定</b> -&gt; <b>解析規則</b>。\n2. 從清單中選擇您的音樂 App。\n3. 在 <b>來源與邏輯</b> 下點擊 <b>歌詞來源設定</b>。\n4. 開啟 <b>"使用線上歌詞 API"</b>。\n5. 建議保持 <b>"智慧獲取"</b> 開啟以獲得最佳效果。</string>
+    
+    <string name="oobe_app_not_in_list">使用其他播放器</string>
+    <string name="oobe_i_understand">我已完成設定</string>
+    <string name="oobe_add_rule_guide_title">如何新增規則</string>
+    
+    <string name="oobe_step_finish">設定完成</string>
+    <string name="oobe_step_restore">還原備份</string>
+    <string name="oobe_restore_intro_desc">如果您之前匯出過 Capsulyric 設定備份，可在此直接還原：</string>
+    <string name="oobe_restore_import_desc">選取 ZIP 備份檔案以還原偏好設定與解析規則</string>
+    <string name="oobe_restore_fresh_start">全新開始使用</string>
+    <string name="oobe_finish_title">一切準備就緒！</string>
+    <string name="oobe_finish_subtitle">現在播放音樂，即可在狀態列或超級小島欣賞即時歌詞。</string>
+    <string name="oobe_finish_start">開始使用</string>
+    <string name="oobe_btn_settings">前往進階設定</string>
+    <string name="oobe_btn_start">進入主畫面</string>
+
+    <string name="oobe_next">下一步</string>
+    <string name="oobe_back">上一步</string>
+    <string name="oobe_skip">略過</string>
+
+    <!-- OOBE Feature Intro -->
+    <string name="oobe_step_features">特色功能</string>
+    <string name="oobe_feat_island_title">超級小島 / 即時膠囊</string>
+    <string name="oobe_feat_island_desc">與 HyperOS 超級小島深度整合，提供精美流暢的即時歌詞膠囊動畫</string>
+    <string name="oobe_feat_source_title">多來源線上歌詞</string>
+    <string name="oobe_feat_source_desc">支援酷狗、網易雲、QQ 音樂、Apple Music 及本機 LRC 智慧比對</string>
+    <string name="oobe_feat_style_title">高度個人化自訂</string>
+    <string name="oobe_feat_style_desc">動態取色、字數限制、雙行歌詞、懸浮視窗等豐富自訂項目</string>
+    
+    <!-- OOBE Autostart -->
+    <string name="oobe_perm_autostart_title">自啟動權限</string>
+    <string name="oobe_perm_autostart_desc">允許開機自啟動與背景執行，確保播歌時即時響應</string>
+    <string name="action_pause">暫停</string>
+    <string name="action_next">下一首</string>
+    <string name="media_control_title">媒體控制</string>
+    <string name="media_control_scanning">正在掃描媒體工作階段...</string>
+    <string name="media_control_found_sessions">發現 %1$d 個作用中工作階段</string>
+    <string name="media_control_perm_required">需要開啟通知讀取權限以控制媒體</string>
+    <string name="media_control_error_prefix">控制失敗: %1$s</string>
+    <string name="media_control_no_sessions">目前無作用中的媒體播放</string>
+    <string name="media_control_launch_miplay">啟動 MiPlay 投播</string>
+    <string name="media_control_close">關閉</string>
+    <string name="media_control_unknown_title">未知曲目</string>
+    <string name="media_control_unknown_artist">未知歌手</string>
+    <string name="media_control_open_app">開啟 %1$s</string>
+    <string name="media_control_miplay_failed">啟動小米妙播失敗: %1$s</string>
+    <string name="media_control_cannot_open">無法啟動應用程式: %1$s</string>
+    <string name="media_control_cannot_open_no_entry">無法開啟 %1$s：目前媒體工作階段未提供可跳轉入口，且系統中未找到可啟動的桌面入口。</string>
+    <string name="media_control_cannot_open_session_failed_fallback">無法透過媒體工作階段直接開啟 %1$s，已改為嘗試進入應用程式首頁。</string>
+    <string name="media_control_cannot_open_launch_failed">無法開啟 %1$s：已找到應用程式入口，但啟動失敗: %2$s</string>
+    <string name="settings_click_action_title">點擊膠囊動作</string>
+    <string name="settings_click_action_default">預設動作</string>
+    <string name="settings_click_action_default_desc">依系統預設行為展開小島或開啟控制中心</string>
+    <string name="settings_click_action_media">開啟媒體控制卡片</string>
+    <string name="settings_click_action_media_desc">點擊時開啟 Capsulyric 媒體控制中心</string>
+    <string name="settings_click_action_open_playing_app">開啟目前播放器</string>
+    <string name="settings_click_action_open_playing_app_desc">點擊時直接切換至正在播放音樂的應用程式</string>
+    <string name="settings_disable_scrolling">停用歌詞滾動</string>
+    <string name="settings_lyric_text_display_mode">優先歌詞文字</string>
+    <string name="settings_lyric_text_display_mode_desc">翻譯與羅馬音僅在目前歌詞來源接收到對應資料時生效，否則顯示原文歌詞。</string>
+    <string name="lyric_text_display_mode_lyric">原文歌詞</string>
+    <string name="lyric_text_display_mode_translation">翻譯</string>
+    <string name="lyric_text_display_mode_romanization">羅馬音</string>
+    <string name="settings_super_island">發送小米超級小島通知</string>
+    <string name="settings_super_island_desc">將即時歌詞通知替換為小米超級小島樣式。</string>
+    <string name="settings_capsule_mode">膠囊樣式</string>
+    <string name="capsule_mode_live_update">即時通知 (Live Update)</string>
+    <string name="capsule_mode_super_island">小米超級小島</string>
+    <string name="settings_super_island_lyric_mode">超級小島歌詞樣式</string>
+    <string name="super_island_lyric_mode_standard">標準模式</string>
+    <string name="super_island_lyric_mode_standard_desc">左側顯示播放資訊，右側顯示目前歌詞。適合置中挖孔螢幕。</string>
+    <string name="super_island_lyric_mode_full">全歌詞模式</string>
+    <string name="super_island_lyric_mode_full_desc">兩側均顯示歌詞，並自動關閉歌詞滾動。</string>
+    <string name="settings_super_island_full_lyric_show_left_cover">全歌詞模式顯示左側封面</string>
+    <string name="settings_super_island_full_lyric_show_left_cover_desc">在全歌詞樣式下，保留左側小島區域的專輯封面。</string>
+    <string name="settings_super_island_standard_show_left_cover">標準模式顯示左側封面</string>
+    <string name="settings_super_island_standard_show_left_cover_desc">在標準樣式下，保留左側小島區域的專輯封面。</string>
+    <string name="settings_super_island_right_text_limit">右側歌詞字數限制</string>
+    <string name="settings_super_island_left_text_limit">左側歌詞字數限制</string>
+    <string name="settings_live_update_text_limit">即時通知字數限制</string>
+    <string name="settings_super_island_colorize">彩色小島內容</string>
+    <string name="settings_super_island_colorize_desc">自訂超級小島歌詞、播放資訊、膠囊邊框與進度條的著色方式。</string>
+    <string name="settings_super_island_color_source">色彩來源</string>
+    <string name="settings_super_island_color_source_desc">選擇超級小島內容的色彩模式。</string>
+    <string name="settings_super_island_color_source_album_art">專輯封面色彩 (原生)</string>
+    <string name="settings_super_island_color_source_album_art_smart">專輯封面色彩 (智慧)</string>
+    <string name="settings_super_island_color_source_custom">自訂色彩</string>
+    <string name="settings_super_island_color_source_album_art_desc">直接使用從專輯封面提取的色彩，不進行調整。</string>
+    <string name="settings_super_island_color_source_album_art_smart_desc">自動提亮暗色以確保清晰可讀，亮色保持不變。</string>
+    <string name="settings_super_island_color_source_custom_desc">使用手動選擇的色彩，不進行自動調整。</string>
+    <string name="settings_super_island_custom_color">膠囊自訂色彩</string>
+    <string name="settings_super_island_share">啟用拖曳分享</string>
+    <string name="settings_super_island_share_desc">允許透過拖曳超級小島分享歌詞。</string>
+    <string name="settings_super_island_share_format">分享文字格式</string>
+    <string name="share_format_1">歌詞    歌手 - 歌曲</string>
+    <string name="share_format_2">歌詞 - 歌手, 歌曲</string>
+    <string name="share_format_3">歌詞    歌手, 歌曲</string>
+    <string name="settings_app_ui_style">應用程式設計風格</string>
+    <string name="settings_app_ui_style_desc">切換 Material Design 與 Miuix 風格，切換後應用程式將重新啟動。</string>
+    <string name="settings_home_lyric_preview_title">歌詞預覽類型</string>
+    <string name="settings_home_lyric_preview_summary_fmt">作用於首頁與控制中心。目前: %1$s</string>
+    <string name="settings_home_lyric_preview_keep_one">請至少保留一種歌詞預覽類型。</string>
+    <string name="dialog_ui_style_title">選擇應用程式設計風格</string>
+    <string name="ui_style_material">Material Design</string>
+    <string name="ui_style_miuix">Miuix</string>
+    <string name="settings_predictive_back">預覽返回動畫</string>
+    <string name="settings_predictive_back_animation_mode">返回動畫模式</string>
+    <string name="settings_predictive_back_animation_mode_desc">設定分頁間切換與返回手勢的動畫呈現形式</string>
+    <string name="predictive_back_animation_mode_page_specific">自適應頁面風格</string>
+    <string name="predictive_back_animation_mode_consistent">全域統一風格</string>
+    <string name="settings_predictive_back_animation">返回動畫效果</string>
+    <string name="settings_predictive_back_animation_desc">選擇全域返回與頁面導覽的轉場動畫</string>
+    <string name="predictive_back_animation_scale_slide">縮放滑動</string>
+    <string name="predictive_back_animation_horizontal_slide">水平滑動</string>
+    <string name="predictive_back_animation_fade">淡入淡出</string>
+    <string name="predictive_back_animation_vertical_slide">垂直滑動</string>
+    <string name="predictive_back_animation_zoom">縮放效果</string>
+    <string name="predictive_back_animation_depth">景深層疊</string>
+    <string name="predictive_back_animation_flip">翻轉效果</string>
+    <string name="settings_monet_color">Monet 動態取色</string>
+    <string name="settings_monet_color_desc">從桌布中提取強調色彩（Android 12+），應用程式將重新啟動</string>
+    <string name="settings_card_blur">高級材質</string>
+    <string name="settings_card_blur_desc">在部分介面套用高級毛玻璃材質效果</string>
+    <string name="lang_sys_default">跟隨系統</string>
+    <string name="lang_english">English</string>
+    <string name="lang_chinese">简体中文</string>
+    <string name="lang_chinese_traditional">繁體中文</string>
+    <string name="lang_japanese">日本語</string>
+    <string name="toast_dev_mode_steps">再點擊 %1$d 次開啟偵錯工具</string>
+    <string name="toast_dev_mode_enabled">偵錯工具已開啟</string>
+    <string name="toast_dev_mode_already_enabled">偵錯工具已處於開啟狀態</string>
+    <string name="toast_copied">已複製到剪貼簿</string>
+    <string name="summary_optimize_battery">最佳化背景表現</string>
+    <string name="summary_check_updates_now">立即檢查更新</string>
+    <string name="summary_view_current_version_changelog">檢視目前已安裝版本對應的發布說明</string>
+    <string name="summary_faq">檢視常見問題</string>
+    <string name="summary_feedback">傳送意見回饋或回報問題</string>
+    <string name="summary_github">存取 GitHub 開源專案頁面</string>
+
+    <!-- 诊断相关字符串 -->
+    <string name="diag_header_tools">診斷與工具</string>
+    <string name="diag_header_debug_tools">偵錯工具</string>
+    <string name="diag_header_maintenance_tools">維護工具</string>
+    <string name="diag_header_feature_controls">功能開關</string>
+    <string name="diag_header_laboratory">實驗室設定</string>
+    <string name="diag_lab_page_desc">實驗室功能為處於開發或測試階段的實驗性選項，可能存在不穩定情況。</string>
+    <string name="diag_lab_category_general">一般實驗選項</string>
+    <string name="diag_lab_category_interface">介面與外觀實驗</string>
+    <string name="diag_lab_category_updates">更新通道實驗</string>
+    <string name="diag_header_service">服務運作狀態</string>
+    <string name="diag_header_system">系統與環境資訊</string>
+    <string name="diag_header_advanced">進階診斷</string>
+    <string name="diag_lab_super_island_advanced_style_title">超級小島進階樣式 (實驗版)</string>
+    <string name="diag_lab_super_island_advanced_style_desc">允許在超級小島中切換更多進階版面配置與大尺寸封面</string>
+    <string name="diag_lab_super_island_text_limits_title">解鎖超級小島字數限制</string>
+    <string name="diag_lab_super_island_text_limits_desc">放寬兩側歌詞顯示的最大字元數上限</string>
+    <string name="diag_lab_super_island_relaxed_text_limits_title">超長字數顯示模式</string>
+    <string name="diag_lab_super_island_relaxed_text_limits_desc">允許單側歌詞最多顯示 50 個字元</string>
+    <string name="diag_lab_super_island_smart_contrast_title">超級小島智慧對比度增強</string>
+    <string name="diag_lab_super_island_smart_contrast_desc">依背景亮度自動計算並提升文字清晰度</string>
+    <string name="diag_lab_super_island_smart_white_title">極暗背景自動補白</string>
+    <string name="diag_lab_super_island_smart_white_desc">在極黑桌布或背景下強制將文字調亮為純白</string>
+    <string name="settings_edge_highlight_texture_title">邊緣高光材質</string>
+    <string name="settings_edge_highlight_texture_desc">在卡片邊緣套用立體光澤反光質感</string>
+    <string name="diag_lab_live_update_text_limits_title">解鎖即時通知字數限制</string>
+    <string name="diag_lab_live_update_text_limits_desc">放寬狀態列即時通知單行歌詞長度限制</string>
+    <string name="diag_lab_material_blur_title">Material 模糊渲染器</string>
+    <string name="diag_lab_material_blur_desc">在 Material 風格下使用硬體加速模糊引擎</string>
+    <string name="diag_lab_experiment_updates_title">接收測試版本 (Experiment)</string>
+    <string name="diag_lab_experiment_updates_desc">在更新通道中加入 Experiment 選項以接收實驗性更新</string>
+    <string name="settings_edge_scroll_haptic_title">邊緣滾動觸覺回饋</string>
+    <string name="settings_edge_scroll_haptic_desc">滑動至清單頂部或底部時觸發輕微震動</string>
+    <string name="settings_miuix_floating_bottom_bar">Miuix 懸浮底欄</string>
+    <string name="settings_miuix_floating_bottom_bar_desc">在 Miuix 風格下使用懸浮式底部導覽欄</string>
+    <string name="diag_lab_floating_lyrics_title">桌面懸浮歌詞入口</string>
+    <string name="diag_lab_floating_lyrics_desc">在設定選單中顯示桌面懸浮歌詞的設定項目</string>
+    <string name="diag_lab_floating_word_high_fps_title">逐字歌詞高影格率動畫</string>
+    <string name="diag_lab_floating_word_high_fps_desc">以 60/120 fps 渲染逐字平滑滾動效果（可能稍微增加耗電）</string>
+    <string name="diag_lab_feed_source_title">社群動態來源</string>
+    <string name="diag_lab_feed_source_desc">切換社群動態資料的取得線路</string>
+    <string name="diag_lab_feed_source_github">GitHub (全球)</string>
+    <string name="diag_lab_feed_source_gitee">Gitee (中國大陸加速)</string>
+    <string name="diag_lab_super_island_dialog_title">開啟小島進階樣式？</string>
+    <string name="diag_lab_super_island_dialog_message">進階樣式包含實驗性版面配置，在部分裝置上可能需要微調字數限制以獲得最佳視覺效果。</string>
+    <string name="diag_lab_super_island_dialog_confirm">開啟</string>
+    <string name="diag_lab_live_update_text_limits_dialog_title">放寬即時通知字數限制？</string>
+    <string name="diag_lab_live_update_text_limits_dialog_message">放寬後，超長歌詞可能在狀態列空間不足時被截斷或省略。</string>
+    <string name="diag_lab_live_update_text_limits_dialog_confirm">放寬限制</string>
+    <string name="diag_header_material">材質與渲染</string>
+    <string name="diag_material_blur_radius_title">毛玻璃模糊半徑</string>
+    <string name="diag_material_blur_radius_value">%1$.0f dp</string>
+    <string name="diag_material_blur_radius_desc">自訂卡片背景模糊的半徑強度</string>
+    
+    <string name="diag_label_connection">服務連線</string>
+    <string name="diag_label_controllers">作用中控制器</string>
+    <string name="diag_label_whitelisted">已加入白名單</string>
+    <string name="diag_label_primary_pkg">主要播放套件名稱</string>
+    <string name="diag_label_whitelist_size">白名單數量</string>
+    <string name="diag_label_last_params">最近一次發送參數</string>
+    <string name="diag_label_last_update">最近一次更新時間</string>
+    
+    <string name="diag_label_android_ver">Android 版本</string>
+    <string name="diag_label_rom_ver">ROM 版本</string>
+    <string name="diag_label_rom_type">ROM 類型</string>
+    <string name="diag_label_device">裝置型號</string>
+    <string name="diag_label_arch">CPU 架構</string>
+    <string name="diag_label_build_id">系統建置號</string>
+    
+    <string name="diag_section_android16">Android 16+ 即時通知能力</string>
+    <string name="diag_label_can_post_promoted">可發送 Promoted 通知</string>
+    <string name="diag_label_has_promoted_char">具備 Promoted 屬性</string>
+    <string name="diag_label_is_promoted">目前處於 Promoted 狀態</string>
+    
+    <string name="diag_section_xiaomi">小米超級小島能力</string>
+    <string name="diag_label_island_support">系統小島支援</string>
+    <string name="diag_label_focus_version">焦點通知版本</string>
+    <string name="diag_label_focus_perm">焦點通知權限</string>
+    
+    <string name="diag_status_connected">已連線</string>
+    <string name="diag_status_disconnected">未連線</string>
+    <string name="diag_waiting_data">等待資料中...</string>
+    <string name="diag_none">無</string>
+    <string name="diag_yes">是</string>
+    <string name="diag_no">否</string>
+    <string name="diag_supported">支援</string>
+    <string name="diag_unsupported">不支援</string>
+    <string name="diag_enabled">已啟用</string>
+    <string name="diag_disabled">已停用</string>
+    <string name="diag_btn_refresh">重新整理診斷資訊</string>
+    <string name="diag_qq_roman_debug_title">QQ 音樂羅馬音偵錯</string>
+    <string name="diag_qq_roman_debug_desc">測試 QQ 音樂線上歌詞羅馬音解析</string>
+
+    <!-- 在线歌词调试 -->
+    <string name="online_lyric_debug_back">返回</string>
+    <string name="online_lyric_debug_title">線上歌詞偵錯工具</string>
+    <string name="online_lyric_rematch_title">重新比對線上歌詞</string>
+    <string name="online_lyric_rematch_settings_desc">手動搜尋並比對最佳的線上歌詞來源</string>
+    <string name="online_lyric_rematch_current_playback">目前播放資訊</string>
+    <string name="online_lyric_rematch_current_full_lyrics">目前使用的歌詞</string>
+    <string name="online_lyric_rematch_result_full_lyrics">比對結果歌詞預覽</string>
+    <string name="online_lyric_rematch_match_input">搜尋關鍵字</string>
+    <string name="online_lyric_rematch_song_title">歌曲名稱</string>
+    <string name="online_lyric_rematch_artist">歌手</string>
+    <string name="online_lyric_rematch_action">重新比對</string>
+    <string name="online_lyric_rematch_sidecar_action">比對翻譯/拼音歌詞</string>
+    <string name="online_lyric_rematch_current_playback_action">使用目前播放資訊重新比對</string>
+    <string name="online_lyric_rematch_mark_instrumental">這首歌是純音樂</string>
+    <string name="online_lyric_rematch_clear_instrumental">取消純音樂標記</string>
+    <string name="online_lyric_rematch_mark_album_instrumental">這張專輯均是純音樂</string>
+    <string name="online_lyric_rematch_clear_album_instrumental">取消專輯純音樂標記</string>
+    <string name="online_lyric_rematch_unknown_album">未知專輯</string>
+    <string name="online_lyric_rematch_result_title">重新獲取到的歌詞</string>
+    <string name="online_lyric_rematch_result_source_fmt">來源: %1$s</string>
+    <string name="online_lyric_rematch_effective_query_fmt">目前查詢: %1$s / %2$s</string>
+    <string name="online_lyric_rematch_duration_fmt">總時長: %1$s</string>
+    <string name="online_lyric_rematch_current_line">目前句歌詞</string>
+    <string name="online_lyric_rematch_no_lyrics">暫無歌詞</string>
+    <string name="online_lyric_rematch_no_result">重新比對後的歌詞會顯示在這裡</string>
+    <string name="online_lyric_rematch_other_results">其他來源結果</string>
+    <string name="online_lyric_rematch_no_other_results">重新比對後會在這裡顯示其他來源的結果</string>
+    <string name="online_lyric_rematch_selected_result">目前選取結果</string>
+    <string name="online_lyric_rematch_available_result">可選結果</string>
+    <string name="online_lyric_debug_now_playing">目前播放音樂</string>
+    <string name="online_lyric_debug_song_fmt">歌曲: %1$s</string>
+    <string name="online_lyric_debug_artist_fmt">歌手: %1$s</string>
+    <string name="online_lyric_debug_match_title_fmt">比對歌名: %1$s</string>
+    <string name="online_lyric_debug_match_artist_fmt">比對歌手: %1$s</string>
+    <string name="online_lyric_debug_playback_time_fmt">播放時間: %1$s / %2$s</string>
+    <string name="online_lyric_debug_current_match">目前歌曲線上比對</string>
+    <string name="online_lyric_debug_custom_title">自訂比對歌名</string>
+    <string name="online_lyric_debug_custom_artist">自訂比對歌手</string>
+    <string name="online_lyric_debug_save">儲存至快取</string>
+    <string name="online_lyric_debug_clear_custom">清除自訂</string>
+    <string name="online_lyric_debug_import_current_playback">匯入目前播放</string>
+    <string name="online_lyric_debug_live_status">即時狀態</string>
+    <string name="online_lyric_debug_lyric_source_fmt">歌詞來源: %1$s / %2$s</string>
+    <string name="online_lyric_debug_current_lyric_fmt">目前歌詞: %1$s</string>
+    <string name="online_lyric_debug_playing_app_fmt">播放應用程式: %1$s</string>
+    <string name="online_lyric_debug_play_state_fmt">播放狀態: %1$s</string>
+    <string name="online_lyric_debug_state_playing">正在播放</string>
+    <string name="online_lyric_debug_state_paused">已暫停</string>
+    <string name="online_lyric_debug_priority">線上優先順序</string>
+    <string name="online_lyric_debug_reset_order">重設排序</string>
+    <string name="online_lyric_debug_fetch">獲取歌詞</string>
+    <string name="online_lyric_debug_fetch_cached">讀取快取</string>
+    <string name="online_lyric_debug_fetching">正在獲取...</string>
+    <string name="online_lyric_debug_force_refresh">強制重新整理</string>
+    <string name="online_lyric_debug_fetch_mode_smart">智慧模式</string>
+    <string name="online_lyric_debug_provider_order_fmt">提供者順序: %1$s</string>
+    <string name="online_lyric_debug_title_fallback_fmt">標題降級: %1$s</string>
+    <string name="online_lyric_debug_triggered">已觸發</string>
+    <string name="online_lyric_debug_not_triggered">未觸發</string>
+    <string name="online_lyric_debug_effective_query_fmt">目前實際查詢: %1$s / %2$s</string>
+    <string name="online_lyric_debug_retry_clean_title">淨化標題重試</string>
+    <string name="online_lyric_debug_no_result">無回傳結果</string>
+    <string name="online_lyric_debug_error_fmt">錯誤: %1$s</string>
+    <string name="online_lyric_debug_result_summary_fmt">%1$s / %2$d 分 / %3$s</string>
+    <string name="online_lyric_debug_result_syllable">逐字歌詞</string>
+    <string name="online_lyric_debug_result_lrc_or_text">逐行歌詞 / 純文字</string>
+    <string name="online_lyric_debug_result_main_lyrics">主歌詞</string>
+    <string name="online_lyric_debug_result_translation">翻譯</string>
+    <string name="online_lyric_debug_result_romanization">羅馬音</string>
+    <string name="online_lyric_debug_no_translation_match">無比對翻譯</string>
+    <string name="online_lyric_debug_no_romanization_match">無比對羅馬音</string>
+    <string name="online_lyric_debug_no_sidecar_summary">無副歌詞資料</string>
+    <string name="online_lyric_debug_clean_title_badge">淨化標題</string>
+    <string name="online_lyric_debug_main_candidates">主歌詞來源</string>
+    <string name="online_lyric_debug_translation_candidates">翻譯歌詞來源</string>
+    <string name="online_lyric_debug_roman_candidates">羅馬音歌詞來源</string>
+    <string name="online_lyric_debug_no_main_candidates">無主歌詞候選</string>
+    <string name="online_lyric_debug_no_translation_candidates">無翻譯候選</string>
+    <string name="online_lyric_debug_no_roman_candidates">無羅馬音候選</string>
+    <string name="online_lyric_debug_tap_for_full_result">點擊檢視完整結果</string>
+    <string name="online_lyric_debug_attempt_title_fmt">%1$s 最終結果</string>
+    <string name="online_lyric_debug_duration_fmt">耗時: %1$d ms</string>
+    <string name="online_lyric_debug_clean_title_used">已使用淨化標題</string>
+    <string name="online_lyric_debug_select_result">選取此結果</string>
+    <string name="online_lyric_debug_use_as_main">設為主歌詞</string>
+    <string name="online_lyric_debug_use_as_translation">設為翻譯</string>
+    <string name="online_lyric_debug_use_as_romanization">設為羅馬音</string>
+    <string name="online_lyric_debug_close">關閉</string>
+    <string name="online_lyric_debug_none">無</string>
+    <string name="online_lyric_debug_dash">-</string>
+    <string name="online_lyric_debug_empty">(空)</string>
+    <string name="online_lyric_debug_move_up">上移</string>
+    <string name="online_lyric_debug_move_down">下移</string>
+    <string name="online_lyric_debug_selected_prefix">已選取: </string>
+    <string name="online_lyric_debug_attempt_header_fmt">%1$s%2$s (%3$dms)</string>
+    <string name="online_lyric_debug_query_source_custom">自訂搜尋</string>
+    <string name="online_lyric_debug_query_source_raw">原始元資料</string>
+    <string name="online_lyric_debug_query_source_default">預設解析</string>
+    <string name="online_lyric_debug_cached_provider_fmt">已快取提供者: %1$s</string>
+    <string name="online_lyric_debug_cached_default_provider">預設快取來源</string>
+    <string name="online_lyric_debug_no_cached_lyric">無已快取歌詞</string>
+    <string name="online_lyric_debug_snapshot_status">結果來自最近自動獲取 (%1$s) · 可重新比對</string>
+    <string name="online_lyric_debug_error_no_song">請先輸入歌曲名稱</string>
+    <string name="online_lyric_debug_error_empty_override">覆寫內容不可為空</string>
+    <string name="online_lyric_debug_imported_current_playback">已匯入目前播放資訊</string>
+    <string name="online_lyric_debug_override_saved">自訂覆寫已儲存</string>
+    <string name="online_lyric_debug_override_cleared">自訂覆寫已清除</string>
+    <string name="online_lyric_debug_instrumental_status">純音樂標記狀態</string>
+    <string name="online_lyric_debug_instrumental_marked">已標記為純音樂</string>
+    <string name="online_lyric_debug_instrumental_cleared">已取消純音樂標記</string>
+    <string name="online_lyric_debug_album_instrumental_status">專輯純音樂標記</string>
+    <string name="online_lyric_debug_album_instrumental_marked">已將整張專輯標記為純音樂（專輯: %1$s），並採用無歌詞處理</string>
+    <string name="online_lyric_debug_album_instrumental_cleared">已清除整張專輯的純音樂標記</string>
+    <string name="online_lyric_debug_error_no_album">未指定專輯名稱</string>
+    <string name="online_lyric_debug_cache_hit">命中快取</string>
+    <string name="online_lyric_debug_all_apis_failed">所有線上 API 獲取均失敗</string>
+    <string name="online_lyric_debug_cache_switched_fmt">已切換快取至: %1$s</string>
+    <string name="online_lyric_debug_cache_written_fmt">已寫入快取: %1$s</string>
+    <string name="online_lyric_debug_error_fetch_failed_fmt">獲取失敗: %1$s</string>
+    <string name="online_lyric_debug_error_result_unavailable">結果資料不可用</string>
+    <string name="online_lyric_debug_error_switch_failed_fmt">切換失敗: %1$s</string>
+
+    <!-- 缓存管理 -->
+    <string name="cache_management_back">返回</string>
+    <string name="cache_management_refresh">重新整理</string>
+    <string name="cache_management_lyric_cache">歌詞快取</string>
+    <string name="cache_management_entry_count">快取項目</string>
+    <string name="cache_management_total_size">快取大小</string>
+    <string name="cache_management_last_updated">最後更新</string>
+    <string name="cache_management_clear_lyric_cache">清空歌詞快取</string>
+    <string name="cache_management_image_cache">圖片快取</string>
+    <string name="cache_management_file_count">快取檔案</string>
+    <string name="cache_management_remote_images_hint">包含封面與社群圖片快取</string>
+    <string name="cache_management_clear_image_cache">清空圖片快取</string>
+    <string name="cache_management_danger_zone">危險操作</string>
+    <string name="cache_management_clear_all_title">清空所有快取</string>
+    <string name="cache_management_clear_all_desc">刪除所有已快取的歌詞與圖片檔案</string>
+    <string name="cache_management_clear_all">清空全部</string>
+    <string name="cache_management_entries_title">快取清單</string>
+    <string name="cache_management_search_entries">搜尋快取曲目...</string>
+    <string name="cache_management_no_entries">暫無快取資料</string>
+    <string name="cache_management_no_search_results">未找到符合的快取</string>
+    <string name="cache_management_delete">刪除</string>
+    <string name="cache_management_query_info">比對資訊</string>
+    <string name="cache_management_provider">提供者</string>
+    <string name="cache_management_sidecars">附加資料</string>
+    <string name="cache_management_sidecars_fmt">翻譯: %1$s · 羅馬音: %2$s</string>
+    <string name="cache_management_yes">有</string>
+    <string name="cache_management_no">無</string>
+    <string name="cache_management_updated_at">更新時間</string>
+    <string name="cache_management_unknown">未知</string>
+    <string name="cache_management_has_custom_match">已手動自訂比對</string>
+    <string name="cache_management_export_match_info_title">匯出比對資訊</string>
+    <string name="cache_management_export_match_info_desc">將自訂比對資訊匯出為 JSON 檔案</string>
+    <string name="cache_management_none">無</string>
+    <string name="cache_management_status_deleted">已刪除選取的快取</string>
+    <string name="cache_management_status_lyrics_cleared">歌詞快取已清空</string>
+    <string name="cache_management_status_images_cleared">圖片快取已清空</string>
+    <string name="cache_management_status_all_cleared">所有快取已清空</string>
+    <string name="cache_management_export">匯出</string>
+    <string name="cache_management_export_batch_result">已匯出 %1$d / %2$d 項</string>
+    <string name="cache_management_delete_batch_result">已刪除 %1$d 條快取</string>
+    <string name="cache_management_select_all">全選</string>
+    <string name="cache_management_deselect">取消全選</string>
+    <string name="cache_management_selected_count">已選取 %1$d 項</string>
+    <string name="cache_management_export_selected">匯出所選</string>
+    <string name="cache_management_delete_selected">刪除所選</string>
+    <string name="cache_management_delete_confirm_title">確認刪除？</string>
+    <string name="cache_management_delete_confirm_message">確定刪除 %1$s 的歌詞快取嗎？此操作無法復原。</string>
+    <string name="cache_management_delete_selected_confirm_title">確認批次刪除？</string>
+    <string name="cache_management_delete_selected_confirm_message">確定刪除選取的 %1$d 條歌詞快取？</string>
+    <string name="local_lyric_set_export_dir">設定匯出目錄</string>
+    <string name="local_lyric_export_dir_set">已設為匯出目錄</string>
+    <string name="local_lyric_export_dir_badge">匯出目錄</string>
+
+    <!-- 日志控制台 -->
+    <string name="log_viewer_title">日誌檢視器</string>
+    <string name="log_viewer_back">返回</string>
+    <string name="log_viewer_export">匯出日誌</string>
+    <string name="log_viewer_save">儲存</string>
+    <string name="log_viewer_clear">清空日誌</string>
+    <string name="log_viewer_cancel">取消</string>
+    <string name="log_viewer_scroll_bottom">滾動至底部</string>
+    <string name="log_viewer_search">搜尋日誌內容...</string>
+    <string name="log_viewer_record_level">記錄層級</string>
+    <string name="log_viewer_record_level_summary">預設僅記錄錯誤，以減少背景開銷</string>
+    <string name="log_viewer_record_prefix">記錄層級: %1$s</string>
+    <string name="log_viewer_level_all">全部 (All)</string>
+    <string name="log_viewer_level_error">僅錯誤 (Error)</string>
+    <string name="log_viewer_level_warn">僅警告 (Warn)</string>
+    <string name="log_viewer_level_info">僅資訊 (Info)</string>
+    <string name="log_viewer_level_debug">僅偵錯 (Debug)</string>
+    <string name="log_viewer_level_warn_plus">警告及以上 (Warn+)</string>
+    <string name="log_viewer_level_info_plus">資訊及以上 (Info+)</string>
+    <string name="log_viewer_level_debug_plus">偵錯及以上 (Debug+)</string>
+    <string name="log_viewer_no_match_title">未找到相符的日誌</string>
+    <string name="log_viewer_no_match_summary">請嘗試更換搜尋關鍵字或篩選層級</string>
+    <string name="log_viewer_export_title">匯出日誌檔案</string>
+    <string name="log_viewer_time_range">時間範圍</string>
+    <string name="log_viewer_time_last_1h">最近 1 小時</string>
+    <string name="log_viewer_time_last_24h">最近 24 小時</string>
+    <string name="log_viewer_time_all">全部時間</string>
+    <string name="log_viewer_clear_title">清空日誌？</string>
+    <string name="log_viewer_clear_message">這將清除本機暫存的所有除錯日誌記錄。</string>
+    <string name="log_viewer_cleared">日誌已清空</string>
+
+    <!-- 悬浮窗歌词 -->
+    <string name="floating_lyrics_title">懸浮歌詞</string>
+    <string name="floating_lyrics_summary">在螢幕上層顯示可自訂樣式的即時歌詞視窗</string>
+    <string name="floating_lyrics_grant_perm">授予懸浮窗權限</string>
+    <string name="floating_lyrics_grant_perm_summary">需要在系統設定中開啟「顯示在其他應用程式上層」</string>
+    <string name="floating_lyrics_enabled_toast">懸浮歌詞已開啟</string>
+    <string name="floating_lyrics_disabled_toast">懸浮歌詞已關閉</string>
+
+    <string name="settings_floating_lyrics">懸浮歌詞</string>
+    <string name="settings_floating_lyrics_enabled">啟用懸浮歌詞</string>
+    <string name="settings_floating_lyrics_enabled_desc">在其他應用程式上層顯示可移動的歌詞視窗</string>
+    <string name="settings_floating_lyrics_show">顯示懸浮視窗</string>
+    <string name="settings_floating_lyrics_show_desc">即時控制懸浮歌詞視窗的顯示與隱藏</string>
+    <string name="settings_floating_show_album_art">顯示專輯封面</string>
+    <string name="settings_floating_show_album_art_desc">在懸浮視窗左側顯示目前歌曲封面</string>
+    <string name="settings_floating_text_stroke">文字描邊</string>
+    <string name="settings_floating_text_stroke_desc">為歌詞文字增強描邊效果，提升在複雜背景下的可讀性</string>
+    <string name="settings_floating_text_background">文字背景膠囊</string>
+    <string name="settings_floating_text_background_desc">在歌詞文字後方加入半透明圓角背景塊</string>
+    <string name="settings_floating_display_mode">歌詞顯示模式</string>
+    <string name="settings_floating_secondary_text_mode">次行文字類型</string>
+    <string name="settings_floating_secondary_text_mode_summary">次要文字: %1$s</string>
+    <string name="settings_floating_mode_single">單行模式</string>
+    <string name="settings_floating_mode_single_desc">僅顯示當前正在播放的一行歌詞</string>
+    <string name="settings_floating_mode_romanization">主歌詞 + 羅馬音</string>
+    <string name="settings_floating_mode_romanization_desc">第一行主歌詞，第二行羅馬注音</string>
+    <string name="settings_floating_mode_translation">主歌詞 + 翻譯</string>
+    <string name="settings_floating_mode_translation_desc">第一行主歌詞，第二行翻譯文字</string>
+    <string name="settings_floating_mode_neighbor">雙行滾動模式</string>
+    <string name="settings_floating_mode_neighbor_desc">同時顯示目前句與下一句歌詞</string>
+    <string name="settings_floating_neighbor_alignment">雙行排版佈局</string>
+    <string name="settings_floating_alignment_center">居中排版</string>
+    <string name="settings_floating_alignment_center_desc">兩行歌詞均水平居中對齊</string>
+    <string name="settings_floating_alignment_split">左右交錯排版</string>
+    <string name="settings_floating_alignment_split_desc">當前行靠左，下一行靠右對齊</string>
+    <string name="settings_floating_show_romanization">顯示羅馬音</string>
+    <string name="settings_floating_show_romanization_desc">若來源包含羅馬音資料則顯示</string>
+    <string name="settings_floating_show_translation">顯示翻譯</string>
+    <string name="settings_floating_show_translation_desc">若來源包含翻譯資料則顯示</string>
+    <string name="settings_floating_show_neighbor_line">顯示下一句歌詞</string>
+    <string name="settings_floating_show_neighbor_line_desc">在第二行預覽即將播放的歌詞</string>
+    <string name="settings_floating_show_second_line">開啟雙行顯示</string>
+    <string name="settings_floating_show_second_line_desc">在懸浮視窗中顯示次行資訊</string>
+    <string name="settings_floating_split_neighbor_alignment">交錯對齊</string>
+    <string name="settings_floating_split_neighbor_alignment_desc">在雙行模式下啟用左右交錯佈局</string>
+    <string name="settings_floating_word_highlight">逐字卡拉OK高亮</string>
+    <string name="settings_floating_word_highlight_desc">依音節精確高亮當前唱到的字詞</string>
+    <string name="settings_floating_follow_album_color">歌詞文字跟隨封面色彩</string>
+    <string name="settings_floating_follow_album_color_desc">從目前播放歌曲的專輯封面中提取文字色彩</string>
+    <string name="settings_floating_text_color">歌詞文字色彩</string>
+    <string name="settings_floating_text_size">歌詞文字大小</string>
+    <string name="floating_settings_expand">展開設定</string>
+    <string name="floating_settings_collapse">摺疊設定</string>
+    <string name="floating_settings_on">開</string>
+    <string name="floating_settings_off">關</string>
+    <string name="floating_settings_color_album">封面取色</string>
+    <string name="floating_settings_color_custom">自訂色彩</string>
+    <string name="floating_settings_text_size_value">%1$d sp</string>
+    <string name="settings_floating_position_reset">重設懸浮窗位置</string>
+    <string name="settings_floating_position_reset_toast">懸浮窗位置已重設至螢幕中央</string>
+    <string name="community_loading_title">正在載入公告與動態...</string>
+    <string name="community_loading_desc">正在從社群伺服器獲取最新內容</string>
+    <string name="community_empty_title">暫無社群動態</string>
+    <string name="community_empty_desc">下拉即可重新整理獲取最新內容</string>
+    <string name="community_unavailable_title">社群功能暫不可用</string>
+    <string name="community_unavailable_desc">在完全離線模式下社群功能已停用，或網路連線失敗</string>
+    <string name="community_announcement_title">📢 官方公告</string>
+    <string name="community_poll_title">📊 社群投票</string>
+    <string name="community_open_in_browser">在瀏覽器中開啟</string>
+    <string name="community_dialog_open">前往檢視</string>
+    <string name="community_dialog_close">關閉</string>
+    <string name="parser_online_conflict_title">關閉通知歌詞以獲得更好的線上歌詞體驗</string>
+    <string name="parser_online_conflict_message">若主要使用線上歌詞，建議關閉媒體通知歌詞，以避免靜態文字干擾或重複觸發。是否立即關閉？</string>
+    <string name="parser_online_conflict_keep">保留目前設定</string>
+</resources>

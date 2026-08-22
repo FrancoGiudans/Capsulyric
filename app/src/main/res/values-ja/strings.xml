@@ -1,0 +1,1259 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Capsulyric</string>
+    <string name="status_active">実行中</string>
+    <string name="status_inactive">停止中</string>
+    <string name="status_idle_waiting">再生待機中...</string>
+    <string name="main_status_permission_required">通知へのアクセス権限が必要です</string>
+    <string name="main_music_app_fallback">音楽アプリ</string>
+    <string name="main_status_connecting_fmt">%1$s に接続中</string>
+    <string name="main_status_session_count_fmt">%1$d 個のセッションを検出</string>
+    <string name="main_status_service_disconnected">サービス未接続、タップして再試行</string>
+    <string name="main_status_service_ready">バックグラウンドサービス準備完了</string>
+    <string name="main_now_playing_title">再生中</string>
+    <string name="main_now_playing_subtitle_idle">音楽の再生を待機しています</string>
+    <string name="main_now_playing_subtitle_active">左右にスワイプしてメディアセッションを表示</string>
+    <string name="main_app_icon_cd">アプリアイコン</string>
+    <string name="main_debug_center_cd">デバッグセンター</string>
+    <string name="main_idle_card_desc">音楽再生開始後、ここにアルバムアート、歌詞、セッション操作が表示されます。</string>
+    <string name="main_album_art_cd">アルバムアート</string>
+    <string name="main_lyric_source_fmt">歌詞ソース: %1$s</string>
+    <string name="main_current_lyric_title">現在の歌詞</string>
+    <string name="main_instrumental_marked">インストゥルメンタルとしてマーク済み</string>
+    <string name="online_lyric_rematch_entry">オンライン歌詞を再検索</string>
+    <string name="online_lyric_rematch_entry_short">再検索</string>
+    <string name="main_waiting_for_lyrics">歌詞の同期を待機中...</string>
+    <string name="main_no_lyrics">歌詞がありません</string>
+    <string name="main_lyrics_unavailable">このセッションでは歌詞を利用できません。</string>
+    <string name="main_lyrics_not_found">歌詞が見つかりませんでした</string>
+    <string name="main_lyrics_sync_placeholder_fmt">歌詞を同期中 · %1$s / %2$s</string>
+    <string name="action_previous">前の曲</string>
+    <string name="action_play">再生</string>
+    <string name="dialog_diagnostics_title">診断情報</string>
+    <string name="dialog_whitelist_title">ホワイトリスト管理</string>
+    <string name="btn_refresh_session">セッションを更新</string>
+    <string name="menu_github">GitHub</string>
+    <string name="menu_log">ログ</string>
+    <string name="menu_settings">設定</string>
+    <string name="title_diagnostics">診断ツール</string>
+    <string name="title_lab">実験室</string>
+    <string name="summary_diagnostics">ログ、サービス状態、システム情報を確認</string>
+    <string name="btn_disable_diagnostics">診断ツールを無効化</string>
+    <string name="dialog_disable_diagnostics_title">診断ツールを無効にしますか？</string>
+    <string name="dialog_disable_diagnostics_message">無効にするとエントリが非表示になり、デバッグログの記録が停止します。「設定 → このアプリについて」を開き、ヘッダー画像を再度7回タップすると再有効化できます。</string>
+    <string name="tap_to_copy_hint">(タップして歌詞をコピー)</string>
+    <string name="app_version_fmt">バージョン: %1$s\nチャンネル: %2$s</string>
+    
+    <!-- UI Headers -->
+    <string name="label_playback_header">🎵 再生情報</string>
+    <string name="label_title_prefix">曲名: </string>
+    <string name="label_artist_prefix">アーティスト: </string>
+    <string name="label_lyric_prefix">現在の歌詞: </string>
+    <string name="label_status_prefix">ステータス: </string>
+
+    <!-- Settings: Appearance -->
+    <string name="settings_header_appearance">外観</string>
+    <string name="settings_language">言語</string>
+    <string name="settings_theme_follow_system">システムに従う</string>
+    <string name="settings_theme_dark_mode">ダークモード</string>
+    <string name="settings_theme_pure_black">ピュアブラック (OLED)</string>
+    <string name="settings_theme_pure_black_desc">ダークモードで完全な黒背景を使用</string>
+    <string name="settings_theme_dynamic_color">ダイナミックカラー</string>
+    <string name="settings_theme_dynamic_color_desc">壁紙の色を使用 (Material You)</string>
+    <string name="settings_theme_custom_color">カスタムテーマカラー</string>
+    <string name="settings_theme_color_source">テーマカラーソース</string>
+    <string name="settings_theme_color_source_default">デフォルトテーマカラー</string>
+    <string name="settings_theme_color_source_custom">カスタムテーマカラー</string>
+    <string name="settings_color_default">デフォルトカラー</string>
+    <string name="settings_theme_color_edit_hint">誤操作を防ぐため、パレット変更前に「編集」をタップしてください。</string>
+    <string name="settings_theme_color_editing_hint">変更内容は「適用」をタップするまでここでプレビューされます。「キャンセル」で元の色に戻ります。</string>
+    <string name="settings_theme_custom_color_global_tint">グローバルティント</string>
+    <string name="settings_theme_custom_color_global_tint_desc">Monetベースのカラー生成でアプリ全体を着色します。</string>
+    <string name="apply">適用</string>
+
+    <!-- Dialogs -->
+    <string name="dialog_add_whitelist">ホワイトリストに追加</string>
+    <string name="dialog_enter_pkg">パッケージ名を入力</string>
+    <string name="dialog_btn_add">追加</string>
+    <string name="dialog_btn_cancel">キャンセル</string>
+    <string name="dialog_delete_confirm">%s を削除しますか？</string>
+    <string name="dialog_privacy_title">権限の使用範囲</string>
+    <string name="dialog_privacy_message">本アプリは歌詞および再生情報を取得するために通知へのアクセスが必要です。\n\n
+    読み取るのはメディア再生通知の内容（アルバムアート、アーティスト、曲名、アルバム名、再生中アプリのパッケージ名）のみです。\n\n
+    これらの情報は以下の目的でのみ使用されます：\n
+    • 再生情報の取得および表示\n
+    • メディア通知からの歌詞抽出\n
+    • 有効化時のオンライン歌詞照合\n
+    • 有効化時の Last.fm への再生中・スクロブル送信\n
+    • アプリ内の診断ログ記録\n\n
+    チャットメッセージ、認証コード、メールなどメディア以外の通知を読み取ることは一切ありません。データ処理は端末内で行われ、オンライン歌詞や Last.fm など明示的に有効にした機能でのみネットワーク通信が発生します。</string>
+    <string name="dialog_btn_understand">了解して許可する</string>
+    <string name="dialog_block_xmsf_title">警告</string>
+    <string name="dialog_block_xmsf_message">有効にするとバッテリー消費が増加し、メッセージ通知が遅延する可能性があります。続行しますか？</string>
+    <string name="dialog_block_xmsf_confirm">それでも有効にする</string>
+
+    <!-- Guide -->
+    <string name="guide_title">0-Hook モード設定ガイド</string>
+    <string name="guide_message">このモードは通知バー歌詞または各アプリの「Bluetooth車載歌詞」プロトコルを利用します。\n\n
+    1. <b>QQ音楽</b>、<b>Xiaomi音楽</b>、<b>NetEase Cloud Music</b> に対応しています。\n
+    2. NetEase: 設定 -&gt; ツール -&gt;「外接設備藍牙歌詞」を有効化。\n
+    3. QQ音楽: 設定 -&gt; QPlayと車載音楽 -&gt;「車載藍牙歌詞」を有効化。\n
+    4. 本アプリに「通知へのアクセス」を許可し、音楽アプリの通知が正常に表示されていることを確認してください。</string>
+    <string name="settings_guide_item">0-Hook モード設定ガイド</string>
+    
+    <!-- Permissions -->
+    <string name="perm_cat_title">権限設定</string>
+    <string name="perm_read_notif">通知へのアクセス</string>
+    <string name="perm_read_notif_desc">歌詞を読み取るために必要です</string>
+    <string name="perm_post_notif">通知の送信</string>
+    <string name="perm_post_notif_desc">リアルタイム歌詞通知を送信するために必要です</string>
+    
+    <!-- General -->
+    <string name="settings_general_whitelist">ホワイトリスト管理</string>
+    <string name="settings_general_battery">バッテリーの最適化を無視</string>
+    <string name="settings_about_header">このアプリについて</string>
+    <string name="settings_about_github">GitHub リポジトリ</string>
+    <string name="title_app_settings">設定</string>
+    <string name="title_parser_whitelist_manager">ルール</string>
+    <string name="tab_home">ホーム</string>
+    <string name="tab_rules">ルール</string>
+    <string name="tab_settings">設定</string>
+    <string name="settings_console_log">ログコンソール</string>
+    <string name="settings_general_header">一般</string>
+    <string name="settings_full_offline_mode">完全オフラインモード</string>
+    <string name="settings_full_offline_mode_desc">すべてのネットワーク機能を非表示にし、更新確認・コミュニティ・オンライン歌詞通信をブロックします</string>
+    <string name="settings_full_offline_mode_dialog_title">完全オフラインモードを有効にしますか？</string>
+    <string name="settings_full_offline_mode_dialog_message">有効にすると、以下のアプリ内ネットワーク機能が非表示またはブロックされます：\n\n• オンライン歌詞のマッチングおよび再検索\n• Last.fm のスクロブルと認証\n• アップデート確認および現行バージョンの更新履歴取得\n• コミュニティフィードとフィードソース選択\n\nブラウザで開く外部リンク（GitHubリポジトリやフィードバックページなど）は通常どおり開けます。</string>
+    <string name="settings_full_offline_mode_dialog_confirm">有効にする</string>
+    <string name="settings_cache_management">キャッシュ管理</string>
+    <string name="settings_cache_management_desc">キャッシュされたオンライン歌詞やリモート画像を管理</string>
+    <string name="settings_core_services_header">コアサービス</string>
+    <string name="settings_core_header">コア</string>
+    <string name="settings_permissions_header">権限</string>
+    <string name="settings_capsule_notification">カプセルと通知</string>
+    <string name="settings_capsule_notification_title">カプセルと通知</string>
+    <string name="settings_block_xmsf">スーパーアイランドのホワイトリストを回避</string>
+    <string name="settings_block_xmsf_desc">通知送信時に一時的にXMSFの通信を切断し、システムホワイトリストを回避します (Shizukuが必要)</string>
+    <string name="settings_block_xmsf_mode">回避モード</string>
+    <string name="settings_block_xmsf_mode_desc">ルート化されていないデバイスで、Xiaomiスーパーアイランドにホワイトリスト外の通知を表示させるための回避モードです。Shizukuが必要です。</string>
+    <string name="settings_block_xmsf_mode_disabled">オフ</string>
+    <string name="settings_block_xmsf_mode_disabled_desc">XMSFのネットワークを変更しません</string>
+    <string name="settings_block_xmsf_mode_standard">標準</string>
+    <string name="settings_block_xmsf_mode_custom">カスタム</string>
+    <string name="settings_block_xmsf_mode_aggressive">アグレッシブ</string>
+    <string name="settings_block_xmsf_mode_standard_desc">通知送信時に短時間切断します</string>
+    <string name="settings_block_xmsf_mode_custom_desc">100ms〜500msの間で切断時間をカスタム設定します</string>
+    <string name="settings_block_xmsf_mode_custom_current_desc">現在の切断時間: %1$s</string>
+    <string name="settings_block_xmsf_mode_aggressive_desc">現在の曲の再生が終わるまでXMSFの切断を維持します</string>
+    <string name="settings_block_xmsf_custom_duration">切断時間</string>
+    <string name="settings_block_xmsf_custom_duration_desc">カスタムモードでのみ適用されます</string>
+    <string name="settings_block_xmsf_custom_duration_warning">切断時間を長くするとバッテリー消費が増えたりXiaomiプッシュ通知が遅れる可能性があります。標準モードでホワイトリスト回避が間に合わない場合のみ調整してください。</string>
+    <string name="settings_block_xmsf_duration_value">%1$d ms</string>
+    <string name="settings_new_playing_app_alert">新しい再生アプリの通知</string>
+    <string name="settings_new_playing_app_alert_desc">未設定のアプリが再生を開始した際に通知し、追加や無視を素早く行えるようにします</string>
+    <string name="settings_personalization_header">カスタマイズ</string>
+    <string name="settings_personalization_theme_header">外観とテーマ</string>
+    <string name="settings_personalization_visual_effects_header">視覚効果</string>
+    <string name="settings_personalization_gestures_header">ジェスチャーと操作</string>
+    <string name="settings_personalization_content_header">コンテンツと表示</string>
+    <string name="page_title_personalization">カスタマイズ設定</string>
+    <string name="tab_capsule">カプセル</string>
+    <string name="tab_notification">通知</string>
+    <string name="tab_app_ui">アプリUI</string>
+    <string name="settings_recommend_media_app">現在の再生アプリを推奨</string>
+    <string name="settings_recommend_media_app_desc">ルール設定を開いた際に、現在再生中のアプリを自動で推奨します</string>
+    <string name="settings_help_about_header">ヘルプと情報</string>
+    <string name="settings_developer_mode_header">デバッグツール</string>
+    <string name="community_about_title">コミュニティと情報</string>
+    <string name="settings_about_capsulyric">Capsulyric について</string>
+    <string name="settings_community_header">コミュニティ</string>
+    <string name="open_source_licenses_header">オープンソース</string>
+    <string name="open_source_licenses_title">オープンソースライセンス</string>
+    <string name="open_source_licenses_summary">サードパーティ製ライブラリとライセンスを表示</string>
+    <string name="open_source_licenses_page_desc">Capsulyricはオープンソースライブラリを使用して構築されています。ライセンス情報はビルド時の依存関係から生成されています。</string>
+    <string name="open_source_licenses_loading">ライブラリ一覧を読み込み中...</string>
+    <string name="open_source_licenses_count_format">%1$d 個のライブラリが含まれています</string>
+    <string name="open_source_licenses_libraries">ライブラリ</string>
+    <string name="open_source_licenses_version">バージョン</string>
+    <string name="open_source_licenses_license">ライセンス</string>
+    <string name="open_source_licenses_authors">作者</string>
+    <string name="open_source_licenses_project">プロジェクト</string>
+    <string name="open_source_licenses_license_text">ライセンス本文</string>
+    <string name="open_source_licenses_open_project">プロジェクトを開く</string>
+    <string name="open_source_licenses_unknown">不明</string>
+
+    <string name="settings_dynamic_icon_desc">曲名/アーティストを表示 (HyperOS 3.0.300+ のみ)</string>
+    <string name="channel_live_lyrics">リアルタイム歌詞更新</string>
+    <string name="channel_live_lyrics_desc">ステータスバー歌詞用のライブ通知（カプセル・スーパーアイランド対応）。</string>
+    <string name="channel_short_live">ライブ</string>
+    <string name="channel_new_playing_app_alerts">新しい再生アプリの通知</string>
+    <string name="channel_new_playing_app_alerts_desc">未設定のアプリがメディア再生を開始した際に通知します。</string>
+    <string name="new_playing_app_notification_title">新しいアプリが再生を開始しました</string>
+    <string name="new_playing_app_notification_text_fmt">%1$s (%2$s)</string>
+    <string name="new_playing_app_action_add">アプリを追加</string>
+    <string name="new_playing_app_action_ignore">通知しない</string>
+    <string name="new_playing_app_added_to_rules">%1$s を追加しました</string>
+    <string name="cancel">キャンセル</string>
+
+    <!-- OneUI Capsule Settings -->
+    <string name="settings_oneui_capsule_color">One UI カプセルの背景色</string>
+    <string name="settings_oneui_capsule_color_desc">One UIライブカプセルで使用する背景色モードを選択します。</string>
+    <string name="oneui_capsule_color_mode_black">黒</string>
+    <string name="oneui_capsule_color_mode_transparent">透明</string>
+    <string name="oneui_capsule_color_mode_translucent_black">半透明の黒</string>
+    <string name="oneui_capsule_color_mode_album">アルバムアートに追従</string>
+
+    <!-- 通知解析规则 -->
+    <string name="parser_rule_title">ルール</string>
+    <string name="parser_rule_subtitle">音楽アプリからの通知解析方法を設定</string>
+    <string name="parser_add_rule">音楽アプリを追加</string>
+    <string name="parser_edit">編集</string>
+    <string name="parser_delete">削除</string>
+    <string name="parser_package_name">パッケージ名 (例: com.example)</string>
+    <string name="parser_app_name">アプリ名 (任意)</string>
+    <string name="parser_car_protocol">メディア通知 (通知バー/車載音楽) 歌詞を使用</string>
+    <string name="parser_separator">区切り文字パターン</string>
+    <string name="parser_field_order">フィールドの順序</string>
+    <string name="parser_separator_tight">"-" (スペースなし)</string>
+    <string name="parser_separator_spaced">" - " (スペースあり)</string>
+    <string name="parser_separator_pipe">" | " (パイプ)</string>
+    <string name="parser_separator_custom">カスタム</string>
+    <string name="parser_order_artist_title">アーティスト-曲名</string>
+    <string name="parser_order_title_artist">曲名-アーティスト</string>
+    <string name="parser_lyric_settings">歌詞設定</string>
+    <string name="parser_no_rules">ルールがありません</string>
+    <string name="parser_no_rules_desc">+ボタンをタップしてパーサールールを追加</string>
+    <string name="parser_rules_count">パーサールール (%d)</string>
+    <string name="parser_pkg_exists">パッケージは既に存在します</string>
+    <string name="parser_app_info">アプリ情報</string>
+    <string name="parser_logic_title">解析ロジック</string>
+    <string name="parser_separator_label">区切り文字</string>
+    <string name="parser_field_order_label">フィールド順</string>
+    <string name="parser_logic_header">ソースとロジック</string>
+    <string name="parser_logic_desc">歌詞ソースと機能</string>
+    <string name="parser_lastfm_header">Last.fm</string>
+    <string name="parser_lastfm_scrobble">Last.fm にスクロブル</string>
+    <string name="parser_lastfm_scrobble_desc">このアプリの再生記録のみアップロード</string>
+    <string name="parser_notify_lyric_desc">通知タイトルから歌詞を抽出</string>
+    <string name="parser_online_lyric_desc_short">インターネットAPIから取得</string>
+    <string name="parser_local_lyric">ローカルLRCファイル</string>
+    <string name="parser_local_lyric_desc_short">設定したディレクトリから .lrc ファイルを検索</string>
+    <string name="settings_local_lyrics_title">ローカル歌詞</string>
+    <string name="settings_lyric_tools_header">歌詞ツール</string>
+    <string name="settings_local_lyrics_directories">歌詞ディレクトリ</string>
+    <string name="settings_local_lyrics_add">ディレクトリを追加</string>
+    <string name="settings_local_lyrics_empty">ディレクトリが未設定です。タップして追加してください。</string>
+    <string name="settings_local_lyrics_remove_confirm">このディレクトリを削除しますか？</string>
+    <string name="settings_local_lyrics_remove_confirm_named">ディレクトリ %s を削除しますか？</string>
+    <string name="export_lyric_button">LRCとしてエクスポート</string>
+    <string name="export_lyric_success">エクスポート完了: %1$s</string>
+    <string name="export_lyric_no_directory">先にローカル歌詞ディレクトリを設定してください</string>
+    <string name="export_lyric_directory_not_writable">エクスポート先ディレクトリに書き込めません。再度選択してください</string>
+    <string name="export_lyric_no_lyrics">エクスポート可能な歌詞がありません</string>
+    <string name="export_lyric_failed">エクスポートに失敗しました</string>
+    <string name="local_lyric_dir_empty">このディレクトリに .lrc ファイルが見つかりません</string>
+    <string name="local_lyric_dir_file_count">%1$d 個のファイル</string>
+    <string name="local_lyric_no_metadata">メタデータタグなし</string>
+    <string name="local_lyric_custom_match_label">カスタム一致: %1$s - %2$s</string>
+    <string name="local_lyric_edit_match">一致ルールを編集</string>
+    <string name="local_lyric_edit_match_desc">このファイルがマッチする曲を指定</string>
+    <string name="local_lyric_metadata_hint">メタデータ: %1$s - %2$s</string>
+    <string name="local_lyric_match_title">曲名</string>
+    <string name="local_lyric_match_artist">アーティスト</string>
+    <string name="local_lyric_reset_match">自動にリセット</string>
+    <string name="local_lyric_custom_match_label_short">カスタム一致</string>
+    <string name="local_lyric_pull_refresh_pull">下に引っ張って更新</string>
+    <string name="local_lyric_pull_refresh_release">離して更新</string>
+    <string name="local_lyric_pull_refresh_refreshing">更新中...</string>
+    <string name="local_lyric_pull_refresh_complete">更新が完了しました</string>
+    <string name="parser_online_priority">オンライン歌詞の優先度</string>
+    <string name="parser_online_priority_summary">オンライン優先度: %1$s</string>
+    <string name="parser_reset_online_priority">デフォルトの順序にリセット</string>
+    <string name="parser_smart_online_fetch">スマート歌詞選択</string>
+    <string name="parser_smart_online_fetch_desc">すべてのソースを自動スコアリングして最適な結果を選択します</string>
+    <string name="action_move_up">上に移動</string>
+    <string name="action_move_down">下に移動</string>
+    <string name="action_drag_sort">ドラッグして並べ替え</string>
+    <string name="parser_source_config_title">歌詞ソース設定</string>
+    <string name="parser_online_conflict_disable_notify">通知歌詞をオフにする</string>
+    <string name="parser_super_lyric">SuperLyric API</string>
+    <string name="parser_super_lyric_desc_short">ブロードキャスト経由で受信</string>
+    <string name="parser_lgetter_lyric">Lyric Getter API</string>
+    <string name="parser_lgetter_lyric_desc_short">Lyric Getterブロードキャスト経由で受信</string>
+    <string name="parser_lyricon_lyric">Lyricon API</string>
+    <string name="parser_lyricon_lyric_desc_short">Lyriconアクティブプレイヤー歌詞を購読</string>
+    <string name="parser_lyric_source_config">歌詞ソース設定</string>
+    <string name="parser_no_source_enabled">有効なソースがありません</string>
+    <string name="parser_receive_translation">翻訳を受信</string>
+    <string name="parser_receive_romanization">ローマ字/読みを受信</string>
+    <string name="parser_online_translation_desc">現在、QQ音楽とNetEaseのオンライン歌詞のみが翻訳データを提供しています。</string>
+    <string name="parser_online_romanization_desc">現在、QQ音楽とNetEaseのオンライン歌詞のみがローマ字データを提供しています。</string>
+    <string name="parser_lyricon_translation_desc">アクティブなLyriconプロバイダーが送信した場合に翻訳を受信します。</string>
+    <string name="parser_lyricon_romanization_desc">アクティブなLyriconプロバイダーが送信した場合にローマ字や副歌詞を受信します。</string>
+    <string name="parser_save">保存</string>
+    <string name="parser_save_rule">ルールを保存</string>
+    <string name="parser_add_app_fmt">%s を追加</string>
+    <string name="parser_current_app">現在のアプリ</string>
+    <string name="parser_template_title">デフォルトルールテンプレート</string>
+    <string name="parser_template_status_configured">設定済み</string>
+    <string name="parser_template_status_not_configured">未設定</string>
+    <string name="parser_template_save">テンプレートを保存</string>
+    <string name="parser_template_clear">テンプレートをクリア</string>
+    <string name="parser_template_clear_confirm">デフォルトルールテンプレートをクリアしますか？</string>
+    
+    <!-- 在线歌词设置 -->
+    <string name="settings_use_online_lyrics">オンライン歌詞APIを使用</string>
+    <string name="settings_use_online_lyrics_desc">複数のオンラインソース (KuGou/NetEase/LrcApi) からタイムスタンプ付き歌詞を取得</string>
+    <string name="lastfm_title">Last.fm</string>
+    <string name="lastfm_settings_summary">独自のLast.fm API資格情報を使用して選択したアプリの曲をスクロブル</string>
+    <string name="lastfm_description">Capsulyricは、パーサールールでLast.fmが有効になっているアプリのみをスクロブルします。曲名、アーティスト、アルバム、再生時間、タイムスタンプがLast.fmに送信される場合があります。API認証情報とセッションキーは端末内で暗号化され、Androidバックアップから除外されます。通常のデータエクスポートからも除外され、暗号化機密データバックアップを明示的に選択してパスワードを設定した場合にのみ含まれます。</string>
+    <string name="lastfm_privacy_title">データとプライバシー</string>
+    <string name="lastfm_privacy_body">アプリは曲名、アーティスト、アルバム、再生時間などのデータのみをLast.fmに送信します。</string>
+    <string name="lastfm_security_title">認証情報とセキュリティ</string>
+    <string name="lastfm_security_body">API認証情報は端末内でローカルに暗号化され、Androidバックアップや通常のエクスポートから除外されます。「機密データ」を明示的に選択しパスワードを設定した場合のみエクスポート可能です。</string>
+    <string name="lastfm_setup_title">セットアップ手順</string>
+    <string name="lastfm_setup_steps">1. Last.fm APIアカウントを作成し、APIキーと共有シークレットをコピーします。\n2. 両方の認証情報をここに貼り付けて保存します。\n3. Last.fm認証を開き、ブラウザでCapsulyricを承認してから戻り、接続を完了します。</string>
+    <string name="lastfm_create_api_key">Last.fm APIキーを作成</string>
+    <string name="lastfm_enable">Last.fm スクロブルを有効化</string>
+    <string name="lastfm_enable_desc">「再生中」および聴取履歴を同期します。各プレイヤーの「パーサールール」で個別に有効化する必要があります。</string>
+    <string name="lastfm_api_key">APIキー</string>
+    <string name="lastfm_api_secret">共有シークレット</string>
+    <string name="lastfm_save_credentials">認証情報を保存</string>
+    <string name="lastfm_open_auth">Last.fm 認証ページを開く</string>
+    <string name="lastfm_reauthorize">Last.fm を再認証</string>
+    <string name="lastfm_finish_connect">接続を完了</string>
+    <string name="lastfm_disconnect">切断して認証情報を消去</string>
+    <string name="lastfm_connected_note">CapsulyricはパーサールールでLast.fmが有効なプレイヤーのスクロブル準備ができています。接続が拒否された場合やアカウントを変更したい場合のみ再認証してください。</string>
+    <string name="lastfm_connected_as">%1$s として接続中</string>
+    <string name="lastfm_not_connected">未接続</string>
+    <string name="lastfm_saved">Last.fm 認証情報を保存しました</string>
+    <string name="lastfm_missing_credentials">先にAPIキーと共有シークレットを入力してください</string>
+    <string name="lastfm_auth_opened">ブラウザでCapsulyricを承認し、戻って「接続を完了」をタップしてください</string>
+    <string name="lastfm_connect_success">Last.fm に接続しました</string>
+    <string name="lastfm_connect_failed">Last.fm への接続に失敗しました</string>
+    <string name="lastfm_disconnected">Last.fm を切断しました</string>
+    <string name="parser_use_raw_metadata_for_online_match">元の再生情報を使用してオンライン照合</string>
+    <string name="parser_use_raw_metadata_for_online_match_desc">オンライン歌詞検索時にタイトル解析をスキップし、プレイヤーからの生の曲名/アーティストを使用します</string>
+    <string name="provider_qq_music">QQ音楽</string>
+    <string name="provider_kugou_music">酷狗音楽</string>
+    <string name="provider_soda_music">Soda Music</string>
+    <string name="provider_netease_music">NetEase Cloud Music</string>
+    <string name="provider_lrcapi">LrcApi</string>
+    <string name="provider_lrclib">LRCLIB</string>
+    <string name="provider_apple_music">Apple Music</string>
+    <string name="provider_musixmatch">Musixmatch</string>
+    <string name="apple_music_settings_title">Apple Music 歌詞ソース設定</string>
+    <string name="apple_music_settings_summary">歌詞取得に使用する Apple Music のログイントークン、地域、言語を設定</string>
+    <string name="apple_music_settings_desc">Apple Music アカウントを設定してオンライン歌詞を取得します。\nアカウントの地域は自動同期され、言語設定に応じてローカライズされた歌詞が照合されます。\nサインインする Apple アカウントには有効な Apple Music サブスクリプションが必要です。</string>
+    <string name="apple_music_storefront">地域</string>
+    <string name="apple_music_language">言語</string>
+    <string name="apple_music_storefront_us">米国</string>
+    <string name="apple_music_storefront_cn">中国</string>
+    <string name="apple_music_storefront_jp">日本</string>
+    <string name="apple_music_storefront_hk">香港</string>
+    <string name="apple_music_storefront_gb">イギリス</string>
+    <string name="apple_music_language_en_us">English (US)</string>
+    <string name="apple_music_language_zh_hans">簡体中文</string>
+    <string name="apple_music_language_zh_hant">繁体中文</string>
+    <string name="apple_music_language_ja">日本語</string>
+    <string name="apple_music_follow_global">グローバル設定に従う</string>
+    <string name="apple_music_custom_override">カスタム</string>
+    <string name="apple_music_login_section">ログイン資格情報の設定</string>
+    <string name="apple_music_login_explain">Apple APIの制限により、歌詞を取得するには有効なログイン資格情報 (token) が必要です。</string>
+    <string name="apple_music_login_expiry">トークンには有効期限があります。歌詞が取得できなくなった場合は再サインインしてください。</string>
+    <string name="apple_music_mut_label">media-user-token</string>
+    <string name="apple_music_mut_hint">media-user-token の Cookie 値を貼り付け</string>
+    <string name="apple_music_mut_save">ログイン情報を保存</string>
+    <string name="apple_music_mut_clear">ログイン情報を消去</string>
+    <string name="apple_music_mut_saved">ログイン情報を保存しました</string>
+    <string name="apple_music_mut_cleared">ログイン情報を消去しました</string>
+    <string name="apple_music_web_login_button">WebViewでサインイン</string>
+    <string name="apple_music_web_login_title">Apple Music にサインイン</string>
+    <string name="apple_music_web_login_hint">以下のページでサインインしてください。アプリがセッションから自動で media-user-token を取得します。</string>
+    <string name="apple_music_web_login_captured">media-user-token を取得しました。検証中…</string>
+    <string name="apple_music_web_login_valid">トークンは有効です。このページを閉じて構いません。</string>
+    <string name="apple_music_web_login_invalid">トークンが無効または期限切れです。再サインインするか手動で貼り付けてください。</string>
+    <string name="apple_music_web_login_done">完了</string>
+    <string name="apple_music_mut_howto_title">トークンの取得方法</string>
+    <string name="apple_music_mut_howto_body">1. 自動取得\n下の「WebViewでサインイン」ボタンをタップして簡単に取得できます。\n\n2. 手動取得\n1). ブラウザで music.apple.com を開き、Apple ID でサインインします。\n2). 開発者ツール（F12）→ Application → Cookies → music.apple.com を開きます。\n3). media-user-token の値をコピーして下に貼り付けます。</string>
+    <string name="apple_music_mut_status_checking">トークンを確認中…</string>
+    <string name="apple_music_mut_status_valid">資格情報は有効です。歌詞が取得できなくなった場合は再サインインしてください。</string>
+    <string name="apple_music_mut_status_expired">Appleによりトークンが拒否されました（期限切れまたは無効）。WebViewで再サインインしてください。</string>
+    <string name="apple_music_mut_status_unknown">検証できませんでした（ネットワークを確認してください）。検証失敗は必ずしも期限切れを意味しません。</string>
+    <string name="apple_music_web_login_unknown">取得しましたが、検証できませんでした（ネットワークを確認してください）。</string>
+    <string name="parser_apple_music_override">Apple Music 言語オーバーライド</string>
+    <string name="parser_apple_music_override_desc">このアプリでのApple Music歌詞言語をオーバーライドします（地域はサインインしたApple Musicアカウントに従います）</string>
+    <string name="settings_use_superlyric_api">SuperLyric API を使用</string>
+    <string name="settings_use_superlyric_api_desc">(予約) 拡張歌詞API連携</string>
+
+    <!-- 关于 & 更新检测 -->
+    <string name="about_title">情報</string>
+    <string name="about_version">バージョン</string>
+    <string name="about_codename">コードネーム</string>
+    <string name="about_build">ビルド</string>
+    <string name="about_commit">コミット</string>
+    <string name="title_cache_management">キャッシュ管理</string>
+    <string name="update_check_title">アップデートを確認</string>
+    <string name="update_available_title">新しいバージョンがあります: %s</string>
+    <string name="update_current_version">現在のバージョン: %s</string>
+    <string name="update_current_version_changelog_title">%s リリースノート</string>
+    <string name="update_current_version_changelog_title_short">現在のバージョンのリリースノート</string>
+    <string name="update_current_version_changelog_loading">現在のバージョンのリリースノートを取得中...</string>
+    <string name="update_current_version_changelog_unavailable_title">リリースノートが見つかりません</string>
+    <string name="update_current_version_changelog_unavailable_message">現在インストールされているバージョンのリリースノートが見つかりませんでした。\n\n考えられる原因：\n1. 古いExperimentテストビルドを使用している。Experimentは更新頻度が高く、古いノートが整理された可能性があります。\n2. Actionsビルド、ローカルビルドなど公式リリース以外で作成されたバージョンである。</string>
+    <string name="update_changelog">更新内容</string>
+    <string name="update_download">アップデートをダウンロード</string>
+    <string name="update_view_release_page">リリースノートを開く</string>
+    <string name="update_close">閉じる</string>
+    <string name="update_view">表示</string>
+    <string name="update_available_snackbar">新しいバージョンが利用可能です: %s</string>
+    <string name="update_ignore">このバージョンを無視</string>
+    <string name="update_no_update">最新バージョンです</string>
+    <string name="update_check_failed">アップデートの確認に失敗しました</string>
+    <string name="settings_auto_update">アップデートを自動確認</string>
+    <string name="settings_auto_update_desc">アプリ起動時に新しいバージョンを確認</string>
+
+    <!-- Main Activity -->
+    <string name="dialog_prerelease_warning_message">PreviewとExperimentには未完成の変更が含まれる可能性があり、安定性を重視する場合は推奨されません。</string>
+    <string name="settings_prerelease_channel">更新チャンネル</string>
+    <string name="main_service_status">🔴 サービス状態: 不明</string>
+    <string name="main_system_api_status">システム &amp; API 状態 (API 36)</string>
+    <string name="main_permission_check">権限: 確認中...</string>
+    <string name="main_notif_capability">Notif.hasPromotable: 待機中...</string>
+    <string name="main_notif_flag">Flag PROMOTED_ONGOING: 待機中...</string>
+    <string name="main_open_settings">プロモート設定を開く</string>
+    <string name="main_whitelist_title">ホワイトリストアプリ</string>
+    <string name="main_add_package">パッケージを追加</string>
+
+    <string name="settings_prerelease_update">更新チャンネル</string>
+    <string name="settings_prerelease_update_desc">受信するアップデートの種類を選択します。Experimentは「実験室」で有効化できます。</string>
+    <string name="dialog_prerelease_warning_title">更新チャンネル</string>
+    <string name="settings_prerelease_desc">Q: 各チャンネルの違いは何ですか？</string>
+    <string name="dialog_prerelease_desc_title">チャンネルガイド</string>
+    <string name="dialog_prerelease_desc_message">A：\n\n• <b>Stable</b>: 正式リリース版のみ受信。日常的な安定利用に最適です。\n\n• <b>Preview</b>: プレビュー版を先行受信し、対応するStable版に移行します。新機能をいち早く試したいユーザー向け。\n\n• <b>Experiment</b>: テストブランチのCanaryローリングビルドのみ受信。<b>[テスト専用・極めて不安定]</b>。StableやPreviewの更新は受信しません。</string>
+    
+    <!-- 动态图标样式设置 -->
+    <string name="settings_icon_style">アイコンスタイル</string>
+    <string name="icon_style_classic">標準音符アイコン</string>
+    <string name="icon_style_classic_desc">デフォルトの音楽アプリのアイコンを表示</string>
+    <string name="icon_style_advanced">アドバンススタイル</string>
+    <string name="icon_style_advanced_desc">アルバムアート付きの2行レイアウト</string>
+    <string name="icon_style_album_art">アルバムアート</string>
+    <string name="icon_style_album_art_desc">アルバムアートを通知アイコンとして表示</string>
+    <string name="dialog_icon_style_title">アイコンスタイルを選択</string>
+
+    <string name="settings_disable_scrolling_desc">静的テキストのみ表示します。歌詞の種類に関わらずスクロールを無効化します。</string>
+    <string name="settings_feedback">フィードバック</string>
+    <string name="dialog_feedback_title">フィードバック方法を選択</string>
+    <string name="dialog_feedback_github">GitHub Issues</string>
+    <string name="dialog_feedback_github_desc">推奨。最も迅速に対応されます。</string>
+    <string name="dialog_feedback_wps">WPS フォーム</string>
+    <string name="dialog_feedback_wps_desc">代替手段。ログインが必要な場合があります。</string>
+    <string name="dialog_feedback_wjx">WJX アンケート</string>
+    <string name="dialog_feedback_wjx_desc">ログイン不要。</string>
+    <string name="settings_hide_launcher">アプリアイコンを隠す</string>
+    <string name="settings_hide_launcher_desc">ホーム画面のランチャーからCapsulyricを非表示にします</string>
+    <string name="tile_capsulyric_label">Capsulyric</string>
+    <string name="dialog_hide_launcher_title">アプリアイコンが非表示になります</string>
+    <string name="dialog_hide_launcher_message">非表示にした後も、以下の方法で Capsulyric を開くことができます：\n\n
+· クイック設定タイルの Capsulyric をタップ\n
+· ブラウザのアドレスバーに capsulyric://settings と入力\n
+· システム設定 → アプリ → Capsulyric → 容量の管理 (HyperOSなどの一部端末では「データを消去」タップ後に表示されます)</string>
+    <string name="dialog_hide_launcher_btn_add_tile_and_hide">タイルを追加して非表示</string>
+    <string name="dialog_hide_launcher_btn_hide_now">今すぐ非表示</string>
+    <string name="dialog_hide_launcher_btn_cancel">キャンセル</string>
+    <string name="toast_add_tile_manually">Capsulyricタイルを手動で追加してください：通知バーを引き下げ → 編集 → Capsulyricを探す</string>
+    <string name="settings_hide_recents">最近のタスクから隠す</string>
+    <string name="settings_hide_recents_desc">アプリがバックグラウンドに移行した際に最近のタスクから削除します</string>
+    <string name="settings_backup_export">設定をエクスポート</string>
+    <string name="settings_backup_export_desc">現在のアプリ設定をZIPバックアップファイルにエクスポート</string>
+    <string name="settings_backup_import">設定をインポート</string>
+    <string name="settings_backup_import_desc">ZIPバックアップファイルから設定をインポート</string>
+    <string name="settings_backup_header">バックアップと復元</string>
+    <string name="settings_backup_export_success">%1$d 個の設定をバックアップしました</string>
+    <string name="settings_backup_export_success_with_cache">%1$d 個の設定、%2$d 件の歌詞キャッシュをバックアップしました</string>
+    <string name="settings_backup_export_success_with_sensitive">%1$d 個の設定、%2$d 件の歌詞キャッシュ、%3$d 個の機密項目をバックアップしました</string>
+    <string name="settings_backup_import_success">%1$d 個の設定を復元しました</string>
+    <string name="settings_backup_import_success_with_cache">%1$d 個の設定、%2$d 件の歌詞キャッシュを復元しました</string>
+    <string name="settings_backup_import_success_with_sensitive">%1$d 個の設定、%2$d 件の歌詞キャッシュ、%3$d 個の機密項目を復元しました</string>
+    <string name="settings_backup_export_failed">設定のエクスポートに失敗しました</string>
+    <string name="settings_backup_import_failed">設定の復元に失敗しました</string>
+    <!-- Backup Category Dialog -->
+    <string name="backup_dialog_export_title">エクスポートするデータを選択</string>
+    <string name="backup_dialog_import_title">インポートするデータを選択</string>
+    <string name="backup_dialog_select_all">すべて選択</string>
+    <string name="backup_dialog_deselect_all">すべて選択解除</string>
+    <string name="backup_dialog_selected_count">%1$d / %2$d 項目選択中</string>
+    <string name="backup_dialog_confirm">確定</string>
+    <string name="backup_dialog_cancel">キャンセル</string>
+    <string name="backup_dialog_preview_title">インポートプレビュー</string>
+    <string name="backup_dialog_preview_summary">このバックアップには %1$d カテゴリ、%2$d 件の設定が含まれています</string>
+    <string name="backup_sensitive_password_export_title">機密データの保護</string>
+    <string name="backup_sensitive_password_import_title">機密データのロック解除</string>
+    <string name="backup_sensitive_password_export_description">選択した機密データを暗号化するパスワードを設定してください。このパスワードは保存されず、復元できません。</string>
+    <string name="backup_sensitive_password_import_description">選択した機密データの暗号化に使用したパスワードを入力してください。</string>
+    <string name="backup_sensitive_password">バックアップパスワード</string>
+    <string name="backup_sensitive_password_confirm">パスワードの確認</string>
+    <string name="backup_sensitive_password_required">バックアップパスワードを入力してください</string>
+    <string name="backup_sensitive_password_mismatch">パスワードが一致しません</string>
+    <string name="backup_sensitive_password_invalid">パスワードが正しくないか、機密データが破損しています</string>
+    <string name="backup_conflict_title">パーサールールの競合</string>
+    <string name="backup_conflict_description">インポートするバックアップに既存のパッケージ名と同じルールが含まれています。処理方法を選択してください：</string>
+    <string name="backup_conflict_apply">競合解決を適用</string>
+    <string name="backup_cat_capsule">カプセルとアイランド</string>
+    <string name="backup_cat_notifications">通知とステータスバー</string>
+    <string name="backup_cat_appearance">外観とテーマ</string>
+    <string name="backup_cat_general">一般設定</string>
+    <string name="backup_cat_parser_rules">パーサールール</string>
+    <string name="backup_cat_advanced">高度な設定</string>
+    <string name="backup_cat_lyric_cache">歌詞キャッシュ</string>
+    <string name="backup_cat_sensitive_data">機密データ (暗号化)</string>
+    <string name="backup_sub_capsule_style">カプセルスタイルとモード</string>
+    <string name="backup_sub_capsule_layout">レイアウトと文字数制限</string>
+    <string name="backup_sub_capsule_color_share">着色と共有フォーマット</string>
+    <string name="backup_sub_notif_behavior">通知の動作と設定</string>
+    <string name="backup_sub_notif_dynamic_icon">動的アイコンスタイル</string>
+    <string name="backup_sub_notif_floating">フローティング歌詞設定</string>
+    <string name="backup_sub_notif_appearance">通知の外観詳細</string>
+    <string name="backup_sub_notif_alert">新規再生通知設定</string>
+    <string name="backup_sub_appearance_theme">テーマカラーとダークモード</string>
+    <string name="backup_sub_appearance_blur">ぼかしとテクスチャ効果</string>
+    <string name="backup_sub_appearance_ui_style">UIスタイル設定 (Material/Miuix)</string>
+    <string name="backup_sub_general_language">言語設定</string>
+    <string name="backup_sub_general_behavior">ランチャーと最近のタスクの動作</string>
+    <string name="backup_sub_general_lyric_display">歌詞表示とスクロール</string>
+    <string name="backup_sub_general_lastfm">Last.fm 設定</string>
+    <string name="backup_sub_general_apple_music">Apple Music 設定</string>
+    <string name="backup_sub_parser_all">すべてのアプリパーサールール</string>
+    <string name="backup_sub_sensitive_lastfm">Last.fm 認証情報とセッション</string>
+    <string name="backup_sub_sensitive_apple_music">Apple Music トークン</string>
+    <string name="backup_sub_advanced_lab">実験室のフラグとパラメータ</string>
+    <string name="backup_sub_advanced_offline">完全オフラインモード</string>
+    <string name="backup_sub_advanced_dev">開発者と診断フラグ</string>
+    <string name="backup_sub_advanced_lyric_dir">ローカル歌詞ディレクトリ一覧</string>
+    <string name="backup_sub_advanced_updates">更新チャンネルと確認設定</string>
+    <string name="backup_sub_advanced_xmsf">XMSF 回避パラメータ</string>
+    <!-- FAQ Strings -->
+    <string name="settings_predictive_back_desc">予測戻るジェスチャー対応システムでアニメーションを有効化</string>
+    <string name="summary_view_logs">ローカルログを確認</string>
+    <string name="offline_mode_network_blocked">完全オフラインモードが有効なため通信がブロックされました</string>
+    <string name="faq_title">よくある質問</string>
+    <string name="faq_cat_guide">利用ガイド</string>
+    <string name="faq_cat_online">オンライン歌詞とキャッシュ</string>
+    <string name="faq_q_add_rule">Q：音楽アプリのパーサールールを追加するには？</string>
+    <string name="faq_a_add_rule">以下の手順で追加してください：\n\n
+1. <b>アプリ内設定の有効化</b>: 音楽アプリ内で「通知バー歌詞」「メディア通知歌詞」または「車載Bluetooth歌詞」機能があることを確認し、有効にします。\n\n
+2. <b>パーサールールの追加</b>: ルール画面で「音楽アプリを追加」を選択します。\n
+   • アプリ名とパッケージ名を入力します。\n
+   •「再生中のアプリを推薦」が有効な場合、ボタンをタップして自動入力できます。\n\n
+3. <b>解析ロジックの設定</b>:\n
+   •「メディア通知歌詞」をオンにします。\n
+   • 通知の表示形式に合わせて「区切り文字」と「順序」を設定します。\n\n
+4. <b>再起動して適用</b>: ルールを保存後、音楽アプリをタスクキルして再起動します。\n\n
+<b>注意</b>: 上記機能がない場合、SuperLyric/Lyric Getter オプションまたは「オンライン歌詞」を代替として利用できます。SuperLyric/Lyric Getter には LSPosed 環境が必要です。</string>
+    <string name="faq_q_island_modes">Q：対応している歌詞アイランド方式と動作環境は？</string>
+    <string name="faq_a_island_modes">A：本アプリは以下の2種類の歌詞表示ソリューションを提供しています：\n\n
+<b>1. ネイティブライブ通知 (Live Update)</b>\n
+- <b>要件</b>: Android 16+ または HyperOS 3.0.300+。\n
+- <b>仕組み</b>: システムネイティブAPIを利用します。バックグラウンド時や画面ロック時にステータスバー内で自動的にカプセル状態を維持し、極めて省電力です。\n\n
+<b>2. Xiaomi スーパーアイランド (Super Island)</b>\n
+- <b>要件</b>: すべての HyperOS バージョン。\n
+- <b>仕組み</b>: Xiaomi独自のプロトコルを利用します。「設定 → カプセルと通知」で「Xiaomiスーパーアイランド通知を送信」を手動で有効化してください。\n
+- <b>ホワイトリスト回避方法</b>:\n
+  • <b>Root 取得済み</b>: HyperCeiler 等のモジュールを使用してシステム制限を解除することを推奨します。\n
+  • <b>非 Root</b>: Shizuku で認可し、「Xiaomiスーパーアイランドのホワイトリストを回避」を有効にします。（注: 通知を強制リダイレクトするため、一時的な消費電力増加や遅延が生じる場合があります。）</string>
+    <string name="faq_q_config_online_lyrics">Q：オンライン歌詞を設定するには？</string>
+    <string name="faq_a_config_online_lyrics">A：オンライン歌詞は、通知バー歌詞が利用できない場合や不完全な場合、より正確な同期タイムスタンプが必要な場合に適しています。\n\n
+1.「ルール」画面で対象の音楽アプリのパーサールールを開きます。\n
+2. <b>「オンライン歌詞 API を使用」</b>を有効にします。\n
+3. プレイヤーが提供する元の曲名・アーティスト情報の方が正確な場合は、<b>「元の再生情報を使用してオンライン照合」</b>を有効にします。\n
+4. 最適な結果を自動選択するため、通常は<b>「スマート取得」</b>をオンにしておくことをお勧めします。手動で優先順位を制御したい場合は、オフにして<b>「オンライン優先度」</b>を調整してください。\n
+5. 特定の曲が正しくマッチしない場合は、<b>「オンライン歌詞の再検索」</b>を開き、曲名やアーティストを手動入力して<b>「再検索」</b>を実行してください。</string>
+    <string name="faq_q_online_match_wrong">Q：オンライン歌詞の検索結果が一致しない場合は？</string>
+    <string name="faq_a_online_match_wrong">A：オンライン歌詞は現在の楽曲の照合情報に基づいて検索されます。曲名やアーティスト名が不完全な場合や、タイトルに Live、Remix、カバー、番組名、カッコ書きの付加情報が含まれていると、誤った結果がマッチすることがあります。\n\n
+以下の方法をお試しください：\n\n
+1. <b>「オンライン歌詞デバッグツール」</b>を開き、現在実際に使用されている照合曲名・アーティストを確認します。\n\n
+2. 現在の曲の「カスタム照合曲名」または「カスタム照合アーティスト」を手動で入力します。\n\n
+3. 保存後、<b>「強制更新」</b>を実行します。\n\n
+4. それでも不正確な場合は、<b>「元の再生情報を使用してオンライン照合」</b>が有効か確認してください。</string>
+    <string name="faq_q_online_match_no_change">Q：カスタム照合情報を変更したのに歌詞が変わらない場合は？</string>
+    <string name="faq_a_online_match_no_change">A：カスタム照合情報は以降のオンライン検索やキャッシュ判定に反映されますが、すでに画面に表示されている結果を自動的に即時置き換えるわけではありません。\n\n
+変更が反映されない場合は、以下の手順をお試しください：\n\n
+1. まず現在の曲のカスタム照合情報を保存します。\n\n
+2. <b>「オンライン歌詞デバッグツール」</b>で<b>「強制更新」</b>を実行します。\n\n
+3. それでも変わらない場合、古いキャッシュが表示されている可能性があります。\n\n
+4.「キャッシュ管理」で該当曲のキャッシュを削除し、再取得してください。\n\n
+<b>補足</b>: カスタム照合は部分オーバーライドに対応しています。曲名またはアーティストの片方のみ入力した場合、空欄は元の再生情報で補完されます。</string>
+    <string name="faq_q_clear_online_cache">Q：オンライン歌詞キャッシュを削除するには？</string>
+    <string name="faq_a_clear_online_cache">A：アプリ内に独立した<b>「キャッシュ管理」</b>画面が用意されており、オンライン歌詞キャッシュの確認や削除が可能です。\n\n
+以下の操作を行えます：\n\n
+1. キャッシュされた歌詞の件数、サイズ、最終更新日時の確認。\n\n
+2. 個別の歌詞キャッシュの削除。\n\n
+3. すべての歌詞キャッシュの一括消去。\n\n
+4. 必要に応じて画像キャッシュも削除。\n\n
+オンライン歌詞が更新されない場合や、照合情報を修正したのに古い結果が表示される場合は、該当曲のキャッシュを削除してから再取得することをお勧めします。</string>
+    <string name="faq_q_access_diagnostics">Q：キャッシュ管理画面やデバッグ画面を開くには？</string>
+    <string name="faq_a_access_diagnostics">A：<b>キャッシュ管理</b>と<b>オンライン歌詞の再検索</b>（デバッグ）は設定内の<b>「歌詞ツール」</b>カテゴリにあります（カスタム照合は再検索画面内）。また、「このアプリについて」画面のヘッダー画像を7回連続でタップすると、設定下部に<b>「デバッグツール」</b>（<b>診断ツール</b>や<b>実験室</b>）が表示されます。</string>
+    <string name="faq_q_offline_mode_online_lyrics">Q：完全オフラインモードはオンライン歌詞に影響しますか？</string>
+    <string name="faq_a_offline_mode_online_lyrics">A：はい。<b>「完全オフラインモード」</b>を有効にすると、すべてのオンライン歌詞リクエストが無効化され、アップデート確認や通信を伴う機能もブロックされます。\n\n
+オンライン歌詞を使用したい場合は、まず完全オフラインモードを無効にしてください。</string>
+    <string name="faq_cat_func">機能トラブルシューティング</string>
+    <string name="faq_q_no_lyrics">Q：設定完了後も歌詞アイランドが表示されない場合は？</string>
+    <string name="faq_a_no_lyrics">A： 以下の手順でトラブルシューティングを行ってください：\n\n
+1. <b>権限の確認</b>:「通知へのアクセス」が付与されているか確認してください。タスク一覧でアプリをロックし、自動起動を許可してプロセスの終了を防ぐことを推奨します。\n\n
+2. <b>プレイヤー側の送信設定</b>:\n
+   - <b>主要音楽アプリ (QQ/NetEase/Xiaomi等)</b>: アプリ内の「車載/Bluetooth歌詞」がオンになっていることを確認してください。一部のバージョンではBluetoothやイヤホン接続時のみブロードキャストされます。\n
+   - <b>Apple Music</b>: クローズドソースのため、LSPosed環境でのSuperLyricモジュール連携が必要です。\n\n
+3. <b>システムの互換性</b>:\n
+   - <b>Live Update モード</b>: HyperOS 3.0.300 未満のシステムでは、システムAPIの制約によりカプセル表示ができません。\n
+   - <b>Super Island モード</b>: RootモジュールまたはShizuku認可による回避が行われていない場合、未認可アプリの動的通知がブロックされます。\n\n
+4. <b>データソース</b>: オンライン歌詞はAPI応答の遅延や著作権制限により取得できない場合があります。\n\n
+<b>解決しない場合は、診断ツールからログZIPをエクスポートし、フィードバックページから報告してください。</b></string>
+
+    <string name="faq_q_service_error">Q：ホームで「サービスに接続できません」と表示され続ける場合は？</string>
+    <string name="faq_a_service_error">A： これは通常、システムによって権限が自動回収されたことが原因です。\n\n
+<b>原因</b>: 一部のシステムでは「通知へのアクセス」権限の有効期間が制限されることがあります。\n
+<b>対処方法</b>: システム設定を開き、本アプリの「通知へのアクセス」権限を再度許可してください。</string>
+    
+    <string name="faq_q_how_to_diagnostics">Q：診断ツールを開くには？</string>
+    <string name="faq_a_how_to_diagnostics">A：<b>「設定 → このアプリについて」</b>を開き、ヘッダー画像を7回タップすると、<b>「アプリ設定」</b>下部に<b>「デバッグツール」</b>が表示されます。そこから<b>「診断ツール」</b>を開くことができます。\n\nデバッグツール内には<b>診断ツール</b>や<b>実験室</b>の実験的機能が含まれています（「キャッシュ管理」と「再検索」は「歌詞ツール」にあります）。</string>
+    <string name="faq_q_island_camera_overlap">Q：スーパーアイランド歌詞がカメラ穴と重なる場合は？</string>
+    <string name="faq_a_island_camera_overlap">A：パンチホールカメラ搭載端末で歌詞が長い場合、カメラ穴と重なることがあります。以下の手順で調整してください：\n\n
+<b>1. 診断ツールを開く</b>\n
+上記の手順で診断ツールを有効化して開きます。\n\n
+<b>2. 実験室を開く</b>\n
+診断ツール内の<b>「実験室」</b>を開きます。\n\n
+<b>3. 調整機能を有効化</b>\n
+<b>「スーパーアイランド文字数制限の緩和」</b>をオンにします。\n\n
+<b>4.「カプセルと通知」で微調整</b>\n
+<b>「設定 → カプセルと通知」</b>に戻ると、<b>「左側/右側の文字数制限」</b>設定が表示されます。カメラ穴がある側の文字数を減らすことで重なりを防げます。\n\n
+カメラ穴を避けて綺麗に収まるよう数値を調整してください。</string>
+    <string name="faq_cat_feedback">フィードバックとログ</string>
+    <string name="faq_q_unresolved">Q：上記の内容で問題が解決しない場合は？</string>
+    <string name="faq_a_unresolved">A： フィードバックページから Issue を送信してください。\n\n
+- <b>推奨</b>: GitHub Issues (最も迅速に対応されます)。\n
+- <b>代替</b>: WPS フォーム (ログインが必要な場合があります)、WJX アンケート\n
+<b>重要</b>: 問題調査をスムーズに行うため、報告時は必ず <b>ログ (Log)</b> を添付してください。</string>
+
+    <string name="faq_q_get_log">Q：診断ログを取得・エクスポートするには？</string>
+    <string name="faq_a_get_log">A： 以下の手順をご参照ください：\n\n
+<b>1. 診断ツールの有効化</b>\n
+- <b>Debug 版</b>: メイン画面から直接 Log Console にアクセス可能。\n
+- <b>Release 版</b>:「設定 → このアプリについて」でヘッダー画像を7回タップし、設定下部の「デバッグツール」から「診断ツール」を開きます。\n\n
+<b>2. ZIP ログのエクスポート</b>\n
+ログ画面で右上の共有/エクスポートアイコンをタップします。期間を選択すると、環境情報とシステムログがZIPにまとめられます。GitHub Issue やフォーム送信時にこのZIPファイルを添付してください。</string>
+    <string name="faq_q_hide_launcher_entry">Q：ホーム画面のアイコンを非表示にした後アプリを開くには？</string>
+    <string name="faq_a_hide_launcher_entry">A：アプリアイコンを非表示にした後も、以下の方法で Capsulyric を開くことができます：\n\n<b>1. クイック設定タイル</b>\n通知バーを引き下げ、Capsulyric タイルをタップして直接開きます。\n\n<b>2. URL Scheme</b>\nブラウザのアドレスバーに <b>capsulyric://settings</b> と入力してアクセスするとアプリが起動します。\n\n<b>3. 容量の管理</b>\n<b>システム設定 → アプリ → Capsulyric → 容量の管理</b>から起動できます。HyperOS などの端末では「データを消去」タップ後に表示される場合があります。</string>
+    <string name="faq_q_no_pinyin_translation">Q：一部の曲で翻訳やローマ字歌詞が表示されないのはなぜですか？</string>
+    <string name="faq_a_no_pinyin_translation">A：ローマ字および歌詞翻訳は、現在<b>オンライン歌詞</b>および <b>Lyricon API</b> 経由でのみ取得可能です。\n\nまた、対象アプリのパーサールールで関連オプションを有効にする必要があります：\n\n1. <b>パーサールール</b>を開き、対象アプリのルールを選択します。\n\n2. <b>「翻訳を受信」</b>や<b>「ローマ字を受信」</b>を有効にします。\n\n3. オンライン歌詞を使用する場合、歌詞ソースが翻訳やローマ字データに対応していることを確認してください。</string>
+
+    <!-- 通知设置 -->
+    <string name="action_miplay">MiPlay</string>
+    <string name="settings_notification_header">通知設定</string>
+    <string name="settings_notification_actions">通知アクションボタン</string>
+    <string name="settings_action_style_off">オフ</string>
+    <string name="settings_action_style_off_desc">追加のアクションボタンを表示しません</string>
+    <string name="settings_action_style_media">メディアコントロール</string>
+    <string name="settings_action_style_media_desc">前の曲、再生/一時停止、次の曲ボタンを表示</string>
+    <string name="settings_action_style_miplay">Xiaomi MiPlay</string>
+    <string name="settings_action_style_miplay_desc">Xiaomi MiPlay キャストボタンを表示 (システム対応が必要)</string>
+    <string name="settings_super_island_notification_style">スーパーアイランド通知スタイル</string>
+    <string name="super_island_notification_style_standard">標準スタイル</string>
+    <string name="super_island_notification_style_advanced_beta">アドバンススタイル (Beta)</string>
+    <string name="super_island_notification_style_advanced_lyrics_dual">2行歌詞スタイル</string>
+    <string name="settings_super_island_dual_line_mode">2行目歌詞の表示内容</string>
+    <string name="settings_super_island_dual_line_mode_desc">2行表示モードで2行目に表示する内容を選択</string>
+    <string name="super_island_dual_line_mode_next_lyric">次の歌詞</string>
+    <string name="super_island_dual_line_mode_translation">現在の歌詞の翻訳</string>
+    <string name="super_island_dual_line_mode_romanization">現在の歌詞のローマ字</string>
+    <string name="settings_super_island_media_button_layout">アイランド展開時メディアボタン</string>
+    <string name="super_island_media_button_layout_two">2ボタン (再生 + 次の曲)</string>
+    <string name="super_island_media_button_layout_two_desc">展開時に再生/一時停止と次の曲ボタンを表示</string>
+    <string name="super_island_media_button_layout_three">3ボタン (前の曲 + 再生 + 次の曲)</string>
+    <string name="super_island_media_button_layout_three_desc">展開時に前・再生/一時停止・次の曲の3ボタンを表示</string>
+    <string name="super_island_media_button_layout_none">ボタンなし</string>
+    <string name="super_island_media_button_layout_none_desc">展開時にメディア操作ボタンを表示しません</string>
+    <string name="settings_super_island_show_progress_bar">プログレスバーを表示</string>
+    <string name="settings_super_island_show_progress_bar_desc">スーパーアイランド下部に再生プログレスバーを表示</string>
+    <string name="settings_super_island_secondary_text_mode">サブテキスト表示モード</string>
+    <string name="settings_super_island_secondary_text_mode_summary">サブテキスト: %1$s</string>
+    <string name="settings_super_island_secondary_text_priority">サブテキスト優先度</string>
+    <string name="super_island_secondary_text_next_lyric">次の歌詞</string>
+    <string name="super_island_secondary_text_translation">歌詞翻訳</string>
+    <string name="super_island_secondary_text_romanization">ローマ字</string>
+    <string name="settings_super_island_template2_pic_source">アイランド展開時画像ソース</string>
+    <string name="super_island_template2_pic_album_art">アルバムアート</string>
+    <string name="super_island_template2_pic_album_art_desc">展開時に現在再生中の曲のアルバムアートを表示</string>
+    <string name="super_island_template2_pic_playing_app">再生アプリのアイコン</string>
+    <string name="super_island_template2_pic_playing_app_desc">展開時に再生中の音楽アプリのアイコンを表示</string>
+    <string name="super_island_template2_pic_app_icon">Capsulyric アイコン</string>
+    <string name="super_island_template2_pic_app_icon_desc">展開時に Capsulyric のアプリアイコンを表示</string>
+    <string name="super_island_template2_pic_custom">カスタム画像</string>
+    <string name="super_island_template2_pic_custom_desc">展開時に選択したカスタム画像を表示</string>
+    <string name="settings_super_island_template2_pic_custom_pick">ローカル画像を選択</string>
+    <string name="settings_super_island_template2_pic_custom_none">カスタム画像未設定</string>
+    <string name="settings_super_island_custom_expand_test">アイランド展開テスト通知</string>
+    <string name="settings_super_island_custom_expand_test_desc">テスト通知を送信して展開表示をプレビュー</string>
+    <string name="settings_live_update_show_progress_bar">ライブ通知プログレスバー</string>
+    <string name="settings_live_update_show_progress_bar_desc">ステータスバーライブ通知に再生プログレスバーを表示</string>
+    <string name="settings_progress_color">プログレスバーの色</string>
+    <string name="settings_progress_color_desc">スーパーアイランド展開時のプログレスバーの色を設定</string>
+    <string name="settings_dismiss_delay_title">再生停止後の非表示遅延</string>
+    <string name="settings_lock_screen_hide_notification">画面ロック時に通知を非表示</string>
+    <string name="settings_lock_screen_hide_notification_desc">端末がロックされたときにリアルタイム歌詞通知を自動で非表示にします</string>
+    <string name="settings_dismiss_delay_desc">一時停止後、アイランドと歌詞通知が非表示になるまでの時間を設定</string>
+    <string name="dismiss_delay_immediate">すぐに非表示</string>
+    <string name="dismiss_delay_1s">1秒</string>
+    <string name="dismiss_delay_3s">3秒</string>
+    <string name="dismiss_delay_5s">5秒</string>
+    <string name="dialog_dismiss_delay_title">遅延時間を選択</string>
+    
+    <!-- OOBE -->
+    <string name="oobe_welcome_title">Capsulyric へようこそ</string>
+    <string name="oobe_welcome_subtitle">軽量で美しい Android ステータスバー＆スーパーアイランド歌詞ツール</string>
+    <string name="oobe_status_perfectly_compatible">完全対応</string>
+    <string name="oobe_warning_community_verified">コミュニティ検証済み</string>
+    <string name="oobe_warning_untested_system">未テストのシステム環境</string>
+    <string name="oobe_warning_super_island_limited">スーパーアイランド機能制限あり</string>
+    <string name="oobe_error_unsupported_device">非対応の端末またはシステム</string>
+    <string name="oobe_privacy_notice">プライバシーの保護：Capsulyricは端末内でのみメディア通知を処理し、個人データを収集またはアップロードすることはありません。</string>
+    
+    <string name="oobe_step_permissions">権限の設定</string>
+    <string name="oobe_perm_listener_title">通知へのアクセス</string>
+    <string name="oobe_perm_listener_desc">再生中の曲名、アーティスト、通知歌詞を取得するために必要です</string>
+    <string name="oobe_perm_listener_scope">メディア再生通知のみにアクセスし、個人メッセージは読み取りません</string>
+    <string name="oobe_perm_post_title">通知の送信</string>
+    <string name="oobe_perm_post_desc">ステータスバーやスーパーアイランドにリアルタイム歌詞を表示するために必要です</string>
+    <string name="oobe_perm_battery_title">バッテリーの最適化を無視</string>
+    <string name="oobe_perm_battery_desc">バックグラウンドで安定して動作し、システムによる終了を防ぎます</string>
+    <string name="oobe_btn_grant">許可する</string>
+    <string name="oobe_btn_granted">許可済み</string>
+    <string name="oobe_perm_required_hint">続行するには必要な権限を許可してください</string>
+    
+    <string name="oobe_step_apps">プレイヤーの設定</string>
+    <string name="oobe_apps_intro">普段お使いの音楽アプリを選択し、案内に従って車載歌詞を有効にしてください：</string>
+    <string name="oobe_tab_qq">QQ音楽</string>
+    <string name="oobe_tab_netease">NetEase Cloud Music</string>
+    <string name="oobe_tab_xiaomi">Xiaomi音楽</string>
+    
+    <string name="oobe_guide_qq">1. まず Bluetooth オーディオ機器を接続してください。\n2. <b>マイページ</b> -&gt; <b>メニュー (右上の3本線)</b> -&gt; <b>設定</b> を開きます。\n3. <b>車載Bluetooth歌詞</b> を探して有効にします。</string>
+    <string name="oobe_guide_netease">1. まず Bluetooth オーディオ機器を接続してください。\n2. <b>メニュー (左上)</b> -&gt; <b>設定</b> -&gt; <b>全般</b> を開きます。\n3. <b>外部機器Bluetooth歌詞</b> を探して有効にします。</string>
+    <string name="oobe_guide_xiaomi">1. <b>マイページ</b> -&gt; <b>メニュー (右上の3本線)</b> -&gt; <b>一般設定</b> を開きます。\n2. <b>通知バー歌詞</b> を有効にします。</string>
+    
+    <string name="oobe_online_alt_title">その他のプレイヤー？</string>
+    <string name="oobe_online_alt_desc">Apple Music、Spotify、YouTube Music などに対応し、オンライン歌詞検索を利用できます。</string>
+    <string name="oobe_online_alt_guide">1. <b>設定</b> -&gt; <b>パーサールール</b> を開きます。\n2. リストからお使いの音楽アプリを選択します。\n3. <b>ソースとロジック</b> の下にある <b>歌詞ソース設定</b> をタップします。\n4. <b>"オンライン歌詞 API を使用"</b> を有効にします。\n5. 最良の結果を得るため <b>"スマート取得"</b> をオンにしておくことをお勧めします。</string>
+    
+    <string name="oobe_app_not_in_list">他のプレイヤーを使用</string>
+    <string name="oobe_i_understand">設定完了</string>
+    <string name="oobe_add_rule_guide_title">ルールの追加方法</string>
+    
+    <string name="oobe_step_finish">セットアップ完了</string>
+    <string name="oobe_step_restore">バックアップを復元</string>
+    <string name="oobe_restore_intro_desc">以前にCapsulyricの設定バックアップを保存している場合は、ここで復元できます：</string>
+    <string name="oobe_restore_import_desc">ZIPバックアップファイルを選択して設定とパーサールールを復元</string>
+    <string name="oobe_restore_fresh_start">新規として開始</string>
+    <string name="oobe_finish_title">準備が完了しました！</string>
+    <string name="oobe_finish_subtitle">音楽を再生すると、ステータスバーやスーパーアイランドに歌詞が表示されます。</string>
+    <string name="oobe_finish_start">利用を開始</string>
+    <string name="oobe_btn_settings">詳細設定へ</string>
+    <string name="oobe_btn_start">ホームへ</string>
+
+    <string name="oobe_next">次へ</string>
+    <string name="oobe_back">戻る</string>
+    <string name="oobe_skip">スキップ</string>
+
+    <!-- OOBE Feature Intro -->
+    <string name="oobe_step_features">主な機能</string>
+    <string name="oobe_feat_island_title">スーパーアイランド / ライブカプセル</string>
+    <string name="oobe_feat_island_desc">HyperOSスーパーアイランドと連携し、滑らかなリアルタイム歌詞アニメーションを提供</string>
+    <string name="oobe_feat_source_title">マルチソースオンライン歌詞</string>
+    <string name="oobe_feat_source_desc">KuGou、NetEase、QQ音楽、Apple Music、ローカルLRCからのスマート照合に対応</string>
+    <string name="oobe_feat_style_title">高度なカスタマイズ</string>
+    <string name="oobe_feat_style_desc">ダイナミックカラー、文字数制限、2行表示、フローティングウィンドウなど豊富な設定</string>
+    
+    <!-- OOBE Autostart -->
+    <string name="oobe_perm_autostart_title">自動起動の許可</string>
+    <string name="oobe_perm_autostart_desc">端末起動時の自動起動とバックグラウンド実行を許可し、再生時に即座に応答します</string>
+    <string name="action_pause">一時停止</string>
+    <string name="action_next">次の曲</string>
+    <string name="media_control_title">メディアコントロール</string>
+    <string name="media_control_scanning">メディアセッションをスキャン中...</string>
+    <string name="media_control_found_sessions">%1$d 個のアクティブなセッションを検出</string>
+    <string name="media_control_perm_required">メディア操作には通知へのアクセス権限が必要です</string>
+    <string name="media_control_error_prefix">操作失敗: %1$s</string>
+    <string name="media_control_no_sessions">現在再生中のメディアはありません</string>
+    <string name="media_control_launch_miplay">MiPlay キャストを起動</string>
+    <string name="media_control_close">閉じる</string>
+    <string name="media_control_unknown_title">不明な曲</string>
+    <string name="media_control_unknown_artist">不明なアーティスト</string>
+    <string name="media_control_open_app">%1$s を開く</string>
+    <string name="media_control_miplay_failed">Xiaomi MiPlay の起動に失敗しました: %1$s</string>
+    <string name="media_control_cannot_open">%1$s を起動できません</string>
+    <string name="media_control_cannot_open_no_entry">%1$s を開けません：このメディアセッションにはアプリエントリがなく、起動可能なアクティビティも見つかりませんでした。</string>
+    <string name="media_control_cannot_open_session_failed_fallback">メディアセッションから %1$s を直接開けませんでした。アプリのホームを開きます。</string>
+    <string name="media_control_cannot_open_launch_failed">%1$s を開けません：アプリエントリは見つかりましたが起動に失敗しました: %2$s</string>
+    <string name="settings_click_action_title">カプセルタップ時の動作</string>
+    <string name="settings_click_action_default">デフォルトの動作</string>
+    <string name="settings_click_action_default_desc">システムデフォルトに従ってアイランド展開またはコントロールセンターを開く</string>
+    <string name="settings_click_action_media">メディアコントロールを開く</string>
+    <string name="settings_click_action_media_desc">タップ時にCapsulyricのメディアコントロールを開きます</string>
+    <string name="settings_click_action_open_playing_app">再生中のアプリを開く</string>
+    <string name="settings_click_action_open_playing_app_desc">タップ時に再生中の音楽アプリを直接開きます</string>
+    <string name="settings_disable_scrolling">歌詞スクロールを無効化</string>
+    <string name="settings_lyric_text_display_mode">優先する歌詞テキスト</string>
+    <string name="settings_lyric_text_display_mode_desc">翻訳とローマ字は選択した歌詞ソースから取得できた場合のみ適用され、それ以外は通常の歌詞が表示されます。</string>
+    <string name="lyric_text_display_mode_lyric">歌詞</string>
+    <string name="lyric_text_display_mode_translation">翻訳</string>
+    <string name="lyric_text_display_mode_romanization">ローマ字</string>
+    <string name="settings_super_island">Xiaomiスーパーアイランド通知を送信</string>
+    <string name="settings_super_island_desc">歌詞通知をライブアップデートからXiaomiスーパーアイランドテンプレートに置き換えます。</string>
+    <string name="settings_capsule_mode">カプセルモード</string>
+    <string name="capsule_mode_live_update">ライブアップデート (Live Update)</string>
+    <string name="capsule_mode_super_island">Xiaomiスーパーアイランド</string>
+    <string name="settings_super_island_lyric_mode">スーパーアイランド歌詞スタイル</string>
+    <string name="super_island_lyric_mode_standard">標準</string>
+    <string name="super_island_lyric_mode_standard_desc">左側に再生情報、右側に現在の歌詞を表示。中央パンチホールに最適。</string>
+    <string name="super_island_lyric_mode_full">フル歌詞</string>
+    <string name="super_island_lyric_mode_full_desc">両側に歌詞を表示し、自動的に歌詞スクロールを無効化します。</string>
+    <string name="settings_super_island_full_lyric_show_left_cover">フル歌詞モードで左にアルバムアートを表示</string>
+    <string name="settings_super_island_full_lyric_show_left_cover_desc">フル歌詞スタイルでも左側アイランドエリアにアルバムアートを表示します。</string>
+    <string name="settings_super_island_standard_show_left_cover">標準スタイルで左にアルバムアートを表示</string>
+    <string name="settings_super_island_standard_show_left_cover_desc">標準スタイルで左側アイランドエリアにアルバムアートを表示します。</string>
+    <string name="settings_super_island_right_text_limit">右側歌詞の文字数制限</string>
+    <string name="settings_super_island_left_text_limit">左側歌詞の文字数制限</string>
+    <string name="settings_live_update_text_limit">ライブアップデート歌詞の文字数制限</string>
+    <string name="settings_super_island_colorize">カプセルコンテンツのカラー化</string>
+    <string name="settings_super_island_colorize_desc">スーパーアイランドの歌詞、再生情報、カプセル枠、プログレスバーの色を設定します。</string>
+    <string name="settings_super_island_color_source">カラーソース</string>
+    <string name="settings_super_island_color_source_desc">スーパーアイランドコンテンツのカラーモードを選択します。</string>
+    <string name="settings_super_island_color_source_album_art">アルバムアートカラー (オリジナル)</string>
+    <string name="settings_super_island_color_source_album_art_smart">アルバムアートカラー (スマート)</string>
+    <string name="settings_super_island_color_source_custom">カスタムカラー</string>
+    <string name="settings_super_island_color_source_album_art_desc">抽出されたアルバムアートの色をそのまま使用します。</string>
+    <string name="settings_super_island_color_source_album_art_smart_desc">視認性のため暗い色を自動的に明るく補正し、明るい色はそのまま保持します。</string>
+    <string name="settings_super_island_color_source_custom_desc">手動で選択した色をそのまま使用します。</string>
+    <string name="settings_super_island_custom_color">カプセルカスタムカラー</string>
+    <string name="settings_super_island_share">ドラッグ＆ドロップ共有を有効化</string>
+    <string name="settings_super_island_share_desc">スーパーアイランドをドラッグして歌詞を共有できるようにします。</string>
+    <string name="settings_super_island_share_format">共有テキストフォーマット</string>
+    <string name="share_format_1">歌詞    曲名 by アーティスト</string>
+    <string name="share_format_2">歌詞 -アーティスト, 曲名</string>
+    <string name="share_format_3">歌詞    アーティスト, 曲名</string>
+    <string name="settings_app_ui_style">アプリUIスタイル</string>
+    <string name="settings_app_ui_style_desc">Material Design と Miuix UI を切り替えます。アプリが再起動します。</string>
+    <string name="settings_home_lyric_preview_title">歌詞プレビュータイプ</string>
+    <string name="settings_home_lyric_preview_summary_fmt">ホームとメディア操作に適用。現在: %1$s</string>
+    <string name="settings_home_lyric_preview_keep_one">少なくとも1つの歌詞プレビュータイプを選択してください。</string>
+    <string name="dialog_ui_style_title">アプリUIスタイルを選択</string>
+    <string name="ui_style_material">Material Design</string>
+    <string name="ui_style_miuix">Miuix</string>
+    <string name="settings_predictive_back">予測戻るアニメーション</string>
+    <string name="settings_predictive_back_animation_mode">戻るアニメーションモード</string>
+    <string name="settings_predictive_back_animation_mode_desc">ページ遷移および戻るジェスチャーのアニメーション形式を設定</string>
+    <string name="predictive_back_animation_mode_page_specific">ページ固有スタイル</string>
+    <string name="predictive_back_animation_mode_consistent">統一スタイル</string>
+    <string name="settings_predictive_back_animation">戻るアニメーション効果</string>
+    <string name="settings_predictive_back_animation_desc">ページ遷移時のトランジション効果を選択</string>
+    <string name="predictive_back_animation_scale_slide">スケールスライド</string>
+    <string name="predictive_back_animation_horizontal_slide">左右スライド</string>
+    <string name="predictive_back_animation_fade">フェード</string>
+    <string name="predictive_back_animation_vertical_slide">上下スライド</string>
+    <string name="predictive_back_animation_zoom">ズーム</string>
+    <string name="predictive_back_animation_depth">デプス (奥行き)</string>
+    <string name="predictive_back_animation_flip">フリップ (回転)</string>
+    <string name="settings_monet_color">Monet ダイナミックカラー</string>
+    <string name="settings_monet_color_desc">壁紙からアクセントカラーを抽出 (Android 12+)。アプリが再起動します。</string>
+    <string name="settings_card_blur">高度なぼかし素材</string>
+    <string name="settings_card_blur_desc">一部の画面ですりガラス調のマテリアル効果を適用</string>
+    <string name="lang_sys_default">システムに従う</string>
+    <string name="lang_english">English</string>
+    <string name="lang_chinese">简体中文</string>
+    <string name="lang_chinese_traditional">繁體中文</string>
+    <string name="lang_japanese">日本語</string>
+    <string name="toast_dev_mode_steps">デバッグツールを有効にするにはあと %1$d 回タップ</string>
+    <string name="toast_dev_mode_enabled">デバッグツールを有効化しました</string>
+    <string name="toast_dev_mode_already_enabled">デバッグツールは既に有効です</string>
+    <string name="toast_copied">クリップボードにコピーしました</string>
+    <string name="summary_optimize_battery">バックグラウンド動作を最適化</string>
+    <string name="summary_check_updates_now">アップデートを今すぐ確認</string>
+    <string name="summary_view_current_version_changelog">インストール済みバージョンのリリースノートを表示</string>
+    <string name="summary_faq">よくある質問を確認</string>
+    <string name="summary_feedback">フィードバックまたは問題の報告を送信</string>
+    <string name="summary_github">GitHub オープンソースページを開く</string>
+
+    <!-- 诊断相关字符串 -->
+    <string name="diag_header_tools">診断とツール</string>
+    <string name="diag_header_debug_tools">デバッグツール</string>
+    <string name="diag_header_maintenance_tools">メンテナンスツール</string>
+    <string name="diag_header_feature_controls">機能スイッチ</string>
+    <string name="diag_header_laboratory">実験室設定</string>
+    <string name="diag_lab_page_desc">実験室の機能は開発・テスト段階の実験的オプションであり、不安定な場合があります。</string>
+    <string name="diag_lab_category_general">一般実験オプション</string>
+    <string name="diag_lab_category_interface">UI・外観の実験</string>
+    <string name="diag_lab_category_updates">アップデートチャンネル実験</string>
+    <string name="diag_header_service">サービス実行状態</string>
+    <string name="diag_header_system">システム・環境情報</string>
+    <string name="diag_header_advanced">高度な診断</string>
+    <string name="diag_lab_super_island_advanced_style_title">スーパーアイランドアドバンススタイル (実験版)</string>
+    <string name="diag_lab_super_island_advanced_style_desc">より高度なレイアウトや大サイズカバーの切り替えを許可します</string>
+    <string name="diag_lab_super_island_text_limits_title">スーパーアイランド文字数制限の緩和</string>
+    <string name="diag_lab_super_island_text_limits_desc">両側の歌詞表示の最大文字数上限を緩和します</string>
+    <string name="diag_lab_super_island_relaxed_text_limits_title">超ロングテキスト表示モード</string>
+    <string name="diag_lab_super_island_relaxed_text_limits_desc">片側最大50文字までの歌詞表示を許可します</string>
+    <string name="diag_lab_super_island_smart_contrast_title">スーパーアイランドスマートコントラスト強化</string>
+    <string name="diag_lab_super_island_smart_contrast_desc">背景の明るさに応じてテキストの視認性を自動強化します</string>
+    <string name="diag_lab_super_island_smart_white_title">極暗背景の自動白補正</string>
+    <string name="diag_lab_super_island_smart_white_desc">非常に暗い背景の場合にテキストを純白に自動補正します</string>
+    <string name="settings_edge_highlight_texture_title">エッジハイライトテクスチャ</string>
+    <string name="settings_edge_highlight_texture_desc">カードの端に立体的な光沢テクスチャを適用</string>
+    <string name="diag_lab_live_update_text_limits_title">ライブアップデート文字数制限の緩和</string>
+    <string name="diag_lab_live_update_text_limits_desc">ステータスバーライブ通知の1行歌詞文字数制限を緩和</string>
+    <string name="diag_lab_material_blur_title">Material ぼかしレンダラー</string>
+    <string name="diag_lab_material_blur_desc">Materialスタイルでハードウェアアクセラレーションぼかしを使用</string>
+    <string name="diag_lab_experiment_updates_title">テストビルド (Experiment) を受信</string>
+    <string name="diag_lab_experiment_updates_desc">更新チャンネルに Experiment を追加して実験的アップデートを受信</string>
+    <string name="settings_edge_scroll_haptic_title">エッジスクロール触覚フィードバック</string>
+    <string name="settings_edge_scroll_haptic_desc">リストの端までスクロールした際に軽いバイブレーションを発生</string>
+    <string name="settings_miuix_floating_bottom_bar">Miuix フローティングボトムバー</string>
+    <string name="settings_miuix_floating_bottom_bar_desc">Miuixスタイルでフローティングボトムバーを使用</string>
+    <string name="diag_lab_floating_lyrics_title">デスクトップフローティング歌詞エントリ</string>
+    <string name="diag_lab_floating_lyrics_desc">設定メニューにフローティング歌詞の設定項目を表示</string>
+    <string name="diag_lab_floating_word_high_fps_title">文字単位歌詞の高フレームレートアニメーション</string>
+    <string name="diag_lab_floating_word_high_fps_desc">60/120fpsでスムーズな文字単位スクロールを描画 (消費電力が増加する場合があります)</string>
+    <string name="diag_lab_feed_source_title">コミュニティフィードソース</string>
+    <string name="diag_lab_feed_source_desc">コミュニティフィードの取得元サーバーを切り替え</string>
+    <string name="diag_lab_feed_source_github">GitHub (グローバル)</string>
+    <string name="diag_lab_feed_source_gitee">Gitee (中国国内アクセラレーション)</string>
+    <string name="diag_lab_super_island_dialog_title">アドバンススタイルを有効にしますか？</string>
+    <string name="diag_lab_super_island_dialog_message">アドバンススタイルは実験的レイアウトのため、一部端末では文字数制限の微調整が必要な場合があります。</string>
+    <string name="diag_lab_super_island_dialog_confirm">有効にする</string>
+    <string name="diag_lab_live_update_text_limits_dialog_title">文字数制限を緩和しますか？</string>
+    <string name="diag_lab_live_update_text_limits_dialog_message">制限を緩和すると、ステータスバーのスペースが狭い場合に長い歌詞が省略されることがあります。</string>
+    <string name="diag_lab_live_update_text_limits_dialog_confirm">制限を緩和</string>
+    <string name="diag_header_material">マテリアルとレンダリング</string>
+    <string name="diag_material_blur_radius_title">すりガラスぼかし半径</string>
+    <string name="diag_material_blur_radius_value">%1$.0f dp</string>
+    <string name="diag_material_blur_radius_desc">カード背景のぼかし強度をカスタマイズ</string>
+    
+    <string name="diag_label_connection">サービス接続</string>
+    <string name="diag_label_controllers">アクティブコントローラー</string>
+    <string name="diag_label_whitelisted">ホワイトリスト登録済み</string>
+    <string name="diag_label_primary_pkg">プライマリ再生パッケージ</string>
+    <string name="diag_label_whitelist_size">ホワイトリスト数</string>
+    <string name="diag_label_last_params">最終送信パラメータ</string>
+    <string name="diag_label_last_update">最終更新日時</string>
+    
+    <string name="diag_label_android_ver">Android バージョン</string>
+    <string name="diag_label_rom_ver">ROM バージョン</string>
+    <string name="diag_label_rom_type">ROM タイプ</string>
+    <string name="diag_label_device">端末モデル</string>
+    <string name="diag_label_arch">CPU アーキテクチャ</string>
+    <string name="diag_label_build_id">ビルド ID</string>
+    
+    <string name="diag_section_android16">Android 16+ ライブ通知機能</string>
+    <string name="diag_label_can_post_promoted">Promoted通知送信可</string>
+    <string name="diag_label_has_promoted_char">Promoted属性あり</string>
+    <string name="diag_label_is_promoted">現在Promoted状態</string>
+    
+    <string name="diag_section_xiaomi">Xiaomiスーパーアイランド機能</string>
+    <string name="diag_label_island_support">スーパーアイランド対応</string>
+    <string name="diag_label_focus_version">フォーカス通知バージョン</string>
+    <string name="diag_label_focus_perm">フォーカス通知権限</string>
+    
+    <string name="diag_status_connected">接続中</string>
+    <string name="diag_status_disconnected">未接続</string>
+    <string name="diag_waiting_data">データ待機中...</string>
+    <string name="diag_none">なし</string>
+    <string name="diag_yes">はい</string>
+    <string name="diag_no">いいえ</string>
+    <string name="diag_supported">対応</string>
+    <string name="diag_unsupported">非対応</string>
+    <string name="diag_enabled">有効</string>
+    <string name="diag_disabled">無効</string>
+    <string name="diag_btn_refresh">診断情報を更新</string>
+    <string name="diag_qq_roman_debug_title">QQ音楽ローマ字デバッグ</string>
+    <string name="diag_qq_roman_debug_desc">QQ音楽のオンライン歌詞ローマ字解析をテスト</string>
+
+    <!-- 在线歌词调试 -->
+    <string name="online_lyric_debug_back">戻る</string>
+    <string name="online_lyric_debug_title">オンライン歌詞デバッグツール</string>
+    <string name="online_lyric_rematch_title">オンライン歌詞の再検索</string>
+    <string name="online_lyric_rematch_settings_desc">最適なオンライン歌詞ソースを手動で検索・照合</string>
+    <string name="online_lyric_rematch_current_playback">現在の再生情報</string>
+    <string name="online_lyric_rematch_current_full_lyrics">現在適用中の歌詞</string>
+    <string name="online_lyric_rematch_result_full_lyrics">検索結果の歌詞プレビュー</string>
+    <string name="online_lyric_rematch_match_input">検索キーワード</string>
+    <string name="online_lyric_rematch_song_title">曲名</string>
+    <string name="online_lyric_rematch_artist">アーティスト</string>
+    <string name="online_lyric_rematch_action">再検索</string>
+    <string name="online_lyric_rematch_sidecar_action">翻訳/ローマ字歌詞を照合</string>
+    <string name="online_lyric_rematch_current_playback_action">現在の再生情報を使用して再検索</string>
+    <string name="online_lyric_rematch_mark_instrumental">この曲はインストゥルメンタルです</string>
+    <string name="online_lyric_rematch_clear_instrumental">インストマークを解除</string>
+    <string name="online_lyric_rematch_mark_album_instrumental">このアルバムはすべてインストです</string>
+    <string name="online_lyric_rematch_clear_album_instrumental">アルバム全体のインストマークを解除</string>
+    <string name="online_lyric_rematch_unknown_album">不明なアルバム</string>
+    <string name="online_lyric_rematch_result_title">再取得した歌詞</string>
+    <string name="online_lyric_rematch_result_source_fmt">ソース: %1$s</string>
+    <string name="online_lyric_rematch_effective_query_fmt">現在のクエリ: %1$s / %2$s</string>
+    <string name="online_lyric_rematch_duration_fmt">合計時間: %1$s</string>
+    <string name="online_lyric_rematch_current_line">現在のフレーズ</string>
+    <string name="online_lyric_rematch_no_lyrics">歌詞がありません</string>
+    <string name="online_lyric_rematch_no_result">再検索後の歌詞がここに表示されます</string>
+    <string name="online_lyric_rematch_other_results">他のソースからの結果</string>
+    <string name="online_lyric_rematch_no_other_results">再検索後、他のソースの結果がここに表示されます</string>
+    <string name="online_lyric_rematch_selected_result">選択中の結果</string>
+    <string name="online_lyric_rematch_available_result">利用可能な結果</string>
+    <string name="online_lyric_debug_now_playing">現在の再生楽曲</string>
+    <string name="online_lyric_debug_song_fmt">曲名: %1$s</string>
+    <string name="online_lyric_debug_artist_fmt">アーティスト: %1$s</string>
+    <string name="online_lyric_debug_match_title_fmt">照合曲名: %1$s</string>
+    <string name="online_lyric_debug_match_artist_fmt">照合アーティスト: %1$s</string>
+    <string name="online_lyric_debug_playback_time_fmt">再生時間: %1$s / %2$s</string>
+    <string name="online_lyric_debug_current_match">現在の楽曲オンライン照合</string>
+    <string name="online_lyric_debug_custom_title">カスタム照合曲名</string>
+    <string name="online_lyric_debug_custom_artist">カスタム照合アーティスト</string>
+    <string name="online_lyric_debug_save">キャッシュに保存</string>
+    <string name="online_lyric_debug_clear_custom">カスタム照合を消去</string>
+    <string name="online_lyric_debug_import_current_playback">現在の再生情報をインポート</string>
+    <string name="online_lyric_debug_live_status">リアルタイムステータス</string>
+    <string name="online_lyric_debug_lyric_source_fmt">歌詞ソース: %1$s / %2$s</string>
+    <string name="online_lyric_debug_current_lyric_fmt">現在の歌詞: %1$s</string>
+    <string name="online_lyric_debug_playing_app_fmt">再生アプリ: %1$s</string>
+    <string name="online_lyric_debug_play_state_fmt">再生状態: %1$s</string>
+    <string name="online_lyric_debug_state_playing">再生中</string>
+    <string name="online_lyric_debug_state_paused">一時停止中</string>
+    <string name="online_lyric_debug_priority">オンライン優先度</string>
+    <string name="online_lyric_debug_reset_order">順序をリセット</string>
+    <string name="online_lyric_debug_fetch">歌詞を取得</string>
+    <string name="online_lyric_debug_fetch_cached">キャッシュから読み込み</string>
+    <string name="online_lyric_debug_fetching">取得中...</string>
+    <string name="online_lyric_debug_force_refresh">強制更新</string>
+    <string name="online_lyric_debug_fetch_mode_smart">スマートモード</string>
+    <string name="online_lyric_debug_provider_order_fmt">プロバイダー順序: %1$s</string>
+    <string name="online_lyric_debug_title_fallback_fmt">フォールバックタイトル: %1$s</string>
+    <string name="online_lyric_debug_triggered">トリガー済み</string>
+    <string name="online_lyric_debug_not_triggered">未トリガー</string>
+    <string name="online_lyric_debug_effective_query_fmt">有効なクエリ: %1$s / %2$s</string>
+    <string name="online_lyric_debug_retry_clean_title">クリーンタイトルで再試行</string>
+    <string name="online_lyric_debug_no_result">結果なし</string>
+    <string name="online_lyric_debug_error_fmt">エラー: %1$s</string>
+    <string name="online_lyric_debug_result_summary_fmt">%1$s / %2$d 点 / %3$s</string>
+    <string name="online_lyric_debug_result_syllable">文字単位歌詞</string>
+    <string name="online_lyric_debug_result_lrc_or_text">行単位歌詞 / テキスト</string>
+    <string name="online_lyric_debug_result_main_lyrics">メイン歌詞</string>
+    <string name="online_lyric_debug_result_translation">翻訳</string>
+    <string name="online_lyric_debug_result_romanization">ローマ字</string>
+    <string name="online_lyric_debug_no_translation_match">一致する翻訳なし</string>
+    <string name="online_lyric_debug_no_romanization_match">一致するローマ字なし</string>
+    <string name="online_lyric_debug_no_sidecar_summary">サブ歌詞データなし</string>
+    <string name="online_lyric_debug_clean_title_badge">クリーンタイトル</string>
+    <string name="online_lyric_debug_main_candidates">メイン歌詞ソース</string>
+    <string name="online_lyric_debug_translation_candidates">翻訳歌詞ソース</string>
+    <string name="online_lyric_debug_roman_candidates">ローマ字歌詞ソース</string>
+    <string name="online_lyric_debug_no_main_candidates">メイン歌詞候補なし</string>
+    <string name="online_lyric_debug_no_translation_candidates">翻訳候補なし</string>
+    <string name="online_lyric_debug_no_roman_candidates">ローマ字候補なし</string>
+    <string name="online_lyric_debug_tap_for_full_result">タップして完全な結果を表示</string>
+    <string name="online_lyric_debug_attempt_title_fmt">%1$s 最終結果</string>
+    <string name="online_lyric_debug_duration_fmt">所要時間: %1$d ms</string>
+    <string name="online_lyric_debug_clean_title_used">クリーンタイトルを使用済み</string>
+    <string name="online_lyric_debug_select_result">この結果を選択</string>
+    <string name="online_lyric_debug_use_as_main">メイン歌詞として設定</string>
+    <string name="online_lyric_debug_use_as_translation">翻訳として設定</string>
+    <string name="online_lyric_debug_use_as_romanization">ローマ字として設定</string>
+    <string name="online_lyric_debug_close">閉じる</string>
+    <string name="online_lyric_debug_none">なし</string>
+    <string name="online_lyric_debug_dash">-</string>
+    <string name="online_lyric_debug_empty">(空)</string>
+    <string name="online_lyric_debug_move_up">上に移動</string>
+    <string name="online_lyric_debug_move_down">下に移動</string>
+    <string name="online_lyric_debug_selected_prefix">選択中: </string>
+    <string name="online_lyric_debug_attempt_header_fmt">%1$s%2$s (%3$dms)</string>
+    <string name="online_lyric_debug_query_source_custom">カスタム検索</string>
+    <string name="online_lyric_debug_query_source_raw">生のメタデータ</string>
+    <string name="online_lyric_debug_query_source_default">デフォルト解析</string>
+    <string name="online_lyric_debug_cached_provider_fmt">キャッシュ済みプロバイダー: %1$s</string>
+    <string name="online_lyric_debug_cached_default_provider">デフォルトキャッシュソース</string>
+    <string name="online_lyric_debug_no_cached_lyric">キャッシュされた歌詞なし</string>
+    <string name="online_lyric_debug_snapshot_status">自動取得結果 (%1$s) · 再検索可能</string>
+    <string name="online_lyric_debug_error_no_song">曲名を入力してください</string>
+    <string name="online_lyric_debug_error_empty_override">オーバーライド内容を空にすることはできません</string>
+    <string name="online_lyric_debug_imported_current_playback">現在の再生情報をインポートしました</string>
+    <string name="online_lyric_debug_override_saved">カスタムオーバーライドを保存しました</string>
+    <string name="online_lyric_debug_override_cleared">カスタムオーバーライドを消去しました</string>
+    <string name="online_lyric_debug_instrumental_status">インストゥルメンタルマーク状態</string>
+    <string name="online_lyric_debug_instrumental_marked">インストゥルメンタルとしてマークしました</string>
+    <string name="online_lyric_debug_instrumental_cleared">インストゥルメンタルマークを解除しました</string>
+    <string name="online_lyric_debug_album_instrumental_status">アルバムインストマーク</string>
+    <string name="online_lyric_debug_album_instrumental_marked">アルバム全体をインストとしてマークし（アルバム: %1$s）、歌詞なし状態に切り替えました</string>
+    <string name="online_lyric_debug_album_instrumental_cleared">アルバム全体のインストマークを解除しました</string>
+    <string name="online_lyric_debug_error_no_album">アルバム名が指定されていません</string>
+    <string name="online_lyric_debug_cache_hit">キャッシュヒット</string>
+    <string name="online_lyric_debug_all_apis_failed">すべてのオンラインAPIからの取得に失敗しました</string>
+    <string name="online_lyric_debug_cache_switched_fmt">キャッシュを %1$s に切り替えました</string>
+    <string name="online_lyric_debug_cache_written_fmt">キャッシュに書き込みました: %1$s</string>
+    <string name="online_lyric_debug_error_fetch_failed_fmt">取得失敗: %1$s</string>
+    <string name="online_lyric_debug_error_result_unavailable">結果データを利用できません</string>
+    <string name="online_lyric_debug_error_switch_failed_fmt">切り替え失敗: %1$s</string>
+
+    <!-- 缓存管理 -->
+    <string name="cache_management_back">戻る</string>
+    <string name="cache_management_refresh">更新</string>
+    <string name="cache_management_lyric_cache">歌詞キャッシュ</string>
+    <string name="cache_management_entry_count">キャッシュ項目</string>
+    <string name="cache_management_total_size">キャッシュサイズ</string>
+    <string name="cache_management_last_updated">最終更新</string>
+    <string name="cache_management_clear_lyric_cache">歌詞キャッシュを消去</string>
+    <string name="cache_management_image_cache">画像キャッシュ</string>
+    <string name="cache_management_file_count">キャッシュファイル</string>
+    <string name="cache_management_remote_images_hint">カバーとコミュニティ画像キャッシュを含む</string>
+    <string name="cache_management_clear_image_cache">画像キャッシュを消去</string>
+    <string name="cache_management_danger_zone">危険ゾーン</string>
+    <string name="cache_management_clear_all_title">すべてのキャッシュを消去</string>
+    <string name="cache_management_clear_all_desc">すべての歌詞・画像キャッシュを削除します</string>
+    <string name="cache_management_clear_all">すべて消去</string>
+    <string name="cache_management_entries_title">キャッシュ一覧</string>
+    <string name="cache_management_search_entries">キャッシュを検索...</string>
+    <string name="cache_management_no_entries">キャッシュがありません</string>
+    <string name="cache_management_no_search_results">一致するキャッシュが見つかりません</string>
+    <string name="cache_management_delete">削除</string>
+    <string name="cache_management_query_info">照合情報</string>
+    <string name="cache_management_provider">プロバイダー</string>
+    <string name="cache_management_sidecars">追加データ</string>
+    <string name="cache_management_sidecars_fmt">翻訳: %1$s · ローマ字: %2$s</string>
+    <string name="cache_management_yes">あり</string>
+    <string name="cache_management_no">なし</string>
+    <string name="cache_management_updated_at">更新日時</string>
+    <string name="cache_management_unknown">不明</string>
+    <string name="cache_management_has_custom_match">カスタム照合済み</string>
+    <string name="cache_management_export_match_info_title">照合情報をエクスポート</string>
+    <string name="cache_management_export_match_info_desc">カスタム照合情報をJSONファイルとしてエクスポート</string>
+    <string name="cache_management_none">なし</string>
+    <string name="cache_management_status_deleted">選択したキャッシュを削除しました</string>
+    <string name="cache_management_status_lyrics_cleared">歌詞キャッシュを消去しました</string>
+    <string name="cache_management_status_images_cleared">画像キャッシュを消去しました</string>
+    <string name="cache_management_status_all_cleared">すべてのキャッシュを消去しました</string>
+    <string name="cache_management_export">エクスポート</string>
+    <string name="cache_management_export_batch_result">%1$d / %2$d 件をエクスポートしました</string>
+    <string name="cache_management_delete_batch_result">%1$d 件のキャッシュを削除しました</string>
+    <string name="cache_management_select_all">すべて選択</string>
+    <string name="cache_management_deselect">選択解除</string>
+    <string name="cache_management_selected_count">%1$d 項目選択中</string>
+    <string name="cache_management_export_selected">選択項目をエクスポート</string>
+    <string name="cache_management_delete_selected">選択項目を削除</string>
+    <string name="cache_management_delete_confirm_title">削除の確認</string>
+    <string name="cache_management_delete_confirm_message">%1$s の歌詞キャッシュを削除しますか？この操作は取り消せません。</string>
+    <string name="cache_management_delete_selected_confirm_title">一括削除の確認</string>
+    <string name="cache_management_delete_selected_confirm_message">選択した %1$d 件の歌詞キャッシュを削除しますか？</string>
+    <string name="local_lyric_set_export_dir">エクスポートディレクトリを設定</string>
+    <string name="local_lyric_export_dir_set">エクスポートディレクトリに設定しました</string>
+    <string name="local_lyric_export_dir_badge">エクスポート先</string>
+
+    <!-- 日志控制台 -->
+    <string name="log_viewer_title">ログビューアー</string>
+    <string name="log_viewer_back">戻る</string>
+    <string name="log_viewer_export">ログをエクスポート</string>
+    <string name="log_viewer_save">保存</string>
+    <string name="log_viewer_clear">ログを消去</string>
+    <string name="log_viewer_cancel">キャンセル</string>
+    <string name="log_viewer_scroll_bottom">一番下へスクロール</string>
+    <string name="log_viewer_search">ログを検索...</string>
+    <string name="log_viewer_record_level">ログレベル</string>
+    <string name="log_viewer_record_level_summary">バックグラウンド負荷軽減のためデフォルトはErrorのみ記録</string>
+    <string name="log_viewer_record_prefix">記録レベル: %1$s</string>
+    <string name="log_viewer_level_all">すべて (All)</string>
+    <string name="log_viewer_level_error">エラーのみ (Error)</string>
+    <string name="log_viewer_level_warn">警告のみ (Warn)</string>
+    <string name="log_viewer_level_info">情報のみ (Info)</string>
+    <string name="log_viewer_level_debug">デバッグのみ (Debug)</string>
+    <string name="log_viewer_level_warn_plus">警告以上 (Warn+)</string>
+    <string name="log_viewer_level_info_plus">情報以上 (Info+)</string>
+    <string name="log_viewer_level_debug_plus">デバッグ以上 (Debug+)</string>
+    <string name="log_viewer_no_match_title">一致するログがありません</string>
+    <string name="log_viewer_no_match_summary">検索ワードやレベルを変更して再試行してください</string>
+    <string name="log_viewer_export_title">ログファイルのエクスポート</string>
+    <string name="log_viewer_time_range">時間範囲</string>
+    <string name="log_viewer_time_last_1h">直近 1 時間</string>
+    <string name="log_viewer_time_last_24h">直近 24 時間</string>
+    <string name="log_viewer_time_all">全期間</string>
+    <string name="log_viewer_clear_title">ログを消去しますか？</string>
+    <string name="log_viewer_clear_message">保存されているすべてのデバッグログが消去されます。</string>
+    <string name="log_viewer_cleared">ログを消去しました</string>
+
+    <!-- 悬浮窗歌词 -->
+    <string name="floating_lyrics_title">フローティング歌詞</string>
+    <string name="floating_lyrics_summary">画面上にスタイルをカスタマイズ可能な歌詞を表示</string>
+    <string name="floating_lyrics_grant_perm">重ねて表示権限を許可</string>
+    <string name="floating_lyrics_grant_perm_summary">「他のアプリの上に重ねて表示」権限が必要です</string>
+    <string name="floating_lyrics_enabled_toast">フローティング歌詞を有効化しました</string>
+    <string name="floating_lyrics_disabled_toast">フローティング歌詞を無効化しました</string>
+
+    <string name="settings_floating_lyrics">フローティング歌詞</string>
+    <string name="settings_floating_lyrics_enabled">フローティング歌詞を有効化</string>
+    <string name="settings_floating_lyrics_enabled_desc">他のアプリの上に移動可能な歌詞ウィンドウを表示</string>
+    <string name="settings_floating_lyrics_show">フローティングウィンドウを表示</string>
+    <string name="settings_floating_lyrics_show_desc">フローティング歌詞ウィンドウの表示/非表示を切り替え</string>
+    <string name="settings_floating_show_album_art">アルバムアートを表示</string>
+    <string name="settings_floating_show_album_art_desc">フローティングウィンドウの左側にカバー画像を表示</string>
+    <string name="settings_floating_text_stroke">テキストの縁取り</string>
+    <string name="settings_floating_text_stroke_desc">テキストに縁取りを適用して視認性を高めます</string>
+    <string name="settings_floating_text_background">テキスト背景カプセル</string>
+    <string name="settings_floating_text_background_desc">歌詞テキストの後ろに半透明の角丸背景を表示</string>
+    <string name="settings_floating_display_mode">歌詞表示モード</string>
+    <string name="settings_floating_secondary_text_mode">2行目テキストの種類</string>
+    <string name="settings_floating_secondary_text_mode_summary">サブテキスト: %1$s</string>
+    <string name="settings_floating_mode_single">1行表示</string>
+    <string name="settings_floating_mode_single_desc">現在再生中の1行のみ表示</string>
+    <string name="settings_floating_mode_romanization">メイン歌詞 + ローマ字</string>
+    <string name="settings_floating_mode_romanization_desc">1行目にメイン歌詞、2行目にローマ字を表示</string>
+    <string name="settings_floating_mode_translation">メイン歌詞 + 翻訳</string>
+    <string name="settings_floating_mode_translation_desc">1行目にメイン歌詞、2行目に翻訳を表示</string>
+    <string name="settings_floating_mode_neighbor">2行スクロール</string>
+    <string name="settings_floating_mode_neighbor_desc">現在の歌詞と次の歌詞を同時に表示</string>
+    <string name="settings_floating_neighbor_alignment">2行レイアウト</string>
+    <string name="settings_floating_alignment_center">中央揃え</string>
+    <string name="settings_floating_alignment_center_desc">両方の行を中央揃えで配置</string>
+    <string name="settings_floating_alignment_split">左右交互レイアウト</string>
+    <string name="settings_floating_alignment_split_desc">現在行を左揃え、次行を右揃えで配置</string>
+    <string name="settings_floating_show_romanization">ローマ字を表示</string>
+    <string name="settings_floating_show_romanization_desc">ローマ字データがある場合に表示</string>
+    <string name="settings_floating_show_translation">翻訳を表示</string>
+    <string name="settings_floating_show_translation_desc">翻訳データがある場合に表示</string>
+    <string name="settings_floating_show_neighbor_line">次の行を表示</string>
+    <string name="settings_floating_show_neighbor_line_desc">2行目に次の歌詞をプレビュー</string>
+    <string name="settings_floating_show_second_line">2行表示を有効化</string>
+    <string name="settings_floating_show_second_line_desc">フローティングウィンドウで2行目を表示</string>
+    <string name="settings_floating_split_neighbor_alignment">左右交互配置</string>
+    <string name="settings_floating_split_neighbor_alignment_desc">2行モードで左右交互のレイアウトを有効化</string>
+    <string name="settings_floating_word_highlight">カラオケ風ハイライト</string>
+    <string name="settings_floating_word_highlight_desc">発音に合わせて文字単位でハイライト</string>
+    <string name="settings_floating_follow_album_color">歌詞文字色をカバーに追従</string>
+    <string name="settings_floating_follow_album_color_desc">アルバムアートから抽出した色をテキストに適用</string>
+    <string name="settings_floating_text_color">歌詞の文字色</string>
+    <string name="settings_floating_text_size">歌詞のフォントサイズ</string>
+    <string name="floating_settings_expand">設定を展開</string>
+    <string name="floating_settings_collapse">設定を折りたたむ</string>
+    <string name="floating_settings_on">オン</string>
+    <string name="floating_settings_off">オフ</string>
+    <string name="floating_settings_color_album">カバーから抽出</string>
+    <string name="floating_settings_color_custom">カスタムカラー</string>
+    <string name="floating_settings_text_size_value">%1$d sp</string>
+    <string name="settings_floating_position_reset">位置をリセット</string>
+    <string name="settings_floating_position_reset_toast">位置を画面中央にリセットしました</string>
+    <string name="community_loading_title">お知らせを読み込み中...</string>
+    <string name="community_loading_desc">サーバーから最新コンテンツを取得しています</string>
+    <string name="community_empty_title">投稿がありません</string>
+    <string name="community_empty_desc">下に引っ張って更新してください</string>
+    <string name="community_unavailable_title">コミュニティを利用できません</string>
+    <string name="community_unavailable_desc">完全オフラインモード中、または通信に失敗しました</string>
+    <string name="community_announcement_title">📢 公式お知らせ</string>
+    <string name="community_poll_title">📊 アンケート</string>
+    <string name="community_open_in_browser">ブラウザで開く</string>
+    <string name="community_dialog_open">開く</string>
+    <string name="community_dialog_close">閉じる</string>
+    <string name="parser_online_conflict_title">オンライン歌詞を使用する場合は通知歌詞のオフを推奨</string>
+    <string name="parser_online_conflict_message">オンライン歌詞を主に使用する場合、固定テキストや重複トリガーを防ぐため通知バー歌詞をオフにすることをお勧めします。今すぐオフにしますか？</string>
+    <string name="parser_online_conflict_keep">現在の設定を保持</string>
+</resources>

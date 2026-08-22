@@ -152,6 +152,10 @@
     <string name="settings_new_playing_app_alert">新播放应用提醒</string>
     <string name="settings_new_playing_app_alert_desc">检测到未配置的播放应用时发送通知，可快速添加或忽略</string>
     <string name="settings_personalization_header">个性化</string>
+    <string name="settings_personalization_theme_header">外观与主题</string>
+    <string name="settings_personalization_visual_effects_header">视觉特效</string>
+    <string name="settings_personalization_gestures_header">手势与交互</string>
+    <string name="settings_personalization_content_header">内容与展示</string>
     <string name="page_title_personalization">个性化设置</string>
     <string name="tab_capsule">胶囊</string>
     <string name="tab_notification">通知</string>
@@ -865,6 +869,8 @@
     <string name="lang_sys_default">跟随系统</string>
     <string name="lang_english">English</string>
     <string name="lang_chinese">简体中文</string>
+    <string name="lang_chinese_traditional">繁體中文</string>
+    <string name="lang_japanese">日本語</string>
     <string name="toast_dev_mode_steps">再点击 %1$d 次开启调试工具</string>
     <string name="toast_dev_mode_enabled">调试工具已开启</string>
     <string name="toast_dev_mode_already_enabled">调试工具已处于开启状态</string>
@@ -909,6 +915,8 @@
     <string name="diag_lab_experiment_updates_desc">显示 Experiment 通道，并接收来自测试分支的实验版本。</string>
     <string name="settings_edge_scroll_haptic_title">边缘滚动触感反馈</string>
     <string name="settings_edge_scroll_haptic_desc">滚动到列表边缘时，获得触感反馈。</string>
+    <string name="settings_miuix_floating_bottom_bar">使用悬浮底栏</string>
+    <string name="settings_miuix_floating_bottom_bar_desc">开启后使用悬浮底栏，关闭则使用传统底部导航栏</string>
     <string name="diag_lab_floating_lyrics_title">桌面歌词</string>
     <string name="diag_lab_floating_lyrics_desc">开启后，设置页将显示桌面歌词入口</string>
     <string name="diag_lab_floating_word_high_fps_title">桌面歌词高帧率动画</string>
