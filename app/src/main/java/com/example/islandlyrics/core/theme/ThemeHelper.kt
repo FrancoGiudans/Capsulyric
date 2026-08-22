@@ -267,6 +267,14 @@ object ThemeHelper {
         return when {
             primary.isEmpty() -> ""
             primary.equals("en", ignoreCase = true) || primary.startsWith("en-", ignoreCase = true) -> "en"
+            primary.equals("ja", ignoreCase = true) || primary.startsWith("ja-", ignoreCase = true) -> "ja"
+            primary.equals("zh-TW", ignoreCase = true) ||
+                primary.equals("zh-HK", ignoreCase = true) ||
+                primary.equals("zh-MO", ignoreCase = true) ||
+                primary.contains("Hant", ignoreCase = true) ||
+                primary.startsWith("zh-TW-", ignoreCase = true) ||
+                primary.startsWith("zh-HK-", ignoreCase = true) ||
+                primary.startsWith("zh-MO-", ignoreCase = true) -> "zh-TW"
             primary.equals("zh", ignoreCase = true) || primary.startsWith("zh-", ignoreCase = true) -> "zh-CN"
             else -> primary
         }

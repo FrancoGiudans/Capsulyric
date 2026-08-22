@@ -143,6 +143,8 @@ class CustomSettingsViewModel(application: Application) : AndroidViewModel(appli
                 XmsfBypassMode.writeCustomDurationMs(prefs, action.value)
             is CustomSettingsAction.SetMiuixEnabled ->
                 prefs.edit { putBoolean(AppPreferences.Keys.UI_USE_MIUIX, action.value) }
+            is CustomSettingsAction.SetMiuixFloatingBottomBarEnabled ->
+                prefs.edit { putBoolean(AppPreferences.Keys.MIUIX_FLOATING_BOTTOM_BAR_ENABLED, action.value) }
             is CustomSettingsAction.SetMiuixThemeColorSource ->
                 prefs.edit { putString(AppPreferences.Keys.MIUIX_THEME_COLOR_SOURCE, action.value) }
             is CustomSettingsAction.SetMiuixThemeCustomColor ->
@@ -221,11 +223,12 @@ class CustomSettingsViewModel(application: Application) : AndroidViewModel(appli
             superIslandShareEnabled = AppPreferences.isSuperIslandShareEnabled(prefs),
             superIslandShareFormat = AppPreferences.superIslandShareFormat(prefs),
             miuixEnabled = prefs.getBoolean(AppPreferences.Keys.UI_USE_MIUIX, true),
+            miuixFloatingBottomBarEnabled = prefs.getBoolean(AppPreferences.Keys.MIUIX_FLOATING_BOTTOM_BAR_ENABLED, false),
             predictiveBackEnabled = prefs.getBoolean(PREF_PREDICTIVE_BACK_ENABLED, true),
             predictiveBackAnimationMode = PredictiveBackAnimationMode.read(prefs),
             predictiveBackAnimationStyle = PredictiveBackAnimationStyle.read(prefs),
             homeLyricPreviewDisplayModes = HomeLyricPreviewDisplay.read(prefs).map { it.preferenceValue },
-            monetEnabled = prefs.getBoolean(AppPreferences.Keys.THEME_DYNAMIC_COLOR, true),
+            monetEnabled = prefs.getBoolean(AppPreferences.Keys.THEME_DYNAMIC_COLOR, false),
             customThemeGlobalTintEnabled = prefs.getBoolean(AppPreferences.Keys.THEME_CUSTOM_COLOR_GLOBAL_TINT, false),
             cardBlurEnabled = prefs.getBoolean(AppPreferences.Keys.CARD_BLUR_ENABLED, false)
         )

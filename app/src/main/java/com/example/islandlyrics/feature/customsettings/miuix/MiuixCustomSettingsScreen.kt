@@ -221,6 +221,9 @@ fun MiuixCustomSettingsScreen(
         mutableStateOf(uiState.superIslandShareFormat)
     }
     var miuixEnabled by remember(uiState.miuixEnabled) { mutableStateOf(uiState.miuixEnabled) }
+    var miuixFloatingBottomBarEnabled by remember(uiState.miuixFloatingBottomBarEnabled) {
+        mutableStateOf(uiState.miuixFloatingBottomBarEnabled)
+    }
     var predictiveBackEnabled by remember(uiState.predictiveBackEnabled) {
         mutableStateOf(uiState.predictiveBackEnabled)
     }
@@ -1410,6 +1413,15 @@ fun MiuixCustomSettingsScreen(
                                             onCheckedChange = {
                                                 scrollEndHapticEnabled = it
                                                 LabFeatureManager.setScrollEndHapticEnabled(context, it)
+                                            }
+                                        )
+                                        SuperSwitch(
+                                            title = stringResource(R.string.settings_miuix_floating_bottom_bar),
+                                            summary = stringResource(R.string.settings_miuix_floating_bottom_bar_desc),
+                                            checked = miuixFloatingBottomBarEnabled,
+                                            onCheckedChange = {
+                                                miuixFloatingBottomBarEnabled = it
+                                                viewModel.dispatch(CustomSettingsAction.SetMiuixFloatingBottomBarEnabled(it))
                                             }
                                         )
                                     }

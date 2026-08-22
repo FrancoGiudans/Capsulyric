@@ -55,6 +55,7 @@ import com.example.islandlyrics.feature.logviewer.material.LogViewerScreen
 import com.example.islandlyrics.feature.logviewer.miuix.MiuixLogViewerScreen
 import com.example.islandlyrics.feature.navigation.MaterialTopLevelNavigationBar
 import com.example.islandlyrics.feature.navigation.MiuixTopLevelFloatingNavigationBar
+import com.example.islandlyrics.feature.navigation.MiuixTopLevelNavigationBar
 import com.example.islandlyrics.feature.navigation.TopLevelDestination
 import com.example.islandlyrics.feature.main.miuix.MiuixMainScreen
 import com.example.islandlyrics.feature.onlinelyricdebug.material.OnlineLyricDebugScreen
@@ -498,6 +499,9 @@ class MainActivity : BaseActivity() {
         }
         val prefs = remember { AppPreferences.of(this) }
         var blurEnabled by remember { mutableStateOf(prefs.getBoolean(AppPreferences.Keys.CARD_BLUR_ENABLED, false)) }
+        var floatingBottomBarEnabled by remember {
+            mutableStateOf(prefs.getBoolean(AppPreferences.Keys.MIUIX_FLOATING_BOTTOM_BAR_ENABLED, false))
+        }
 
         androidx.compose.runtime.LaunchedEffect(pagerState.currentPage) {
             if (pageStack.isEmpty()) bottomBarVisible = true
@@ -506,6 +510,9 @@ class MainActivity : BaseActivity() {
             val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
                 if (key == AppPreferences.Keys.CARD_BLUR_ENABLED) {
                     blurEnabled = prefs.getBoolean(key, false)
+                }
+                if (key == AppPreferences.Keys.MIUIX_FLOATING_BOTTOM_BAR_ENABLED) {
+                    floatingBottomBarEnabled = prefs.getBoolean(key, false)
                 }
             }
             prefs.registerOnSharedPreferenceChangeListener(listener)
@@ -552,7 +559,7 @@ class MainActivity : BaseActivity() {
                 popupHost = { MiuixPopupHost() },
                 containerColor = Color.Transparent
             ) {
-                val targetBottomBarVisible = bottomBarVisible && pageStack.isEmpty()
+                val targetBottomBarVisible = (if (floatingBottomBarEnabled) bottomBarVisible else true) && pageStack.isEmpty()
                 PageStackHost(
                     stack = pageStack,
                     onPop = ::popPage,
@@ -628,14 +635,23 @@ class MainActivity : BaseActivity() {
                         exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
                         modifier = Modifier
                             .align(Alignment.BottomCenter)
-                            .padding(horizontal = 4.dp)
+                            .then(if (floatingBottomBarEnabled) Modifier.padding(horizontal = 4.dp) else Modifier)
                     ) {
-                        MiuixTopLevelFloatingNavigationBar(
-                            currentDestination = TopLevelDestination.entries[pagerState.currentPage],
-                            onNavigate = { destination ->
-                                scope.launch { pagerState.animateScrollToPage(TopLevelDestination.entries.indexOf(destination)) }
-                            }
-                        )
+                        if (floatingBottomBarEnabled) {
+                            MiuixTopLevelFloatingNavigationBar(
+                                currentDestination = TopLevelDestination.entries[pagerState.currentPage],
+                                onNavigate = { destination ->
+                                    scope.launch { pagerState.animateScrollToPage(TopLevelDestination.entries.indexOf(destination)) }
+                                }
+                            )
+                        } else {
+                            MiuixTopLevelNavigationBar(
+                                currentDestination = TopLevelDestination.entries[pagerState.currentPage],
+                                onNavigate = { destination ->
+                                    scope.launch { pagerState.animateScrollToPage(TopLevelDestination.entries.indexOf(destination)) }
+                                }
+                            )
+                        }
                     }
 
                     MiuixSnackbarHost(

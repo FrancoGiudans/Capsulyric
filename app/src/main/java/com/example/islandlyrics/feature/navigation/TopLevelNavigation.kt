@@ -78,8 +78,10 @@ import com.example.islandlyrics.ui.material.blur.LocalMaterialBlurRadius
 import com.example.islandlyrics.ui.material.blur.materialBlurPanel
 import com.example.islandlyrics.ui.miuix.blur.LocalMiuixBlurBackdrop
 import com.example.islandlyrics.ui.miuix.blur.LocalMiuixBlurEnabled
+import com.example.islandlyrics.ui.miuix.blur.MiuixBlurNavigationBar
 import top.yukonga.miuix.kmp.basic.FloatingNavigationBar
 import top.yukonga.miuix.kmp.basic.FloatingNavigationBarItem
+import top.yukonga.miuix.kmp.basic.NavigationBarItem
 import top.yukonga.miuix.kmp.blur.BlendColorEntry
 import top.yukonga.miuix.kmp.blur.BlurColors
 import top.yukonga.miuix.kmp.blur.highlight.Highlight
@@ -285,6 +287,27 @@ fun MiuixTopLevelFloatingNavigationBar(
                     modifier = Modifier.width(itemWidth)
                 )
             }
+        }
+    }
+}
+
+@Composable
+fun MiuixTopLevelNavigationBar(
+    currentDestination: TopLevelDestination,
+    onNavigate: (TopLevelDestination) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    MiuixBlurNavigationBar(
+        modifier = modifier.fillMaxWidth(),
+    ) {
+        TopLevelDestination.entries.forEach { destination ->
+            val selected = currentDestination == destination
+            NavigationBarItem(
+                selected = selected,
+                onClick = { onNavigate(destination) },
+                icon = destination.miuixIcon(selected),
+                label = stringResource(destination.labelRes)
+            )
         }
     }
 }

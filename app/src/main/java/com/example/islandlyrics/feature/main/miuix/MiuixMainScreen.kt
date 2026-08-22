@@ -125,7 +125,7 @@ fun MiuixMainScreen(
     val listState = rememberLazyListState()
     val prefs = remember { AppPreferences.of(context) }
     val onlineLyricCacheStore = remember(context) { OnlineLyricCacheStore(context) }
-    var dynamicThemeEnabled by remember { mutableStateOf(prefs.getBoolean(AppPreferences.Keys.THEME_DYNAMIC_COLOR, true)) }
+    var dynamicThemeEnabled by remember { mutableStateOf(prefs.getBoolean(AppPreferences.Keys.THEME_DYNAMIC_COLOR, false)) }
     var homeLyricPreviewDisplayModes by remember {
         mutableStateOf(HomeLyricPreviewDisplay.read(prefs))
     }
@@ -156,7 +156,7 @@ fun MiuixMainScreen(
     DisposableEffect(prefs) {
         val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
             if (key == AppPreferences.Keys.THEME_DYNAMIC_COLOR) {
-                dynamicThemeEnabled = prefs.getBoolean(AppPreferences.Keys.THEME_DYNAMIC_COLOR, true)
+                dynamicThemeEnabled = prefs.getBoolean(AppPreferences.Keys.THEME_DYNAMIC_COLOR, false)
             }
             if (key == AppPreferences.Keys.HOME_LYRIC_PREVIEW_SECONDARY_MODES) {
                 homeLyricPreviewDisplayModes = HomeLyricPreviewDisplay.read(prefs)

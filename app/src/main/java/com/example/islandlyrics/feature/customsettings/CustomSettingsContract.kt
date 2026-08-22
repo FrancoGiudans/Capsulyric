@@ -77,11 +77,12 @@ data class CustomSettingsUiState(
     val superIslandShareEnabled: Boolean = true,
     val superIslandShareFormat: String = "format_1",
     val miuixEnabled: Boolean = true,
+    val miuixFloatingBottomBarEnabled: Boolean = false,
     val predictiveBackEnabled: Boolean = true,
     val predictiveBackAnimationMode: PredictiveBackAnimationMode = PredictiveBackAnimationMode.default,
     val predictiveBackAnimationStyle: PredictiveBackAnimationStyle = PredictiveBackAnimationStyle.default,
     val homeLyricPreviewDisplayModes: List<String> = listOf("next_lyric"),
-    val monetEnabled: Boolean = true,
+    val monetEnabled: Boolean = false,
     val customThemeGlobalTintEnabled: Boolean = false,
     val cardBlurEnabled: Boolean = false
 )
@@ -128,6 +129,7 @@ sealed interface CustomSettingsAction {
     data class SetXmsfBypassMode(val value: XmsfBypassMode) : CustomSettingsAction
     data class SetXmsfCustomDurationMs(val value: Int) : CustomSettingsAction
     data class SetMiuixEnabled(val value: Boolean) : CustomSettingsAction
+    data class SetMiuixFloatingBottomBarEnabled(val value: Boolean) : CustomSettingsAction
     data class SetMiuixThemeColorSource(val value: String) : CustomSettingsAction
     data class SetMiuixThemeCustomColor(val value: Int) : CustomSettingsAction
     data class SetMiuixThemeGlobalTintEnabled(val value: Boolean) : CustomSettingsAction

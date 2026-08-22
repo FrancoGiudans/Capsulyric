@@ -89,7 +89,7 @@ fun MiuixAppTheme(
     val context = LocalContext.current
     val prefs = remember { AppPreferences.of(context) }
 
-    var isDynamicColor by remember { mutableStateOf(prefs.getBoolean(AppPreferences.Keys.THEME_DYNAMIC_COLOR, true)) }
+    var isDynamicColor by remember { mutableStateOf(prefs.getBoolean(AppPreferences.Keys.THEME_DYNAMIC_COLOR, false)) }
     var followSystem by remember { mutableStateOf(prefs.getBoolean(AppPreferences.Keys.THEME_FOLLOW_SYSTEM, true)) }
     var forceDark by remember { mutableStateOf(prefs.getBoolean(AppPreferences.Keys.THEME_DARK_MODE, false)) }
     var cardBlurEnabled by remember { mutableStateOf(prefs.getBoolean(AppPreferences.Keys.CARD_BLUR_ENABLED, false)) }
@@ -115,7 +115,7 @@ fun MiuixAppTheme(
     DisposableEffect(prefs) {
         val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
             when (key) {
-                AppPreferences.Keys.THEME_DYNAMIC_COLOR -> isDynamicColor = prefs.getBoolean(AppPreferences.Keys.THEME_DYNAMIC_COLOR, true)
+                AppPreferences.Keys.THEME_DYNAMIC_COLOR -> isDynamicColor = prefs.getBoolean(AppPreferences.Keys.THEME_DYNAMIC_COLOR, false)
                 AppPreferences.Keys.THEME_FOLLOW_SYSTEM -> followSystem = prefs.getBoolean(AppPreferences.Keys.THEME_FOLLOW_SYSTEM, true)
                 AppPreferences.Keys.THEME_DARK_MODE -> forceDark = prefs.getBoolean(AppPreferences.Keys.THEME_DARK_MODE, false)
                 AppPreferences.Keys.CARD_BLUR_ENABLED -> cardBlurEnabled = prefs.getBoolean(AppPreferences.Keys.CARD_BLUR_ENABLED, false)

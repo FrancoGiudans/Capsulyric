@@ -58,6 +58,7 @@ object AppPreferences {
         const val LAST_LOG_CLEANUP_TIME = "last_log_cleanup_time"
         const val LANGUAGE_CODE = "language_code"
         const val UI_USE_MIUIX = "ui_use_miuix"
+        const val MIUIX_FLOATING_BOTTOM_BAR_ENABLED = "miuix_floating_bottom_bar_enabled"
         const val IS_SETUP_COMPLETE = "is_setup_complete"
         const val RECOMMEND_MEDIA_APP = "recommend_media_app"
         const val HIDE_RECENTS_ENABLED = "hide_recents_enabled"
