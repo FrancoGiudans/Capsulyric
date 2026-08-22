@@ -87,8 +87,8 @@ import top.yukonga.miuix.kmp.blur.BlurColors
 import top.yukonga.miuix.kmp.blur.highlight.Highlight
 import top.yukonga.miuix.kmp.blur.textureBlur
 import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.extended.File
 import top.yukonga.miuix.kmp.icon.extended.Home
-import top.yukonga.miuix.kmp.icon.extended.Playlist
 import top.yukonga.miuix.kmp.icon.extended.Settings
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
@@ -104,7 +104,7 @@ enum class TopLevelDestination(
 private fun TopLevelDestination.miuixIcon(selected: Boolean): ImageVector {
     return when (this) {
         TopLevelDestination.HOME -> if (selected) MiuixIcons.Demibold.Home else MiuixIcons.Home
-        TopLevelDestination.PARSER_RULES -> if (selected) MiuixIcons.Demibold.Playlist else MiuixIcons.Playlist
+        TopLevelDestination.PARSER_RULES -> if (selected) MiuixIcons.Demibold.File else MiuixIcons.File
         TopLevelDestination.SETTINGS -> if (selected) MiuixIcons.Demibold.Settings else MiuixIcons.Settings
     }
 }

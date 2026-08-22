@@ -1220,6 +1220,8 @@ fun MiuixCustomSettingsScreen(
                             }
                         }
                         CustomSettingsTab.APP_UI -> { // App UI
+                            // ═══ 1. Appearance & Theme ═══
+                            item { SmallTitle(text = stringResource(R.string.settings_personalization_theme_header)) }
                             item {
                                 Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
                                     val uiStyles = listOf(false, true)
@@ -1243,14 +1245,6 @@ fun MiuixCustomSettingsScreen(
                                             (context as? Activity)?.finish()
                                         }
                                     )
-                                    SuperArrow(
-                                        title = stringResource(R.string.settings_home_lyric_preview_title),
-                                        summary = stringResource(
-                                            R.string.settings_home_lyric_preview_summary_fmt,
-                                            homeLyricPreviewDisplayModes.labelForHomeLyricPreview()
-                                        ),
-                                        onClick = { showHomeLyricPreviewDialog = true }
-                                    )
                                     SuperSwitch(
                                         title = stringResource(R.string.settings_theme_follow_system),
                                         checked = followSystem,
@@ -1268,49 +1262,6 @@ fun MiuixCustomSettingsScreen(
                                             viewModel.dispatch(CustomSettingsAction.SetDarkMode(it))
                                         }
                                     )
-                                    SuperSwitch(
-                                        title = stringResource(R.string.settings_predictive_back),
-                                        summary = stringResource(R.string.settings_predictive_back_desc),
-                                        checked = predictiveBackEnabled,
-                                        onCheckedChange = {
-                                            predictiveBackEnabled = it
-                                            viewModel.dispatch(CustomSettingsAction.SetPredictiveBackEnabled(it))
-                                        }
-                                    )
-                                    val predictiveBackModes = PredictiveBackAnimationMode.options
-                                    val predictiveBackModeLabels = predictiveBackModes.map { stringResource(it.labelRes) }
-                                    val currentPredictiveBackModeIndex =
-                                        predictiveBackModes.indexOf(predictiveBackAnimationMode).takeIf { it >= 0 } ?: 0
-
-                                    SuperDropdown(
-                                        title = stringResource(R.string.settings_predictive_back_animation_mode),
-                                        summary = stringResource(R.string.settings_predictive_back_animation_mode_desc),
-                                        items = predictiveBackModeLabels,
-                                        selectedIndex = currentPredictiveBackModeIndex,
-                                        onSelectedIndexChange = { index ->
-                                            val mode = predictiveBackModes[index]
-                                            predictiveBackAnimationMode = mode
-                                            viewModel.dispatch(CustomSettingsAction.SetPredictiveBackAnimationMode(mode))
-                                        }
-                                    )
-                                    if (predictiveBackAnimationMode == PredictiveBackAnimationMode.Consistent) {
-                                        val predictiveBackStyles = PredictiveBackAnimationStyle.options
-                                        val predictiveBackStyleLabels = predictiveBackStyles.map { stringResource(it.labelRes) }
-                                        val currentPredictiveBackStyleIndex =
-                                            predictiveBackStyles.indexOf(predictiveBackAnimationStyle).takeIf { it >= 0 } ?: 0
-
-                                        SuperDropdown(
-                                            title = stringResource(R.string.settings_predictive_back_animation),
-                                            summary = stringResource(R.string.settings_predictive_back_animation_desc),
-                                            items = predictiveBackStyleLabels,
-                                            selectedIndex = currentPredictiveBackStyleIndex,
-                                            onSelectedIndexChange = { index ->
-                                                val style = predictiveBackStyles[index]
-                                                predictiveBackAnimationStyle = style
-                                                viewModel.dispatch(CustomSettingsAction.SetPredictiveBackAnimationStyle(style))
-                                            }
-                                        )
-                                    }
                                     SuperSwitch(
                                         title = stringResource(R.string.settings_theme_dynamic_color),
                                         summary = stringResource(R.string.settings_theme_dynamic_color_desc),
@@ -1385,6 +1336,13 @@ fun MiuixCustomSettingsScreen(
                                             )
                                         }
                                     }
+                                }
+                            }
+
+                            // ═══ 2. Visual Effects ═══
+                            item { SmallTitle(text = stringResource(R.string.settings_personalization_visual_effects_header)) }
+                            item {
+                                Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
                                     SuperSwitch(
                                         title = stringResource(R.string.settings_card_blur),
                                         summary = stringResource(R.string.settings_card_blur_desc),
@@ -1407,15 +1365,6 @@ fun MiuixCustomSettingsScreen(
                                     }
                                     if (miuixEnabled) {
                                         SuperSwitch(
-                                            title = stringResource(R.string.settings_edge_scroll_haptic_title),
-                                            summary = stringResource(R.string.settings_edge_scroll_haptic_desc),
-                                            checked = scrollEndHapticEnabled,
-                                            onCheckedChange = {
-                                                scrollEndHapticEnabled = it
-                                                LabFeatureManager.setScrollEndHapticEnabled(context, it)
-                                            }
-                                        )
-                                        SuperSwitch(
                                             title = stringResource(R.string.settings_miuix_floating_bottom_bar),
                                             summary = stringResource(R.string.settings_miuix_floating_bottom_bar_desc),
                                             checked = miuixFloatingBottomBarEnabled,
@@ -1425,6 +1374,82 @@ fun MiuixCustomSettingsScreen(
                                             }
                                         )
                                     }
+                                }
+                            }
+
+                            // ═══ 3. Gestures & Interaction ═══
+                            item { SmallTitle(text = stringResource(R.string.settings_personalization_gestures_header)) }
+                            item {
+                                Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
+                                    SuperSwitch(
+                                        title = stringResource(R.string.settings_predictive_back),
+                                        summary = stringResource(R.string.settings_predictive_back_desc),
+                                        checked = predictiveBackEnabled,
+                                        onCheckedChange = {
+                                            predictiveBackEnabled = it
+                                            viewModel.dispatch(CustomSettingsAction.SetPredictiveBackEnabled(it))
+                                        }
+                                    )
+                                    val predictiveBackModes = PredictiveBackAnimationMode.options
+                                    val predictiveBackModeLabels = predictiveBackModes.map { stringResource(it.labelRes) }
+                                    val currentPredictiveBackModeIndex =
+                                        predictiveBackModes.indexOf(predictiveBackAnimationMode).takeIf { it >= 0 } ?: 0
+
+                                    SuperDropdown(
+                                        title = stringResource(R.string.settings_predictive_back_animation_mode),
+                                        summary = stringResource(R.string.settings_predictive_back_animation_mode_desc),
+                                        items = predictiveBackModeLabels,
+                                        selectedIndex = currentPredictiveBackModeIndex,
+                                        onSelectedIndexChange = { index ->
+                                            val mode = predictiveBackModes[index]
+                                            predictiveBackAnimationMode = mode
+                                            viewModel.dispatch(CustomSettingsAction.SetPredictiveBackAnimationMode(mode))
+                                        }
+                                    )
+                                    if (predictiveBackAnimationMode == PredictiveBackAnimationMode.Consistent) {
+                                        val predictiveBackStyles = PredictiveBackAnimationStyle.options
+                                        val predictiveBackStyleLabels = predictiveBackStyles.map { stringResource(it.labelRes) }
+                                        val currentPredictiveBackStyleIndex =
+                                            predictiveBackStyles.indexOf(predictiveBackAnimationStyle).takeIf { it >= 0 } ?: 0
+
+                                        SuperDropdown(
+                                            title = stringResource(R.string.settings_predictive_back_animation),
+                                            summary = stringResource(R.string.settings_predictive_back_animation_desc),
+                                            items = predictiveBackStyleLabels,
+                                            selectedIndex = currentPredictiveBackStyleIndex,
+                                            onSelectedIndexChange = { index ->
+                                                val style = predictiveBackStyles[index]
+                                                predictiveBackAnimationStyle = style
+                                                viewModel.dispatch(CustomSettingsAction.SetPredictiveBackAnimationStyle(style))
+                                            }
+                                        )
+                                    }
+                                    if (miuixEnabled) {
+                                        SuperSwitch(
+                                            title = stringResource(R.string.settings_edge_scroll_haptic_title),
+                                            summary = stringResource(R.string.settings_edge_scroll_haptic_desc),
+                                            checked = scrollEndHapticEnabled,
+                                            onCheckedChange = {
+                                                scrollEndHapticEnabled = it
+                                                LabFeatureManager.setScrollEndHapticEnabled(context, it)
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+
+                            // ═══ 4. Content & Display ═══
+                            item { SmallTitle(text = stringResource(R.string.settings_personalization_content_header)) }
+                            item {
+                                Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
+                                    SuperArrow(
+                                        title = stringResource(R.string.settings_home_lyric_preview_title),
+                                        summary = stringResource(
+                                            R.string.settings_home_lyric_preview_summary_fmt,
+                                            homeLyricPreviewDisplayModes.labelForHomeLyricPreview()
+                                        ),
+                                        onClick = { showHomeLyricPreviewDialog = true }
+                                    )
                                 }
                             }
                         }

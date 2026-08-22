@@ -57,6 +57,7 @@ import com.example.islandlyrics.feature.settings.material.SettingsSwitchItem
 import com.example.islandlyrics.feature.settings.material.SettingsTextItem
 import com.example.islandlyrics.feature.settings.material.SettingsCard
 import com.example.islandlyrics.feature.settings.material.SettingsCardDivider
+import com.example.islandlyrics.feature.settings.material.SettingsSectionHeader
 import com.example.islandlyrics.feature.main.MainActivity
 import com.example.islandlyrics.ui.overlay.model.SecondaryTextMode
 import com.example.islandlyrics.feature.customsettings.CustomSettingsAction
@@ -1550,7 +1551,11 @@ fun CustomSettingsScreen(
                             } // end SettingsCard (notification)
                         }
                         CustomSettingsTab.APP_UI -> { // App UI
-                            Spacer(modifier = Modifier.height(8.dp))
+                            // ═══ 1. Appearance & Theme ═══
+                            SettingsSectionHeader(
+                                text = stringResource(R.string.settings_personalization_theme_header),
+                                marginTop = 8.dp
+                            )
                             SettingsCard {
                                 Box(modifier = Modifier.fillMaxWidth()) {
                                     val uiStyleDisplay = when (miuixEnabled) {
@@ -1598,12 +1603,6 @@ fun CustomSettingsScreen(
                                         }
                                     }
                                 }
-                                SettingsCardDivider()
-                                SettingsTextItem(
-                                    title = stringResource(R.string.settings_home_lyric_preview_title),
-                                    value = homeLyricPreviewDisplayModes.labelForHomeLyricPreview(),
-                                    onClick = { showHomeLyricPreviewDialog = true }
-                                )
                                 SettingsCardDivider()
                                 SettingsSwitchItem(
                                     title = stringResource(R.string.settings_theme_follow_system),
@@ -1716,7 +1715,13 @@ fun CustomSettingsScreen(
                                         )
                                     }
                                 }
-                                SettingsCardDivider()
+                            }
+
+                            // ═══ 2. Gestures & Interaction ═══
+                            SettingsSectionHeader(
+                                text = stringResource(R.string.settings_personalization_gestures_header)
+                            )
+                            SettingsCard {
                                 SettingsSwitchItem(
                                     title = stringResource(R.string.settings_predictive_back),
                                     subtitle = stringResource(R.string.settings_predictive_back_desc),
@@ -1793,6 +1798,18 @@ fun CustomSettingsScreen(
                                         }
                                     }
                                 }
+                            }
+
+                            // ═══ 3. Content & Display ═══
+                            SettingsSectionHeader(
+                                text = stringResource(R.string.settings_personalization_content_header)
+                            )
+                            SettingsCard {
+                                SettingsTextItem(
+                                    title = stringResource(R.string.settings_home_lyric_preview_title),
+                                    value = homeLyricPreviewDisplayModes.labelForHomeLyricPreview(),
+                                    onClick = { showHomeLyricPreviewDialog = true }
+                                )
                             }
                         }
                         CustomSettingsTab.DESKTOP_LYRICS -> {
