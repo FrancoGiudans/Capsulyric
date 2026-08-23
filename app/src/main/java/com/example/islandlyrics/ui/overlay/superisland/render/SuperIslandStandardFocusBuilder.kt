@@ -28,6 +28,7 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.drawable.Icon
 import com.example.islandlyrics.R
+import com.example.islandlyrics.core.settings.LabFeatureManager
 import com.example.islandlyrics.ui.overlay.model.UIState
 import com.example.islandlyrics.ui.overlay.superisland.cache.SuperIslandIconCache
 import com.example.islandlyrics.ui.overlay.superisland.config.SuperIslandPreferencesCache
@@ -181,7 +182,9 @@ internal class SuperIslandStandardFocusBuilder(
                         islandKey = islandKey,
                         showHighlightColor = showHighlightColor,
                         title = state.title,
-                        artist = state.artist
+                        artist = state.artist,
+                        enableStandardFullLyricScrolling =
+                            preferences.notificationStyle == LabFeatureManager.SUPER_ISLAND_STYLE_STANDARD
                     )
                 }
 

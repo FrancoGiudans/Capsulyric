@@ -815,7 +815,7 @@
     <string name="super_island_lyric_mode_standard">标准</string>
     <string name="super_island_lyric_mode_standard_desc">左侧显示播放信息，右侧显示当前歌词。适合常规中置摄像头设备。</string>
     <string name="super_island_lyric_mode_full">全歌词</string>
-    <string name="super_island_lyric_mode_full_desc">左右两侧均显示歌词，并自动关闭歌词滚动。</string>
+    <string name="super_island_lyric_mode_full_desc">左右两侧均显示歌词；标准样式会平滑滚动长歌词，高级样式仍自动关闭滚动。</string>
     <string name="settings_super_island_full_lyric_show_left_cover">左侧显示专辑封面</string>
     <string name="settings_super_island_full_lyric_show_left_cover_desc">全歌词模式下保留左侧岛区域的专辑封面。</string>
     <string name="settings_super_island_standard_show_left_cover">左侧显示专辑封面</string>

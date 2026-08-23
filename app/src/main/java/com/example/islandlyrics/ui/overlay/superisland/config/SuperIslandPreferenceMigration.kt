@@ -25,6 +25,7 @@ package com.example.islandlyrics.ui.overlay.superisland.config
 import android.content.SharedPreferences
 import androidx.core.content.edit
 import com.example.islandlyrics.core.settings.AppPreferences
+import com.example.islandlyrics.core.settings.LabFeatureManager
 
 /**
  * 旧版本「通知按键」偏好迁移到新版「播放按键布局 + 显示进度条」推导模型：
@@ -34,8 +35,13 @@ import com.example.islandlyrics.core.settings.AppPreferences
  */
 internal object SuperIslandPreferenceMigration {
     private const val KEY_MIGRATED = "super_island_notification_logic_v2_migrated"
+    private const val KEY_FORCED_SCROLLING = "super_island_lyric_mode_forced_disable_scrolling"
+    private const val KEY_LEGACY_FORCED_SCROLLING = "full_super_island_forced_disable_scrolling"
+    private const val KEY_SCROLLING_BACKUP = "disable_lyric_scrolling_before_super_island_lyric_mode"
+    private const val KEY_LEGACY_SCROLLING_BACKUP = "disable_lyric_scrolling_before_full_super_island"
 
     fun migrate(prefs: SharedPreferences) {
+        restoreScrollingPreferenceIfNoLongerForced(prefs)
         if (prefs.getBoolean(KEY_MIGRATED, false)) return
 
         val actionStyle = prefs.getString(AppPreferences.Keys.NOTIFICATION_ACTIONS_STYLE, "disabled")
@@ -60,6 +66,29 @@ internal object SuperIslandPreferenceMigration {
                 )
             }
             putBoolean(KEY_MIGRATED, true)
+        }
+    }
+
+    private fun restoreScrollingPreferenceIfNoLongerForced(prefs: SharedPreferences) {
+        val wasForced = prefs.getBoolean(KEY_FORCED_SCROLLING, false) ||
+            prefs.getBoolean(KEY_LEGACY_FORCED_SCROLLING, false)
+        if (!wasForced ||
+            AppPreferences.superIslandNotificationStyle(prefs) != LabFeatureManager.SUPER_ISLAND_STYLE_STANDARD
+        ) {
+            return
+        }
+
+        val restoredValue = if (prefs.contains(KEY_SCROLLING_BACKUP)) {
+            prefs.getBoolean(KEY_SCROLLING_BACKUP, false)
+        } else {
+            prefs.getBoolean(KEY_LEGACY_SCROLLING_BACKUP, false)
+        }
+        prefs.edit {
+            putBoolean(AppPreferences.Keys.DISABLE_LYRIC_SCROLLING, restoredValue)
+            remove(KEY_SCROLLING_BACKUP)
+            remove(KEY_FORCED_SCROLLING)
+            remove(KEY_LEGACY_SCROLLING_BACKUP)
+            remove(KEY_LEGACY_FORCED_SCROLLING)
         }
     }
 }

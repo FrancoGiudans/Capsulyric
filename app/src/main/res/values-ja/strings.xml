@@ -815,7 +815,7 @@
     <string name="super_island_lyric_mode_standard">標準</string>
     <string name="super_island_lyric_mode_standard_desc">左側に再生情報、右側に現在の歌詞を表示。中央パンチホールに最適。</string>
     <string name="super_island_lyric_mode_full">フル歌詞</string>
-    <string name="super_island_lyric_mode_full_desc">両側に歌詞を表示し、自動的に歌詞スクロールを無効化します。</string>
+    <string name="super_island_lyric_mode_full_desc">両側に歌詞を表示します。標準スタイルでは長い歌詞を滑らかにスクロールし、高度なスタイルではスクロールを無効にします。</string>
     <string name="settings_super_island_full_lyric_show_left_cover">フル歌詞モードで左にアルバムアートを表示</string>
     <string name="settings_super_island_full_lyric_show_left_cover_desc">フル歌詞スタイルでも左側アイランドエリアにアルバムアートを表示します。</string>
     <string name="settings_super_island_standard_show_left_cover">標準スタイルで左にアルバムアートを表示</string>

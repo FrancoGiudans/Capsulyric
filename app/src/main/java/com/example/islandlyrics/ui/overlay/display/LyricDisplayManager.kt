@@ -42,6 +42,7 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import androidx.lifecycle.Observer
+import kotlin.math.roundToInt
 
 /**
  * LyricDisplayManager
@@ -131,8 +132,12 @@ class LyricDisplayManager(private val context: Context) {
             LyricTextDisplayMode.PREF_KEY,
             CapsuleRenderMode.PREF_KEY,
             AppPreferences.Keys.SUPER_ISLAND_ENABLED_LEGACY,
+            AppPreferences.Keys.SUPER_ISLAND_NOTIFICATION_STYLE,
             AppPreferences.Keys.SUPER_ISLAND_LYRIC_MODE,
+            AppPreferences.Keys.SUPER_ISLAND_FULL_LYRIC_SHOW_LEFT_COVER,
             SuperIslandTextLimitConfig.KEY_RIGHT_CHARS,
+            SuperIslandTextLimitConfig.KEY_LEFT_WITH_COVER_CHARS,
+            SuperIslandTextLimitConfig.KEY_LEFT_NO_COVER_CHARS,
             OverlayDisplayConfig.KEY_SUPER_ISLAND_RELAXED_TEXT_LIMITS,
             LabFeatureManager.KEY_LIVE_UPDATE_TEXT_LIMITS_ENABLED,
             LiveUpdateTextLimitConfig.KEY_CHARS -> {
@@ -324,7 +329,20 @@ class LyricDisplayManager(private val context: Context) {
             val currentLine = effectiveParsedLyricState.currentLine(currentPosition)
             if (currentLine != null && !currentLine.syllables.isNullOrEmpty()) {
                 val text = resolvePreferredLineText(currentLine.text, lyricInfo, currentLine)
-                displayLyric = if (text == currentLine.text) {
+                val totalWeight = LyricTextWindowCalculator.weight(text)
+                val timedLineDisplay = if (displayConfig.standardFullLyricScrollingEnabled) {
+                    calculateTimedLineScroll(
+                        text = text,
+                        totalWeight = totalWeight,
+                        startTime = currentLine.startTime,
+                        endTime = currentLine.endTime,
+                        position = currentPosition,
+                        maxDisplayWeight = maxDisplayWeight
+                    )
+                } else {
+                    null
+                }
+                displayLyric = timedLineDisplay ?: if (text == currentLine.text) {
                     val sungSyllables = currentLine.syllables.filter { it.startTime <= currentPosition }
                     LyricTextWindowCalculator.syllableWindow(
                         fullText = currentLine.text,
@@ -360,15 +378,29 @@ class LyricDisplayManager(private val context: Context) {
             if (foundLine != null) {
                 val preferredLineText = resolvePreferredLineText(foundLine.text, lyricInfo, foundLine)
                 fullLyricForDisplay = preferredLineText
-                val lineDuration = foundLine.endTime - foundLine.startTime
-                val lineProgress = if (lineDuration > 0) {
-                    ((currentPosition - foundLine.startTime).toFloat() / lineDuration.toFloat()).coerceIn(0f, 1f)
-                } else 0f
                 val currentLineWeight = LyricTextWindowCalculator.weight(preferredLineText)
-                
-                if (currentLineWeight <= maxDisplayWeight) {
+                val timedLineDisplay = if (displayConfig.standardFullLyricScrollingEnabled) {
+                    calculateTimedLineScroll(
+                        text = preferredLineText,
+                        totalWeight = currentLineWeight,
+                        startTime = foundLine.startTime,
+                        endTime = foundLine.endTime,
+                        position = currentPosition,
+                        maxDisplayWeight = maxDisplayWeight
+                    )
+                } else {
+                    null
+                }
+
+                if (timedLineDisplay != null) {
+                    displayLyric = timedLineDisplay
+                } else if (currentLineWeight <= maxDisplayWeight) {
                     displayLyric = preferredLineText
                 } else {
+                    val lineDuration = foundLine.endTime - foundLine.startTime
+                    val lineProgress = if (lineDuration > 0) {
+                        ((currentPosition - foundLine.startTime).toFloat() / lineDuration.toFloat()).coerceIn(0f, 1f)
+                    } else 0f
                     val currentProgressWeight = (lineProgress * currentLineWeight).toInt()
                     val scrollStartThreshold = LyricTextWindowCalculator.scrollStartThreshold(preferredLineText, maxDisplayWeight)
                     val targetWeightOffset = if (currentProgressWeight < scrollStartThreshold) 0 else currentProgressWeight - scrollStartThreshold
@@ -649,6 +681,24 @@ class LyricDisplayManager(private val context: Context) {
 
     private fun currentMaxDisplayWeight(): Int {
         return displayConfig.maxDisplayWeight(baseMaxDisplayWeight)
+    }
+
+    private fun calculateTimedLineScroll(
+        text: String,
+        totalWeight: Int,
+        startTime: Long,
+        endTime: Long,
+        position: Long,
+        maxDisplayWeight: Int
+    ): String? {
+        val duration = endTime - startTime
+        if (duration <= 0L) return null
+        if (totalWeight <= maxDisplayWeight) return text
+
+        val progress = ((position - startTime).toDouble() / duration.toDouble()).coerceIn(0.0, 1.0)
+        val scrollDistance = totalWeight - maxDisplayWeight
+        val offset = (scrollDistance * progress).roundToInt()
+        return LyricTextWindowCalculator.extractByWeight(text, offset, maxDisplayWeight)
     }
 
     private fun resolveTimingGapDisplay(
