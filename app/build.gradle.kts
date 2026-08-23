@@ -2,7 +2,7 @@ plugins {
     id("com.android.application")
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.aboutlibraries)
-    id("io.github.ben-manes.versions") version "0.59.0"
+    id("io.github.ben-manes.versions") version "0.61.0"
 }
 
 apply(from = rootProject.file("gradle/scripts/versioning.gradle"))

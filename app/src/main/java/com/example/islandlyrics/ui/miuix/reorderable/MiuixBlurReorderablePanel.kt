@@ -85,12 +85,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.lerp
 import androidx.compose.ui.zIndex
-import com.example.islandlyrics.ui.miuix.blur.LocalMiuixBlurBackdrop
-import com.example.islandlyrics.ui.miuix.blur.LocalMiuixBlurEnabled
 import com.example.islandlyrics.ui.miuix.blur.LocalMiuixBlurSurfaceActive
-import com.example.islandlyrics.ui.miuix.blur.MiuixBlurStyleDefaults
-import com.example.islandlyrics.ui.miuix.blur.miuixBlurColors
-import com.example.islandlyrics.ui.miuix.blur.miuixSurfaceBlur
 import kotlin.math.roundToInt
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.CardDefaults
@@ -115,9 +110,10 @@ data class MiuixReorderableListItem(
  * A Miuix-styled reorderable panel with optional MIUIX texture blur.
  *
  * Blur behavior:
- * - Standalone (e.g. inside a settings page): the panel renders its own
- *   [miuixSurfaceBlur] texture blur (with the global edge highlight setting)
- *   and a subtle border.
+ * - The panel intentionally never renders its own texture blur: inside a
+ *   blur host the host already owns the blur (re-applying it would recurse
+ *   into the host's backdrop layer); standalone there is no backdrop.
+ *   It renders a plain surface with a subtle border instead.
  * - Embedded in another blurred surface (e.g. [com.example.islandlyrics.ui.miuix.blur.MiuixBlurDialog],
  *   detected through [LocalMiuixBlurSurfaceActive]): the panel gives up its own
  *   background and border entirely so it visually merges with the host surface;
@@ -150,19 +146,14 @@ fun MiuixBlurReorderablePanel(
     panelShape: Shape = RoundedCornerShape(32.dp),
     panelColor: Color = MiuixTheme.colorScheme.surfaceContainer,
     itemColor: Color = MiuixTheme.colorScheme.surfaceContainerHigh,
-    blurRadius: Float = MiuixBlurStyleDefaults.BlurRadius,
-    noiseCoefficient: Float = MiuixBlurStyleDefaults.NoiseCoefficient,
     panelBorderColor: Color = MiuixTheme.colorScheme.onSurface.copy(alpha = 0.06f),
 ) {
-    val backdrop = LocalMiuixBlurBackdrop.current
-    val blurEnabled = LocalMiuixBlurEnabled.current && backdrop != null
     val embeddedInBlurSurface = LocalMiuixBlurSurfaceActive.current
-    // The host (e.g. MiuixBlurScaffold) provides the backdrop and renders this panel
-    // inside that backdrop's layer. Applying textureBlur with the same backdrop would
-    // make the renderer recursively capture the panel itself and overflow the native
-    // RenderThread stack (SIGSEGV). When a host backdrop exists the host owns the
-    // blur, so the panel keeps a plain surface background instead.
-    val useTextureBlur = !embeddedInBlurSurface && blurEnabled && backdrop == null
+    // This panel never applies its own texture blur: when hosted inside a blur
+    // surface (e.g. MiuixBlurScaffold) the host owns the blur, and applying
+    // textureBlur with the same backdrop would recursively capture the panel
+    // itself and overflow the native RenderThread stack (SIGSEGV).
+    // Standalone, there is no backdrop, so a plain surface background is used.
     val currentItems = rememberUpdatedState(items)
     val currentOnMove = rememberUpdatedState(onMove)
     var draggedItemId by remember { mutableStateOf<String?>(null) }
@@ -185,18 +176,6 @@ fun MiuixBlurReorderablePanel(
     Box(
         modifier = modifier.then(
             when {
-                useTextureBlur -> Modifier
-                    .clip(panelShape)
-                    .miuixSurfaceBlur(
-                        enabled = true,
-                        backdrop = backdrop,
-                        shape = panelShape,
-                        fallbackColor = panelColor,
-                        blurRadius = blurRadius,
-                        noiseCoefficient = noiseCoefficient,
-                        colors = miuixBlurColors(panelColor),
-                    )
-                    .border(width = 1.dp, color = panelBorderColor, shape = panelShape)
                 !embeddedInBlurSurface -> Modifier
                     .clip(panelShape)
                     .background(color = panelColor, shape = panelShape)

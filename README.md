@@ -13,8 +13,8 @@ Capsulyric is an Android app that displays now-playing lyrics on the status bar,
 Capsulyric 是一款 Android 歌词应用，通过**实况通知（Android 16+）** 和/或 **小米超级岛（HyperOS 3.0+）** 在状态栏、通知栏与锁屏区域显示正在播放的歌词。支持从媒体通知、在线服务与本地 `.lrc` 文件获取歌词，并支持翻译与拼音歌词。
 
 > [!NOTE]
-> This project has entered the Long Term Slacking (LTS) phase. The core experience is now relatively stable. Future update frequency will be significantly reduced, and new feature development will proceed at a slower pace.\
-> 本项目已进入长周期阶段（LTS，Long Term Slacking）。基础体验已趋于稳定，更新频率将降低，功能开发也将相应放缓。
+> This project will enter the Long Term Slacking (LTS) phase after the next stable version is released. The core experience is now relatively stable. Future update frequency will be significantly reduced, and new feature development will proceed at a slower pace.\
+> 本项目将在下一个Stable版本开始进入长周期阶段（LTS，Long Term Slacking）。基础体验已趋于稳定，更新频率将降低，功能开发也将相应放缓。
 
 <details>
 <summary><b>Table of Contents (目录)</b></summary>

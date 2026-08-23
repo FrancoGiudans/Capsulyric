@@ -54,7 +54,6 @@ internal object AppleMusicWebLoginHelper {
             setBackgroundColor(Color.WHITE)
             settings.javaScriptEnabled = true
             settings.domStorageEnabled = true
-            settings.databaseEnabled = true
             settings.setSupportMultipleWindows(false)
             CookieManager.getInstance().setAcceptCookie(true)
             CookieManager.getInstance().setAcceptThirdPartyCookies(this, true)
@@ -66,12 +65,6 @@ internal object AppleMusicWebLoginHelper {
                     request: WebResourceRequest?
                 ): Boolean {
                     val scheme = request?.url?.scheme?.lowercase()
-                    return scheme != "http" && scheme != "https"
-                }
-
-                @Suppress("DEPRECATION")
-                override fun shouldOverrideUrlLoading(view: WebView?, url: String?): Boolean {
-                    val scheme = url?.substringBefore(":")?.lowercase()
                     return scheme != "http" && scheme != "https"
                 }
             }
