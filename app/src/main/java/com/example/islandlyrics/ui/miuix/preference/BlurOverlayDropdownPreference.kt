@@ -52,6 +52,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.Role
@@ -261,11 +262,17 @@ private fun BlurOverlayDropdownPopup(
     val backdrop = LocalMiuixBlurBackdrop.current
     val blurEnabled = LocalMiuixBlurEnabled.current && backdrop != null
     val panelShape = RoundedCornerShape(16.dp)
-    val panelColor = MiuixTheme.colorScheme.surfaceContainer
+    val panelColor = MiuixTheme.colorScheme.surface
+    val isLight = panelColor.luminance() > 0.5f
     val panelDropdownColors = if (blurEnabled) {
+        val selectedContainer = if (dropdownColors.selectedContainerColor != dropdownColors.containerColor) {
+            dropdownColors.selectedContainerColor
+        } else {
+            MiuixTheme.colorScheme.primary.copy(alpha = if (isLight) 0.12f else 0.22f)
+        }
         dropdownColors.copy(
-            containerColor = dropdownColors.containerColor.copy(alpha = 0.08f),
-            selectedContainerColor = dropdownColors.selectedContainerColor.copy(alpha = 0.20f),
+            containerColor = Color.Transparent,
+            selectedContainerColor = selectedContainer,
         )
     } else {
         dropdownColors
@@ -293,7 +300,11 @@ private fun BlurOverlayDropdownPopup(
                 )
                 .border(
                     width = 1.dp,
-                    color = MiuixTheme.colorScheme.onSurface.copy(alpha = 0.06f),
+                    color = if (isLight) {
+                        Color.White.copy(alpha = 0.35f)
+                    } else {
+                        MiuixTheme.colorScheme.onSurface.copy(alpha = 0.06f)
+                    },
                     shape = panelShape,
                 ),
         ) {

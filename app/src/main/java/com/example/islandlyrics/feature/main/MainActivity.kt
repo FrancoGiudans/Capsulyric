@@ -61,8 +61,12 @@ import com.example.islandlyrics.feature.main.miuix.MiuixMainScreen
 import com.example.islandlyrics.feature.onlinelyricdebug.material.OnlineLyricDebugScreen
 import com.example.islandlyrics.feature.onlinelyricdebug.miuix.MiuixOnlineLyricDebugScreen
 import com.example.islandlyrics.feature.oobe.OobeActivity
+import androidx.compose.ui.platform.LocalContext
+import com.example.islandlyrics.feature.parserrule.material.ParserRuleEditorScreen
 import com.example.islandlyrics.feature.parserrule.material.ParserRuleScreen
+import com.example.islandlyrics.feature.parserrule.miuix.MiuixParserRuleEditorScreen
 import com.example.islandlyrics.feature.parserrule.miuix.MiuixParserRuleScreen
+import com.example.islandlyrics.rules.ParserRuleHelper
 import com.example.islandlyrics.feature.settings.ReleaseDialogMode
 import com.example.islandlyrics.feature.settings.ReleaseDialogState
 import com.example.islandlyrics.feature.settings.material.AboutScreen
@@ -420,7 +424,13 @@ class MainActivity : BaseActivity() {
                         showBackButton = false,
                         extraBottomPadding = bottomPadding,
                         onBottomBarVisibilityChange = { bottomBarVisible = it },
-                        onOpenFaq = { pushPage(AppPage.Faq) }
+                        onOpenFaq = { pushPage(AppPage.Faq) },
+                        onOpenRuleEditor = { pkg, name ->
+                            pushPage(AppPage.ParserRuleEditor(packageName = pkg, suggestedName = name, isTemplate = false))
+                        },
+                        onOpenTemplateEditor = {
+                            pushPage(AppPage.ParserRuleEditor(packageName = null, suggestedName = null, isTemplate = true))
+                        }
                     )
 
                     TopLevelDestination.SETTINGS -> SettingsScreen(
@@ -597,7 +607,13 @@ class MainActivity : BaseActivity() {
                                 TopLevelDestination.PARSER_RULES -> MiuixParserRuleScreen(
                                     showBackButton = false,
                                     onBottomBarVisibilityChange = { bottomBarVisible = it },
-                                    onOpenFaq = { pushPage(AppPage.Faq) }
+                                    onOpenFaq = { pushPage(AppPage.Faq) },
+                                    onOpenRuleEditor = { pkg, name ->
+                                        pushPage(AppPage.ParserRuleEditor(packageName = pkg, suggestedName = name, isTemplate = false))
+                                    },
+                                    onOpenTemplateEditor = {
+                                        pushPage(AppPage.ParserRuleEditor(packageName = null, suggestedName = null, isTemplate = true))
+                                    }
                                 )
 
                                 TopLevelDestination.SETTINGS -> MiuixSettingsScreen(
@@ -856,6 +872,51 @@ class MainActivity : BaseActivity() {
                 directoryName = page.directoryName,
                 onBack = onBack
             )
+            is AppPage.ParserRuleEditor -> {
+                val context = LocalContext.current
+                val existingRule = remember(page.packageName, page.isTemplate) {
+                    if (page.isTemplate) {
+                        ParserRuleHelper.loadDefaultTemplate(context) ?: ParserRuleHelper.createDefaultRule(context, "")
+                    } else if (!page.packageName.isNullOrBlank()) {
+                        ParserRuleHelper.loadRules(context).firstOrNull { it.packageName == page.packageName }
+                            ?: ParserRuleHelper.createDefaultRule(context, page.packageName).copy(customName = page.suggestedName)
+                    } else {
+                        ParserRuleHelper.createDefaultRule(context, "").copy(customName = page.suggestedName)
+                    }
+                }
+                ParserRuleEditorScreen(
+                    initialRule = existingRule,
+                    isNewRule = !page.isTemplate && (page.packageName.isNullOrBlank() || ParserRuleHelper.loadRules(context).none { it.packageName == page.packageName }),
+                    isTemplate = page.isTemplate,
+                    onBack = onBack,
+                    onDelete = { rule ->
+                        if (page.isTemplate) {
+                            ParserRuleHelper.clearDefaultTemplate(context)
+                        } else {
+                            val updatedRules = ParserRuleHelper.loadRules(context).toMutableList()
+                            updatedRules.removeAll { it.packageName == rule.packageName }
+                            ParserRuleHelper.saveRules(context, updatedRules)
+                        }
+                        onBack()
+                    },
+                    onSaved = { rule ->
+                        if (page.isTemplate) {
+                            ParserRuleHelper.saveDefaultTemplate(context, rule)
+                        } else {
+                            val updatedRules = ParserRuleHelper.loadRules(context).toMutableList()
+                            val idx = updatedRules.indexOfFirst { it.packageName == rule.packageName }
+                            if (idx >= 0) {
+                                updatedRules[idx] = rule
+                            } else {
+                                updatedRules.add(rule)
+                            }
+                            ParserRuleHelper.saveRules(context, updatedRules)
+                        }
+                        onBack()
+                    },
+                    onOpenFaq = { onPushPage(AppPage.Faq) }
+                )
+            }
         }
     }
 
@@ -907,6 +968,51 @@ class MainActivity : BaseActivity() {
                 directoryName = page.directoryName,
                 onBack = onBack
             )
+            is AppPage.ParserRuleEditor -> {
+                val context = LocalContext.current
+                val existingRule = remember(page.packageName, page.isTemplate) {
+                    if (page.isTemplate) {
+                        ParserRuleHelper.loadDefaultTemplate(context) ?: ParserRuleHelper.createDefaultRule(context, "")
+                    } else if (!page.packageName.isNullOrBlank()) {
+                        ParserRuleHelper.loadRules(context).firstOrNull { it.packageName == page.packageName }
+                            ?: ParserRuleHelper.createDefaultRule(context, page.packageName).copy(customName = page.suggestedName)
+                    } else {
+                        ParserRuleHelper.createDefaultRule(context, "").copy(customName = page.suggestedName)
+                    }
+                }
+                MiuixParserRuleEditorScreen(
+                    initialRule = existingRule,
+                    isNewRule = !page.isTemplate && (page.packageName.isNullOrBlank() || ParserRuleHelper.loadRules(context).none { it.packageName == page.packageName }),
+                    isTemplate = page.isTemplate,
+                    onBack = onBack,
+                    onDelete = { rule ->
+                        if (page.isTemplate) {
+                            ParserRuleHelper.clearDefaultTemplate(context)
+                        } else {
+                            val updatedRules = ParserRuleHelper.loadRules(context).toMutableList()
+                            updatedRules.removeAll { it.packageName == rule.packageName }
+                            ParserRuleHelper.saveRules(context, updatedRules)
+                        }
+                        onBack()
+                    },
+                    onSaved = { rule ->
+                        if (page.isTemplate) {
+                            ParserRuleHelper.saveDefaultTemplate(context, rule)
+                        } else {
+                            val updatedRules = ParserRuleHelper.loadRules(context).toMutableList()
+                            val idx = updatedRules.indexOfFirst { it.packageName == rule.packageName }
+                            if (idx >= 0) {
+                                updatedRules[idx] = rule
+                            } else {
+                                updatedRules.add(rule)
+                            }
+                            ParserRuleHelper.saveRules(context, updatedRules)
+                        }
+                        onBack()
+                    },
+                    onOpenFaq = { onPushPage(AppPage.Faq) }
+                )
+            }
         }
     }
 }
@@ -928,6 +1034,11 @@ private sealed class AppPage {
     data class LocalLyricDirectory(
         val directoryUri: String,
         val directoryName: String
+    ) : AppPage()
+    data class ParserRuleEditor(
+        val packageName: String?,
+        val suggestedName: String?,
+        val isTemplate: Boolean = false
     ) : AppPage()
 }
 

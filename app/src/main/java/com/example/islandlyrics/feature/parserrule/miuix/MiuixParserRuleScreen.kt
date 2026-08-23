@@ -76,7 +76,9 @@ fun MiuixParserRuleScreen(
     showBackButton: Boolean = true,
     bottomBar: @Composable () -> Unit = {},
     onBottomBarVisibilityChange: (Boolean) -> Unit = {},
-    onOpenFaq: (() -> Unit)? = null
+    onOpenFaq: (() -> Unit)? = null,
+    onOpenRuleEditor: ((packageName: String?, suggestedName: String?) -> Unit)? = null,
+    onOpenTemplateEditor: (() -> Unit)? = null
 ) {
     val context = LocalContext.current
     val offlineModeEnabled = OfflineModeManager.isEnabled(context)
@@ -99,13 +101,23 @@ fun MiuixParserRuleScreen(
     }
 
     DisposableEffect(lifecycleOwner, context) {
+        val prefs = AppPreferences.of(context)
+        val prefListener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+            if (key == AppPreferences.Keys.PARSER_RULES_JSON || key == AppPreferences.Keys.PARSER_RULE_TEMPLATE_JSON) {
+                refreshRules()
+            }
+        }
+        prefs.registerOnSharedPreferenceChangeListener(prefListener)
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
                 refreshRules()
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+        onDispose {
+            prefs.unregisterOnSharedPreferenceChangeListener(prefListener)
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
     }
 
     LaunchedEffect(listState) {
@@ -137,6 +149,10 @@ fun MiuixParserRuleScreen(
     }
 
     fun openRuleEditor(packageName: String? = null, suggestedName: String? = null) {
+        if (onOpenRuleEditor != null) {
+            onOpenRuleEditor(packageName, suggestedName)
+            return
+        }
         val existingRule = if (!packageName.isNullOrBlank()) {
             ParserRuleHelper.loadRules(context).firstOrNull { it.packageName == packageName }
         } else {
@@ -157,6 +173,10 @@ fun MiuixParserRuleScreen(
     }
 
     fun openTemplateEditor() {
+        if (onOpenTemplateEditor != null) {
+            onOpenTemplateEditor()
+            return
+        }
         inlineEditorState = InlineParserRuleEditorState(
             initialRule = ParserRuleHelper.loadDefaultTemplate(context)
                 ?: ParserRuleHelper.createDefaultRule(context, ""),

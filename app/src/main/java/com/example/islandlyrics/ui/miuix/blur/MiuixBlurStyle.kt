@@ -58,7 +58,7 @@ import top.yukonga.miuix.kmp.shader.isRenderEffectSupported
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 internal object MiuixBlurStyleDefaults {
-    const val BlurRadius = 100f
+    const val BlurRadius = 25f
     const val Contrast = 1f
     const val Saturation = 1f
     const val NoiseCoefficient = 0.0044f
@@ -108,23 +108,12 @@ private val MiuixDarkUniformEdgeHighlight = uniformEdgeHighlight(
 @Composable
 internal fun miuixBlurColors(
     surfaceColor: Color,
+    @Suppress("UNUSED_PARAMETER")
     surfaceVariantColor: Color = MiuixTheme.colorScheme.surfaceVariant,
 ): BlurColors = BlurColors(
-    blendColors = if (surfaceColor.luminance() > 0.5f) {
-        listOf(
-            BlendColorEntry(Color(0xE6BDBDBD), BlurBlendMode.Overlay),
-            BlendColorEntry(Color(0x992B2B2B), BlurBlendMode.ColorDodge),
-            BlendColorEntry(Color(0x339C9C9C), BlurBlendMode.SrcOver)
-        )
-    } else {
-        listOf(
-            BlendColorEntry(Color(0x667A7A7A), BlurBlendMode.ColorBurn),
-            BlendColorEntry(Color(0x33747474), BlurBlendMode.Overlay),
-            BlendColorEntry(Color(0x322B2B2B), BlurBlendMode.SrcOver)
-        )
-    },
-    contrast = MiuixBlurStyleDefaults.Contrast,
-    saturation = MiuixBlurStyleDefaults.Saturation
+    blendColors = listOf(
+        BlendColorEntry(color = surfaceColor.copy(alpha = 0.8f))
+    )
 )
 
 @Composable

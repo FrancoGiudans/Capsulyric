@@ -1458,11 +1458,10 @@ fun MiuixCustomSettingsScreen(
                             MiuixFloatingLyricsSettingsSubScreen(prefs, scope)
                         }
                     }
-                    }
                 }
             }
         }
-    }
+
         if (showHomeLyricPreviewDialog) {
             MiuixHomeLyricSecondaryTextModeBottomSheet(
                 selectedModes = homeLyricPreviewDisplayModes,
@@ -1485,6 +1484,8 @@ fun MiuixCustomSettingsScreen(
                 }
             )
         }
+    }
+}
 }
 
 @Composable

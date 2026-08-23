@@ -34,6 +34,7 @@ The self-wrapped controls below are **modified from or built on** the correspond
 | File / 文件 | Based on (miuix source) / 上游来源 | Type / 类型 |
 | --- | --- | --- |
 | `ui/miuix/blur/BlurBackdrop.kt` | `miuix-blur`: `Backdrop`, `layerBackdrop`, `rememberLayerBackdrop` | 封装 (wrapper) |
+| `ui/miuix/blur/BlurOverlayIconDropdownMenu.kt` | `OverlayIconDropdownMenu` (`menu/OverlayIconDropdownMenu.kt`), `OverlayDropdownPopup` (`popup/OverlayDropdownPopup.kt`) + `miuix-blur` | 修改 (modified) |
 | `ui/miuix/blur/MiuixBlurDialog.kt` | `OverlayDialog` (`overlay/OverlayDialog.kt`) + `miuix-blur` | 修改 (modified) |
 | `ui/miuix/blur/MiuixBlurBottomSheet.kt` | `OverlayBottomSheet` (`overlay/OverlayBottomSheet.kt`) + `miuix-blur` | 修改 (modified) |
 | `ui/miuix/blur/MiuixBlurNavigationBar.kt` | `NavigationBar` (`basic/NavigationBar.kt`) + `miuix-blur` | 封装 (wrapper) |

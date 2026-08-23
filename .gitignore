@@ -17,11 +17,11 @@ build_log*.txt
 autobuild.sh
 autobuild/
 autobuild-ui/
-kotlin-js-store/
+reference/
 .kotlin/
 .codex/
 tools/
-perf-artifacts/
+workthrough/
 autobuild_cli.sh
 autobuild.bat
 TODO*.md

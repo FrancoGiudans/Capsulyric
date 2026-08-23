@@ -75,6 +75,7 @@ import com.example.islandlyrics.ui.miuix.reorderable.MiuixBlurReorderablePanel
 import com.example.islandlyrics.ui.miuix.reorderable.MiuixReorderableListItem
 import top.yukonga.miuix.kmp.basic.BasicComponent
 import top.yukonga.miuix.kmp.basic.Button
+import top.yukonga.miuix.kmp.basic.ButtonDefaults
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
@@ -85,9 +86,14 @@ import top.yukonga.miuix.kmp.basic.TextField
 import top.yukonga.miuix.kmp.basic.rememberTopAppBarState
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
 import com.example.islandlyrics.ui.miuix.preference.BlurOverlayDropdownPreference as SuperDropdown
+import top.yukonga.miuix.kmp.basic.DropdownDefaults
+import top.yukonga.miuix.kmp.basic.DropdownEntry
+import top.yukonga.miuix.kmp.basic.DropdownItem
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Close
 import top.yukonga.miuix.kmp.icon.extended.Ok
+import com.example.islandlyrics.ui.miuix.blur.BlurOverlayIconDropdownMenu
+import androidx.compose.material.icons.filled.MoreVert
 import top.yukonga.miuix.kmp.preference.ArrowPreference as SuperArrow
 import top.yukonga.miuix.kmp.preference.SwitchPreference as SuperSwitch
 import top.yukonga.miuix.kmp.theme.MiuixTheme
@@ -161,7 +167,6 @@ fun MiuixParserRuleEditorScreen(
         sourceConfigSheet = type
     }
 
-    val editorContent: @Composable () -> Unit = {
     MiuixBlurScaffold(
         topBar = {
             MiuixBlurSmallTopAppBar(
@@ -182,35 +187,53 @@ fun MiuixParserRuleEditorScreen(
                     }
                 },
                 actions = {
-                    IconButton(
-                        onClick = {
-                            if (!isTemplate && state.packageName.isBlank()) {
-                                Toast.makeText(context, enterPkgMessage, Toast.LENGTH_SHORT).show()
-                            } else {
-                                onSaved(state.toRule(initialRule))
-                            }
-                        }
-                    ) {
-                        androidx.compose.material3.Icon(Icons.Default.Check, contentDescription = stringResource(R.string.parser_save_rule), tint = MiuixTheme.colorScheme.onBackground)
-                    }
-                    IconButton(
-                        onClick = {
-                            onOpenFaq?.invoke()
-                                ?: context.startActivity(Intent(context, com.example.islandlyrics.feature.faq.FAQActivity::class.java))
-                        }
-                    ) {
-                        Icon(Icons.Default.Info, contentDescription = stringResource(R.string.faq_title), tint = MiuixTheme.colorScheme.onBackground)
-                    }
-                    if (isTemplate || !isNewRule) {
-                        IconButton(onClick = { showDeleteDialog = true }) {
-                            androidx.compose.material3.Icon(
-                                Icons.Default.Delete,
-                                contentDescription = stringResource(
-                                    if (isTemplate) R.string.parser_template_clear else R.string.parser_delete
-                                ),
-                                tint = MiuixTheme.colorScheme.onBackground
+                    val menuItems = buildList {
+                        add(
+                            DropdownItem(
+                                text = stringResource(if (isTemplate) R.string.parser_template_save else R.string.parser_save_rule),
+                                onClick = {
+                                    if (!isTemplate && state.packageName.isBlank()) {
+                                        Toast.makeText(context, enterPkgMessage, Toast.LENGTH_SHORT).show()
+                                    } else {
+                                        onSaved(state.toRule(initialRule))
+                                    }
+                                }
+                            )
+                        )
+                        add(
+                            DropdownItem(
+                                text = stringResource(R.string.faq_title),
+                                onClick = {
+                                    onOpenFaq?.invoke()
+                                        ?: context.startActivity(Intent(context, com.example.islandlyrics.feature.faq.FAQActivity::class.java))
+                                }
+                            )
+                        )
+                        if (isTemplate || !isNewRule) {
+                            add(
+                                DropdownItem(
+                                    text = stringResource(if (isTemplate) R.string.parser_template_clear else R.string.parser_delete),
+                                    onClick = {
+                                        showDeleteDialog = true
+                                    }
+                                )
                             )
                         }
+                    }
+
+                    BlurOverlayIconDropdownMenu(
+                        entry = DropdownEntry(items = menuItems),
+                        itemColors = if (isTemplate || !isNewRule) {
+                            mapOf(2 to DropdownDefaults.dropdownColors(contentColor = MiuixTheme.colorScheme.error))
+                        } else {
+                            emptyMap()
+                        }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.MoreVert,
+                            contentDescription = "更多",
+                            tint = MiuixTheme.colorScheme.onBackground
+                        )
                     }
                 }
             )
@@ -277,7 +300,9 @@ fun MiuixParserRuleEditorScreen(
                         onSaved(state.toRule(initialRule))
                     }
                 },
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
+                colors = ButtonDefaults.buttonColorsPrimary(),
+                cornerRadius = 24.dp
             ) {
                 Text(stringResource(if (isTemplate) R.string.parser_template_save else R.string.parser_save_rule))
             }
@@ -341,58 +366,55 @@ fun MiuixParserRuleEditorScreen(
                 }
             }
         }
-    }
-    }
 
-    editorContent()
-
-    val sourceConfigSheetType = sourceConfigSheet
-    if (sourceConfigSheetType != null) {
-        MiuixBlurBottomSheet(
-            show = true,
-            title = when (sourceConfigSheetType) {
-                ParserRuleSourceConfigType.NOTIFICATION -> stringResource(R.string.parser_car_protocol)
-                ParserRuleSourceConfigType.ONLINE -> stringResource(R.string.settings_use_online_lyrics)
-                ParserRuleSourceConfigType.LYRICON -> stringResource(R.string.parser_lyricon_lyric)
-            },
-            onDismissRequest = {
-                sourceConfigSheet = null
-                showOnlineProviderOrderSheet = false
-            },
-            startAction = {
-                IconButton(onClick = {
+        val sourceConfigSheetType = sourceConfigSheet
+        if (sourceConfigSheetType != null) {
+            MiuixBlurBottomSheet(
+                show = true,
+                title = when (sourceConfigSheetType) {
+                    ParserRuleSourceConfigType.NOTIFICATION -> stringResource(R.string.parser_car_protocol)
+                    ParserRuleSourceConfigType.ONLINE -> stringResource(R.string.settings_use_online_lyrics)
+                    ParserRuleSourceConfigType.LYRICON -> stringResource(R.string.parser_lyricon_lyric)
+                },
+                onDismissRequest = {
                     sourceConfigSheet = null
                     showOnlineProviderOrderSheet = false
-                }) {
-                    Icon(
-                        imageVector = MiuixIcons.Close,
-                        contentDescription = stringResource(R.string.backup_dialog_cancel),
-                        tint = MiuixTheme.colorScheme.onSurfaceVariantActions
-                    )
+                },
+                startAction = {
+                    IconButton(onClick = {
+                        sourceConfigSheet = null
+                        showOnlineProviderOrderSheet = false
+                    }) {
+                        Icon(
+                            imageVector = MiuixIcons.Close,
+                            contentDescription = stringResource(R.string.backup_dialog_cancel),
+                            tint = MiuixTheme.colorScheme.onSurfaceVariantActions
+                        )
+                    }
+                }
+            ) {
+                when (sourceConfigSheetType) {
+                    ParserRuleSourceConfigType.NOTIFICATION ->
+                        MiuixNotificationSourceConfigPage(state, ::updateSourceState)
+                    ParserRuleSourceConfigType.ONLINE ->
+                        MiuixOnlineSourceConfigPage(
+                            state = state,
+                            onStateChange = ::updateSourceState,
+                            onOpenProviderOrder = { showOnlineProviderOrderSheet = true }
+                        )
+                    ParserRuleSourceConfigType.LYRICON ->
+                        MiuixLyriconSourceConfigPage(state, ::updateSourceState)
                 }
             }
-        ) {
-            when (sourceConfigSheetType) {
-                ParserRuleSourceConfigType.NOTIFICATION ->
-                    MiuixNotificationSourceConfigPage(state, ::updateSourceState)
-                ParserRuleSourceConfigType.ONLINE ->
-                    MiuixOnlineSourceConfigPage(
-                        state = state,
-                        onStateChange = ::updateSourceState,
-                        onOpenProviderOrder = { showOnlineProviderOrderSheet = true }
-                    )
-                ParserRuleSourceConfigType.LYRICON ->
-                    MiuixLyriconSourceConfigPage(state, ::updateSourceState)
-            }
         }
-    }
 
-    MiuixOnlineProviderOrderSheet(
-        state = state,
-        onStateChange = ::updateSourceState,
-        show = showOnlineProviderOrderSheet,
-        onDismiss = { showOnlineProviderOrderSheet = false }
-    )
+        MiuixOnlineProviderOrderSheet(
+            state = state,
+            onStateChange = ::updateSourceState,
+            show = showOnlineProviderOrderSheet,
+            onDismiss = { showOnlineProviderOrderSheet = false }
+        )
+    }
 }
 
 @Composable
@@ -517,14 +539,14 @@ fun MiuixParserRuleSourceConfigScreen(
                 }
             }
         }
-    }
 
-    MiuixOnlineProviderOrderSheet(
-        state = state,
-        onStateChange = ::updateState,
-        show = showProviderOrderSheet,
-        onDismiss = { showProviderOrderSheet = false }
-    )
+        MiuixOnlineProviderOrderSheet(
+            state = state,
+            onStateChange = ::updateState,
+            show = showProviderOrderSheet,
+            onDismiss = { showProviderOrderSheet = false }
+        )
+    }
 }
 
 @Composable

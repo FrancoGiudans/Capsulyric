@@ -1,8 +1,8 @@
 # Architecture
 
-This document describes the current package boundaries and runtime data flow for Capsulyric. It is intentionally lightweight: use it as a map for maintenance and refactoring, not as a full design specification.
+This document describes the current package boundaries and runtime data flow for Capsulyric.
 
-本文档说明 Capsulyric 当前的包边界与运行时数据流。它刻意保持轻量：用于维护和重构时快速定位职责，而不是完整设计说明书。
+本文档说明 Capsulyric 当前的包边界与运行时数据流。
 
 > This document is also the **file-level map**: each feature/page, runtime service, lyric-pipeline stage, and overlay surface lists the concrete files that own it. Unless noted otherwise, paths below are relative to `app/src/main/java/com/example/islandlyrics/`. / 本文档同时充当**文件级地图**：每个功能/页面、运行时服务、歌词流水线阶段与悬浮层表面都会列出负责它的具体文件。除特别说明外，下文路径均相对于 `app/src/main/java/com/example/islandlyrics/`。
 
@@ -170,8 +170,6 @@ gradle/
   scripts/signing.gradle           # Signing configuration
   scripts/android-app.gradle       # Shared Android app options
   wrapper/                         # Gradle wrapper
-tools/                             # Build/dev tooling (autobuild scripts, autobuild-ui web console,
-                                   # capture-notify-trace.ps1)
 docs/                              # ARCHITECTURE.md, PRIVACY.md
 .github/workflows/                 # CI: main/develop build, changelog release, issue labeler
 screenshots/  perf-artifacts/      # UI screenshots and performance artifacts
@@ -345,5 +343,4 @@ Keep versioning, signing, and Android app options separate. A future `build-logi
 ## Debug & Tooling
 
 - `app/src/debug/` contains a debug-only center (`DebugCenterActivity`), a lyric rendering harness, and QQ romanization debug screens used for development; it is not part of release builds.
-- `tools/` holds the autobuild scripts (`autobuild.bat`, `autobuild.sh`), a small web console (`tools/autobuild-ui/`), and tracing helpers (`tools/capture-notify-trace.ps1`).
-- `perf-artifacts/` and `screenshots/` store performance captures and UI screenshots used for verification.
+- `screenshots/` store performance captures and UI screenshots used for verification.
