@@ -178,7 +178,8 @@ class OnlineLyricSource(private val context: Context) {
                                     usedCleanTitleFallback = false
                                 )
                             ),
-                            usedCleanTitleFallback = false
+                            usedCleanTitleFallback = false,
+                            fromCache = true
                         )
                     )
                     LyricRepository.getInstance().updateParsedLyrics(

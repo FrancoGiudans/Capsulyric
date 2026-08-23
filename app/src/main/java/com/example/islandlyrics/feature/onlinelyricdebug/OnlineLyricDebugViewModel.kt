@@ -71,6 +71,9 @@ class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(app
     private val _selectedResult = MutableLiveData<OnlineLyricFetcher.LyricResult?>(null)
     val selectedResult: LiveData<OnlineLyricFetcher.LyricResult?> = _selectedResult
 
+    private val _isCurrentSelectionFromCache = MutableLiveData(false)
+    val isCurrentSelectionFromCache: LiveData<Boolean> = _isCurrentSelectionFromCache
+
     private val _selectedMainResult = MutableLiveData<OnlineLyricFetcher.LyricResult?>(null)
     val selectedMainResult: LiveData<OnlineLyricFetcher.LyricResult?> = _selectedMainResult
 
@@ -254,11 +257,13 @@ class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(app
     private fun setSelectionState(
         mainResult: OnlineLyricFetcher.LyricResult?,
         translationResult: OnlineLyricFetcher.LyricResult?,
-        romanResult: OnlineLyricFetcher.LyricResult?
+        romanResult: OnlineLyricFetcher.LyricResult?,
+        fromCache: Boolean = false
     ): OnlineLyricFetcher.LyricResult? {
         _selectedMainResult.value = mainResult
         _selectedTranslationResult.value = translationResult
         _selectedRomanResult.value = romanResult
+        _isCurrentSelectionFromCache.value = fromCache && mainResult != null
         val combined = mainResult?.let {
             buildCombinedResult(
                 mainResult = it,
@@ -272,6 +277,7 @@ class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(app
 
     private fun clearSelectionState() {
         _selectedResult.value = null
+        _isCurrentSelectionFromCache.value = false
         _selectedMainResult.value = null
         _selectedTranslationResult.value = null
         _selectedRomanResult.value = null
@@ -523,24 +529,30 @@ class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(app
                     setSelectionState(
                         mainResult = main,
                         translationResult = main.takeIf { !it.translationLyrics.isNullOrBlank() },
-                        romanResult = main.takeIf { !it.romanLyrics.isNullOrBlank() }
+                        romanResult = main.takeIf { !it.romanLyrics.isNullOrBlank() },
+                        fromCache = cachedHit != null && snapshot.bestResult != main
                     )
                 }
-                _cacheStatus.value = s(
-                    R.string.online_lyric_debug_snapshot_status,
-                    DateUtils.getRelativeTimeSpanString(
-                        snapshot.fetchedAt,
-                        System.currentTimeMillis(),
-                        DateUtils.MINUTE_IN_MILLIS
+                _cacheStatus.value = if (snapshot.fromCache) {
+                    s(R.string.online_lyric_debug_cache_hit)
+                } else {
+                    s(
+                        R.string.online_lyric_debug_snapshot_status,
+                        DateUtils.getRelativeTimeSpanString(
+                            snapshot.fetchedAt,
+                            System.currentTimeMillis(),
+                            DateUtils.MINUTE_IN_MILLIS
+                        )
                     )
-                )
+                }
             } else if (cachedHit != null) {
                 hydratedSnapshotKey = snapshotKey
                 val main = cachedHit.result
                 setSelectionState(
                     mainResult = main,
                     translationResult = main.takeIf { !it.translationLyrics.isNullOrBlank() },
-                    romanResult = main.takeIf { !it.romanLyrics.isNullOrBlank() }
+                    romanResult = main.takeIf { !it.romanLyrics.isNullOrBlank() },
+                    fromCache = true
                 )
                 _attempts.value = listOf(
                     OnlineLyricFetcher.ProviderAttempt(
@@ -864,7 +876,8 @@ class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(app
                         setSelectionState(
                             mainResult = cacheHit.result,
                             translationResult = cacheHit.result.takeIf { !it.translationLyrics.isNullOrBlank() },
-                            romanResult = cacheHit.result.takeIf { !it.romanLyrics.isNullOrBlank() }
+                            romanResult = cacheHit.result.takeIf { !it.romanLyrics.isNullOrBlank() },
+                            fromCache = true
                         )
                         _attempts.value = listOf(
                             OnlineLyricFetcher.ProviderAttempt(

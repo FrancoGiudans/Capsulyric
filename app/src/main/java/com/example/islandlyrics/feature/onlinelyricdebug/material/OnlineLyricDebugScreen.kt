@@ -119,6 +119,7 @@ fun OnlineLyricDebugScreen(
     val effectiveQuery by viewModel.effectiveQuery.observeAsState("" to "")
     val querySourceLabel by viewModel.querySourceLabel.observeAsState("")
     val cacheStatus by viewModel.cacheStatus.observeAsState()
+    val isCurrentSelectionFromCache by viewModel.isCurrentSelectionFromCache.observeAsState(false)
     val isInstrumental by viewModel.isInstrumental.observeAsState(false)
     val isAlbumInstrumental by viewModel.isAlbumInstrumental.observeAsState(false)
 
@@ -357,6 +358,13 @@ fun OnlineLyricDebugScreen(
                                 style = MaterialTheme.typography.labelLarge,
                                 color = MaterialTheme.colorScheme.primary
                             )
+                            if (isCurrentSelectionFromCache) {
+                                Text(
+                                    text = stringResource(R.string.online_lyric_debug_cache_hit),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
                             ResultBadges(
                                 labels = resultBadges(
                                     result = selectedResult,

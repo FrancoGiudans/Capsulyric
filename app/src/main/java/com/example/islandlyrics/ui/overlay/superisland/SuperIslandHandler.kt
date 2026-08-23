@@ -204,13 +204,15 @@ class SuperIslandHandler(
             renderStateTracker.forceNotify("lockScreenVisibility")
         }
 
+        val extraContentSignature = dualLineText?.signature ?: secondaryText.orEmpty()
+
         val renderDecision = renderStateTracker.prepare(
             state = state,
             displayLyric = displayLyric,
             progressPercent = progressPercent,
             accentColor = accentColor,
             colorMode = preferences.colorSource,
-            extraContentSignature = dualLineText?.signature.orEmpty()
+            extraContentSignature = extraContentSignature
         ) ?: return
 
         val metadata = LyricRepository.getInstance().liveMetadata.value
@@ -318,7 +320,7 @@ class SuperIslandHandler(
             subText = subText,
             accentColor = accentColor,
             colorMode = preferences.colorSource,
-            extraContentSignature = dualLineText?.signature.orEmpty(),
+            extraContentSignature = extraContentSignature,
             focusSignature = focusSignature
         )
 

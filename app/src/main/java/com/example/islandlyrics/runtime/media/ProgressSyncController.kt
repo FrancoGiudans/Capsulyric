@@ -150,7 +150,16 @@ class ProgressSyncController(
         }
 
         if (activeIndex == -1) {
-            if (lastLineIndex != -1 || repo.liveCurrentLine.value != null) {
+            // Keep the previous line visible across short inter-line gaps so the
+            // home dual-line preview can switch directly from (current,next) to
+            // (next, next-next) without collapsing to one line in between.
+            if (lastLineIndex >= 0) {
+                val previous = lines.getOrNull(lastLineIndex)
+                val canHoldPrevious = previous != null &&
+                    position < previous.endTime + GAP_HOLD_MS
+                if (canHoldPrevious) {
+                    return
+                }
                 lastLineIndex = -1
                 lastLineSnapshot = null
                 repo.updateCurrentLine(null)
@@ -346,5 +355,6 @@ class ProgressSyncController(
         private const val RECHECK_COOLDOWN_MS = 1_500L
         private const val CONTROLLER_POLL_INTERVAL_MS = 1_000L
         private const val PROGRESS_DISPATCH_STEP_MS = 250L
+        private const val GAP_HOLD_MS = 2_000L
     }
 }

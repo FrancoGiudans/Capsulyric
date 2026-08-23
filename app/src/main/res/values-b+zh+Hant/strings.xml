@@ -1090,7 +1090,7 @@
     <string name="online_lyric_debug_album_instrumental_marked">已將整張專輯標記為純音樂（專輯: %1$s），並採用無歌詞處理</string>
     <string name="online_lyric_debug_album_instrumental_cleared">已清除整張專輯的純音樂標記</string>
     <string name="online_lyric_debug_error_no_album">未指定專輯名稱</string>
-    <string name="online_lyric_debug_cache_hit">命中快取</string>
+    <string name="online_lyric_debug_cache_hit">來源為快取歌詞</string>
     <string name="online_lyric_debug_all_apis_failed">所有線上 API 獲取均失敗</string>
     <string name="online_lyric_debug_cache_switched_fmt">已切換快取至: %1$s</string>
     <string name="online_lyric_debug_cache_written_fmt">已寫入快取: %1$s</string>

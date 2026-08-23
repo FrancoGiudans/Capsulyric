@@ -1080,7 +1080,7 @@ Within the log interface, select the share/export icon. You can specify a timefr
     <string name="online_lyric_debug_album_instrumental_marked">Marked the whole album as instrumental (album: %1$s) and switched to no-lyrics state</string>
     <string name="online_lyric_debug_album_instrumental_cleared">Cleared the album instrumental mark</string>
     <string name="online_lyric_debug_error_no_album">Current song has no album info, cannot mark the album</string>
-    <string name="online_lyric_debug_cache_hit">This result came from lyric cache</string>
+    <string name="online_lyric_debug_cache_hit">This result comes from cached lyrics</string>
     <string name="online_lyric_debug_all_apis_failed">All APIs returned no result</string>
     <string name="online_lyric_debug_cache_switched_fmt">Switched to %1$s and refreshed lyric cache</string>
     <string name="online_lyric_debug_cache_written_fmt">Switched to %1$s and wrote lyric cache</string>

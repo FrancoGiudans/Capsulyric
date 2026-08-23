@@ -35,7 +35,8 @@ object OnlineLyricFetchSnapshotStore {
         val fetchedAt: Long,
         val bestResult: OnlineLyricFetcher.LyricResult?,
         val attempts: List<OnlineLyricFetcher.ProviderAttempt>,
-        val usedCleanTitleFallback: Boolean
+        val usedCleanTitleFallback: Boolean,
+        val fromCache: Boolean = false
     )
 
     private var snapshot: Snapshot? = null

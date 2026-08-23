@@ -1090,7 +1090,7 @@
     <string name="online_lyric_debug_album_instrumental_marked">アルバム全体をインストとしてマークし（アルバム: %1$s）、歌詞なし状態に切り替えました</string>
     <string name="online_lyric_debug_album_instrumental_cleared">アルバム全体のインストマークを解除しました</string>
     <string name="online_lyric_debug_error_no_album">アルバム名が指定されていません</string>
-    <string name="online_lyric_debug_cache_hit">キャッシュヒット</string>
+    <string name="online_lyric_debug_cache_hit">キャッシュ歌詞がソースです</string>
     <string name="online_lyric_debug_all_apis_failed">すべてのオンラインAPIからの取得に失敗しました</string>
     <string name="online_lyric_debug_cache_switched_fmt">キャッシュを %1$s に切り替えました</string>
     <string name="online_lyric_debug_cache_written_fmt">キャッシュに書き込みました: %1$s</string>

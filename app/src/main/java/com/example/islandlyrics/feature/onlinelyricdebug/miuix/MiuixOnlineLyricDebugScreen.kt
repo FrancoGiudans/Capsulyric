@@ -113,6 +113,7 @@ fun MiuixOnlineLyricDebugScreen(
     val effectiveQuery by viewModel.effectiveQuery.observeAsState("" to "")
     val querySourceLabel by viewModel.querySourceLabel.observeAsState("")
     val cacheStatus by viewModel.cacheStatus.observeAsState()
+    val isCurrentSelectionFromCache by viewModel.isCurrentSelectionFromCache.observeAsState(false)
     val isInstrumental by viewModel.isInstrumental.observeAsState(false)
     val isAlbumInstrumental by viewModel.isAlbumInstrumental.observeAsState(false)
 
@@ -344,6 +345,13 @@ fun MiuixOnlineLyricDebugScreen(
                                 stringResource(R.string.online_lyric_rematch_result_source_fmt, selectedResult?.api.orEmpty()),
                                 color = MiuixTheme.colorScheme.primary
                             )
+                            if (isCurrentSelectionFromCache) {
+                                Text(
+                                    text = stringResource(R.string.online_lyric_debug_cache_hit),
+                                    fontSize = 13.sp,
+                                    color = MiuixTheme.colorScheme.onSurfaceSecondary
+                                )
+                            }
                             ResultBadges(
                                 labels = resultBadges(
                                     result = selectedResult,

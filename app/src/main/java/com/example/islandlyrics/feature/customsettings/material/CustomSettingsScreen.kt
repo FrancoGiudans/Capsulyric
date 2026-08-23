@@ -512,7 +512,8 @@ fun CustomSettingsScreen(
                                 superIslandColorSource = superIslandColorSource,
                                 superIslandCustomColor = superIslandCustomColor,
                                 superIslandSmartMinContrast = uiState.superIslandSmartMinContrast,
-                                superIslandSmartWhiteRatio = uiState.superIslandSmartWhiteRatio
+                                superIslandSmartWhiteRatio = uiState.superIslandSmartWhiteRatio,
+                                showBorder = useDarkTheme
                             )
                             Spacer(modifier = Modifier.height(16.dp))
 
@@ -1110,7 +1111,9 @@ fun CustomSettingsScreen(
                                  superIslandLyricMode = superIslandLyricMode,
                                  superIslandFullLyricShowLeftCover = superIslandFullLyricShowLeftCover,
                                  showProgressBar = if (superIslandEnabled) superIslandShowProgressBar else liveUpdateShowProgressBar,
-                                 template2PicSource = template2PicSource
+                                 template2PicSource = template2PicSource,
+                                 showBorder = useDarkTheme,
+                                 superIslandSecondaryTextModes = secondaryTextModes
                              )
                              Spacer(modifier = Modifier.height(16.dp))
 

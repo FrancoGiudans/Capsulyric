@@ -386,6 +386,8 @@ fun MiuixCustomSettingsScreen(
         }
     }
 
+    val isSystemDark = androidx.compose.foundation.isSystemInDarkTheme()
+    val previewIsDarkTheme = if (followSystem) isSystemDark else darkMode
     val previewController = rememberIslandLyricsMiuixThemeController(
         dynamicColor = monetEnabled,
         followSystem = followSystem,
@@ -466,7 +468,8 @@ fun MiuixCustomSettingsScreen(
                                     superIslandColorSource = superIslandColorSource,
                                     superIslandCustomColor = superIslandCustomColor,
                                     superIslandSmartMinContrast = uiState.superIslandSmartMinContrast,
-                                    superIslandSmartWhiteRatio = uiState.superIslandSmartWhiteRatio
+                                    superIslandSmartWhiteRatio = uiState.superIslandSmartWhiteRatio,
+                                    showBorder = previewIsDarkTheme
                                 )
                             }
                             item { Spacer(modifier = Modifier.height(16.dp)) }
@@ -901,7 +904,9 @@ fun MiuixCustomSettingsScreen(
                                     superIslandLyricMode = superIslandLyricMode,
                                     superIslandFullLyricShowLeftCover = superIslandFullLyricShowLeftCover,
                                     showProgressBar = if (superIslandEnabled) superIslandShowProgressBar else liveUpdateShowProgressBar,
-                                    template2PicSource = template2PicSource
+                                    template2PicSource = template2PicSource,
+                                    showBorder = previewIsDarkTheme,
+                                    superIslandSecondaryTextModes = secondaryTextModes
                                 )
                             }
                             item { Spacer(modifier = Modifier.height(16.dp)) }
