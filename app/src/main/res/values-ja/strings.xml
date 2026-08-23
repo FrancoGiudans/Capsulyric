@@ -731,7 +731,7 @@
     <string name="oobe_perm_required_hint">続行するには必要な権限を許可してください</string>
     
     <string name="oobe_step_apps">プレイヤーの設定</string>
-    <string name="oobe_apps_intro">普段お使いの音楽アプリを選択し、案内に従って車載歌詞を有効にしてください：</string>
+    <string name="oobe_apps_intro">歌詞を取得するため、音楽アプリ側で「車載/Bluetooth歌詞」を有効にすることを推奨します。非対応プレイヤーやBluetooth機器がない場合は、下記の「オンライン歌詞」も利用できます。</string>
     <string name="oobe_tab_qq">QQ音楽</string>
     <string name="oobe_tab_netease">NetEase Cloud Music</string>
     <string name="oobe_tab_xiaomi">Xiaomi音楽</string>
@@ -740,8 +740,8 @@
     <string name="oobe_guide_netease">1. まず Bluetooth オーディオ機器を接続してください。\n2. <b>メニュー (左上)</b> -&gt; <b>設定</b> -&gt; <b>全般</b> を開きます。\n3. <b>外部機器Bluetooth歌詞</b> を探して有効にします。</string>
     <string name="oobe_guide_xiaomi">1. <b>マイページ</b> -&gt; <b>メニュー (右上の3本線)</b> -&gt; <b>一般設定</b> を開きます。\n2. <b>通知バー歌詞</b> を有効にします。</string>
     
-    <string name="oobe_online_alt_title">その他のプレイヤー？</string>
-    <string name="oobe_online_alt_desc">Apple Music、Spotify、YouTube Music などに対応し、オンライン歌詞検索を利用できます。</string>
+    <string name="oobe_online_alt_title">Bluetooth不要 / その他のプレイヤー：オンライン歌詞</string>
+    <string name="oobe_online_alt_desc">オンライン歌詞は曲名とアーティスト名からタイムスタンプ付き歌詞を検索して表示します。Bluetooth接続不要で様々な音楽アプリに対応します（オンライン歌詞使用時は競合を防ぐため車載歌詞をオフにしてください）。</string>
     <string name="oobe_online_alt_guide">1. <b>設定</b> -&gt; <b>パーサールール</b> を開きます。\n2. リストからお使いの音楽アプリを選択します。\n3. <b>ソースとロジック</b> の下にある <b>歌詞ソース設定</b> をタップします。\n4. <b>"オンライン歌詞 API を使用"</b> を有効にします。\n5. 最良の結果を得るため <b>"スマート取得"</b> をオンにしておくことをお勧めします。</string>
     
     <string name="oobe_app_not_in_list">他のプレイヤーを使用</string>
@@ -1254,6 +1254,6 @@
     <string name="community_dialog_open">開く</string>
     <string name="community_dialog_close">閉じる</string>
     <string name="parser_online_conflict_title">オンライン歌詞を使用する場合は通知歌詞のオフを推奨</string>
-    <string name="parser_online_conflict_message">オンライン歌詞を主に使用する場合、固定テキストや重複トリガーを防ぐため通知バー歌詞をオフにすることをお勧めします。今すぐオフにしますか？</string>
+    <string name="parser_online_conflict_message">オンライン歌詞を主に使用する場合、曲名への歌詞混入による検索失敗を防ぐため、本ルールのメディア通知歌詞をオフにし、音楽アプリ側でも「車載Bluetooth/通知歌詞」をオフにすることを推奨します。現在の設定を保持すると、オンライン歌詞は有効になりません。</string>
     <string name="parser_online_conflict_keep">現在の設定を保持</string>
 </resources>

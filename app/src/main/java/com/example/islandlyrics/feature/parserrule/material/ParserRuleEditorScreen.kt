@@ -315,19 +315,25 @@ fun ParserRuleEditorScreen(
 
     if (showOnlineSuggestionDialog) {
         MaterialBlurAlertDialog(
-            onDismissRequest = { showOnlineSuggestionDialog = false },
+            onDismissRequest = {
+                updateSourceState(state.copy(useOnlineLyrics = false))
+                showOnlineSuggestionDialog = false
+            },
             title = { Text(stringResource(R.string.parser_online_conflict_title)) },
             text = { Text(stringResource(R.string.parser_online_conflict_message)) },
             confirmButton = {
                 TextButton(onClick = {
-                    updateSourceState(state.copy(usesCarProtocol = false))
+                    updateSourceState(state.copy(usesCarProtocol = false, useOnlineLyrics = true))
                     showOnlineSuggestionDialog = false
                 }) {
                     Text(stringResource(R.string.parser_online_conflict_disable_notify))
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showOnlineSuggestionDialog = false }) {
+                TextButton(onClick = {
+                    updateSourceState(state.copy(useOnlineLyrics = false))
+                    showOnlineSuggestionDialog = false
+                }) {
                     Text(stringResource(R.string.parser_online_conflict_keep))
                 }
             }
@@ -399,7 +405,14 @@ private fun MaterialSourceRows(
         title = stringResource(R.string.parser_car_protocol),
         subtitle = stringResource(R.string.parser_notify_lyric_desc),
         checked = state.usesCarProtocol,
-        onCheckedChange = { onStateChange(state.copy(usesCarProtocol = it)) },
+        onCheckedChange = {
+            onStateChange(
+                state.copy(
+                    usesCarProtocol = it,
+                    useOnlineLyrics = if (it) false else state.useOnlineLyrics
+                )
+            )
+        },
         onArrowClick = { onNavigate(ParserRuleSourceConfigType.NOTIFICATION) }
     )
     SwitchRow(

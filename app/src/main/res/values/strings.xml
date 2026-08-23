@@ -316,7 +316,7 @@
     <string name="parser_apple_music_override">Apple Music override</string>
     <string name="parser_apple_music_override_desc">Override the language used for Apple Music lyrics in this app; the region always follows the signed-in Apple Music account</string>
     <string name="parser_online_conflict_title">Online lyrics work better without notification lyrics</string>
-    <string name="parser_online_conflict_message">If online lyrics are your main source, it is recommended to turn off media notification lyrics to avoid static text or duplicate triggers. Do you want to turn it off now?</string>
+    <string name="parser_online_conflict_message">To use online lyrics effectively and avoid title corruption during matching, it is recommended to turn off media notification lyrics here and disable in-app Bluetooth/notification lyrics in your music player. Keeping current settings will cancel enabling online lyrics.</string>
     <string name="parser_online_conflict_keep">Keep current setting</string>
     <string name="parser_online_conflict_disable_notify">Turn off notification lyrics</string>
     <string name="parser_super_lyric">SuperLyric API</string>
@@ -800,7 +800,7 @@ Within the log interface, select the share/export icon. You can specify a timefr
     <string name="oobe_perm_required_hint">Please grant Notification Listener and Post Notifications first</string>
     
     <string name="oobe_step_apps">App Setup</string>
-    <string name="oobe_apps_intro">To broadcast lyrics, you must enable "Bluetooth/Car Lyrics" in your music app.</string>
+    <string name="oobe_apps_intro">To broadcast lyrics, it is recommended to enable "Bluetooth/Car Lyrics" in your music app. If unsupported or no Bluetooth device is available, you can also use "Online Lyrics" below.</string>
     <string name="oobe_tab_qq">QQ Music</string>
     <string name="oobe_tab_netease">Netease Music</string>
     <string name="oobe_tab_xiaomi">Xiaomi Music by TME</string>
@@ -809,8 +809,8 @@ Within the log interface, select the share/export icon. You can specify a timefr
     <string name="oobe_guide_netease">1. Connect a Bluetooth audio device first.\n2. Go to <b>Menu (Top Left)</b> -> <b>Settings</b> -> <b>General</b>.\n3. Find and enable <b>External Device Bluetooth Lyrics</b>.</string>
     <string name="oobe_guide_xiaomi">1. Go to <b>Me</b> -> <b>Menu (Top Right 3-lines)</b> -> <b>General Settings</b>.\n2. Enable <b>Notification Bar Lyrics</b>.</string>
     
-    <string name="oobe_online_alt_title">My music app doesn\'t support notification lyrics / I want an easier setup</string>
-    <string name="oobe_online_alt_desc">Online lyrics work with any music app — just enable it in Parser Rules. No Bluetooth pairing required. Lyrics are fetched by searching the song title and artist from the internet.</string>
+    <string name="oobe_online_alt_title">No Bluetooth / Other Players: Online Lyrics</string>
+    <string name="oobe_online_alt_desc">Online lyrics match timestamped scrolling lyrics by searching the song title and artist over the internet. Works with any music app without Bluetooth (please disable in-app car lyrics when using online lyrics).</string>
     <string name="oobe_online_alt_guide">1. Go to <b>Settings</b> -> <b>Parser Rules</b>.\n2. Select your music app from the list.\n3. Under <b>Sources &amp; Logic</b>, tap <b>Lyric source settings</b>.\n4. Enable <b>"Use Online Lyrics API"</b>.\n5. Keep <b>"Smart lyric selection"</b> on for best results.</string>
     
     <string name="oobe_app_not_in_list">My app is not in this list?</string>

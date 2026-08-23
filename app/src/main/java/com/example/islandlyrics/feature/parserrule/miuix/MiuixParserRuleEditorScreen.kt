@@ -314,12 +314,15 @@ fun MiuixParserRuleEditorScreen(
                 title = stringResource(R.string.parser_online_conflict_title),
                 summary = stringResource(R.string.parser_online_conflict_message),
                 show = true,
-                onDismissRequest = { showOnlineSuggestionDialog = false }
+                onDismissRequest = {
+                    updateSourceState(state.copy(useOnlineLyrics = false))
+                    showOnlineSuggestionDialog = false
+                }
             ) {
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     Button(
                         onClick = {
-                            updateSourceState(state.copy(usesCarProtocol = false))
+                            updateSourceState(state.copy(usesCarProtocol = false, useOnlineLyrics = true))
                             showOnlineSuggestionDialog = false
                         },
                         modifier = Modifier.weight(1f)
@@ -327,7 +330,10 @@ fun MiuixParserRuleEditorScreen(
                         Text(stringResource(R.string.parser_online_conflict_disable_notify))
                     }
                     Button(
-                        onClick = { showOnlineSuggestionDialog = false },
+                        onClick = {
+                            updateSourceState(state.copy(useOnlineLyrics = false))
+                            showOnlineSuggestionDialog = false
+                        },
                         modifier = Modifier.weight(1f)
                     ) {
                         Text(stringResource(R.string.parser_online_conflict_keep))
@@ -431,7 +437,14 @@ private fun MiuixSourceRows(
         title = stringResource(R.string.parser_car_protocol),
         summary = stringResource(R.string.parser_notify_lyric_desc),
         checked = state.usesCarProtocol,
-        onCheckedChange = { onStateChange(state.copy(usesCarProtocol = it)) },
+        onCheckedChange = {
+            onStateChange(
+                state.copy(
+                    usesCarProtocol = it,
+                    useOnlineLyrics = if (it) false else state.useOnlineLyrics
+                )
+            )
+        },
         onArrowClick = { onNavigate(ParserRuleSourceConfigType.NOTIFICATION) }
     )
     SuperSwitch(

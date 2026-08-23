@@ -348,9 +348,10 @@ fun MainScreen(
                                     null
                                 },
                                 primaryLyricSource = if (isPrimary) {
+                                    val activeParsed = repoParsedLyrics?.takeIf { it.lines.isNotEmpty() }
                                     formatPrimaryLyricSource(
-                                        apiPath = repoLyric?.apiPath,
-                                        sourceLabel = repoParsedLyrics?.sourceLabel,
+                                        apiPath = activeParsed?.apiPath ?: repoLyric?.apiPath,
+                                        sourceLabel = activeParsed?.sourceLabel,
                                         sourceApp = repoLyric?.sourceApp
                                     )
                                 } else null,

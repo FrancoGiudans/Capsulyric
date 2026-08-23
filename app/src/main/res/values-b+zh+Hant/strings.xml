@@ -731,7 +731,7 @@
     <string name="oobe_perm_required_hint">請完成必要權限授權以繼續</string>
     
     <string name="oobe_step_apps">播放器設定</string>
-    <string name="oobe_apps_intro">選擇您常用的音樂播放器並依照指南開啟車載歌詞：</string>
+    <string name="oobe_apps_intro">為了廣播歌詞，推薦在音樂 App 中開啟「車載/藍牙歌詞」；若播放器不支援或無藍牙裝置，亦可使用下方的「線上歌詞」方案。</string>
     <string name="oobe_tab_qq">QQ 音樂</string>
     <string name="oobe_tab_netease">網易雲音樂</string>
     <string name="oobe_tab_xiaomi">小米音樂</string>
@@ -740,8 +740,8 @@
     <string name="oobe_guide_netease">1. 必須先連接藍牙音訊裝置。\n2. 進入 <b>選單 (左上角)</b> -&gt; <b>設定</b> -&gt; <b>通用</b>。\n3. 找到並開啟 <b>外接設備藍牙歌詞</b>。</string>
     <string name="oobe_guide_xiaomi">1. 進入 <b>我的</b> -&gt; <b>更多 (右上角三橫線)</b> -&gt; <b>通用設定</b>。\n2. 開啟 <b>通知列歌詞</b>。</string>
     
-    <string name="oobe_online_alt_title">其他播放器？</string>
-    <string name="oobe_online_alt_desc">支援 Apple Music、Spotify、YouTube Music 等，可使用線上歌詞比對功能。</string>
+    <string name="oobe_online_alt_title">免藍牙 / 其他播放器：線上歌詞方案</string>
+    <string name="oobe_online_alt_desc">線上歌詞透過聯網搜尋歌名與歌手比對具時間軸的滾動歌詞。無需連接藍牙，適用於任意音樂 App（開啟線上歌詞時請勿在音樂 App 內開啟車載歌詞以防衝突）。</string>
     <string name="oobe_online_alt_guide">1. 進入 <b>設定</b> -&gt; <b>解析規則</b>。\n2. 從清單中選擇您的音樂 App。\n3. 在 <b>來源與邏輯</b> 下點擊 <b>歌詞來源設定</b>。\n4. 開啟 <b>"使用線上歌詞 API"</b>。\n5. 建議保持 <b>"智慧獲取"</b> 開啟以獲得最佳效果。</string>
     
     <string name="oobe_app_not_in_list">使用其他播放器</string>
@@ -1254,6 +1254,6 @@
     <string name="community_dialog_open">前往檢視</string>
     <string name="community_dialog_close">關閉</string>
     <string name="parser_online_conflict_title">關閉通知歌詞以獲得更好的線上歌詞體驗</string>
-    <string name="parser_online_conflict_message">若主要使用線上歌詞，建議關閉媒體通知歌詞，以避免靜態文字干擾或重複觸發。是否立即關閉？</string>
+    <string name="parser_online_conflict_message">若希望線上歌詞作為主要歌詞來源，為避免標題被歌詞污染導致比對失敗，建議關閉此規則的媒體通知歌詞，並前往該音樂應用設定中關閉「車載藍牙/通知欄歌詞」。保留現有設定將取消開啟線上歌詞。</string>
     <string name="parser_online_conflict_keep">保留目前設定</string>
 </resources>

@@ -193,9 +193,10 @@ fun MediaControlDialog(onDismiss: () -> Unit) {
             }
         }
     }
+    val activeParsedLyrics = repoParsedLyrics?.takeIf { it.lines.isNotEmpty() }
     val primaryLyricSource = formatPrimaryLyricSource(
-        apiPath = repoLyric?.apiPath,
-        sourceLabel = repoParsedLyrics?.sourceLabel,
+        apiPath = activeParsedLyrics?.apiPath ?: repoLyric?.apiPath,
+        sourceLabel = activeParsedLyrics?.sourceLabel,
         sourceApp = repoLyric?.sourceApp
     )
     val showOnlineLyricRematch = !OfflineModeManager.isEnabled(context) &&
