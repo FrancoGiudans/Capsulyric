@@ -310,7 +310,10 @@ fun MiuixCustomSettingsScreen(
         actionStyle
     }
     val forceDisableScrollingForSuperIslandLyricMode =
-        islandStyleCapsuleEnabled && superIslandLyricMode == "full"
+        islandStyleCapsuleEnabled &&
+            superIslandLyricMode == "full" &&
+            (superIslandNotificationStyle == LabFeatureManager.SUPER_ISLAND_STYLE_ADVANCED ||
+                superIslandNotificationStyle == LabFeatureManager.SUPER_ISLAND_STYLE_ADVANCED_LYRICS_DUAL)
 
     fun applySuperIslandScrollForce(force: Boolean, restoreLegacyState: Boolean = false) {
         val currentDisableScrolling = disableScrolling

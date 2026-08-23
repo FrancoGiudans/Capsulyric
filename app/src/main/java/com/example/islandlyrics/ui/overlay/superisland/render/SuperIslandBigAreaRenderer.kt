@@ -62,7 +62,8 @@ internal object SuperIslandBigAreaRenderer {
         islandKey: String?,
         showHighlightColor: Boolean,
         title: String = "",
-        artist: String = ""
+        artist: String = "",
+        enableStandardFullLyricScrolling: Boolean = false
     ) {
         if (config.lyricMode == "full") {
             applyFullMode(
@@ -74,7 +75,8 @@ internal object SuperIslandBigAreaRenderer {
                 islandKey = islandKey,
                 showHighlightColor = showHighlightColor,
                 title = title,
-                artist = artist
+                artist = artist,
+                enableStandardFullLyricScrolling = enableStandardFullLyricScrolling
             )
             return
         }
@@ -120,9 +122,15 @@ internal object SuperIslandBigAreaRenderer {
         islandKey: String?,
         showHighlightColor: Boolean,
         title: String,
-        artist: String
+        artist: String,
+        enableStandardFullLyricScrolling: Boolean
     ) {
-        val resolvedLyric = sequenceOf(fullLyric, displayLyric)
+        val lyricCandidates = if (enableStandardFullLyricScrolling) {
+            sequenceOf(displayLyric, fullLyric)
+        } else {
+            sequenceOf(fullLyric, displayLyric)
+        }
+        val resolvedLyric = lyricCandidates
             .firstOrNull { !SuperIslandTextResolver.isPlaceholder(it) }
             .orEmpty()
         val hasLyric = resolvedLyric.isNotBlank()
@@ -158,7 +166,8 @@ internal object SuperIslandBigAreaRenderer {
             leftText = split.left.ifEmpty { "♪" },
             rightText = split.right.ifEmpty { "♪" },
             showHighlightColor = showHighlightColor,
-            narrowLeftFont = false
+            narrowLeftFont = false,
+            useMatchingRightColumn = enableStandardFullLyricScrolling
         )
     }
 
@@ -195,7 +204,8 @@ internal object SuperIslandBigAreaRenderer {
         leftText: String,
         rightText: String,
         showHighlightColor: Boolean,
-        narrowLeftFont: Boolean?
+        narrowLeftFont: Boolean?,
+        useMatchingRightColumn: Boolean = false
     ) {
         imageTextInfoLeft {
             type = 1
@@ -213,10 +223,21 @@ internal object SuperIslandBigAreaRenderer {
                 }
             }
         }
-        this.textInfo = TextInfo().apply {
-            this.title = rightText
-            this.showHighlightColor = showHighlightColor
-            narrowFont = false
+        if (useMatchingRightColumn) {
+            imageTextInfoRight {
+                type = 2
+                textInfo {
+                    this.title = rightText
+                    this.showHighlightColor = showHighlightColor
+                    narrowFont = false
+                }
+            }
+        } else {
+            this.textInfo = TextInfo().apply {
+                this.title = rightText
+                this.showHighlightColor = showHighlightColor
+                narrowFont = false
+            }
         }
     }
 }

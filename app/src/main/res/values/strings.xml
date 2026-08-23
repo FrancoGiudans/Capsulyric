@@ -447,7 +447,7 @@
     <string name="super_island_lyric_mode_standard">Standard</string>
     <string name="super_island_lyric_mode_standard_desc">Shows playback info on the left and the current lyric on the right. Best for centered camera cutouts.</string>
     <string name="super_island_lyric_mode_full">Full Lyrics</string>
-    <string name="super_island_lyric_mode_full_desc">Shows lyrics on both sides and disables lyric scrolling automatically.</string>
+    <string name="super_island_lyric_mode_full_desc">Shows lyrics on both sides. Standard style scrolls long lines smoothly; advanced styles keep scrolling disabled.</string>
     <string name="settings_super_island_full_lyric_show_left_cover">Show Album Cover on Left</string>
     <string name="settings_super_island_full_lyric_show_left_cover_desc">Keep the album cover in the left island area in Full Lyrics mode.</string>
     <string name="settings_super_island_standard_show_left_cover">Show Album Cover on Left</string>

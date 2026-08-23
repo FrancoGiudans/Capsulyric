@@ -815,7 +815,7 @@
     <string name="super_island_lyric_mode_standard">標準模式</string>
     <string name="super_island_lyric_mode_standard_desc">左側顯示播放資訊，右側顯示目前歌詞。適合置中挖孔螢幕。</string>
     <string name="super_island_lyric_mode_full">全歌詞模式</string>
-    <string name="super_island_lyric_mode_full_desc">兩側均顯示歌詞，並自動關閉歌詞滾動。</string>
+    <string name="super_island_lyric_mode_full_desc">左右兩側均顯示歌詞；標準樣式會平滑捲動長歌詞，高級樣式仍自動關閉捲動。</string>
     <string name="settings_super_island_full_lyric_show_left_cover">全歌詞模式顯示左側封面</string>
     <string name="settings_super_island_full_lyric_show_left_cover_desc">在全歌詞樣式下，保留左側小島區域的專輯封面。</string>
     <string name="settings_super_island_standard_show_left_cover">標準模式顯示左側封面</string>
