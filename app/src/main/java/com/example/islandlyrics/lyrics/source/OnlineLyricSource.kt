@@ -158,27 +158,38 @@ class OnlineLyricSource(private val context: Context) {
                 }
 
                 if (cacheHit != null) {
-                    if (OnlineLyricSidecarMerger.missingRequestedSidecars(cacheHit.result, rule)) {
-                        AppLogger.getInstance().i(
-                            TAG,
-                            "♻️ Online lyric cache missing requested sidecars [${cacheHit.result.api}] — refreshing"
+                    AppLogger.getInstance().i(
+                        TAG,
+                        "♻️ Online lyric cache hit [${cacheHit.result.api}] custom=${cacheHit.hasCustomMatch}"
+                    )
+                    val lines = OnlineLyricSidecarMerger.withSidecars(cacheHit.result, rule)
+                    OnlineLyricFetchSnapshotStore.save(
+                        OnlineLyricFetchSnapshotStore.Snapshot(
+                            packageName = packageName,
+                            queryTitle = queryTitle,
+                            queryArtist = queryArtist,
+                            fetchedAt = cacheHit.updatedAt,
+                            bestResult = cacheHit.result,
+                            attempts = listOf(
+                                OnlineLyricFetcher.ProviderAttempt(
+                                    provider = cacheHit.result.provider,
+                                    result = cacheHit.result,
+                                    durationMs = 0L,
+                                    usedCleanTitleFallback = false
+                                )
+                            ),
+                            usedCleanTitleFallback = false
                         )
-                    } else {
-                        AppLogger.getInstance().i(
-                            TAG,
-                            "♻️ Online lyric cache hit [${cacheHit.result.api}] custom=${cacheHit.hasCustomMatch}"
-                        )
-                        val lines = OnlineLyricSidecarMerger.withSidecars(cacheHit.result, rule)
-                        LyricRepository.getInstance().updateParsedLyrics(
-                            lines = lines,
-                            hasSyllable = cacheHit.result.hasSyllable,
-                            sourceLabel = "${cacheHit.result.api} · Cache",
-                            apiPath = "Online Cache",
-                            timelineCapability = LyricRepository.TimelineCapability.MULTI_LINE
-                        )
-                        onResolve?.invoke(true)
-                        return@launch
-                    }
+                    )
+                    LyricRepository.getInstance().updateParsedLyrics(
+                        lines = lines,
+                        hasSyllable = cacheHit.result.hasSyllable,
+                        sourceLabel = "${cacheHit.result.api} · Cache",
+                        apiPath = "Online Cache",
+                        timelineCapability = LyricRepository.TimelineCapability.MULTI_LINE
+                    )
+                    onResolve?.invoke(true)
+                    return@launch
                 }
 
                 val outcome = fetcher.fetchLyrics(

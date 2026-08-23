@@ -28,9 +28,11 @@
 package com.example.islandlyrics.lyrics.online
 
 import com.example.islandlyrics.lyrics.online.network.OnlineLyricHttpClient
+import com.example.islandlyrics.lyrics.online.provider.AppleMusicLyricProvider
 import com.example.islandlyrics.lyrics.online.provider.KugouLyricProvider
 import com.example.islandlyrics.lyrics.online.provider.LrcApiLyricProvider
 import com.example.islandlyrics.lyrics.online.provider.LrclibLyricProvider
+import com.example.islandlyrics.lyrics.online.provider.MusixmatchLyricProvider
 import com.example.islandlyrics.lyrics.online.provider.NeteaseLyricProvider
 import com.example.islandlyrics.lyrics.online.provider.OnlineLyricProvider
 import com.example.islandlyrics.lyrics.online.provider.QqMusicLyricProvider
@@ -39,6 +41,7 @@ import com.example.islandlyrics.lyrics.online.selection.OnlineLyricSelector
 
 import com.example.islandlyrics.core.logging.AppLogger
 import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.*
 import okhttp3.OkHttpClient
 import java.util.concurrent.TimeUnit
 import javax.net.ssl.HostnameVerifier
@@ -117,6 +120,8 @@ class OnlineLyricFetcher(
     private val neteaseProvider = NeteaseLyricProvider(httpClient)
     private val kugouProvider = KugouLyricProvider(httpClient)
     private val qqMusicProvider = QqMusicLyricProvider(httpClient)
+    private val appleMusicProvider = AppleMusicLyricProvider()
+    private val musixmatchProvider = MusixmatchLyricProvider(httpClient)
     private val selector = OnlineLyricSelector(::cleanTitle)
     
     /**
@@ -158,10 +163,11 @@ class OnlineLyricFetcher(
             AppLogger.getInstance().i("OnlineLyric", "精确搜索未找到，尝试清理标题: $cleanTitle")
             val cleanQuery = query.copy(title = cleanTitle)
             val cleanAttempts = fetchAllProviders(cleanQuery, providerOrder, usedCleanTitleFallback = true)
+            val allAttempts = exactAttempts + cleanAttempts
             return FetchOutcome(
                 query = query,
-                bestResult = selector.selectBestResult(cleanAttempts, cleanTitle, artist, providerOrder, useSmartSelection),
-                attempts = exactAttempts + cleanAttempts,
+                bestResult = selector.selectBestResult(allAttempts, cleanTitle, artist, providerOrder, useSmartSelection),
+                attempts = allAttempts,
                 usedCleanTitleFallback = cleanAttempts.any { it.result != null }
             )
         }
@@ -187,7 +193,8 @@ class OnlineLyricFetcher(
                             OnlineLyricProvider.Lrclib -> lrclibProvider.fetch(query.title, query.artist)
                             OnlineLyricProvider.Netease -> neteaseProvider.fetch(query.title, query.artist)
                             OnlineLyricProvider.LrcApi -> lrcApiProvider.fetch(query.title, query.artist)
-                            else -> null
+                            OnlineLyricProvider.AppleMusic -> appleMusicProvider.fetch(query.title, query.artist)
+                            OnlineLyricProvider.Musixmatch -> musixmatchProvider.fetch(query.title, query.artist)
                         }
                         ProviderAttempt(
                             provider = provider,
@@ -198,12 +205,19 @@ class OnlineLyricFetcher(
                     }
                 }
 
-                try {
-                    withTimeout(10000) {
-                        deferreds.awaitAll()
-                    }
-                } catch (e: TimeoutCancellationException) {
-                    AppLogger.getInstance().i("OnlineLyric", "部分或者全部请求超时，尝试收集已完成结果")
+                val firstResult = withTimeoutOrNull(FETCH_TIMEOUT_MS) {
+                    deferreds.asFlow()
+                        .flatMapMerge(concurrency = Int.MAX_VALUE) { deferred -> flow { emit(deferred.await()) } }
+                        .filter { selector.isUsableResult(it.result) }
+                        .firstOrNull()
+                }?.result
+
+                if (firstResult != null) {
+                    delay(FAST_RESULT_GRACE_PERIOD_MS)
+                    AppLogger.getInstance().i(
+                        "OnlineLyric",
+                        "首个可用歌词结果已到达，等待 ${FAST_RESULT_GRACE_PERIOD_MS}ms 收集其他源结果"
+                    )
                 }
 
                 deferreds.mapNotNull {
@@ -242,6 +256,11 @@ class OnlineLyricFetcher(
         
         // 3. 移除多余空格
         return clean.trim().replace("\\s+".toRegex(), " ")
+    }
+
+    private companion object {
+        private const val FETCH_TIMEOUT_MS = 10_000L
+        private const val FAST_RESULT_GRACE_PERIOD_MS = 500L
     }
 }
 

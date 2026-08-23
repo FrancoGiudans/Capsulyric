@@ -273,7 +273,11 @@ class OnlineLyricCacheStore(context: Context) {
             else return null
         val entry = readEntryFile(matchId) ?: return null
         if (entry.instrumental) return null
-        if (entry.queryTitle != queryTitle || entry.queryArtist != queryArtist) return null
+        val queryTitleMatches = entry.queryTitle.isNullOrBlank() ||
+            entry.queryTitle.trim().equals(queryTitle.trim(), ignoreCase = true)
+        val queryArtistMatches = entry.queryArtist.isNullOrBlank() ||
+            entry.queryArtist.trim().equals(queryArtist.trim(), ignoreCase = true)
+        if (!queryTitleMatches || !queryArtistMatches) return null
         if (entry.lyrics.isNullOrBlank() || entry.parsedLines.isEmpty()) return null
 
         val now = System.currentTimeMillis()
@@ -294,8 +298,8 @@ class OnlineLyricCacheStore(context: Context) {
             ),
             cachedAt = entry.cachedAt ?: now,
             updatedAt = now,
-            queryTitle = entry.queryTitle,
-            queryArtist = entry.queryArtist,
+            queryTitle = entry.queryTitle ?: queryTitle,
+            queryArtist = entry.queryArtist ?: queryArtist,
             hasCustomMatch = !entry.overrideTitle.isNullOrBlank() || !entry.overrideArtist.isNullOrBlank()
         )
     }

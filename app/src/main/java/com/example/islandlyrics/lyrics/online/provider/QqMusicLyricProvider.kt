@@ -82,8 +82,8 @@ internal class QqMusicLyricProvider(
                 val best = CandidateMatcher.pickBest(candidates, title, artist)
                     ?: return@withContext null
                 val firstSong = best.song
-                val songId = firstSong.optString("id", "")
-                val songMid = firstSong.optString("mid", "")
+                val songId = firstSong.optString("id").ifBlank { firstSong.optString("songid", "") }
+                val songMid = firstSong.optString("mid").ifBlank { firstSong.optString("songmid", "") }
                 val matchedTitle = best.matchedTitle
                 val matchedArtist = best.matchedArtist
 
@@ -118,7 +118,7 @@ internal class QqMusicLyricProvider(
                         "platform" to "yqq",
                         "needNewCode" to "0"
                     ),
-                    headers = qqHeaders("https://c.y.qq.com/")
+                    headers = qqHeaders("https://y.qq.com/")
                 ) ?: return@withContext null
 
                 val lyricJsonText = unwrapJsonp(callback, lyricResponse) ?: return@withContext null
@@ -145,28 +145,36 @@ internal class QqMusicLyricProvider(
                 }
 
                 // QRC 逐字优先：lyric_download.fcg 的 content 字段解密后若为 QRC 形态则用逐字解析；
-                // 若非 QRC 但含 [startMs,durMs] 逐行段，同样优先于 fcg_query_lyric_new 的普通 LRC，
-                // 保证 QQ 逐字/逐行数据被真正解析而不是把原文原样展示。
+                // 若非 QRC 但含 [startMs,durMs] 逐行段，同样优先于 fcg_query_lyric_new 的普通 LRC。
+                // 若 QRC/逐行解析得到 0 行，平滑降级为普通 LRC 解析，保证有效歌词不被丢弃。
                 val qrcContent = downloadExtras.qrcContent
                 val hasSyllable = QrcParser.isQrcContent(qrcContent)
                 val lineSegmentedContent = qrcContent.takeIf {
                     !hasSyllable && OnlineLyricParser.hasQqLineSegments(it)
                 }
-                val primaryContent = when {
-                    hasSyllable -> qrcContent
-                    lineSegmentedContent != null -> lineSegmentedContent
-                    else -> mergedContent
-                }
-                val parsedLines = when {
+                val rawParsedLines = when {
                     hasSyllable -> OnlineLyricParser.parseQrcLyrics(qrcContent)
                     lineSegmentedContent != null -> OnlineLyricParser.parseLrcLyrics(lineSegmentedContent)
-                    else -> OnlineLyricParser.parseLrcLyrics(mergedContent)
+                    else -> emptyList()
+                }
+                val (primaryContent, parsedLines, finalHasSyllable) = if (rawParsedLines.isNotEmpty()) {
+                    Triple(
+                        if (hasSyllable) qrcContent else lineSegmentedContent ?: mergedContent,
+                        rawParsedLines,
+                        hasSyllable
+                    )
+                } else {
+                    Triple(
+                        mergedContent,
+                        OnlineLyricParser.parseLrcLyrics(mergedContent),
+                        false
+                    )
                 }
                 OnlineLyricFetcher.LyricResult(
                     api = "QQMusic",
                     lyrics = primaryContent,
                     parsedLines = parsedLines,
-                    hasSyllable = hasSyllable,
+                    hasSyllable = finalHasSyllable,
                     provider = OnlineLyricProvider.QQMusic,
                     matchedTitle = matchedTitle,
                     matchedArtist = matchedArtist,
@@ -196,7 +204,7 @@ internal class QqMusicLyricProvider(
                     "lrctype" to "4",
                     "musicid" to songId
                 ),
-                headers = qqHeaders("https://c.y.qq.com/")
+                headers = qqHeaders("https://y.qq.com/")
             ).orEmpty()
                 .replace("<!--", "")
                 .replace("-->", "")
@@ -214,7 +222,7 @@ internal class QqMusicLyricProvider(
         }.getOrDefault(QqLyricExtras())
     }
 
-    private fun qqHeaders(referer: String): Map<String, String> = mapOf(
+    private fun qqHeaders(referer: String = "https://y.qq.com/"): Map<String, String> = mapOf(
         "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/63.0.3239.132 Safari/537.36",
         "Referer" to referer,
         "Cookie" to "os=pc;osver=Microsoft-Windows-10-Professional-build-16299.125-64bit;appver=2.0.3.131777;channel=netease;__remember_me=true"
@@ -230,9 +238,14 @@ internal class QqMusicLyricProvider(
     }
 
     private fun unwrapJsonp(callback: String, raw: String): String? {
+        val trimmed = raw.trim()
+        if (trimmed.startsWith("{") && trimmed.endsWith("}")) return trimmed
         val prefix = "$callback("
-        if (!raw.startsWith(prefix) || !raw.endsWith(")")) return null
-        return raw.removePrefix(prefix).dropLast(1)
+        if (trimmed.startsWith(prefix) && trimmed.endsWith(")")) {
+            return trimmed.removePrefix(prefix).dropLast(1).trim()
+        }
+        val match = Regex("""^[^(]*\(([\s\S]*)\)[^)]*$""").find(trimmed)
+        return match?.groupValues?.getOrNull(1)?.trim()
     }
 
     private fun escapeJson(input: String): String {
@@ -248,7 +261,9 @@ internal class QqMusicLyricProvider(
         val song: JSONObject
     ) : SearchCandidate {
         override val matchedTitle: String
-            get() = song.optString("title", song.optString("name", ""))
+            get() = song.optString("title")
+                .ifBlank { song.optString("name") }
+                .ifBlank { song.optString("songname", "") }
 
         override val matchedArtist: String
             get() = song.optJSONArray("singer")
@@ -262,7 +277,8 @@ internal class QqMusicLyricProvider(
                         }
                     }
                 }
-                .orEmpty()
+                ?.ifBlank { song.optString("singername", "") }
+                ?: song.optString("singername", "")
     }
 }
 

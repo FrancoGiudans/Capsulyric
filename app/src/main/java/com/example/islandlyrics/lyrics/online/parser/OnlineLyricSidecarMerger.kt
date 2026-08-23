@@ -54,15 +54,6 @@ internal object OnlineLyricSidecarMerger {
         }
     }
 
-    fun missingRequestedSidecars(
-        result: OnlineLyricFetcher.LyricResult,
-        rule: ParserRule
-    ): Boolean {
-        val missingTranslation = rule.receiveOnlineTranslation && result.translationLyrics.isNullOrBlank()
-        val missingRomanization = rule.receiveOnlineRomanization && result.romanLyrics.isNullOrBlank()
-        return missingTranslation || missingRomanization
-    }
-
     /**
      * 从所有携带 [kind] 附加歌词的 provider 结果中选择来源。
      *

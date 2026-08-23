@@ -482,7 +482,7 @@ class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(app
             } else {
                 null
             }
-            val cachedHit = snapshot?.let {
+            val cachedHit = if (!state.isInstrumental) {
                 withContext(Dispatchers.IO) {
                     cacheStore.getCachedLyric(
                         mediaInfo,
@@ -490,6 +490,8 @@ class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(app
                         state.effectiveArtist
                     )
                 }
+            } else {
+                null
             }
             val snapshotKey = OnlineLyricFetchSnapshotStore.buildKey(
                 mediaInfo.packageName,
@@ -531,6 +533,27 @@ class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(app
                         System.currentTimeMillis(),
                         DateUtils.MINUTE_IN_MILLIS
                     )
+                )
+            } else if (cachedHit != null) {
+                hydratedSnapshotKey = snapshotKey
+                val main = cachedHit.result
+                setSelectionState(
+                    mainResult = main,
+                    translationResult = main.takeIf { !it.translationLyrics.isNullOrBlank() },
+                    romanResult = main.takeIf { !it.romanLyrics.isNullOrBlank() }
+                )
+                _attempts.value = listOf(
+                    OnlineLyricFetcher.ProviderAttempt(
+                        provider = main.provider,
+                        result = main,
+                        durationMs = 0L,
+                        usedCleanTitleFallback = false
+                    )
+                )
+                _usedCleanTitleFallback.value = false
+                _cacheStatus.value = s(
+                    R.string.online_lyric_debug_cached_provider_fmt,
+                    main.api
                 )
             } else {
                 _cacheStatus.value = when {
@@ -843,8 +866,19 @@ class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(app
                             translationResult = cacheHit.result.takeIf { !it.translationLyrics.isNullOrBlank() },
                             romanResult = cacheHit.result.takeIf { !it.romanLyrics.isNullOrBlank() }
                         )
-                        _attempts.value = emptyList()
-                        hydratedSnapshotKey = null
+                        _attempts.value = listOf(
+                            OnlineLyricFetcher.ProviderAttempt(
+                                provider = cacheHit.result.provider,
+                                result = cacheHit.result,
+                                durationMs = 0L,
+                                usedCleanTitleFallback = false
+                            )
+                        )
+                        hydratedSnapshotKey = OnlineLyricFetchSnapshotStore.buildKey(
+                            mediaInfo.packageName,
+                            queryTitle,
+                            queryArtist
+                        )
                         _cacheStatus.value = s(R.string.online_lyric_debug_cache_hit)
                         applyResultToRepository(mediaInfo, cacheHit.result, apiPath = "Online Cache")
                         return@launch

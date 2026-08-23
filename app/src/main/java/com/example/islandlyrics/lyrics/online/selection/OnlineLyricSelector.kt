@@ -64,11 +64,12 @@ internal class OnlineLyricSelector(
             .firstOrNull()
     }
 
-    private fun isUsableResult(result: OnlineLyricFetcher.LyricResult): Boolean {
+    internal fun isUsableResult(result: OnlineLyricFetcher.LyricResult?): Boolean {
+        if (result == null) return false
         return !result.lyrics.isNullOrBlank() && !result.parsedLines.isNullOrEmpty()
     }
 
-    private fun buildQualityScore(
+    internal fun buildQualityScore(
         result: OnlineLyricFetcher.LyricResult,
         targetTitle: String,
         targetArtist: String
