@@ -183,7 +183,7 @@ fun MiuixLastFmSettingsScreen(onBack: () -> Unit) {
                 .fillMaxSize()
                 .miuixPageScroll(scrollBehavior),
             contentPadding = PaddingValues(
-                top = padding.calculateTopPadding(),
+                top = padding.calculateTopPadding() + 12.dp,
                 bottom = padding.calculateBottomPadding() + 24.dp
             ),
             verticalArrangement = Arrangement.spacedBy(10.dp)

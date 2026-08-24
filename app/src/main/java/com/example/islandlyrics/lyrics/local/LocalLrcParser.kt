@@ -128,7 +128,7 @@ object LocalLrcParser {
 
             // 标准 LRC 时间戳未命中时，尝试解析 QQ 行级格式 [start,duration]text（也兼容 [start] 单参）
             // 该格式常见于 QQ 音乐 fcg_query_lyric_new 返回的逐行歌词，需与 Local 文件下载场景兼容
-            val qqRegex = Regex("""\[(\d+)(?:,(\d+))?]([^\[]*)""")
+            val qqRegex = Regex("""\[(\d+)(?:,(\d+))?\]([^\u005B\r\n]*)""")
             var qqMatched = false
             for (m in qqRegex.findAll(line)) {
                 val startMs = m.groupValues[1].toLongOrNull() ?: continue

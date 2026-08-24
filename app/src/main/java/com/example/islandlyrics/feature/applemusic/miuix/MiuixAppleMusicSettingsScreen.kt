@@ -67,7 +67,6 @@ import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TextButton
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
-import top.yukonga.miuix.kmp.basic.SmallTitle
 import top.yukonga.miuix.kmp.basic.TextField
 import top.yukonga.miuix.kmp.basic.rememberTopAppBarState
 import top.yukonga.miuix.kmp.theme.MiuixTheme
@@ -197,18 +196,21 @@ fun MiuixAppleMusicSettingsScreen(onBack: () -> Unit) {
                 .fillMaxSize()
                 .miuixPageScroll(scrollBehavior),
             contentPadding = PaddingValues(
-                top = padding.calculateTopPadding(),
+                top = padding.calculateTopPadding() + 12.dp,
                 bottom = padding.calculateBottomPadding() + 24.dp
             ),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            item { SmallTitle(text = stringResource(R.string.apple_music_settings_desc)) }
             item {
                 Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
                     Column(
                         modifier = Modifier.padding(16.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
+                        Text(
+                            text = stringResource(R.string.apple_music_settings_desc),
+                            color = MiuixTheme.colorScheme.onSurfaceSecondary
+                        )
                         Text(
                             text = stringResource(R.string.apple_music_login_section),
                             color = MiuixTheme.colorScheme.primary

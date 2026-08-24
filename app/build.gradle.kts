@@ -73,4 +73,5 @@ dependencies {
     implementation(libs.hiddenapibypass)
 
     debugImplementation(libs.ui.tooling)
+    testImplementation("junit:junit:4.13.2")
 }

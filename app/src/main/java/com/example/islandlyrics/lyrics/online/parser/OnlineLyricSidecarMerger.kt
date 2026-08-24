@@ -207,7 +207,7 @@ internal object OnlineLyricSidecarMerger {
 
             val text = content.substring(segmentStart, segmentEnd)
                 .replace(wordTokenRegex, "")
-                .replace(Regex("""\[[^\]]+]"""), "")
+                .replace(Regex("""\[[^\u005D]+\]"""), "")
                 .trim()
             if (text.isBlank()) null else startTime to text
         }.toMap()

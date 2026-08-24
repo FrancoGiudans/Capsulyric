@@ -44,8 +44,12 @@ internal object OnlineLyricParser {
         }
     }
 
+    private val KRC_SYLLABLE_TOKEN_REGEX = Regex("""<(\d+),(\d+),(\d+)>""")
+    private val BRACKET_WORD_REGEX = Regex("""(?m)^\[\d+(?:,\d+)?]\s*(?:<\d+,\d+,\d+>[^<\r\n]*)+""")
+    private val QQ_LINE_SEGMENT_REGEX = Regex("""\[\d+,\d+\]""")
+
     private fun hasKrcSyllableTokens(content: String): Boolean {
-        return Regex("""<(\d+),(\d+),(\d+)>""").containsMatchIn(content)
+        return KRC_SYLLABLE_TOKEN_REGEX.containsMatchIn(content)
     }
 
     fun isWordLevelLyrics(content: String, lyricTypeHint: String? = null): Boolean {
@@ -55,13 +59,12 @@ internal object OnlineLyricParser {
         if (lyricTypeHint?.contains("syllable", ignoreCase = true) == true) return true
         if (QrcParser.isQrcContent(trimmed)) return true
 
-        val bracketWordRegex = Regex("""(?m)^\[\d+(?:,\d+)?]\s*(?:<\d+,\d+,\d+>[^<\r\n]*)+""")
-        return bracketWordRegex.containsMatchIn(content)
+        return BRACKET_WORD_REGEX.containsMatchIn(content)
     }
 
     /** 检测 QQ 逐行/逐字 `[startMs,durMs]text` 段格式（无需字级 `(x,y)` 标记）。 */
     internal fun hasQqLineSegments(content: String): Boolean {
-        return Regex("""\[\d+,\d+][^[]*""").containsMatchIn(content)
+        return QQ_LINE_SEGMENT_REGEX.containsMatchIn(content)
     }
 
     /** QQ QRC 逐字歌词入口。 */
@@ -122,7 +125,7 @@ internal object OnlineLyricParser {
                 }
             } else {
                 // QQ 行级逐字：[start,duration]text，同一物理行可能含多段（包括元数据挤在一行的情况）
-                val qqLineRegex = Regex("""\[(\d+)(?:,(\d+))?]([^\[]*)""")
+                val qqLineRegex = Regex("""\[(\d+)(?:,(\d+))?\]([^\u005B\r\n]*)""")
                 var matchedAny = false
                 for (m in qqLineRegex.findAll(line)) {
                     val startMs = m.groupValues[1].toLongOrNull() ?: continue

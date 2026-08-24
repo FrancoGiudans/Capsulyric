@@ -308,7 +308,7 @@ fun MiuixParserRuleScreen(
                         .fillMaxSize()
                         .miuixPageScroll(scrollBehavior),
                     contentPadding = PaddingValues(
-                        top = padding.calculateTopPadding(),
+                        top = padding.calculateTopPadding() + 12.dp,
                         bottom = padding.calculateBottomPadding() + 136.dp
                     )
                 ) {
