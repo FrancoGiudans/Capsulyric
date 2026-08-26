@@ -66,8 +66,8 @@ class MediaMonitorService : NotificationListenerService() {
     private var lastMetadataHash: Int = 0
     private var lastComputedIsPlaying: Boolean? = null
     private var lastAlbumArtTrackKey: String? = null
-    private var lastAlbumArtHadImage: Boolean = false
-    
+    private var lastAlbumArtHash: Int = 0
+
     // Debounce Token
     private val updateToken = Any()
     
@@ -432,7 +432,7 @@ class MediaMonitorService : NotificationListenerService() {
         lastMetadataHash = 0
         lastComputedIsPlaying = null
         lastAlbumArtTrackKey = null
-        lastAlbumArtHadImage = false
+        lastAlbumArtHash = 0
         lastControllerSignatures = ""
     }
 
@@ -783,16 +783,18 @@ class MediaMonitorService : NotificationListenerService() {
         artBitmap: Bitmap?
     ) {
         val trackKey = listOf(pkg, title.orEmpty(), artist.orEmpty(), duration).joinToString("|")
-        val hasImage = artBitmap != null && !artBitmap.isRecycled
-        if (trackKey == lastAlbumArtTrackKey) {
-            // Some players publish the new track metadata before album art is ready.
-            // Do not let that first no-art callback block the later art-bearing update.
-            if (lastAlbumArtHadImage || !hasImage) return
-        }
+        val liveArt = artBitmap?.takeIf { !it.isRecycled }
+        val artHash = liveArt?.hashCode() ?: 0
+
+        // Compare the artwork identity, not just "did this track ever have art".
+        // Some players publish the new track's title/artist while METADATA_KEY_ALBUM_ART
+        // still holds the PREVIOUS track's bitmap, then send the correct art in a later
+        // callback. Keying on a boolean latched that stale image in for the whole track.
+        if (trackKey == lastAlbumArtTrackKey && artHash == lastAlbumArtHash) return
 
         lastAlbumArtTrackKey = trackKey
-        lastAlbumArtHadImage = hasImage
-        val scaledArt = scaleDownBitmap(artBitmap)
+        lastAlbumArtHash = artHash
+        val scaledArt = scaleDownBitmap(liveArt)
         LyricRepository.getInstance().updateAlbumArt(scaledArt)
     }
 

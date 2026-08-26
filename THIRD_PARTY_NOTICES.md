@@ -249,12 +249,12 @@ Build toolchain (build-time only, not distributed): Android Gradle Plugin 9.3.1,
 - Files under `ui/miuix` and `ui/material` were audited by comparing their public API signatures and imports against the vendored miuix 0.9.3 source (`OverlayDialog`, `OverlayBottomSheet`, `OverlayDropdownPreference`, `TopAppBar`, `Scaffold`, `MiuixPopupUtils`, `miuix-blur`).
 - Files outside these directories that import `top.yukonga.*` are feature screens that use the miuix library (normal dependency usage), not derived source, and are therefore not listed.
 - 对 `ui/miuix` 与 `ui/material` 下的文件，通过与 miuix 0.9.3 源码（`OverlayDialog`、`OverlayBottomSheet`、`OverlayDropdownPreference`、`TopAppBar`、`Scaffold`、`MiuixPopupUtils`、`miuix-blur`）逐文件比对公开 API 签名与 import 完成审计；目录外引用 `top.yukonga.*` 的文件属于正常使用依赖的页面，不在此列。
-- **§3 Lyricify**: the 15 ported files were identified by the `// Ported from Lyricify-Lyrics-Helper (C# → Kotlin)` header and cross-checked against the vendored upstream copy in `.vscode/Lyricify-Lyrics-Helper-master` (local audit reference, not in git).
-- **§4 InstallerX**: the 2 adapted files carry the `// Portions of this file are adapted from InstallerX Revived` header; cross-checked against `.vscode/InstallerX-Revived-main` (local audit reference, not in git).
-- **§5 hidden-api**: `IConnectivityManager.java` was diffed against the same-named file in `.vscode/InstallerX-Revived-main/hidden-api` (only comments/blank lines removed); `INetworkManagementService.java` is project-written (no matching upstream file).
-- **§3 Lyricify**：15 个移植文件通过 `// Ported from Lyricify-Lyrics-Helper (C# → Kotlin)` 文件头识别，并与 `.vscode/Lyricify-Lyrics-Helper-master` 上游源码副本（本地审计参考，不入 git）交叉核对。
-- **§4 InstallerX**：2 个改编文件带 `// Portions of this file are adapted from InstallerX Revived` 文件头，与 `.vscode/InstallerX-Revived-main`（本地审计参考，不入 git）交叉核对。
-- **§5 hidden-api**：`IConnectivityManager.java` 与 `.vscode/InstallerX-Revived-main/hidden-api` 同名文件 diff 比对（仅删除注释/空行）；`INetworkManagementService.java` 为项目自写（上游无对应文件）。
+- **§3 Lyricify**: the 15 ported files were identified by the `// Ported from Lyricify-Lyrics-Helper (C# → Kotlin)` header and cross-checked against the vendored upstream copy in `reference/Lyricify-Lyrics-Helper-master` (local audit reference, not in git).
+- **§4 InstallerX**: the 2 adapted files carry the `// Portions of this file are adapted from InstallerX Revived` header; cross-checked against `reference/InstallerX-Revived-main` (local audit reference, not in git).
+- **§5 hidden-api**: `IConnectivityManager.java` was diffed against the same-named file in `reference/InstallerX-Revived-main/hidden-api` (only comments/blank lines removed); `INetworkManagementService.java` is project-written (no matching upstream file).
+- **§3 Lyricify**：15 个移植文件通过 `// Ported from Lyricify-Lyrics-Helper (C# → Kotlin)` 文件头识别，并与 `reference/Lyricify-Lyrics-Helper-master` 上游源码副本（本地审计参考，不入 git）交叉核对。
+- **§4 InstallerX**：2 个改编文件带 `// Portions of this file are adapted from InstallerX Revived` 文件头，与 `reference/InstallerX-Revived-main`（本地审计参考，不入 git）交叉核对。
+- **§5 hidden-api**：`IConnectivityManager.java` 与 `reference/InstallerX-Revived-main/hidden-api` 同名文件 diff 比对（仅删除注释/空行）；`INetworkManagementService.java` 为项目自写（上游无对应文件）。
 
 ---
 

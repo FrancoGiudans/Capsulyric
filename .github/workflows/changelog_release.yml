@@ -442,7 +442,82 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       # ============================================================
-      # Step 12: Upload Workflow Artifact
+      # Step 12: Sync Release to Gitee
+      # ============================================================
+      - name: Prepare Gitee release body
+        id: gitee_body
+        if: ${{ secrets.gitee_token != '' || secrets.GITEE_TOKEN != '' }}
+        shell: bash
+        run: |
+          echo "body<<'GITEEDONE'" >> "$GITHUB_OUTPUT"
+          cat release_body.md >> "$GITHUB_OUTPUT"
+          echo "GITEEDONE" >> "$GITHUB_OUTPUT"
+
+      - name: Sync Release to Gitee
+        if: ${{ secrets.gitee_token != '' || secrets.GITEE_TOKEN != '' }}
+        uses: nICEnnnnnnnLee/action-gitee-release@master
+        with:
+          gitee_action: create_release
+          gitee_owner: franklinsmithson
+          gitee_repo: Capsulyric
+          gitee_token: ${{ secrets.gitee_token || secrets.GITEE_TOKEN }}
+          gitee_tag_name: ${{ steps.meta.outputs.tag_name }}
+          gitee_release_name: ${{ steps.meta.outputs.version_name }}
+          gitee_release_body: ${{ steps.gitee_body.outputs.body }}
+          gitee_target_commitish: ${{ github.ref_name }}
+          gitee_files: ${{ steps.artifacts.outputs.apk }}
+
+      # ============================================================
+      # Step 12.1: Prune old releases — keep 15 most recent Version.* (GitHub + Gitee)
+      # ============================================================
+      - name: Prune old GitHub releases (keep 15)
+        if: success()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "Pruning GitHub releases — keep 15 most recent Version.*"
+          TAGS=$(gh release list --limit 100 --json tagName,createdAt --jq '[.[] | select(.tagName | test("^Version\.")) ] | sort_by(.createdAt) | reverse | .[15:] | .[].tagName' 2>/dev/null || true)
+          if [ -z "$TAGS" ]; then
+            echo "No GitHub releases to prune."
+            exit 0
+          fi
+          echo "$TAGS" | while read -r tag; do
+            [ -z "$tag" ] && continue
+            echo "Deleting GitHub release/tag: $tag"
+            gh release delete "$tag" --yes || echo "gh release delete failed for $tag (maybe already removed)"
+            git push origin --delete "$tag" || echo "git push delete failed for $tag"
+          done
+
+      - name: Prune old Gitee releases (keep 15)
+        if: ${{ secrets.gitee_token != '' || secrets.GITEE_TOKEN != '' }}
+        shell: bash
+        env:
+          GITEE_TOKEN: ${{ secrets.gitee_token || secrets.GITEE_TOKEN }}
+        run: |
+          echo "Pruning Gitee releases — keep 15 most recent Version.*"
+          if [ -z "$GITEE_TOKEN" ]; then
+            echo "GITEE_TOKEN empty, skipping"
+            exit 0
+          fi
+          RESP=$(curl -s "https://gitee.com/api/v5/repos/franklinsmithson/Capsulyric/releases?access_token=${GITEE_TOKEN}&per_page=100&page=1")
+          if ! echo "$RESP" | jq -e 'type=="array"' >/dev/null 2>&1; then
+            echo "Gitee API did not return array: $RESP"
+            exit 0
+          fi
+          TAGS=$(echo "$RESP" | jq -r '[.[] | select(.tag_name | test("^Version\.")) ] | sort_by(.created_at) | reverse | .[15:] | .[].tag_name' 2>/dev/null || true)
+          if [ -z "$TAGS" ]; then
+            echo "No Gitee releases to prune."
+            exit 0
+          fi
+          echo "$TAGS" | while read -r tag; do
+            [ -z "$tag" ] && continue
+            echo "Deleting Gitee release/tag: $tag"
+            curl -s -X DELETE "https://gitee.com/api/v5/repos/franklinsmithson/Capsulyric/releases/tags/$tag?access_token=${GITEE_TOKEN}" || echo "Gitee delete failed for $tag"
+          done
+
+      # ============================================================
+      # Step 13: Upload Workflow Artifact
       # ============================================================
       - name: Upload Signed Artifact
         uses: actions/upload-artifact@v6
