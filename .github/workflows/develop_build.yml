@@ -36,6 +36,7 @@ jobs:
     outputs:
       channel: ${{ steps.mode.outputs.channel }}
       is_preview: ${{ steps.mode.outputs.is_preview }}
+      has_gitee_token: ${{ steps.gitee_token.outputs.has_token }}
     steps:
       - id: mode
         shell: bash
@@ -52,6 +53,15 @@ jobs:
             echo "is_preview=false" >> "$GITHUB_OUTPUT"
           fi
           echo "channel=$CHANNEL" >> "$GITHUB_OUTPUT"
+      - id: gitee_token
+        shell: bash
+        run: |
+          HAS="${{ secrets.gitee_token || secrets.GITEE_TOKEN }}"
+          if [ -n "$HAS" ]; then
+            echo "has_token=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_token=false" >> "$GITHUB_OUTPUT"
+          fi
 
   pre_job:
     needs: resolve_mode
@@ -253,7 +263,7 @@ jobs:
           github.event_name == 'push' &&
           needs.resolve_mode.outputs.is_preview != 'true' &&
           !contains(github.event.head_commit.message, '[assemble only]') &&
-          (secrets.gitee_token != '' || secrets.GITEE_TOKEN != '')
+          needs.resolve_mode.outputs.has_gitee_token == 'true'
         shell: bash
         env:
           GITEE_TOKEN: ${{ secrets.gitee_token || secrets.GITEE_TOKEN }}
@@ -303,7 +313,7 @@ jobs:
           github.event_name == 'push' &&
           needs.resolve_mode.outputs.is_preview != 'true' &&
           !contains(github.event.head_commit.message, '[assemble only]') &&
-          (secrets.gitee_token != '' || secrets.GITEE_TOKEN != '')
+          needs.resolve_mode.outputs.has_gitee_token == 'true'
         id: gitee_canary_body
         shell: bash
         run: |
@@ -316,7 +326,7 @@ jobs:
           github.event_name == 'push' &&
           needs.resolve_mode.outputs.is_preview != 'true' &&
           !contains(github.event.head_commit.message, '[assemble only]') &&
-          (secrets.gitee_token != '' || secrets.GITEE_TOKEN != '')
+          needs.resolve_mode.outputs.has_gitee_token == 'true'
         uses: nICEnnnnnnnLee/action-gitee-release@master
         with:
           gitee_action: create_release
