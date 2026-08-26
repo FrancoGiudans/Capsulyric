@@ -317,8 +317,9 @@ jobs:
         id: gitee_canary_body
         shell: bash
         run: |
-          echo "body<<'GITEEDONE'" >> "$GITHUB_OUTPUT"
+          echo "body<<GITEEDONE" >> "$GITHUB_OUTPUT"
           cat canary_body.md >> "$GITHUB_OUTPUT"
+          echo "" >> "$GITHUB_OUTPUT"
           echo "GITEEDONE" >> "$GITHUB_OUTPUT"
 
       - name: Sync Experiment Release to Gitee

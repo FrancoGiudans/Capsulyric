@@ -460,8 +460,9 @@ jobs:
         if: ${{ steps.gitee_check.outputs.has_token == 'true' }}
         shell: bash
         run: |
-          echo "body<<'GITEEDONE'" >> "$GITHUB_OUTPUT"
+          echo "body<<GITEEDONE" >> "$GITHUB_OUTPUT"
           cat release_body.md >> "$GITHUB_OUTPUT"
+          echo "" >> "$GITHUB_OUTPUT"
           echo "GITEEDONE" >> "$GITHUB_OUTPUT"
 
       - name: Sync Release to Gitee
