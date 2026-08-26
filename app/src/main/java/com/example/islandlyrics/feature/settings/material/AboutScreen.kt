@@ -120,6 +120,8 @@ fun AboutScreen(
     var showChannelDropdown by remember { mutableStateOf(false) }
     var currentChannel by remember { mutableStateOf(UpdateChecker.getUpdateChannel(context)) }
     var experimentUpdatesEnabled by remember { mutableStateOf(LabFeatureManager.isExperimentUpdatesEnabled(context)) }
+    var updateSourcePriority by remember { mutableStateOf(LabFeatureManager.getUpdateSourcePriority(context)) }
+    var showUpdateSourceDropdown by remember { mutableStateOf(false) }
     var devStepCount by remember { mutableIntStateOf(0) }
 
     val versionInfoText = "$updateVersionText\n$updateCodenameText\n$updateBuildText"
@@ -243,6 +245,38 @@ fun AboutScreen(
                                                 UpdateChecker.setUpdateChannel(context, channel)
                                                 experimentUpdatesEnabled = LabFeatureManager.isExperimentUpdatesEnabled(context)
                                                 showChannelDropdown = false
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                        SettingsCardDivider()
+                        Box(modifier = Modifier.fillMaxWidth()) {
+                            SettingsTextItem(
+                                title = stringResource(R.string.diag_lab_update_source_title),
+                                value = if (updateSourcePriority == LabFeatureManager.UPDATE_SOURCE_GITEE) {
+                                    stringResource(R.string.diag_lab_update_source_gitee)
+                                } else {
+                                    stringResource(R.string.diag_lab_update_source_github)
+                                },
+                                onClick = { showUpdateSourceDropdown = true }
+                            )
+                            Box(modifier = Modifier.matchParentSize().wrapContentSize(Alignment.CenterEnd)) {
+                                MaterialBlurDropdownMenu(
+                                    expanded = showUpdateSourceDropdown,
+                                    onDismissRequest = { showUpdateSourceDropdown = false }
+                                ) {
+                                    listOf(
+                                        LabFeatureManager.UPDATE_SOURCE_GITHUB to stringResource(R.string.diag_lab_update_source_github),
+                                        LabFeatureManager.UPDATE_SOURCE_GITEE to stringResource(R.string.diag_lab_update_source_gitee)
+                                    ).forEach { (sourceKey, sourceLabel) ->
+                                        DropdownMenuItem(
+                                            text = { Text(sourceLabel) },
+                                            onClick = {
+                                                updateSourcePriority = sourceKey
+                                                LabFeatureManager.setUpdateSourcePriority(context, sourceKey)
+                                                showUpdateSourceDropdown = false
                                             }
                                         )
                                     }

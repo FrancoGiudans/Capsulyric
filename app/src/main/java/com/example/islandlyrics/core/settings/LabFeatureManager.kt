@@ -331,6 +331,32 @@ object LabFeatureManager {
         }
     }
 
+    // Update source priority — mirrors feed source, used by UpdateChecker (dual-source GitHub/Gitee)
+    private const val KEY_UPDATE_SOURCE_PRIORITY = "lab_update_source_priority"
+    const val UPDATE_SOURCE_GITHUB = "github"
+    const val UPDATE_SOURCE_GITEE = "gitee"
+
+    fun getUpdateSourcePriority(context: Context): String {
+        val prefs = context.prefs()
+        ensureInitialized(prefs)
+        return normalizeUpdateSourcePriority(prefs.getString(KEY_UPDATE_SOURCE_PRIORITY, UPDATE_SOURCE_GITHUB))
+    }
+
+    fun setUpdateSourcePriority(context: Context, priority: String) {
+        val prefs = context.prefs()
+        ensureInitialized(prefs)
+        prefs.edit()
+            .putString(KEY_UPDATE_SOURCE_PRIORITY, normalizeUpdateSourcePriority(priority))
+            .apply()
+    }
+
+    private fun normalizeUpdateSourcePriority(priority: String?): String {
+        return when (priority?.trim()?.lowercase()) {
+            UPDATE_SOURCE_GITEE -> UPDATE_SOURCE_GITEE
+            else -> UPDATE_SOURCE_GITHUB
+        }
+    }
+
     private fun Context.prefs(): SharedPreferences =
         AppPreferences.of(this)
 

@@ -260,6 +260,7 @@ private fun MiuixAboutContent(
     var autoUpdateEnabled by remember { mutableStateOf(UpdateChecker.isAutoUpdateEnabled(context)) }
     var currentChannel by remember { mutableStateOf(UpdateChecker.getUpdateChannel(context)) }
     var experimentUpdatesEnabled by remember { mutableStateOf(LabFeatureManager.isExperimentUpdatesEnabled(context)) }
+    var updateSourcePriority by remember { mutableStateOf(LabFeatureManager.getUpdateSourcePriority(context)) }
     var showFeedbackPopup by remember { mutableStateOf(false) }
     var devStepCount by remember { mutableIntStateOf(0) }
 
@@ -423,6 +424,11 @@ private fun MiuixAboutContent(
                             },
                             currentChannel = currentChannel,
                             experimentUpdatesEnabled = experimentUpdatesEnabled,
+                            updateSourcePriority = updateSourcePriority,
+                            onUpdateSourceChange = {
+                                updateSourcePriority = it
+                                LabFeatureManager.setUpdateSourcePriority(context, it)
+                            },
                             onChannelChange = {
                                 currentChannel = it
                                 UpdateChecker.setUpdateChannel(context, it)
@@ -750,6 +756,8 @@ private fun UpdateSection(
     onAutoUpdateChange: (Boolean) -> Unit,
     currentChannel: String,
     experimentUpdatesEnabled: Boolean,
+    updateSourcePriority: String,
+    onUpdateSourceChange: (String) -> Unit,
     onChannelChange: (String) -> Unit,
     onCheckUpdate: () -> Unit,
     onViewCurrentVersionChangelog: () -> Unit
@@ -780,6 +788,22 @@ private fun UpdateSection(
         selectedIndex = selectedChannelIndex,
         onSelectedIndexChange = { index ->
             onChannelChange(channels[index])
+        }
+    )
+
+    val updateSourceOptions = listOf(
+        LabFeatureManager.UPDATE_SOURCE_GITHUB to stringResource(R.string.diag_lab_update_source_github),
+        LabFeatureManager.UPDATE_SOURCE_GITEE to stringResource(R.string.diag_lab_update_source_gitee)
+    )
+    val selectedUpdateSourceIndex = updateSourceOptions.indexOfFirst { it.first == updateSourcePriority }.takeIf { it >= 0 } ?: 0
+
+    SuperDropdown(
+        title = stringResource(R.string.diag_lab_update_source_title),
+        summary = stringResource(R.string.diag_lab_update_source_desc),
+        items = updateSourceOptions.map { it.second },
+        selectedIndex = selectedUpdateSourceIndex,
+        onSelectedIndexChange = { index ->
+            onUpdateSourceChange(updateSourceOptions[index].first)
         }
     )
 

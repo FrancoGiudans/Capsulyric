@@ -27,6 +27,7 @@ import com.example.islandlyrics.BuildConfig
 import com.example.islandlyrics.core.logging.AppLogger
 import com.example.islandlyrics.core.network.OfflineModeManager
 import com.example.islandlyrics.core.settings.AppPreferences
+import com.example.islandlyrics.core.settings.LabFeatureManager
 import com.example.islandlyrics.feature.update.UpdateParser
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -35,13 +36,19 @@ import java.net.HttpURLConnection
 import java.net.URL
 
 /**
- * GitHub Release API client for checking updates.
- * Repository: FrancoGiudans/Capsulyric
+ * Dual-source (GitHub + Gitee) Release API client for checking updates.
+ * GitHub: FrancoGiudans/Capsulyric
+ * Gitee:  franklinsmithson/Capsulyric  (https://gitee.com/franklinsmithson/Capsulyric/releases/tag/{tag})
  */
 object UpdateChecker {
 
     private const val TAG = "UpdateChecker"
     private const val GITHUB_API_URL = "https://api.github.com/repos/FrancoGiudans/Capsulyric/releases/latest"
+    private const val GITHUB_API_LIST_URL = "https://api.github.com/repos/FrancoGiudans/Capsulyric/releases"
+    private const val GITEE_API_URL = "https://gitee.com/api/v5/repos/franklinsmithson/Capsulyric/releases/latest"
+    private const val GITEE_API_LIST_URL = "https://gitee.com/api/v5/repos/franklinsmithson/Capsulyric/releases"
+    private const val GITEE_HTML_BASE = "https://gitee.com/franklinsmithson/Capsulyric/releases/tag/"
+    private const val GITEE_API_PER_PAGE = 100
     private val VERSION_IN_TITLE_REGEX = Regex("""\d{2}\.\d+(?:\.[A-Za-z0-9]+)*_C\d+""")
     private val VERSION_IN_BODY_REGEX = Regex("""(?im)^\s*[-*]\s*\*\*Version:\*\*\s*`(\d{2}\.\d+(?:\.[A-Za-z0-9]+)*_C\d+)`""")
 
@@ -179,28 +186,17 @@ object UpdateChecker {
             return@withContext null
         }
         try {
-            val apiUrl = "https://api.github.com/repos/FrancoGiudans/Capsulyric/releases"
-            val url = URL(apiUrl)
-            val connection = url.openConnection() as HttpURLConnection
-            connection.requestMethod = "GET"
-            connection.setRequestProperty("Accept", "application/vnd.github.v3+json")
-            connection.connectTimeout = 10000
-            connection.readTimeout = 10000
-
-            if (connection.responseCode == 200) {
-                val response = connection.inputStream.bufferedReader().use { it.readText() }
-                val jsonArray = org.json.JSONArray(response)
-                val userChannel = getUpdateChannel(context)
-
-                for (i in 0 until jsonArray.length()) {
-                    val json = jsonArray.getJSONObject(i)
-                    val release = parseRelease(json)
-                    if (isUpdateAllowedForChannel(release, userChannel)) {
-                        if (currentVersionOverride != null) {
-                            return@withContext checkForUpdate(context, currentVersionOverride)
-                        }
-                        return@withContext release
+            val userChannel = getUpdateChannel(context)
+            // Dual-source: fetch GitHub + Gitee lists, merge by commit count (priority-aware for same tag)
+            val githubReleases = fetchGithubReleaseList(GITHUB_API_LIST_URL) ?: emptyList()
+            val giteeReleases = fetchGiteeReleaseList("$GITEE_API_LIST_URL?per_page=$GITEE_API_PER_PAGE&page=1") ?: emptyList()
+            val merged = mergeAndSortReleasesWithPriority(context, githubReleases, giteeReleases)
+            for (release in merged) {
+                if (isUpdateAllowedForChannel(release, userChannel)) {
+                    if (currentVersionOverride != null) {
+                        return@withContext checkForUpdate(context, currentVersionOverride)
                     }
+                    return@withContext release
                 }
             }
             null
@@ -218,46 +214,54 @@ object UpdateChecker {
         try {
             updateLastCheckTime(context)
             val userChannel = getUpdateChannel(context)
-            val apiUrl = if (userChannel == CHANNEL_STABLE) GITHUB_API_URL else "https://api.github.com/repos/FrancoGiudans/Capsulyric/releases"
-            val url = URL(apiUrl)
-            val connection = url.openConnection() as HttpURLConnection
-            connection.requestMethod = "GET"
-            connection.setRequestProperty("Accept", "application/vnd.github.v3+json")
-            connection.connectTimeout = 10000
-            connection.readTimeout = 10000
+            val currentVersion = currentVersionOverride ?: BuildConfig.VERSION_NAME
 
-            if (connection.responseCode == 200) {
-                val response = connection.inputStream.bufferedReader().use { it.readText() }
-                val allReleases = mutableListOf<ReleaseInfo>()
-                if (userChannel != CHANNEL_STABLE) {
-                    val jsonArray = org.json.JSONArray(response)
-                    for (i in 0 until jsonArray.length()) {
-                        allReleases.add(parseRelease(jsonArray.getJSONObject(i)))
-                    }
+            // Dual-source fetch
+            val allReleases = mutableListOf<ReleaseInfo>()
+            if (userChannel == CHANNEL_STABLE) {
+                // Stable: latest single from both sources (priority decides tie-break)
+                val githubSingle = fetchGithubSingleRelease(GITHUB_API_URL)
+                val giteeSingle = fetchGiteeSingleRelease(GITEE_API_URL)
+                val priority = try { LabFeatureManager.getUpdateSourcePriority(context) } catch (_: Exception) { LabFeatureManager.UPDATE_SOURCE_GITHUB }
+                if (priority == LabFeatureManager.UPDATE_SOURCE_GITEE) {
+                    giteeSingle?.let { allReleases.add(it) }
+                    githubSingle?.let { allReleases.add(it) }
                 } else {
-                    allReleases.add(parseRelease(JSONObject(response)))
+                    githubSingle?.let { allReleases.add(it) }
+                    giteeSingle?.let { allReleases.add(it) }
                 }
+            } else {
+                val githubList = fetchGithubReleaseList(GITHUB_API_LIST_URL) ?: emptyList()
+                val giteeList = fetchGiteeReleaseList("$GITEE_API_LIST_URL?per_page=$GITEE_API_PER_PAGE&page=1") ?: emptyList()
+                allReleases.addAll(mergeAndSortReleasesWithPriority(context, githubList, giteeList))
+            }
 
-                val currentVersion = currentVersionOverride ?: BuildConfig.VERSION_NAME
-                val newerReleases = mutableListOf<ReleaseInfo>()
+            if (allReleases.isEmpty()) return@withContext null
 
-                for (release in allReleases) {
-                    if (isUpdateAllowedForChannel(release, userChannel)) {
-                        if (compareVersions(getComparableVersion(release), currentVersion) > 0) {
-                            newerReleases.add(release)
-                        }
+            // For stable the list is just 1-2 items, ensure sorted by version (latest first), dedup by priority
+            val sorted = if (userChannel == CHANNEL_STABLE) {
+                // Deduplicate by tag with priority, then sort
+                val priority = try { LabFeatureManager.getUpdateSourcePriority(context) } catch (_: Exception) { LabFeatureManager.UPDATE_SOURCE_GITHUB }
+                val ordered = if (priority == LabFeatureManager.UPDATE_SOURCE_GITEE) allReleases.sortedBy { if (it.htmlUrl.contains("gitee.com")) 0 else 1 } else allReleases
+                mergeAndSortReleases(ordered.distinctBy { it.tagName })
+            } else allReleases
+
+            val newerReleases = mutableListOf<ReleaseInfo>()
+            for (release in sorted) {
+                if (isUpdateAllowedForChannel(release, userChannel)) {
+                    if (compareVersions(getComparableVersion(release), currentVersion) > 0) {
+                        newerReleases.add(release)
                     }
                 }
-
-                if (newerReleases.isEmpty()) return@withContext null
-                val latestRelease = newerReleases.first()
-                val ignoredVersion = getIgnoredVersion(context)
-                if (ignoredVersion != null && getComparableVersion(latestRelease) == ignoredVersion) return@withContext null
-
-                if (newerReleases.size == 1) return@withContext latestRelease
-                return@withContext latestRelease.copy(body = mergeChangelogs(newerReleases))
             }
-            null
+
+            if (newerReleases.isEmpty()) return@withContext null
+            val latestRelease = newerReleases.first()
+            val ignoredVersion = getIgnoredVersion(context)
+            if (ignoredVersion != null && getComparableVersion(latestRelease) == ignoredVersion) return@withContext null
+
+            if (newerReleases.size == 1) return@withContext latestRelease
+            return@withContext latestRelease.copy(body = mergeChangelogs(newerReleases))
         } catch (e: Exception) {
             AppLogger.getInstance().e(TAG, "checkForUpdate failed", e)
             null
@@ -274,43 +278,111 @@ object UpdateChecker {
         }
         try {
             val targetVersion = currentVersionOverride ?: BuildConfig.VERSION_NAME
+            // Try GitHub first (paginate), then Gitee
             var page = 1
             var matchedRelease: ReleaseInfo? = null
-
             while (matchedRelease == null) {
-                val url = URL("https://api.github.com/repos/FrancoGiudans/Capsulyric/releases?per_page=100&page=$page")
-                val connection = url.openConnection() as HttpURLConnection
-                connection.requestMethod = "GET"
-                connection.setRequestProperty("Accept", "application/vnd.github.v3+json")
-                connection.connectTimeout = 10000
-                connection.readTimeout = 10000
-
-                if (connection.responseCode != 200) {
-                    return@withContext null
-                }
-
-                val response = connection.inputStream.bufferedReader().use { it.readText() }
-                val jsonArray = org.json.JSONArray(response)
-                if (jsonArray.length() == 0) {
-                    return@withContext null
-                }
-
-                for (i in 0 until jsonArray.length()) {
-                    val release = parseRelease(jsonArray.getJSONObject(i))
+                val githubList = fetchGithubReleaseList("https://api.github.com/repos/FrancoGiudans/Capsulyric/releases?per_page=100&page=$page")
+                if (githubList == null) break
+                if (githubList.isEmpty()) break
+                for (release in githubList) {
                     if (getComparableVersion(release) == targetVersion) {
                         matchedRelease = release
                         break
                     }
                 }
-                if (matchedRelease == null) {
-                    page++
+                if (matchedRelease != null) break
+                if (githubList.size < 100) break
+                page++
+                if (page > 5) break
+            }
+            if (matchedRelease != null) return@withContext matchedRelease
+            // Fallback to Gitee (single page, 100)
+            val giteeList = fetchGiteeReleaseList("$GITEE_API_LIST_URL?per_page=$GITEE_API_PER_PAGE&page=1")
+            if (giteeList != null) {
+                for (release in giteeList) {
+                    if (getComparableVersion(release) == targetVersion) {
+                        return@withContext release
+                    }
                 }
             }
-            matchedRelease
+            null
         } catch (e: Exception) {
             AppLogger.getInstance().e(TAG, "fetchReleaseForVersion failed", e)
             null
         }
+    }
+
+    // ---------- Dual-source helpers ----------
+    private fun fetchHttpText(urlStr: String): String? {
+        return try {
+            val url = URL(urlStr)
+            val conn = url.openConnection() as HttpURLConnection
+            conn.requestMethod = "GET"
+            conn.setRequestProperty("Accept", "application/vnd.github.v3+json")
+            conn.connectTimeout = 10000
+            conn.readTimeout = 10000
+            if (conn.responseCode == 200) {
+                conn.inputStream.bufferedReader().use { it.readText() }
+            } else null
+        } catch (_: Exception) { null }
+    }
+
+    private fun fetchGithubSingleRelease(url: String): ReleaseInfo? {
+        val text = fetchHttpText(url) ?: return null
+        return try { parseRelease(JSONObject(text)) } catch (_: Exception) { null }
+    }
+
+    private fun fetchGiteeSingleRelease(url: String): ReleaseInfo? {
+        val text = fetchHttpText(url) ?: return null
+        return try { parseGiteeRelease(JSONObject(text)) } catch (_: Exception) { null }
+    }
+
+    private fun fetchGithubReleaseList(url: String): List<ReleaseInfo>? {
+        val text = fetchHttpText(url) ?: return null
+        return try {
+            val arr = org.json.JSONArray(text)
+            (0 until arr.length()).map { parseRelease(arr.getJSONObject(it)) }
+        } catch (_: Exception) { null }
+    }
+
+    private fun fetchGiteeReleaseList(url: String): List<ReleaseInfo>? {
+        val text = fetchHttpText(url) ?: return null
+        return try {
+            val arr = org.json.JSONArray(text)
+            (0 until arr.length()).map { parseGiteeRelease(arr.getJSONObject(it)) }
+        } catch (_: Exception) { null }
+    }
+
+    private fun mergeAndSortReleases(releases: List<ReleaseInfo>): List<ReleaseInfo> {
+        // Deduplicate by tag, keep first occurrence (GitHub preferred), then sort by commit count desc
+        val distinct = releases.distinctBy { it.tagName }
+        return distinct.sortedWith(compareByDescending { extractCommitCount(getComparableVersion(it)) })
+    }
+
+    private fun mergeAndSortReleasesWithPriority(context: Context, github: List<ReleaseInfo>, gitee: List<ReleaseInfo>): List<ReleaseInfo> {
+        val priority = try { LabFeatureManager.getUpdateSourcePriority(context) } catch (_: Exception) { LabFeatureManager.UPDATE_SOURCE_GITHUB }
+        val ordered = if (priority == LabFeatureManager.UPDATE_SOURCE_GITEE) gitee + github else github + gitee
+        val distinct = ordered.distinctBy { it.tagName }
+        return distinct.sortedWith(compareByDescending { extractCommitCount(getComparableVersion(it)) })
+    }
+
+    private fun parseGiteeRelease(json: JSONObject): ReleaseInfo {
+        val tag = json.getString("tag_name")
+        val name = json.optString("name", tag)
+        val body = json.optString("body", "")
+        // Gitee uses created_at, GitHub uses published_at
+        val publishedAt = json.optString("created_at", json.optString("published_at", ""))
+        val prerelease = json.optBoolean("prerelease", false)
+        val htmlUrl = json.optString("html_url", "").ifBlank { "$GITEE_HTML_BASE$tag" }
+        return ReleaseInfo(
+            tagName = tag,
+            name = name,
+            body = body,
+            htmlUrl = htmlUrl,
+            publishedAt = publishedAt,
+            prerelease = prerelease
+        )
     }
 
     private const val CN_HEADER = "## \uD83C\uDDE8\uD83C\uDDF3"

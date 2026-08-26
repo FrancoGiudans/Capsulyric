@@ -1243,4 +1243,8 @@ Within the log interface, select the share/export icon. You can specify a timefr
     <string name="community_open_in_browser">Open in browser</string>
     <string name="community_dialog_open">Open link</string>
     <string name="community_dialog_close">Close</string>
+    <string name="diag_lab_update_source_title">Update Source</string>
+    <string name="diag_lab_update_source_desc">Choose the preferred update source. If it fails, the app automatically falls back to the other source. Releases are mirrored to both GitHub and Gitee.</string>
+    <string name="diag_lab_update_source_github">GitHub</string>
+    <string name="diag_lab_update_source_gitee">Gitee</string>
 </resources>

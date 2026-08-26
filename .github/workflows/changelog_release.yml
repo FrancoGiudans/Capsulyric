@@ -39,6 +39,17 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Check Gitee token
+        id: gitee_check
+        shell: bash
+        run: |
+          HAS="${{ secrets.gitee_token || secrets.GITEE_TOKEN }}"
+          if [ -n "$HAS" ]; then
+            echo "has_token=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_token=false" >> "$GITHUB_OUTPUT"
+          fi
+
       # ============================================================
       # Step 2: Parse commit message, CHANGELOG.md, and codename
       # ============================================================
@@ -446,7 +457,7 @@ jobs:
       # ============================================================
       - name: Prepare Gitee release body
         id: gitee_body
-        if: ${{ secrets.gitee_token != '' || secrets.GITEE_TOKEN != '' }}
+        if: ${{ steps.gitee_check.outputs.has_token == 'true' }}
         shell: bash
         run: |
           echo "body<<'GITEEDONE'" >> "$GITHUB_OUTPUT"
@@ -454,7 +465,7 @@ jobs:
           echo "GITEEDONE" >> "$GITHUB_OUTPUT"
 
       - name: Sync Release to Gitee
-        if: ${{ secrets.gitee_token != '' || secrets.GITEE_TOKEN != '' }}
+        if: ${{ steps.gitee_check.outputs.has_token == 'true' }}
         uses: nICEnnnnnnnLee/action-gitee-release@master
         with:
           gitee_action: create_release
@@ -490,7 +501,7 @@ jobs:
           done
 
       - name: Prune old Gitee releases (keep 15)
-        if: ${{ secrets.gitee_token != '' || secrets.GITEE_TOKEN != '' }}
+        if: ${{ steps.gitee_check.outputs.has_token == 'true' }}
         shell: bash
         env:
           GITEE_TOKEN: ${{ secrets.gitee_token || secrets.GITEE_TOKEN }}

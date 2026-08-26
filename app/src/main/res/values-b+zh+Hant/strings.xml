@@ -1256,4 +1256,8 @@
     <string name="parser_online_conflict_title">關閉通知歌詞以獲得更好的線上歌詞體驗</string>
     <string name="parser_online_conflict_message">若希望線上歌詞作為主要歌詞來源，為避免標題被歌詞污染導致比對失敗，建議關閉此規則的媒體通知歌詞，並前往該音樂應用設定中關閉「車載藍牙/通知欄歌詞」。保留現有設定將取消開啟線上歌詞。</string>
     <string name="parser_online_conflict_keep">保留目前設定</string>
+    <string name="diag_lab_update_source_title">更新來源</string>
+    <string name="diag_lab_update_source_desc">切換更新資料的取得線路，失敗時自動回退。</string>
+    <string name="diag_lab_update_source_github">GitHub (全球)</string>
+    <string name="diag_lab_update_source_gitee">Gitee (中國大陸加速)</string>
 </resources>

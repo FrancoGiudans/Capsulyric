@@ -1256,4 +1256,8 @@
     <string name="parser_online_conflict_title">オンライン歌詞を使用する場合は通知歌詞のオフを推奨</string>
     <string name="parser_online_conflict_message">オンライン歌詞を主に使用する場合、曲名への歌詞混入による検索失敗を防ぐため、本ルールのメディア通知歌詞をオフにし、音楽アプリ側でも「車載Bluetooth/通知歌詞」をオフにすることを推奨します。現在の設定を保持すると、オンライン歌詞は有効になりません。</string>
     <string name="parser_online_conflict_keep">現在の設定を保持</string>
+    <string name="diag_lab_update_source_title">アップデートソース</string>
+    <string name="diag_lab_update_source_desc">優先するアップデート取得元を選択。失敗時は自動的にもう一方にフォールバックします。</string>
+    <string name="diag_lab_update_source_github">GitHub (グローバル)</string>
+    <string name="diag_lab_update_source_gitee">Gitee (中国国内アクセラレーション)</string>
 </resources>
