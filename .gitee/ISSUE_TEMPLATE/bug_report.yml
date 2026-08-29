@@ -14,10 +14,10 @@ body:
       label: Issue Type / 问题类型
       description: What kind of issue are you reporting? / 您要报告什么类型的问题？
       options:
-        - bug (缺陷报告)
-        - enhancement (功能需求)
-        - question (咨询)
-        - document (文档改进)
+        - "bug (缺陷报告)"
+        - "enhancement (功能需求)"
+        - "question (咨询)"
+        - "document (文档改进)"
     validations:
       required: true
   - type: input
@@ -37,13 +37,15 @@ body:
     attributes:
       label: System Version / 系统版本
       options:
-        - HyperOS 3.0.300+
-        - HyperOS 3.0 Android 16
-        - HyperOS 3.0 Android 15
-        - ColorOS 16
-        - OneUI 8
-        - 类原生 Android 16
-        - 其他 (Optional: Specify in details / 请在详情中注明)
+        - "HyperOS 4"
+        - "HyperOS 3.0.300+"
+        - "HyperOS 3.0 Android 16"
+        - "HyperOS 3.0 Android 15"
+        - "ColorOS"
+        - "OneUI"
+        - "类原生 Android 17"
+        - "类原生 Android 16"
+        - "其他 (Optional: Specify in details / 请在详情中注明)"
     validations:
       required: true
   - type: textarea
