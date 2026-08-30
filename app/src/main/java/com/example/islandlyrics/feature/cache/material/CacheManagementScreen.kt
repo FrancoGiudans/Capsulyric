@@ -121,6 +121,7 @@ fun CacheManagementScreen(
     var searchQuery by remember { mutableStateOf("") }
     var pendingDeleteEntryId by remember { mutableStateOf<String?>(null) }
     var showDeleteSelectedDialog by remember { mutableStateOf(false) }
+    var showClearAppDataDialog by remember { mutableStateOf(false) }
     val filteredLyricEntries = remember(lyricEntries, searchQuery) {
         lyricEntries.filterByCacheQuery(searchQuery)
     }
@@ -272,6 +273,25 @@ fun CacheManagementScreen(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text(stringResource(R.string.cache_management_clear_all), color = MaterialTheme.colorScheme.error)
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+                    SettingsCardDivider()
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = stringResource(R.string.cache_management_clear_all_app_data_desc),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Button(
+                        onClick = { showClearAppDataDialog = true },
+                        enabled = !busy,
+                        colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.error,
+                            contentColor = MaterialTheme.colorScheme.onError
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(stringResource(R.string.cache_management_clear_all_app_data))
                     }
                 }
             }
@@ -439,6 +459,31 @@ fun CacheManagementScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showDeleteSelectedDialog = false }) {
+                    Text(stringResource(android.R.string.cancel))
+                }
+            }
+        )
+    }
+
+    if (showClearAppDataDialog) {
+        MaterialBlurAlertDialog(
+            onDismissRequest = { showClearAppDataDialog = false },
+            title = { Text(stringResource(R.string.cache_management_clear_all_app_data_confirm_title)) },
+            text = {
+                Text(stringResource(R.string.cache_management_clear_all_app_data_confirm_message))
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showClearAppDataDialog = false
+                        viewModel.clearAllAppData()
+                    }
+                ) {
+                    Text(stringResource(R.string.cache_management_delete), color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showClearAppDataDialog = false }) {
                     Text(stringResource(android.R.string.cancel))
                 }
             }

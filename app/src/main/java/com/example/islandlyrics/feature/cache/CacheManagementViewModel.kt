@@ -22,7 +22,9 @@
 
 package com.example.islandlyrics.feature.cache
 
+import android.app.ActivityManager
 import android.app.Application
+import android.content.Context
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
@@ -222,6 +224,11 @@ class CacheManagementViewModel(application: Application) : AndroidViewModel(appl
             _statusMessage.value = s(R.string.cache_management_status_all_cleared)
             refresh()
         }
+    }
+
+    fun clearAllAppData() {
+        val am = getApplication<Application>().getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager
+        am?.clearApplicationUserData()
     }
 
     fun consumeStatusMessage() {

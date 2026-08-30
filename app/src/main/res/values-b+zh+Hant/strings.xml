@@ -1114,6 +1114,11 @@
     <string name="cache_management_clear_all_title">清空所有快取</string>
     <string name="cache_management_clear_all_desc">刪除所有已快取的歌詞與圖片檔案</string>
     <string name="cache_management_clear_all">清空全部</string>
+    <string name="cache_management_clear_all_app_data_title">清除所有應用程式資料</string>
+    <string name="cache_management_clear_all_app_data_desc">將永久清除所有應用程式設定、解析規則、歌詞快取及登入憑據，應用程式將在清除後退出並恢復初始狀態。</string>
+    <string name="cache_management_clear_all_app_data">清除全部應用程式資料</string>
+    <string name="cache_management_clear_all_app_data_confirm_title">清除所有應用程式資料？</string>
+    <string name="cache_management_clear_all_app_data_confirm_message">確定要清除所有應用程式資料嗎？此操作將重置所有設定、解析規則、歌詞快取與登入憑據，應用程式將立即關閉。此操作無法復原！</string>
     <string name="cache_management_entries_title">快取清單</string>
     <string name="cache_management_search_entries">搜尋快取曲目...</string>
     <string name="cache_management_no_entries">暫無快取資料</string>

@@ -1114,6 +1114,11 @@
     <string name="cache_management_clear_all_title">清空所有缓存数据</string>
     <string name="cache_management_clear_all_desc">将同时删除歌词缓存和图片缓存，无法撤销。</string>
     <string name="cache_management_clear_all">清空全部缓存</string>
+    <string name="cache_management_clear_all_app_data_title">清除所有应用数据</string>
+    <string name="cache_management_clear_all_app_data_desc">将永久清除所有应用设置、解析规则、歌词缓存及登录凭据，应用将在清除后退出并恢复初始状态。</string>
+    <string name="cache_management_clear_all_app_data">清除全部应用数据</string>
+    <string name="cache_management_clear_all_app_data_confirm_title">清除所有应用数据？</string>
+    <string name="cache_management_clear_all_app_data_confirm_message">确定要清除所有应用数据吗？此操作将重置所有设置、解析规则、歌词缓存与登录凭据，应用将立即退出。此操作无法撤销！</string>
     <string name="cache_management_entries_title">歌词缓存条目</string>
     <string name="cache_management_search_entries">搜索缓存条目</string>
     <string name="cache_management_no_entries">当前没有可管理的歌词缓存</string>

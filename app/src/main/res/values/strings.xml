@@ -1104,6 +1104,11 @@ Within the log interface, select the share/export icon. You can specify a timefr
     <string name="cache_management_clear_all_title">Clear All Cached Data</string>
     <string name="cache_management_clear_all_desc">This will delete both lyric cache and image cache. This cannot be undone.</string>
     <string name="cache_management_clear_all">Clear All Cache</string>
+    <string name="cache_management_clear_all_app_data_title">Clear All Application Data</string>
+    <string name="cache_management_clear_all_app_data_desc">Permanently erase all app settings, parser rules, lyric cache, and login credentials. The app will close and reset to initial state.</string>
+    <string name="cache_management_clear_all_app_data">Clear All App Data</string>
+    <string name="cache_management_clear_all_app_data_confirm_title">Clear All Application Data?</string>
+    <string name="cache_management_clear_all_app_data_confirm_message">Are you sure you want to clear all application data? This will permanently reset all settings, parser rules, lyric caches, and credentials. The app will close immediately. This action cannot be undone!</string>
     <string name="cache_management_entries_title">Lyric Cache Entries</string>
     <string name="cache_management_search_entries">Search cache entries</string>
     <string name="cache_management_no_entries">No lyric cache entries are currently available</string>
