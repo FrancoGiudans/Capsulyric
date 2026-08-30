@@ -59,6 +59,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.core.content.edit
 import com.example.islandlyrics.R
@@ -220,6 +221,7 @@ fun AppleMusicSettingsScreen(onBack: () -> Unit) {
                         label = { Text(stringResource(R.string.apple_music_mut_label)) },
                         placeholder = { Text(stringResource(R.string.apple_music_mut_hint)) },
                         singleLine = true,
+                        visualTransformation = PasswordVisualTransformation(),
                         modifier = Modifier.fillMaxWidth()
                     )
                     tokenStatusRes?.let { res ->
