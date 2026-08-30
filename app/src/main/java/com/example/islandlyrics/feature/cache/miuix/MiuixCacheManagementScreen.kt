@@ -123,6 +123,7 @@ fun MiuixCacheManagementScreen(
     var searchExpanded by remember { mutableStateOf(false) }
     var pendingDeleteEntryId by remember { mutableStateOf<String?>(null) }
     var showDeleteSelectedDialog by remember { mutableStateOf(false) }
+    var showClearAppDataDialog by remember { mutableStateOf(false) }
     val filteredLyricEntries = remember(lyricEntries, searchQuery) {
         lyricEntries.filterByCacheQuery(searchQuery)
     }
@@ -269,6 +270,22 @@ fun MiuixCacheManagementScreen(
                         Spacer(modifier = Modifier.height(12.dp))
                         Button(onClick = { viewModel.clearAllCaches() }, enabled = !busy, modifier = Modifier.fillMaxWidth()) {
                             Text(stringResource(R.string.cache_management_clear_all))
+                        }
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(stringResource(R.string.cache_management_clear_all_app_data_title), fontWeight = FontWeight.SemiBold, color = MiuixTheme.colorScheme.error)
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            stringResource(R.string.cache_management_clear_all_app_data_desc),
+                            color = MiuixTheme.colorScheme.onSurfaceSecondary
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Button(
+                            onClick = { showClearAppDataDialog = true },
+                            enabled = !busy,
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColors(color = MiuixTheme.colorScheme.error)
+                        ) {
+                            Text(stringResource(R.string.cache_management_clear_all_app_data), color = MiuixTheme.colorScheme.onPrimary)
                         }
                     }
                 }
@@ -459,6 +476,42 @@ fun MiuixCacheManagementScreen(
                         onClick = {
                             showDeleteSelectedDialog = false
                             viewModel.deleteSelected()
+                        },
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.textButtonColors(
+                            textColor = MiuixTheme.colorScheme.error
+                        )
+                    )
+                }
+            }
+        }
+
+        if (showClearAppDataDialog) {
+            MiuixBlurDialog(
+                title = stringResource(R.string.cache_management_clear_all_app_data_confirm_title),
+                summary = stringResource(R.string.cache_management_clear_all_app_data_confirm_message),
+                show = true,
+                renderInRootScaffold = false,
+                onDismissRequest = { showClearAppDataDialog = false }
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    TextButton(
+                        text = stringResource(android.R.string.cancel),
+                        onClick = { showClearAppDataDialog = false },
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.textButtonColors(
+                            textColor = MiuixTheme.colorScheme.onSurfaceVariantActions
+                        )
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    TextButton(
+                        text = stringResource(R.string.cache_management_delete),
+                        onClick = {
+                            showClearAppDataDialog = false
+                            viewModel.clearAllAppData()
                         },
                         modifier = Modifier.weight(1f),
                         colors = ButtonDefaults.textButtonColors(

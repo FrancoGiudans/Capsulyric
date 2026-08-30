@@ -1114,6 +1114,11 @@
     <string name="cache_management_clear_all_title">すべてのキャッシュを消去</string>
     <string name="cache_management_clear_all_desc">すべての歌詞・画像キャッシュを削除します</string>
     <string name="cache_management_clear_all">すべて消去</string>
+    <string name="cache_management_clear_all_app_data_title">すべてのアプリデータを消去</string>
+    <string name="cache_management_clear_all_app_data_desc">すべてのアプリ設定、解析ルール、歌詞キャッシュ、ログイン情報を完全に消去します。アプリは消去後に終了し初期状態に戻ります。</string>
+    <string name="cache_management_clear_all_app_data">すべてのアプリデータを消去</string>
+    <string name="cache_management_clear_all_app_data_confirm_title">すべてのアプリデータを消去しますか？</string>
+    <string name="cache_management_clear_all_app_data_confirm_message">すべてのアプリデータを消去してもよろしいですか？すべての設定、解析ルール、歌詞キャッシュ、ログイン情報がリセットされ、アプリは直ちに終了します。この操作は元に戻せません！</string>
     <string name="cache_management_entries_title">キャッシュ一覧</string>
     <string name="cache_management_search_entries">キャッシュを検索...</string>
     <string name="cache_management_no_entries">キャッシュがありません</string>
