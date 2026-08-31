@@ -143,8 +143,8 @@ class CustomSettingsViewModel(application: Application) : AndroidViewModel(appli
                 XmsfBypassMode.writeCustomDurationMs(prefs, action.value)
             is CustomSettingsAction.SetMiuixEnabled ->
                 prefs.edit { putBoolean(AppPreferences.Keys.UI_USE_MIUIX, action.value) }
-            is CustomSettingsAction.SetMiuixFloatingBottomBarEnabled ->
-                prefs.edit { putBoolean(AppPreferences.Keys.MIUIX_FLOATING_BOTTOM_BAR_ENABLED, action.value) }
+            is CustomSettingsAction.SetMiuixNavigationBarStyle ->
+                AppPreferences.setMiuixNavigationBarStyle(prefs, action.value)
             is CustomSettingsAction.SetMiuixThemeColorSource ->
                 prefs.edit { putString(AppPreferences.Keys.MIUIX_THEME_COLOR_SOURCE, action.value) }
             is CustomSettingsAction.SetMiuixThemeCustomColor ->
@@ -223,7 +223,7 @@ class CustomSettingsViewModel(application: Application) : AndroidViewModel(appli
             superIslandShareEnabled = AppPreferences.isSuperIslandShareEnabled(prefs),
             superIslandShareFormat = AppPreferences.superIslandShareFormat(prefs),
             miuixEnabled = prefs.getBoolean(AppPreferences.Keys.UI_USE_MIUIX, true),
-            miuixFloatingBottomBarEnabled = prefs.getBoolean(AppPreferences.Keys.MIUIX_FLOATING_BOTTOM_BAR_ENABLED, false),
+            miuixNavigationBarStyle = AppPreferences.miuixNavigationBarStyle(prefs),
             predictiveBackEnabled = prefs.getBoolean(PREF_PREDICTIVE_BACK_ENABLED, true),
             predictiveBackAnimationMode = PredictiveBackAnimationMode.read(prefs),
             predictiveBackAnimationStyle = PredictiveBackAnimationStyle.read(prefs),

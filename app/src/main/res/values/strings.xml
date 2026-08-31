@@ -905,8 +905,11 @@ Within the log interface, select the share/export icon. You can specify a timefr
     <string name="diag_lab_experiment_updates_desc">Show the Experiment channel and receive experimental builds from the testing branch.</string>
     <string name="settings_edge_scroll_haptic_title">Scroll End Haptic</string>
     <string name="settings_edge_scroll_haptic_desc">Use the same end-of-list haptic feedback as the miuix demo when scrolling reaches an edge.</string>
-    <string name="settings_miuix_floating_bottom_bar">Use Floating Bottom Bar</string>
-    <string name="settings_miuix_floating_bottom_bar_desc">Use a floating bottom bar instead of the standard navigation bar</string>
+    <string name="settings_navigation_bar_style">Navigation Bar Style</string>
+    <string name="settings_navigation_bar_style_desc">Choose the appearance and interaction style of the Miuix navigation bar</string>
+    <string name="settings_navigation_bar_style_normal">Standard Style</string>
+    <string name="settings_navigation_bar_style_floating">Floating Bottom Bar</string>
+    <string name="settings_navigation_bar_style_liquid">Liquid Floating Bar</string>
     <string name="diag_lab_floating_lyrics_title">Desktop Lyrics</string>
     <string name="diag_lab_floating_lyrics_desc">When enabled, the Desktop Lyrics entry will appear in Settings</string>
     <string name="diag_lab_floating_word_high_fps_title">Desktop Lyrics High-FPS Animation</string>

@@ -915,8 +915,11 @@
     <string name="diag_lab_experiment_updates_desc">更新チャンネルに Experiment を追加して実験的アップデートを受信</string>
     <string name="settings_edge_scroll_haptic_title">エッジスクロール触覚フィードバック</string>
     <string name="settings_edge_scroll_haptic_desc">リストの端までスクロールした際に軽いバイブレーションを発生</string>
-    <string name="settings_miuix_floating_bottom_bar">Miuix フローティングボトムバー</string>
-    <string name="settings_miuix_floating_bottom_bar_desc">Miuixスタイルでフローティングボトムバーを使用</string>
+    <string name="settings_navigation_bar_style">ナビゲーションバーのスタイル</string>
+    <string name="settings_navigation_bar_style_desc">Miuix ナビゲーションバーの外観と操作スタイルを選択</string>
+    <string name="settings_navigation_bar_style_normal">標準スタイル</string>
+    <string name="settings_navigation_bar_style_floating">フローティングボトムバー</string>
+    <string name="settings_navigation_bar_style_liquid">リキッドフローティングバー</string>
     <string name="diag_lab_floating_lyrics_title">デスクトップフローティング歌詞エントリ</string>
     <string name="diag_lab_floating_lyrics_desc">設定メニューにフローティング歌詞の設定項目を表示</string>
     <string name="diag_lab_floating_word_high_fps_title">文字単位歌詞の高フレームレートアニメーション</string>

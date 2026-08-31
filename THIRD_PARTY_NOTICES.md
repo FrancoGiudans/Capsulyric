@@ -174,6 +174,9 @@ The following libraries are **directly declared** in `app/build.gradle.kts` (via
 | activity-compose | `androidx.activity:activity-compose` | 1.13.0 | Apache-2.0 |
 | lifecycle-viewmodel-compose | `androidx.lifecycle:lifecycle-viewmodel-compose` | 2.11.0 | Apache-2.0 |
 | navigationevent-compose | `org.jetbrains.androidx.navigationevent:navigationevent-compose` | 1.1.0 | Apache-2.0 |
+| Backdrop (AndroidLiquidGlass) | `io.github.kyant0:backdrop` | 2.0.1 | Apache-2.0 |
+
+`backdrop` is published from [Kyant0/AndroidLiquidGlass](https://github.com/Kyant0/AndroidLiquidGlass), with `Kyant` listed as the upstream developer. It is used here for the app's Liquid Glass effects; no source code from that project is copied into this repository. / `backdrop` 由 [Kyant0/AndroidLiquidGlass](https://github.com/Kyant0/AndroidLiquidGlass) 发布，上游开发者标注为 `Kyant`，本项目使用它实现液态玻璃效果；本仓库未复制该项目源码。
 
 ### 6.4 Miuix (MIUI-style components)
 
