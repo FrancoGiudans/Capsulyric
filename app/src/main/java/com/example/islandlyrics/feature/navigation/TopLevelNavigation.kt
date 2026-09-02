@@ -47,6 +47,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -77,6 +78,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
@@ -88,11 +90,13 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import com.example.islandlyrics.R
 import com.example.islandlyrics.feature.main.MainActivity
 import com.example.islandlyrics.feature.parserrule.ParserRuleActivity
@@ -104,6 +108,9 @@ import com.example.islandlyrics.ui.miuix.blur.LocalMiuixBlurBackdrop
 import com.example.islandlyrics.ui.miuix.blur.LocalMiuixBlurEnabled
 import com.example.islandlyrics.ui.miuix.blur.MiuixBlurNavigationBar
 import com.kyant.backdrop.Backdrop
+import com.kyant.backdrop.backdrops.layerBackdrop as liquidLayerBackdrop
+import com.kyant.backdrop.backdrops.rememberCombinedBackdrop
+import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import com.kyant.backdrop.drawBackdrop
 import com.kyant.backdrop.effects.blur
 import com.kyant.backdrop.effects.lens
@@ -341,6 +348,8 @@ fun MiuixTopLevelLiquidGlassNavigationBar(
     val animationScope = rememberCoroutineScope()
     val navigationInteractionSource = remember { MutableInteractionSource() }
     val isNavigationItemPressed by navigationInteractionSource.collectIsPressedAsState()
+    val tabsBackdrop = rememberLayerBackdrop()
+    val combinedBackdrop = rememberCombinedBackdrop(backdrop, tabsBackdrop)
     val selectedPosition = remember { Animatable(selectedIndex.toFloat()) }
     var isDragging by remember { mutableStateOf(false) }
     var dragPosition by remember { mutableFloatStateOf(selectedIndex.toFloat()) }
@@ -369,15 +378,17 @@ fun MiuixTopLevelLiquidGlassNavigationBar(
         val containerShape = RoundedCornerShape(32.dp)
         val indicatorShape = RoundedCornerShape(26.dp)
         val surfaceColor = MiuixTheme.colorScheme.surfaceContainer
-        val isDark = surfaceColor.luminance() < 0.5f
-        val containerColor = surfaceColor.copy(alpha = if (isDark) 0.42f else 0.36f)
+        val containerColor = surfaceColor.copy(alpha = 0.4f)
         val accentColor = MiuixTheme.colorScheme.primary
         val inactiveColor = MiuixTheme.colorScheme.onSurfaceVariantActions
+        val indicatorOverlayColor = MiuixTheme.colorScheme.onSurface.copy(alpha = 0.1f)
+        val indicatorPressedOverlayColor = MiuixTheme.colorScheme.onSurface.copy(alpha = 0.03f)
 
         BoxWithConstraints(
             modifier = Modifier
                 .width(barWidth)
-                .height(64.dp)
+                .height(64.dp),
+            contentAlignment = Alignment.CenterStart
         ) {
             val horizontalPadding = 4.dp
             val tabWidth = (maxWidth - horizontalPadding * 2) / destinations.size
@@ -424,6 +435,7 @@ fun MiuixTopLevelLiquidGlassNavigationBar(
                 ),
                 label = "liquidNavigationIndicatorScaleY"
             )
+            val hiddenTabScale = 1f + pressProgress * 0.2f
 
             fun finishDrag(navigate: Boolean) {
                 val targetIndex = if (navigate) {
@@ -460,12 +472,16 @@ fun MiuixTopLevelLiquidGlassNavigationBar(
                         shape = { containerShape },
                         effects = {
                             vibrancy()
-                            blur(8.dp.toPx())
+                            blur(2.dp.toPx())
                             lens(24.dp.toPx(), 24.dp.toPx())
                         },
-                        highlight = { LiquidHighlight.Ambient.copy(alpha = 0.9f) },
-                        shadow = { LiquidShadow(radius = 18.dp, alpha = 0.8f) },
-                        innerShadow = { LiquidInnerShadow(radius = 12.dp, alpha = 0.32f) },
+                        highlight = { LiquidHighlight.Default.copy(alpha = 0.75f) },
+                        layerBlock = {
+                            val width = size.width.coerceAtLeast(1f)
+                            val scale = 1f + 16.dp.toPx() / width * pressProgress
+                            scaleX = scale
+                            scaleY = scale
+                        },
                         onDrawSurface = { drawRect(containerColor) }
                     )
                     .pointerInput(tabWidthPx, isLtr) {
@@ -488,38 +504,89 @@ fun MiuixTopLevelLiquidGlassNavigationBar(
                         }
                     }
             ) {
+                Row(
+                    modifier = Modifier
+                        .clearAndSetSemantics {}
+                        .alpha(0f)
+                        .liquidLayerBackdrop(tabsBackdrop)
+                        .graphicsLayer { translationX = panelOffsetPx }
+                        .drawBackdrop(
+                            backdrop = backdrop,
+                            shape = { containerShape },
+                            effects = {
+                                vibrancy()
+                                blur(2.dp.toPx())
+                                lens(24.dp.toPx(), 24.dp.toPx())
+                            },
+                            highlight = {
+                                LiquidHighlight.Default.copy(alpha = pressProgress)
+                            },
+                            onDrawSurface = { drawRect(containerColor) }
+                        )
+                        .fillMaxWidth()
+                        .height(56.dp)
+                        .padding(horizontal = horizontalPadding),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    destinations.forEach { destination ->
+                        val selected = currentDestination == destination
+                        LiquidGlassNavigationItemContent(
+                            destination = destination,
+                            selected = selected,
+                            label = stringResource(destination.labelRes),
+                            color = accentColor,
+                            scale = (if (selected) 1.06f else 1f) * hiddenTabScale,
+                            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium
+                        )
+                    }
+                }
+
                 Box(
                     modifier = Modifier
+                        .zIndex(1f)
                         .padding(start = horizontalPadding, top = 4.dp, bottom = 4.dp)
                         .width(tabWidth)
                         .fillMaxHeight()
                         .graphicsLayer {
                             translationX = elasticPosition * tabWidthPx * if (isLtr) 1f else -1f
-                            scaleX = indicatorScaleX
-                            scaleY = indicatorScaleY
                         }
                         .drawBackdrop(
-                            backdrop = backdrop,
+                            backdrop = combinedBackdrop,
                             shape = { indicatorShape },
                             effects = {
-                                blur(2.dp.toPx())
                                 lens(
-                                    refractionHeight = (8.dp + 4.dp * pressProgress).toPx(),
-                                    refractionAmount = (10.dp + 6.dp * pressProgress).toPx(),
+                                    refractionHeight = 10.dp.toPx() * pressProgress,
+                                    refractionAmount = 14.dp.toPx() * pressProgress,
+                                    depthEffect = true,
                                     chromaticAberration = pressProgress > 0.35f
                                 )
                             },
                             highlight = {
-                                LiquidHighlight.Default.copy(alpha = 0.55f + pressProgress * 0.45f)
+                                LiquidHighlight.Default.copy(alpha = pressProgress)
                             },
                             shadow = {
-                                LiquidShadow(radius = 10.dp, alpha = 0.35f + pressProgress * 0.45f)
+                                LiquidShadow(alpha = pressProgress)
                             },
                             innerShadow = {
-                                LiquidInnerShadow(radius = 8.dp, alpha = 0.24f + pressProgress * 0.36f)
+                                LiquidInnerShadow(
+                                    radius = 8.dp * pressProgress,
+                                    alpha = pressProgress
+                                )
+                            },
+                            layerBlock = {
+                                scaleX = indicatorScaleX
+                                scaleY = indicatorScaleY
                             },
                             onDrawSurface = {
-                                drawRect(accentColor.copy(alpha = if (isDark) 0.18f else 0.12f))
+                                drawRect(
+                                    color = indicatorOverlayColor,
+                                    alpha = 1f - pressProgress
+                                )
+                                drawRect(
+                                    indicatorPressedOverlayColor.copy(
+                                        alpha = indicatorPressedOverlayColor.alpha * pressProgress
+                                    )
+                                )
                             }
                         )
                 )
@@ -548,10 +615,14 @@ fun MiuixTopLevelLiquidGlassNavigationBar(
                             ),
                             label = "liquidNavigationItemScale"
                         )
-                        Column(
+                        LiquidGlassNavigationItemContent(
+                            destination = destination,
+                            selected = selected,
+                            label = label,
+                            color = itemColor,
+                            scale = itemScale,
+                            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
                             modifier = Modifier
-                                .weight(1f)
-                                .fillMaxHeight()
                                 .clip(indicatorShape)
                                 .selectable(
                                     selected = selected,
@@ -571,32 +642,50 @@ fun MiuixTopLevelLiquidGlassNavigationBar(
                                         onNavigate(destination)
                                     }
                                 )
-                                .graphicsLayer {
-                                    scaleX = itemScale
-                                    scaleY = itemScale
-                                },
-                            verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterVertically),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Icon(
-                                imageVector = destination.miuixIcon(selected),
-                                contentDescription = label,
-                                tint = itemColor,
-                                modifier = Modifier.size(24.dp)
-                            )
-                            Text(
-                                text = label,
-                                color = itemColor,
-                                fontSize = 11.sp,
-                                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
+                        )
                     }
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun RowScope.LiquidGlassNavigationItemContent(
+    destination: TopLevelDestination,
+    selected: Boolean,
+    label: String,
+    color: Color,
+    scale: Float,
+    fontWeight: FontWeight,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = Modifier
+            .weight(1f)
+            .fillMaxHeight()
+            .then(modifier)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            },
+        verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterVertically),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Icon(
+            imageVector = destination.miuixIcon(selected),
+            contentDescription = label,
+            tint = color,
+            modifier = Modifier.size(24.dp)
+        )
+        Text(
+            text = label,
+            color = color,
+            fontSize = 11.sp,
+            fontWeight = fontWeight,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
     }
 }
 
