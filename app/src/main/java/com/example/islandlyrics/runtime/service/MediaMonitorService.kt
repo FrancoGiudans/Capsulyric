@@ -935,7 +935,15 @@ class MediaMonitorService : NotificationListenerService() {
         // Singleton instance — set in onCreate, cleared in onDestroy
         @Volatile private var instance: MediaMonitorService? = null
 
-        var isConnected = false
+        private val _isConnectedFlow = kotlinx.coroutines.flow.MutableStateFlow(false)
+        // 只读暴露连接状态流，供 UI 层 collectAsState 订阅
+        val isConnectedFlow: kotlinx.coroutines.flow.StateFlow<Boolean> get() = _isConnectedFlow
+
+        // 兼容老调用方：读写代理到 StateFlow，保持单一状态源
+        var isConnected: Boolean
+            get() = _isConnectedFlow.value
+            set(value) { _isConnectedFlow.value = value }
+
         @Volatile private var lastForegroundUptimeMs: Long = 0L
 
         fun markForeground() {

@@ -45,7 +45,9 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -60,9 +62,21 @@ import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.ContentScale
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.Lifecycle
+import kotlinx.coroutines.launch
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.ComponentName
@@ -250,29 +264,123 @@ fun MiuixMainScreen(
             }
     }
 
-    val listenerEnabled = remember(Unit) {
-        val listeners = Settings.Secure.getString(context.contentResolver, "enabled_notification_listeners")
-        listeners?.contains(context.packageName) == true
+    var listenerEnabled by remember {
+        mutableStateOf(
+            Settings.Secure.getString(context.contentResolver, "enabled_notification_listeners")
+                ?.contains(context.packageName) == true
+        )
     }
-    val serviceConnected = MediaMonitorService.isConnected
-    val hasActiveSession = whitelistedSessions.isNotEmpty()
-
-    val statusText = when {
-        !listenerEnabled -> stringResource(R.string.main_status_permission_required)
-        hasActiveSession -> {
-            if (repoPlaying || repoMetadata != null) {
-                val rawPackage = repoLyric?.sourceApp ?: repoMetadata?.packageName ?: whitelistedSessions.firstOrNull()?.packageName
-                val sourceName = rawPackage?.let { ParserRuleHelper.getAppNameForPackage(context, it) }
-                    ?: stringResource(R.string.main_music_app_fallback)
-                stringResource(R.string.main_status_connecting_fmt, sourceName)
-            } else {
-                stringResource(R.string.main_status_session_count_fmt, whitelistedSessions.size)
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                val listeners = Settings.Secure.getString(context.contentResolver, "enabled_notification_listeners")
+                listenerEnabled = listeners?.contains(context.packageName) == true
+                MediaMonitorService.triggerRecheck()
             }
         }
-        !serviceConnected -> stringResource(R.string.main_status_service_disconnected)
-        else -> stringResource(R.string.main_status_service_ready)
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
-    val statusActive = listenerEnabled && serviceConnected
+
+    LaunchedEffect(Unit) {
+        MediaMonitorService.triggerRecheck()
+    }
+
+    val serviceConnected by MediaMonitorService.isConnectedFlow.collectAsState()
+    val coroutineScope = rememberCoroutineScope()
+    var isRebinding by remember { mutableStateOf(false) }
+    var rebindAttempts by remember { mutableIntStateOf(0) }
+    var coldStartGracePeriodPassed by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        delay(1200)
+        coldStartGracePeriodPassed = true
+    }
+
+    LaunchedEffect(serviceConnected) {
+        if (serviceConnected) {
+            isRebinding = false
+            rebindAttempts = 0
+        }
+    }
+
+    val handleRebind: () -> Unit = {
+        isRebinding = true
+        rebindAttempts++
+        MediaMonitorService.requestRebind(context)
+        onStatusCardTap()
+        coroutineScope.launch {
+            delay(800)
+            if (!MediaMonitorService.isConnected) {
+                MediaMonitorService.forceRebind(context)
+            }
+            delay(1200)
+            isRebinding = false
+        }
+    }
+
+    val openPermissionSettings = {
+        try {
+            context.startActivity(Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS"))
+        } catch (_: Exception) {}
+    }
+
+    val hasActiveSession = whitelistedSessions.isNotEmpty()
+
+    val currentStatusType = when {
+        !listenerEnabled -> BigStatusType.PERMISSION_REQUIRED
+        isRebinding || (!serviceConnected && !coldStartGracePeriodPassed) -> BigStatusType.CONNECTING
+        !serviceConnected && rebindAttempts >= 2 -> BigStatusType.REBIND_FAILED
+        !serviceConnected -> BigStatusType.DISCONNECTED
+        hasActiveSession && (repoPlaying || repoMetadata != null) -> BigStatusType.ACTIVE_PLAYING
+        else -> BigStatusType.ACTIVE_IDLE
+    }
+
+    val (cardTitle, cardDetail, cardOnTap) = when (currentStatusType) {
+        BigStatusType.PERMISSION_REQUIRED -> Triple(
+            stringResource(R.string.main_status_permission_required),
+            stringResource(R.string.main_status_permission_detail),
+            openPermissionSettings
+        )
+        BigStatusType.CONNECTING -> Triple(
+            stringResource(R.string.main_status_connecting),
+            stringResource(R.string.main_status_connecting_detail),
+            null
+        )
+        BigStatusType.DISCONNECTED -> Triple(
+            stringResource(R.string.main_status_disconnected_title),
+            stringResource(R.string.main_status_tap_to_reconnect),
+            handleRebind
+        )
+        BigStatusType.REBIND_FAILED -> Triple(
+            stringResource(R.string.main_status_rebind_failed_title),
+            stringResource(R.string.main_status_open_settings),
+            openPermissionSettings
+        )
+        BigStatusType.ACTIVE_PLAYING -> {
+            val title = if (repoPlaying) {
+                stringResource(R.string.main_status_listening_lyrics)
+            } else {
+                stringResource(R.string.main_status_connected_sessions)
+            }
+            val detail = stringResource(R.string.main_status_session_count_fmt, whitelistedSessions.size)
+            Triple(title, detail, null)
+        }
+        BigStatusType.ACTIVE_IDLE -> {
+            val title = if (whitelistedSessions.isNotEmpty()) {
+                stringResource(R.string.main_status_connected_sessions)
+            } else {
+                stringResource(R.string.main_status_service_ready)
+            }
+            val detail = if (whitelistedSessions.isNotEmpty()) {
+                stringResource(R.string.main_status_session_count_fmt, whitelistedSessions.size)
+            } else {
+                stringResource(R.string.main_status_no_active_sessions)
+            }
+            Triple(title, detail, null)
+        }
+    }
 
     MiuixBlurScaffold(
         topBar = {
@@ -322,27 +430,16 @@ fun MiuixMainScreen(
             )
         ) {
             item {
-                MiuixStatusPill(
-                    statusText = statusText,
-                    isActive = statusActive,
-                    onTap = if (!serviceConnected && listenerEnabled) onStatusCardTap else null
+                MiuixBigStatusCard(
+                    statusType = currentStatusType,
+                    title = cardTitle,
+                    detail = cardDetail,
+                    isDebugBuild = isDebugBuild,
+                    onTap = cardOnTap
                 )
             }
 
             item { Spacer(modifier = Modifier.height(16.dp)) }
-
-            item {
-                MiuixSectionLabel(
-                    title = stringResource(R.string.main_now_playing_title),
-                    subtitle = if (whitelistedSessions.isEmpty()) {
-                        stringResource(R.string.main_now_playing_subtitle_idle)
-                    } else {
-                        stringResource(R.string.main_now_playing_subtitle_active)
-                    }
-                )
-            }
-
-            item { Spacer(modifier = Modifier.height(12.dp)) }
 
             item {
                 if (whitelistedSessions.isEmpty()) {
@@ -435,43 +532,239 @@ fun MiuixMainScreen(
     }
 }
 
-@Composable
-private fun MiuixSectionLabel(
-    title: String,
-    subtitle: String,
-) {
-    Column(modifier = Modifier.padding(horizontal = 12.dp)) {
-        Text(
-            text = title,
-            fontSize = 22.sp,
-            fontWeight = FontWeight.Bold,
-            color = MiuixTheme.colorScheme.onBackground
-        )
-        Spacer(modifier = Modifier.height(4.dp))
-        Text(
-            text = subtitle,
-            fontSize = 13.sp,
-            color = MiuixTheme.colorScheme.onSurfaceVariantSummary
-        )
-    }
+private enum class BigStatusType {
+    ACTIVE_PLAYING,
+    ACTIVE_IDLE,
+    CONNECTING,
+    DISCONNECTED,
+    REBIND_FAILED,
+    PERMISSION_REQUIRED
 }
 
 @Composable
-private fun MiuixStatusPill(statusText: String, isActive: Boolean, onTap: (() -> Unit)?) {
-    Card(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)
-            .then(if (onTap != null) Modifier.clickable { onTap() } else Modifier)
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(horizontal = 20.dp, vertical = 14.dp)
-        ) {
-            Canvas(modifier = Modifier.size(12.dp)) {
-                drawCircle(color = if (isActive) StatusActive else StatusInactive)
+private fun MiuixBigStatusCard(
+    statusType: BigStatusType,
+    title: String,
+    detail: String,
+    isDebugBuild: Boolean,
+    onTap: (() -> Unit)?,
+    modifier: Modifier = Modifier
+) {
+    val isDark = isSystemInDarkTheme() || MiuixTheme.colorScheme.surface.luminance() < 0.5f
+
+    val (containerColor, contentColor, iconColor) = when (statusType) {
+        BigStatusType.ACTIVE_PLAYING,
+        BigStatusType.ACTIVE_IDLE -> {
+            if (isDark) {
+                listOf(
+                    Color(0xFF163824),
+                    Color.White,
+                    Color(0xFF30D158)
+                )
+            } else {
+                listOf(
+                    Color(0xFFE2F3E7),
+                    Color(0xFF104A26),
+                    Color(0xFF229954)
+                )
             }
-            Spacer(modifier = Modifier.width(12.dp))
-            Text(text = statusText, fontSize = MiuixTheme.textStyles.body1.fontSize,
-                color = MiuixTheme.colorScheme.onSurface)
+        }
+        BigStatusType.CONNECTING -> {
+            if (isDark) {
+                listOf(
+                    Color(0xFF162A3B),
+                    Color.White,
+                    Color(0xFF3498DB)
+                )
+            } else {
+                listOf(
+                    Color(0xFFE3EDF7),
+                    Color(0xFF143D59),
+                    Color(0xFF2980B9)
+                )
+            }
+        }
+        BigStatusType.DISCONNECTED,
+        BigStatusType.REBIND_FAILED -> {
+            if (isDark) {
+                listOf(
+                    Color(0xFF381C1C),
+                    Color.White,
+                    Color(0xFFE74C3C)
+                )
+            } else {
+                listOf(
+                    Color(0xFFFFEBEE),
+                    Color(0xFF7F1D1D),
+                    Color(0xFFC0392B)
+                )
+            }
+        }
+        BigStatusType.PERMISSION_REQUIRED -> {
+            if (isDark) {
+                listOf(
+                    Color(0xFF382A14),
+                    Color.White,
+                    Color(0xFFF39C12)
+                )
+            } else {
+                listOf(
+                    Color(0xFFFFF3E0),
+                    Color(0xFF7C2D12),
+                    Color(0xFFD35400)
+                )
+            }
+        }
+    }
+
+    val cardCornerRadius = 18.dp
+
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp)
+            .clip(RoundedCornerShape(cardCornerRadius)),
+        cornerRadius = cardCornerRadius,
+        colors = CardDefaults.defaultColors(color = containerColor),
+        onClick = onTap
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(100.dp)
+                .clip(RoundedCornerShape(cardCornerRadius))
+        ) {
+            // Big Corner Status Icon - firmly anchored at bottom-right, genuinely clipped
+            Canvas(
+                modifier = Modifier
+                    .size(114.dp)
+                    .align(Alignment.BottomEnd)
+                    .offset(x = 24.dp, y = 26.dp)
+            ) {
+                val strokeWidth = 7.5.dp.toPx()
+                val radius = (size.minDimension - strokeWidth) / 2f
+                val center = Offset(size.width / 2f, size.height / 2f)
+
+                // Circle outline
+                drawCircle(
+                    color = iconColor,
+                    radius = radius,
+                    center = center,
+                    style = Stroke(width = strokeWidth)
+                )
+
+                when (statusType) {
+                    BigStatusType.ACTIVE_PLAYING,
+                    BigStatusType.ACTIVE_IDLE -> {
+                        // Thick checkmark matching KernelSU
+                        val checkPath = Path().apply {
+                            moveTo(center.x - radius * 0.42f, center.y + radius * 0.02f)
+                            lineTo(center.x - radius * 0.10f, center.y + radius * 0.36f)
+                            lineTo(center.x + radius * 0.44f, center.y - radius * 0.30f)
+                        }
+                        drawPath(
+                            path = checkPath,
+                            color = iconColor,
+                            style = Stroke(
+                                width = 8.5.dp.toPx(),
+                                cap = StrokeCap.Round,
+                                join = StrokeJoin.Round
+                            )
+                        )
+                    }
+                    BigStatusType.CONNECTING -> {
+                        // Clean static arc (no animations)
+                        drawArc(
+                            color = iconColor,
+                            startAngle = -45f,
+                            sweepAngle = 270f,
+                            useCenter = false,
+                            topLeft = Offset(center.x - radius * 0.42f, center.y - radius * 0.42f),
+                            size = Size(radius * 0.84f, radius * 0.84f),
+                            style = Stroke(width = 6.5.dp.toPx(), cap = StrokeCap.Round)
+                        )
+                    }
+                    BigStatusType.DISCONNECTED -> {
+                        val cross = radius * 0.35f
+                        drawLine(
+                            color = iconColor,
+                            start = Offset(center.x - cross, center.y - cross),
+                            end = Offset(center.x + cross, center.y + cross),
+                            strokeWidth = 8.dp.toPx(),
+                            cap = StrokeCap.Round
+                        )
+                        drawLine(
+                            color = iconColor,
+                            start = Offset(center.x + cross, center.y - cross),
+                            end = Offset(center.x - cross, center.y + cross),
+                            strokeWidth = 8.dp.toPx(),
+                            cap = StrokeCap.Round
+                        )
+                    }
+                    BigStatusType.REBIND_FAILED,
+                    BigStatusType.PERMISSION_REQUIRED -> {
+                        drawLine(
+                            color = iconColor,
+                            start = Offset(center.x, center.y - radius * 0.44f),
+                            end = Offset(center.x, center.y + radius * 0.08f),
+                            strokeWidth = 8.dp.toPx(),
+                            cap = StrokeCap.Round
+                        )
+                        drawCircle(
+                            color = iconColor,
+                            radius = 4.5.dp.toPx(),
+                            center = Offset(center.x, center.y + radius * 0.36f)
+                        )
+                    }
+                }
+            }
+
+            // Left content column: Title at top, Detail at bottom (separated like KernelSU)
+            Column(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .align(Alignment.CenterStart)
+                    .padding(start = 20.dp, top = 16.dp, bottom = 16.dp, end = 86.dp),
+                verticalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = title,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = contentColor,
+                        letterSpacing = (-0.3).sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    if (isDebugBuild) {
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Box(
+                            modifier = Modifier
+                                .background(contentColor.copy(alpha = 0.18f), RoundedCornerShape(4.dp))
+                                .border(1.dp, contentColor.copy(alpha = 0.35f), RoundedCornerShape(4.dp))
+                                .padding(horizontal = 4.dp, vertical = 1.dp)
+                        ) {
+                            Text(
+                                text = "DEBUG",
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = contentColor
+                            )
+                        }
+                    }
+                }
+
+                Text(
+                    text = detail,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = contentColor,
+                    letterSpacing = (-0.2).sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
         }
     }
 }
@@ -504,12 +797,6 @@ private fun MiuixIdleCard() {
                     fontSize = 18.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = MiuixTheme.colorScheme.onSurface
-                )
-                Spacer(modifier = Modifier.height(6.dp))
-                Text(
-                    text = stringResource(R.string.main_idle_card_desc),
-                    fontSize = 14.sp,
-                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary
                 )
             }
         }

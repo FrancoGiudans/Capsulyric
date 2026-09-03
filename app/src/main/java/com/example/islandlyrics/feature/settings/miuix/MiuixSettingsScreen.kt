@@ -142,6 +142,10 @@ fun MiuixSettingsScreen(
     val devModeEnabled by LyricRepository.getInstance().devModeEnabled.observeAsState(false)
     var floatingLyricsLabEnabled by remember { mutableStateOf(LabFeatureManager.isFloatingLyricsEnabled(prefs)) }
 
+    // 设置页搜索栏状态（仅 UI，搜索过滤功能暂未实装）
+    var settingsSearchQuery by remember { mutableStateOf("") }
+    var settingsSearchExpanded by remember { mutableStateOf(false) }
+
     // Backup category selection states
     var showExportCategoryDialog by remember { mutableStateOf(false) }
     var selectedExportCategories by remember {
@@ -437,6 +441,29 @@ fun MiuixSettingsScreen(
                 bottom = padding.calculateBottomPadding() + 116.dp
             )
         ) {
+            // 搜索栏顶部留白，与其他页面 +12.dp 顶间距统一，避免贴顶栏
+            item { Spacer(modifier = Modifier.height(12.dp)) }
+            // 设置页搜索栏（搜索功能暂未实装，仅展示 UI）
+            item {
+                SearchBar(
+                    modifier = Modifier.padding(horizontal = 12.dp),
+                    inputField = {
+                        InputField(
+                            query = settingsSearchQuery,
+                            onQueryChange = { settingsSearchQuery = it },
+                            onSearch = { },
+                            expanded = settingsSearchExpanded,
+                            onExpandedChange = { settingsSearchExpanded = it },
+                            label = stringResource(R.string.settings_search)
+                        )
+                    },
+                    insideMargin = androidx.compose.ui.unit.DpSize(0.dp, 0.dp),
+                    expanded = settingsSearchExpanded,
+                    onExpandedChange = { settingsSearchExpanded = it }
+                ) { }
+            }
+            item { Spacer(modifier = Modifier.height(8.dp)) }
+
             // ═══ 1. Core ═══
             item { SmallTitle(text = stringResource(R.string.settings_core_header)) }
             item {

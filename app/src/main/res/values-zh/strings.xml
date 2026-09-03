@@ -8,8 +8,18 @@
     <string name="main_music_app_fallback">音乐应用</string>
     <string name="main_status_connecting_fmt">正在连接 %1$s</string>
     <string name="main_status_session_count_fmt">已识别 %1$d 个会话</string>
+    <string name="main_status_permission_detail">权限未授予</string>
+    <string name="main_status_connecting">正在连接后台服务</string>
+    <string name="main_status_connecting_detail">正在建立监听通道</string>
+    <string name="main_status_disconnected_title">后台服务已断开</string>
+    <string name="main_status_tap_to_reconnect">点击重新连接</string>
+    <string name="main_status_rebind_failed_title">服务连接受阻</string>
+    <string name="main_status_open_settings">点击前往系统设置</string>
     <string name="main_status_service_disconnected">服务未连接，点按重试</string>
     <string name="main_status_service_ready">后台服务已就绪</string>
+    <string name="main_status_connected_sessions">已连接媒体会话</string>
+    <string name="main_status_listening_lyrics">正在监听歌词</string>
+    <string name="main_status_no_active_sessions">无活跃会话</string>
     <string name="main_now_playing_title">当前播放</string>
     <string name="main_now_playing_subtitle_idle">等待播放器开始播歌</string>
     <string name="main_now_playing_subtitle_active">左右滑动查看媒体会话</string>
@@ -128,6 +138,7 @@
     <string name="settings_cache_management">缓存管理</string>
     <string name="settings_cache_management_desc">管理在线歌词缓存和远程图片缓存</string>
     <string name="settings_core_services_header">核心服务</string>
+    <string name="settings_search">搜索设置</string>
     <string name="settings_core_header">核心</string>
     <string name="settings_permissions_header">权限</string>
     <string name="settings_capsule_notification">胶囊与通知</string>
