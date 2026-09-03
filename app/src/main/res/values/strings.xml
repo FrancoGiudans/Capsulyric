@@ -8,8 +8,18 @@
     <string name="main_music_app_fallback">Music App</string>
     <string name="main_status_connecting_fmt">Connected to %1$s</string>
     <string name="main_status_session_count_fmt">%1$d sessions detected</string>
+    <string name="main_status_permission_detail">Permission not granted</string>
+    <string name="main_status_connecting">Connecting service...</string>
+    <string name="main_status_connecting_detail">Establishing listener</string>
+    <string name="main_status_disconnected_title">Service disconnected</string>
+    <string name="main_status_tap_to_reconnect">Tap to reconnect</string>
+    <string name="main_status_rebind_failed_title">Connection blocked</string>
+    <string name="main_status_open_settings">Tap to open settings</string>
     <string name="main_status_service_disconnected">Service disconnected, tap to retry</string>
     <string name="main_status_service_ready">Background service ready</string>
+    <string name="main_status_connected_sessions">Media sessions connected</string>
+    <string name="main_status_listening_lyrics">Listening to lyrics</string>
+    <string name="main_status_no_active_sessions">No active sessions</string>
     <string name="main_now_playing_title">Now Playing</string>
     <string name="main_now_playing_subtitle_idle">Waiting for music playback</string>
     <string name="main_now_playing_subtitle_active">Swipe to browse media sessions</string>
@@ -116,6 +126,7 @@
     <string name="settings_cache_management">Cache Management</string>
     <string name="settings_cache_management_desc">Manage cached online lyrics and remote images</string>
     <string name="settings_core_services_header">Core Services</string>
+    <string name="settings_search">Search settings</string>
     <string name="settings_core_header">Core</string>
     <string name="settings_permissions_header">Permissions</string>
     <string name="settings_capsule_notification">Capsule &amp; Notifications</string>
