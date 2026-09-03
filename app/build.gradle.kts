@@ -40,6 +40,7 @@ dependencies {
     implementation(libs.material.icons.extended)
     implementation(libs.compose.runtime.livedata)
     implementation(libs.lifecycle.viewmodel.compose)
+    implementation(libs.backdrop)
 
     // Palette for album art color extraction (Monet-style)
     implementation(libs.palette.ktx)
