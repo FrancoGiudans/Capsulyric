@@ -24,6 +24,18 @@ package com.example.islandlyrics.core.settings
 
 import android.content.Context
 import android.content.SharedPreferences
+import androidx.core.content.edit
+
+enum class MiuixNavigationBarStyle(val preferenceValue: String) {
+    NORMAL("normal"),
+    FLOATING("floating"),
+    LIQUID("liquid");
+
+    companion object {
+        fun fromPreference(value: String?): MiuixNavigationBarStyle =
+            entries.firstOrNull { it.preferenceValue == value } ?: NORMAL
+    }
+}
 
 object AppPreferences {
     const val NAME = "IslandLyricsPrefs"
@@ -58,6 +70,7 @@ object AppPreferences {
         const val LAST_LOG_CLEANUP_TIME = "last_log_cleanup_time"
         const val LANGUAGE_CODE = "language_code"
         const val UI_USE_MIUIX = "ui_use_miuix"
+        const val MIUIX_NAVIGATION_BAR_STYLE = "miuix_navigation_bar_style"
         const val MIUIX_FLOATING_BOTTOM_BAR_ENABLED = "miuix_floating_bottom_bar_enabled"
         const val IS_SETUP_COMPLETE = "is_setup_complete"
         const val RECOMMEND_MEDIA_APP = "recommend_media_app"
@@ -141,6 +154,28 @@ object AppPreferences {
 
     fun of(context: Context): SharedPreferences =
         context.getSharedPreferences(NAME, Context.MODE_PRIVATE)
+
+    fun miuixNavigationBarStyle(prefs: SharedPreferences): MiuixNavigationBarStyle {
+        val storedStyle = prefs.getString(Keys.MIUIX_NAVIGATION_BAR_STYLE, null)
+        if (storedStyle != null) {
+            return MiuixNavigationBarStyle.fromPreference(storedStyle)
+        }
+        return if (prefs.getBoolean(Keys.MIUIX_FLOATING_BOTTOM_BAR_ENABLED, false)) {
+            MiuixNavigationBarStyle.FLOATING
+        } else {
+            MiuixNavigationBarStyle.NORMAL
+        }
+    }
+
+    fun setMiuixNavigationBarStyle(
+        prefs: SharedPreferences,
+        style: MiuixNavigationBarStyle
+    ) {
+        prefs.edit {
+            putString(Keys.MIUIX_NAVIGATION_BAR_STYLE, style.preferenceValue)
+            putBoolean(Keys.MIUIX_FLOATING_BOTTOM_BAR_ENABLED, style != MiuixNavigationBarStyle.NORMAL)
+        }
+    }
 
     fun notificationActionsStyle(prefs: SharedPreferences): String =
         prefs.getString(Keys.NOTIFICATION_ACTIONS_STYLE, Defaults.NOTIFICATION_ACTIONS_STYLE)

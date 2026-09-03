@@ -46,6 +46,7 @@ import com.example.islandlyrics.R
 import com.example.islandlyrics.core.platform.XmsfBypassMode
 import com.example.islandlyrics.core.settings.AppPreferences
 import com.example.islandlyrics.core.settings.LabFeatureManager
+import com.example.islandlyrics.core.settings.MiuixNavigationBarStyle
 import com.example.islandlyrics.core.theme.ThemeHelper
 import com.example.islandlyrics.core.platform.RomUtils
 import com.example.islandlyrics.runtime.service.LyricService
@@ -221,8 +222,8 @@ fun MiuixCustomSettingsScreen(
         mutableStateOf(uiState.superIslandShareFormat)
     }
     var miuixEnabled by remember(uiState.miuixEnabled) { mutableStateOf(uiState.miuixEnabled) }
-    var miuixFloatingBottomBarEnabled by remember(uiState.miuixFloatingBottomBarEnabled) {
-        mutableStateOf(uiState.miuixFloatingBottomBarEnabled)
+    var miuixNavigationBarStyle by remember(uiState.miuixNavigationBarStyle) {
+        mutableStateOf(uiState.miuixNavigationBarStyle)
     }
     var predictiveBackEnabled by remember(uiState.predictiveBackEnabled) {
         mutableStateOf(uiState.predictiveBackEnabled)
@@ -1372,13 +1373,28 @@ fun MiuixCustomSettingsScreen(
                                         )
                                     }
                                     if (miuixEnabled) {
-                                        SuperSwitch(
-                                            title = stringResource(R.string.settings_miuix_floating_bottom_bar),
-                                            summary = stringResource(R.string.settings_miuix_floating_bottom_bar_desc),
-                                            checked = miuixFloatingBottomBarEnabled,
-                                            onCheckedChange = {
-                                                miuixFloatingBottomBarEnabled = it
-                                                viewModel.dispatch(CustomSettingsAction.SetMiuixFloatingBottomBarEnabled(it))
+                                        val navigationBarStyles = MiuixNavigationBarStyle.entries
+                                        val navigationBarStyleLabels = navigationBarStyles.map { style ->
+                                            stringResource(
+                                                when (style) {
+                                                    MiuixNavigationBarStyle.NORMAL -> R.string.settings_navigation_bar_style_normal
+                                                    MiuixNavigationBarStyle.FLOATING -> R.string.settings_navigation_bar_style_floating
+                                                    MiuixNavigationBarStyle.LIQUID -> R.string.settings_navigation_bar_style_liquid
+                                                }
+                                            )
+                                        }
+                                        val currentNavigationBarStyleIndex = navigationBarStyles
+                                            .indexOf(miuixNavigationBarStyle)
+                                            .takeIf { it >= 0 } ?: 0
+                                        SuperDropdown(
+                                            title = stringResource(R.string.settings_navigation_bar_style),
+                                            summary = stringResource(R.string.settings_navigation_bar_style_desc),
+                                            items = navigationBarStyleLabels,
+                                            selectedIndex = currentNavigationBarStyleIndex,
+                                            onSelectedIndexChange = { index ->
+                                                val style = navigationBarStyles[index]
+                                                miuixNavigationBarStyle = style
+                                                viewModel.dispatch(CustomSettingsAction.SetMiuixNavigationBarStyle(style))
                                             }
                                         )
                                     }

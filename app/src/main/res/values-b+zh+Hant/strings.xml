@@ -925,8 +925,11 @@
     <string name="diag_lab_experiment_updates_desc">在更新通道中加入 Experiment 選項以接收實驗性更新</string>
     <string name="settings_edge_scroll_haptic_title">邊緣滾動觸覺回饋</string>
     <string name="settings_edge_scroll_haptic_desc">滑動至清單頂部或底部時觸發輕微震動</string>
-    <string name="settings_miuix_floating_bottom_bar">Miuix 懸浮底欄</string>
-    <string name="settings_miuix_floating_bottom_bar_desc">在 Miuix 風格下使用懸浮式底部導覽欄</string>
+    <string name="settings_navigation_bar_style">導覽列樣式</string>
+    <string name="settings_navigation_bar_style_desc">選擇 Miuix 導覽列的外觀與互動樣式</string>
+    <string name="settings_navigation_bar_style_normal">普通樣式</string>
+    <string name="settings_navigation_bar_style_floating">懸浮底欄</string>
+    <string name="settings_navigation_bar_style_liquid">液態懸浮欄</string>
     <string name="diag_lab_floating_lyrics_title">桌面懸浮歌詞入口</string>
     <string name="diag_lab_floating_lyrics_desc">在設定選單中顯示桌面懸浮歌詞的設定項目</string>
     <string name="diag_lab_floating_word_high_fps_title">逐字歌詞高影格率動畫</string>
