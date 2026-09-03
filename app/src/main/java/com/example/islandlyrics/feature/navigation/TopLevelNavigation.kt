@@ -26,7 +26,10 @@ import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.EaseOut
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
@@ -36,18 +39,28 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.FormatListBulleted as MaterialFormatListBulleted
 import androidx.compose.material.icons.filled.Home as MaterialHome
@@ -56,19 +69,34 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import com.example.islandlyrics.R
 import com.example.islandlyrics.feature.main.MainActivity
 import com.example.islandlyrics.feature.parserrule.ParserRuleActivity
@@ -79,6 +107,21 @@ import com.example.islandlyrics.ui.material.blur.materialBlurPanel
 import com.example.islandlyrics.ui.miuix.blur.LocalMiuixBlurBackdrop
 import com.example.islandlyrics.ui.miuix.blur.LocalMiuixBlurEnabled
 import com.example.islandlyrics.ui.miuix.blur.MiuixBlurNavigationBar
+import com.kyant.backdrop.Backdrop
+import com.kyant.backdrop.backdrops.layerBackdrop as liquidLayerBackdrop
+import com.kyant.backdrop.backdrops.rememberCombinedBackdrop
+import com.kyant.backdrop.backdrops.rememberLayerBackdrop
+import com.kyant.backdrop.drawBackdrop
+import com.kyant.backdrop.effects.blur
+import com.kyant.backdrop.effects.lens
+import com.kyant.backdrop.effects.vibrancy
+import com.kyant.backdrop.highlight.Highlight as LiquidHighlight
+import com.kyant.backdrop.shadow.InnerShadow as LiquidInnerShadow
+import com.kyant.backdrop.shadow.Shadow as LiquidShadow
+import kotlinx.coroutines.launch
+import kotlin.math.abs
+import kotlin.math.roundToInt
+import kotlin.math.sign
 import top.yukonga.miuix.kmp.basic.FloatingNavigationBar
 import top.yukonga.miuix.kmp.basic.FloatingNavigationBarItem
 import top.yukonga.miuix.kmp.basic.NavigationBarItem
@@ -288,6 +331,372 @@ fun MiuixTopLevelFloatingNavigationBar(
                 )
             }
         }
+    }
+}
+
+@Composable
+fun MiuixTopLevelLiquidGlassNavigationBar(
+    currentDestination: TopLevelDestination,
+    onNavigate: (TopLevelDestination) -> Unit,
+    backdrop: Backdrop,
+    modifier: Modifier = Modifier,
+) {
+    val destinations = TopLevelDestination.entries
+    val selectedIndex = destinations.indexOf(currentDestination).coerceAtLeast(0)
+    val density = LocalDensity.current
+    val isLtr = LocalLayoutDirection.current == LayoutDirection.Ltr
+    val animationScope = rememberCoroutineScope()
+    val navigationInteractionSource = remember { MutableInteractionSource() }
+    val isNavigationItemPressed by navigationInteractionSource.collectIsPressedAsState()
+    val tabsBackdrop = rememberLayerBackdrop()
+    val combinedBackdrop = rememberCombinedBackdrop(backdrop, tabsBackdrop)
+    val selectedPosition = remember { Animatable(selectedIndex.toFloat()) }
+    var isDragging by remember { mutableStateOf(false) }
+    var dragPosition by remember { mutableFloatStateOf(selectedIndex.toFloat()) }
+    var dragDistancePx by remember { mutableFloatStateOf(0f) }
+
+    LaunchedEffect(selectedIndex) {
+        if (!isDragging) {
+            selectedPosition.animateTo(
+                targetValue = selectedIndex.toFloat(),
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                    stiffness = Spring.StiffnessMediumLow
+                )
+            )
+        }
+    }
+
+    BoxWithConstraints(
+        modifier = modifier
+            .fillMaxWidth()
+            .navigationBarsPadding()
+            .padding(bottom = 4.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        val barWidth = (maxWidth * 0.76f).coerceIn(280.dp, 360.dp)
+        val containerShape = RoundedCornerShape(32.dp)
+        val indicatorShape = RoundedCornerShape(26.dp)
+        val surfaceColor = MiuixTheme.colorScheme.surfaceContainer
+        val containerColor = surfaceColor.copy(alpha = 0.4f)
+        val accentColor = MiuixTheme.colorScheme.primary
+        val inactiveColor = MiuixTheme.colorScheme.onSurfaceVariantActions
+        val indicatorOverlayColor = MiuixTheme.colorScheme.onSurface.copy(alpha = 0.1f)
+        val indicatorPressedOverlayColor = MiuixTheme.colorScheme.onSurface.copy(alpha = 0.03f)
+
+        BoxWithConstraints(
+            modifier = Modifier
+                .width(barWidth)
+                .height(64.dp),
+            contentAlignment = Alignment.CenterStart
+        ) {
+            val horizontalPadding = 4.dp
+            val tabWidth = (maxWidth - horizontalPadding * 2) / destinations.size
+            val tabWidthPx = with(density) { tabWidth.toPx() }
+            val maxIndex = destinations.lastIndex.toFloat()
+            val displayedPosition = if (isDragging) dragPosition else selectedPosition.value
+            val elasticPosition = liquidGlassElasticPosition(displayedPosition, maxIndex)
+            val dragFraction = if (constraints.maxWidth > 0) {
+                (abs(dragDistancePx) / constraints.maxWidth).coerceIn(0f, 1f)
+            } else {
+                0f
+            }
+            val targetPanelOffsetPx = with(density) { 4.dp.toPx() } *
+                dragDistancePx.sign * EaseOut.transform(dragFraction)
+            val panelOffsetPx by animateFloatAsState(
+                targetValue = if (isDragging) targetPanelOffsetPx else 0f,
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                    stiffness = Spring.StiffnessMedium
+                ),
+                label = "liquidNavigationPanelOffset"
+            )
+            val pressProgress by animateFloatAsState(
+                targetValue = if (isDragging || isNavigationItemPressed) 1f else 0f,
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                    stiffness = Spring.StiffnessMediumLow
+                ),
+                label = "liquidNavigationPressProgress"
+            )
+            val indicatorScaleX by animateFloatAsState(
+                targetValue = 1f + pressProgress * (0.16f + dragFraction * 0.06f),
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                    stiffness = Spring.StiffnessMediumLow
+                ),
+                label = "liquidNavigationIndicatorScaleX"
+            )
+            val indicatorScaleY by animateFloatAsState(
+                targetValue = 1f + pressProgress * 0.08f,
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                    stiffness = Spring.StiffnessMediumLow
+                ),
+                label = "liquidNavigationIndicatorScaleY"
+            )
+            val hiddenTabScale = 1f + pressProgress * 0.2f
+
+            fun finishDrag(navigate: Boolean) {
+                val targetIndex = if (navigate) {
+                    dragPosition.roundToInt().coerceIn(0, destinations.lastIndex)
+                } else {
+                    selectedIndex
+                }
+                val settledPosition = dragPosition.coerceIn(0f, maxIndex)
+                animationScope.launch {
+                    selectedPosition.stop()
+                    selectedPosition.snapTo(settledPosition)
+                    isDragging = false
+                    dragDistancePx = 0f
+                    selectedPosition.animateTo(
+                        targetValue = targetIndex.toFloat(),
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioMediumBouncy,
+                            stiffness = Spring.StiffnessMediumLow
+                        )
+                    )
+                }
+                if (navigate) {
+                    onNavigate(destinations[targetIndex])
+                }
+            }
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(64.dp)
+                    .graphicsLayer { translationX = panelOffsetPx }
+                    .drawBackdrop(
+                        backdrop = backdrop,
+                        shape = { containerShape },
+                        effects = {
+                            vibrancy()
+                            blur(2.dp.toPx())
+                            lens(24.dp.toPx(), 24.dp.toPx())
+                        },
+                        highlight = { LiquidHighlight.Default.copy(alpha = 0.75f) },
+                        layerBlock = {
+                            val width = size.width.coerceAtLeast(1f)
+                            val scale = 1f + 16.dp.toPx() / width * pressProgress
+                            scaleX = scale
+                            scaleY = scale
+                        },
+                        onDrawSurface = { drawRect(containerColor) }
+                    )
+                    .pointerInput(tabWidthPx, isLtr) {
+                        detectDragGestures(
+                            onDragStart = {
+                                dragPosition = selectedPosition.value
+                                dragDistancePx = 0f
+                                isDragging = true
+                                animationScope.launch { selectedPosition.stop() }
+                            },
+                            onDragEnd = { finishDrag(navigate = true) },
+                            onDragCancel = { finishDrag(navigate = false) }
+                        ) { change, dragAmount ->
+                            change.consume()
+                            dragDistancePx += dragAmount.x
+                            val direction = if (isLtr) 1f else -1f
+                            dragPosition = (
+                                dragPosition + direction * dragAmount.x / tabWidthPx
+                                ).coerceIn(-0.35f, maxIndex + 0.35f)
+                        }
+                    }
+            ) {
+                Row(
+                    modifier = Modifier
+                        .clearAndSetSemantics {}
+                        .alpha(0f)
+                        .liquidLayerBackdrop(tabsBackdrop)
+                        .graphicsLayer { translationX = panelOffsetPx }
+                        .drawBackdrop(
+                            backdrop = backdrop,
+                            shape = { containerShape },
+                            effects = {
+                                vibrancy()
+                                blur(2.dp.toPx())
+                                lens(24.dp.toPx(), 24.dp.toPx())
+                            },
+                            highlight = {
+                                LiquidHighlight.Default.copy(alpha = pressProgress)
+                            },
+                            onDrawSurface = { drawRect(containerColor) }
+                        )
+                        .fillMaxWidth()
+                        .height(56.dp)
+                        .padding(horizontal = horizontalPadding),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    destinations.forEach { destination ->
+                        val selected = currentDestination == destination
+                        LiquidGlassNavigationItemContent(
+                            destination = destination,
+                            selected = selected,
+                            label = stringResource(destination.labelRes),
+                            color = accentColor,
+                            scale = (if (selected) 1.06f else 1f) * hiddenTabScale,
+                            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium
+                        )
+                    }
+                }
+
+                Box(
+                    modifier = Modifier
+                        .zIndex(1f)
+                        .padding(start = horizontalPadding, top = 4.dp, bottom = 4.dp)
+                        .width(tabWidth)
+                        .fillMaxHeight()
+                        .graphicsLayer {
+                            translationX = elasticPosition * tabWidthPx * if (isLtr) 1f else -1f
+                        }
+                        .drawBackdrop(
+                            backdrop = combinedBackdrop,
+                            shape = { indicatorShape },
+                            effects = {
+                                lens(
+                                    refractionHeight = 10.dp.toPx() * pressProgress,
+                                    refractionAmount = 14.dp.toPx() * pressProgress,
+                                    depthEffect = true,
+                                    chromaticAberration = pressProgress > 0.35f
+                                )
+                            },
+                            highlight = {
+                                LiquidHighlight.Default.copy(alpha = pressProgress)
+                            },
+                            shadow = {
+                                LiquidShadow(alpha = pressProgress)
+                            },
+                            innerShadow = {
+                                LiquidInnerShadow(
+                                    radius = 8.dp * pressProgress,
+                                    alpha = pressProgress
+                                )
+                            },
+                            layerBlock = {
+                                scaleX = indicatorScaleX
+                                scaleY = indicatorScaleY
+                            },
+                            onDrawSurface = {
+                                drawRect(
+                                    color = indicatorOverlayColor,
+                                    alpha = 1f - pressProgress
+                                )
+                                drawRect(
+                                    indicatorPressedOverlayColor.copy(
+                                        alpha = indicatorPressedOverlayColor.alpha * pressProgress
+                                    )
+                                )
+                            }
+                        )
+                )
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(64.dp)
+                        .padding(horizontal = horizontalPadding)
+                        .selectableGroup(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    destinations.forEachIndexed { index, destination ->
+                        val selected = currentDestination == destination
+                        val label = stringResource(destination.labelRes)
+                        val itemColor by animateColorAsState(
+                            targetValue = if (selected) accentColor else inactiveColor,
+                            animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+                            label = "liquidNavigationItemColor"
+                        )
+                        val itemScale by animateFloatAsState(
+                            targetValue = if (selected) 1.06f else 1f,
+                            animationSpec = spring(
+                                dampingRatio = Spring.DampingRatioMediumBouncy,
+                                stiffness = Spring.StiffnessMediumLow
+                            ),
+                            label = "liquidNavigationItemScale"
+                        )
+                        LiquidGlassNavigationItemContent(
+                            destination = destination,
+                            selected = selected,
+                            label = label,
+                            color = itemColor,
+                            scale = itemScale,
+                            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
+                            modifier = Modifier
+                                .clip(indicatorShape)
+                                .selectable(
+                                    selected = selected,
+                                    role = Role.Tab,
+                                    interactionSource = navigationInteractionSource,
+                                    indication = null,
+                                    onClick = {
+                                        animationScope.launch {
+                                            selectedPosition.animateTo(
+                                                targetValue = index.toFloat(),
+                                                animationSpec = spring(
+                                                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                                                    stiffness = Spring.StiffnessMediumLow
+                                                )
+                                            )
+                                        }
+                                        onNavigate(destination)
+                                    }
+                                )
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun RowScope.LiquidGlassNavigationItemContent(
+    destination: TopLevelDestination,
+    selected: Boolean,
+    label: String,
+    color: Color,
+    scale: Float,
+    fontWeight: FontWeight,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = Modifier
+            .weight(1f)
+            .fillMaxHeight()
+            .then(modifier)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            },
+        verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterVertically),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Icon(
+            imageVector = destination.miuixIcon(selected),
+            contentDescription = label,
+            tint = color,
+            modifier = Modifier.size(24.dp)
+        )
+        Text(
+            text = label,
+            color = color,
+            fontSize = 11.sp,
+            fontWeight = fontWeight,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+    }
+}
+
+private fun liquidGlassElasticPosition(position: Float, maxIndex: Float): Float {
+    return when {
+        position < 0f -> -(-position / (1f + -position * 2f))
+        position > maxIndex -> {
+            val overflow = position - maxIndex
+            maxIndex + overflow / (1f + overflow * 2f)
+        }
+        else -> position
     }
 }
 
