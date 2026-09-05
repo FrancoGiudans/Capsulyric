@@ -480,7 +480,27 @@ jobs:
           gitee_files: ${{ steps.artifacts.outputs.apk }}
 
       # ============================================================
-      # Step 12.1: Prune old releases — keep 15 most recent Version.* (GitHub + Gitee)
+      # Step 12.1: Publish Release to AppShare
+      # ============================================================
+      - name: Publish Release to AppShare
+        if: success()
+        env:
+          appKey: ${{ secrets.appKey }}
+          APPSHARE_APP_KEY: ${{ secrets.appKey }}
+        shell: bash
+        run: |
+          python3 .github/scripts/publish_appshare.py \
+            --apk "${{ steps.artifacts.outputs.apk }}" \
+            --name "${{ steps.artifacts.outputs.apk }}" \
+            --app-id "AC0100AE9F074DEE9A71C8" \
+            --version-code "${{ steps.meta.outputs.commit_count }}" \
+            --version-name "${{ steps.meta.outputs.version_name }}" \
+            --channel "${{ steps.meta.outputs.channel }}" \
+            --changelog-file "/tmp/cn_notes.txt" \
+            --link "https://github.com/${{ github.repository }}/releases/tag/${{ steps.meta.outputs.tag_name }}"
+
+      # ============================================================
+      # Step 12.2: Prune old releases — keep 15 most recent Version.* (GitHub + Gitee)
       # ============================================================
       - name: Prune old GitHub releases (keep 15)
         if: success()
