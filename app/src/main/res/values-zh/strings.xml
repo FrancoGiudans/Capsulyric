@@ -477,7 +477,7 @@
     <string name="dialog_hide_launcher_message">隐藏后，你可以通过以下方式打开 Capsulyric：\n\n
 · 下拉控制中心的 Capsulyric 磁贴；\n
 · 在任意浏览器地址栏输入 capsulyric://settings；\n
-· 系统设置 → 应用管理 → Capsulyric → 管理空间（部分设备如 HyperOS 上需点击"清除数据"后才能看到该按钮）</string>
+· 系统设置 → 应用管理 → Capsulyric → 管理空间，进入缓存管理。点左上角返回可进应用设置，系统返回键则回系统设置。部分设备（如 HyperOS）需先点“清除数据”才能看到入口。</string>
     <string name="dialog_hide_launcher_btn_add_tile_and_hide">添加磁贴并隐藏</string>
     <string name="dialog_hide_launcher_btn_hide_now">直接隐藏</string>
     <string name="dialog_hide_launcher_btn_cancel">取消</string>
@@ -662,7 +662,7 @@
 <b>2. 导出 ZIP 压缩包</b>\n
 进入日志界面后，点击右上角的“分享/导出”按钮。您可以根据需求选择特定的时间跨度，App 将自动对环境上下文信息与系统日志进行打包。在提交 GitHub Issue 或填写反馈单时，请务必作为附件上传此 ZIP 文件。</string>
     <string name="faq_q_hide_launcher_entry">Q：隐藏桌面图标后如何重新打开 Capsulyric？</string>
-    <string name="faq_a_hide_launcher_entry">A：隐藏桌面图标后，你可以通过以下方式打开 Capsulyric：\n\n<b>1. 控制中心磁贴</b>\n下拉通知栏，点击 Capsulyric 磁贴即可直接打开应用。\n\n<b>2. URL Scheme</b>\n在任意浏览器地址栏输入 <b>capsulyric://settings</b> 并访问，即可唤醒应用。\n\n<b>3. 管理空间</b>\n前往<b>系统设置 → 应用管理 → Capsulyric → 管理空间</b>即可打开应用。部分设备（如 HyperOS）上，管理空间按钮需要点击"清除数据"后才能看到。</string>
+    <string name="faq_a_hide_launcher_entry">A：隐藏桌面图标后，你可以通过以下方式打开 Capsulyric：\n\n<b>1. 控制中心磁贴</b>\n下拉通知栏，点击 Capsulyric 磁贴即可直接打开应用。\n\n<b>2. URL Scheme</b>\n在任意浏览器地址栏输入 <b>capsulyric://settings</b> 并访问，即可唤醒应用。\n\n<b>3. 管理空间</b>\n前往<b>系统设置 → 应用管理 → Capsulyric → 管理空间</b>进入<b>缓存管理</b>页面。点击页面左上角返回按钮可进入 Capsulyric 的<b>应用设置</b>；使用系统返回键则会回到系统设置。部分设备（如 HyperOS）上，管理空间按钮需要点击“清除数据”后才能看到。</string>
     <string name="faq_q_no_pinyin_translation">Q：为什么我接收不到拼音歌词/歌词翻译？</string>
     <string name="faq_a_no_pinyin_translation">A：拼音歌词与歌词翻译目前仅支持通过<b>在线歌词</b>与 <b>Lyricon API</b> 获取。\n\n同时你需要在对应应用的解析规则中开启相关选项：\n\n1. 打开<b>解析规则</b>，找到对应音乐应用的规则。\n\n2. 勾选<b>接收翻译</b>和/或<b>接收拼音歌词</b>。\n\n3. 如果使用在线歌词，请确保歌词源支持翻译或拼音字段。</string>
 

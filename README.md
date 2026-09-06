@@ -182,12 +182,12 @@ Capsulyric 是一款 Android 歌词应用，通过**实况通知（Android 16+�
 > **EN:** After hiding the launcher icon, you can still open Capsulyric via:
 > 1. **Quick Settings Tile** — Pull down the notification shade and tap the Capsulyric tile.
 > 2. **URL Scheme** — Type `capsulyric://settings` in any browser address bar, you can also click [there](capsulyric://settings).
-> 3. **Manage Space** — Go to **System Settings → Apps → Capsulyric → Manage Space**. On some devices (e.g. HyperOS), this button may only appear after tapping "Clear Data".
+> 3. **Manage Space** — Go to **System Settings → Apps → Capsulyric → Manage Space** to open the **Cache Management** page. Tap the top-left back button there to enter Capsulyric's **App Settings**; using the system Back button returns to System Settings. On some devices (e.g. HyperOS), this button may only appear after tapping "Clear Data".
 >
 > **CN:** 隐藏桌面图标后，仍可通过以下方式打开 Capsulyric：
 > 1. **控制中心磁贴** — 下拉通知栏，点击 Capsulyric 磁贴。
 > 2. **URL Scheme** — 在任意浏览器地址栏输入 `capsulyric://settings`，你也可以直接点击[这里](capsulyric://settings)快速进入。
-> 3. **管理空间** — 前往 **系统设置 → 应用管理 → Capsulyric → 管理空间**。部分设备（如 HyperOS）上，该按钮需要点击"清除数据"后才能看到。
+> 3. **管理空间** — 前往 **系统设置 → 应用管理 → Capsulyric → 管理空间**进入**缓存管理**页面。点击页面左上角返回按钮可进入 Capsulyric 的**应用设置**；使用系统返回键则会回到系统设置。部分设备（如 HyperOS）上，该按钮需要点击"清除数据"后才能看到。
 </details>
 
 ---

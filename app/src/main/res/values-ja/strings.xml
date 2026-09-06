@@ -477,7 +477,7 @@
     <string name="dialog_hide_launcher_message">非表示にした後も、以下の方法で Capsulyric を開くことができます：\n\n
 · クイック設定タイルの Capsulyric をタップ\n
 · ブラウザのアドレスバーに capsulyric://settings と入力\n
-· システム設定 → アプリ → Capsulyric → 容量の管理 (HyperOSなどの一部端末では「データを消去」タップ後に表示されます)</string>
+· システム設定 → アプリ → Capsulyric → 容量の管理でキャッシュ管理ページを開けます。ページ左上の戻るボタンをタップすると Capsulyric のアプリ設定に移動し、システムの戻る操作ではシステム設定に戻ります。HyperOSなどの一部端末では「データを消去」タップ後に表示されます</string>
     <string name="dialog_hide_launcher_btn_add_tile_and_hide">タイルを追加して非表示</string>
     <string name="dialog_hide_launcher_btn_hide_now">今すぐ非表示</string>
     <string name="dialog_hide_launcher_btn_cancel">キャンセル</string>
@@ -662,7 +662,7 @@
 <b>2. ZIP ログのエクスポート</b>\n
 ログ画面で右上の共有/エクスポートアイコンをタップします。期間を選択すると、環境情報とシステムログがZIPにまとめられます。GitHub Issue やフォーム送信時にこのZIPファイルを添付してください。</string>
     <string name="faq_q_hide_launcher_entry">Q：ホーム画面のアイコンを非表示にした後アプリを開くには？</string>
-    <string name="faq_a_hide_launcher_entry">A：アプリアイコンを非表示にした後も、以下の方法で Capsulyric を開くことができます：\n\n<b>1. クイック設定タイル</b>\n通知バーを引き下げ、Capsulyric タイルをタップして直接開きます。\n\n<b>2. URL Scheme</b>\nブラウザのアドレスバーに <b>capsulyric://settings</b> と入力してアクセスするとアプリが起動します。\n\n<b>3. 容量の管理</b>\n<b>システム設定 → アプリ → Capsulyric → 容量の管理</b>から起動できます。HyperOS などの端末では「データを消去」タップ後に表示される場合があります。</string>
+    <string name="faq_a_hide_launcher_entry">A：アプリアイコンを非表示にした後も、以下の方法で Capsulyric を開くことができます：\n\n<b>1. クイック設定タイル</b>\n通知バーを引き下げ、Capsulyric タイルをタップして直接開きます。\n\n<b>2. URL Scheme</b>\nブラウザのアドレスバーに <b>capsulyric://settings</b> と入力してアクセスするとアプリが起動します。\n\n<b>3. 容量の管理</b>\n<b>システム設定 → アプリ → Capsulyric → 容量の管理</b>からキャッシュ管理ページを開けます。ページ左上の戻るボタンをタップすると Capsulyric の<b>アプリ設定</b>に移動し、システムの戻る操作ではシステム設定に戻ります。HyperOS などの端末では「データを消去」タップ後に表示される場合があります。</string>
     <string name="faq_q_no_pinyin_translation">Q：一部の曲で翻訳やローマ字歌詞が表示されないのはなぜですか？</string>
     <string name="faq_a_no_pinyin_translation">A：ローマ字および歌詞翻訳は、現在<b>オンライン歌詞</b>および <b>Lyricon API</b> 経由でのみ取得可能です。\n\nまた、対象アプリのパーサールールで関連オプションを有効にする必要があります：\n\n1. <b>パーサールール</b>を開き、対象アプリのルールを選択します。\n\n2. <b>「翻訳を受信」</b>や<b>「ローマ字を受信」</b>を有効にします。\n\n3. オンライン歌詞を使用する場合、歌詞ソースが翻訳やローマ字データに対応していることを確認してください。</string>
 
