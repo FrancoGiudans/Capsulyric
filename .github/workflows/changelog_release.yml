@@ -23,7 +23,7 @@ jobs:
   release:
     if: |
       github.event_name == 'workflow_dispatch' ||
-      startsWith(github.event.head_commit.message, '[release]')
+      contains(github.event.head_commit.message, '[release]')
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -65,7 +65,9 @@ jobs:
             echo "Manual trigger — version input: '${RAW}'"
           else
             COMMIT_MSG="${{ github.event.head_commit.message }}"
-            RAW=$(echo "$COMMIT_MSG" | sed -E 's/^\[release\][[:space:]]*//' | xargs)
+            # Protected branches: the marker arrives via the PR title inside a
+            # merge/squash commit message, so take the first line containing it.
+            RAW=$(echo "$COMMIT_MSG" | grep -m 1 -o '\[release\].*' | sed -E 's/^\[release\][[:space:]]*//' | xargs || true)
             echo "Commit raw version input: '${RAW}'"
           fi
 
@@ -173,8 +175,8 @@ jobs:
           }
 
           META_LINE=$(find_heading_line "Release Metadata")
-          CN_LINE=$(find_heading_line "更新日志")
-          EN_LINE=$(find_heading_line "Change Log")
+          CN_LINE=$(find_heading_line "Release Highlights")
+          EN_LINE=$(find_heading_line "English Highlights")
 
           echo "Found headings: Metadata@${META_LINE:-N/A}  CN@${CN_LINE:-N/A}  EN@${EN_LINE:-N/A}"
 
@@ -243,12 +245,8 @@ jobs:
           echo "CN notes: $(echo "$CN_NOTES" | wc -l) lines (${#CN_TRIMMED} non-blank chars)"
           echo "EN notes: $(echo "$EN_NOTES" | wc -l) lines (${#EN_TRIMMED} non-blank chars)"
 
-          if [ -z "$CN_TRIMMED" ]; then
-            echo "::error::The Chinese changelog section in CHANGELOG.md is empty. Please fill in content before pushing."
-            exit 1
-          fi
-          if [ -z "$EN_TRIMMED" ]; then
-            echo "::error::The English changelog section in CHANGELOG.md is empty. Please fill in content before pushing."
+          if [ -z "$CN_TRIMMED" ] && [ -z "$EN_TRIMMED" ]; then
+            echo "::error::Both highlights sections in CHANGELOG.md are empty. Please fill in at least one before opening the release PR."
             exit 1
           fi
 
@@ -258,7 +256,7 @@ jobs:
 
           # --- Check for tag conflicts ---
           if git rev-parse "$TAG_NAME" >/dev/null 2>&1; then
-            echo "::error::Git tag '${TAG_NAME}' already exists. Please adjust the version in your commit message."
+            echo "::error::Git tag '${TAG_NAME}' already exists. Please adjust the version in your release PR title."
             exit 1
           fi
 
@@ -358,12 +356,11 @@ jobs:
           echo "Pushed tag: ${{ steps.meta.outputs.tag_name }}"
 
       # ============================================================
-      # Step 9: Generate "What's Changed" via GitHub API
+      # Step 9: Generate Changes grouped by conventional prefix
+      # (no labels, no emoji - groups: Features / Fixes / Improvements / Chores / Other)
       # ============================================================
-      - name: Generate What's Changed
+      - name: Generate Grouped Changes
         id: auto_notes
-        env:
-          GH_TOKEN: ${{ github.token }}
         run: |
           # Find previous release tag for comparison:
           #   Stable -> compare against last Stable tag only
@@ -382,19 +379,45 @@ jobs:
 
           if [ -n "$PREV_TAG" ]; then
             echo "Comparing against previous tag: ${PREV_TAG}"
-            AUTO_BODY=$(gh api "repos/${{ github.repository }}/releases/generate-notes" \
-              -f tag_name="${{ steps.meta.outputs.tag_name }}" \
-              -f previous_tag_name="$PREV_TAG" \
-              --jq '.body' 2>/dev/null || echo "_Unable to generate change summary._")
+            git log "${PREV_TAG}..HEAD" --pretty=format:'%s' --no-merges > /tmp/change_subjects.txt || true
           else
-            echo "No previous tag found — generating notes without comparison."
-            AUTO_BODY=$(gh api "repos/${{ github.repository }}/releases/generate-notes" \
-              -f tag_name="${{ steps.meta.outputs.tag_name }}" \
-              --jq '.body' 2>/dev/null || echo "_Unable to generate change summary._")
+            echo "No previous tag found, using recent history."
+            git log -30 --pretty=format:'%s' --no-merges > /tmp/change_subjects.txt || true
           fi
 
-          # Save to file for assembly
-          echo "$AUTO_BODY" > /tmp/auto_notes.md
+          # Group subjects by conventional-commit prefix (no labels, no emoji)
+          python3 - << 'PYEOF' > /tmp/auto_notes.md
+          import re
+          from collections import OrderedDict
+          groups = OrderedDict([("Features", []), ("Fixes", []), ("Improvements", []), ("Chores", []), ("Other", [])])
+          with open("/tmp/change_subjects.txt", encoding="utf-8") as f:
+              subjects = [line.strip() for line in f if line.strip()]
+          for s in subjects:
+              m = re.match(r"(?i)^\s*([a-z]+)(\([^)]*\))?\s*[:：]\s*(.+)$", s)
+              prefix = m.group(1).lower() if m else ""
+              title = m.group(3).strip() if m else s
+              if prefix == "feat":
+                  groups["Features"].append(title)
+              elif prefix == "fix":
+                  groups["Fixes"].append(title)
+              elif prefix in ("ui", "opt"):
+                  groups["Improvements"].append(title)
+              elif prefix in ("ci", "build", "chore", "docs"):
+                  groups["Chores"].append(title)
+              else:
+                  groups["Other"].append(title)
+          print("## Changes")
+          print()
+          for name, items in groups.items():
+              if not items:
+                  continue
+              print("### " + name)
+              print()
+              for item in items:
+                  print("- " + item)
+              print()
+          PYEOF
+
           echo "Auto-generated notes saved."
 
       # ============================================================
@@ -402,25 +425,32 @@ jobs:
       # ============================================================
       - name: Assemble Release Body
         run: |
-          cat > release_body.md << 'ENDOFBODY'
-          ## 🇨🇳 更新日志
-          ENDOFBODY
+          : > release_body.md
+          NEED_SEP=0
+          if [ -n "$(sed '/^[[:space:]]*$/d' /tmp/cn_notes.txt)" ]; then
+            {
+              echo "## Release Highlights"
+              echo ""
+              cat /tmp/cn_notes.txt
+            } >> release_body.md
+            NEED_SEP=1
+          fi
+          if [ -n "$(sed '/^[[:space:]]*$/d' /tmp/en_notes.txt)" ]; then
+            if [ "$NEED_SEP" = "1" ]; then
+              printf '\n---\n\n' >> release_body.md
+            fi
+            {
+              echo "## English Highlights"
+              echo ""
+              cat /tmp/en_notes.txt
+            } >> release_body.md
+            NEED_SEP=1
+          fi
 
-          cat /tmp/cn_notes.txt >> release_body.md
-
-          cat >> release_body.md << 'ENDOFBODY'
-
-          ---
-
-          ## 🇬🇧 Change Log
-          ENDOFBODY
-
-          cat /tmp/en_notes.txt >> release_body.md
-
+          if [ "$NEED_SEP" = "1" ]; then
+            printf '\n---\n\n' >> release_body.md
+          fi
           cat >> release_body.md << ENDOFBODY
-
-          ---
-
           ## Release Metadata
           - **Version:** \`${{ steps.meta.outputs.version_name }}\`
           - **Codename:** \`${{ steps.meta.outputs.codename }}\`
