@@ -127,6 +127,14 @@
     <string name="settings_cache_management_desc">Manage cached online lyrics and remote images</string>
     <string name="settings_core_services_header">Core Services</string>
     <string name="settings_search">Search settings</string>
+    <string name="settings_search_history">Search history</string>
+    <string name="settings_search_clear">Clear</string>
+    <string name="settings_search_no_results">No settings found</string>
+    <string name="settings_search_no_results_desc">Check spelling or try different keywords</string>
+    <string name="settings_looking_for_other">Need other settings?</string>
+    <string name="settings_link_apple_music_rule">Apple Music Parser Rule</string>
+    <string name="settings_link_parser_rules">Music Player Parser Rules</string>
+    <string name="settings_link_parser_rules_scrobble">Music Player Rules (Scrobble setup)</string>
     <string name="settings_core_header">Core</string>
     <string name="settings_permissions_header">Permissions</string>
     <string name="settings_capsule_notification">Capsule &amp; Notifications</string>

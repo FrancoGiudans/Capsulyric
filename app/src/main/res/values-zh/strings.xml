@@ -139,6 +139,14 @@
     <string name="settings_cache_management_desc">管理在线歌词缓存和远程图片缓存</string>
     <string name="settings_core_services_header">核心服务</string>
     <string name="settings_search">搜索设置</string>
+    <string name="settings_search_history">搜索历史</string>
+    <string name="settings_search_clear">清空</string>
+    <string name="settings_search_no_results">未找到相关设置</string>
+    <string name="settings_search_no_results_desc">请检查拼写或尝试其他关键词</string>
+    <string name="settings_looking_for_other">在寻找其他设置？</string>
+    <string name="settings_link_apple_music_rule">Apple Music 解析规则</string>
+    <string name="settings_link_parser_rules">播放器解析规则</string>
+    <string name="settings_link_parser_rules_scrobble">播放器解析规则（配置 Scrobble 打卡）</string>
     <string name="settings_core_header">核心</string>
     <string name="settings_permissions_header">权限</string>
     <string name="settings_capsule_notification">胶囊与通知</string>

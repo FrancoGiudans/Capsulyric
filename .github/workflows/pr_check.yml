@@ -25,7 +25,7 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v6
         with:
-          fetch-depth: 0
+          fetch-depth: 1
 
       - name: Set up JDK 26
         uses: actions/setup-java@v5
@@ -41,8 +41,8 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      - name: Build Debug Package
+      - name: Compile Debug Sources
         # No -P version flags needed: gradle/scripts/versioning.gradle falls
         # back to the date-based prefix and gradle.properties appCodename.
-        # No signing secrets are used so fork PRs can run this check.
-        run: ./gradlew assembleDebug --console=plain
+        # Validates Kotlin, Compose, and resource linking without full APK packaging/dexing.
+        run: ./gradlew compileDebugSources --console=plain

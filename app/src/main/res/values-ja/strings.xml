@@ -138,6 +138,15 @@
     <string name="settings_cache_management">キャッシュ管理</string>
     <string name="settings_cache_management_desc">キャッシュされたオンライン歌詞やリモート画像を管理</string>
     <string name="settings_core_services_header">コアサービス</string>
+    <string name="settings_search">設定を検索</string>
+    <string name="settings_search_history">検索履歴</string>
+    <string name="settings_search_clear">消去</string>
+    <string name="settings_search_no_results">一致する設定が見つかりません</string>
+    <string name="settings_search_no_results_desc">入力内容を確認するか、別のキーワードをお試しください</string>
+    <string name="settings_looking_for_other">他の設定をお探しですか？</string>
+    <string name="settings_link_apple_music_rule">Apple Music 解析ルール</string>
+    <string name="settings_link_parser_rules">プレイヤー解析ルール</string>
+    <string name="settings_link_parser_rules_scrobble">プレイヤー解析ルール（Scrobble設定）</string>
     <string name="settings_core_header">コア</string>
     <string name="settings_permissions_header">権限</string>
     <string name="settings_capsule_notification">カプセルと通知</string>

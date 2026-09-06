@@ -138,6 +138,15 @@
     <string name="settings_cache_management">快取管理</string>
     <string name="settings_cache_management_desc">管理已快取的線上歌詞與遠端圖片</string>
     <string name="settings_core_services_header">核心服務</string>
+    <string name="settings_search">搜尋設定</string>
+    <string name="settings_search_history">搜尋記錄</string>
+    <string name="settings_search_clear">清除</string>
+    <string name="settings_search_no_results">找不到相關設定</string>
+    <string name="settings_search_no_results_desc">請檢查拼字或嘗試其他關鍵字</string>
+    <string name="settings_looking_for_other">在尋找其他設定？</string>
+    <string name="settings_link_apple_music_rule">Apple Music 解析規則</string>
+    <string name="settings_link_parser_rules">播放器解析規則</string>
+    <string name="settings_link_parser_rules_scrobble">播放器解析規則（設定 Scrobble 記錄）</string>
     <string name="settings_core_header">核心</string>
     <string name="settings_permissions_header">權限</string>
     <string name="settings_capsule_notification">膠囊與通知</string>
