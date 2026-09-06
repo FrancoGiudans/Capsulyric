@@ -31,7 +31,7 @@
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
         android:enableOnBackInvokedCallback="true"
-        android:manageSpaceActivity="com.example.islandlyrics.feature.main.MainActivity">
+        android:manageSpaceActivity="com.example.islandlyrics.feature.cache.CacheManagementActivity">
 
         <!-- Main Activity: holds URL scheme filter; launcher filter lives in LauncherAlias -->
         <activity
