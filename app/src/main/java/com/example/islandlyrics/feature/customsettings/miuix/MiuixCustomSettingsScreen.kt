@@ -64,10 +64,17 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
+import com.example.islandlyrics.core.settings.search.SettingsNavigationTarget
+import com.example.islandlyrics.core.settings.search.SettingsSearchAction
+import com.example.islandlyrics.ui.miuix.search.MiuixLookingForOtherSettings
+import com.example.islandlyrics.ui.miuix.search.OtherSettingLink
+import com.example.islandlyrics.ui.miuix.search.miuixSettingHighlight
+import kotlinx.coroutines.delay
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
@@ -101,6 +108,9 @@ fun MiuixCustomSettingsScreen(
     updateBuildText: String = "",
     title: String = stringResource(R.string.page_title_personalization),
     tabs: Set<CustomSettingsTab> = CustomSettingsTab.entries.toSet(),
+    initialTab: CustomSettingsTab? = null,
+    targetItemKey: String? = null,
+    onNavigate: ((com.example.islandlyrics.core.settings.search.SettingsSearchAction.Navigate) -> Unit)? = null,
     viewModel: CustomSettingsViewModel = viewModel()
 ) {
     val context = LocalContext.current
@@ -124,7 +134,38 @@ fun MiuixCustomSettingsScreen(
             CustomSettingsTab.DESKTOP_LYRICS -> stringResource(R.string.settings_floating_lyrics)
         }
     }
-    val pagerState = rememberPagerState(pageCount = { orderedTabs.size })
+    val initialPageIndex = remember(initialTab, orderedTabs) {
+        if (initialTab != null && orderedTabs.contains(initialTab)) {
+            orderedTabs.indexOf(initialTab)
+        } else {
+            0
+        }
+    }
+    val pagerState = rememberPagerState(
+        initialPage = initialPageIndex,
+        pageCount = { orderedTabs.size }
+    )
+
+    LaunchedEffect(initialTab) {
+        if (initialTab != null) {
+            val targetIdx = orderedTabs.indexOf(initialTab)
+            if (targetIdx >= 0 && targetIdx != pagerState.currentPage) {
+                pagerState.scrollToPage(targetIdx)
+            }
+        }
+    }
+
+    var activeHighlightKey by remember(targetItemKey) { mutableStateOf(targetItemKey) }
+    val handleNavigate: (com.example.islandlyrics.core.settings.search.SettingsSearchAction.Navigate) -> Unit = { action ->
+        if (action.tab != null && orderedTabs.contains(action.tab)) {
+            val targetIndex = orderedTabs.indexOf(action.tab)
+            scope.launch {
+                pagerState.animateScrollToPage(targetIndex)
+            }
+        } else {
+            onNavigate?.invoke(action)
+        }
+    }
 
     // State
     var followSystem by remember(uiState.followSystem) { mutableStateOf(uiState.followSystem) }
@@ -448,7 +489,33 @@ fun MiuixCustomSettingsScreen(
                 state = pagerState,
                 modifier = Modifier.fillMaxSize()
             ) { page ->
+                val listState = rememberLazyListState()
+                val currentTab = orderedTabs[page]
+
+                LaunchedEffect(targetItemKey, pagerState.currentPage) {
+                    if (targetItemKey != null && pagerState.currentPage == page) {
+                        val scrollIndex = when (currentTab) {
+                            CustomSettingsTab.APP_UI -> when (targetItemKey) {
+                                "key_app_ui_style", "key_theme_follow_system", "key_theme_dark_mode",
+                                "key_theme_dynamic_color", "key_theme_color_source", "key_theme_custom_color",
+                                "key_theme_custom_color_global_tint" -> 0
+                                "key_card_blur", "key_edge_highlight_texture", "key_navigation_bar_style" -> 2
+                                "key_predictive_back", "key_predictive_back_animation_mode",
+                                "key_predictive_back_animation", "key_edge_scroll_haptic" -> 4
+                                "key_home_lyric_preview" -> 6
+                                else -> 0
+                            }
+                            CustomSettingsTab.CAPSULE -> 2
+                            CustomSettingsTab.NOTIFICATION -> 2
+                            CustomSettingsTab.DESKTOP_LYRICS -> 0
+                        }
+                        delay(120)
+                        listState.animateScrollToItem(scrollIndex)
+                    }
+                }
+
                 LazyColumn(
+                    state = listState,
                     modifier = Modifier
                         .fillMaxSize()
                         .miuixPageScroll(scrollBehavior),
@@ -457,7 +524,7 @@ fun MiuixCustomSettingsScreen(
                         bottom = padding.calculateBottomPadding() + 24.dp
                     )
                 ) {
-                when (orderedTabs[page]) {
+                when (currentTab) {
                         CustomSettingsTab.CAPSULE -> { // Capsule
                             item {
                                 val previewIconStyle = if (superIslandEnabled) "advanced" else iconStyle
@@ -484,6 +551,7 @@ fun MiuixCustomSettingsScreen(
                                         summary = stringResource(R.string.settings_disable_scrolling_desc),
                                         checked = disableScrolling || forceDisableScrollingForSuperIslandLyricMode,
                                         enabled = !forceDisableScrollingForSuperIslandLyricMode,
+                                        modifier = Modifier.miuixSettingHighlight(activeHighlightKey, "key_disable_scrolling"),
                                         onCheckedChange = {
                                             disableScrolling = it
                                             viewModel.dispatch(CustomSettingsAction.SetDisableScrolling(it))
@@ -502,6 +570,7 @@ fun MiuixCustomSettingsScreen(
                                         summary = stringResource(R.string.settings_lyric_text_display_mode_desc),
                                         items = lyricTextModeLabels,
                                         selectedIndex = currentLyricTextModeIndex,
+                                        modifier = Modifier.miuixSettingHighlight(activeHighlightKey, "key_lyric_text_display_mode"),
                                         onSelectedIndexChange = { index ->
                                             lyricTextDisplayMode = lyricTextModes[index]
                                             viewModel.dispatch(CustomSettingsAction.SetLyricTextDisplayMode(lyricTextDisplayMode))
@@ -521,6 +590,7 @@ fun MiuixCustomSettingsScreen(
                                             title = stringResource(R.string.settings_oneui_capsule_color),
                                             items = oneUiColorModeLabels,
                                             selectedIndex = currentModeIndex,
+                                            modifier = Modifier.miuixSettingHighlight(activeHighlightKey, "key_oneui_capsule_color"),
                                             onSelectedIndexChange = { index ->
                                                 val newMode = oneUiColorModes[index]
                                                 oneuiCapsuleColorMode = newMode
@@ -561,6 +631,7 @@ fun MiuixCustomSettingsScreen(
                                                 title = stringResource(R.string.settings_capsule_mode),
                                                 items = capsuleModeLabels,
                                                 selectedIndex = currentCapsuleModeIndex,
+                                                modifier = Modifier.miuixSettingHighlight(activeHighlightKey, "key_capsule_mode"),
                                                 onSelectedIndexChange = { index ->
                                                     setCapsuleRenderMode(capsuleModes[index])
                                                 }
@@ -580,6 +651,7 @@ fun MiuixCustomSettingsScreen(
 
                                             SuperDropdown(
                                                 title = stringResource(R.string.settings_super_island_lyric_mode),
+                                                modifier = Modifier.miuixSettingHighlight(activeHighlightKey, "key_super_island_lyric_mode"),
                                                 entry = DropdownEntry(
                                                     items = lyricModeItems.map { (modeId, nameId, descId) ->
                                                         DropdownItem(
@@ -603,6 +675,7 @@ fun MiuixCustomSettingsScreen(
                                                     title = stringResource(R.string.settings_super_island_full_lyric_show_left_cover),
                                                     summary = stringResource(R.string.settings_super_island_full_lyric_show_left_cover_desc),
                                                     checked = superIslandFullLyricShowLeftCover,
+                                                    modifier = Modifier.miuixSettingHighlight(activeHighlightKey, "key_super_island_full_lyric_show_left_cover"),
                                                     onCheckedChange = {
                                                         superIslandFullLyricShowLeftCover = it
                                                         viewModel.dispatch(CustomSettingsAction.SetSuperIslandFullLyricShowLeftCover(it))
@@ -615,6 +688,7 @@ fun MiuixCustomSettingsScreen(
                                                     title = stringResource(R.string.settings_super_island_standard_show_left_cover),
                                                     summary = stringResource(R.string.settings_super_island_standard_show_left_cover_desc),
                                                     checked = superIslandStandardShowLeftCover,
+                                                    modifier = Modifier.miuixSettingHighlight(activeHighlightKey, "key_super_island_standard_show_left_cover"),
                                                     onCheckedChange = {
                                                         superIslandStandardShowLeftCover = it
                                                         viewModel.dispatch(CustomSettingsAction.SetSuperIslandStandardShowLeftCover(it))
@@ -670,6 +744,7 @@ fun MiuixCustomSettingsScreen(
                                                 title = stringResource(R.string.settings_super_island_colorize),
                                                 summary = stringResource(R.string.settings_super_island_colorize_desc),
                                                 checked = superIslandTextColorEnabled,
+                                                modifier = Modifier.miuixSettingHighlight(activeHighlightKey, "key_super_island_colorize"),
                                                 onCheckedChange = { enabled ->
                                                     if (!enabled && superIslandColorEditing) {
                                                         superIslandCustomColor = superIslandColorSnapshot
@@ -712,6 +787,7 @@ fun MiuixCustomSettingsScreen(
                                                 SuperDropdown(
                                                     title = stringResource(R.string.settings_super_island_color_source),
                                                     summary = stringResource(R.string.settings_super_island_color_source_desc),
+                                                    modifier = Modifier.miuixSettingHighlight(activeHighlightKey, "key_super_island_color_source"),
                                                     entry = DropdownEntry(
                                                         items = colorSourceOptions.map { (mode, nameId, descId) ->
                                                             DropdownItem(
@@ -767,13 +843,14 @@ fun MiuixCustomSettingsScreen(
                                                 title = stringResource(R.string.settings_super_island_share),
                                                 summary = stringResource(R.string.settings_super_island_share_desc),
                                                 checked = superIslandShareEnabled,
+                                                modifier = Modifier.miuixSettingHighlight(activeHighlightKey, "key_super_island_share"),
                                                 onCheckedChange = {
                                                     superIslandShareEnabled = it
                                                     viewModel.dispatch(CustomSettingsAction.SetSuperIslandShareEnabled(it))
                                                 }
                                             )
 
-                                                if (superIslandShareEnabled) {
+                                            if (superIslandShareEnabled) {
                                                 val shareFormats = listOf("format_1", "format_2", "format_3")
                                                 val shareFormatNames = listOf(
                                                     stringResource(R.string.share_format_1),
@@ -786,6 +863,7 @@ fun MiuixCustomSettingsScreen(
                                                     title = stringResource(R.string.settings_super_island_share_format),
                                                     items = shareFormatNames,
                                                     selectedIndex = currentFormatIndex,
+                                                    modifier = Modifier.miuixSettingHighlight(activeHighlightKey, "key_super_island_share_format"),
                                                     onSelectedIndexChange = { index ->
                                                         val newFormat = shareFormats[index]
                                                         superIslandShareFormat = newFormat
@@ -794,7 +872,7 @@ fun MiuixCustomSettingsScreen(
                                                 )
                                             }
 
-                                                val currentBlockXmsfDurationText = stringResource(
+                                            val currentBlockXmsfDurationText = stringResource(
                                                 R.string.settings_block_xmsf_duration_value,
                                                 blockXmsfCustomDurationMs
                                             )
@@ -824,6 +902,7 @@ fun MiuixCustomSettingsScreen(
                                             SuperDropdown(
                                                 title = stringResource(R.string.settings_block_xmsf_mode),
                                                 summary = stringResource(R.string.settings_block_xmsf_mode_desc),
+                                                modifier = Modifier.miuixSettingHighlight(activeHighlightKey, "key_block_xmsf_mode"),
                                                 entry = DropdownEntry(
                                                     items = bypassOptions.map { (mode, label, summary) ->
                                                         DropdownItem(
@@ -883,6 +962,7 @@ fun MiuixCustomSettingsScreen(
                                             title = stringResource(R.string.settings_icon_style),
                                             items = iconStyleNames,
                                             selectedIndex = currentIconIndex,
+                                            modifier = Modifier.miuixSettingHighlight(activeHighlightKey, "key_icon_style"),
                                             onSelectedIndexChange = { index ->
                                                 val newStyle = iconStyles[index]
                                                 iconStyle = newStyle
@@ -891,6 +971,33 @@ fun MiuixCustomSettingsScreen(
                                         )
                                     }
                                 }
+                            }
+                            item {
+                                MiuixLookingForOtherSettings(
+                                    links = listOf(
+                                        OtherSettingLink(
+                                            titleRes = R.string.tab_notification,
+                                            action = SettingsSearchAction.Navigate(
+                                                target = SettingsNavigationTarget.CAPSULE_NOTIFICATION,
+                                                tab = CustomSettingsTab.NOTIFICATION
+                                            )
+                                        ),
+                                        OtherSettingLink(
+                                            titleRes = R.string.tab_app_ui,
+                                            action = SettingsSearchAction.Navigate(
+                                                target = SettingsNavigationTarget.APP_UI
+                                            )
+                                        ),
+                                        OtherSettingLink(
+                                            titleRes = R.string.settings_floating_lyrics,
+                                            action = SettingsSearchAction.Navigate(
+                                                target = SettingsNavigationTarget.DESKTOP_LYRICS
+                                            )
+                                        )
+                                    ),
+                                    onNavigate = handleNavigate,
+                                    modifier = Modifier.padding(top = 12.dp)
+                                )
                             }
                         }
                         CustomSettingsTab.NOTIFICATION -> { // Notification
@@ -933,6 +1040,7 @@ fun MiuixCustomSettingsScreen(
                                             title = stringResource(R.string.settings_notification_actions),
                                             items = actionStyleNames,
                                             selectedIndex = currentActionIndex,
+                                            modifier = Modifier.miuixSettingHighlight(activeHighlightKey, "key_notification_actions"),
                                             onSelectedIndexChange = { index ->
                                                 val newStyle = actionStyles[index]
                                                 actionStyle = newStyle
@@ -945,6 +1053,7 @@ fun MiuixCustomSettingsScreen(
                                             title = stringResource(R.string.settings_live_update_show_progress_bar),
                                             summary = stringResource(R.string.settings_live_update_show_progress_bar_desc),
                                             checked = liveUpdateShowProgressBar,
+                                            modifier = Modifier.miuixSettingHighlight(activeHighlightKey, "key_live_update_show_progress_bar"),
                                             onCheckedChange = {
                                                 liveUpdateShowProgressBar = it
                                                 viewModel.dispatch(CustomSettingsAction.SetLiveUpdateShowProgressBar(it))
@@ -957,6 +1066,7 @@ fun MiuixCustomSettingsScreen(
                                                 title = stringResource(R.string.settings_progress_color),
                                                 summary = stringResource(R.string.settings_progress_color_desc),
                                                 checked = progressColorEnabled,
+                                                modifier = Modifier.miuixSettingHighlight(activeHighlightKey, "key_progress_color"),
                                                 onCheckedChange = {
                                                     progressColorEnabled = it
                                                     viewModel.dispatch(CustomSettingsAction.SetProgressColorEnabled(it))
@@ -987,6 +1097,7 @@ fun MiuixCustomSettingsScreen(
                                             title = stringResource(R.string.settings_super_island_notification_style),
                                             items = notificationStyleNames,
                                             selectedIndex = currentNotificationStyleIndex,
+                                            modifier = Modifier.miuixSettingHighlight(activeHighlightKey, "key_super_island_notification_style"),
                                             onSelectedIndexChange = { index ->
                                                 val newStyle = notificationStyles[index]
                                                 superIslandNotificationStyle = newStyle
@@ -1011,6 +1122,7 @@ fun MiuixCustomSettingsScreen(
                                                 summary = stringResource(R.string.settings_super_island_dual_line_mode_desc),
                                                 items = dualLineModeNames,
                                                 selectedIndex = currentDualLineModeIndex,
+                                                modifier = Modifier.miuixSettingHighlight(activeHighlightKey, "key_super_island_dual_line_mode"),
                                                 onSelectedIndexChange = { index ->
                                                     val newMode = dualLineModes[index]
                                                     superIslandDualLineMode = newMode
@@ -1041,6 +1153,7 @@ fun MiuixCustomSettingsScreen(
 
                                             SuperDropdown(
                                                 title = stringResource(R.string.settings_super_island_media_button_layout),
+                                                modifier = Modifier.miuixSettingHighlight(activeHighlightKey, "key_super_island_media_button_layout"),
                                                 entry = DropdownEntry(
                                                     items = buttonLayoutItems.map { (layoutId, name, desc) ->
                                                         DropdownItem(
@@ -1065,6 +1178,7 @@ fun MiuixCustomSettingsScreen(
                                                 title = stringResource(R.string.settings_super_island_show_progress_bar),
                                                 summary = stringResource(R.string.settings_super_island_show_progress_bar_desc),
                                                 checked = superIslandShowProgressBar,
+                                                modifier = Modifier.miuixSettingHighlight(activeHighlightKey, "key_super_island_show_progress_bar"),
                                                 onCheckedChange = {
                                                     superIslandShowProgressBar = it
                                                     viewModel.dispatch(CustomSettingsAction.SetSuperIslandShowProgressBar(it))
@@ -1093,6 +1207,7 @@ fun MiuixCustomSettingsScreen(
                                                         stringResource(R.string.super_island_secondary_text_next_lyric)
                                                     }
                                                 ),
+                                                modifier = Modifier.miuixSettingHighlight(activeHighlightKey, "key_super_island_secondary_text_mode"),
                                                 onClick = { showSecondaryTextModeDialog = true }
                                             )
                                         }
@@ -1107,6 +1222,7 @@ fun MiuixCustomSettingsScreen(
                                                 title = stringResource(R.string.settings_progress_color),
                                                 summary = stringResource(R.string.settings_progress_color_desc),
                                                 checked = progressColorEnabled,
+                                                modifier = Modifier.miuixSettingHighlight(activeHighlightKey, "key_progress_color"),
                                                 onCheckedChange = {
                                                     progressColorEnabled = it
                                                     viewModel.dispatch(CustomSettingsAction.SetProgressColorEnabled(it))
@@ -1141,6 +1257,7 @@ fun MiuixCustomSettingsScreen(
 
                                             SuperDropdown(
                                                 title = stringResource(R.string.settings_super_island_template2_pic_source),
+                                                modifier = Modifier.miuixSettingHighlight(activeHighlightKey, "key_super_island_template2_pic_source"),
                                                 entry = DropdownEntry(
                                                     items = picSourceItems.map { (sourceId, name, desc) ->
                                                         DropdownItem(
@@ -1161,6 +1278,7 @@ fun MiuixCustomSettingsScreen(
                                                     title = stringResource(R.string.settings_super_island_template2_pic_custom_pick),
                                                     summary = template2CustomPicUri
                                                         ?: stringResource(R.string.settings_super_island_template2_pic_custom_none),
+                                                    modifier = Modifier.miuixSettingHighlight(activeHighlightKey, "key_super_island_template2_pic_custom_pick"),
                                                     onClick = { template2PicPickerLauncher.launch(arrayOf("image/*")) }
                                                 )
                                             }
@@ -1171,6 +1289,7 @@ fun MiuixCustomSettingsScreen(
                                         title = stringResource(R.string.settings_lock_screen_hide_notification),
                                         summary = stringResource(R.string.settings_lock_screen_hide_notification_desc),
                                         checked = lockScreenHideNotification,
+                                        modifier = Modifier.miuixSettingHighlight(activeHighlightKey, "key_lock_screen_hide_notification"),
                                         onCheckedChange = {
                                             lockScreenHideNotification = it
                                             viewModel.dispatch(CustomSettingsAction.SetLockScreenHideNotification(it))
@@ -1191,6 +1310,7 @@ fun MiuixCustomSettingsScreen(
 
                                     SuperDropdown(
                                         title = stringResource(R.string.settings_click_action_title),
+                                        modifier = Modifier.miuixSettingHighlight(activeHighlightKey, "key_click_action"),
                                         entry = DropdownEntry(
                                             items = clickStyleItems.map { (styleId, name, desc) ->
                                                 DropdownItem(
@@ -1219,6 +1339,7 @@ fun MiuixCustomSettingsScreen(
                                         title = stringResource(R.string.settings_dismiss_delay_title),
                                         items = delayNames,
                                         selectedIndex = currentDelayIndex,
+                                        modifier = Modifier.miuixSettingHighlight(activeHighlightKey, "key_dismiss_delay"),
                                         onSelectedIndexChange = { index ->
                                             val newDelay = delayOptions[index]
                                             dismissDelay = newDelay
@@ -1226,6 +1347,33 @@ fun MiuixCustomSettingsScreen(
                                         }
                                     )
                                 }
+                            }
+                            item {
+                                MiuixLookingForOtherSettings(
+                                    links = listOf(
+                                        OtherSettingLink(
+                                            titleRes = R.string.tab_capsule,
+                                            action = SettingsSearchAction.Navigate(
+                                                target = SettingsNavigationTarget.CAPSULE_NOTIFICATION,
+                                                tab = CustomSettingsTab.CAPSULE
+                                            )
+                                        ),
+                                        OtherSettingLink(
+                                            titleRes = R.string.tab_app_ui,
+                                            action = SettingsSearchAction.Navigate(
+                                                target = SettingsNavigationTarget.APP_UI
+                                            )
+                                        ),
+                                        OtherSettingLink(
+                                            titleRes = R.string.settings_floating_lyrics,
+                                            action = SettingsSearchAction.Navigate(
+                                                target = SettingsNavigationTarget.DESKTOP_LYRICS
+                                            )
+                                        )
+                                    ),
+                                    onNavigate = handleNavigate,
+                                    modifier = Modifier.padding(top = 12.dp)
+                                )
                             }
                         }
                         CustomSettingsTab.APP_UI -> { // App UI
@@ -1244,6 +1392,7 @@ fun MiuixCustomSettingsScreen(
                                         title = stringResource(R.string.settings_app_ui_style),
                                         items = uiStyleNames,
                                         selectedIndex = currentUiIndex,
+                                        modifier = Modifier.miuixSettingHighlight(activeHighlightKey, "key_app_ui_style"),
                                         onSelectedIndexChange = { index ->
                                             val newStyle = uiStyles[index]
                                             miuixEnabled = newStyle
@@ -1257,6 +1406,7 @@ fun MiuixCustomSettingsScreen(
                                     SuperSwitch(
                                         title = stringResource(R.string.settings_theme_follow_system),
                                         checked = followSystem,
+                                        modifier = Modifier.miuixSettingHighlight(activeHighlightKey, "key_theme_follow_system"),
                                         onCheckedChange = {
                                             followSystem = it
                                             viewModel.dispatch(CustomSettingsAction.SetFollowSystem(it))
@@ -1266,6 +1416,7 @@ fun MiuixCustomSettingsScreen(
                                         title = stringResource(R.string.settings_theme_dark_mode),
                                         checked = darkMode,
                                         enabled = !followSystem,
+                                        modifier = Modifier.miuixSettingHighlight(activeHighlightKey, "key_theme_dark_mode"),
                                         onCheckedChange = {
                                             darkMode = it
                                             viewModel.dispatch(CustomSettingsAction.SetDarkMode(it))
@@ -1275,6 +1426,7 @@ fun MiuixCustomSettingsScreen(
                                         title = stringResource(R.string.settings_theme_dynamic_color),
                                         summary = stringResource(R.string.settings_theme_dynamic_color_desc),
                                         checked = monetEnabled,
+                                        modifier = Modifier.miuixSettingHighlight(activeHighlightKey, "key_theme_dynamic_color"),
                                         onCheckedChange = { enabled ->
                                             monetEnabled = enabled
                                             viewModel.dispatch(CustomSettingsAction.SetDynamicColor(enabled))
@@ -1296,6 +1448,7 @@ fun MiuixCustomSettingsScreen(
                                             title = stringResource(R.string.settings_theme_color_source),
                                             items = themeColorSourceLabels,
                                             selectedIndex = currentThemeColorSourceIndex,
+                                            modifier = Modifier.miuixSettingHighlight(activeHighlightKey, "key_theme_color_source"),
                                             onSelectedIndexChange = { index ->
                                                 if (miuixThemeColorEditing) {
                                                     customThemeColor = miuixThemeColorSnapshot
@@ -1338,6 +1491,7 @@ fun MiuixCustomSettingsScreen(
                                                 title = stringResource(R.string.settings_theme_custom_color_global_tint),
                                                 summary = stringResource(R.string.settings_theme_custom_color_global_tint_desc),
                                                 checked = customThemeGlobalTintEnabled,
+                                                modifier = Modifier.miuixSettingHighlight(activeHighlightKey, "key_theme_custom_color_global_tint"),
                                                 onCheckedChange = { enabled ->
                                                     customThemeGlobalTintEnabled = enabled
                                                     viewModel.dispatch(CustomSettingsAction.SetMiuixThemeGlobalTintEnabled(enabled))
@@ -1356,6 +1510,7 @@ fun MiuixCustomSettingsScreen(
                                         title = stringResource(R.string.settings_card_blur),
                                         summary = stringResource(R.string.settings_card_blur_desc),
                                         checked = cardBlurEnabled,
+                                        modifier = Modifier.miuixSettingHighlight(activeHighlightKey, "key_card_blur"),
                                         onCheckedChange = {
                                             cardBlurEnabled = it
                                             viewModel.dispatch(CustomSettingsAction.SetCardBlurEnabled(it))
@@ -1366,6 +1521,7 @@ fun MiuixCustomSettingsScreen(
                                             title = stringResource(R.string.settings_edge_highlight_texture_title),
                                             summary = stringResource(R.string.settings_edge_highlight_texture_desc),
                                             checked = blurEdgeHighlightEnabled,
+                                            modifier = Modifier.miuixSettingHighlight(activeHighlightKey, "key_edge_highlight_texture"),
                                             onCheckedChange = {
                                                 blurEdgeHighlightEnabled = it
                                                 LabFeatureManager.setMiuixBlurEdgeHighlightEnabled(context, it)
@@ -1391,6 +1547,7 @@ fun MiuixCustomSettingsScreen(
                                             summary = stringResource(R.string.settings_navigation_bar_style_desc),
                                             items = navigationBarStyleLabels,
                                             selectedIndex = currentNavigationBarStyleIndex,
+                                            modifier = Modifier.miuixSettingHighlight(activeHighlightKey, "key_navigation_bar_style"),
                                             onSelectedIndexChange = { index ->
                                                 val style = navigationBarStyles[index]
                                                 miuixNavigationBarStyle = style
@@ -1409,6 +1566,7 @@ fun MiuixCustomSettingsScreen(
                                         title = stringResource(R.string.settings_predictive_back),
                                         summary = stringResource(R.string.settings_predictive_back_desc),
                                         checked = predictiveBackEnabled,
+                                        modifier = Modifier.miuixSettingHighlight(activeHighlightKey, "key_predictive_back"),
                                         onCheckedChange = {
                                             predictiveBackEnabled = it
                                             viewModel.dispatch(CustomSettingsAction.SetPredictiveBackEnabled(it))
@@ -1424,6 +1582,7 @@ fun MiuixCustomSettingsScreen(
                                         summary = stringResource(R.string.settings_predictive_back_animation_mode_desc),
                                         items = predictiveBackModeLabels,
                                         selectedIndex = currentPredictiveBackModeIndex,
+                                        modifier = Modifier.miuixSettingHighlight(activeHighlightKey, "key_predictive_back_animation_mode"),
                                         onSelectedIndexChange = { index ->
                                             val mode = predictiveBackModes[index]
                                             predictiveBackAnimationMode = mode
@@ -1441,6 +1600,7 @@ fun MiuixCustomSettingsScreen(
                                             summary = stringResource(R.string.settings_predictive_back_animation_desc),
                                             items = predictiveBackStyleLabels,
                                             selectedIndex = currentPredictiveBackStyleIndex,
+                                            modifier = Modifier.miuixSettingHighlight(activeHighlightKey, "key_predictive_back_animation"),
                                             onSelectedIndexChange = { index ->
                                                 val style = predictiveBackStyles[index]
                                                 predictiveBackAnimationStyle = style
@@ -1453,6 +1613,7 @@ fun MiuixCustomSettingsScreen(
                                             title = stringResource(R.string.settings_edge_scroll_haptic_title),
                                             summary = stringResource(R.string.settings_edge_scroll_haptic_desc),
                                             checked = scrollEndHapticEnabled,
+                                            modifier = Modifier.miuixSettingHighlight(activeHighlightKey, "key_edge_scroll_haptic"),
                                             onCheckedChange = {
                                                 scrollEndHapticEnabled = it
                                                 LabFeatureManager.setScrollEndHapticEnabled(context, it)
@@ -1472,14 +1633,71 @@ fun MiuixCustomSettingsScreen(
                                             R.string.settings_home_lyric_preview_summary_fmt,
                                             homeLyricPreviewDisplayModes.labelForHomeLyricPreview()
                                         ),
+                                        modifier = Modifier.miuixSettingHighlight(activeHighlightKey, "key_home_lyric_preview"),
                                         onClick = { showHomeLyricPreviewDialog = true }
                                     )
                                 }
+                            }
+                            item {
+                                MiuixLookingForOtherSettings(
+                                    links = listOf(
+                                        OtherSettingLink(
+                                            titleRes = R.string.tab_capsule,
+                                            action = SettingsSearchAction.Navigate(
+                                                target = SettingsNavigationTarget.CAPSULE_NOTIFICATION,
+                                                tab = CustomSettingsTab.CAPSULE
+                                            )
+                                        ),
+                                        OtherSettingLink(
+                                            titleRes = R.string.tab_notification,
+                                            action = SettingsSearchAction.Navigate(
+                                                target = SettingsNavigationTarget.CAPSULE_NOTIFICATION,
+                                                tab = CustomSettingsTab.NOTIFICATION
+                                            )
+                                        ),
+                                        OtherSettingLink(
+                                            titleRes = R.string.settings_floating_lyrics,
+                                            action = SettingsSearchAction.Navigate(
+                                                target = SettingsNavigationTarget.DESKTOP_LYRICS
+                                            )
+                                        )
+                                    ),
+                                    onNavigate = handleNavigate,
+                                    modifier = Modifier.padding(top = 12.dp)
+                                )
                             }
                         }
                     CustomSettingsTab.DESKTOP_LYRICS -> { // Desktop Lyrics
                         item {
                             MiuixFloatingLyricsSettingsSubScreen(prefs, scope)
+                        }
+                        item {
+                            MiuixLookingForOtherSettings(
+                                links = listOf(
+                                    OtherSettingLink(
+                                        titleRes = R.string.tab_capsule,
+                                        action = SettingsSearchAction.Navigate(
+                                            target = SettingsNavigationTarget.CAPSULE_NOTIFICATION,
+                                            tab = CustomSettingsTab.CAPSULE
+                                        )
+                                    ),
+                                    OtherSettingLink(
+                                        titleRes = R.string.tab_notification,
+                                        action = SettingsSearchAction.Navigate(
+                                            target = SettingsNavigationTarget.CAPSULE_NOTIFICATION,
+                                            tab = CustomSettingsTab.NOTIFICATION
+                                        )
+                                    ),
+                                    OtherSettingLink(
+                                        titleRes = R.string.page_title_personalization,
+                                        action = SettingsSearchAction.Navigate(
+                                            target = SettingsNavigationTarget.APP_UI
+                                        )
+                                    )
+                                ),
+                                onNavigate = handleNavigate,
+                                modifier = Modifier.padding(top = 12.dp)
+                            )
                         }
                     }
                 }
@@ -1790,12 +2008,18 @@ private fun List<String>.labelForHomeLyricPreview(): String {
 @Composable
 fun MiuixCapsuleNotificationScreen(
     onBack: () -> Unit,
+    initialTab: CustomSettingsTab? = null,
+    targetItemKey: String? = null,
+    onNavigate: ((SettingsSearchAction.Navigate) -> Unit)? = null,
     viewModel: CustomSettingsViewModel = viewModel()
 ) {
     MiuixCustomSettingsScreen(
         onBack = onBack,
         title = stringResource(R.string.settings_capsule_notification_title),
         tabs = setOf(CustomSettingsTab.CAPSULE, CustomSettingsTab.NOTIFICATION),
+        initialTab = initialTab,
+        targetItemKey = targetItemKey,
+        onNavigate = onNavigate,
         viewModel = viewModel
     )
 }
@@ -1803,12 +2027,16 @@ fun MiuixCapsuleNotificationScreen(
 @Composable
 fun MiuixAppUiScreen(
     onBack: () -> Unit,
+    targetItemKey: String? = null,
+    onNavigate: ((SettingsSearchAction.Navigate) -> Unit)? = null,
     viewModel: CustomSettingsViewModel = viewModel()
 ) {
     MiuixCustomSettingsScreen(
         onBack = onBack,
         title = stringResource(R.string.page_title_personalization),
         tabs = setOf(CustomSettingsTab.APP_UI),
+        targetItemKey = targetItemKey,
+        onNavigate = onNavigate,
         viewModel = viewModel
     )
 }
@@ -1816,14 +2044,19 @@ fun MiuixAppUiScreen(
 @Composable
 fun MiuixDesktopLyricsScreen(
     onBack: () -> Unit,
+    targetItemKey: String? = null,
+    onNavigate: ((SettingsSearchAction.Navigate) -> Unit)? = null,
     viewModel: CustomSettingsViewModel = viewModel()
 ) {
     MiuixCustomSettingsScreen(
         onBack = onBack,
         title = stringResource(R.string.settings_floating_lyrics),
         tabs = setOf(CustomSettingsTab.DESKTOP_LYRICS),
+        targetItemKey = targetItemKey,
+        onNavigate = onNavigate,
         viewModel = viewModel
     )
 }
+
 
 

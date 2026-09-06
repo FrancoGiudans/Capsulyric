@@ -85,6 +85,16 @@ import com.example.islandlyrics.core.settings.SettingsBackupManager.ParserConfli
 import com.example.islandlyrics.core.settings.BackupCategories
 import com.example.islandlyrics.core.settings.SettingsBackupManager.PreviewResult
 import com.example.islandlyrics.core.settings.LabFeatureManager
+import com.example.islandlyrics.core.settings.search.SettingsSearchAction
+import com.example.islandlyrics.core.settings.search.MainSettingsDialogType
+import com.example.islandlyrics.core.settings.search.SettingsNavigationTarget
+import com.example.islandlyrics.core.settings.search.SettingsSearchEngine
+import com.example.islandlyrics.core.settings.search.SettingsSearchHistoryStore
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import com.example.islandlyrics.lyrics.state.LyricRepository
 import com.example.islandlyrics.runtime.service.MediaMonitorService
 import com.example.islandlyrics.runtime.playingapp.NewPlayingAppNotifier
@@ -116,6 +126,7 @@ fun MiuixSettingsScreen(
     onOpenLastFm: (() -> Unit)? = null,
     onOpenCacheManagement: (() -> Unit)? = null,
     onOpenLab: (() -> Unit)? = null,
+    onNavigateAction: ((SettingsSearchAction.Navigate) -> Unit)? = null,
     showBackButton: Boolean = true,
     bottomBar: @Composable () -> Unit = {},
     onBottomBarVisibilityChange: (Boolean) -> Unit = {},
@@ -142,9 +153,22 @@ fun MiuixSettingsScreen(
     val devModeEnabled by LyricRepository.getInstance().devModeEnabled.observeAsState(false)
     var floatingLyricsLabEnabled by remember { mutableStateOf(LabFeatureManager.isFloatingLyricsEnabled(prefs)) }
 
-    // 设置页搜索栏状态（仅 UI，搜索过滤功能暂未实装）
+    // 设置页搜索栏状态
     var settingsSearchQuery by remember { mutableStateOf("") }
     var settingsSearchExpanded by remember { mutableStateOf(false) }
+    var searchHistory by remember { mutableStateOf(emptyList<String>()) }
+    LaunchedEffect(settingsSearchExpanded) {
+        if (settingsSearchExpanded) {
+            searchHistory = SettingsSearchHistoryStore.getHistory(context)
+        }
+    }
+    val searchResults = remember(settingsSearchQuery, context) {
+        if (settingsSearchQuery.isNotBlank()) {
+            SettingsSearchEngine.search(context, settingsSearchQuery)
+        } else {
+            emptyList()
+        }
+    }
 
     // Backup category selection states
     var showExportCategoryDialog by remember { mutableStateOf(false) }
@@ -389,7 +413,64 @@ fun MiuixSettingsScreen(
 
     val popupShowing = showPrivacyDialog.value ||
             showFeedbackPopup.value ||
-            updateReleaseInfo != null
+            updateReleaseInfo != null ||
+            settingsSearchExpanded
+
+    fun handleSearchAction(action: SettingsSearchAction) {
+        when (action) {
+            is SettingsSearchAction.Navigate -> {
+                if (onNavigateAction != null) {
+                    onNavigateAction(action)
+                } else {
+                    when (action.target) {
+                        SettingsNavigationTarget.CAPSULE_NOTIFICATION -> onOpenCapsuleNotification()
+                        SettingsNavigationTarget.APP_UI -> onOpenCustomSettings()
+                        SettingsNavigationTarget.DESKTOP_LYRICS -> onOpenDesktopLyrics?.invoke() ?: onOpenCustomSettings()
+                        SettingsNavigationTarget.LOCAL_LYRIC_DIRECTORIES -> onOpenLocalLyricDirectories()
+                        SettingsNavigationTarget.CACHE_MANAGEMENT -> onOpenCacheManagement?.invoke() ?: Unit
+                        SettingsNavigationTarget.ONLINE_LYRIC_REMATCH -> onOpenOnlineLyricRematch?.invoke() ?: Unit
+                        SettingsNavigationTarget.LAST_FM -> onOpenLastFm?.invoke() ?: Unit
+                        SettingsNavigationTarget.APPLE_MUSIC -> context.startActivity(Intent(context, com.example.islandlyrics.feature.applemusic.AppleMusicSettingsActivity::class.java))
+                        SettingsNavigationTarget.FAQ -> onOpenFaq?.invoke() ?: Unit
+                        SettingsNavigationTarget.COMMUNITY -> onOpenCommunity?.invoke() ?: Unit
+                        SettingsNavigationTarget.ABOUT -> onOpenAbout?.invoke() ?: Unit
+                        SettingsNavigationTarget.DIAGNOSTICS -> onShowDiagnostics()
+                        SettingsNavigationTarget.LAB -> onOpenLab?.invoke() ?: Unit
+                        SettingsNavigationTarget.PARSER_RULES -> context.startActivity(Intent(context, com.example.islandlyrics.feature.parserrule.ParserRuleActivity::class.java))
+                    }
+                }
+            }
+            is SettingsSearchAction.TriggerDialog -> {
+                when (action.dialog) {
+                    MainSettingsDialogType.PRIVACY_NOTIFICATION_LISTENER -> showPrivacyDialog.value = true
+                    MainSettingsDialogType.HIDE_LAUNCHER -> showHideLauncherDialog.value = true
+                    MainSettingsDialogType.BACKUP_EXPORT -> showExportCategoryDialog = true
+                    MainSettingsDialogType.BACKUP_IMPORT -> {
+                        importSettingsLauncher.launch(arrayOf("application/zip", "application/json", "*/*"))
+                    }
+                    MainSettingsDialogType.LANGUAGE_PICKER -> {
+                        val intent = Intent(Settings.ACTION_APP_LOCALE_SETTINGS).apply {
+                            data = Uri.fromParts("package", context.packageName, null)
+                        }
+                        try {
+                            context.startActivity(intent)
+                        } catch (_: Exception) {
+                            try {
+                                context.startActivity(Intent(Settings.ACTION_LOCALE_SETTINGS))
+                            } catch (_: Exception) {}
+                        }
+                    }
+                }
+            }
+            is SettingsSearchAction.LaunchIntent -> {
+                try {
+                    context.startActivity(action.intentBuilder(context))
+                } catch (e: Exception) {
+                    // Ignore
+                }
+            }
+        }
+    }
 
     LaunchedEffect(popupShowing) {
         if (popupShowing) {
@@ -443,7 +524,6 @@ fun MiuixSettingsScreen(
         ) {
             // 搜索栏顶部留白，与其他页面 +12.dp 顶间距统一，避免贴顶栏
             item { Spacer(modifier = Modifier.height(12.dp)) }
-            // 设置页搜索栏（搜索功能暂未实装，仅展示 UI）
             item {
                 SearchBar(
                     modifier = Modifier.padding(horizontal = 12.dp),
@@ -457,12 +537,142 @@ fun MiuixSettingsScreen(
                             label = stringResource(R.string.settings_search)
                         )
                     },
+                    outsideEndAction = {
+                        Text(
+                            modifier = Modifier
+                                .clickable(
+                                    interactionSource = null,
+                                    indication = null,
+                                ) {
+                                    settingsSearchExpanded = false
+                                    settingsSearchQuery = ""
+                                }
+                                .padding(start = 12.dp),
+                            text = stringResource(R.string.backup_dialog_cancel),
+                            color = MiuixTheme.colorScheme.primary,
+                        )
+                    },
                     insideMargin = androidx.compose.ui.unit.DpSize(0.dp, 0.dp),
                     expanded = settingsSearchExpanded,
                     onExpandedChange = { settingsSearchExpanded = it }
                 ) { }
             }
-            item { Spacer(modifier = Modifier.height(8.dp)) }
+
+            if (settingsSearchExpanded) {
+                if (settingsSearchQuery.isBlank()) {
+                    if (searchHistory.isNotEmpty()) {
+                        item {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = stringResource(R.string.settings_search_history),
+                                    style = MiuixTheme.textStyles.title4,
+                                    color = MiuixTheme.colorScheme.onSurfaceSecondary
+                                )
+                                Text(
+                                    text = stringResource(R.string.settings_search_clear),
+                                    style = MiuixTheme.textStyles.body2,
+                                    color = MiuixTheme.colorScheme.primary,
+                                    modifier = Modifier.clickable {
+                                        SettingsSearchHistoryStore.clearHistory(context)
+                                        searchHistory = emptyList()
+                                    }
+                                )
+                            }
+                        }
+                        item {
+                            @OptIn(ExperimentalLayoutApi::class)
+                            FlowRow(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                searchHistory.forEach { historyQuery ->
+                                    Box(
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(8.dp))
+                                            .background(MiuixTheme.colorScheme.surfaceContainer)
+                                            .clickable {
+                                                settingsSearchQuery = historyQuery
+                                            }
+                                            .padding(horizontal = 12.dp, vertical = 6.dp)
+                                    ) {
+                                        Text(
+                                            text = historyQuery,
+                                            style = MiuixTheme.textStyles.body2,
+                                            color = MiuixTheme.colorScheme.onSurface
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    if (searchResults.isEmpty()) {
+                        item {
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 12.dp, vertical = 8.dp)
+                            ) {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(24.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Text(
+                                        text = stringResource(R.string.settings_search_no_results),
+                                        style = MiuixTheme.textStyles.title3,
+                                        color = MiuixTheme.colorScheme.onSurface
+                                    )
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        text = stringResource(R.string.settings_search_no_results_desc),
+                                        style = MiuixTheme.textStyles.body2,
+                                        color = MiuixTheme.colorScheme.onSurfaceSecondary
+                                    )
+                                }
+                            }
+                        }
+                    } else {
+                        item {
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 12.dp, vertical = 8.dp)
+                            ) {
+                                searchResults.forEach { match ->
+                                    val item = match.item
+                                    val breadcrumbText = item.breadcrumbResList.joinToString(" > ") { context.getString(it) }
+                                    val titleText = stringResource(item.titleRes)
+                                    val summaryText = item.summaryRes?.let { stringResource(it) }
+                                    val fullSummary = if (summaryText != null) "$breadcrumbText · $summaryText" else breadcrumbText
+
+                                    SuperArrow(
+                                        title = titleText,
+                                        summary = fullSummary,
+                                        onClick = {
+                                            SettingsSearchHistoryStore.addHistory(context, settingsSearchQuery.trim())
+                                            searchHistory = SettingsSearchHistoryStore.getHistory(context)
+                                            settingsSearchExpanded = false
+                                            handleSearchAction(item.action)
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            } else {
+                item { Spacer(modifier = Modifier.height(8.dp)) }
 
             // ═══ 1. Core ═══
             item { SmallTitle(text = stringResource(R.string.settings_core_header)) }
@@ -726,6 +936,7 @@ fun MiuixSettingsScreen(
                         )
                     }
                 }
+            }
             }
         }
 

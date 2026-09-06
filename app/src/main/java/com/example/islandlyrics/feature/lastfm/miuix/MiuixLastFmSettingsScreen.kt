@@ -49,8 +49,11 @@ import androidx.core.content.edit
 import com.example.islandlyrics.R
 import com.example.islandlyrics.core.network.OfflineModeManager
 import com.example.islandlyrics.core.settings.AppPreferences
+import com.example.islandlyrics.feature.parserrule.ParserRuleActivity
 import com.example.islandlyrics.integration.lastfm.LastFmApiClient
 import com.example.islandlyrics.integration.lastfm.LastFmSecureStore
+import com.example.islandlyrics.ui.miuix.search.MiuixLookingForOtherSettings
+import com.example.islandlyrics.ui.miuix.search.OtherSettingLink
 import com.example.islandlyrics.ui.miuix.blur.MiuixBlurScaffold
 import com.example.islandlyrics.ui.miuix.blur.MiuixBlurTopAppBar
 import com.example.islandlyrics.ui.miuix.effects.miuixPageScroll
@@ -347,6 +350,19 @@ fun MiuixLastFmSettingsScreen(onBack: () -> Unit) {
                     }
                     Spacer(modifier = Modifier.height(4.dp))
                 }
+            }
+            item {
+                MiuixLookingForOtherSettings(
+                    links = listOf(
+                        OtherSettingLink(
+                            titleRes = R.string.settings_link_parser_rules_scrobble,
+                            onClick = {
+                                context.startActivity(Intent(context, ParserRuleActivity::class.java))
+                            }
+                        )
+                    ),
+                    modifier = Modifier.padding(top = 12.dp)
+                )
             }
         }
     }

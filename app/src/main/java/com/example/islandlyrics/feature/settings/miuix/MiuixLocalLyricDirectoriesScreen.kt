@@ -34,10 +34,14 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.example.islandlyrics.R
+import com.example.islandlyrics.feature.cache.CacheManagementActivity
 import com.example.islandlyrics.feature.locallyrics.LocalLyricDirectoryActivity
+import com.example.islandlyrics.feature.parserrule.ParserRuleActivity
 import com.example.islandlyrics.ui.miuix.blur.MiuixBlurScaffold
 import com.example.islandlyrics.ui.miuix.blur.MiuixBlurTopAppBar
 import com.example.islandlyrics.ui.miuix.navigation.MiuixBackIcon
+import com.example.islandlyrics.ui.miuix.search.MiuixLookingForOtherSettings
+import com.example.islandlyrics.ui.miuix.search.OtherSettingLink
 import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
@@ -83,6 +87,25 @@ fun MiuixLocalLyricDirectoriesScreen(
                                 }
                             )
                         }
+                )
+            }
+            item {
+                MiuixLookingForOtherSettings(
+                    links = listOf(
+                        OtherSettingLink(
+                            titleRes = R.string.settings_link_parser_rules,
+                            onClick = {
+                                context.startActivity(Intent(context, ParserRuleActivity::class.java))
+                            }
+                        ),
+                        OtherSettingLink(
+                            titleRes = R.string.title_cache_management,
+                            onClick = {
+                                context.startActivity(Intent(context, CacheManagementActivity::class.java))
+                            }
+                        )
+                    ),
+                    modifier = Modifier.padding(top = 12.dp)
                 )
             }
         }

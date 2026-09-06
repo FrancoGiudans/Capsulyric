@@ -54,8 +54,12 @@ import kotlinx.coroutines.withContext
 import com.example.islandlyrics.core.settings.AppPreferences
 import com.example.islandlyrics.feature.applemusic.AppleMusicLoginActivity
 import com.example.islandlyrics.feature.applemusic.AppleMusicWebLoginHelper
+import com.example.islandlyrics.feature.onlinelyricdebug.OnlineLyricDebugActivity
+import com.example.islandlyrics.feature.parserrule.ParserRuleEditorActivity
 import com.example.islandlyrics.integration.applemusic.AppleMusicSecureStore
 import com.example.islandlyrics.lyrics.online.provider.AppleMusicStateCache
+import com.example.islandlyrics.ui.miuix.search.MiuixLookingForOtherSettings
+import com.example.islandlyrics.ui.miuix.search.OtherSettingLink
 import com.example.islandlyrics.ui.miuix.blur.MiuixBlurScaffold
 import com.example.islandlyrics.ui.miuix.blur.MiuixBlurTopAppBar
 import com.example.islandlyrics.ui.miuix.effects.miuixPageScroll
@@ -347,6 +351,30 @@ fun MiuixAppleMusicSettingsScreen(onBack: () -> Unit) {
                     }
                     Spacer(modifier = Modifier.height(4.dp))
                 }
+            }
+            item {
+                MiuixLookingForOtherSettings(
+                    links = listOf(
+                        OtherSettingLink(
+                            titleRes = R.string.settings_link_apple_music_rule,
+                            onClick = {
+                                context.startActivity(
+                                    Intent(context, ParserRuleEditorActivity::class.java).apply {
+                                        putExtra(ParserRuleEditorActivity.EXTRA_PACKAGE_NAME, "com.apple.android.music")
+                                        putExtra(ParserRuleEditorActivity.EXTRA_SUGGESTED_NAME, "Apple Music")
+                                    }
+                                )
+                            }
+                        ),
+                        OtherSettingLink(
+                            titleRes = R.string.online_lyric_rematch_title,
+                            onClick = {
+                                context.startActivity(Intent(context, OnlineLyricDebugActivity::class.java))
+                            }
+                        )
+                    ),
+                    modifier = Modifier.padding(top = 12.dp)
+                )
             }
         }
     }

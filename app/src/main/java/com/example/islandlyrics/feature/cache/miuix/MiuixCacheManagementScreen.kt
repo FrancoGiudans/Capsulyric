@@ -63,9 +63,14 @@ import com.example.islandlyrics.R
 import com.example.islandlyrics.core.cache.AppImageCacheManager
 import com.example.islandlyrics.lyrics.local.LocalLyricDirectoryManager
 import com.example.islandlyrics.lyrics.cache.OnlineLyricCacheStore
+import android.content.Intent
 import com.example.islandlyrics.feature.cache.CacheManagementViewModel
 import com.example.islandlyrics.feature.cache.filterByCacheQuery
+import com.example.islandlyrics.feature.onlinelyricdebug.OnlineLyricDebugActivity
+import com.example.islandlyrics.feature.settings.SettingsActivity
 import com.example.islandlyrics.ui.miuix.navigation.MiuixBackHandler
+import com.example.islandlyrics.ui.miuix.search.MiuixLookingForOtherSettings
+import com.example.islandlyrics.ui.miuix.search.OtherSettingLink
 import com.example.islandlyrics.ui.miuix.blur.MiuixBlurDialog
 import com.example.islandlyrics.ui.miuix.blur.MiuixBlurScaffold
 import com.example.islandlyrics.ui.miuix.blur.MiuixBlurTopAppBar
@@ -405,6 +410,27 @@ fun MiuixCacheManagementScreen(
                         }
                     }
                 }
+            }
+            item {
+                MiuixLookingForOtherSettings(
+                    links = listOf(
+                        OtherSettingLink(
+                            titleRes = R.string.online_lyric_rematch_title,
+                            onClick = {
+                                context.startActivity(Intent(context, OnlineLyricDebugActivity::class.java))
+                            }
+                        ),
+                        OtherSettingLink(
+                            titleRes = R.string.settings_local_lyrics_title,
+                            onClick = {
+                                context.startActivity(Intent(context, SettingsActivity::class.java).apply {
+                                    putExtra("open_page", "local_lyrics")
+                                })
+                            }
+                        )
+                    ),
+                    modifier = Modifier.padding(top = 12.dp)
+                )
             }
         }
 
