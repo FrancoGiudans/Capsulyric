@@ -39,13 +39,13 @@ class CacheManagementActivity : BaseActivity() {
             if (isMiuixEnabled(this)) {
                 MiuixAppTheme {
                     PredictiveBackActivity {
-                        MiuixCacheManagementScreen(onBack = { finish() })
+                        MiuixCacheManagementScreen(onBack = { onSupportNavigateUp() })
                     }
                 }
             } else {
                 AppTheme {
                     PredictiveBackActivity {
-                        CacheManagementScreen(onBack = { finish() })
+                        CacheManagementScreen(onBack = { onSupportNavigateUp() })
                     }
                 }
             }

@@ -477,7 +477,7 @@
     <string name="dialog_hide_launcher_message">隱藏後，您可以透過以下方式開啟 Capsulyric：\n\n
 · 下拉控制中心中的 Capsulyric 捷徑開關；\n
 · 在任意瀏覽器網址列輸入 capsulyric://settings；\n
-· 系統設定 → 應用程式管理 → Capsulyric → 空間管理（部分裝置如 HyperOS 上需點擊「清除資料」後才會顯示該按鈕）</string>
+· 系統設定 → 應用程式管理 → Capsulyric → 空間管理，進入快取管理頁面。點擊頁面左上角返回按鈕可進入 Capsulyric 的應用程式設定；使用系統返回鍵則會回到系統設定。部分裝置如 HyperOS 上需點擊「清除資料」後才能看到該按鈕</string>
     <string name="dialog_hide_launcher_btn_add_tile_and_hide">新增捷徑並隱藏</string>
     <string name="dialog_hide_launcher_btn_hide_now">立即隱藏</string>
     <string name="dialog_hide_launcher_btn_cancel">取消</string>
@@ -662,7 +662,7 @@
 <b>2. 匯出 ZIP 壓縮檔</b>\n
 進入日誌介面後，點擊右上角的「分享/匯出」按鈕。您可以根據需求選擇特定的時間範圍，App 將自動對環境上下文資訊與系統日誌進行打包。在提交 GitHub Issue 或填寫回饋表單時，請務必作為附件上傳此 ZIP 檔案。</string>
     <string name="faq_q_hide_launcher_entry">Q：隱藏桌面圖示後如何開啟應用程式？</string>
-    <string name="faq_a_hide_launcher_entry">A：隱藏桌面圖示後，您可以透過以下方式開啟 Capsulyric：\n\n<b>1. 控制中心捷徑開關</b>\n下拉通知列，點擊 Capsulyric 捷徑即可直接開啟應用程式。\n\n<b>2. URL Scheme</b>\n在任意瀏覽器網址列輸入 <b>capsulyric://settings</b> 並造訪，即可喚醒應用程式。\n\n<b>3. 空間管理</b>\n前往<b>系統設定 → 應用程式管理 → Capsulyric → 空間管理</b>即可開啟應用程式。部分裝置（如 HyperOS）上，空間管理按鈕需要點擊「清除資料」後才能看到。</string>
+    <string name="faq_a_hide_launcher_entry">A：隱藏桌面圖示後，您可以透過以下方式開啟 Capsulyric：\n\n<b>1. 控制中心捷徑開關</b>\n下拉通知列，點擊 Capsulyric 捷徑即可直接開啟應用程式。\n\n<b>2. URL Scheme</b>\n在任意瀏覽器網址列輸入 <b>capsulyric://settings</b> 並造訪，即可喚醒應用程式。\n\n<b>3. 空間管理</b>\n前往<b>系統設定 → 應用程式管理 → Capsulyric → 空間管理</b>進入<b>快取管理</b>頁面。點擊頁面左上角返回按鈕可進入 Capsulyric 的<b>應用程式設定</b>；使用系統返回鍵則會回到系統設定。部分裝置（如 HyperOS）上，空間管理按鈕需要點擊「清除資料」後才能看到。</string>
     <string name="faq_q_no_pinyin_translation">Q：為什麼部分歌曲沒有翻譯或羅馬音歌詞？</string>
     <string name="faq_a_no_pinyin_translation">A：羅馬音與歌詞翻譯目前僅支援透過<b>線上歌詞</b>與 <b>Lyricon API</b> 獲取。\n\n同時您需要在對應應用程式的解析規則中開啟相關選項：\n\n1. 開啟<b>解析規則</b>，找到對應音樂應用程式的規則。\n\n2. 勾選<b>接收翻譯</b>和/或<b>接收拼音/羅馬音歌詞</b>。\n\n3. 如果使用線上歌詞，請確保歌詞來源支援翻譯或羅馬音欄位。</string>
 
