@@ -42,6 +42,9 @@ import com.example.islandlyrics.feature.customsettings.material.DesktopLyricsScr
 import com.example.islandlyrics.feature.customsettings.miuix.MiuixAppUiScreen
 import com.example.islandlyrics.feature.customsettings.miuix.MiuixCapsuleNotificationScreen
 import com.example.islandlyrics.feature.customsettings.miuix.MiuixDesktopLyricsScreen
+import com.example.islandlyrics.core.settings.search.SettingsSearchAction
+import com.example.islandlyrics.core.settings.search.SettingsNavigationTarget
+import com.example.islandlyrics.feature.customsettings.CustomSettingsTab
 import com.example.islandlyrics.feature.diagnostics.material.DiagnosticsScreen
 import com.example.islandlyrics.feature.diagnostics.miuix.MiuixDiagnosticsScreen
 import com.example.islandlyrics.feature.faq.material.FAQScreen
@@ -412,7 +415,7 @@ class MainActivity : BaseActivity() {
                         versionText = versionText,
                         isDebugBuild = BuildConfig.DEBUG,
                         onOpenSettings = {},
-                        onOpenPersonalization = { pushPage(AppPage.CustomSettings) },
+                        onOpenPersonalization = { pushPage(AppPage.CustomSettings()) },
                         onOpenWhitelist = {},
                         onOpenDebug = { openDebugCenter() },
                         onOpenPromotedSettings = { openPromotedSettings() },
@@ -444,10 +447,10 @@ class MainActivity : BaseActivity() {
                         updateCodenameText = BuildConfig.VERSION_CODENAME,
                         updateBuildText = BuildConfig.GIT_COMMIT_HASH,
                         onOpenCustomSettings = {
-                            pushPage(AppPage.CustomSettings)
+                            pushPage(AppPage.CustomSettings())
                         },
-                        onOpenCapsuleNotification = { pushPage(AppPage.CapsuleNotification) },
-                        onOpenDesktopLyrics = { pushPage(AppPage.DesktopLyrics) },
+                        onOpenCapsuleNotification = { pushPage(AppPage.CapsuleNotification()) },
+                        onOpenDesktopLyrics = { pushPage(AppPage.DesktopLyrics()) },
                         onOpenCommunity = { pushPage(AppPage.Community) },
                         onOpenFaq = { pushPage(AppPage.Faq) },
                         onOpenAbout = { pushPage(AppPage.About) },
@@ -504,6 +507,24 @@ class MainActivity : BaseActivity() {
         }
         fun popPage() {
             if (pageStack.isNotEmpty()) pageStack.removeAt(pageStack.lastIndex)
+        }
+        fun handleNavigate(action: SettingsSearchAction.Navigate) {
+            when (action.target) {
+                SettingsNavigationTarget.CAPSULE_NOTIFICATION -> pushPage(AppPage.CapsuleNotification(initialTab = action.tab, targetItemKey = action.targetItemKey))
+                SettingsNavigationTarget.APP_UI -> pushPage(AppPage.CustomSettings(targetItemKey = action.targetItemKey))
+                SettingsNavigationTarget.DESKTOP_LYRICS -> pushPage(AppPage.DesktopLyrics(targetItemKey = action.targetItemKey))
+                SettingsNavigationTarget.LOCAL_LYRIC_DIRECTORIES -> pushPage(AppPage.LocalLyricDirectories)
+                SettingsNavigationTarget.CACHE_MANAGEMENT -> pushPage(AppPage.CacheManagement)
+                SettingsNavigationTarget.ONLINE_LYRIC_REMATCH -> pushPage(AppPage.OnlineLyricDebug)
+                SettingsNavigationTarget.LAST_FM -> pushPage(AppPage.LastFm)
+                SettingsNavigationTarget.APPLE_MUSIC -> startActivity(Intent(this@MainActivity, com.example.islandlyrics.feature.applemusic.AppleMusicSettingsActivity::class.java))
+                SettingsNavigationTarget.FAQ -> pushPage(AppPage.Faq)
+                SettingsNavigationTarget.COMMUNITY -> pushPage(AppPage.Community)
+                SettingsNavigationTarget.ABOUT -> pushPage(AppPage.About)
+                SettingsNavigationTarget.DIAGNOSTICS -> pushPage(AppPage.Diagnostics)
+                SettingsNavigationTarget.LAB -> pushPage(AppPage.Lab)
+                SettingsNavigationTarget.PARSER_RULES -> startActivity(Intent(this@MainActivity, com.example.islandlyrics.feature.parserrule.ParserRuleActivity::class.java))
+            }
         }
         val snackbarHostState = remember { MiuixSnackbarHostState() }
         val backdropBackground = MiuixTheme.colorScheme.surface
@@ -611,7 +632,7 @@ class MainActivity : BaseActivity() {
                                     versionText = versionText,
                                     isDebugBuild = BuildConfig.DEBUG,
                                     onOpenSettings = {},
-                                    onOpenPersonalization = { pushPage(AppPage.CustomSettings) },
+                                    onOpenPersonalization = { pushPage(AppPage.CustomSettings()) },
                                     onOpenWhitelist = {},
                                     onOpenDebug = { openDebugCenter() },
                                     onOpenPromotedSettings = { openPromotedSettings() },
@@ -642,10 +663,10 @@ class MainActivity : BaseActivity() {
                                     updateCodenameText = BuildConfig.VERSION_CODENAME,
                                     updateBuildText = BuildConfig.GIT_COMMIT_HASH,
                                     onOpenCustomSettings = {
-                                        pushPage(AppPage.CustomSettings)
+                                        pushPage(AppPage.CustomSettings())
                                     },
-                                    onOpenCapsuleNotification = { pushPage(AppPage.CapsuleNotification) },
-                                    onOpenDesktopLyrics = { pushPage(AppPage.DesktopLyrics) },
+                                    onOpenCapsuleNotification = { pushPage(AppPage.CapsuleNotification()) },
+                                    onOpenDesktopLyrics = { pushPage(AppPage.DesktopLyrics()) },
                                     onOpenCommunity = { pushPage(AppPage.Community) },
                                     onOpenFaq = { pushPage(AppPage.Faq) },
                                     onOpenAbout = { pushPage(AppPage.About) },
@@ -657,6 +678,7 @@ class MainActivity : BaseActivity() {
                                     onOpenLastFm = { pushPage(AppPage.LastFm) },
                                     onOpenCacheManagement = { pushPage(AppPage.CacheManagement) },
                                     onOpenLab = { pushPage(AppPage.Lab) },
+                                    onNavigateAction = ::handleNavigate,
                                     showBackButton = false,
                                     onBottomBarVisibilityChange = { bottomBarVisible = it }
                                 )
@@ -739,7 +761,8 @@ class MainActivity : BaseActivity() {
                         MiuixAppPage(
                             page = page,
                             onBack = ::popPage,
-                            onPushPage = ::pushPage
+                            onPushPage = ::pushPage,
+                            onNavigate = ::handleNavigate
                         )
                     }
                 )
@@ -876,9 +899,9 @@ class MainActivity : BaseActivity() {
         onPushPage: (AppPage) -> Unit
     ) {
         when (page) {
-            AppPage.CustomSettings -> AppUiScreen(onBack = onBack)
-            AppPage.CapsuleNotification -> CapsuleNotificationScreen(onBack = onBack)
-            AppPage.DesktopLyrics -> DesktopLyricsScreen(onBack = onBack)
+            is AppPage.CustomSettings -> AppUiScreen(onBack = onBack)
+            is AppPage.CapsuleNotification -> CapsuleNotificationScreen(onBack = onBack)
+            is AppPage.DesktopLyrics -> DesktopLyricsScreen(onBack = onBack)
             AppPage.Community -> CommunityScreen(onBack = onBack)
             AppPage.LocalLyricDirectories -> LocalLyricDirectoriesScreen(
                 onBack = onBack,
@@ -910,7 +933,7 @@ class MainActivity : BaseActivity() {
             AppPage.OnlineLyricDebug -> OnlineLyricDebugScreen(onBack = onBack)
             AppPage.LastFm -> LastFmSettingsScreen(onBack = onBack)
             AppPage.CacheManagement -> CacheManagementScreen(onBack = onBack)
-            AppPage.Lab -> LabScreen(onBack = onBack, onOpenCapsuleNotification = { onPushPage(AppPage.CapsuleNotification) })
+            AppPage.Lab -> LabScreen(onBack = onBack, onOpenCapsuleNotification = { onPushPage(AppPage.CapsuleNotification()) })
             AppPage.LogViewer -> LogViewerScreen(onBack = onBack)
             is AppPage.LocalLyricDirectory -> LocalLyricDirectoryScreen(
                 directoryUri = page.directoryUri.toUri(),
@@ -969,12 +992,26 @@ class MainActivity : BaseActivity() {
     private fun MiuixAppPage(
         page: AppPage,
         onBack: () -> Unit,
-        onPushPage: (AppPage) -> Unit
+        onPushPage: (AppPage) -> Unit,
+        onNavigate: (SettingsSearchAction.Navigate) -> Unit
     ) {
         when (page) {
-            AppPage.CustomSettings -> MiuixAppUiScreen(onBack = onBack)
-            AppPage.CapsuleNotification -> MiuixCapsuleNotificationScreen(onBack = onBack)
-            AppPage.DesktopLyrics -> MiuixDesktopLyricsScreen(onBack = onBack)
+            is AppPage.CustomSettings -> MiuixAppUiScreen(
+                onBack = onBack,
+                targetItemKey = page.targetItemKey,
+                onNavigate = onNavigate
+            )
+            is AppPage.CapsuleNotification -> MiuixCapsuleNotificationScreen(
+                onBack = onBack,
+                initialTab = page.initialTab,
+                targetItemKey = page.targetItemKey,
+                onNavigate = onNavigate
+            )
+            is AppPage.DesktopLyrics -> MiuixDesktopLyricsScreen(
+                onBack = onBack,
+                targetItemKey = page.targetItemKey,
+                onNavigate = onNavigate
+            )
             AppPage.Community -> MiuixCommunityScreen(onBack = onBack)
             AppPage.LocalLyricDirectories -> MiuixLocalLyricDirectoriesScreen(
                 onBack = onBack,
@@ -1006,7 +1043,7 @@ class MainActivity : BaseActivity() {
             AppPage.OnlineLyricDebug -> MiuixOnlineLyricDebugScreen(onBack = onBack)
             AppPage.LastFm -> MiuixLastFmSettingsScreen(onBack = onBack)
             AppPage.CacheManagement -> MiuixCacheManagementScreen(onBack = onBack)
-            AppPage.Lab -> MiuixLabScreen(onBack = onBack, onOpenCapsuleNotification = { onPushPage(AppPage.CapsuleNotification) })
+            AppPage.Lab -> MiuixLabScreen(onBack = onBack, onOpenCapsuleNotification = { onPushPage(AppPage.CapsuleNotification()) })
             AppPage.LogViewer -> MiuixLogViewerScreen(onBack = onBack)
             is AppPage.LocalLyricDirectory -> MiuixLocalLyricDirectoryScreen(
                 directoryUri = page.directoryUri.toUri(),
@@ -1063,9 +1100,9 @@ class MainActivity : BaseActivity() {
 }
 
 private sealed class AppPage {
-    data object CustomSettings : AppPage()
-    data object CapsuleNotification : AppPage()
-    data object DesktopLyrics : AppPage()
+    data class CustomSettings(val targetItemKey: String? = null) : AppPage()
+    data class CapsuleNotification(val initialTab: CustomSettingsTab? = null, val targetItemKey: String? = null) : AppPage()
+    data class DesktopLyrics(val targetItemKey: String? = null) : AppPage()
     data object Community : AppPage()
     data object LocalLyricDirectories : AppPage()
     data object Faq : AppPage()

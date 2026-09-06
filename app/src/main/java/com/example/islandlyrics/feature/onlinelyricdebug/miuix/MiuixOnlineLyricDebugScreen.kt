@@ -62,9 +62,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import android.content.Intent
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.islandlyrics.R
 import com.example.islandlyrics.core.network.OfflineModeManager
+import com.example.islandlyrics.feature.applemusic.AppleMusicSettingsActivity
+import com.example.islandlyrics.feature.cache.CacheManagementActivity
+import com.example.islandlyrics.feature.parserrule.ParserRuleActivity
 import com.example.islandlyrics.lyrics.online.OnlineLyricFetcher
 import com.example.islandlyrics.feature.onlinelyricdebug.OnlineLyricDebugViewModel
 import com.example.islandlyrics.ui.miuix.blur.MiuixBlurDialog
@@ -72,6 +76,8 @@ import com.example.islandlyrics.ui.miuix.blur.MiuixBlurScaffold
 import com.example.islandlyrics.ui.miuix.blur.MiuixBlurTopAppBar
 import com.example.islandlyrics.ui.miuix.effects.miuixPageScroll
 import com.example.islandlyrics.ui.miuix.navigation.MiuixBackIcon
+import com.example.islandlyrics.ui.miuix.search.MiuixLookingForOtherSettings
+import com.example.islandlyrics.ui.miuix.search.OtherSettingLink
 import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.Icon
@@ -432,6 +438,31 @@ fun MiuixOnlineLyricDebugScreen(
                         }
                     }
                 }
+            }
+            item {
+                MiuixLookingForOtherSettings(
+                    links = listOf(
+                        OtherSettingLink(
+                            titleRes = R.string.apple_music_settings_title,
+                            onClick = {
+                                context.startActivity(Intent(context, AppleMusicSettingsActivity::class.java))
+                            }
+                        ),
+                        OtherSettingLink(
+                            titleRes = R.string.settings_link_parser_rules,
+                            onClick = {
+                                context.startActivity(Intent(context, ParserRuleActivity::class.java))
+                            }
+                        ),
+                        OtherSettingLink(
+                            titleRes = R.string.title_cache_management,
+                            onClick = {
+                                context.startActivity(Intent(context, CacheManagementActivity::class.java))
+                            }
+                        )
+                    ),
+                    modifier = Modifier.padding(top = 12.dp)
+                )
             }
         }
 

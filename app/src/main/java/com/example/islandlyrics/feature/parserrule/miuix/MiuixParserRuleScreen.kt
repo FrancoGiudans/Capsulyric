@@ -24,7 +24,13 @@ package com.example.islandlyrics.feature.parserrule.miuix
 
 import com.example.islandlyrics.ui.miuix.navigation.MiuixBackHandler
 import android.content.Context
+import android.content.Intent
 import com.example.islandlyrics.R
+import com.example.islandlyrics.feature.applemusic.AppleMusicSettingsActivity
+import com.example.islandlyrics.feature.lastfm.LastFmSettingsActivity
+import com.example.islandlyrics.feature.settings.SettingsActivity
+import com.example.islandlyrics.ui.miuix.search.MiuixLookingForOtherSettings
+import com.example.islandlyrics.ui.miuix.search.OtherSettingLink
 import com.example.islandlyrics.core.network.OfflineModeManager
 import com.example.islandlyrics.core.settings.AppPreferences
 import com.example.islandlyrics.rules.ParserRuleHelper
@@ -358,6 +364,34 @@ fun MiuixParserRuleScreen(
                                 }
                             }
                         }
+                    }
+
+                    item {
+                        MiuixLookingForOtherSettings(
+                            links = listOf(
+                                OtherSettingLink(
+                                    titleRes = R.string.apple_music_settings_title,
+                                    onClick = {
+                                        context.startActivity(Intent(context, AppleMusicSettingsActivity::class.java))
+                                    }
+                                ),
+                                OtherSettingLink(
+                                    titleRes = R.string.settings_local_lyrics_title,
+                                    onClick = {
+                                        context.startActivity(Intent(context, SettingsActivity::class.java).apply {
+                                            putExtra("open_page", "local_lyrics")
+                                        })
+                                    }
+                                ),
+                                OtherSettingLink(
+                                    titleRes = R.string.lastfm_title,
+                                    onClick = {
+                                        context.startActivity(Intent(context, LastFmSettingsActivity::class.java))
+                                    }
+                                )
+                            ),
+                            modifier = Modifier.padding(top = 12.dp)
+                        )
                     }
                 }
 
