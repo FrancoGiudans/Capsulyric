@@ -751,8 +751,9 @@ class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(app
                     durationMs = mediaInfo.duration,
                     albumArtist = mediaInfo.albumArtist,
                     mediaId = mediaInfo.mediaId,
+                    mediaUri = mediaInfo.mediaUri,
                     providerOrderIds = if (rule.useSmartOnlineLyricSelection) {
-                        OnlineLyricProvider.defaultIds()
+                        OnlineLyricProvider.defaultIdsForPackage(mediaInfo.packageName)
                     } else {
                         _providerOrder.value.orEmpty().map { it.id }
                     },
@@ -909,8 +910,9 @@ class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(app
                     durationMs = mediaInfo.duration,
                     albumArtist = mediaInfo.albumArtist,
                     mediaId = mediaInfo.mediaId,
+                    mediaUri = mediaInfo.mediaUri,
                     providerOrderIds = if (rule.useSmartOnlineLyricSelection) {
-                        OnlineLyricProvider.defaultIds()
+                        OnlineLyricProvider.defaultIdsForPackage(mediaInfo.packageName)
                     } else {
                         _providerOrder.value.orEmpty().map { it.id }
                     },

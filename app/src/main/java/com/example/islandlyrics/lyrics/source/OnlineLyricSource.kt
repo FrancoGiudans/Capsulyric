@@ -200,8 +200,9 @@ class OnlineLyricSource(private val context: Context) {
                     durationMs = metadata?.duration ?: 0L,
                     albumArtist = metadata?.albumArtist.orEmpty(),
                     mediaId = metadata?.mediaId.orEmpty(),
+                    mediaUri = metadata?.mediaUri.orEmpty(),
                     providerOrderIds = if (rule.useSmartOnlineLyricSelection) {
-                        OnlineLyricProvider.defaultIds()
+                        OnlineLyricProvider.defaultIdsForPackage(packageName)
                     } else {
                         rule.onlineLyricProviderOrder
                     },

@@ -60,7 +60,8 @@ class OnlineLyricFetcher(
         val album: String = "",
         val durationMs: Long = 0L,
         val albumArtist: String = "",
-        val mediaId: String = ""
+        val mediaId: String = "",
+        val mediaUri: String = ""
     )
     
     // 歌词行数据类
@@ -159,6 +160,7 @@ class OnlineLyricFetcher(
         durationMs: Long = 0L,
         albumArtist: String = "",
         mediaId: String = "",
+        mediaUri: String = "",
         providerOrderIds: List<String> = OnlineLyricProvider.defaultIds(),
         useSmartSelection: Boolean = true,
         disabledProviderIds: Set<String> = emptySet()
@@ -171,7 +173,8 @@ class OnlineLyricFetcher(
             album = album,
             durationMs = durationMs,
             albumArtist = albumArtist,
-            mediaId = mediaId
+            mediaId = mediaId,
+            mediaUri = mediaUri
         )
         if (!networkAllowed()) {
             AppLogger.getInstance().i("OnlineLyric", "Offline mode enabled, online lyric fetch blocked")
@@ -216,6 +219,63 @@ class OnlineLyricFetcher(
                     usedCleanTitleFallback = cleanAttempts.any { it.result != null }
                 )
             }
+        }
+
+        // Apple Music bridge: resolve a bounded set of catalog aliases using
+        // source storefront metadata and ISRC, then retry domestic providers
+        // with the evidence-backed localized title/artist. This is kept after
+        // the cheap title paths so normal tracks pay no extra network cost.
+        if (
+            OnlineLyricProvider.AppleMusic in providerOrder &&
+            providerOrder.any { it != OnlineLyricProvider.AppleMusic } &&
+            (album.isNotBlank() || durationMs > 0L)
+        ) {
+            val aliasAttempts = mutableListOf<ProviderAttempt>()
+            val aliases = appleMusicProvider.resolveCatalogAliases(
+                title = title,
+                artist = artist,
+                album = album,
+                durationMs = durationMs,
+                mediaId = mediaId,
+                mediaUri = mediaUri
+            )
+            val aliasProviders = providerOrder.filterNot { it == OnlineLyricProvider.AppleMusic }
+            for (alias in aliases.take(MAX_APPLE_ALIAS_QUERIES)) {
+                if (alias.title.equals(title, ignoreCase = true) &&
+                    alias.artist.equals(artist, ignoreCase = true)
+                ) continue
+
+                val aliasQuery = query.copy(
+                    title = alias.title,
+                    artist = alias.artist,
+                    album = alias.album ?: album,
+                    durationMs = alias.durationMs ?: durationMs
+                )
+                val attempts = fetchAllProviders(
+                    aliasQuery,
+                    aliasProviders,
+                    usedCleanTitleFallback = true
+                )
+                aliasAttempts += attempts
+                val aliasBest = selector.selectBestResult(
+                    attempts = attempts,
+                    targetTitle = aliasQuery.title,
+                    targetArtist = aliasQuery.artist,
+                    providerOrder = aliasProviders,
+                    useSmartSelection = useSmartSelection,
+                    targetAlbum = aliasQuery.album,
+                    targetDurationMs = aliasQuery.durationMs
+                )
+                if (aliasBest != null) {
+                    return FetchOutcome(
+                        query = query,
+                        bestResult = aliasBest,
+                        attempts = fallbackAttempts + aliasAttempts,
+                        usedCleanTitleFallback = true
+                    )
+                }
+            }
+            fallbackAttempts = fallbackAttempts + aliasAttempts
         }
 
         // Cross-language fallback: search by artist only when title-based queries
@@ -347,6 +407,7 @@ class OnlineLyricFetcher(
     private companion object {
         private const val FETCH_TIMEOUT_MS = 10_000L
         private const val FAST_RESULT_GRACE_PERIOD_MS = 500L
+        private const val MAX_APPLE_ALIAS_QUERIES = 3
     }
 }
 
