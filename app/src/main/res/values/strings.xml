@@ -1061,6 +1061,9 @@ Within the log interface, select the share/export icon. You can specify a timefr
     <string name="online_lyric_debug_no_romanization_match">Do not match romanization lyrics</string>
     <string name="online_lyric_debug_no_sidecar_summary">Keep this lyric type unmatched</string>
     <string name="online_lyric_debug_clean_title_badge">Clean title retry</string>
+    <string name="online_lyric_debug_query_variant_fmt">Query variant: %1$s</string>
+    <string name="online_lyric_debug_identity_score_fmt">Identity score: %1$d</string>
+    <string name="online_lyric_debug_identity_evidence_fmt">Identity evidence: %1$s</string>
     <string name="online_lyric_debug_main_candidates">Main lyric source</string>
     <string name="online_lyric_debug_translation_candidates">Translation lyric source</string>
     <string name="online_lyric_debug_roman_candidates">Romanization lyric source</string>

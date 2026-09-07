@@ -760,6 +760,22 @@ private fun resultBadges(
     if (attempt?.usedCleanTitleFallback == true) {
         labels += stringResource(R.string.online_lyric_debug_clean_title_badge)
     }
+    if (attempt != null && attempt.queryVariant != "exact") {
+        labels += stringResource(
+            R.string.online_lyric_debug_query_variant_fmt,
+            attempt.queryVariant
+        )
+    }
+    if (result != null && result.identityEvidence != null) {
+        labels += stringResource(
+            R.string.online_lyric_debug_identity_score_fmt,
+            result.identityScore
+        )
+        labels += stringResource(
+            R.string.online_lyric_debug_identity_evidence_fmt,
+            result.identityEvidence.orEmpty()
+        )
+    }
     return labels
 }
 

@@ -1071,6 +1071,9 @@
     <string name="online_lyric_debug_no_romanization_match">無比對羅馬音</string>
     <string name="online_lyric_debug_no_sidecar_summary">無副歌詞資料</string>
     <string name="online_lyric_debug_clean_title_badge">淨化標題</string>
+    <string name="online_lyric_debug_query_variant_fmt">查詢變體：%1$s</string>
+    <string name="online_lyric_debug_identity_score_fmt">身份分：%1$d</string>
+    <string name="online_lyric_debug_identity_evidence_fmt">身份證據：%1$s</string>
     <string name="online_lyric_debug_main_candidates">主歌詞來源</string>
     <string name="online_lyric_debug_translation_candidates">翻譯歌詞來源</string>
     <string name="online_lyric_debug_roman_candidates">羅馬音歌詞來源</string>
