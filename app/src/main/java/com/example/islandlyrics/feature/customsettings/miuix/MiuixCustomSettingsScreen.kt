@@ -431,6 +431,14 @@ fun MiuixCustomSettingsScreen(
         }
     }
 
+    // MiPlay button is HyperOS-only; reset it on other ROMs
+    LaunchedEffect(isHyperOs) {
+        if (!isHyperOs && actionStyle == "miplay") {
+            actionStyle = "disabled"
+            viewModel.dispatch(CustomSettingsAction.SetNotificationActionsStyle("disabled"))
+        }
+    }
+
     val isSystemDark = androidx.compose.foundation.isSystemInDarkTheme()
     val previewIsDarkTheme = if (followSystem) isSystemDark else darkMode
     val previewController = rememberIslandLyricsMiuixThemeController(
@@ -1030,7 +1038,7 @@ fun MiuixCustomSettingsScreen(
                                             stringResource(R.string.settings_action_style_off),
                                             stringResource(R.string.settings_action_style_media)
                                         )
-                                        if (isLiveUpdateSupported) {
+                                        if (isHyperOs) {
                                             actionStyles.add("miplay")
                                             actionStyleNames.add(stringResource(R.string.settings_action_style_miplay))
                                         }
