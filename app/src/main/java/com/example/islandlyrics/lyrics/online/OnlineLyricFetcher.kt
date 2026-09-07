@@ -29,6 +29,7 @@ package com.example.islandlyrics.lyrics.online
 
 import com.example.islandlyrics.lyrics.online.network.OnlineLyricHttpClient
 import com.example.islandlyrics.lyrics.online.provider.AppleMusicLyricProvider
+import com.example.islandlyrics.lyrics.online.provider.AppleMusicCatalogAlias
 import com.example.islandlyrics.lyrics.online.provider.KugouLyricProvider
 import com.example.islandlyrics.lyrics.online.provider.LrcApiLyricProvider
 import com.example.islandlyrics.lyrics.online.provider.LrclibLyricProvider
@@ -161,6 +162,8 @@ class OnlineLyricFetcher(
         albumArtist: String = "",
         mediaId: String = "",
         mediaUri: String = "",
+        cachedAppleAliases: List<AppleMusicCatalogAlias> = emptyList(),
+        onAppleAliasesResolved: (suspend (List<AppleMusicCatalogAlias>) -> Unit)? = null,
         providerOrderIds: List<String> = OnlineLyricProvider.defaultIds(),
         useSmartSelection: Boolean = true,
         disabledProviderIds: Set<String> = emptySet()
@@ -231,14 +234,20 @@ class OnlineLyricFetcher(
             (album.isNotBlank() || durationMs > 0L)
         ) {
             val aliasAttempts = mutableListOf<ProviderAttempt>()
-            val aliases = appleMusicProvider.resolveCatalogAliases(
-                title = title,
-                artist = artist,
-                album = album,
-                durationMs = durationMs,
-                mediaId = mediaId,
-                mediaUri = mediaUri
-            )
+            val aliases = if (cachedAppleAliases.isNotEmpty()) {
+                cachedAppleAliases
+            } else {
+                appleMusicProvider.resolveCatalogAliases(
+                    title = title,
+                    artist = artist,
+                    album = album,
+                    durationMs = durationMs,
+                    mediaId = mediaId,
+                    mediaUri = mediaUri
+                ).also { resolved ->
+                    if (resolved.isNotEmpty()) onAppleAliasesResolved?.invoke(resolved)
+                }
+            }
             val aliasProviders = providerOrder.filterNot { it == OnlineLyricProvider.AppleMusic }
             for (alias in aliases.take(MAX_APPLE_ALIAS_QUERIES)) {
                 if (alias.title.equals(title, ignoreCase = true) &&

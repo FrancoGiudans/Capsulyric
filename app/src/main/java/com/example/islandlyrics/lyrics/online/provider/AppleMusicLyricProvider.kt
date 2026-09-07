@@ -49,7 +49,7 @@ import java.util.concurrent.TimeUnit
  * - 歌词接口 `l` 参数已参数化（参考项目硬编码 zh-hans-cn，此处用配置语言）
  * - TTML 逐字：优先 `ttmlLocalizations` 回退 `ttml`，需含 begin=/end= 才采用
  */
-internal data class AppleMusicCatalogAlias(
+data class AppleMusicCatalogAlias(
     val title: String,
     val artist: String,
     val album: String?,

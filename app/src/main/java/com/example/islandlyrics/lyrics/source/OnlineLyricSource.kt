@@ -29,6 +29,7 @@ import com.example.islandlyrics.runtime.service.LyricService
 import com.example.islandlyrics.rules.ParserRuleHelper
 import com.example.islandlyrics.lyrics.state.LyricRepository
 import com.example.islandlyrics.lyrics.cache.OnlineLyricCacheStore
+import com.example.islandlyrics.lyrics.cache.TrackIdentityCacheStore
 import com.example.islandlyrics.lyrics.online.OnlineLyricFetcher
 import com.example.islandlyrics.lyrics.online.OnlineLyricFetchSnapshotStore
 import com.example.islandlyrics.lyrics.online.provider.OnlineLyricProvider
@@ -55,6 +56,7 @@ class OnlineLyricSource(private val context: Context) {
 
     private val fetcher    = OnlineLyricFetcher(networkAllowed = { !OfflineModeManager.isEnabled(context) })
     private val cacheStore = OnlineLyricCacheStore(context)
+    private val identityCacheStore = TrackIdentityCacheStore(context)
     private val scope      = CoroutineScope(Dispatchers.Main + Job())
     private var fetchJob: Job? = null
 
@@ -201,6 +203,37 @@ class OnlineLyricSource(private val context: Context) {
                     albumArtist = metadata?.albumArtist.orEmpty(),
                     mediaId = metadata?.mediaId.orEmpty(),
                     mediaUri = metadata?.mediaUri.orEmpty(),
+                    cachedAppleAliases = if (metadata != null) {
+                        withContext(Dispatchers.IO) {
+                            identityCacheStore.getAliases(
+                                packageName = packageName,
+                                title = queryTitle,
+                                artist = queryArtist,
+                                album = metadata.album,
+                                durationMs = metadata.duration,
+                                mediaId = metadata.mediaId,
+                                mediaUri = metadata.mediaUri
+                            )
+                        }
+                    } else {
+                        emptyList()
+                    },
+                    onAppleAliasesResolved = { aliases ->
+                        if (metadata != null) {
+                            withContext(Dispatchers.IO) {
+                                identityCacheStore.saveAliases(
+                                    packageName = packageName,
+                                    title = queryTitle,
+                                    artist = queryArtist,
+                                    album = metadata.album,
+                                    durationMs = metadata.duration,
+                                    mediaId = metadata.mediaId,
+                                    mediaUri = metadata.mediaUri,
+                                    aliases = aliases
+                                )
+                            }
+                        }
+                    },
                     providerOrderIds = if (rule.useSmartOnlineLyricSelection) {
                         OnlineLyricProvider.defaultIdsForPackage(packageName)
                     } else {
