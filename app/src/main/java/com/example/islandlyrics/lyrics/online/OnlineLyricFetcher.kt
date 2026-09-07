@@ -96,6 +96,8 @@ class OnlineLyricFetcher(
         val matchedDurationMs: Long? = null,
         val providerTrackId: String? = null,
         val isrc: String? = null,
+        var identityScore: Int = 0,
+        var identityEvidence: String? = null,
         val translationLyrics: String? = null,
         val romanLyrics: String? = null,
         val error: String? = null            // 错误信息
@@ -105,7 +107,10 @@ class OnlineLyricFetcher(
         val provider: OnlineLyricProvider,
         val result: LyricResult?,
         val durationMs: Long,
-        val usedCleanTitleFallback: Boolean
+        val usedCleanTitleFallback: Boolean,
+        val queryTitle: String = "",
+        val queryArtist: String = "",
+        val queryVariant: String = "exact"
     )
 
     data class FetchOutcome(
@@ -202,7 +207,12 @@ class OnlineLyricFetcher(
         if (cleanTitle != title) {
             AppLogger.getInstance().i("OnlineLyric", "精确搜索未找到，尝试清理标题: $cleanTitle")
             val cleanQuery = query.copy(title = cleanTitle)
-            val cleanAttempts = fetchAllProviders(cleanQuery, providerOrder, usedCleanTitleFallback = true)
+            val cleanAttempts = fetchAllProviders(
+                cleanQuery,
+                providerOrder,
+                usedCleanTitleFallback = true,
+                queryVariant = "clean_title"
+            )
             val allAttempts = exactAttempts + cleanAttempts
             fallbackAttempts = allAttempts
             val cleanBest = selector.selectBestResult(
@@ -263,7 +273,8 @@ class OnlineLyricFetcher(
                 val attempts = fetchAllProviders(
                     aliasQuery,
                     aliasProviders,
-                    usedCleanTitleFallback = true
+                    usedCleanTitleFallback = true,
+                    queryVariant = "apple_alias"
                 )
                 aliasAttempts += attempts
                 val aliasBest = selector.selectBestResult(
@@ -295,7 +306,8 @@ class OnlineLyricFetcher(
             val artistAttempts = fetchAllProviders(
                 artistQuery,
                 providerOrder,
-                usedCleanTitleFallback = true
+                usedCleanTitleFallback = true,
+                queryVariant = "artist_only"
             )
             val allAttempts = fallbackAttempts + artistAttempts
             return FetchOutcome(
@@ -321,7 +333,8 @@ class OnlineLyricFetcher(
     private suspend fun fetchAllProviders(
         query: LyricQuery,
         providerOrder: List<OnlineLyricProvider>,
-        usedCleanTitleFallback: Boolean
+        usedCleanTitleFallback: Boolean,
+        queryVariant: String = if (usedCleanTitleFallback) "fallback" else "exact"
     ): List<ProviderAttempt> {
         return withContext(Dispatchers.IO) {
             try {
@@ -347,7 +360,10 @@ class OnlineLyricFetcher(
                             provider = provider,
                             result = result,
                             durationMs = System.currentTimeMillis() - startedAt,
-                            usedCleanTitleFallback = usedCleanTitleFallback
+                            usedCleanTitleFallback = usedCleanTitleFallback,
+                            queryTitle = query.title,
+                            queryArtist = query.artist,
+                            queryVariant = queryVariant
                         )
                     }
                 }

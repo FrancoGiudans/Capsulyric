@@ -37,6 +37,9 @@ internal class OnlineLyricSelector(
         targetAlbum: String = "",
         targetDurationMs: Long = 0L
     ): OnlineLyricFetcher.LyricResult? {
+        attempts.mapNotNull { it.result }.forEach {
+            annotateIdentity(it, targetTitle, targetArtist, targetAlbum, targetDurationMs)
+        }
         val usableResults = attempts.mapNotNull { it.result }
             .filter {
                 isUsableResult(it) && isIdentityAcceptable(
@@ -131,8 +134,8 @@ internal class OnlineLyricSelector(
     ): Int {
         var score = 0
 
-        val identityScore = identityScore(result, targetTitle, targetArtist, targetAlbum, targetDurationMs)
-        score += identityScore
+        val identity = annotateIdentity(result, targetTitle, targetArtist, targetAlbum, targetDurationMs)
+        score += identity.score
 
         val parsedLines = result.parsedLines.orEmpty()
         val lineCount = parsedLines.size
@@ -169,6 +172,44 @@ internal class OnlineLyricSelector(
         }
 
         return score
+    }
+
+    private data class IdentityAssessment(
+        val score: Int,
+        val evidence: String
+    )
+
+    private fun annotateIdentity(
+        result: OnlineLyricFetcher.LyricResult,
+        targetTitle: String,
+        targetArtist: String,
+        targetAlbum: String,
+        targetDurationMs: Long
+    ): IdentityAssessment {
+        val hasMetadata = listOf(
+            result.matchedTitle,
+            result.matchedArtist,
+            result.matchedAlbum,
+            result.matchedDurationMs?.toString(),
+            result.providerTrackId,
+            result.isrc
+        ).any { !it.isNullOrBlank() }
+        if (!hasMetadata) {
+            result.identityScore = 0
+            result.identityEvidence = "legacy-no-metadata"
+            return IdentityAssessment(0, "legacy-no-metadata")
+        }
+
+        val title = scoreTitleMatch(targetTitle, result.matchedTitle)
+        val artist = scoreArtistMatch(targetArtist, result.matchedArtist)
+        val album = scoreAlbumMatch(targetAlbum, result.matchedAlbum)
+        val duration = scoreDurationMatch(targetDurationMs, result.matchedDurationMs)
+        val stable = if (album >= 15 && duration >= 14) 40 else 0
+        val score = title + artist + album + duration + stable
+        val evidence = "title=$title,artist=$artist,album=$album,duration=$duration,stable=$stable"
+        result.identityScore = score
+        result.identityEvidence = evidence
+        return IdentityAssessment(score, evidence)
     }
 
     private fun isIdentityAcceptable(
