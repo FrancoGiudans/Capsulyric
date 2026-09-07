@@ -747,6 +747,10 @@ class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(app
                 val outcome = fetcher.fetchLyrics(
                     title = queryTitle,
                     artist = queryArtist,
+                    album = mediaInfo.album,
+                    durationMs = mediaInfo.duration,
+                    albumArtist = mediaInfo.albumArtist,
+                    mediaId = mediaInfo.mediaId,
                     providerOrderIds = if (rule.useSmartOnlineLyricSelection) {
                         OnlineLyricProvider.defaultIds()
                     } else {
@@ -901,6 +905,10 @@ class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(app
                 val outcome = fetcher.fetchLyrics(
                     title = queryTitle,
                     artist = queryArtist,
+                    album = mediaInfo.album,
+                    durationMs = mediaInfo.duration,
+                    albumArtist = mediaInfo.albumArtist,
+                    mediaId = mediaInfo.mediaId,
                     providerOrderIds = if (rule.useSmartOnlineLyricSelection) {
                         OnlineLyricProvider.defaultIds()
                     } else {

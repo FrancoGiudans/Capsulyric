@@ -540,6 +540,10 @@ class MediaMonitorService : NotificationListenerService() {
         val rawTitle = metadata.getString(MediaMetadata.METADATA_KEY_TITLE)
         val rawArtist = metadata.getString(MediaMetadata.METADATA_KEY_ARTIST)
         val album = metadata.getString(MediaMetadata.METADATA_KEY_ALBUM).orEmpty()
+        val albumArtist = metadata.getString(MediaMetadata.METADATA_KEY_ALBUM_ARTIST).orEmpty()
+        val mediaId = metadata.getString(MediaMetadata.METADATA_KEY_MEDIA_ID).orEmpty()
+        val mediaUri = metadata.getString(MediaMetadata.METADATA_KEY_MEDIA_URI).orEmpty()
+        val trackNumber = metadata.getLong(MediaMetadata.METADATA_KEY_TRACK_NUMBER).toInt()
         val duration = metadata.getLong(MediaMetadata.METADATA_KEY_DURATION)
 
         // (Suggestion logic moved to updateMetadataForSuggestion)
@@ -561,7 +565,18 @@ class MediaMonitorService : NotificationListenerService() {
                         ?: metadata.getBitmap(MediaMetadata.METADATA_KEY_ART)
         val artHash = artBitmap?.hashCode() ?: 0
         
-        val metadataHash = java.util.Objects.hash(rawTitle, rawArtist, pkg, duration, artHash)
+        val metadataHash = java.util.Objects.hash(
+            rawTitle,
+            rawArtist,
+            album,
+            albumArtist,
+            mediaId,
+            mediaUri,
+            trackNumber,
+            pkg,
+            duration,
+            artHash
+        )
         if (BuildConfig.DEBUG) {
             AppLogger.getInstance().log(
                 TAG,
@@ -756,7 +771,11 @@ class MediaMonitorService : NotificationListenerService() {
             duration = duration,
             rawTitle = rawTitle ?: finalTitle ?: "Unknown",
             rawArtist = rawArtist ?: finalArtist ?: "Unknown",
-            album = album
+            album = album,
+            albumArtist = albumArtist,
+            mediaId = mediaId,
+            mediaUri = mediaUri,
+            trackNumber = trackNumber
         )
 
         // Update Lyric if available

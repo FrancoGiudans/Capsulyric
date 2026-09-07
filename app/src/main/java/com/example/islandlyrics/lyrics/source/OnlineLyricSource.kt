@@ -196,6 +196,10 @@ class OnlineLyricSource(private val context: Context) {
                 val outcome = fetcher.fetchLyrics(
                     title = queryTitle,
                     artist = queryArtist,
+                    album = metadata?.album.orEmpty(),
+                    durationMs = metadata?.duration ?: 0L,
+                    albumArtist = metadata?.albumArtist.orEmpty(),
+                    mediaId = metadata?.mediaId.orEmpty(),
                     providerOrderIds = if (rule.useSmartOnlineLyricSelection) {
                         OnlineLyricProvider.defaultIds()
                     } else {

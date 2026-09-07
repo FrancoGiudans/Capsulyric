@@ -56,7 +56,11 @@ class OnlineLyricFetcher(
 
     data class LyricQuery(
         val title: String,
-        val artist: String
+        val artist: String,
+        val album: String = "",
+        val durationMs: Long = 0L,
+        val albumArtist: String = "",
+        val mediaId: String = ""
     )
     
     // 歌词行数据类
@@ -86,6 +90,10 @@ class OnlineLyricFetcher(
         val provider: OnlineLyricProvider,
         val matchedTitle: String? = null,    // 匹配到的标题
         val matchedArtist: String? = null,   // 匹配到的艺术家
+        val matchedAlbum: String? = null,
+        val matchedDurationMs: Long? = null,
+        val providerTrackId: String? = null,
+        val isrc: String? = null,
         val translationLyrics: String? = null,
         val romanLyrics: String? = null,
         val error: String? = null            // 错误信息
@@ -134,41 +142,106 @@ class OnlineLyricFetcher(
         useSmartSelection: Boolean = true,
         disabledProviderIds: Set<String> = emptySet()
     ): LyricResult? {
-        return fetchLyrics(title, artist, providerOrderIds, useSmartSelection, disabledProviderIds).bestResult
+        return fetchLyrics(
+            title = title,
+            artist = artist,
+            providerOrderIds = providerOrderIds,
+            useSmartSelection = useSmartSelection,
+            disabledProviderIds = disabledProviderIds
+        ).bestResult
     }
 
     @OptIn(ExperimentalCoroutinesApi::class)
     suspend fun fetchLyrics(
         title: String,
         artist: String,
+        album: String = "",
+        durationMs: Long = 0L,
+        albumArtist: String = "",
+        mediaId: String = "",
         providerOrderIds: List<String> = OnlineLyricProvider.defaultIds(),
         useSmartSelection: Boolean = true,
         disabledProviderIds: Set<String> = emptySet()
     ): FetchOutcome {
         val providerOrder = OnlineLyricProvider.normalizeOrder(providerOrderIds)
             .filterNot { it.id in disabledProviderIds }
-        val query = LyricQuery(title = title, artist = artist)
+        val query = LyricQuery(
+            title = title,
+            artist = artist,
+            album = album,
+            durationMs = durationMs,
+            albumArtist = albumArtist,
+            mediaId = mediaId
+        )
         if (!networkAllowed()) {
             AppLogger.getInstance().i("OnlineLyric", "Offline mode enabled, online lyric fetch blocked")
             return FetchOutcome(query, null, emptyList(), false)
         }
         val exactAttempts = fetchAllProviders(query, providerOrder, usedCleanTitleFallback = false)
-        val exactBest = selector.selectBestResult(exactAttempts, title, artist, providerOrder, useSmartSelection)
+        val exactBest = selector.selectBestResult(
+            exactAttempts,
+            title,
+            artist,
+            providerOrder,
+            useSmartSelection,
+            album,
+            durationMs
+        )
         if (exactBest != null) {
             return FetchOutcome(query, exactBest, exactAttempts, false)
         }
 
+        var fallbackAttempts = exactAttempts
         val cleanTitle = cleanTitle(title)
         if (cleanTitle != title) {
             AppLogger.getInstance().i("OnlineLyric", "精确搜索未找到，尝试清理标题: $cleanTitle")
             val cleanQuery = query.copy(title = cleanTitle)
             val cleanAttempts = fetchAllProviders(cleanQuery, providerOrder, usedCleanTitleFallback = true)
             val allAttempts = exactAttempts + cleanAttempts
+            fallbackAttempts = allAttempts
+            val cleanBest = selector.selectBestResult(
+                allAttempts,
+                cleanTitle,
+                artist,
+                providerOrder,
+                useSmartSelection,
+                album,
+                durationMs
+            )
+            if (cleanBest != null) {
+                return FetchOutcome(
+                    query = query,
+                    bestResult = cleanBest,
+                    attempts = allAttempts,
+                    usedCleanTitleFallback = cleanAttempts.any { it.result != null }
+                )
+            }
+        }
+
+        // Cross-language fallback: search by artist only when title-based queries
+        // produced no identity-safe result. Candidate duration/album metadata is
+        // then used to reject unrelated songs with the same artist.
+        if (artist.isNotBlank() && (album.isNotBlank() || durationMs > 0L)) {
+            val artistQuery = query.copy(title = "")
+            val artistAttempts = fetchAllProviders(
+                artistQuery,
+                providerOrder,
+                usedCleanTitleFallback = true
+            )
+            val allAttempts = fallbackAttempts + artistAttempts
             return FetchOutcome(
                 query = query,
-                bestResult = selector.selectBestResult(allAttempts, cleanTitle, artist, providerOrder, useSmartSelection),
+                bestResult = selector.selectBestResult(
+                    allAttempts,
+                    "",
+                    artist,
+                    providerOrder,
+                    useSmartSelection,
+                    album,
+                    durationMs
+                ),
                 attempts = allAttempts,
-                usedCleanTitleFallback = cleanAttempts.any { it.result != null }
+                usedCleanTitleFallback = allAttempts.size > exactAttempts.size
             )
         }
 
@@ -187,13 +260,18 @@ class OnlineLyricFetcher(
                     async {
                         val startedAt = System.currentTimeMillis()
                         val result = when (provider) {
-                            OnlineLyricProvider.QQMusic -> qqMusicProvider.fetch(query.title, query.artist)
-                            OnlineLyricProvider.Kugou -> kugouProvider.fetch(query.title, query.artist)
-                            OnlineLyricProvider.SodaMusic -> sodaMusicProvider.fetch(query.title, query.artist)
+                            OnlineLyricProvider.QQMusic -> qqMusicProvider.fetch(query.title, query.artist, query.album, query.durationMs)
+                            OnlineLyricProvider.Kugou -> kugouProvider.fetch(query.title, query.artist, query.album, query.durationMs)
+                            OnlineLyricProvider.SodaMusic -> sodaMusicProvider.fetch(query.title, query.artist, query.album, query.durationMs)
                             OnlineLyricProvider.Lrclib -> lrclibProvider.fetch(query.title, query.artist)
-                            OnlineLyricProvider.Netease -> neteaseProvider.fetch(query.title, query.artist)
+                            OnlineLyricProvider.Netease -> neteaseProvider.fetch(query.title, query.artist, query.album, query.durationMs)
                             OnlineLyricProvider.LrcApi -> lrcApiProvider.fetch(query.title, query.artist)
-                            OnlineLyricProvider.AppleMusic -> appleMusicProvider.fetch(query.title, query.artist)
+                            OnlineLyricProvider.AppleMusic -> appleMusicProvider.fetch(
+                                query.title,
+                                query.artist,
+                                query.album,
+                                query.durationMs
+                            )
                             OnlineLyricProvider.Musixmatch -> musixmatchProvider.fetch(query.title, query.artist)
                         }
                         ProviderAttempt(
@@ -208,7 +286,15 @@ class OnlineLyricFetcher(
                 val firstResult = withTimeoutOrNull(FETCH_TIMEOUT_MS) {
                     deferreds.asFlow()
                         .flatMapMerge(concurrency = Int.MAX_VALUE) { deferred -> flow { emit(deferred.await()) } }
-                        .filter { selector.isUsableResult(it.result) }
+                        .filter {
+                            selector.isPotentiallyMatching(
+                                it.result,
+                                query.title,
+                                query.artist,
+                                query.album,
+                                query.durationMs
+                            )
+                        }
                         .firstOrNull()
                 }?.result
 

@@ -33,55 +33,77 @@ internal interface SearchCandidate {
     val matchedTitle: String
     /** 候选曲目歌手 */
     val matchedArtist: String
+    val matchedAlbum: String?
+        get() = null
+    val matchedDurationMs: Long?
+        get() = null
+    val providerTrackId: String?
+        get() = null
+    val isrc: String?
+        get() = null
 }
 
 /**
  * 多候选挑选器（混合式搜索架构的第一层）。
  *
- * 在 provider 内部对搜索返回的多个候选做轻量标题/歌手匹配，选出最匹配的一条
- * 再取歌词；全部不匹配时回退第 0 条（保持原有兜底行为）。
+ * 在 provider 内部对搜索返回的多个候选做轻量身份匹配，选出最匹配的一条
+ * 再取歌词；全部不匹配时返回 null，让上层继续扩展查询或等待人工确认。
  */
 internal object CandidateMatcher {
 
     /**
-     * 从候选列表中挑选与 (title, artist) 最匹配的一条。
+     * 从候选列表中挑选与 (title, artist, album, duration) 最匹配的一条。
      * 评分规则：
      *  - 标题相等 +36 / cleanTitle 后相等 +20 / 互相包含 +8 / 不匹配 -30
      *  - 歌手 token 交集：全等 +18 / 单向全等 +12 / 部分 +6 / 无交集 -18 / 空 -4
-     *  - 标题分 <= 0（完全不匹配）的候选不入选，全部不匹配则回退第 0 条
+     *  - 时长相差超过 12 秒的候选直接拒绝；总身份分低于阈值时返回 null
      */
     fun <T : SearchCandidate> pickBest(
         candidates: List<T>,
         title: String,
-        artist: String
+        artist: String,
+        album: String = "",
+        durationMs: Long = 0L
     ): T? {
         if (candidates.isEmpty()) return null
-        if (candidates.size == 1) return candidates[0]
 
         var best: T? = null
         var bestScore = Int.MIN_VALUE
         for (candidate in candidates) {
-            val score = scoreCandidate(candidate, title, artist)
+            if (durationConflict(durationMs, candidate.matchedDurationMs)) continue
+            val score = scoreCandidate(candidate, title, artist, album, durationMs)
             if (score > bestScore) {
                 bestScore = score
                 best = candidate
             }
         }
 
-        // 标题完全不匹配的候选不采用，回退第 0 条
-        return if (bestScore > 0) best ?: candidates[0] else candidates[0]
+        // 不再把第 0 条当作兜底：跨语言搜索可能返回大量同歌手候选，
+        // 没有足够身份证据时交给上层继续扩展查询或人工确认。
+        return best?.takeIf { bestScore >= MIN_ACCEPT_SCORE }
     }
 
     private fun scoreCandidate(
         candidate: SearchCandidate,
         title: String,
-        artist: String
+        artist: String,
+        album: String,
+        durationMs: Long
     ): Int {
+        val albumScore = scoreAlbumMatch(album, candidate.matchedAlbum)
+        val durationScore = scoreDurationMatch(durationMs, candidate.matchedDurationMs)
+        // Exact album + near-exact duration can bridge both localized title
+        // and localized artist names. Treat this as a strong identity pair.
+        val stableEvidenceBonus = if (albumScore >= 15 && durationScore >= 14) 40 else 0
         return scoreTitleMatch(title, candidate.matchedTitle) +
-                scoreArtistMatch(artist, candidate.matchedArtist)
+                scoreArtistMatch(artist, candidate.matchedArtist) +
+                albumScore +
+                durationScore +
+                stableEvidenceBonus
     }
 
     fun scoreTitleMatch(targetTitle: String, matchedTitle: String?): Int {
+        if (targetTitle.isBlank()) return 0
         if (matchedTitle.isNullOrBlank()) return -30
         if (matchedTitle.equals(targetTitle, ignoreCase = true)) return 36
 
@@ -93,6 +115,34 @@ internal object CandidateMatcher {
             cleanMatched.contains(cleanTarget) || cleanTarget.contains(cleanMatched) -> 8
             else -> -30
         }
+    }
+
+    fun scoreAlbumMatch(targetAlbum: String, matchedAlbum: String?): Int {
+        if (targetAlbum.isBlank() || matchedAlbum.isNullOrBlank()) return 0
+        val cleanTarget = cleanTitle(targetAlbum).lowercase()
+        val cleanMatched = cleanTitle(matchedAlbum).lowercase()
+        return when {
+            cleanTarget.isBlank() || cleanMatched.isBlank() -> 0
+            cleanTarget == cleanMatched -> 15
+            cleanMatched.contains(cleanTarget) || cleanTarget.contains(cleanMatched) -> 8
+            else -> -8
+        }
+    }
+
+    fun scoreDurationMatch(targetDurationMs: Long, matchedDurationMs: Long?): Int {
+        if (targetDurationMs <= 0L || matchedDurationMs == null || matchedDurationMs <= 0L) return 0
+        val delta = kotlin.math.abs(targetDurationMs - matchedDurationMs)
+        return when {
+            delta <= 1_500L -> 20
+            delta <= 3_000L -> 14
+            delta <= 8_000L -> 5
+            else -> -40
+        }
+    }
+
+    private fun durationConflict(targetDurationMs: Long, matchedDurationMs: Long?): Boolean {
+        if (targetDurationMs <= 0L || matchedDurationMs == null || matchedDurationMs <= 0L) return false
+        return kotlin.math.abs(targetDurationMs - matchedDurationMs) > 12_000L
     }
 
     fun scoreArtistMatch(targetArtist: String, matchedArtist: String?): Int {
@@ -135,4 +185,6 @@ internal object CandidateMatcher {
         }
         return clean.trim().replace("\\s+".toRegex(), " ")
     }
+
+    private const val MIN_ACCEPT_SCORE = 20
 }

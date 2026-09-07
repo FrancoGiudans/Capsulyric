@@ -64,6 +64,8 @@ internal class AppleMusicLyricProvider {
     suspend fun fetch(
         title: String,
         artist: String,
+        album: String = "",
+        durationMs: Long = 0L,
         storefront: String? = null,
         language: String? = null
     ): OnlineLyricFetcher.LyricResult? = withContext(Dispatchers.IO) {
@@ -106,7 +108,7 @@ internal class AppleMusicLyricProvider {
 
             // 1. 搜索（多候选）
             val searchUrl = "https://amp-api.music.apple.com/v1/catalog/$effectiveStorefront/search" +
-                "?term=${title.encodeURL()}" +
+                "?term=${"$title $artist".trim().encodeURL()}" +
                 "&types=songs&limit=20" +
                 "&l=${effectiveLanguage.encodeURL()}"
             val searchResponse = getWithTokenRetry(searchUrl) ?: return@withContext null
@@ -122,11 +124,15 @@ internal class AppleMusicLyricProvider {
                     songs.optJSONObject(index)?.let { add(AppleSongCandidate(it)) }
                 }
             }
-            val best = CandidateMatcher.pickBest(candidates, title, artist)
+            val best = CandidateMatcher.pickBest(candidates, title, artist, album, durationMs)
                 ?: return@withContext null
             val songId = best.song.optString("id", "")
             val matchedTitle = best.matchedTitle
             val matchedArtist = best.matchedArtist
+            val matchedAlbum = best.matchedAlbum
+            val matchedDurationMs = best.matchedDurationMs
+            val providerTrackId = best.providerTrackId
+            val isrc = best.isrc
             if (songId.isBlank()) return@withContext null
 
             // 2. 歌词（逐字 TTML）
@@ -160,6 +166,10 @@ internal class AppleMusicLyricProvider {
                     provider = OnlineLyricProvider.AppleMusic,
                     matchedTitle = matchedTitle,
                     matchedArtist = matchedArtist,
+                    matchedAlbum = matchedAlbum,
+                    matchedDurationMs = matchedDurationMs,
+                    providerTrackId = providerTrackId,
+                    isrc = isrc,
                     error = "无歌词内容"
                 )
             }
@@ -172,7 +182,11 @@ internal class AppleMusicLyricProvider {
                 hasSyllable = parsedLines.any { !it.syllables.isNullOrEmpty() },
                 provider = OnlineLyricProvider.AppleMusic,
                 matchedTitle = matchedTitle,
-                matchedArtist = matchedArtist
+                matchedArtist = matchedArtist,
+                matchedAlbum = matchedAlbum,
+                matchedDurationMs = matchedDurationMs,
+                providerTrackId = providerTrackId,
+                isrc = isrc
             )
         } catch (e: AppleMusicAuthException) {
             AppLogger.getInstance().w("OnlineLyric", "AppleMusic 登录: ${e.message}")
@@ -281,6 +295,22 @@ internal class AppleMusicLyricProvider {
 
         override val matchedArtist: String
             get() = song.optJSONObject("attributes")?.optString("artistName", "").orEmpty()
+
+        override val matchedAlbum: String?
+            get() = song.optJSONObject("attributes")?.optString("albumName", "")
+                .orEmpty()
+                .takeIf { it.isNotBlank() }
+
+        override val matchedDurationMs: Long?
+            get() = song.optJSONObject("attributes")?.optLong("durationInMillis", 0L)
+                ?.takeIf { it > 0L }
+
+        override val providerTrackId: String?
+            get() = song.optString("id", "").takeIf { it.isNotBlank() }
+
+        override val isrc: String?
+            get() = song.optJSONObject("attributes")?.optString("isrc", "")
+                ?.takeIf { it.isNotBlank() }
     }
 
     private companion object {
