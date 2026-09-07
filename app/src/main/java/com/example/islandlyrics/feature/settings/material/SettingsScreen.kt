@@ -337,8 +337,8 @@ fun SettingsScreen(
     var dismissDelay by remember { mutableLongStateOf(prefs.getLong("notification_dismiss_delay", 0L)) }
     var showDismissDelayDialog by remember { mutableStateOf(false) }
 
-    // Check for HyperOS 3.0.300+
-    val isHyperOsSupported = remember { RomUtils.isHyperOsVersionAtLeast(3, 0, 300) }
+    // Check for HyperOS 3.0.300+ (MiPlay/Live Update extras are HyperOS-only)
+    val isHyperOsSupported = remember { RomUtils.isHyperOs() && RomUtils.isHyperOsVersionAtLeast(3, 0, 300) }
     val isHyperOs = remember { RomUtils.isHyperOs() }
 
     // Logic for permissions status
