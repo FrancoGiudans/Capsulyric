@@ -69,9 +69,20 @@ internal object CandidateMatcher {
 
         var best: T? = null
         var bestScore = Int.MIN_VALUE
+        val targetVersionTags = VersionTagDetector.detect(title, album)
         for (candidate in candidates) {
             if (durationConflict(durationMs, candidate.matchedDurationMs)) continue
-            val score = scoreCandidate(candidate, title, artist, album, durationMs)
+            val candidateVersionTags = VersionTagDetector.detect(candidate.matchedTitle, candidate.matchedAlbum)
+            if (hasHardVersionConflict(targetVersionTags, candidateVersionTags)) continue
+            val score = scoreCandidate(
+                candidate,
+                title,
+                artist,
+                album,
+                durationMs,
+                targetVersionTags,
+                candidateVersionTags
+            )
             if (score > bestScore) {
                 bestScore = score
                 best = candidate
@@ -88,7 +99,9 @@ internal object CandidateMatcher {
         title: String,
         artist: String,
         album: String,
-        durationMs: Long
+        durationMs: Long,
+        targetVersionTags: Set<VersionTag>,
+        candidateVersionTags: Set<VersionTag>
     ): Int {
         val albumScore = scoreAlbumMatch(album, candidate.matchedAlbum)
         val durationScore = scoreDurationMatch(durationMs, candidate.matchedDurationMs)
@@ -99,7 +112,8 @@ internal object CandidateMatcher {
                 scoreArtistMatch(artist, candidate.matchedArtist) +
                 albumScore +
                 durationScore +
-                stableEvidenceBonus
+                stableEvidenceBonus +
+                versionCompatibilityScore(targetVersionTags, candidateVersionTags)
     }
 
     fun scoreTitleMatch(targetTitle: String, matchedTitle: String?): Int {
@@ -143,6 +157,33 @@ internal object CandidateMatcher {
     private fun durationConflict(targetDurationMs: Long, matchedDurationMs: Long?): Boolean {
         if (targetDurationMs <= 0L || matchedDurationMs == null || matchedDurationMs <= 0L) return false
         return kotlin.math.abs(targetDurationMs - matchedDurationMs) > 12_000L
+    }
+
+    private fun hasHardVersionConflict(
+        targetTags: Set<VersionTag>,
+        candidateTags: Set<VersionTag>
+    ): Boolean {
+        val hardTags = setOf(
+            VersionTag.LIVE,
+            VersionTag.REMIX,
+            VersionTag.COVER,
+            VersionTag.INSTRUMENTAL,
+            VersionTag.KARAOKE,
+            VersionTag.RADIO_EDIT
+        )
+        return candidateTags.any { it in hardTags && it !in targetTags }
+    }
+
+    private fun versionCompatibilityScore(
+        targetTags: Set<VersionTag>,
+        candidateTags: Set<VersionTag>
+    ): Int {
+        if (targetTags == candidateTags) return if (targetTags.isEmpty()) 0 else 12
+        if (targetTags.isEmpty() && candidateTags.isEmpty()) return 0
+        if (targetTags.intersect(candidateTags).isNotEmpty()) return 5
+        // A target with a version marker and a candidate without it is not a
+        // hard reject, because some providers omit suffixes in their metadata.
+        return if (targetTags.isNotEmpty() && candidateTags.isEmpty()) -8 else -18
     }
 
     fun scoreArtistMatch(targetArtist: String, matchedArtist: String?): Int {
