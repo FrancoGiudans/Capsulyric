@@ -361,4 +361,4 @@ jobs:
             --channel "Experiment" \
             --changelog-file "appshare_canary_notes.txt" \
             --source "GitHub Canary Build" \
-            --link "https://github.com/${{ github.repository }}/releases/tag/${{ steps.meta.outputs.tag_name }}"
+            --link "https://gitee.com/franklinsmithson/Capsulyric/releases"
