@@ -142,7 +142,7 @@ def main() -> int:
     parser.add_argument("--type", type=int, choices=[1, 2, 3], help="版本类型: 1=正式 / 2=测试 / 3=谷歌。不传时根据 channel 自动推断")
     parser.add_argument("--changelog-file", type=str, help="更新日志文本文件路径")
     parser.add_argument("--changelog", type=str, help="更新日志直接内容（优先级低于 changelog-file）")
-    parser.add_argument("--link", type=str, required=True, help="三方网盘或发布直链 (如 GitHub/Gitee Release 页面)")
+    parser.add_argument("--link", type=str, required=True, help="三方网盘或发布直链 (如 Gitee Release 页面)")
     parser.add_argument("--source", type=str, help="来源说明 (type=2 测试版时必填，长度 <= 512)")
     parser.add_argument("--dry-run", action="store_true", help="演练模式：仅打印参数与签名，不发起实际网络请求")
     parser.add_argument("--check-update", action="store_true", help="发版后自动调用 checkUpdate 校验最新版本")

@@ -23,9 +23,14 @@
 package com.example.islandlyrics.feature.update
 
 object UpdateParser {
+    private const val RELEASE_HIGHLIGHTS_HEADER = "## Release Highlights"
+    private const val ENGLISH_HIGHLIGHTS_HEADER = "## English Highlights"
     private const val CN_HEADER = "## \uD83C\uDDE8\uD83C\uDDF3" // 🇨🇳
     private const val EN_HEADER = "## \uD83C\uDDEC\uD83C\uDDE7" // 🇬🇧
+    private const val CN_LANGUAGE_MARKER = "\uD83C\uDDE8\uD83C\uDDF3" // 🇨🇳
+    private const val EN_LANGUAGE_MARKER = "\uD83C\uDDEC\uD83C\uDDE7" // 🇬🇧
     private val H2_HEADER_REGEX = Regex("(?m)^##\\s+.+$")
+    private val NESTED_LANGUAGE_HEADER_REGEX = Regex("(?m)^#{3,6}\\s+.+$")
 
     fun parseChangelog(rawBody: String?, isChinese: Boolean): String {
         if (rawBody.isNullOrBlank()) return ""
@@ -61,9 +66,10 @@ object UpdateParser {
         val sections = headings.mapIndexed { index, match ->
             val end = headings.getOrNull(index + 1)?.range?.first ?: rawBody.length
             val heading = match.value.trim()
-            val content = rawBody.substring(match.range.last + 1, end)
-                .trimStart('\r', '\n')
-                .trim()
+            val content = cleanSectionContent(
+                rawBody.substring(match.range.last + 1, end)
+                    .trimStart('\r', '\n')
+            )
             MarkdownSection(
                 heading = heading,
                 content = content,
@@ -71,10 +77,29 @@ object UpdateParser {
             )
         }
 
-        val firstHeadingStart = headings.first().range.first
-        val leadingContent = rawBody.substring(0, firstHeadingStart).trim()
-        val cnIndex = sections.indexOfFirst { it.heading.startsWith(CN_HEADER) }
-        val enIndex = sections.indexOfFirst { it.heading.startsWith(EN_HEADER) }
+        val leadingContent = cleanSectionContent(rawBody.substring(0, headings.first().range.first))
+        val releaseHighlightsIndex = sections.indexOfFirst {
+            it.heading.startsWith(RELEASE_HIGHLIGHTS_HEADER)
+        }
+        if (releaseHighlightsIndex != -1) {
+            val nestedHighlights = extractNestedHighlights(sections[releaseHighlightsIndex].content)
+            if (nestedHighlights.hasLocalizedContent) {
+                val sharedParts = buildList {
+                    if (leadingContent.isNotBlank()) add(leadingContent)
+                    sections.drop(releaseHighlightsIndex + 1)
+                        .mapTo(this) { it.raw }
+                }
+                return ParsedSections(
+                    chinese = nestedHighlights.chinese,
+                    english = nestedHighlights.english,
+                    shared = sharedParts.joinToString("\n\n").trim(),
+                    hasLocalizedContent = true
+                )
+            }
+        }
+
+        val cnIndex = sections.indexOfFirst { isChineseHeading(it.heading) }
+        val enIndex = sections.indexOfFirst { isEnglishHeading(it.heading) }
         val hasLocalized = cnIndex != -1 || enIndex != -1
 
         if (!hasLocalized) {
@@ -99,6 +124,89 @@ object UpdateParser {
             shared = sharedParts.joinToString("\n\n").trim(),
             hasLocalizedContent = true
         )
+    }
+
+    private fun extractNestedHighlights(content: String): ParsedSections {
+        val headings = NESTED_LANGUAGE_HEADER_REGEX.findAll(content).toList()
+        if (headings.isEmpty()) {
+            return ParsedSections(
+                chinese = "",
+                english = "",
+                shared = "",
+                hasLocalizedContent = false
+            )
+        }
+
+        val commonContent = cleanSectionContent(content.substring(0, headings.first().range.first))
+        val nestedSections = headings.mapIndexed { index, match ->
+            val end = headings.getOrNull(index + 1)?.range?.first ?: content.length
+            MarkdownSection(
+                heading = match.value.trim(),
+                content = cleanSectionContent(content.substring(match.range.last + 1, end)),
+                raw = content.substring(match.range.first, end).trim()
+            )
+        }
+
+        val chinese = nestedSections.firstOrNull { isChineseNestedHeading(it.heading) }?.content.orEmpty()
+        val english = nestedSections.firstOrNull { isEnglishNestedHeading(it.heading) }?.content.orEmpty()
+        val hasLocalized = chinese.isNotBlank() || english.isNotBlank()
+
+        return ParsedSections(
+            chinese = joinCommonHighlights(commonContent, chinese),
+            english = joinCommonHighlights(commonContent, english),
+            shared = "",
+            hasLocalizedContent = hasLocalized
+        )
+    }
+
+    private fun joinCommonHighlights(common: String, localized: String): String {
+        return listOf(common, localized)
+            .filter { it.isNotBlank() }
+            .joinToString("\n\n")
+            .trim()
+    }
+
+    private fun isChineseHeading(heading: String): Boolean {
+        return heading.startsWith(CN_HEADER) ||
+            heading.startsWith(RELEASE_HIGHLIGHTS_HEADER)
+    }
+
+    private fun isEnglishHeading(heading: String): Boolean {
+        return heading.startsWith(EN_HEADER) ||
+            heading.startsWith(ENGLISH_HIGHLIGHTS_HEADER)
+    }
+
+    private fun isChineseNestedHeading(heading: String): Boolean {
+        val title = heading.trimStart('#').trim().lowercase()
+        return heading.contains(CN_LANGUAGE_MARKER) ||
+            title in setOf("cn", "zh", "中文", "chinese")
+    }
+
+    private fun isEnglishNestedHeading(heading: String): Boolean {
+        val title = heading.trimStart('#').trim().lowercase()
+        return heading.contains(EN_LANGUAGE_MARKER) ||
+            title in setOf("en", "english")
+    }
+
+    private fun cleanSectionContent(content: String): String {
+        val lines = content.trim().lines().toMutableList()
+        while (lines.firstOrNull()?.let(::isHorizontalRule) == true) {
+            lines.removeAt(0)
+        }
+        while (lines.lastOrNull()?.let(::isHorizontalRule) == true) {
+            lines.removeAt(lines.lastIndex)
+        }
+        return lines.joinToString("\n").trim()
+    }
+
+    private fun isHorizontalRule(line: String): Boolean {
+        val trimmed = line.trim()
+        return trimmed.length >= 3 &&
+            (
+                trimmed.all { it == '-' } ||
+                    trimmed.all { it == '*' } ||
+                    trimmed.all { it == '_' }
+                )
     }
 
     internal data class ParsedSections(
