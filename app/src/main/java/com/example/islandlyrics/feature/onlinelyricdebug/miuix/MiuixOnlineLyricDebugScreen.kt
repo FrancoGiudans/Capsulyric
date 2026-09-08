@@ -118,8 +118,6 @@ fun MiuixOnlineLyricDebugScreen(
     val customMatchArtist by viewModel.customMatchArtist.observeAsState("")
     val effectiveQuery by viewModel.effectiveQuery.observeAsState("" to "")
     val querySourceLabel by viewModel.querySourceLabel.observeAsState("")
-    val cacheStatus by viewModel.cacheStatus.observeAsState()
-    val isCurrentSelectionFromCache by viewModel.isCurrentSelectionFromCache.observeAsState(false)
     val isInstrumental by viewModel.isInstrumental.observeAsState(false)
     val isAlbumInstrumental by viewModel.isAlbumInstrumental.observeAsState(false)
 
@@ -144,6 +142,16 @@ fun MiuixOnlineLyricDebugScreen(
     val duration = liveProgress?.duration?.takeIf { it > 0 } ?: mediaInfo?.duration ?: 0L
     val currentFullLyricsTitle = stringResource(R.string.online_lyric_rematch_current_full_lyrics)
     val resultFullLyricsTitle = stringResource(R.string.online_lyric_rematch_result_full_lyrics)
+    val hasMainCandidates = selectedMainResult != null || attempts.any {
+        viewModel.canUseAttemptForRole(it, OnlineLyricDebugViewModel.ResultRole.MAIN)
+    }
+    val hasTranslationCandidates = selectedTranslationResult != null || attempts.any {
+        viewModel.canUseAttemptForRole(it, OnlineLyricDebugViewModel.ResultRole.TRANSLATION)
+    }
+    val hasRomanizationCandidates = selectedRomanResult != null || attempts.any {
+        viewModel.canUseAttemptForRole(it, OnlineLyricDebugViewModel.ResultRole.ROMANIZATION)
+    }
+    val hasOtherResults = hasMainCandidates || hasTranslationCandidates || hasRomanizationCandidates
 
     MiuixBlurScaffold(
         topBar = {
@@ -321,9 +329,6 @@ fun MiuixOnlineLyricDebugScreen(
                         if (querySourceLabel.isNotBlank()) {
                             Text(querySourceLabel, fontSize = 13.sp, color = MiuixTheme.colorScheme.onSurfaceSecondary)
                         }
-                        cacheStatus?.let {
-                            Text(it, fontSize = 13.sp, color = MiuixTheme.colorScheme.primary)
-                        }
                         error?.let {
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(it, color = MiuixTheme.colorScheme.error)
@@ -332,73 +337,49 @@ fun MiuixOnlineLyricDebugScreen(
                 }
             }
 
-            item { SmallTitle(text = stringResource(R.string.online_lyric_rematch_result_title)) }
-            item {
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 12.dp)
-                        .clickable(enabled = rematchedLyrics.isNotBlank()) {
-                            dialogTitle = resultFullLyricsTitle
-                            dialogText = rematchedLyrics
-                            dialogResult = selectedResult
-                            dialogRole = null
-                        }
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        if (selectedResult != null) {
+            if (selectedResult != null && rematchedLyrics.isNotBlank()) {
+                item { SmallTitle(text = stringResource(R.string.online_lyric_rematch_result_title)) }
+                item {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp)
+                            .clickable {
+                                dialogTitle = resultFullLyricsTitle
+                                dialogText = rematchedLyrics
+                                dialogResult = selectedResult
+                                dialogRole = null
+                            }
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
                             Text(
                                 stringResource(R.string.online_lyric_rematch_result_source_fmt, selectedResult?.api.orEmpty()),
                                 color = MiuixTheme.colorScheme.primary
                             )
-                            if (isCurrentSelectionFromCache) {
-                                Text(
-                                    text = stringResource(R.string.online_lyric_debug_cache_hit),
-                                    fontSize = 13.sp,
-                                    color = MiuixTheme.colorScheme.onSurfaceSecondary
-                                )
-                            }
-                            ResultBadges(
-                                labels = resultBadges(
-                                    result = selectedResult,
-                                    attempt = null,
-                                    selected = true
-                                )
-                            )
+                            ResultBadges(labels = resultBadges(result = selectedResult, selected = true))
                             Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = rematchedLyrics,
+                                color = MiuixTheme.colorScheme.onSurface,
+                                maxLines = 10,
+                                overflow = TextOverflow.Ellipsis
+                            )
                         }
-                        Text(
-                            text = rematchedLyrics.ifBlank { stringResource(R.string.online_lyric_rematch_no_result) },
-                            color = if (rematchedLyrics.isBlank()) {
-                                MiuixTheme.colorScheme.onSurfaceSecondary
-                            } else {
-                                MiuixTheme.colorScheme.onSurface
-                            },
-                            maxLines = 10,
-                            overflow = TextOverflow.Ellipsis
-                        )
                     }
                 }
             }
 
-            item { SmallTitle(text = stringResource(R.string.online_lyric_rematch_other_results)) }
-            item {
-                Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        if (attempts.isEmpty()) {
-                            Text(
-                                text = stringResource(R.string.online_lyric_rematch_no_other_results),
-                                color = MiuixTheme.colorScheme.onSurfaceSecondary
-                            )
-                        } else {
+            if (hasOtherResults) {
+                item { SmallTitle(text = stringResource(R.string.online_lyric_rematch_other_results)) }
+                item {
+                    Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
+                        Column(modifier = Modifier.padding(16.dp)) {
                             CandidateSection(
                                 title = stringResource(R.string.online_lyric_debug_main_candidates),
                                 attempts = attempts,
                                 selectedResult = selectedMainResult,
                                 canUse = { viewModel.canUseAttemptForRole(it, OnlineLyricDebugViewModel.ResultRole.MAIN) },
                                 preview = { viewModel.resultLyricsText(it) },
-                                emptyText = stringResource(R.string.online_lyric_debug_no_main_candidates),
-                                includeUnavailable = true,
                                 onOpen = {
                                     dialogRole = OnlineLyricDebugViewModel.ResultRole.MAIN
                                     viewModel.openAttempt(it)
@@ -410,7 +391,6 @@ fun MiuixOnlineLyricDebugScreen(
                                 selectedResult = selectedTranslationResult,
                                 canUse = { viewModel.canUseAttemptForRole(it, OnlineLyricDebugViewModel.ResultRole.TRANSLATION) },
                                 preview = { viewModel.resultTranslationText(it) },
-                                emptyText = stringResource(R.string.online_lyric_debug_no_translation_candidates),
                                 clearTitle = stringResource(R.string.online_lyric_debug_no_translation_match),
                                 onClear = {
                                     viewModel.clearSidecarForRole(OnlineLyricDebugViewModel.ResultRole.TRANSLATION)
@@ -426,7 +406,6 @@ fun MiuixOnlineLyricDebugScreen(
                                 selectedResult = selectedRomanResult,
                                 canUse = { viewModel.canUseAttemptForRole(it, OnlineLyricDebugViewModel.ResultRole.ROMANIZATION) },
                                 preview = { viewModel.resultRomanText(it) },
-                                emptyText = stringResource(R.string.online_lyric_debug_no_roman_candidates),
                                 clearTitle = stringResource(R.string.online_lyric_debug_no_romanization_match),
                                 onClear = {
                                     viewModel.clearSidecarForRole(OnlineLyricDebugViewModel.ResultRole.ROMANIZATION)
@@ -624,14 +603,14 @@ private fun CandidateSection(
     selectedResult: OnlineLyricFetcher.LyricResult?,
     canUse: (OnlineLyricFetcher.ProviderAttempt) -> Boolean,
     preview: (OnlineLyricFetcher.LyricResult?) -> String,
-    emptyText: String,
-    includeUnavailable: Boolean = false,
     clearTitle: String? = null,
     onClear: (() -> Unit)? = null,
     onOpen: (OnlineLyricFetcher.ProviderAttempt) -> Unit
 ) {
     val context = LocalContext.current
-    val visibleAttempts = if (includeUnavailable) attempts else attempts.filter(canUse)
+    val visibleAttempts = attempts.filter(canUse)
+    val hasClearAction = selectedResult != null && clearTitle != null && onClear != null
+    if (visibleAttempts.isEmpty() && !hasClearAction) return
     Text(
         text = title,
         fontSize = 13.sp,
@@ -639,50 +618,33 @@ private fun CandidateSection(
         color = MiuixTheme.colorScheme.primary,
         modifier = Modifier.padding(top = 8.dp, bottom = 8.dp)
     )
-    if (clearTitle != null && onClear != null) {
+    if (hasClearAction) {
         SourceResultRow(
-            title = clearTitle,
-            subtitle = if (selectedResult == null) {
-                stringResource(R.string.online_lyric_rematch_selected_result)
-            } else {
-                stringResource(R.string.online_lyric_debug_no_sidecar_summary)
-            },
+            title = clearTitle.orEmpty(),
+            subtitle = stringResource(R.string.online_lyric_debug_no_sidecar_summary),
             badges = emptyList(),
             preview = "",
             enabled = true,
-            selected = selectedResult == null,
-            onClick = onClear
+            selected = false,
+            onClick = onClear!!
         )
-    }
-    if (visibleAttempts.isEmpty()) {
-        Text(
-            text = emptyText,
-            fontSize = 13.sp,
-            color = MiuixTheme.colorScheme.onSurfaceSecondary,
-            modifier = Modifier.padding(bottom = 12.dp)
-        )
-        return
     }
     visibleAttempts.forEach { attempt ->
         val result = attempt.result
-        val usable = canUse(attempt)
         val selected = result != null && result == selectedResult
         SourceResultRow(
             title = attempt.provider.displayName(context),
             subtitle = if (selected) {
                 stringResource(R.string.online_lyric_rematch_selected_result)
-            } else if (!usable) {
-                result?.error ?: stringResource(R.string.online_lyric_debug_no_result)
             } else {
                 stringResource(R.string.online_lyric_rematch_available_result)
             },
             badges = resultBadges(
                 result = result,
-                attempt = attempt,
                 selected = selected
             ),
-            preview = if (usable) preview(result) else "",
-            enabled = usable,
+            preview = preview(result),
+            enabled = true,
             selected = selected,
             onClick = { onOpen(attempt) }
         )
@@ -742,54 +704,28 @@ private fun SourceResultRow(
 @Composable
 private fun resultBadges(
     result: OnlineLyricFetcher.LyricResult?,
-    attempt: OnlineLyricFetcher.ProviderAttempt?,
     selected: Boolean
 ): List<String> {
     val labels = mutableListOf<String>()
     if (selected) {
         labels += stringResource(R.string.online_lyric_rematch_selected_result)
     }
-    if (result != null && result.error == null && !result.parsedLines.isNullOrEmpty()) {
-        labels += if (result.hasSyllable || result.parsedLines.orEmpty().any { !it.syllables.isNullOrEmpty() }) {
-            stringResource(R.string.online_lyric_debug_result_syllable)
-        } else {
-            stringResource(R.string.online_lyric_debug_result_lrc_or_text)
-        }
-        if (!result.translationLyrics.isNullOrBlank()) {
-            labels += stringResource(R.string.online_lyric_debug_result_translation)
-        }
-        if (!result.romanLyrics.isNullOrBlank()) {
-            labels += stringResource(R.string.online_lyric_debug_result_romanization)
-        }
-    }
-    if (attempt?.usedCleanTitleFallback == true) {
-        labels += stringResource(R.string.online_lyric_debug_clean_title_badge)
-    }
-    if (attempt != null && attempt.queryVariant != "exact") {
+    if (result != null && result.error == null) {
         labels += stringResource(
-            R.string.online_lyric_debug_query_variant_fmt,
-            attempt.queryVariant
-        )
-    }
-    if (attempt != null) {
-        labels += stringResource(
-            R.string.online_lyric_debug_attempt_query_fmt,
-            attempt.queryTitle.ifBlank { "—" },
-            attempt.queryArtist.ifBlank { "—" }
-        )
-    }
-    if (result != null && result.identityEvidence != null) {
-        labels += stringResource(
-            R.string.online_lyric_debug_total_score_fmt,
-            result.score
-        )
-        labels += stringResource(
-            R.string.online_lyric_debug_identity_score_fmt,
-            result.identityScore
-        )
-        labels += stringResource(
-            R.string.online_lyric_debug_identity_evidence_fmt,
-            result.identityEvidence.orEmpty()
+            R.string.online_lyric_debug_result_summary_fmt,
+            result.api,
+            result.score,
+            when {
+                result.hasSyllable || result.parsedLines.orEmpty().any { !it.syllables.isNullOrEmpty() } ->
+                    stringResource(R.string.online_lyric_debug_result_syllable)
+                !result.parsedLines.isNullOrEmpty() ->
+                    stringResource(R.string.online_lyric_debug_result_lrc_or_text)
+                !result.translationLyrics.isNullOrBlank() ->
+                    stringResource(R.string.online_lyric_debug_result_translation)
+                !result.romanLyrics.isNullOrBlank() ->
+                    stringResource(R.string.online_lyric_debug_result_romanization)
+                else -> stringResource(R.string.online_lyric_debug_result_lrc_or_text)
+            }
         )
     }
     return labels
@@ -841,7 +777,7 @@ private fun AttemptResultDialog(
         Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
             val bodyText = attempt.result?.error?.let {
                     stringResource(R.string.online_lyric_debug_error_fmt, it)
-                } ?: text.ifBlank { stringResource(R.string.online_lyric_debug_no_result) }
+                } ?: text.ifBlank { stringResource(R.string.online_lyric_rematch_no_lyrics) }
             ResultTextSections(
                 mainText = bodyText,
                 translationText = if (attempt.result?.error == null) translationText else "",
