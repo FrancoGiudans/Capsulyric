@@ -132,6 +132,11 @@ class OnlineLyricFetcher(
         val attempts: List<ProviderAttempt>,
         val bestResult: LyricResult?
     )
+
+    private data class DiagnosticAliasResolution(
+        val aliases: List<AppleMusicCatalogAlias>,
+        val durationMs: Long
+    )
     
     private val client = OkHttpClient.Builder()
         .connectTimeout(10, TimeUnit.SECONDS)
@@ -414,18 +419,26 @@ class OnlineLyricFetcher(
                 providerOrder.any { it != OnlineLyricProvider.AppleMusic } &&
                 (query.album.isNotBlank() || query.durationMs > 0L)
         val aliasesDeferred = async {
-            if (!shouldResolveAliases) return@async emptyList()
-            if (cachedAppleAliases.isNotEmpty()) return@async cachedAppleAliases
-            appleMusicProvider.resolveCatalogAliases(
-                title = query.title,
-                artist = query.artist,
-                album = query.album,
-                durationMs = query.durationMs,
-                mediaId = query.mediaId,
-                mediaUri = query.mediaUri
-            ).also { resolved ->
-                if (resolved.isNotEmpty()) onAppleAliasesResolved?.invoke(resolved)
+            if (!shouldResolveAliases) return@async DiagnosticAliasResolution(emptyList(), 0L)
+            val startedAt = System.currentTimeMillis()
+            val resolved = if (cachedAppleAliases.isNotEmpty()) {
+                cachedAppleAliases
+            } else {
+                appleMusicProvider.resolveCatalogAliases(
+                    title = query.title,
+                    artist = query.artist,
+                    album = query.album,
+                    durationMs = query.durationMs,
+                    mediaId = query.mediaId,
+                    mediaUri = query.mediaUri
+                ).also { aliases ->
+                    if (aliases.isNotEmpty()) onAppleAliasesResolved?.invoke(aliases)
+                }
             }
+            DiagnosticAliasResolution(
+                aliases = resolved,
+                durationMs = System.currentTimeMillis() - startedAt
+            )
         }
 
         suspend fun execute(plan: DiagnosticQueryPlan): DiagnosticQueryResult {
@@ -449,7 +462,8 @@ class OnlineLyricFetcher(
         }
 
         val baseResults = plans.map { plan -> async { execute(plan) } }.awaitAll()
-        val aliases = aliasesDeferred.await()
+        val aliasResolution = aliasesDeferred.await()
+        val aliases = aliasResolution.aliases
             .filterNot {
                 it.title.equals(query.title, ignoreCase = true) &&
                     it.artist.equals(query.artist, ignoreCase = true)
@@ -490,7 +504,44 @@ class OnlineLyricFetcher(
                     .thenBy { providerPriority[it.provider] ?: Int.MAX_VALUE }
             )
             .firstOrNull()
-        val allAttempts = results.flatMap { it.attempts }
+        val isrcBridgeAttempt = if (shouldResolveAliases) {
+            val verifiedAliases = aliasResolution.aliases
+            val canonicalIsrc = verifiedAliases.firstNotNullOfOrNull { it.isrc }
+            val storefronts = verifiedAliases.map { it.storefront }.distinct().joinToString(",")
+            val resolved = canonicalIsrc != null
+            ProviderAttempt(
+                provider = OnlineLyricProvider.AppleMusic,
+                result = LyricResult(
+                    api = "AppleMusic ISRC",
+                    lyrics = null,
+                    parsedLines = null,
+                    hasSyllable = false,
+                    provider = OnlineLyricProvider.AppleMusic,
+                    matchedTitle = verifiedAliases.firstOrNull()?.title,
+                    matchedArtist = verifiedAliases.firstOrNull()?.artist,
+                    matchedAlbum = verifiedAliases.firstOrNull()?.album,
+                    matchedDurationMs = verifiedAliases.firstOrNull()?.durationMs,
+                    providerTrackId = verifiedAliases.firstOrNull()?.providerTrackId,
+                    isrc = canonicalIsrc,
+                    score = 0,
+                    identityScore = 0,
+                    identityEvidence = if (resolved) "catalog_isrc_verified" else "catalog_isrc_unresolved",
+                    error = if (resolved) {
+                        "ISRC 桥接成功：$canonicalIsrc；已验证区服：${storefronts.ifBlank { "—" }}"
+                    } else {
+                        "ISRC 桥接未生成别名：Apple 目录令牌、歌曲锚点、ISRC 或目标区服结果不可用"
+                    }
+                ),
+                durationMs = aliasResolution.durationMs,
+                usedCleanTitleFallback = false,
+                queryTitle = query.title,
+                queryArtist = query.artist,
+                queryVariant = if (resolved) "isrc_bridge:verified" else "isrc_bridge:unresolved"
+            )
+        } else {
+            null
+        }
+        val allAttempts = (results.flatMap { it.attempts } + listOfNotNull(isrcBridgeAttempt))
             .sortedWith(
                 compareBy<ProviderAttempt> { providerPriority[it.provider] ?: Int.MAX_VALUE }
                     .thenByDescending { it.result?.score ?: Int.MIN_VALUE }

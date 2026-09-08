@@ -90,6 +90,35 @@ internal object AppleMusicMediaRef {
     }
 }
 
+/**
+ * Conservative storefront hints used only when the player does not expose an
+ * Apple Music storefront. Script-specific titles are much more likely to be
+ * discoverable in their native catalog than in the globally configured one.
+ */
+internal object AppleMusicStorefrontHint {
+    fun infer(vararg values: String): String? {
+        val text = values.joinToString(" ")
+        return when {
+            text.any { it in '\u3040'..'\u30ff' || it in '\uff65'..'\uff9f' } -> "jp"
+            text.any { it in '\u1100'..'\u11ff' || it in '\u3130'..'\u318f' || it in '\uac00'..'\ud7af' } -> "kr"
+            else -> null
+        }
+    }
+
+    fun candidates(
+        sourceStorefront: String?,
+        configuredStorefront: String,
+        title: String,
+        artist: String,
+        album: String
+    ): List<String> = linkedSetOf<String>().apply {
+        sourceStorefront?.trim()?.lowercase(Locale.ROOT)?.takeIf { it.length == 2 }?.let(::add)
+        infer(title, artist, album)?.let(::add)
+        configuredStorefront.trim().lowercase(Locale.ROOT).takeIf { it.length == 2 }?.let(::add)
+        add("us")
+    }.toList()
+}
+
 internal class AppleMusicLyricProvider {
     // Apple 专用客户端：跟随重定向（music.apple.com 在部分网络下会 302 到地区页，
     // 共享客户端 followRedirects(false) 会抓不到 index*.js 导致 accessToken 为空 -> catalog 401）
@@ -250,7 +279,7 @@ internal class AppleMusicLyricProvider {
      * Resolve Apple catalog metadata without requiring a media-user-token.
      *
      * The source storefront is inferred from a Media URI/ID when possible. A
-     * one source storefront is resolved first, then the returned ISRC is used
+     * bounded storefront list is resolved in deterministic order, then the returned ISRC is used
      * to obtain localized catalog aliases from that storefront and mainland
      * China. These aliases are evidence-backed search terms for domestic lyric
      * providers; they never replace the player's metadata.
@@ -314,18 +343,26 @@ internal class AppleMusicLyricProvider {
     ): CatalogResolution? {
         val sourceStorefront = extractStorefront(mediaUri) ?: extractStorefront(mediaId)
         val sourceSongId = extractSongId(mediaUri) ?: extractSongId(mediaId)
-        val anchorStorefront = sourceStorefront ?: AppleMusicStateCache.storefront
+        val anchorStorefronts = AppleMusicStorefrontHint.candidates(
+            sourceStorefront = sourceStorefront,
+            configuredStorefront = AppleMusicStateCache.storefront,
+            title = title,
+            artist = artist,
+            album = album
+        )
 
-        val anchor = (
+        // A native-script storefront is only a search hint. Every accepted
+        // anchor still has to pass the normal identity matcher before its ISRC
+        // can be used, so fallback storefronts cannot silently replace a song.
+        val anchor = anchorStorefronts.firstNotNullOfOrNull { storefront ->
             if (sourceSongId != null) {
-                fetchCatalogSongs(anchorStorefront, "songs/$sourceSongId")
+                fetchCatalogSongs(storefront, "songs/$sourceSongId")
                     .firstOrNull()
-                    ?.let { CatalogAnchor(anchorStorefront, it) }
+                    ?.let { CatalogAnchor(storefront, it) }
             } else {
-                null
+                resolveSearchAnchor(storefront, title, artist, album, durationMs)
             }
-            ) ?: resolveSearchAnchor(anchorStorefront, title, artist, album, durationMs)
-            ?: return null
+        } ?: return null
 
         val canonicalIsrc = AppleMusicIsrc.normalize(anchor.candidate.isrc) ?: return null
         val storefronts = linkedSetOf(anchor.storefront, "cn")
@@ -412,10 +449,15 @@ internal class AppleMusicLyricProvider {
             add("$title $artist".trim())
             if (album.isNotBlank()) add("$title $artist $album".trim())
         }.distinct()
-        // A localized `l` can make an English observation look unrelated to
-        // the returned candidate.  Query the configured language and English,
-        // but keep all queries inside the single anchor storefront.
-        val languages = listOf(AppleMusicStateCache.language, "en-US")
+        // Ask a storefront in its native language first. This is essential for
+        // Japanese/Korean player metadata: requesting zh-Hans from `jp` can
+        // otherwise return an English-localized title that the matcher rejects
+        // before an ISRC is ever extracted.
+        val languages = listOf(
+            preferredCatalogLanguage(storefront),
+            AppleMusicStateCache.language,
+            "en-US"
+        )
             .distinct()
         val candidates = mutableListOf<AppleSongCandidate>()
         for (term in terms) {
@@ -426,6 +468,14 @@ internal class AppleMusicLyricProvider {
             }
         }
         return candidates.distinctBy { it.providerTrackId ?: it.song.toString() }
+    }
+
+    private fun preferredCatalogLanguage(storefront: String): String = when (storefront.lowercase(Locale.ROOT)) {
+        "cn" -> "zh-Hans"
+        "hk", "mo", "tw" -> "zh-Hant"
+        "jp" -> "ja-JP"
+        "kr" -> "ko-KR"
+        else -> "en-US"
     }
 
     private suspend fun fetchCatalogSongs(

@@ -34,4 +34,35 @@ class AppleMusicMediaRefTest {
         assertNull(AppleMusicMediaRef.extractStorefront("https://example.com/jp/song/123"))
         assertNull(AppleMusicMediaRef.extractSongId("https://music.apple.com/jp/song/example/not-a-number"))
     }
+
+    @Test
+    fun infersJapaneseAndKoreanStorefrontsFromNativeScripts() {
+        assertEquals("jp", AppleMusicStorefrontHint.infer("ただ風を追いかけて", "Robin"))
+        assertEquals("kr", AppleMusicStorefrontHint.infer("바람을 따라서", "Robin"))
+        assertNull(AppleMusicStorefrontHint.infer("Only by Chasing the Wind", "Robin"))
+    }
+
+    @Test
+    fun keepsExplicitStorefrontFirstAndAddsSafeFallbacks() {
+        assertEquals(
+            listOf("us", "jp", "cn"),
+            AppleMusicStorefrontHint.candidates(
+                sourceStorefront = "US",
+                configuredStorefront = "cn",
+                title = "ただ風を追いかけて",
+                artist = "Robin, HOYO-MiX & Chevy",
+                album = ""
+            )
+        )
+        assertEquals(
+            listOf("jp", "cn", "us"),
+            AppleMusicStorefrontHint.candidates(
+                sourceStorefront = null,
+                configuredStorefront = "cn",
+                title = "ただ風を追いかけて",
+                artist = "Robin, HOYO-MiX & Chevy",
+                album = ""
+            )
+        )
+    }
 }
