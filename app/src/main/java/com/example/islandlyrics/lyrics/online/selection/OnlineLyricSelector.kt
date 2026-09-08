@@ -122,7 +122,20 @@ internal class OnlineLyricSelector(
         // Legacy endpoints without candidate metadata can still be selected
         // after the race completes, but must not trigger early cancellation.
         if (!hasMetadata) return false
-        return identityScore(value, targetTitle, targetArtist, targetAlbum, targetDurationMs) >= MIN_IDENTITY_SCORE
+        if (!isIdentityAcceptable(
+            value,
+            targetTitle,
+            targetArtist,
+            targetAlbum,
+            targetDurationMs
+        )) return false
+        return identityScore(
+            value,
+            targetTitle,
+            targetArtist,
+            targetAlbum,
+            targetDurationMs
+        ) >= MIN_EARLY_IDENTITY_SCORE
     }
 
     internal fun buildQualityScore(
@@ -136,6 +149,7 @@ internal class OnlineLyricSelector(
 
         val identity = annotateIdentity(result, targetTitle, targetArtist, targetAlbum, targetDurationMs)
         score += identity.score
+        if (!isUsableResult(result)) return score
 
         val parsedLines = result.parsedLines.orEmpty()
         val lineCount = parsedLines.size
@@ -161,9 +175,6 @@ internal class OnlineLyricSelector(
             OnlineLyricProvider.Netease -> 9
             else -> 3
         }
-
-        score += scoreTitleMatch(targetTitle, result.matchedTitle)
-        score += scoreArtistMatch(targetArtist, result.matchedArtist)
 
         if (result.lyrics?.contains("纯音乐", ignoreCase = true) == true ||
             result.lyrics?.contains("No lyrics", ignoreCase = true) == true
@@ -228,6 +239,18 @@ internal class OnlineLyricSelector(
             result.isrc
         ).any { !it.isNullOrBlank() }
         if (!hasMetadata) return targetTitle.isNotBlank()
+        if (!CandidateMatcher.isDurationCompatible(targetDurationMs, result.matchedDurationMs)) {
+            return false
+        }
+        if (CandidateMatcher.hasVersionConflict(
+                targetTitle,
+                targetAlbum,
+                result.matchedTitle.orEmpty(),
+                result.matchedAlbum
+            )
+        ) {
+            return false
+        }
         return identityScore(result, targetTitle, targetArtist, targetAlbum, targetDurationMs) >= MIN_IDENTITY_SCORE
     }
 
@@ -288,6 +311,7 @@ internal class OnlineLyricSelector(
 
     private companion object {
         private const val MIN_IDENTITY_SCORE = 20
+        private const val MIN_EARLY_IDENTITY_SCORE = 50
     }
 
     private fun scoreArtistMatch(targetArtist: String, matchedArtist: String?): Int {

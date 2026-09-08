@@ -45,7 +45,7 @@ internal class SodaMusicLyricProvider(
     ): OnlineLyricFetcher.LyricResult? =
         withContext(Dispatchers.IO) {
             try {
-                val keyword = "$title $artist"
+                val keyword = ProviderSearchTerm.build(title, artist, album)
                 val searchUrl = "https://api.qishui.com/luna/pc/search/track?aid=386088&app_name=&region=&geo_region=&os_region=&sim_region=&device_id=&cdid=&iid=&version_name=&version_code=&channel=&build_mode=&network_carrier=&ac=&tz_name=&resolution=&device_platform=&device_type=&os_version=&fp=&q=${keyword.encodeURL()}&cursor=&search_id=&search_method=input&debug_params=&from_search_id=&search_scene="
                 val searchResponse = httpClient.get(searchUrl, headers = sodaHeaders()) ?: return@withContext null
                 val searchJson = JSONObject(searchResponse)

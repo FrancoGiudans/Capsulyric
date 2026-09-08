@@ -134,7 +134,7 @@ class OnlineLyricSource(private val context: Context) {
         val queryTitle = currentSongState.effectiveTitle
         val queryArtist = currentSongState.effectiveArtist
 
-        if (queryTitle.isBlank() || queryArtist.isBlank()) {
+        if (queryTitle.isBlank() && queryArtist.isBlank()) {
             AppLogger.getInstance().log(TAG, "Missing title/artist — cannot fetch")
             onResolve?.invoke(false)
             return

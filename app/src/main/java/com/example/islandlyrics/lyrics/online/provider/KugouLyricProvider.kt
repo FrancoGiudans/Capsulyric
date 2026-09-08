@@ -53,7 +53,7 @@ internal class KugouLyricProvider(
     ): OnlineLyricFetcher.LyricResult? =
         withContext(Dispatchers.IO) {
             try {
-                val keywords = "$title $artist"
+                val keywords = ProviderSearchTerm.build(title, artist, album)
                 val searchUrl = "https://mobilecdn.kugou.com/api/v3/search/song?format=json&keyword=${keywords.encodeURL()}&page=1&pagesize=20&showtype=1"
                 val searchResponse = httpClient.get(searchUrl)
                 if (searchResponse == null) {

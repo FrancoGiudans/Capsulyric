@@ -222,6 +222,8 @@ fun DebugLyricScreen(
                                 val result = attempt.result
                                 val prefix = if (result == selectedResult) "★ [已选择] " else "  "
                                 append("$prefix${attempt.provider.displayName(context)} (${attempt.durationMs}ms)\n")
+                                append("  查询变体: ${attempt.queryVariant}\n")
+                                append("  实际查询: ${attempt.queryTitle.ifBlank { "—" }} / ${attempt.queryArtist.ifBlank { "—" }}\n")
                                 if (attempt.usedCleanTitleFallback) {
                                     append("  使用清洗标题重试\n")
                                 }
@@ -231,8 +233,17 @@ fun DebugLyricScreen(
                                     append("  ✗ 错误: ${result.error}\n")
                                 } else {
                                     append("  来源: ${result.api} / 得分: ${result.score}\n")
-                                    result.matchedTitle?.let { append("  标题: $it\n") }
-                                    result.matchedArtist?.let { append("  艺术家: $it\n") }
+                                    append("  身份评分: ${result.identityScore}\n")
+                                    result.identityEvidence?.let { append("  身份证据: $it\n") }
+                                    result.matchedTitle?.let { append("  匹配标题: $it\n") }
+                                    result.matchedArtist?.let { append("  匹配艺术家: $it\n") }
+                                    result.matchedAlbum?.let { append("  匹配专辑: $it\n") }
+                                    result.matchedDurationMs?.let { append("  匹配时长: ${it}ms\n") }
+                                    result.providerTrackId?.let { append("  Provider 曲目ID: $it\n") }
+                                    result.isrc?.let { append("  ISRC: $it\n") }
+                                    append("  解析行数: ${result.parsedLines?.size ?: 0}\n")
+                                    if (!result.translationLyrics.isNullOrBlank()) append("  ✓ 有翻译歌词\n")
+                                    if (!result.romanLyrics.isNullOrBlank()) append("  ✓ 有罗马音歌词\n")
                                     if (result.hasSyllable) append("  ✓ 有逐字歌词\n")
                                     else if (result.lyrics != null) append("  标准LRC歌词\n")
                                     result.lyrics?.let {

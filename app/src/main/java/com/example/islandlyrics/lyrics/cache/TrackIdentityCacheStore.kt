@@ -2,6 +2,7 @@ package com.example.islandlyrics.lyrics.cache
 
 import android.content.Context
 import com.example.islandlyrics.lyrics.online.provider.AppleMusicCatalogAlias
+import com.example.islandlyrics.lyrics.online.provider.AppleMusicIsrc
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
@@ -54,8 +55,20 @@ class TrackIdentityCacheStore(context: Context) {
         val durationMs: Long,
         val mediaId: String,
         val mediaUri: String,
+        val canonicalIsrc: String,
         val aliases: List<AppleMusicCatalogAlias>,
         val updatedAt: Long
+    )
+
+    private data class IdentityEntry(
+        val canonicalIsrc: String,
+        val aliases: List<AppleMusicCatalogAlias>,
+        val updatedAt: Long
+    )
+
+    private data class Store(
+        val entries: Map<String, Entry>,
+        val identities: Map<String, IdentityEntry>
     )
 
     private val file = File(context.applicationContext.filesDir, "cache_store/identity_index.json")
@@ -71,7 +84,8 @@ class TrackIdentityCacheStore(context: Context) {
         mediaUri: String,
         now: Long = System.currentTimeMillis()
     ): List<AppleMusicCatalogAlias> = synchronized(lock) {
-        val entry = readEntries()[buildObservedKey(
+        val store = readStore()
+        val entry = store.entries[buildObservedKey(
             packageName,
             title,
             artist,
@@ -80,7 +94,14 @@ class TrackIdentityCacheStore(context: Context) {
             mediaId,
             mediaUri
         )]
-        entry?.takeIf { now - it.updatedAt in 0..IDENTITY_TTL_MS }?.aliases.orEmpty()
+        val aliases = entry?.canonicalIsrc
+            ?.let { store.identities[identityKey(it)]?.aliases }
+            ?: entry?.aliases
+        if (entry == null || now - entry.updatedAt !in 0..IDENTITY_TTL_MS) {
+            emptyList()
+        } else {
+            aliases.orEmpty()
+        }
     }
 
     fun saveAliases(
@@ -95,8 +116,23 @@ class TrackIdentityCacheStore(context: Context) {
         now: Long = System.currentTimeMillis()
     ) {
         if (packageName.isBlank() || aliases.isEmpty()) return
+        val normalizedIsrcs = aliases.mapNotNull { AppleMusicIsrc.normalize(it.isrc) }.toSet()
+        val canonicalIsrc = normalizedIsrcs.singleOrNull() ?: return
+        val verifiedAliases = aliases
+            .filter { AppleMusicIsrc.normalize(it.isrc) == canonicalIsrc }
+            .filter { it.title.isNotBlank() && it.artist.isNotBlank() }
+            .distinctBy {
+                listOf(
+                    it.title.trim().lowercase(),
+                    it.artist.trim().lowercase(),
+                    AppleMusicIsrc.normalize(it.isrc).orEmpty()
+                ).joinToString("|")
+            }
+            .take(MAX_ALIASES_PER_ENTRY)
+        if (verifiedAliases.isEmpty()) return
         synchronized(lock) {
-            val entries = readEntries().toMutableMap()
+            val store = readStore()
+            val entries = store.entries.toMutableMap()
             val key = buildObservedKey(packageName, title, artist, album, durationMs, mediaId, mediaUri)
             entries[key] = Entry(
                 packageName = packageName,
@@ -106,17 +142,28 @@ class TrackIdentityCacheStore(context: Context) {
                 durationMs = durationMs,
                 mediaId = mediaId,
                 mediaUri = mediaUri,
-                aliases = aliases
-                    .filter { it.title.isNotBlank() && it.artist.isNotBlank() }
-                    .distinctBy { listOf(it.title, it.artist, it.album.orEmpty(), it.isrc.orEmpty()).joinToString("|") }
-                    .take(MAX_ALIASES_PER_ENTRY),
+                canonicalIsrc = canonicalIsrc,
+                aliases = verifiedAliases,
                 updatedAt = now
             )
             val trimmed = entries.values
                 .sortedByDescending { it.updatedAt }
                 .take(MAX_ENTRIES)
                 .associateBy { buildObservedKey(it.packageName, it.title, it.artist, it.album, it.durationMs, it.mediaId, it.mediaUri) }
-            writeEntries(trimmed)
+            val identityKey = identityKey(canonicalIsrc)
+            val mergedAliases = (store.identities[identityKey]?.aliases.orEmpty() + verifiedAliases)
+                .filter { AppleMusicIsrc.normalize(it.isrc) == canonicalIsrc }
+                .distinctBy {
+                    listOf(
+                        it.title.trim().lowercase(),
+                        it.artist.trim().lowercase(),
+                        AppleMusicIsrc.normalize(it.isrc).orEmpty()
+                    ).joinToString("|")
+                }
+                .take(MAX_ALIASES_PER_ENTRY)
+            val identities = store.identities.toMutableMap()
+            identities[identityKey] = IdentityEntry(canonicalIsrc, mergedAliases, now)
+            writeStore(Store(trimmed, identities))
         }
     }
 
@@ -138,30 +185,35 @@ class TrackIdentityCacheStore(context: Context) {
             mediaUri
         )
 
-    private fun readEntries(): Map<String, Entry> {
-        if (!file.exists()) return emptyMap()
+    private fun readStore(): Store {
+        if (!file.exists()) return Store(emptyMap(), emptyMap())
         return runCatching {
-            val entriesJson = JSONObject(file.readText(Charsets.UTF_8)).optJSONObject("entries") ?: return emptyMap()
-            buildMap {
+            val root = JSONObject(file.readText(Charsets.UTF_8))
+            if (root.optInt("version", -1) != CACHE_SCHEMA_VERSION) {
+                // v1 did not carry an anchor ISRC/provenance boundary; discard
+                // automatic entries rather than reusing potentially polluted aliases.
+                return@runCatching Store(emptyMap(), emptyMap())
+            }
+            val entriesJson = root.optJSONObject("entries") ?: JSONObject()
+            val identitiesJson = root.optJSONObject("identities") ?: JSONObject()
+            val identities = buildMap {
+                for (key in identitiesJson.keys()) {
+                    val obj = identitiesJson.optJSONObject(key) ?: continue
+                    val canonical = AppleMusicIsrc.normalize(obj.optString("canonicalIsrc")) ?: continue
+                    val aliases = parseAliases(obj.optJSONArray("aliases"))
+                        .filter { AppleMusicIsrc.normalize(it.isrc) == canonical }
+                    if (aliases.isNotEmpty()) {
+                        put(key, IdentityEntry(canonical, aliases, obj.optLong("updatedAt", 0L)))
+                    }
+                }
+            }
+            val entries = buildMap {
                 for (key in entriesJson.keys()) {
                     val obj = entriesJson.optJSONObject(key) ?: continue
-                    val aliasesJson = obj.optJSONArray("aliases") ?: JSONArray()
-                    val aliases = buildList {
-                        for (index in 0 until aliasesJson.length()) {
-                            val alias = aliasesJson.optJSONObject(index) ?: continue
-                            add(
-                                AppleMusicCatalogAlias(
-                                    title = alias.optString("title"),
-                                    artist = alias.optString("artist"),
-                                    album = alias.optNullableString("album"),
-                                    durationMs = alias.optNullableLong("durationMs"),
-                                    providerTrackId = alias.optString("providerTrackId"),
-                                    isrc = alias.optNullableString("isrc"),
-                                    storefront = alias.optString("storefront")
-                                )
-                            )
-                        }
-                    }
+                    val canonical = AppleMusicIsrc.normalize(obj.optString("canonicalIsrc")) ?: continue
+                    val aliases = parseAliases(obj.optJSONArray("aliases"))
+                        .filter { AppleMusicIsrc.normalize(it.isrc) == canonical }
+                    if (aliases.isEmpty()) continue
                     put(
                         key,
                         Entry(
@@ -172,19 +224,21 @@ class TrackIdentityCacheStore(context: Context) {
                             durationMs = obj.optLong("durationMs"),
                             mediaId = obj.optString("mediaId"),
                             mediaUri = obj.optString("mediaUri"),
+                            canonicalIsrc = canonical,
                             aliases = aliases,
                             updatedAt = obj.optLong("updatedAt", 0L)
                         )
                     )
                 }
             }
-        }.getOrDefault(emptyMap())
+            Store(entries, identities)
+        }.getOrDefault(Store(emptyMap(), emptyMap()))
     }
 
-    private fun writeEntries(entries: Map<String, Entry>) {
+    private fun writeStore(store: Store) {
         file.parentFile?.mkdirs()
         val entriesJson = JSONObject()
-        entries.forEach { (key, entry) ->
+        store.entries.forEach { (key, entry) ->
             entriesJson.put(key, JSONObject().apply {
                 put("packageName", entry.packageName)
                 put("title", entry.title)
@@ -193,28 +247,61 @@ class TrackIdentityCacheStore(context: Context) {
                 put("durationMs", entry.durationMs)
                 put("mediaId", entry.mediaId)
                 put("mediaUri", entry.mediaUri)
+                put("canonicalIsrc", entry.canonicalIsrc)
                 put("updatedAt", entry.updatedAt)
-                put("aliases", JSONArray(entry.aliases.map { alias ->
-                    JSONObject().apply {
-                        put("title", alias.title)
-                        put("artist", alias.artist)
-                        put("album", alias.album)
-                        put("durationMs", alias.durationMs)
-                        put("providerTrackId", alias.providerTrackId)
-                        put("isrc", alias.isrc)
-                        put("storefront", alias.storefront)
-                    }
-                }))
+                put("aliases", aliasesToJson(entry.aliases))
+            })
+        }
+        val identitiesJson = JSONObject()
+        store.identities.forEach { (key, identity) ->
+            identitiesJson.put(key, JSONObject().apply {
+                put("canonicalIsrc", identity.canonicalIsrc)
+                put("updatedAt", identity.updatedAt)
+                put("aliases", aliasesToJson(identity.aliases))
             })
         }
         file.writeText(
             JSONObject().apply {
-                put("version", 1)
+                put("version", CACHE_SCHEMA_VERSION)
                 put("entries", entriesJson)
+                put("identities", identitiesJson)
             }.toString(),
             Charsets.UTF_8
         )
     }
+
+    private fun parseAliases(aliasesJson: JSONArray?): List<AppleMusicCatalogAlias> = buildList {
+        val json = aliasesJson ?: return@buildList
+        for (index in 0 until json.length()) {
+            val alias = json.optJSONObject(index) ?: continue
+            add(
+                AppleMusicCatalogAlias(
+                    title = alias.optString("title"),
+                    artist = alias.optString("artist"),
+                    album = alias.optNullableString("album"),
+                    durationMs = alias.optNullableLong("durationMs"),
+                    providerTrackId = alias.optString("providerTrackId"),
+                    isrc = alias.optNullableString("isrc"),
+                    storefront = alias.optString("storefront")
+                )
+            )
+        }
+    }
+
+    private fun aliasesToJson(aliases: List<AppleMusicCatalogAlias>): JSONArray =
+        JSONArray(aliases.map { alias ->
+            JSONObject().apply {
+                put("title", alias.title)
+                put("artist", alias.artist)
+                put("album", alias.album)
+                put("durationMs", alias.durationMs)
+                put("providerTrackId", alias.providerTrackId)
+                put("isrc", alias.isrc)
+                put("storefront", alias.storefront)
+            }
+        })
+
+    private fun identityKey(canonicalIsrc: String): String = "isrc:$canonicalIsrc"
 
     private fun JSONObject.optNullableString(key: String): String? =
         if (!has(key) || isNull(key)) null else optString(key).takeIf { it.isNotBlank() }
@@ -223,6 +310,7 @@ class TrackIdentityCacheStore(context: Context) {
         if (!has(key) || isNull(key)) null else optLong(key)
 
     private companion object {
+        private const val CACHE_SCHEMA_VERSION = 2
         private const val IDENTITY_TTL_MS = 30L * 24 * 60 * 60 * 1000
         private const val MAX_ENTRIES = 256
         private const val MAX_ALIASES_PER_ENTRY = 12

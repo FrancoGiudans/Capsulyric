@@ -37,7 +37,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import org.json.JSONObject
+import java.text.Normalizer
 import java.net.URLEncoder
+import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 
@@ -71,6 +73,11 @@ internal object AppleMusicMediaRef {
     }
 
     fun extractSongId(value: String): String? {
+        val structured = Regex("^apple:(?:song|track)[:/](\\d+)$", RegexOption.IGNORE_CASE)
+            .matchEntire(value.trim())
+            ?.groupValues
+            ?.getOrNull(1)
+        if (structured != null) return structured
         val queryId = Regex("""[?&](?:i|id)=(\d+)""", RegexOption.IGNORE_CASE)
             .find(value)
             ?.groupValues
@@ -243,10 +250,10 @@ internal class AppleMusicLyricProvider {
      * Resolve Apple catalog metadata without requiring a media-user-token.
      *
      * The source storefront is inferred from a Media URI/ID when possible. A
-     * bounded set of storefronts is queried, then the returned ISRC is used to
-     * obtain the localized catalog aliases from the configured storefront and
-     * mainland China. These aliases are evidence-backed search terms for the
-     * domestic lyric providers; they never replace the player's metadata.
+     * one source storefront is resolved first, then the returned ISRC is used
+     * to obtain localized catalog aliases from that storefront and mainland
+     * China. These aliases are evidence-backed search terms for domestic lyric
+     * providers; they never replace the player's metadata.
      */
     suspend fun resolveCatalogAliases(
         title: String,
@@ -265,47 +272,14 @@ internal class AppleMusicLyricProvider {
         val aliases = try {
             AppleMusicStateCache.ensureInit(httpClient)
             if (AppleMusicStateCache.accessToken.isBlank()) return@withContext emptyList()
-
-            val storefronts = candidateStorefronts(mediaId, mediaUri)
-            val sourceStorefront = extractStorefront(mediaUri) ?: extractStorefront(mediaId)
-            val sourceSongId = extractSongId(mediaUri) ?: extractSongId(mediaId)
-            val initialCandidates = mutableListOf<Pair<String, AppleSongCandidate>>()
-
-            if (sourceStorefront != null && sourceSongId != null) {
-                fetchCatalogSongs(sourceStorefront, "songs/$sourceSongId")
-                    .firstOrNull()
-                    ?.let { initialCandidates += sourceStorefront to it }
-            }
-
-            if (initialCandidates.isEmpty()) {
-                for (storefront in storefronts) {
-                    val best = CandidateMatcher.pickBest(
-                        searchCatalogSongs(storefront, title, artist),
-                        title,
-                        artist,
-                        album,
-                        durationMs
-                    ) ?: continue
-                    initialCandidates += storefront to best
-                }
-            }
-
-            val isrc = initialCandidates
-                .asSequence()
-                .mapNotNull { it.second.isrc }
-                .firstOrNull()
-            val resolvedCandidates = initialCandidates.toMutableList()
-            if (!isrc.isNullOrBlank()) {
-                for (storefront in storefronts) {
-                    fetchCatalogSongsByIsrc(storefront, isrc)
-                        .forEach { resolvedCandidates += storefront to it }
-                }
-            }
-
-            resolvedCandidates
-                .map { (storefront, candidate) -> candidate.toAlias(storefront) }
-                .filter { it.title.isNotBlank() && it.artist.isNotBlank() }
-                .distinctBy { listOf(it.title, it.artist, it.album.orEmpty(), it.isrc.orEmpty()).joinToString("|") }
+            resolveCatalogResolution(
+                title = title,
+                artist = artist,
+                album = album,
+                durationMs = durationMs,
+                mediaId = mediaId,
+                mediaUri = mediaUri
+            )?.aliases.orEmpty()
         } catch (error: Exception) {
             AppLogger.getInstance().w("OnlineLyric", "Apple catalog identity bridge failed: ${error.message}")
             emptyList()
@@ -318,15 +292,140 @@ internal class AppleMusicLyricProvider {
         aliases
     }
 
+    private data class CatalogAnchor(
+        val storefront: String,
+        val candidate: AppleSongCandidate
+    )
+
+    private data class CatalogResolution(
+        val canonicalIsrc: String,
+        val anchor: CatalogAnchor,
+        val aliases: List<AppleMusicCatalogAlias>
+    )
+
+    /** Resolve one source recording before querying any target storefront. */
+    private suspend fun resolveCatalogResolution(
+        title: String,
+        artist: String,
+        album: String,
+        durationMs: Long,
+        mediaId: String,
+        mediaUri: String
+    ): CatalogResolution? {
+        val sourceStorefront = extractStorefront(mediaUri) ?: extractStorefront(mediaId)
+        val sourceSongId = extractSongId(mediaUri) ?: extractSongId(mediaId)
+        val anchorStorefront = sourceStorefront ?: AppleMusicStateCache.storefront
+
+        val anchor = (
+            if (sourceSongId != null) {
+                fetchCatalogSongs(anchorStorefront, "songs/$sourceSongId")
+                    .firstOrNull()
+                    ?.let { CatalogAnchor(anchorStorefront, it) }
+            } else {
+                null
+            }
+            ) ?: resolveSearchAnchor(anchorStorefront, title, artist, album, durationMs)
+            ?: return null
+
+        val canonicalIsrc = AppleMusicIsrc.normalize(anchor.candidate.isrc) ?: return null
+        val storefronts = linkedSetOf(anchor.storefront, "cn")
+        val verifiedAliases = buildList {
+            for (storefront in storefronts) {
+                fetchCatalogSongsByIsrc(
+                    storefront = storefront,
+                    isrc = canonicalIsrc,
+                    language = if (storefront == "cn") "zh-Hans" else AppleMusicStateCache.language
+                ).forEach { candidate ->
+                    val itemIsrc = AppleMusicIsrc.normalize(candidate.isrc) ?: return@forEach
+                    if (itemIsrc != canonicalIsrc) return@forEach
+                    if (!CandidateMatcher.isDurationCompatible(
+                            anchor.candidate.matchedDurationMs ?: durationMs,
+                            candidate.matchedDurationMs
+                        )
+                    ) return@forEach
+                    if (CandidateMatcher.hasVersionConflict(
+                            anchor.candidate.matchedTitle,
+                            anchor.candidate.matchedAlbum.orEmpty(),
+                            candidate.matchedTitle,
+                            candidate.matchedAlbum
+                        )
+                    ) return@forEach
+                    add(candidate.toAlias(storefront, canonicalIsrc))
+                }
+            }
+            add(anchor.candidate.toAlias(anchor.storefront, canonicalIsrc))
+        }
+
+        val aliases = verifiedAliases
+            .filter { it.title.isNotBlank() && it.artist.isNotBlank() }
+            .distinctBy { aliasDedupKey(it) }
+            .sortedWith(
+                compareBy<AppleMusicCatalogAlias> {
+                    if (it.storefront == "cn") 0 else 1
+                }.thenBy {
+                    if (it.title.equals(anchor.candidate.matchedTitle, ignoreCase = true) &&
+                        it.artist.equals(anchor.candidate.matchedArtist, ignoreCase = true)
+                    ) 1 else 0
+                }.thenByDescending { if (it.album.isNullOrBlank()) 0 else 1 }
+            )
+
+        return CatalogResolution(canonicalIsrc, anchor, aliases)
+    }
+
+    private suspend fun resolveSearchAnchor(
+        storefront: String,
+        title: String,
+        artist: String,
+        album: String,
+        durationMs: Long
+    ): CatalogAnchor? {
+        val candidates = searchCatalogSongs(storefront, title, artist, album)
+        val best = CandidateMatcher.pickBestWithMargin(
+            candidates = candidates,
+            title = title,
+            artist = artist,
+            album = album,
+            durationMs = durationMs
+        ) ?: return null
+        return CatalogAnchor(storefront, best)
+    }
+
+    private fun aliasDedupKey(alias: AppleMusicCatalogAlias): String = listOf(
+        normalizeAliasText(alias.title),
+        normalizeAliasText(alias.artist),
+        AppleMusicIsrc.normalize(alias.isrc).orEmpty()
+    ).joinToString("|")
+
+    private fun normalizeAliasText(value: String): String =
+        Normalizer.normalize(value, Normalizer.Form.NFKC)
+            .trim()
+            .lowercase(Locale.ROOT)
+            .replace(Regex("\\s+"), " ")
+
     private suspend fun searchCatalogSongs(
         storefront: String,
         title: String,
-        artist: String
+        artist: String,
+        album: String
     ): List<AppleSongCandidate> {
-        val term = "$title $artist".trim().encodeURL()
-        val url = "https://amp-api.music.apple.com/v1/catalog/$storefront/search" +
-            "?term=$term&types=songs&limit=10&l=${AppleMusicStateCache.language.encodeURL()}"
-        return getWithTokenRetry(url)?.let(::parseSongCandidates).orEmpty()
+        val terms = buildList {
+            add("$title $artist".trim())
+            if (album.isNotBlank()) add("$title $artist $album".trim())
+        }.distinct()
+        // A localized `l` can make an English observation look unrelated to
+        // the returned candidate.  Query the configured language and English,
+        // but keep all queries inside the single anchor storefront.
+        val languages = listOf(AppleMusicStateCache.language, "en-US")
+            .distinct()
+        val candidates = mutableListOf<AppleSongCandidate>()
+        for (term in terms) {
+            for (language in languages) {
+                val url = "https://amp-api.music.apple.com/v1/catalog/$storefront/search" +
+                    "?term=${term.encodeURL()}&types=songs&limit=10&l=${language.encodeURL()}"
+                getWithTokenRetry(url)?.let(::parseSongCandidates)?.let(candidates::addAll)
+            }
+        }
+        return candidates.distinctBy { it.providerTrackId ?: it.song.toString() }
     }
 
     private suspend fun fetchCatalogSongs(
@@ -340,10 +439,12 @@ internal class AppleMusicLyricProvider {
 
     private suspend fun fetchCatalogSongsByIsrc(
         storefront: String,
-        isrc: String
+        isrc: String,
+        language: String = AppleMusicStateCache.language
     ): List<AppleSongCandidate> {
+        val canonicalIsrc = AppleMusicIsrc.normalize(isrc) ?: return emptyList()
         val url = "https://amp-api.music.apple.com/v1/catalog/$storefront/songs" +
-            "?filter%5Bisrc%5D=${isrc.encodeURL()}&l=${AppleMusicStateCache.language.encodeURL()}"
+            "?filter%5Bisrc%5D=${canonicalIsrc.encodeURL()}&l=${language.encodeURL()}"
         return getWithTokenRetry(url)?.let(::parseSongCandidates).orEmpty()
     }
 
@@ -357,19 +458,6 @@ internal class AppleMusicLyricProvider {
             for (index in 0 until songs.length()) {
                 songs.optJSONObject(index)?.let { add(AppleSongCandidate(it)) }
             }
-        }
-    }
-
-    private fun candidateStorefronts(mediaId: String, mediaUri: String): LinkedHashSet<String> {
-        val source = extractStorefront(mediaUri) ?: extractStorefront(mediaId)
-        return linkedSetOf<String>().apply {
-            source?.let(::add)
-            add(AppleMusicStateCache.storefront)
-            add("cn")
-            // JP is the most common source of localized titles in the reported
-            // failure mode; keep this explicit and bounded rather than scanning
-            // every Apple storefront.
-            add("jp")
         }
     }
 
@@ -499,13 +587,13 @@ internal class AppleMusicLyricProvider {
             get() = song.optJSONObject("attributes")?.optString("isrc", "")
                 ?.takeIf { it.isNotBlank() }
 
-        fun toAlias(storefront: String): AppleMusicCatalogAlias = AppleMusicCatalogAlias(
+        fun toAlias(storefront: String, canonicalIsrc: String = isrc.orEmpty()): AppleMusicCatalogAlias = AppleMusicCatalogAlias(
             title = matchedTitle,
             artist = matchedArtist,
             album = matchedAlbum,
             durationMs = matchedDurationMs,
             providerTrackId = providerTrackId.orEmpty(),
-            isrc = isrc,
+            isrc = canonicalIsrc.takeIf { it.isNotBlank() },
             storefront = storefront
         )
     }

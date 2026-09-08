@@ -52,7 +52,7 @@ internal class NeteaseLyricProvider(
     ): OnlineLyricFetcher.LyricResult? =
         withContext(Dispatchers.IO) {
             try {
-                val keywords = "$title $artist"
+                val keywords = ProviderSearchTerm.build(title, artist, album)
                 val searchUrl = "https://music.163.com/api/search/get?s=${keywords.encodeURL()}&type=1&limit=10"
                 val searchResponse = httpClient.get(searchUrl) ?: return@withContext null
 

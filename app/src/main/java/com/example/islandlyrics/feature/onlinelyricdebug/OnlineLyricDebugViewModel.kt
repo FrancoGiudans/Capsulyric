@@ -738,7 +738,7 @@ class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(app
                 }
                 val queryTitle = currentSongState.effectiveTitle
                 val queryArtist = currentSongState.effectiveArtist
-                if (queryTitle.isBlank() || queryArtist.isBlank()) {
+                if (queryTitle.isBlank() && queryArtist.isBlank()) {
                     _error.value = s(R.string.online_lyric_debug_error_no_song)
                     return@launch
                 }
@@ -757,7 +757,8 @@ class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(app
                     } else {
                         _providerOrder.value.orEmpty().map { it.id }
                     },
-                    useSmartSelection = rule.useSmartOnlineLyricSelection
+                    useSmartSelection = rule.useSmartOnlineLyricSelection,
+                    collectAllResults = true
                 )
                 _attempts.value = outcome.attempts
                 _usedCleanTitleFallback.value = outcome.usedCleanTitleFallback
@@ -868,7 +869,7 @@ class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(app
                     }
                     return@launch
                 }
-                if (queryTitle.isBlank() || queryArtist.isBlank()) {
+                if (queryTitle.isBlank() && queryArtist.isBlank()) {
                     _error.value = s(R.string.online_lyric_debug_error_no_song)
                     return@launch
                 }
@@ -916,7 +917,8 @@ class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(app
                     } else {
                         _providerOrder.value.orEmpty().map { it.id }
                     },
-                    useSmartSelection = rule.useSmartOnlineLyricSelection
+                    useSmartSelection = rule.useSmartOnlineLyricSelection,
+                    collectAllResults = true
                 )
                 _attempts.value = outcome.attempts
                 _usedCleanTitleFallback.value = outcome.usedCleanTitleFallback

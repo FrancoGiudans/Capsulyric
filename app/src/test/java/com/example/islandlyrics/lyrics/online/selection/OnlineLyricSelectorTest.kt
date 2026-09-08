@@ -3,7 +3,9 @@ package com.example.islandlyrics.lyrics.online.selection
 import com.example.islandlyrics.lyrics.online.OnlineLyricFetcher
 import com.example.islandlyrics.lyrics.online.provider.OnlineLyricProvider
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
+import org.junit.Assert.assertNull
 import org.junit.Test
 
 class OnlineLyricSelectorTest {
@@ -51,5 +53,65 @@ class OnlineLyricSelectorTest {
         assertTrue(result.identityEvidence?.contains("title=36") == true)
         assertTrue(result.score > result.identityScore)
         assertEquals("exact", attempts.first().queryVariant)
+    }
+
+    @Test
+    fun exactTextCannotOverrideHardDurationConflict() {
+        val result = OnlineLyricFetcher.LyricResult(
+            api = "QQMusic",
+            lyrics = "[00:01.00]歌词",
+            parsedLines = listOf(OnlineLyricFetcher.LyricLine(1_000L, 2_000L, "歌词")),
+            hasSyllable = false,
+            provider = OnlineLyricProvider.QQMusic,
+            matchedTitle = "Same Song",
+            matchedArtist = "Same Artist",
+            matchedAlbum = "Studio Album",
+            matchedDurationMs = 245_000L,
+            providerTrackId = "wrong-version"
+        )
+        val attempts = listOf(
+            OnlineLyricFetcher.ProviderAttempt(
+                provider = OnlineLyricProvider.QQMusic,
+                result = result,
+                durationMs = 100L,
+                usedCleanTitleFallback = false
+            )
+        )
+
+        assertNull(
+            OnlineLyricSelector { it.trim() }.selectBestResult(
+                attempts = attempts,
+                targetTitle = "Same Song",
+                targetArtist = "Same Artist",
+                targetAlbum = "Studio Album",
+                targetDurationMs = 181_000L,
+                providerOrder = listOf(OnlineLyricProvider.QQMusic),
+                useSmartSelection = true
+            )
+        )
+    }
+
+    @Test
+    fun mediumConfidenceResultDoesNotCancelSlowerProviders() {
+        val result = OnlineLyricFetcher.LyricResult(
+            api = "LrcApi",
+            lyrics = "[00:01.00]lyrics",
+            parsedLines = listOf(OnlineLyricFetcher.LyricLine(1_000L, 2_000L, "lyrics")),
+            hasSyllable = false,
+            provider = OnlineLyricProvider.LrcApi,
+            matchedTitle = "Same Song",
+            matchedArtist = null,
+            providerTrackId = "candidate"
+        )
+
+        assertFalse(
+            OnlineLyricSelector { it.trim() }.isPotentiallyMatching(
+                result = result,
+                targetTitle = "Same Song",
+                targetArtist = "Same Artist",
+                targetAlbum = "",
+                targetDurationMs = 0L
+            )
+        )
     }
 }

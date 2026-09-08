@@ -52,7 +52,7 @@ internal class QqMusicLyricProvider(
     ): OnlineLyricFetcher.LyricResult? =
         withContext(Dispatchers.IO) {
             try {
-                val keyword = "$title $artist"
+                val keyword = ProviderSearchTerm.build(title, artist, album)
                 val searchPayload = """
                     {"music.search.SearchCgiService":{"method":"DoSearchForQQMusicDesktop","module":"music.search.SearchCgiService","param":{"num_per_page":10,"page_num":1,"query":"${escapeJson(keyword)}","search_type":0}}}
                 """.trimIndent()

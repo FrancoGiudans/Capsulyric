@@ -407,6 +407,7 @@ fun OnlineLyricDebugScreen(
                                 canUse = { viewModel.canUseAttemptForRole(it, OnlineLyricDebugViewModel.ResultRole.MAIN) },
                                 preview = { viewModel.resultLyricsText(it) },
                                 emptyText = stringResource(R.string.online_lyric_debug_no_main_candidates),
+                                includeUnavailable = true,
                                 onOpen = {
                                     dialogRole = OnlineLyricDebugViewModel.ResultRole.MAIN
                                     viewModel.openAttempt(it)
@@ -581,12 +582,13 @@ private fun CandidateSection(
     canUse: (OnlineLyricFetcher.ProviderAttempt) -> Boolean,
     preview: (OnlineLyricFetcher.LyricResult?) -> String,
     emptyText: String,
+    includeUnavailable: Boolean = false,
     clearTitle: String? = null,
     onClear: (() -> Unit)? = null,
     onOpen: (OnlineLyricFetcher.ProviderAttempt) -> Unit
 ) {
     val context = LocalContext.current
-    val usableAttempts = attempts.filter(canUse)
+    val visibleAttempts = if (includeUnavailable) attempts else attempts.filter(canUse)
     Text(
         text = title,
         style = MaterialTheme.typography.labelLarge,
@@ -608,7 +610,7 @@ private fun CandidateSection(
             onClick = onClear
         )
     }
-    if (usableAttempts.isEmpty()) {
+    if (visibleAttempts.isEmpty()) {
         Text(
             text = emptyText,
             style = MaterialTheme.typography.bodySmall,
@@ -617,13 +619,16 @@ private fun CandidateSection(
         )
         return
     }
-    usableAttempts.forEach { attempt ->
+    visibleAttempts.forEach { attempt ->
         val result = attempt.result
-        val selected = result == selectedResult
+        val usable = canUse(attempt)
+        val selected = result != null && result == selectedResult
         SourceResultRow(
             title = attempt.provider.displayName(context),
             subtitle = if (selected) {
                 stringResource(R.string.online_lyric_rematch_selected_result)
+            } else if (!usable) {
+                result?.error ?: stringResource(R.string.online_lyric_debug_no_result)
             } else {
                 stringResource(R.string.online_lyric_rematch_available_result)
             },
@@ -632,8 +637,8 @@ private fun CandidateSection(
                 attempt = attempt,
                 selected = selected
             ),
-            preview = preview(result),
-            enabled = result != null,
+            preview = if (usable) preview(result) else "",
+            enabled = usable,
             selected = selected,
             onClick = { onOpen(attempt) }
         )
@@ -723,7 +728,18 @@ private fun resultBadges(
             attempt.queryVariant
         )
     }
+    if (attempt != null) {
+        labels += stringResource(
+            R.string.online_lyric_debug_attempt_query_fmt,
+            attempt.queryTitle.ifBlank { "—" },
+            attempt.queryArtist.ifBlank { "—" }
+        )
+    }
     if (result != null && result.identityEvidence != null) {
+        labels += stringResource(
+            R.string.online_lyric_debug_total_score_fmt,
+            result.score
+        )
         labels += stringResource(
             R.string.online_lyric_debug_identity_score_fmt,
             result.identityScore

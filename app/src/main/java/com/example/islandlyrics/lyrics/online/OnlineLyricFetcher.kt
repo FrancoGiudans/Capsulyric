@@ -119,6 +119,19 @@ class OnlineLyricFetcher(
         val attempts: List<ProviderAttempt>,
         val usedCleanTitleFallback: Boolean
     )
+
+    private data class DiagnosticQueryPlan(
+        val query: LyricQuery,
+        val providers: List<OnlineLyricProvider>,
+        val variant: String,
+        val isFallback: Boolean
+    )
+
+    private data class DiagnosticQueryResult(
+        val plan: DiagnosticQueryPlan,
+        val attempts: List<ProviderAttempt>,
+        val bestResult: LyricResult?
+    )
     
     private val client = OkHttpClient.Builder()
         .connectTimeout(10, TimeUnit.SECONDS)
@@ -147,14 +160,16 @@ class OnlineLyricFetcher(
         artist: String,
         providerOrderIds: List<String> = OnlineLyricProvider.defaultIds(),
         useSmartSelection: Boolean = true,
-        disabledProviderIds: Set<String> = emptySet()
+        disabledProviderIds: Set<String> = emptySet(),
+        collectAllResults: Boolean = false
     ): LyricResult? {
         return fetchLyrics(
             title = title,
             artist = artist,
             providerOrderIds = providerOrderIds,
             useSmartSelection = useSmartSelection,
-            disabledProviderIds = disabledProviderIds
+            disabledProviderIds = disabledProviderIds,
+            collectAllResults = collectAllResults
         ).bestResult
     }
 
@@ -171,7 +186,8 @@ class OnlineLyricFetcher(
         onAppleAliasesResolved: (suspend (List<AppleMusicCatalogAlias>) -> Unit)? = null,
         providerOrderIds: List<String> = OnlineLyricProvider.defaultIds(),
         useSmartSelection: Boolean = true,
-        disabledProviderIds: Set<String> = emptySet()
+        disabledProviderIds: Set<String> = emptySet(),
+        collectAllResults: Boolean = false
     ): FetchOutcome {
         val providerOrder = OnlineLyricProvider.normalizeOrder(providerOrderIds)
             .filterNot { it.id in disabledProviderIds }
@@ -188,7 +204,21 @@ class OnlineLyricFetcher(
             AppLogger.getInstance().i("OnlineLyric", "Offline mode enabled, online lyric fetch blocked")
             return FetchOutcome(query, null, emptyList(), false)
         }
-        val exactAttempts = fetchAllProviders(query, providerOrder, usedCleanTitleFallback = false)
+        if (collectAllResults) {
+            return fetchDiagnosticResults(
+                query = query,
+                providerOrder = providerOrder,
+                useSmartSelection = useSmartSelection,
+                cachedAppleAliases = cachedAppleAliases,
+                onAppleAliasesResolved = onAppleAliasesResolved
+            )
+        }
+        val exactAttempts = fetchAllProviders(
+            query,
+            providerOrder,
+            usedCleanTitleFallback = false,
+            collectAllResults = collectAllResults
+        )
         val exactBest = selector.selectBestResult(
             exactAttempts,
             title,
@@ -211,7 +241,8 @@ class OnlineLyricFetcher(
                 cleanQuery,
                 providerOrder,
                 usedCleanTitleFallback = true,
-                queryVariant = "clean_title"
+                queryVariant = "clean_title",
+                collectAllResults = collectAllResults
             )
             val allAttempts = exactAttempts + cleanAttempts
             fallbackAttempts = allAttempts
@@ -259,10 +290,23 @@ class OnlineLyricFetcher(
                 }
             }
             val aliasProviders = providerOrder.filterNot { it == OnlineLyricProvider.AppleMusic }
-            for (alias in aliases.take(MAX_APPLE_ALIAS_QUERIES)) {
-                if (alias.title.equals(title, ignoreCase = true) &&
-                    alias.artist.equals(artist, ignoreCase = true)
-                ) continue
+            // Filter and deduplicate before applying the request budget.  The
+            // source alias is often returned first; it must not consume the
+            // slot that is intended for the localized CN alias.
+            val aliasQueries = aliases
+                .filterNot {
+                    it.title.equals(title, ignoreCase = true) &&
+                        it.artist.equals(artist, ignoreCase = true)
+                }
+                .distinctBy {
+                    listOf(
+                        it.title.trim().lowercase(),
+                        it.artist.trim().lowercase(),
+                        it.album.orEmpty().trim().lowercase()
+                    ).joinToString("|")
+                }
+                .take(MAX_APPLE_ALIAS_QUERIES)
+            for (alias in aliasQueries) {
 
                 val aliasQuery = query.copy(
                     title = alias.title,
@@ -274,7 +318,8 @@ class OnlineLyricFetcher(
                     aliasQuery,
                     aliasProviders,
                     usedCleanTitleFallback = true,
-                    queryVariant = "apple_alias"
+                    queryVariant = "apple_alias",
+                    collectAllResults = collectAllResults
                 )
                 aliasAttempts += attempts
                 val aliasBest = selector.selectBestResult(
@@ -307,7 +352,8 @@ class OnlineLyricFetcher(
                 artistQuery,
                 providerOrder,
                 usedCleanTitleFallback = true,
-                queryVariant = "artist_only"
+                queryVariant = "artist_only",
+                collectAllResults = collectAllResults
             )
             val allAttempts = fallbackAttempts + artistAttempts
             return FetchOutcome(
@@ -329,32 +375,179 @@ class OnlineLyricFetcher(
         return FetchOutcome(query, null, exactAttempts, false)
     }
 
+    /**
+     * Exhaustive mode used by rematch/debug surfaces. Every bounded query
+     * variant keeps every provider attempt and scores it against the query that
+     * produced it; no fast result is allowed to cancel another source.
+     */
+    private suspend fun fetchDiagnosticResults(
+        query: LyricQuery,
+        providerOrder: List<OnlineLyricProvider>,
+        useSmartSelection: Boolean,
+        cachedAppleAliases: List<AppleMusicCatalogAlias>,
+        onAppleAliasesResolved: (suspend (List<AppleMusicCatalogAlias>) -> Unit)?
+    ): FetchOutcome = coroutineScope {
+        val plans = mutableListOf(
+            DiagnosticQueryPlan(query, providerOrder, "exact", false)
+        )
+
+        val normalizedTitle = cleanTitle(query.title)
+        if (normalizedTitle.isNotBlank() && normalizedTitle != query.title) {
+            plans += DiagnosticQueryPlan(
+                query.copy(title = normalizedTitle),
+                providerOrder,
+                "clean_title",
+                true
+            )
+        }
+        if (query.artist.isNotBlank() && (query.album.isNotBlank() || query.durationMs > 0L)) {
+            plans += DiagnosticQueryPlan(
+                query.copy(title = ""),
+                providerOrder,
+                "artist_album",
+                true
+            )
+        }
+
+        val shouldResolveAliases =
+            OnlineLyricProvider.AppleMusic in providerOrder &&
+                providerOrder.any { it != OnlineLyricProvider.AppleMusic } &&
+                (query.album.isNotBlank() || query.durationMs > 0L)
+        val aliasesDeferred = async {
+            if (!shouldResolveAliases) return@async emptyList()
+            if (cachedAppleAliases.isNotEmpty()) return@async cachedAppleAliases
+            appleMusicProvider.resolveCatalogAliases(
+                title = query.title,
+                artist = query.artist,
+                album = query.album,
+                durationMs = query.durationMs,
+                mediaId = query.mediaId,
+                mediaUri = query.mediaUri
+            ).also { resolved ->
+                if (resolved.isNotEmpty()) onAppleAliasesResolved?.invoke(resolved)
+            }
+        }
+
+        suspend fun execute(plan: DiagnosticQueryPlan): DiagnosticQueryResult {
+            val attempts = fetchAllProviders(
+                query = plan.query,
+                providerOrder = plan.providers,
+                usedCleanTitleFallback = plan.isFallback,
+                queryVariant = plan.variant,
+                collectAllResults = true
+            )
+            val best = selector.selectBestResult(
+                attempts = attempts,
+                targetTitle = plan.query.title,
+                targetArtist = plan.query.artist,
+                providerOrder = plan.providers,
+                useSmartSelection = useSmartSelection,
+                targetAlbum = plan.query.album,
+                targetDurationMs = plan.query.durationMs
+            )
+            return DiagnosticQueryResult(plan, attempts, best)
+        }
+
+        val baseResults = plans.map { plan -> async { execute(plan) } }.awaitAll()
+        val aliases = aliasesDeferred.await()
+            .filterNot {
+                it.title.equals(query.title, ignoreCase = true) &&
+                    it.artist.equals(query.artist, ignoreCase = true)
+            }
+            .distinctBy {
+                listOf(
+                    it.title.trim().lowercase(),
+                    it.artist.trim().lowercase(),
+                    it.album.orEmpty().trim().lowercase()
+                ).joinToString("|")
+            }
+            .take(MAX_DIAGNOSTIC_ALIAS_QUERIES)
+        val aliasProviders = providerOrder.filterNot { it == OnlineLyricProvider.AppleMusic }
+        val aliasResults = aliases.map { alias ->
+            val aliasQuery = query.copy(
+                title = alias.title,
+                artist = alias.artist,
+                album = alias.album ?: query.album,
+                durationMs = alias.durationMs ?: query.durationMs
+            )
+            async {
+                execute(
+                    DiagnosticQueryPlan(
+                        query = aliasQuery,
+                        providers = aliasProviders,
+                        variant = "apple_alias:${alias.storefront}",
+                        isFallback = true
+                    )
+                )
+            }
+        }.awaitAll()
+
+        val results = baseResults + aliasResults
+        val providerPriority = providerOrder.withIndex().associate { it.value to it.index }
+        val best = results.mapNotNull { it.bestResult }
+            .sortedWith(
+                compareByDescending<LyricResult> { it.score }
+                    .thenBy { providerPriority[it.provider] ?: Int.MAX_VALUE }
+            )
+            .firstOrNull()
+        val allAttempts = results.flatMap { it.attempts }
+            .sortedWith(
+                compareBy<ProviderAttempt> { providerPriority[it.provider] ?: Int.MAX_VALUE }
+                    .thenByDescending { it.result?.score ?: Int.MIN_VALUE }
+                    .thenBy { it.queryVariant }
+            )
+        FetchOutcome(
+            query = query,
+            bestResult = best,
+            attempts = allAttempts,
+            usedCleanTitleFallback = results.any { result ->
+                result.plan.isFallback && result.attempts.any { it.result != null }
+            }
+        )
+    }
+
     @OptIn(ExperimentalCoroutinesApi::class)
     private suspend fun fetchAllProviders(
         query: LyricQuery,
         providerOrder: List<OnlineLyricProvider>,
         usedCleanTitleFallback: Boolean,
-        queryVariant: String = if (usedCleanTitleFallback) "fallback" else "exact"
+        queryVariant: String = if (usedCleanTitleFallback) "fallback" else "exact",
+        collectAllResults: Boolean = false
     ): List<ProviderAttempt> {
         return withContext(Dispatchers.IO) {
             try {
                 val deferreds = providerOrder.map { provider ->
                     async {
                         val startedAt = System.currentTimeMillis()
-                        val result = when (provider) {
-                            OnlineLyricProvider.QQMusic -> qqMusicProvider.fetch(query.title, query.artist, query.album, query.durationMs)
-                            OnlineLyricProvider.Kugou -> kugouProvider.fetch(query.title, query.artist, query.album, query.durationMs)
-                            OnlineLyricProvider.SodaMusic -> sodaMusicProvider.fetch(query.title, query.artist, query.album, query.durationMs)
-                            OnlineLyricProvider.Lrclib -> lrclibProvider.fetch(query.title, query.artist)
-                            OnlineLyricProvider.Netease -> neteaseProvider.fetch(query.title, query.artist, query.album, query.durationMs)
-                            OnlineLyricProvider.LrcApi -> lrcApiProvider.fetch(query.title, query.artist)
-                            OnlineLyricProvider.AppleMusic -> appleMusicProvider.fetch(
-                                query.title,
-                                query.artist,
-                                query.album,
-                                query.durationMs
+                        val result = try {
+                            when (provider) {
+                                OnlineLyricProvider.QQMusic -> qqMusicProvider.fetch(query.title, query.artist, query.album, query.durationMs)
+                                OnlineLyricProvider.Kugou -> kugouProvider.fetch(query.title, query.artist, query.album, query.durationMs)
+                                OnlineLyricProvider.SodaMusic -> sodaMusicProvider.fetch(query.title, query.artist, query.album, query.durationMs)
+                                OnlineLyricProvider.Lrclib -> lrclibProvider.fetch(query.title, query.artist)
+                                OnlineLyricProvider.Netease -> neteaseProvider.fetch(query.title, query.artist, query.album, query.durationMs)
+                                OnlineLyricProvider.LrcApi -> lrcApiProvider.fetch(query.title, query.artist)
+                                OnlineLyricProvider.AppleMusic -> appleMusicProvider.fetch(
+                                    query.title,
+                                    query.artist,
+                                    query.album,
+                                    query.durationMs
+                                )
+                                OnlineLyricProvider.Musixmatch -> musixmatchProvider.fetch(query.title, query.artist)
+                            }
+                        } catch (cancelled: CancellationException) {
+                            throw cancelled
+                        } catch (error: Exception) {
+                            // The debug page should expose a provider failure instead of
+                            // silently dropping the provider from the attempt list.
+                            LyricResult(
+                                api = provider.id,
+                                lyrics = null,
+                                parsedLines = null,
+                                hasSyllable = false,
+                                provider = provider,
+                                error = error.message ?: error::class.simpleName
                             )
-                            OnlineLyricProvider.Musixmatch -> musixmatchProvider.fetch(query.title, query.artist)
                         }
                         ProviderAttempt(
                             provider = provider,
@@ -366,6 +559,61 @@ class OnlineLyricFetcher(
                             queryVariant = queryVariant
                         )
                     }
+                }
+
+                if (collectAllResults) {
+                    val completedResults = mutableListOf<ProviderAttempt>()
+                    withTimeoutOrNull(FETCH_TIMEOUT_MS) {
+                        deferreds.asFlow()
+                            .flatMapMerge(concurrency = Int.MAX_VALUE) { deferred ->
+                                flow {
+                                    try {
+                                        emit(deferred.await())
+                                    } catch (cancelled: CancellationException) {
+                                        throw cancelled
+                                    } catch (_: Exception) {
+                                        // One provider failure must not hide other results.
+                                    }
+                                }
+                            }
+                            .collect { completedResults += it }
+                    }
+                    // A single slow provider must not erase every result that
+                    // was already collected before the batch timeout.
+                    deferreds.forEach { deferred ->
+                        if (deferred.isCompleted && !deferred.isCancelled) {
+                            runCatching { deferred.getCompleted() }
+                                .getOrNull()
+                                ?.takeIf { candidate ->
+                                    completedResults.none { it.provider == candidate.provider }
+                                }
+                                ?.let(completedResults::add)
+                        } else {
+                            deferred.cancel()
+                        }
+                    }
+                    providerOrder.filterNot { provider ->
+                        completedResults.any { it.provider == provider }
+                    }.forEach { provider ->
+                        completedResults += ProviderAttempt(
+                            provider = provider,
+                            result = LyricResult(
+                                api = provider.id,
+                                lyrics = null,
+                                parsedLines = null,
+                                hasSyllable = false,
+                                provider = provider,
+                                error = "Timed out after ${FETCH_TIMEOUT_MS}ms"
+                            ),
+                            durationMs = FETCH_TIMEOUT_MS,
+                            usedCleanTitleFallback = usedCleanTitleFallback,
+                            queryTitle = query.title,
+                            queryArtist = query.artist,
+                            queryVariant = queryVariant
+                        )
+                    }
+                    val order = providerOrder.withIndex().associate { it.value to it.index }
+                    return@withContext completedResults.sortedBy { order[it.provider] ?: Int.MAX_VALUE }
                 }
 
                 val firstResult = withTimeoutOrNull(FETCH_TIMEOUT_MS) {
@@ -404,6 +652,8 @@ class OnlineLyricFetcher(
                     }
                 }
 
+            } catch (cancelled: CancellationException) {
+                throw cancelled
             } catch (e: Exception) {
                 AppLogger.getInstance().e("OnlineLyric", "获取歌词失败: ${e.message}")
                 emptyList()
@@ -431,8 +681,9 @@ class OnlineLyricFetcher(
 
     private companion object {
         private const val FETCH_TIMEOUT_MS = 10_000L
-        private const val FAST_RESULT_GRACE_PERIOD_MS = 500L
+        private const val FAST_RESULT_GRACE_PERIOD_MS = 1_500L
         private const val MAX_APPLE_ALIAS_QUERIES = 3
+        private const val MAX_DIAGNOSTIC_ALIAS_QUERIES = 8
     }
 }
 

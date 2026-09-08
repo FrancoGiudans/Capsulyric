@@ -26,6 +26,7 @@ class AppleMusicMediaRefTest {
             "123456789",
             AppleMusicMediaRef.extractSongId("https://music.apple.com/jp/song/example/123456789")
         )
+        assertEquals("123456789", AppleMusicMediaRef.extractSongId("apple:song:123456789"))
     }
 
     @Test
