@@ -34,6 +34,9 @@ import com.example.islandlyrics.lyrics.online.parser.OnlineLyricParser
 import com.example.islandlyrics.lyrics.online.selection.CandidateMatcher
 import com.example.islandlyrics.lyrics.online.selection.SearchCandidate
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.supervisorScope
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import org.json.JSONObject
@@ -553,15 +556,25 @@ internal class AppleMusicLyricProvider {
             "en-US"
         )
             .distinct()
-        val candidates = mutableListOf<AppleSongCandidate>()
-        for (term in terms) {
-            for (language in languages) {
-                val url = "https://amp-api.music.apple.com/v1/catalog/$storefront/search" +
-                    "?term=${term.encodeURL()}&types=songs&limit=${if (includeArtistOnly) 25 else 10}&l=${language.encodeURL()}"
-                getWithTokenRetry(url)?.let(::parseSongCandidates)?.let(candidates::addAll)
-            }
+        val requests = terms.flatMap { term ->
+            languages.map { language -> term to language }
         }
-        return candidates.distinctBy { it.providerTrackId ?: it.song.toString() }
+        return supervisorScope {
+            requests
+                .map { (term, language) ->
+                    async {
+                        val url = "https://amp-api.music.apple.com/v1/catalog/$storefront/search" +
+                            "?term=${term.encodeURL()}&types=songs&limit=${if (includeArtistOnly) 25 else 10}" +
+                            "&l=${language.encodeURL()}"
+                        runCatching {
+                            getWithTokenRetry(url)?.let(::parseSongCandidates).orEmpty()
+                        }.getOrDefault(emptyList())
+                    }
+                }
+                .awaitAll()
+                .flatten()
+                .distinctBy { it.providerTrackId ?: it.song.toString() }
+        }
     }
 
     /**

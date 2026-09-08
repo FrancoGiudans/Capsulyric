@@ -218,6 +218,53 @@ class OnlineLyricFetcher(
                 onAppleAliasesResolved = onAppleAliasesResolved
             )
         }
+
+        // Resolve the Apple catalog identity bridge while the cheap exact
+        // provider queries are running. Previously this work started only
+        // after exact and cleaned-title batches had both timed out, so a
+        // cross-language track could spend 20–30 seconds waiting before its
+        // localized query even began. The bridge is bounded and cancelled as
+        // soon as an earlier identity-safe result wins.
+        val shouldResolveAppleAliases =
+            providerOrder.any { it != OnlineLyricProvider.AppleMusic } &&
+                (album.isNotBlank() || durationMs > 0L) &&
+                cachedAppleAliases.isEmpty()
+        val fetchScope = CoroutineScope(currentCoroutineContext())
+        val appleAliasesDeferred = if (shouldResolveAppleAliases) {
+            fetchScope.async(Dispatchers.IO) {
+                withTimeoutOrNull(APPLE_BRIDGE_TIMEOUT_MS) {
+                    appleMusicProvider.resolveCatalogAliases(
+                        title = title,
+                        artist = artist,
+                        album = album,
+                        durationMs = durationMs,
+                        mediaId = mediaId,
+                        mediaUri = mediaUri
+                    ).also { resolved ->
+                        if (resolved.isNotEmpty()) {
+                            runCatching { onAppleAliasesResolved?.invoke(resolved) }
+                        }
+                    }
+                }.orEmpty()
+            }
+        } else {
+            null
+        }
+        val cleanTitle = cleanTitle(title)
+        val cleanQuery = query.copy(title = cleanTitle)
+        val cleanAttemptsDeferred = if (cleanTitle != title) {
+            fetchScope.async(Dispatchers.IO) {
+                fetchAllProviders(
+                    cleanQuery,
+                    providerOrder,
+                    usedCleanTitleFallback = true,
+                    queryVariant = "clean_title",
+                    collectAllResults = collectAllResults
+                )
+            }
+        } else {
+            null
+        }
         val exactAttempts = fetchAllProviders(
             query,
             providerOrder,
@@ -234,21 +281,15 @@ class OnlineLyricFetcher(
             durationMs
         )
         if (exactBest != null) {
+            appleAliasesDeferred?.cancel()
+            cleanAttemptsDeferred?.cancel()
             return FetchOutcome(query, exactBest, exactAttempts, false)
         }
 
         var fallbackAttempts = exactAttempts
-        val cleanTitle = cleanTitle(title)
-        if (cleanTitle != title) {
+        if (cleanAttemptsDeferred != null) {
             AppLogger.getInstance().i("OnlineLyric", "精确搜索未找到，尝试清理标题: $cleanTitle")
-            val cleanQuery = query.copy(title = cleanTitle)
-            val cleanAttempts = fetchAllProviders(
-                cleanQuery,
-                providerOrder,
-                usedCleanTitleFallback = true,
-                queryVariant = "clean_title",
-                collectAllResults = collectAllResults
-            )
+            val cleanAttempts = cleanAttemptsDeferred.await()
             val allAttempts = exactAttempts + cleanAttempts
             fallbackAttempts = allAttempts
             val cleanBest = selector.selectBestResult(
@@ -261,6 +302,8 @@ class OnlineLyricFetcher(
                 durationMs
             )
             if (cleanBest != null) {
+                appleAliasesDeferred?.cancel()
+                cleanAttemptsDeferred.cancel()
                 return FetchOutcome(
                     query = query,
                     bestResult = cleanBest,
@@ -285,16 +328,7 @@ class OnlineLyricFetcher(
             val aliases = if (cachedAppleAliases.isNotEmpty()) {
                 cachedAppleAliases
             } else {
-                appleMusicProvider.resolveCatalogAliases(
-                    title = title,
-                    artist = artist,
-                    album = album,
-                    durationMs = durationMs,
-                    mediaId = mediaId,
-                    mediaUri = mediaUri
-                ).also { resolved ->
-                    if (resolved.isNotEmpty()) onAppleAliasesResolved?.invoke(resolved)
-                }
+                appleAliasesDeferred?.await().orEmpty()
             }
             val aliasProviders = providerOrder.filterNot { it == OnlineLyricProvider.AppleMusic }
             // Filter and deduplicate before applying the request budget.  The
@@ -343,6 +377,8 @@ class OnlineLyricFetcher(
                     targetDurationMs = aliasQuery.durationMs
                 )
                 if (aliasBest != null) {
+                    appleAliasesDeferred?.cancel()
+                    cleanAttemptsDeferred?.cancel()
                     return FetchOutcome(
                         query = query,
                         bestResult = aliasBest,
@@ -367,6 +403,8 @@ class OnlineLyricFetcher(
                 collectAllResults = collectAllResults
             )
             val allAttempts = fallbackAttempts + artistAttempts
+            appleAliasesDeferred?.cancel()
+            cleanAttemptsDeferred?.cancel()
             return FetchOutcome(
                 query = query,
                 bestResult = selector.selectBestResult(
@@ -383,6 +421,8 @@ class OnlineLyricFetcher(
             )
         }
 
+        appleAliasesDeferred?.cancel()
+        cleanAttemptsDeferred?.cancel()
         return FetchOutcome(query, null, exactAttempts, false)
     }
 
@@ -741,6 +781,7 @@ class OnlineLyricFetcher(
 
     private companion object {
         private const val FETCH_TIMEOUT_MS = 10_000L
+        private const val APPLE_BRIDGE_TIMEOUT_MS = 12_000L
         private const val FAST_RESULT_GRACE_PERIOD_MS = 1_500L
         private const val MAX_APPLE_ALIAS_QUERIES = 3
         private const val MAX_DIAGNOSTIC_ALIAS_QUERIES = 8
