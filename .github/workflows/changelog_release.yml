@@ -605,13 +605,38 @@ jobs:
           gitee_files: ${{ steps.artifacts.outputs.apk }}
 
       # ============================================================
-      # Step 12.1: Publish Release to AppShare
+      # Step 12.1: Upload Release APK to LanZouCloud
+      # ============================================================
+      - name: Upload Release APK to LanZouCloud
+        id: lanzou_upload
+        if: success()
+        continue-on-error: true
+        timeout-minutes: 15
+        env:
+          LANZOU_YLOGIN: ${{ secrets.LANZOU_YLOGIN }}
+          LANZOU_PHPDISK_INFO: ${{ secrets.LANZOU_PHPDISK_INFO }}
+          LANZOU_PARENT_FOLDER_ID: ${{ vars.LANZOU_PARENT_FOLDER_ID }}
+        shell: bash
+        run: |
+          python3 -m pip install --disable-pip-version-check -r .github/scripts/requirements-lanzou.txt
+          PARENT_FOLDER_ID="${LANZOU_PARENT_FOLDER_ID:--1}"
+          python3 .github/scripts/publish_lanzou.py \
+            --apk "${{ steps.artifacts.outputs.apk }}" \
+            --channel "${{ steps.meta.outputs.channel }}" \
+            --version-name "${{ steps.meta.outputs.version_name }}" \
+            --parent-folder-id "$PARENT_FOLDER_ID"
+
+      # ============================================================
+      # Step 12.2: Publish Release to AppShare
       # ============================================================
       - name: Publish Release to AppShare
-        if: success()
+        id: appshare_publish
+        if: ${{ success() && steps.lanzou_upload.outputs.appshare_link != '' }}
+        continue-on-error: true
         env:
           appKey: ${{ secrets.appKey }}
           APPSHARE_APP_KEY: ${{ secrets.appKey }}
+          APPSHARE_LINK: ${{ steps.lanzou_upload.outputs.appshare_link }}
         shell: bash
         run: |
           python3 .github/scripts/publish_appshare.py \
@@ -622,10 +647,37 @@ jobs:
             --version-name "${{ steps.meta.outputs.version_name }}" \
             --channel "${{ steps.meta.outputs.channel }}" \
             --changelog-file "/tmp/cn_notes.txt" \
-            --link "https://gitee.com/franklinsmithson/Capsulyric/releases"
+            --link "$APPSHARE_LINK"
+
+      - name: Report AppShare skipped
+        if: ${{ steps.lanzou_upload.outputs.appshare_link == '' }}
+        shell: bash
+        run: echo "::warning::蓝奏云链接不可用，已跳过 AppShare；GitHub/Gitee 发版仍已完成。"
 
       # ============================================================
-      # Step 12.2: Prune old releases — keep 15 most recent Version.* (GitHub + Gitee)
+      # Step 12.3: Prune LanZouCloud history after successful AppShare publish
+      # ============================================================
+      - name: Prune LanZouCloud release history (keep 15)
+        if: ${{ steps.appshare_publish.outcome == 'success' }}
+        continue-on-error: true
+        timeout-minutes: 10
+        env:
+          LANZOU_YLOGIN: ${{ secrets.LANZOU_YLOGIN }}
+          LANZOU_PHPDISK_INFO: ${{ secrets.LANZOU_PHPDISK_INFO }}
+          LANZOU_PARENT_FOLDER_ID: ${{ vars.LANZOU_PARENT_FOLDER_ID }}
+        shell: bash
+        run: |
+          python3 -m pip install --disable-pip-version-check -r .github/scripts/requirements-lanzou.txt
+          PARENT_FOLDER_ID="${LANZOU_PARENT_FOLDER_ID:--1}"
+          python3 .github/scripts/publish_lanzou.py \
+            --channel "${{ steps.meta.outputs.channel }}" \
+            --version-name "${{ steps.meta.outputs.version_name }}" \
+            --keep 15 \
+            --parent-folder-id "$PARENT_FOLDER_ID" \
+            --prune-only
+
+      # ============================================================
+      # Step 12.4: Prune old releases — keep 15 most recent Version.* (GitHub + Gitee)
       # ============================================================
       - name: Prune old GitHub releases (keep 15)
         if: success()

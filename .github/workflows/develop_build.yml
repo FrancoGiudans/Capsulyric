@@ -343,15 +343,23 @@ jobs:
           gitee_files: app/build/outputs/apk/prerelease/app-prerelease-signed.apk
 
       - name: Publish Experiment Release to AppShare
+        id: appshare_publish
         if: |
           github.event_name == 'push' &&
           needs.resolve_mode.outputs.is_preview != 'true' &&
           !contains(github.event.head_commit.message, '[assemble only]')
+        continue-on-error: true
+        timeout-minutes: 15
         env:
           appKey: ${{ secrets.appKey }}
           APPSHARE_APP_KEY: ${{ secrets.appKey }}
+          APPSHARE_LINK: ${{ steps.lanzou_upload.outputs.appshare_link }}
         shell: bash
         run: |
+          if [ -z "$APPSHARE_LINK" ]; then
+            echo "::warning::蓝奏云链接不可用，已跳过 AppShare；GitHub/Gitee 发版仍已完成。"
+            exit 0
+          fi
           python3 .github/scripts/publish_appshare.py \
             --apk "app/build/outputs/apk/prerelease/app-prerelease-signed.apk" \
             --name "Capsulyric-${{ steps.meta.outputs.rel_name }}.apk" \
@@ -360,5 +368,46 @@ jobs:
             --version-name "${{ steps.meta.outputs.rel_name }}" \
             --channel "Experiment" \
             --changelog-file "appshare_canary_notes.txt" \
-            --source "GitHub Canary Build" \
-            --link "https://gitee.com/franklinsmithson/Capsulyric/releases"
+            --source "Capsulyric CI (Experiment)" \
+            --link "$APPSHARE_LINK"
+
+      - name: Upload Experiment APK to LanZouCloud
+        id: lanzou_upload
+        if: |
+          github.event_name == 'push' &&
+          needs.resolve_mode.outputs.is_preview != 'true' &&
+          !contains(github.event.head_commit.message, '[assemble only]')
+        continue-on-error: true
+        timeout-minutes: 15
+        env:
+          LANZOU_YLOGIN: ${{ secrets.LANZOU_YLOGIN }}
+          LANZOU_PHPDISK_INFO: ${{ secrets.LANZOU_PHPDISK_INFO }}
+          LANZOU_PARENT_FOLDER_ID: ${{ vars.LANZOU_PARENT_FOLDER_ID }}
+        shell: bash
+        run: |
+          python3 -m pip install --disable-pip-version-check -r .github/scripts/requirements-lanzou.txt
+          PARENT_FOLDER_ID="${LANZOU_PARENT_FOLDER_ID:--1}"
+          python3 .github/scripts/publish_lanzou.py \
+            --apk "app/build/outputs/apk/prerelease/app-prerelease-signed.apk" \
+            --channel "Experiment" \
+            --version-name "${{ steps.meta.outputs.rel_name }}" \
+            --parent-folder-id "$PARENT_FOLDER_ID"
+
+      - name: Prune LanZouCloud experiment history (keep 1)
+        if: ${{ steps.appshare_publish.outcome == 'success' && steps.lanzou_upload.outputs.appshare_link != '' }}
+        continue-on-error: true
+        timeout-minutes: 10
+        env:
+          LANZOU_YLOGIN: ${{ secrets.LANZOU_YLOGIN }}
+          LANZOU_PHPDISK_INFO: ${{ secrets.LANZOU_PHPDISK_INFO }}
+          LANZOU_PARENT_FOLDER_ID: ${{ vars.LANZOU_PARENT_FOLDER_ID }}
+        shell: bash
+        run: |
+          python3 -m pip install --disable-pip-version-check -r .github/scripts/requirements-lanzou.txt
+          PARENT_FOLDER_ID="${LANZOU_PARENT_FOLDER_ID:--1}"
+          python3 .github/scripts/publish_lanzou.py \
+            --channel "Experiment" \
+            --version-name "${{ steps.meta.outputs.rel_name }}" \
+            --keep 1 \
+            --parent-folder-id "$PARENT_FOLDER_ID" \
+            --prune-only
