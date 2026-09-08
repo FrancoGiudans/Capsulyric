@@ -314,10 +314,16 @@ internal class AppleMusicLyricProvider {
             emptyList()
         }
 
-        aliasCache[cacheKey] = CachedAliases(
-            expiresAt = now + if (aliases.isEmpty()) NEGATIVE_ALIAS_TTL_MS else ALIAS_TTL_MS,
-            aliases = aliases
-        )
+        if (aliases.isEmpty()) {
+            // An empty result is often caused by a transient token/network
+            // failure. Do not retain it for minutes and hide a later retry.
+            aliasCache.remove(cacheKey)
+        } else {
+            aliasCache[cacheKey] = CachedAliases(
+                expiresAt = now + ALIAS_TTL_MS,
+                aliases = aliases
+            )
+        }
         aliases
     }
 
@@ -350,6 +356,12 @@ internal class AppleMusicLyricProvider {
             artist = artist,
             album = album
         )
+        android.util.Log.d(
+            "AppleMusicCatalog",
+            "resolve title=${title.take(80)} artist=${artist.take(80)} duration=$durationMs " +
+                "sourceStorefront=${sourceStorefront ?: "-"} sourceSongId=${sourceSongId ?: "-"} " +
+                "anchorStorefronts=$anchorStorefronts"
+        )
 
         // A native-script storefront is only a search hint. Every accepted
         // anchor still has to pass the normal identity matcher before its ISRC
@@ -360,21 +372,39 @@ internal class AppleMusicLyricProvider {
                     .firstOrNull()
                     ?.let { CatalogAnchor(storefront, it) }
             } else {
-                resolveSearchAnchor(storefront, title, artist, album, durationMs)
+                resolveSearchAnchor(storefront, title, artist, album, durationMs).also {
+                    android.util.Log.d(
+                        "AppleMusicCatalog",
+                        "anchor search storefront=$storefront result=${it?.candidate?.matchedTitle ?: "-"}"
+                    )
+                }
             }
         } ?: return null
 
-        val canonicalIsrc = AppleMusicIsrc.normalize(anchor.candidate.isrc) ?: return null
+        val canonicalIsrc = AppleMusicIsrc.normalize(anchor.candidate.isrc) ?: run {
+            android.util.Log.w(
+                "AppleMusicCatalog",
+                "anchor has no valid ISRC storefront=${anchor.storefront} title=${anchor.candidate.matchedTitle}"
+            )
+            return null
+        }
+        android.util.Log.d(
+            "AppleMusicCatalog",
+            "anchor selected storefront=${anchor.storefront} id=${anchor.candidate.providerTrackId} " +
+                "title=${anchor.candidate.matchedTitle} isrc=$canonicalIsrc"
+        )
         val storefronts = linkedSetOf(anchor.storefront, "cn")
         val verifiedAliases = buildList {
             for (storefront in storefronts) {
-                fetchCatalogSongsByIsrc(
+                val sameIsrcCandidates = fetchCatalogSongsByIsrc(
                     storefront = storefront,
                     isrc = canonicalIsrc,
                     language = if (storefront == "cn") "zh-Hans" else AppleMusicStateCache.language
-                ).forEach { candidate ->
-                    val itemIsrc = AppleMusicIsrc.normalize(candidate.isrc) ?: return@forEach
-                    if (itemIsrc != canonicalIsrc) return@forEach
+                )
+                val verifiedSameIsrcCandidates = sameIsrcCandidates.filter { candidate ->
+                    AppleMusicIsrc.normalize(candidate.isrc) == canonicalIsrc
+                }
+                verifiedSameIsrcCandidates.forEach { candidate ->
                     if (!CandidateMatcher.isDurationCompatible(
                             anchor.candidate.matchedDurationMs ?: durationMs,
                             candidate.matchedDurationMs
@@ -388,6 +418,54 @@ internal class AppleMusicLyricProvider {
                         )
                     ) return@forEach
                     add(candidate.toAlias(storefront, canonicalIsrc))
+                }
+
+                // Apple/label catalogues commonly assign a different ISRC to
+                // each language edition (JP/CN/KR/Worldwide). If the target
+                // storefront has no row for the source ISRC, find its localized
+                // edition using artist + duration (+ album/version) evidence.
+                if (verifiedSameIsrcCandidates.isEmpty()) {
+                    // Apple song IDs are often globally addressable even when
+                    // their storefront attributes are localized. Try the
+                    // source ID first: this can expose the exact CN edition
+                    // when a translated title is not returned by text search.
+                    val idLocalizedCandidates = if (
+                        storefront != anchor.storefront &&
+                        anchor.candidate.providerTrackId?.isNotBlank() == true
+                    ) {
+                        fetchCatalogSongs(
+                            storefront = storefront,
+                            path = "songs/${anchor.candidate.providerTrackId}",
+                            language = preferredCatalogLanguage(storefront)
+                        )
+                    } else {
+                        emptyList()
+                    }
+                    val localizedCandidates = idLocalizedCandidates + searchCatalogSongs(
+                            storefront = storefront,
+                            title = anchor.candidate.matchedTitle,
+                            // Search with the player's original artist string.
+                            // The anchor storefront may localize Robin as
+                            // ロビン/知更鸟, which is not searchable in CN.
+                            artist = artist,
+                            album = anchor.candidate.matchedAlbum.orEmpty(),
+                            includeArtistOnly = true
+                        )
+                    val localized = pickLocalizedCandidate(
+                        candidates = localizedCandidates,
+                        anchor = anchor.candidate,
+                        fallbackDurationMs = durationMs
+                    )
+                    android.util.Log.d(
+                        "AppleMusicCatalog",
+                        "localized search storefront=$storefront idCandidates=${idLocalizedCandidates.size} " +
+                            "candidates=${localizedCandidates.size} " +
+                            "result=${localized?.matchedTitle ?: "-"} " +
+                            "id=${localized?.providerTrackId ?: "-"} isrc=${localized?.isrc ?: "-"}"
+                    )
+                    localized?.let { candidate ->
+                        add(candidate.toAlias(storefront, canonicalIsrc))
+                    }
                 }
             }
             add(anchor.candidate.toAlias(anchor.storefront, canonicalIsrc))
@@ -406,6 +484,10 @@ internal class AppleMusicLyricProvider {
                 }.thenByDescending { if (it.album.isNullOrBlank()) 0 else 1 }
             )
 
+        android.util.Log.d(
+            "AppleMusicCatalog",
+            "resolved aliases=${aliases.size} storefronts=${aliases.map { it.storefront }.distinct()}"
+        )
         return CatalogResolution(canonicalIsrc, anchor, aliases)
     }
 
@@ -417,6 +499,12 @@ internal class AppleMusicLyricProvider {
         durationMs: Long
     ): CatalogAnchor? {
         val candidates = searchCatalogSongs(storefront, title, artist, album)
+        val ranked = CandidateMatcher.rank(candidates, title, artist, album, durationMs)
+        android.util.Log.d(
+            "AppleMusicCatalog",
+            "anchor candidates storefront=$storefront count=${candidates.size} " +
+                "ranked=${ranked.take(3).joinToString { "${it.score}:${it.candidate.matchedTitle}/${it.candidate.matchedArtist}/${it.candidate.matchedDurationMs}" }}"
+        )
         val best = CandidateMatcher.pickBestWithMargin(
             candidates = candidates,
             title = title,
@@ -443,11 +531,17 @@ internal class AppleMusicLyricProvider {
         storefront: String,
         title: String,
         artist: String,
-        album: String
+        album: String,
+        includeArtistOnly: Boolean = false
     ): List<AppleSongCandidate> {
         val terms = buildList {
             add("$title $artist".trim())
             if (album.isNotBlank()) add("$title $artist $album".trim())
+            if (includeArtistOnly && artist.isNotBlank()) add(artist.trim())
+            if (includeArtistOnly && artist.isNotBlank() && album.isNotBlank()) {
+                add("$artist $album".trim())
+            }
+            if (includeArtistOnly && album.isNotBlank()) add(album.trim())
         }.distinct()
         // Ask a storefront in its native language first. This is essential for
         // Japanese/Korean player metadata: requesting zh-Hans from `jp` can
@@ -463,11 +557,74 @@ internal class AppleMusicLyricProvider {
         for (term in terms) {
             for (language in languages) {
                 val url = "https://amp-api.music.apple.com/v1/catalog/$storefront/search" +
-                    "?term=${term.encodeURL()}&types=songs&limit=10&l=${language.encodeURL()}"
+                    "?term=${term.encodeURL()}&types=songs&limit=${if (includeArtistOnly) 25 else 10}&l=${language.encodeURL()}"
                 getWithTokenRetry(url)?.let(::parseSongCandidates)?.let(candidates::addAll)
             }
         }
         return candidates.distinctBy { it.providerTrackId ?: it.song.toString() }
+    }
+
+    /**
+     * Match a target-storefront language edition without assuming that its
+     * ISRC equals the source edition's ISRC. Duration and artist are required
+     * stable evidence when the title is translated; album/version evidence is
+     * used to break ties between the artist's nearby releases.
+     */
+    private fun pickLocalizedCandidate(
+        candidates: List<AppleSongCandidate>,
+        anchor: AppleSongCandidate,
+        fallbackDurationMs: Long
+    ): AppleSongCandidate? {
+        val targetDuration = anchor.matchedDurationMs ?: fallbackDurationMs
+        val ranked = candidates.mapNotNull { candidate ->
+            if (CandidateMatcher.hasVersionConflict(
+                    anchor.matchedTitle,
+                    anchor.matchedAlbum.orEmpty(),
+                    candidate.matchedTitle,
+                    candidate.matchedAlbum
+                )
+            ) return@mapNotNull null
+
+            val artistScore = CandidateMatcher.scoreArtistMatch(
+                anchor.matchedArtist,
+                candidate.matchedArtist
+            )
+            // A localized edition can translate only one artist token (for
+            // example Robin -> 知更鸟/ロビン) while retaining the other
+            // collaborators.  A partial token intersection is therefore
+            // valid when duration evidence confirms the same recording.
+            if (artistScore < 6) return@mapNotNull null
+            val durationScore = CandidateMatcher.scoreDurationMatch(
+                targetDuration,
+                candidate.matchedDurationMs
+            )
+            val durationEvidence = targetDuration > 0L &&
+                candidate.matchedDurationMs != null &&
+                CandidateMatcher.isDurationCompatible(targetDuration, candidate.matchedDurationMs)
+            val strictDurationEvidence = durationScore >= 14
+            val albumScore = CandidateMatcher.scoreAlbumMatch(
+                anchor.matchedAlbum.orEmpty(),
+                candidate.matchedAlbum
+            )
+            val titleScore = CandidateMatcher.scoreTitleMatch(
+                anchor.matchedTitle,
+                candidate.matchedTitle
+            ).coerceAtLeast(0)
+            // Once the title is translated, a broad 12-second tolerance is
+            // too permissive for an artist with nearby releases. Require a
+            // near-exact duration (or an exact album identity) before using
+            // the candidate as a cross-storefront alias.
+            if (titleScore == 0 && !strictDurationEvidence && albumScore < 15) {
+                return@mapNotNull null
+            }
+            val score = artistScore * 2 + durationScore * 2 + albumScore + titleScore
+            candidate to score
+        }.sortedByDescending { it.second }
+
+        val best = ranked.firstOrNull() ?: return null
+        val runnerUp = ranked.drop(1).firstOrNull()
+        if (runnerUp != null && best.second - runnerUp.second < 10) return null
+        return best.first
     }
 
     private fun preferredCatalogLanguage(storefront: String): String = when (storefront.lowercase(Locale.ROOT)) {
@@ -480,10 +637,11 @@ internal class AppleMusicLyricProvider {
 
     private suspend fun fetchCatalogSongs(
         storefront: String,
-        path: String
+        path: String,
+        language: String = AppleMusicStateCache.language
     ): List<AppleSongCandidate> {
         val url = "https://amp-api.music.apple.com/v1/catalog/$storefront/$path" +
-            "?l=${AppleMusicStateCache.language.encodeURL()}"
+            "?l=${language.encodeURL()}"
         return getWithTokenRetry(url)?.let(::parseSongCandidates).orEmpty()
     }
 
@@ -555,6 +713,10 @@ internal class AppleMusicLyricProvider {
     private suspend fun getWithTokenRetry(url: String): String? {
         val first = httpClient.getDetailed(url, headers = headers())
         if (first != null && first.statusCode in 200..299) return first.body
+        android.util.Log.w(
+            "AppleMusicCatalog",
+            "catalog request failed status=${first?.statusCode ?: "network"} url=${url.take(220)}"
+        )
 
         // 401/403：Web JWT 失效或请求被 Apple 拒绝 -> 重抓一次 Web JWT 再试
         if (first != null && (first.statusCode == 401 || first.statusCode == 403)) {
@@ -656,7 +818,6 @@ internal class AppleMusicLyricProvider {
 
         private val aliasCache = ConcurrentHashMap<String, CachedAliases>()
         private const val ALIAS_TTL_MS = 24 * 60 * 60 * 1000L
-        private const val NEGATIVE_ALIAS_TTL_MS = 5 * 60 * 1000L
         const val USER_AGENT =
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
     }

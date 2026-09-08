@@ -114,4 +114,40 @@ class OnlineLyricSelectorTest {
             )
         )
     }
+
+    @Test
+    fun legacyNoMetadataCannotOverrideReliableTargetIdentity() {
+        val result = OnlineLyricFetcher.LyricResult(
+            api = "LrcApi",
+            lyrics = "[00:01.00]unrelated lyrics",
+            parsedLines = listOf(
+                OnlineLyricFetcher.LyricLine(1_000L, 2_000L, "unrelated lyrics")
+            ),
+            hasSyllable = false,
+            provider = OnlineLyricProvider.LrcApi
+        )
+        val attempts = listOf(
+            OnlineLyricFetcher.ProviderAttempt(
+                provider = OnlineLyricProvider.LrcApi,
+                result = result,
+                durationMs = 100L,
+                usedCleanTitleFallback = false,
+                queryTitle = "丽都假日",
+                queryArtist = "Sān-Z & HOYO-MiX",
+                queryVariant = "apple_alias:cn"
+            )
+        )
+
+        assertNull(
+            OnlineLyricSelector { it.trim() }.selectBestResult(
+                attempts = attempts,
+                targetTitle = "丽都假日",
+                targetArtist = "Sān-Z & HOYO-MiX",
+                targetAlbum = "丽都假日",
+                targetDurationMs = 258_641L,
+                providerOrder = listOf(OnlineLyricProvider.LrcApi),
+                useSmartSelection = true
+            )
+        )
+    }
 }

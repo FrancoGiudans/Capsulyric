@@ -130,6 +130,33 @@ class CandidateMatcherTest {
     }
 
     @Test
+    fun japaneseOffVocalCandidateIsRejectedForVocalTarget() {
+        val vocal = Candidate(
+            matchedTitle = "ただ風を追いかけて",
+            matchedArtist = "ロビン, HOYO-MiX & Chevy",
+            matchedAlbum = "ただ風を追いかけて",
+            matchedDurationMs = 123_871L,
+            isrc = "FRX452677440"
+        )
+        val offVocal = vocal.copy(
+            matchedTitle = "ただ風を追いかけて (オフボーカル音源)",
+            matchedArtist = "HOYO-MiX",
+            isrc = "FRX452677441"
+        )
+
+        assertEquals(
+            vocal,
+            CandidateMatcher.pickBestWithMargin(
+                candidates = listOf(vocal, offVocal),
+                title = "ただ風を追いかけて",
+                artist = "Robin, HOYO-MiX & Chevy",
+                album = "ただ風を追いかけて",
+                durationMs = 123_871L
+            )
+        )
+    }
+
+    @Test
     fun matchingLiveVersionIsAcceptedWhenTargetIsLive() {
         val candidate = Candidate(
             matchedTitle = "唯有追逐风的时候 (Live)",

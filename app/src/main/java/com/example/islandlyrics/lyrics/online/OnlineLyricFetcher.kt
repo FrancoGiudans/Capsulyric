@@ -275,7 +275,9 @@ class OnlineLyricFetcher(
         // with the evidence-backed localized title/artist. This is kept after
         // the cheap title paths so normal tracks pay no extra network cost.
         if (
-            OnlineLyricProvider.AppleMusic in providerOrder &&
+            // Apple Catalog is an identity bridge, not the Apple lyric source.
+            // Keep it available even when the user disables Apple lyrics; the
+            // resulting localized aliases are used by the remaining sources.
             providerOrder.any { it != OnlineLyricProvider.AppleMusic } &&
             (album.isNotBlank() || durationMs > 0L)
         ) {
@@ -298,7 +300,7 @@ class OnlineLyricFetcher(
             // Filter and deduplicate before applying the request budget.  The
             // source alias is often returned first; it must not consume the
             // slot that is intended for the localized CN alias.
-            val aliasQueries = aliases
+            val filteredAliases = aliases
                 .filterNot {
                     it.title.equals(title, ignoreCase = true) &&
                         it.artist.equals(artist, ignoreCase = true)
@@ -310,6 +312,10 @@ class OnlineLyricFetcher(
                         it.album.orEmpty().trim().lowercase()
                     ).joinToString("|")
                 }
+            // If the catalog only returns the source storefront, keep one
+            // verified anchor visible and queryable instead of silently
+            // collapsing the whole ISRC path to artist-only fallback.
+            val aliasQueries = (filteredAliases.ifEmpty { aliases.take(1) })
                 .take(MAX_APPLE_ALIAS_QUERIES)
             for (alias in aliasQueries) {
 
@@ -415,8 +421,10 @@ class OnlineLyricFetcher(
         }
 
         val shouldResolveAliases =
-            OnlineLyricProvider.AppleMusic in providerOrder &&
-                providerOrder.any { it != OnlineLyricProvider.AppleMusic } &&
+            // The Apple Catalog bridge is independent from the Apple lyric
+            // provider toggle; it supplies identity-backed terms to other
+            // providers even when Apple lyrics are disabled.
+            providerOrder.any { it != OnlineLyricProvider.AppleMusic } &&
                 (query.album.isNotBlank() || query.durationMs > 0L)
         val aliasesDeferred = async {
             if (!shouldResolveAliases) return@async DiagnosticAliasResolution(emptyList(), 0L)
@@ -463,7 +471,7 @@ class OnlineLyricFetcher(
 
         val baseResults = plans.map { plan -> async { execute(plan) } }.awaitAll()
         val aliasResolution = aliasesDeferred.await()
-        val aliases = aliasResolution.aliases
+        val filteredAliases = aliasResolution.aliases
             .filterNot {
                 it.title.equals(query.title, ignoreCase = true) &&
                     it.artist.equals(query.artist, ignoreCase = true)
@@ -475,6 +483,7 @@ class OnlineLyricFetcher(
                     it.album.orEmpty().trim().lowercase()
                 ).joinToString("|")
             }
+        val aliases = (filteredAliases.ifEmpty { aliasResolution.aliases.take(1) })
             .take(MAX_DIAGNOSTIC_ALIAS_QUERIES)
         val aliasProviders = providerOrder.filterNot { it == OnlineLyricProvider.AppleMusic }
         val aliasResults = aliases.map { alias ->

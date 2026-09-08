@@ -171,7 +171,11 @@ fun MiuixDebugLyricScreen(
                             )
                             val summary = when {
                                 result == null -> "无可用结果"
-                                result.error != null -> "错误: ${result.error}"
+                                result.error != null -> if (result.error.startsWith("ISRC 桥接成功")) {
+                                    "状态: ${result.error}"
+                                } else {
+                                    "错误: ${result.error}"
+                                }
                                 else -> "${result.api} / ${result.score}分 / ${if (result.hasSyllable) "逐字" else "LRC"}"
                             }
                             Text(summary, color = MiuixTheme.colorScheme.onSurfaceSecondary)

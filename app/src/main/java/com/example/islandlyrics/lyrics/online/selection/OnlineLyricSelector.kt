@@ -238,7 +238,17 @@ internal class OnlineLyricSelector(
             result.providerTrackId,
             result.isrc
         ).any { !it.isNullOrBlank() }
-        if (!hasMetadata) return targetTitle.isNotBlank()
+        if (!hasMetadata) {
+            // A legacy provider without candidate metadata cannot prove that
+            // its lyric belongs to the current track.  Once the player gives
+            // us album or duration evidence, accepting that result turns
+            // unrelated lyric blobs into false positives (especially after
+            // an ISRC alias query).  Keep the old title-only fallback only
+            // when no stronger track identity is available at all.
+            return targetTitle.isNotBlank() &&
+                targetAlbum.isBlank() &&
+                targetDurationMs <= 0L
+        }
         if (!CandidateMatcher.isDurationCompatible(targetDurationMs, result.matchedDurationMs)) {
             return false
         }

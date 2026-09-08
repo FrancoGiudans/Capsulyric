@@ -230,7 +230,12 @@ fun DebugLyricScreen(
                                 if (result == null) {
                                     append("  ✗ 无可用结果\n")
                                 } else if (result.error != null) {
-                                    append("  ✗ 错误: ${result.error}\n")
+                                    val prefix = if (result.error.startsWith("ISRC 桥接成功")) {
+                                        "  ℹ 状态:"
+                                    } else {
+                                        "  ✗ 错误:"
+                                    }
+                                    append("$prefix ${result.error}\n")
                                 } else {
                                     append("  来源: ${result.api} / 得分: ${result.score}\n")
                                     append("  身份评分: ${result.identityScore}\n")

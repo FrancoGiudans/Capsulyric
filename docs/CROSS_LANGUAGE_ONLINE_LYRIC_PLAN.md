@@ -12,6 +12,20 @@
 2. 再为 Apple Music 增加来源平台解析器，通过 Apple songId/目录搜索获得 ISRC，并用 ISRC、时长和专辑建立跨地区别名。
 3. 最后增加国内 Provider 的宽搜召回、封面感知哈希消歧、MusicBrainz 补充别名和本地纠错学习。
 
+### 1.1 2026-09-08 ISRC 处理修订
+
+原 Phase 2 已落地匿名 Apple Catalog 查询和跨 storefront 别名桥接，但当前实现没有建立“先确定唯一源录音，再按其 ISRC 扩展别名”的强不变量。本计划增加 **Phase 2.1：ISRC 锚定与别名纯化**，作为后续功能前必须完成的修正切片。
+
+已确认的风险是：
+
+- 无 songId 时，现实现会分别搜索多个 storefront，然后直接取第一个非空 ISRC；这些搜索候选并不一定属于同一录音。
+- 选定 ISRC 后，现实现仍把所有初始候选加入别名列表，没有强制每个 alias 的标准化 ISRC 等于锚点 ISRC，存在错误录音混入“目录证实别名”的可能。
+- 别名消费端先 `take(MAX_APPLE_ALIAS_QUERIES)` 再跳过与原始 metadata 相同的项，会浪费预算；多个源 storefront/重发行条目也可能把 `cn` 中文别名挤出前 N 条。
+- ISRC 未做统一大写、分隔符清理和格式校验；缓存只按观测 metadata 存 alias 数组，未把标准化 ISRC 建立为唯一 canonical identity。
+- 旧缓存没有锚点来源、置信度与 alias 验证状态；一次错误解析可被进程缓存 24 小时、持久缓存 30 天放大。
+
+修订后的核心规则：**一次解析只能有一个经过验证的 anchor ISRC；只有返回同一标准化 ISRC 且通过版本/时长防御校验的 Catalog 条目，才能成为已证实别名。**
+
 ## 2. 当前链路与根因
 
 当前主要链路为：
@@ -115,7 +129,34 @@ data class TextAlias(
 )
 ```
 
-`canonicalKey` 优先使用 `isrc:<ISRC>`；没有 ISRC 时使用来源平台稳定 ID，例如 `apple:<storefront>:<songId>`；再退化为规范化歌手、专辑、时长桶的本地合成键。
+`canonicalKey` 优先使用 `isrc:<NORMALIZED_ISRC>`；没有 ISRC 时使用来源平台稳定 ID，例如 `apple:<storefront>:<songId>`；再退化为规范化歌手、专辑、时长桶的本地合成键。但 `isrc:` 键只能由“来源 songId 直达”或“单一高置信且有足够 margin 的来源 storefront 搜索候选”产生，不得从多 storefront 搜索结果中简单选第一个非空 ISRC。
+
+Phase 2.1 增加显式的锚点结果，避免用一个无结构 alias 列表同时表示“发现候选”和“已证实别名”：
+
+```kotlin
+data class AppleCatalogResolution(
+    val canonicalIsrc: String,
+    val anchor: AppleCatalogTrack,
+    val aliases: List<VerifiedCatalogAlias>,
+    val anchorMethod: AnchorMethod, // DIRECT_SONG_ID / SEARCH_CONFIRMED
+    val confidence: Float,
+    val evidence: List<IdentityEvidence>
+)
+
+data class VerifiedCatalogAlias(
+    val storefront: String,
+    val songId: String,
+    val isrc: String,
+    val title: String,
+    val artist: String,
+    val album: String?,
+    val durationMs: Long?,
+    val locale: String?,
+    val validation: AliasValidation
+)
+```
+
+`canonicalIsrc` 入模前必须去除空白/连字符、使用 `Locale.ROOT` 转大写，并校验为 12 位 ISRC（`^[A-Z]{2}[A-Z0-9]{3}[0-9]{7}$`）。保留 raw ISRC 只用于诊断，不参与比较或缓存键。
 
 ### 4.3 Provider 候选
 
@@ -159,13 +200,26 @@ data class ProviderTrackCandidate(
 
 ### 5.3 第 2 层：跨语言身份扩展
 
-Apple Music 首发路径：
+Apple Music 路径拆成两个不可混合的阶段。Catalog 身份解析使用公开 Web JWT，不依赖 Apple Music 登录、账号 storefront 或 `media-user-token`。
 
-1. 从 Apple song 获取 `isrc`、`durationInMillis`、`albumName`、artist、artwork 与 songId。
-2. 使用 Apple 官方 `filter[isrc]` 在账号 storefront 以及目标别名 storefront 查询同一录音。首期建议只查询来源 storefront + `cn`，避免无界遍历地区。
-3. 把各 storefront 返回的本地化 name/artistName/albumName 作为“目录证实别名”，而非直接覆盖当前显示元数据。
-4. 可选调用 MusicBrainz 的 ISRC lookup，补充 recording/release/artist aliases；MusicBrainz 只作增强，失败不能阻断主链路。
-5. 不把机器翻译结果标记为已证实别名。若以后加入翻译，仅用于生成低优先级搜索词，不能独立触发自动接受。
+#### A. 确定唯一源录音锚点
+
+1. 有可验证的 `(sourceStorefront, sourceSongId)` 时，只直达该 song；从返回的 song 读取 ISRC、时长、专辑、artist、artwork 与版本标签，它是唯一 anchor。
+2. 无可用 songId 时，只在可推导的来源 storefront 搜索 `title + artist`，必要时增加 `album`。来源 storefront 无法推导时只用用户配置 storefront 作单点回退，不并行扫描 `cn/jp/us`。使用观测语言或不指定 `l` 进行锚点搜索，避免 API 先本地化返回文本后再与原文字符串评分。
+3. 搜索候选必须通过 title/artist/album/duration/版本冲突的身份门控，并满足自动接受阈值与前两名 margin。多个 storefront 的搜索结果不得先合并再选第一个 ISRC。
+4. 对 anchor ISRC 执行标准化与格式校验。无 ISRC、ISRC 非法或锚点处于歧义区时，停止 ISRC 别名扩展；可保留 Apple songId 身份作诊断/缓存，但不伪造跨区别名。
+
+#### B. 用 anchor ISRC 扩展已证实别名
+
+1. 查询 storefront 列表与锚点搜索列表分离：首期 alias storefront 仅为 `sourceStorefront + cn`，去重后按“`cn` 目标别名优先、来源 storefront 次之”排序；不默认附加 `jp`。
+2. 对每个 alias storefront 调用 Apple `filter[isrc]`。每条返回项必须重新解析并校验 `normalize(item.isrc) == canonicalIsrc`，绝不把查询前的其他搜索候选混入 alias 列表。
+3. 即使 ISRC 一致，仍进行防御性检查：时长差超过 12 秒或存在 live/remix/instrumental/karaoke 等硬版本冲突时，将条目标记为冲突并排除自动 alias，保留诊断证据。
+4. 先按规范化 `title + artist` 去重，再过滤与原始 metadata 相同的项，然后按 storefront 目标性、文字脚本差异和完整度排序，最后才应用 alias 查询数量预算。
+5. 把通过校验的 name/artistName/albumName 作为“目录证实别名”，仅用于查询和身份证据，不覆盖播放器当前显示 metadata。
+6. 可选调用 MusicBrainz 的 ISRC lookup 补充 recording/release/artist aliases；该结果必须保留独立来源和置信度，失败不能阻断 Apple 主链路。
+7. 不把机器翻译结果标记为已证实别名。若以后加入翻译，仅用于生成低优先级搜索词，不能独立触发自动接受。
+
+严格同 ISRC 策略可能漏掉“同一录音在不同市场被分配不同 ISRC”的少数情况，但 Phase 2.1 明确优先避免错误映射。未来如需聚合多 ISRC，必须引入独立的 recording cluster 证据模型，不得在 alias 层隐式合并。
 
 ### 5.4 第 3 层：国内 Provider 宽搜
 
@@ -202,6 +256,8 @@ Provider 搜索结果先统一返回候选，不立即下载每条歌词。全�
 | live/remix/instrumental/cover 等版本冲突 | -35 至硬拒绝 | 避免同名不同录音 |
 | 歌手与专辑同时冲突 | 硬拒绝 | 除非 ISRC/平台 ID 已证明一致 |
 
+表中“ISRC 完全一致”只能用于两边都独立返回并经标准化的 ISRC，或用于 Apple anchor 与其 `filter[isrc]` 结果之间。不能因为某个国内 Provider 候选是由 ISRC alias 查询召回，就把 anchor ISRC 直接填到该候选上并获得 +60；该候选仍需使用标题/歌手/专辑/时长/版本证据验证。
+
 建议初始门槛：
 
 - `confidence >= 80`：自动接受；
@@ -222,6 +278,7 @@ Provider 搜索结果先统一返回候选，不立即下载每条歌词。全�
 - 封面消歧：只对灰区候选触发，并设置图片大小、候选数与总流量上限。
 - 整体冷启动继续受 10 秒左右上限约束；取消协程时保存已完成的身份解析缓存，但不得把过期曲目结果写入当前 UI。
 - 为解析失败建立短 TTL negative cache，避免一首歌播放期间反复请求；认证失败、限流和“确实无结果”应使用不同 TTL。
+- Apple alias 预算必须作用在“同 anchor ISRC 校验 -> 去重 -> 跳过原始 metadata -> `cn`/文字脚本差异优先排序”之后的列表，不得在过滤前直接 `take(N)`。
 
 提前结束条件应从“首个可用歌词”改为“首个达到身份阈值的候选歌词”；到达后可以保留一个很短的质量提升窗口。
 
@@ -245,6 +302,14 @@ cache_store/
 - selected candidate、评分分项、解析策略；
 - `AUTO` / `USER_CONFIRMED` / `USER_OVERRIDE` 来源；
 - createdAt、updatedAt、lastValidatedAt、schemaVersion。
+
+Phase 2.1 对现有 Apple alias 缓存做 schema v2 收敛：
+
+- `identity_index` 不再只保存无结构 alias 数组，而是保存 `canonicalIsrc`、anchor storefront/songId、anchor method、证据分项和经验证 aliases；每个 alias 必须重复保存标准化 ISRC，便于读取时复核不变量。
+- 增加 `isrc:<NORMALIZED_ISRC>` 主身份索引，observed key 只指向该 canonical identity。这样同一录音在不同 storefront 使用不同 Apple songId 时，仍能共享已验证别名。
+- 读取缓存时重新校验：`canonicalIsrc` 合法、所有 aliases 与它一致、anchor 存在、版本/时长无硬冲突；任一失败即丢弃自动条目并重建。
+- v1 自动 alias 缓存没有足够 provenance，升级时默认失效并惰性重建；仅当其所有非空 ISRC 经标准化后唯一且每个 alias 都通过时长/版本校验时，才可无损迁移。用户人工映射不属于此清理范围。
+- 区分 `NO_ANCHOR`、`INVALID_ISRC`、`AMBIGUOUS_ANCHOR`、`NO_TARGET_STOREFRONT_ENTRY`、`NETWORK_ERROR` 的 negative cache；网络错误不得写成长 TTL “无别名”。
 
 迁移原则：
 
@@ -276,6 +341,8 @@ interface TrackCatalogProvider {
 
 ## 10. 分阶段实施计划
 
+> 实施状态说明：原 Phase 0～4 作为已落地基线保留；本次因 ISRC 安全不变量不完整，重新打开 Phase 2.1 作为当前唯一待实施修正项。
+
 ### Phase 0：建立基线与回放数据
 
 - 在 debug 构建记录完整搜索 attempt、候选元数据、各分项得分、提前结束原因和耗时。
@@ -303,6 +370,21 @@ interface TrackCatalogProvider {
 - 首期只查询来源 storefront 与 `cn`；结果缓存后不重复解析。
 
 预期：解决 Apple Music JP 等本地化元数据到国内源标题之间的主要断层。
+
+### Phase 2.1：ISRC 锚定与别名纯化（修正切片）
+
+1. 引入 `AppleCatalogResolution`，将“锚点发现候选”与“同 ISRC 已验证别名”分开；解析器不再直接返回混合 `AppleMusicCatalogAlias` 列表。
+2. 实现 `normalizeIsrc()` 和唯一 anchor 选择：songId 直达优先；搜索回退只能在一个来源 storefront 内通过阈值 + margin 选出。
+3. 按 anchor ISRC 查询 `source + cn`，严格过滤不同/非法 ISRC、时长硬冲突和版本冲突；不再把其他 storefront 搜索候选加入 alias。
+4. 重写 alias 排序/预算：中文 `cn` 别名优先，按规范化 title+artist 去重并跳过原 metadata 后再 `take(N)`。
+5. 将身份缓存升级到 schema v2，以标准化 ISRC 为 canonical identity；旧的无 provenance 自动 alias 缓存失效或经严格校验后迁移。
+6. 增加 Apple Catalog fixture、resolver 单元测试和 fake-provider 集成回放，达成以下验收条件后才将 Phase 2.1 标记为完成：
+   - 每个返回 alias 的标准化 ISRC 必须与 anchor 完全相同；
+   - `Nocturne / Jay Chou / November's Chopin` 稳定得到 `夜曲 / 周杰伦 / 11月的萧邦`；
+   - `Back to the Past / Jay Chou / The Eight Dimensions` 稳定得到 `回到过去 / 周杰伦 / 八度空间`；
+   - 无 CN 目录条目、锚点歧义或 ISRC 冲突时安全返回无中文 alias，不误用其他候选。
+
+预期：保留“匿名 ISRC 获取中文 metadata”的能力，同时阻断错 ISRC、多录音混合和 alias 预算挤占导致的错误回退。
 
 ### Phase 3：增强召回与消歧
 
@@ -333,12 +415,18 @@ interface TrackCatalogProvider {
 
 - 固定保存各 Provider 搜索响应片段，验证 title/artist/album/duration/id/isrc 的解析。
 - Apple：按 songId 查询、按 ISRC 跨 storefront 查询、同一 ISRC 多条目录结果。
+- Apple ISRC 标准化：大小写、带/不带连字符、非法长度和非法字符。
+- 多 storefront 搜索各自返回不同 ISRC 时，只允许经验证的单一 anchor 进入扩展；其他初始候选不得出现在 aliases。
+- `filter[isrc]` 返回重发行、重复 songId、时长异常或版本冲突条目时，验证去重、排序和防御性排除。
+- 原 metadata alias 位于列表前部、CN alias 位于预算边界之后时，验证先过滤/排序再限制数量，CN alias 仍必须被执行。
+- 同一 ISRC 在 US/JP 与 CN 使用不同 Apple songId 时，验证共用同一 canonical identity，且不用 Apple songId 做跨 storefront 等值判断。
 - Provider 字段缺失、字段改名和错误响应不得导致错误自动接受。
 
 ### 集成回放
 
 - 使用 fake providers 回放“快但错误”和“慢但正确”的竞速，确保正确结果不会被 500ms 逻辑取消。
 - 回放 Apple JP `ただ風を追いかけて` 与国内别名 `唯有追逐风的时候`，验证不依赖直接字符串相似度也能落到同一 canonicalKey。
+- 回放 `Nocturne` 与 `Back to the Past` 的匿名 Apple Catalog fixture，验证正确 CN metadata 被选为国内 Provider 查询别名，整个 Catalog 链路不读取 `media-user-token`。
 - 同名不同歌手、同歌手同名不同版本、原唱/翻唱必须覆盖。
 
 ### 指标
@@ -387,6 +475,8 @@ lyrics/online/provider/
   ProviderTrackCandidate.kt
 integration/applemusic/
   AppleMusicCatalogResolver.kt
+  AppleCatalogResolution.kt
+  IsrcNormalizer.kt
 ```
 
 主要修改：
@@ -401,17 +491,24 @@ integration/applemusic/
 - `lyrics/cache/OnlineLyricCacheStore.kt`：兼容旧歌词缓存，人工覆盖迁移到新身份映射。
 - `feature/onlinelyricdebug/OnlineLyricDebugViewModel.kt` 及双 UI：展示身份证据并复用现有人工纠错入口。
 
-## 14. 推荐的首个开发切片
+Phase 2.1 对现有落点的具体修改边界：
 
-第一批 PR 不应直接接入多个外部解析服务。建议选择一个可验证、可回滚的纵向切片：
+- `lyrics/online/provider/AppleMusicLyricProvider.kt`：拆分 `resolveAnchor()` 与 `expandAliasesByIsrc()`，移除“多 storefront 候选中取首个 ISRC”和“把初始候选全部返回为 alias”的行为。
+- `lyrics/online/OnlineLyricFetcher.kt`：使用排序后的 `VerifiedCatalogAlias`，将去重/跳过原 metadata 放在 alias 预算之前，并始终用 anchor 时长/版本校验国内 Provider 候选。
+- `lyrics/cache/TrackIdentityCacheStore.kt`：升级 schema v2，保存 canonical ISRC、anchor provenance 和已验证 aliases，对 v1 自动映射执行安全失效/迁移。
+- `lyrics/online/provider/AppleMusicMediaRefTest.kt` 及新 resolver/cache 测试：覆盖真实 mediaId/mediaUri 样本、ISRC 不变量、预算排序和缓存污染防护。
 
-1. 扩展 `ObservedTrack` 和 QQ/网易候选的 album/duration/id。
-2. 引入 `IdentityMatcher`，修掉无条件第 0 条与“有歌词即算命中”。
-3. 加一个受限的 artist+album 宽搜 fallback。
-4. 在 debug 快照中显示证据分项。
-5. 用 30～50 首跨语言/同名/不同版本 fixture 校准阈值。
+## 14. 当前推荐的修正切片
 
-这一切片即使还没有 Apple ISRC 桥接，也能验证新架构能否安全提高召回，并为 Phase 2 提供可靠评分基础。
+原分阶段功能已落地，当前不再扩展新外部能力，只实施一个可回滚的 ISRC 纵向修正切片：
+
+1. 先写 `normalizeIsrc()`、anchor 选择和 alias 纯化的纯函数与 fixture 测试。
+2. 再将 Apple resolver 拆成 `resolveAnchor()` / `expandAliasesByIsrc()`，不同时改造其他 Provider。
+3. 调整 `OnlineLyricFetcher` 的 alias 去重、目标 storefront 排序和预算时机。
+4. 最后升级 identity cache schema，让旧自动 alias 失效，保留人工映射。
+5. 用两首已实测周杰伦曲目、无 CN 条目、多 ISRC 污染和预算挤占用例回放，全部通过后再恢复常规迭代。
+
+这一切片不改变 Apple 歌词的登录边界，也不引入 MusicBrainz/翻译/新宽搜能力；它只修复 Apple Catalog 录音锚定到中文 metadata 别名之间的正确性。
 
 ## 15. 外部能力依据
 
@@ -423,6 +520,8 @@ integration/applemusic/
 ## 16. 决策摘要
 
 - 主方案：**身份解析 + 证据融合 + 别名缓存**。
+- ISRC 修订：**先生成唯一且可解释的 anchor ISRC，再扩展严格同 ISRC 的 storefront aliases；发现候选与已证实别名不得混用**。
+- 匿名边界：Apple Catalog 的 song/ISRC/metadata 查询不依赖登录；`media-user-token` 只属于 Apple 歌词下载链路，不进入本修复范围。
 - 不采用：把机器翻译后的标题直接当作正确歌曲名。
 - 首发来源：Apple Music，因为现有 Provider 已具备 catalog 访问基础且官方数据包含 ISRC。
 - 首发安全目标：先降低错误命中，再扩大跨语言召回。
