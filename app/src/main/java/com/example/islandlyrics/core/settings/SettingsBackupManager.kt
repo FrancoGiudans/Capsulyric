@@ -54,6 +54,14 @@ object SettingsBackupManager {
     private val FILE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMdd_HH_mm_ss", Locale.US)
     private val supportedSensitiveItemIds = setOf(SENSITIVE_LASTFM_ID, SENSITIVE_APPLE_MUSIC_ID)
 
+    private suspend fun <T> runCatchingSuspend(block: suspend () -> T): Result<T> {
+        return try {
+            Result.success(block())
+        } catch (throwable: Throwable) {
+            Result.failure(throwable)
+        }
+    }
+
     data class ExportResult(
         val success: Boolean,
         val exportedCount: Int,
@@ -70,6 +78,19 @@ object SettingsBackupManager {
         val error: String? = null,
         /** Parser rule conflicts detected (empty = no conflicts or resolved). */
         val parserConflicts: List<ParserConflict> = emptyList()
+    )
+
+    enum class ImportStage {
+        READING_BACKUP,
+        EXTRACTING_ARCHIVE,
+        IMPORTING_SETTINGS,
+        IMPORTING_PARSER_RULES,
+        IMPORTING_LYRIC_CACHE,
+        RESTORING_SENSITIVE_DATA,
+    }
+
+    data class ImportProgress(
+        val stage: ImportStage,
     )
 
     data class ParserConflict(
@@ -135,14 +156,18 @@ object SettingsBackupManager {
     }
 
     /** Full import – auto-detects ZIP vs legacy JSON. */
-    suspend fun importFromUri(context: Context, uri: Uri): ImportResult {
+    suspend fun importFromUri(
+        context: Context,
+        uri: Uri,
+        onProgress: suspend (ImportProgress) -> Unit = {}
+    ): ImportResult {
         val allLeafIds = BackupCategories.ALL_CATEGORIES.flatMap { c ->
             if (c.subGroups.isNotEmpty()) c.subGroups.map { it.id } else listOf(c.id)
         }.toSet()
         return if (isZipFile(context, uri)) {
-            importFromZip(context, uri, allLeafIds)
+            importFromZip(context, uri, allLeafIds, onProgress = onProgress)
         } else {
-            importSelected(context, uri, allLeafIds)
+            importSelected(context, uri, allLeafIds, onProgress = onProgress)
         }
     }
 
@@ -195,7 +220,7 @@ object SettingsBackupManager {
                         ZipOutputStream(output).use { zip ->
                             addFileToZip(zip, settingsFile)
                             encryptedSensitiveData?.let {
-                                addTextToZip(zip, SensitiveBackupVault.ZIP_ENTRY_NAME, it)
+                                addTextToZip(zip, it)
                             }
                             if (includeLyricCache) {
                                 val cacheDir = File(tempDir, "lyric_cache")
@@ -233,10 +258,12 @@ object SettingsBackupManager {
         uri: Uri,
         selectedLeafIds: Set<String>,
         selectedSensitiveItemIds: Set<String> = emptySet(),
-        sensitivePassword: CharArray? = null
+        sensitivePassword: CharArray? = null,
+        onProgress: suspend (ImportProgress) -> Unit = {}
     ): ImportResult = withContext(Dispatchers.IO) {
         try {
-            runCatching {
+            runCatchingSuspend {
+                onProgress(ImportProgress(ImportStage.READING_BACKUP))
                 val sensitiveItemIds = validateSensitiveSelection(selectedSensitiveItemIds)
                 val sensitiveImport = if (sensitiveItemIds.isEmpty()) {
                     null
@@ -251,6 +278,7 @@ object SettingsBackupManager {
                 val tempDir = File(context.cacheDir, "backup_import_${System.currentTimeMillis()}")
                 tempDir.mkdirs()
                 try {
+                    onProgress(ImportProgress(ImportStage.EXTRACTING_ARCHIVE))
                     context.contentResolver.openInputStream(uri)?.use { input ->
                         ZipInputStream(input).use { zip ->
                             var entry = zip.nextEntry
@@ -289,10 +317,12 @@ object SettingsBackupManager {
                             error = "settings.json not found in ZIP"
                         )
                     } else {
+                        onProgress(ImportProgress(ImportStage.IMPORTING_SETTINGS))
                         val settingsResult = importSettingsFromJson(
                             context,
                             settingsFile.readText(Charsets.UTF_8),
-                            selectedLeafIds
+                            selectedLeafIds,
+                            onProgress
                         )
                         if (!settingsResult.success) {
                             settingsResult
@@ -300,10 +330,14 @@ object SettingsBackupManager {
                             val cacheDir = File(tempDir, "lyric_cache")
                             var cacheCount = 0
                             if (cacheDir.exists() && selectedLeafIds.contains("lyric_cache")) {
+                                onProgress(ImportProgress(ImportStage.IMPORTING_LYRIC_CACHE))
                                 val cacheStore = OnlineLyricCacheStore(context)
                                 cacheCount = cacheStore.importCacheFromDir(tempDir)
                             }
-                            sensitiveImport?.let { restoreSensitiveImport(context, it) }
+                            sensitiveImport?.let {
+                                onProgress(ImportProgress(ImportStage.RESTORING_SENSITIVE_DATA))
+                                restoreSensitiveImport(context, it)
+                            }
 
                             ImportResult(
                                 success = true,
@@ -347,23 +381,32 @@ object SettingsBackupManager {
     suspend fun importSelected(
         context: Context,
         uri: Uri,
-        selectedLeafIds: Set<String>
+        selectedLeafIds: Set<String>,
+        onProgress: suspend (ImportProgress) -> Unit = {}
     ): ImportResult = withContext(Dispatchers.IO) {
-        runCatching {
+        runCatchingSuspend {
+            onProgress(ImportProgress(ImportStage.READING_BACKUP))
             val text = context.contentResolver.openInputStream(uri)?.use { input ->
                 input.bufferedReader(Charsets.UTF_8).readText()
             } ?: throw IllegalStateException("openInputStream returned null")
 
-            importSettingsFromJson(context, text, selectedLeafIds)
+            onProgress(ImportProgress(ImportStage.IMPORTING_SETTINGS))
+            importSettingsFromJson(context, text, selectedLeafIds, onProgress)
         }.getOrElse {
             ImportResult(success = false, importedCount = 0, error = it.message)
         }
     }
 
     /** Read a backup file and return which categories + key counts it contains. Auto-detects ZIP vs JSON. */
-    suspend fun previewImportFile(context: Context, uri: Uri): PreviewResult = withContext(Dispatchers.IO) {
-        runCatching {
+    suspend fun previewImportFile(
+        context: Context,
+        uri: Uri,
+        onProgress: suspend (ImportProgress) -> Unit = {}
+    ): PreviewResult = withContext(Dispatchers.IO) {
+        runCatchingSuspend {
+            onProgress(ImportProgress(ImportStage.READING_BACKUP))
             if (isZipFile(context, uri)) {
+                onProgress(ImportProgress(ImportStage.EXTRACTING_ARCHIVE))
                 previewZipFile(context, uri)
             } else {
                 previewJsonFile(context, uri)
@@ -524,9 +567,7 @@ object SettingsBackupManager {
     ): SensitiveImportData {
         val serializedVault = readZipEntryText(
             context,
-            uri,
-            SensitiveBackupVault.ZIP_ENTRY_NAME,
-            SensitiveBackupVault.MAX_ENVELOPE_BYTES
+            uri
         ) ?: throw IllegalArgumentException("Sensitive backup data not found in ZIP")
         val decryptedVault = SensitiveBackupVault.decrypt(serializedVault, sensitivePassword)
         require(decryptedVault.itemIds.containsAll(selectedSensitiveItemIds)) {
@@ -606,10 +647,11 @@ object SettingsBackupManager {
      * Import settings from raw JSON text (shared by legacy JSON path and ZIP path).
      * Handles v1 (flat) and v2 (structured) formats.
      */
-    private fun importSettingsFromJson(
+    private suspend fun importSettingsFromJson(
         context: Context,
         text: String,
-        selectedLeafIds: Set<String>
+        selectedLeafIds: Set<String>,
+        onProgress: suspend (ImportProgress) -> Unit
     ): ImportResult {
         val root = JSONObject(text)
         val editor = AppPreferences.of(context).edit()
@@ -696,6 +738,10 @@ object SettingsBackupManager {
 
         editor.apply()
 
+        if (!importedParserJson.isNullOrEmpty()) {
+            onProgress(ImportProgress(ImportStage.IMPORTING_PARSER_RULES))
+        }
+
         val conflicts = if (!importedParserJson.isNullOrEmpty()) {
             val existingConflicts = checkParserConflicts(context, importedParserJson)
             if (existingConflicts.isEmpty()) {
@@ -737,9 +783,7 @@ object SettingsBackupManager {
             val sensitiveItemIds = runCatching {
                 readZipEntryText(
                     context,
-                    uri,
-                    SensitiveBackupVault.ZIP_ENTRY_NAME,
-                    SensitiveBackupVault.MAX_ENVELOPE_BYTES
+                    uri
                 )?.let { SensitiveBackupVault.readItemIds(it) } ?: emptySet()
             }.getOrDefault(emptySet())
             context.contentResolver.openInputStream(uri)?.use { input ->
@@ -838,8 +882,8 @@ object SettingsBackupManager {
         zip.closeEntry()
     }
 
-    private fun addTextToZip(zip: ZipOutputStream, entryName: String, text: String) {
-        zip.putNextEntry(ZipEntry(entryName))
+    private fun addTextToZip(zip: ZipOutputStream, text: String) {
+        zip.putNextEntry(ZipEntry(SensitiveBackupVault.ZIP_ENTRY_NAME))
         zip.write(text.toByteArray(Charsets.UTF_8))
         zip.closeEntry()
     }
@@ -862,16 +906,14 @@ object SettingsBackupManager {
 
     private fun readZipEntryText(
         context: Context,
-        uri: Uri,
-        entryName: String,
-        maxBytes: Int
+        uri: Uri
     ): String? {
         context.contentResolver.openInputStream(uri)?.use { input ->
             ZipInputStream(input).use { zip ->
                 var entry = zip.nextEntry
                 while (entry != null) {
-                    if (!entry.isDirectory && entry.name == entryName) {
-                        val bytes = readBoundedZipEntry(zip, maxBytes)
+                    if (!entry.isDirectory && entry.name == SensitiveBackupVault.ZIP_ENTRY_NAME) {
+                        val bytes = readBoundedZipEntry(zip, SensitiveBackupVault.MAX_ENVELOPE_BYTES)
                         zip.closeEntry()
                         return String(bytes, Charsets.UTF_8)
                     }

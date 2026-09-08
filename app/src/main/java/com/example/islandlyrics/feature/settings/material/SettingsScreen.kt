@@ -50,12 +50,14 @@ import android.net.Uri
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.material3.HorizontalDivider as MaterialHorizontalDivider
@@ -82,6 +84,7 @@ import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.automirrored.filled.Help
 import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.BatterySaver
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Upload
@@ -92,6 +95,7 @@ import androidx.compose.material.icons.filled.Science
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.window.DialogProperties
 import com.example.islandlyrics.lyrics.state.LyricRepository
 import com.example.islandlyrics.ui.theme.material.materialPageContainerColor
 import com.example.islandlyrics.core.settings.LauncherAliasManager
@@ -105,8 +109,22 @@ import com.example.islandlyrics.runtime.playingapp.NewPlayingAppNotifier
 import com.example.islandlyrics.ui.material.blur.MaterialBlurScaffold
 import com.example.islandlyrics.ui.theme.material.MaterialBlurTopAppBar
 import androidx.core.net.toUri
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.util.Locale
+
+private enum class BackupProgressMode {
+    PREVIEW,
+    IMPORT,
+}
+
+private data class BackupProgressRequest(
+    val mode: BackupProgressMode,
+    val isZip: Boolean,
+    val selectedLeafIds: Set<String> = emptySet(),
+    val selectedSensitiveItemIds: Set<String> = emptySet(),
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -168,6 +186,8 @@ fun SettingsScreen(
     var selectedSensitiveImportItems by remember { mutableStateOf(emptySet<String>()) }
     var pendingSensitiveImportPassword by remember { mutableStateOf<CharArray?>(null) }
     var showSensitiveImportPasswordDialog by remember { mutableStateOf(false) }
+    var backupProgressRequest by remember { mutableStateOf<BackupProgressRequest?>(null) }
+    var backupProgress by remember { mutableStateOf<SettingsBackupManager.ImportProgress?>(null) }
 
     // Parser conflict resolution state
     var showParserConflictDialog by remember { mutableStateOf(false) }
@@ -177,6 +197,12 @@ fun SettingsScreen(
     var pendingConflictSelections by remember { mutableStateOf(setOf<String>()) }
     var conflictKeepExisting by remember { mutableStateOf(setOf<String>()) }
 
+    val publishBackupProgress: suspend (SettingsBackupManager.ImportProgress) -> Unit = { progress ->
+        withContext(Dispatchers.Main.immediate) {
+            backupProgress = progress
+        }
+    }
+
     fun importBackup(
         uri: Uri,
         preview: PreviewResult,
@@ -184,6 +210,16 @@ fun SettingsScreen(
         selectedSensitiveItemIds: Set<String>,
         sensitivePassword: CharArray? = null
     ) {
+        if (backupProgressRequest != null) return
+        backupProgressRequest = BackupProgressRequest(
+            mode = BackupProgressMode.IMPORT,
+            isZip = preview.isZip,
+            selectedLeafIds = selectedLeafIds,
+            selectedSensitiveItemIds = selectedSensitiveItemIds,
+        )
+        backupProgress = SettingsBackupManager.ImportProgress(
+            SettingsBackupManager.ImportStage.READING_BACKUP
+        )
         coroutineScope.launch {
             val result = try {
                 if (preview.isZip) {
@@ -192,13 +228,21 @@ fun SettingsScreen(
                         uri,
                         selectedLeafIds,
                         selectedSensitiveItemIds,
-                        sensitivePassword
+                        sensitivePassword,
+                        publishBackupProgress
                     )
                 } else {
-                    SettingsBackupManager.importSelected(context, uri, selectedLeafIds)
+                    SettingsBackupManager.importSelected(
+                        context,
+                        uri,
+                        selectedLeafIds,
+                        publishBackupProgress
+                    )
                 }
             } finally {
                 if (!preview.isZip) sensitivePassword?.fill('\u0000')
+                backupProgressRequest = null
+                backupProgress = null
             }
             if (result.success && result.parserConflicts.isNotEmpty()) {
                 parserConflicts = result.parserConflicts
@@ -284,37 +328,54 @@ fun SettingsScreen(
         contract = ActivityResultContracts.OpenDocument()
     ) { uri ->
         if (uri == null) return@rememberLauncherForActivityResult
+        if (backupProgressRequest != null) return@rememberLauncherForActivityResult
+        backupProgressRequest = BackupProgressRequest(
+            mode = BackupProgressMode.PREVIEW,
+            isZip = false,
+        )
+        backupProgress = SettingsBackupManager.ImportProgress(
+            SettingsBackupManager.ImportStage.READING_BACKUP
+        )
         coroutineScope.launch {
-            val preview = SettingsBackupManager.previewImportFile(context, uri)
-            if (preview.success) {
-                importPreviewResult = preview
-                pendingImportUri = uri
-                // Build dynamic categories list (including parser rules from backup file)
-                val dynamicCategoriesList = BackupCategories.ALL_CATEGORIES.map { cat ->
-                    when (cat.id) {
-                        "parser_rules" -> {
-                            val parserJson = ParserBackupPreviewReader.readBlocking(context, uri)
-                            cat.copy(subGroups = BackupCategories.parserAppSubGroupsFromJson(parserJson))
+            try {
+                val preview = SettingsBackupManager.previewImportFile(
+                    context,
+                    uri,
+                    publishBackupProgress
+                )
+                if (preview.success) {
+                    importPreviewResult = preview
+                    pendingImportUri = uri
+                    // Build dynamic categories list (including parser rules from backup file)
+                    val parserJson = ParserBackupPreviewReader.read(context, uri)
+                    val dynamicCategoriesList = BackupCategories.ALL_CATEGORIES.map { cat ->
+                        when (cat.id) {
+                            "parser_rules" -> cat.copy(
+                                subGroups = BackupCategories.parserAppSubGroupsFromJson(parserJson)
+                            )
+                            else -> cat
                         }
-                        else -> cat
                     }
-                }
-                // Convert category IDs to leaf IDs for the dialog - ALL selected by default
-                selectedImportCategories = preview.categoryCounts.keys.flatMap { catId ->
-                    val cat = dynamicCategoriesList.find { it.id == catId }
-                    if (cat != null && cat.subGroups.isNotEmpty()) {
-                        cat.subGroups.map { it.id }
-                    } else {
-                        listOf(catId)
+                    // Convert category IDs to leaf IDs for the dialog - ALL selected by default
+                    selectedImportCategories = preview.categoryCounts.keys.flatMap { catId ->
+                        val cat = dynamicCategoriesList.find { it.id == catId }
+                        if (cat != null && cat.subGroups.isNotEmpty()) {
+                            cat.subGroups.map { it.id }
+                        } else {
+                            listOf(catId)
+                        }
+                    }.toSet()
+                    // Also include lyric_cache if present in ZIP
+                    if (preview.lyricCacheEntryCount != 0) {
+                        selectedImportCategories = selectedImportCategories + "lyric_cache"
                     }
-                }.toSet()
-                // Also include lyric_cache if present in ZIP
-                if (preview.lyricCacheEntryCount != 0) {
-                    selectedImportCategories = selectedImportCategories + "lyric_cache"
+                    showImportPreviewDialog = true
+                } else {
+                    snackbarHostState.showSnackbar(backupImportFailedText)
                 }
-                showImportPreviewDialog = true
-            } else {
-                snackbarHostState.showSnackbar(backupImportFailedText)
+            } finally {
+                backupProgressRequest = null
+                backupProgress = null
             }
         }
     }
@@ -434,7 +495,7 @@ fun SettingsScreen(
 
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(
+            contentPadding = PaddingValues(
                 start = paddingValues.calculateStartPadding(layoutDirection),
                 top = paddingValues.calculateTopPadding(),
                 end = paddingValues.calculateEndPadding(layoutDirection),
@@ -1056,7 +1117,159 @@ fun SettingsScreen(
                 }
             )
         }
+
+        backupProgressRequest?.let { request ->
+            backupProgress?.let { progress ->
+                BackupImportProgressDialog(
+                    request = request,
+                    progress = progress,
+                )
+            }
+        }
     }
+}
+
+@Composable
+private fun BackupImportProgressDialog(
+    request: BackupProgressRequest,
+    progress: SettingsBackupManager.ImportProgress,
+) {
+    val stages = buildList {
+        add(SettingsBackupManager.ImportStage.READING_BACKUP)
+        if (request.mode == BackupProgressMode.PREVIEW) {
+            if (progress.stage == SettingsBackupManager.ImportStage.EXTRACTING_ARCHIVE) {
+                add(SettingsBackupManager.ImportStage.EXTRACTING_ARCHIVE)
+            }
+        } else {
+            if (request.isZip) add(SettingsBackupManager.ImportStage.EXTRACTING_ARCHIVE)
+            add(SettingsBackupManager.ImportStage.IMPORTING_SETTINGS)
+            if (
+                request.selectedLeafIds.any { it.startsWith("parser_") } ||
+                progress.stage == SettingsBackupManager.ImportStage.IMPORTING_PARSER_RULES
+            ) {
+                add(SettingsBackupManager.ImportStage.IMPORTING_PARSER_RULES)
+            }
+            if (request.selectedLeafIds.contains("lyric_cache")) {
+                add(SettingsBackupManager.ImportStage.IMPORTING_LYRIC_CACHE)
+            }
+            if (request.selectedSensitiveItemIds.isNotEmpty()) {
+                add(SettingsBackupManager.ImportStage.RESTORING_SENSITIVE_DATA)
+            }
+        }
+    }
+    val currentIndex = stages.indexOf(progress.stage).let { if (it >= 0) it else 0 }
+
+    MaterialBlurAlertDialog(
+        onDismissRequest = {},
+        properties = DialogProperties(
+            dismissOnBackPress = false,
+            dismissOnClickOutside = false,
+        ),
+        title = {
+            Text(
+                stringResource(
+                    if (request.mode == BackupProgressMode.PREVIEW) {
+                        R.string.backup_progress_preview_title
+                    } else {
+                        R.string.backup_progress_import_title
+                    }
+                )
+            )
+        },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 360.dp)
+                    .verticalScroll(rememberScrollState())
+            ) {
+                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                Spacer(modifier = Modifier.height(16.dp))
+                stages.forEachIndexed { index, stage ->
+                    val completed = index < currentIndex
+                    val current = index == currentIndex
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.Top,
+                    ) {
+                        Column(
+                            modifier = Modifier.width(24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                        ) {
+                            when {
+                                completed -> Icon(
+                                    imageVector = Icons.Default.Check,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(18.dp),
+                                )
+                                current -> CircularProgressIndicator(
+                                    modifier = Modifier.size(18.dp),
+                                    strokeWidth = 2.dp,
+                                )
+                                else -> Box(
+                                    modifier = Modifier
+                                        .padding(top = 5.dp)
+                                        .size(8.dp)
+                                        .background(
+                                            MaterialTheme.colorScheme.outlineVariant,
+                                            CircleShape,
+                                        )
+                                )
+                            }
+                            if (index < stages.lastIndex) {
+                                Box(
+                                    modifier = Modifier
+                                        .width(1.dp)
+                                        .height(24.dp)
+                                        .background(
+                                            if (completed) {
+                                                MaterialTheme.colorScheme.primary
+                                            } else {
+                                                MaterialTheme.colorScheme.outlineVariant
+                                            }
+                                        )
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = backupProgressStageLabel(stage),
+                            style = if (current) {
+                                MaterialTheme.typography.bodyMedium
+                            } else {
+                                MaterialTheme.typography.bodySmall
+                            },
+                            color = if (current) {
+                                MaterialTheme.colorScheme.onSurface
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            },
+                            modifier = Modifier.padding(top = 1.dp),
+                        )
+                    }
+                    if (index < stages.lastIndex) {
+                        Spacer(modifier = Modifier.height(2.dp))
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+    )
+}
+
+@Composable
+private fun backupProgressStageLabel(stage: SettingsBackupManager.ImportStage): String {
+    return stringResource(
+        when (stage) {
+            SettingsBackupManager.ImportStage.READING_BACKUP -> R.string.backup_progress_reading
+            SettingsBackupManager.ImportStage.EXTRACTING_ARCHIVE -> R.string.backup_progress_extracting
+            SettingsBackupManager.ImportStage.IMPORTING_SETTINGS -> R.string.backup_progress_settings
+            SettingsBackupManager.ImportStage.IMPORTING_PARSER_RULES -> R.string.backup_progress_parser_rules
+            SettingsBackupManager.ImportStage.IMPORTING_LYRIC_CACHE -> R.string.backup_progress_lyric_cache
+            SettingsBackupManager.ImportStage.RESTORING_SENSITIVE_DATA -> R.string.backup_progress_sensitive
+        }
+    )
 }
 
 @Composable
@@ -1654,36 +1867,6 @@ fun SettingsTextItem(
         trailingContent = {
             Text(
                 text = value,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-    )
-}
-
-@Composable
-fun SettingsValueItem(
-    title: String,
-    value: String,
-    onClick: (() -> Unit)? = null
-) {
-    ListItem(
-        modifier = Modifier
-            .fillMaxWidth()
-            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier),
-        colors = ListItemDefaults.colors(
-            containerColor = Color.Transparent
-        ),
-        headlineContent = {
-            Text(
-            text = title,
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-        },
-        trailingContent = {
-            Text(
-            text = value,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

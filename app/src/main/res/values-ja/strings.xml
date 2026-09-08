@@ -497,6 +497,14 @@
     <string name="settings_backup_import_success_with_sensitive">%1$d 個の設定、%2$d 件の歌詞キャッシュ、%3$d 個の機密項目を復元しました</string>
     <string name="settings_backup_export_failed">設定のエクスポートに失敗しました</string>
     <string name="settings_backup_import_failed">設定の復元に失敗しました</string>
+    <string name="backup_progress_preview_title">バックアップを読み込み中</string>
+    <string name="backup_progress_import_title">バックアップを復元中</string>
+    <string name="backup_progress_reading">バックアップファイルを読み込み中</string>
+    <string name="backup_progress_extracting">バックアップアーカイブを展開中</string>
+    <string name="backup_progress_settings">アプリ設定をインポート中</string>
+    <string name="backup_progress_parser_rules">パーサールールをインポート中</string>
+    <string name="backup_progress_lyric_cache">歌詞キャッシュをインポート中</string>
+    <string name="backup_progress_sensitive">機密データを復元中</string>
     <!-- Backup Category Dialog -->
     <string name="backup_dialog_export_title">エクスポートするデータを選択</string>
     <string name="backup_dialog_import_title">インポートするデータを選択</string>

@@ -536,6 +536,14 @@
     <string name="settings_backup_import_success_with_sensitive">Restored %1$d settings, %2$d lyric cache entries, and %3$d sensitive items</string>
     <string name="settings_backup_export_failed">Settings export failed</string>
     <string name="settings_backup_import_failed">Settings restore failed</string>
+    <string name="backup_progress_preview_title">Reading backup</string>
+    <string name="backup_progress_import_title">Restoring backup</string>
+    <string name="backup_progress_reading">Reading backup file</string>
+    <string name="backup_progress_extracting">Extracting backup archive</string>
+    <string name="backup_progress_settings">Importing app settings</string>
+    <string name="backup_progress_parser_rules">Importing parser rules</string>
+    <string name="backup_progress_lyric_cache">Importing lyric cache</string>
+    <string name="backup_progress_sensitive">Restoring sensitive data</string>
     <!-- Backup Category Dialog -->
     <string name="backup_dialog_export_title">Select data to export</string>
     <string name="backup_dialog_import_title">Select data to import</string>

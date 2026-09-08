@@ -24,7 +24,6 @@
 
 package com.example.islandlyrics.feature.settings.miuix
 
-import com.example.islandlyrics.ui.miuix.theme.rememberIslandLyricsMiuixThemeController
 import com.example.islandlyrics.ui.miuix.navigation.MiuixBackHandler
 import android.annotation.SuppressLint
 import android.app.Activity
@@ -52,13 +51,14 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
 import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -73,11 +73,15 @@ import androidx.core.content.edit
 import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import top.yukonga.miuix.kmp.basic.*
 import top.yukonga.miuix.kmp.preference.ArrowPreference as SuperArrow
 import com.example.islandlyrics.ui.miuix.preference.BlurOverlayDropdownPreference as SuperDropdown
 import top.yukonga.miuix.kmp.preference.SwitchPreference as SuperSwitch
 import top.yukonga.miuix.kmp.theme.MiuixTheme
+import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.extended.Ok
 import com.example.islandlyrics.feature.update.miuix.MiuixUpdateDialog
 import com.example.islandlyrics.core.settings.LauncherAliasManager
 import com.example.islandlyrics.core.settings.SettingsBackupManager
@@ -104,6 +108,18 @@ import com.example.islandlyrics.ui.miuix.blur.MiuixBlurSnackbar
 import top.yukonga.miuix.kmp.basic.SnackbarHost as MiuixSnackbarHost
 import top.yukonga.miuix.kmp.basic.SnackbarHostState as MiuixSnackbarHostState
 import java.util.Locale
+
+private enum class BackupProgressMode {
+    PREVIEW,
+    IMPORT,
+}
+
+private data class BackupProgressRequest(
+    val mode: BackupProgressMode,
+    val isZip: Boolean,
+    val selectedLeafIds: Set<String> = emptySet(),
+    val selectedSensitiveItemIds: Set<String> = emptySet(),
+)
 
 @Composable
 @SuppressLint("BatteryLife")
@@ -135,6 +151,7 @@ fun MiuixSettingsScreen(
     onUpdateIgnore: (String) -> Unit = {}
 ) {
     val context = LocalContext.current
+    val resources = LocalResources.current
     val prefs = remember { context.getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE) }
     val offlineModeEnabled = OfflineModeManager.isEnabled(context)
     val snackbarHostState = remember { MiuixSnackbarHostState() }
@@ -187,12 +204,20 @@ fun MiuixSettingsScreen(
     var selectedSensitiveImportItems by remember { mutableStateOf(emptySet<String>()) }
     var pendingSensitiveImportPassword by remember { mutableStateOf<CharArray?>(null) }
     var showSensitiveImportPasswordDialog by remember { mutableStateOf(false) }
+    var backupProgressRequest by remember { mutableStateOf<BackupProgressRequest?>(null) }
+    var backupProgress by remember { mutableStateOf<SettingsBackupManager.ImportProgress?>(null) }
 
     var showParserConflictDialog by remember { mutableStateOf(false) }
     var parserConflicts by remember { mutableStateOf<List<ParserConflict>>(emptyList()) }
     var pendingConflictImportUri by remember { mutableStateOf<Uri?>(null) }
     var pendingConflictSelections by remember { mutableStateOf(setOf<String>()) }
     var conflictKeepExisting by remember { mutableStateOf(setOf<String>()) }
+
+    val publishBackupProgress: suspend (SettingsBackupManager.ImportProgress) -> Unit = { progress ->
+        withContext(Dispatchers.Main.immediate) {
+            backupProgress = progress
+        }
+    }
 
     fun importBackup(
         uri: Uri,
@@ -201,6 +226,16 @@ fun MiuixSettingsScreen(
         selectedSensitiveItemIds: Set<String>,
         sensitivePassword: CharArray? = null
     ) {
+        if (backupProgressRequest != null) return
+        backupProgressRequest = BackupProgressRequest(
+            mode = BackupProgressMode.IMPORT,
+            isZip = preview.isZip,
+            selectedLeafIds = selectedLeafIds,
+            selectedSensitiveItemIds = selectedSensitiveItemIds,
+        )
+        backupProgress = SettingsBackupManager.ImportProgress(
+            SettingsBackupManager.ImportStage.READING_BACKUP
+        )
         coroutineScope.launch {
             val result = try {
                 if (preview.isZip) {
@@ -209,13 +244,21 @@ fun MiuixSettingsScreen(
                         uri,
                         selectedLeafIds,
                         selectedSensitiveItemIds,
-                        sensitivePassword
+                        sensitivePassword,
+                        publishBackupProgress
                     )
                 } else {
-                    SettingsBackupManager.importSelected(context, uri, selectedLeafIds)
+                    SettingsBackupManager.importSelected(
+                        context,
+                        uri,
+                        selectedLeafIds,
+                        publishBackupProgress
+                    )
                 }
             } finally {
                 if (!preview.isZip) sensitivePassword?.fill('\u0000')
+                backupProgressRequest = null
+                backupProgress = null
             }
             if (result.success && result.parserConflicts.isNotEmpty()) {
                 parserConflicts = result.parserConflicts
@@ -301,34 +344,51 @@ fun MiuixSettingsScreen(
         contract = ActivityResultContracts.OpenDocument()
     ) { uri ->
         if (uri == null) return@rememberLauncherForActivityResult
+        if (backupProgressRequest != null) return@rememberLauncherForActivityResult
+        backupProgressRequest = BackupProgressRequest(
+            mode = BackupProgressMode.PREVIEW,
+            isZip = false,
+        )
+        backupProgress = SettingsBackupManager.ImportProgress(
+            SettingsBackupManager.ImportStage.READING_BACKUP
+        )
         coroutineScope.launch {
-            val preview = SettingsBackupManager.previewImportFile(context, uri)
-            if (preview.success) {
-                importPreviewResult = preview
-                pendingImportUri = uri
-                val dynamicCategoriesList = BackupCategories.ALL_CATEGORIES.map { cat ->
-                    when (cat.id) {
-                        "parser_rules" -> {
-                            val parserJson = ParserBackupPreviewReader.readBlocking(context, uri)
-                            cat.copy(subGroups = BackupCategories.parserAppSubGroupsFromJson(parserJson))
+            try {
+                val preview = SettingsBackupManager.previewImportFile(
+                    context,
+                    uri,
+                    publishBackupProgress
+                )
+                if (preview.success) {
+                    importPreviewResult = preview
+                    pendingImportUri = uri
+                    val parserJson = ParserBackupPreviewReader.read(context, uri)
+                    val dynamicCategoriesList = BackupCategories.ALL_CATEGORIES.map { cat ->
+                        when (cat.id) {
+                            "parser_rules" -> cat.copy(
+                                subGroups = BackupCategories.parserAppSubGroupsFromJson(parserJson)
+                            )
+                            else -> cat
                         }
-                        else -> cat
                     }
-                }
-                selectedImportCategories = preview.categoryCounts.keys.flatMap { catId ->
-                    val cat = dynamicCategoriesList.find { it.id == catId }
-                    if (cat != null && cat.subGroups.isNotEmpty()) {
-                        cat.subGroups.map { it.id }
-                    } else {
-                        listOf(catId)
+                    selectedImportCategories = preview.categoryCounts.keys.flatMap { catId ->
+                        val cat = dynamicCategoriesList.find { it.id == catId }
+                        if (cat != null && cat.subGroups.isNotEmpty()) {
+                            cat.subGroups.map { it.id }
+                        } else {
+                            listOf(catId)
+                        }
+                    }.toSet()
+                    if (preview.lyricCacheEntryCount != 0) {
+                        selectedImportCategories = selectedImportCategories + "lyric_cache"
                     }
-                }.toSet()
-                if (preview.lyricCacheEntryCount != 0) {
-                    selectedImportCategories = selectedImportCategories + "lyric_cache"
+                    showImportPreviewDialog = true
+                } else {
+                    snackbarHostState.showSnackbar(message = backupImportFailedText)
                 }
-                showImportPreviewDialog = true
-            } else {
-                snackbarHostState.showSnackbar(message = backupImportFailedText)
+            } finally {
+                backupProgressRequest = null
+                backupProgress = null
             }
         }
     }
@@ -651,7 +711,7 @@ fun MiuixSettingsScreen(
                             ) {
                                 searchResults.forEach { match ->
                                     val item = match.item
-                                    val breadcrumbText = item.breadcrumbResList.joinToString(" > ") { context.getString(it) }
+                                    val breadcrumbText = item.breadcrumbResList.joinToString(" > ") { resources.getString(it) }
                                     val titleText = stringResource(item.titleRes)
                                     val summaryText = item.summaryRes?.let { stringResource(it) }
                                     val fullSummary = if (summaryText != null) "$breadcrumbText · $summaryText" else breadcrumbText
@@ -1262,7 +1322,152 @@ fun MiuixSettingsScreen(
                 }
             }
         }
+
+        backupProgressRequest?.let { request ->
+            backupProgress?.let { progress ->
+                MiuixBackupImportProgressDialog(
+                    request = request,
+                    progress = progress,
+                )
+            }
+        }
     }
+}
+
+@Composable
+private fun MiuixBackupImportProgressDialog(
+    request: BackupProgressRequest,
+    progress: SettingsBackupManager.ImportProgress,
+) {
+    val stages = buildList {
+        add(SettingsBackupManager.ImportStage.READING_BACKUP)
+        if (request.mode == BackupProgressMode.PREVIEW) {
+            if (progress.stage == SettingsBackupManager.ImportStage.EXTRACTING_ARCHIVE) {
+                add(SettingsBackupManager.ImportStage.EXTRACTING_ARCHIVE)
+            }
+        } else {
+            if (request.isZip) add(SettingsBackupManager.ImportStage.EXTRACTING_ARCHIVE)
+            add(SettingsBackupManager.ImportStage.IMPORTING_SETTINGS)
+            if (
+                request.selectedLeafIds.any { it.startsWith("parser_") } ||
+                progress.stage == SettingsBackupManager.ImportStage.IMPORTING_PARSER_RULES
+            ) {
+                add(SettingsBackupManager.ImportStage.IMPORTING_PARSER_RULES)
+            }
+            if (request.selectedLeafIds.contains("lyric_cache")) {
+                add(SettingsBackupManager.ImportStage.IMPORTING_LYRIC_CACHE)
+            }
+            if (request.selectedSensitiveItemIds.isNotEmpty()) {
+                add(SettingsBackupManager.ImportStage.RESTORING_SENSITIVE_DATA)
+            }
+        }
+    }
+    val currentIndex = stages.indexOf(progress.stage).let { if (it >= 0) it else 0 }
+
+    MiuixBlurDialog(
+        show = true,
+        title = stringResource(
+            if (request.mode == BackupProgressMode.PREVIEW) {
+                R.string.backup_progress_preview_title
+            } else {
+                R.string.backup_progress_import_title
+            }
+        ),
+        onDismissRequest = null,
+        renderInRootScaffold = false,
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(max = 360.dp)
+                .verticalScroll(rememberScrollState())
+        ) {
+            LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+            Spacer(modifier = Modifier.height(16.dp))
+            stages.forEachIndexed { index, stage ->
+                val completed = index < currentIndex
+                val current = index == currentIndex
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.Top,
+                ) {
+                    Column(
+                        modifier = Modifier.width(24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        when {
+                            completed -> Icon(
+                                imageVector = MiuixIcons.Ok,
+                                contentDescription = null,
+                                tint = MiuixTheme.colorScheme.primary,
+                                modifier = Modifier.size(18.dp),
+                            )
+                            current -> CircularProgressIndicator(
+                                modifier = Modifier.size(18.dp),
+                                strokeWidth = 2.dp,
+                                size = 18.dp,
+                            )
+                            else -> Box(
+                                modifier = Modifier
+                                    .padding(top = 5.dp)
+                                    .size(8.dp)
+                                    .background(
+                                        MiuixTheme.colorScheme.outline,
+                                        CircleShape,
+                                    )
+                            )
+                        }
+                        if (index < stages.lastIndex) {
+                            Box(
+                                modifier = Modifier
+                                    .width(1.dp)
+                                    .height(24.dp)
+                                    .background(
+                                        if (completed) {
+                                            MiuixTheme.colorScheme.primary
+                                        } else {
+                                            MiuixTheme.colorScheme.outline
+                                        }
+                                    )
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(
+                        text = miuixBackupProgressStageLabel(stage),
+                        color = if (current) {
+                            MiuixTheme.colorScheme.onSurface
+                        } else {
+                            MiuixTheme.colorScheme.onSurfaceSecondary
+                        },
+                        fontSize = if (current) {
+                            MiuixTheme.textStyles.body1.fontSize
+                        } else {
+                            MiuixTheme.textStyles.body2.fontSize
+                        },
+                        modifier = Modifier.padding(top = 1.dp),
+                    )
+                }
+                if (index < stages.lastIndex) {
+                    Spacer(modifier = Modifier.height(2.dp))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun miuixBackupProgressStageLabel(stage: SettingsBackupManager.ImportStage): String {
+    return stringResource(
+        when (stage) {
+            SettingsBackupManager.ImportStage.READING_BACKUP -> R.string.backup_progress_reading
+            SettingsBackupManager.ImportStage.EXTRACTING_ARCHIVE -> R.string.backup_progress_extracting
+            SettingsBackupManager.ImportStage.IMPORTING_SETTINGS -> R.string.backup_progress_settings
+            SettingsBackupManager.ImportStage.IMPORTING_PARSER_RULES -> R.string.backup_progress_parser_rules
+            SettingsBackupManager.ImportStage.IMPORTING_LYRIC_CACHE -> R.string.backup_progress_lyric_cache
+            SettingsBackupManager.ImportStage.RESTORING_SENSITIVE_DATA -> R.string.backup_progress_sensitive
+        }
+    )
 }
 
 @Composable
