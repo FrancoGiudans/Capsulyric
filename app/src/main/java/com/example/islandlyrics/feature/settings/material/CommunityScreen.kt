@@ -22,7 +22,7 @@
 
 package com.example.islandlyrics.feature.settings.material
 
-import android.content.Intent
+import android.widget.Toast
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -49,9 +49,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.core.net.toUri
 import com.example.islandlyrics.R
 import com.example.islandlyrics.core.feed.CommunityFeed
+import com.example.islandlyrics.core.feed.CommunityFeedActionHandler
 import com.example.islandlyrics.core.feed.CommunityFeedRepository
 import com.example.islandlyrics.core.feed.CommunityFeedStatus
 import com.example.islandlyrics.core.network.OfflineModeManager
@@ -155,11 +155,12 @@ fun CommunityScreen(onBack: () -> Unit) {
         CommunityDetailsDialog(
             state = dialogState,
             onDismiss = { communityDialogState = null },
-            onOpen = {
-                if (dialogState.item.hasUrl) {
-                    context.startActivity(Intent(Intent.ACTION_VIEW, dialogState.item.url.toUri()))
+            onAction = { action ->
+                if (CommunityFeedActionHandler.open(context, action)) {
+                    communityDialogState = null
+                } else {
+                    Toast.makeText(context, R.string.community_dialog_open_failed, Toast.LENGTH_SHORT).show()
                 }
-                communityDialogState = null
             }
         )
     }

@@ -28,6 +28,8 @@ import com.example.islandlyrics.ui.miuix.navigation.MiuixBackHandler
 import android.annotation.SuppressLint
 import android.app.Activity
 import com.example.islandlyrics.R
+import com.example.islandlyrics.core.feed.CommunityFeedAction
+import com.example.islandlyrics.core.feed.CommunityFeedActionStyle
 import com.example.islandlyrics.core.feed.CommunityFeedItem
 import com.example.islandlyrics.core.network.OfflineModeManager
 import com.example.islandlyrics.core.update.UpdateChecker
@@ -1608,12 +1610,11 @@ fun CommunityArrowItem(
 fun CommunityDetailsDialog(
     state: CommunityDialogState,
     onDismiss: () -> Unit,
-    onOpen: () -> Unit
+    onAction: (CommunityFeedAction) -> Unit
 ) {
     val markdown = buildCommunityMarkdown(state.item)
     val textColor = MiuixTheme.colorScheme.onSurface.toArgb()
-    val hasUrl = state.item.hasUrl
-    val openText = state.item.actionText.takeIf { it.isNotBlank() } ?: stringResource(R.string.community_dialog_open)
+    val actions = state.item.actions
 
     MiuixBlurDialog(
         title = state.sectionTitle,
@@ -1644,25 +1645,70 @@ fun CommunityDetailsDialog(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                TextButton(
-                    text = stringResource(R.string.community_dialog_close),
-                    onClick = onDismiss,
-                    colors = ButtonDefaults.textButtonColors(
-                        textColor = MiuixTheme.colorScheme.onSurfaceVariantActions
-                    ),
-                    modifier = Modifier.weight(1f)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                if (hasUrl) {
+            if (actions.size <= 1) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
                     TextButton(
-                        text = openText,
-                        onClick = onOpen,
+                        text = stringResource(R.string.community_dialog_close),
+                        onClick = onDismiss,
+                        colors = ButtonDefaults.textButtonColors(
+                            textColor = MiuixTheme.colorScheme.onSurfaceVariantActions
+                        ),
                         modifier = Modifier.weight(1f),
-                        colors = ButtonDefaults.textButtonColorsPrimary()
+                    )
+                    if (actions.isNotEmpty()) {
+                        Spacer(modifier = Modifier.width(8.dp))
+                        val action = actions.first()
+                        TextButton(
+                            text = action.text.ifBlank { stringResource(R.string.community_dialog_open) },
+                            onClick = { onAction(action) },
+                            modifier = Modifier.weight(1f),
+                            colors = if (action.style == CommunityFeedActionStyle.PRIMARY) {
+                                ButtonDefaults.textButtonColorsPrimary()
+                            } else {
+                                ButtonDefaults.textButtonColors(
+                                    textColor = MiuixTheme.colorScheme.onSurfaceVariantActions
+                                )
+                            }
+                        )
+                    }
+                }
+            } else {
+                Column(
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 240.dp)
+                            .verticalScroll(rememberScrollState()),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        actions.forEach { action ->
+                            TextButton(
+                                text = action.text.ifBlank { stringResource(R.string.community_dialog_open) },
+                                onClick = { onAction(action) },
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = if (action.style == CommunityFeedActionStyle.PRIMARY) {
+                                    ButtonDefaults.textButtonColorsPrimary()
+                                } else {
+                                    ButtonDefaults.textButtonColors(
+                                        textColor = MiuixTheme.colorScheme.onSurfaceVariantActions
+                                    )
+                                }
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    TextButton(
+                        text = stringResource(R.string.community_dialog_close),
+                        onClick = onDismiss,
+                        colors = ButtonDefaults.textButtonColors(
+                            textColor = MiuixTheme.colorScheme.onSurfaceVariantActions
+                        ),
+                        modifier = Modifier.fillMaxWidth()
                     )
                 }
             }
