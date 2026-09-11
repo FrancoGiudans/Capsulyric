@@ -133,7 +133,7 @@ class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(app
 
     fun resultLyricsText(result: OnlineLyricFetcher.LyricResult?): String {
         val parsed = parsedLyricsText(result?.parsedLines)
-        return parsed.ifBlank { result?.lyrics.orEmpty().trim() }
+        return parsed.ifBlank { visibleLyricText(result?.lyrics) }
     }
 
     fun resultTranslationText(result: OnlineLyricFetcher.LyricResult?): String {
@@ -145,6 +145,10 @@ class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(app
     }
 
     private fun sidecarLyricsText(content: String?): String {
+        return visibleLyricText(content)
+    }
+
+    private fun visibleLyricText(content: String?): String {
         if (content.isNullOrBlank()) return ""
         val lineTimestampRegex = Regex("""\[\d{1,2}:\d{2}(?:\.\d{1,3})?]""")
         val qrcHeaderRegex = Regex("""\[\d+,\d+]""")
@@ -186,16 +190,40 @@ class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(app
         role: ResultRole
     ): Boolean {
         val result = attempt.result ?: return false
-        if (result.error != null) return false
+        return canUseResultForRole(result, role)
+    }
+
+    fun canUseResultForRole(
+        result: OnlineLyricFetcher.LyricResult?,
+        role: ResultRole
+    ): Boolean {
+        if (result == null || result.error != null) return false
         return when (role) {
             ResultRole.MAIN -> isUsableMainResult(result)
-            ResultRole.TRANSLATION -> !result.translationLyrics.isNullOrBlank()
-            ResultRole.ROMANIZATION -> !result.romanLyrics.isNullOrBlank()
+            ResultRole.TRANSLATION -> resultTranslationText(result).isNotBlank()
+            ResultRole.ROMANIZATION -> resultRomanText(result).isNotBlank()
         }
     }
 
     private fun isUsableMainResult(result: OnlineLyricFetcher.LyricResult): Boolean {
-        return !result.lyrics.isNullOrBlank() && !result.parsedLines.isNullOrEmpty()
+        return !result.parsedLines.isNullOrEmpty() &&
+            parsedLyricsText(result.parsedLines).isNotBlank()
+    }
+
+    /** Collapses diagnostic query variants into one best visible result per provider. */
+    fun groupAttemptsByProvider(
+        attempts: List<OnlineLyricFetcher.ProviderAttempt>,
+        role: ResultRole,
+        selectedResult: OnlineLyricFetcher.LyricResult?
+    ): List<OnlineLyricFetcher.ProviderAttempt> {
+        return attempts
+            .filter { canUseAttemptForRole(it, role) }
+            .groupBy { it.provider }
+            .values
+            .mapNotNull { providerAttempts ->
+                providerAttempts.firstOrNull { it.result == selectedResult }
+                    ?: providerAttempts.maxByOrNull { it.result?.score ?: Int.MIN_VALUE }
+            }
     }
 
     private fun selectBestSidecarResult(
@@ -225,8 +253,10 @@ class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(app
         translationResult: OnlineLyricFetcher.LyricResult?,
         romanResult: OnlineLyricFetcher.LyricResult?
     ): OnlineLyricFetcher.LyricResult {
-        val translationLyrics = translationResult?.translationLyrics?.takeIf { it.isNotBlank() }
-        val romanLyrics = romanResult?.romanLyrics?.takeIf { it.isNotBlank() }
+        val translationLyrics = translationResult?.translationLyrics
+            ?.takeIf { resultTranslationText(translationResult).isNotBlank() }
+        val romanLyrics = romanResult?.romanLyrics
+            ?.takeIf { resultRomanText(romanResult).isNotBlank() }
         return mainResult.copy(
             api = buildCombinedApiLabel(mainResult, translationResult, romanResult),
             translationLyrics = translationLyrics,
@@ -260,15 +290,19 @@ class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(app
         romanResult: OnlineLyricFetcher.LyricResult?,
         fromCache: Boolean = false
     ): OnlineLyricFetcher.LyricResult? {
+        val visibleTranslationResult = translationResult
+            ?.takeIf { canUseResultForRole(it, ResultRole.TRANSLATION) }
+        val visibleRomanResult = romanResult
+            ?.takeIf { canUseResultForRole(it, ResultRole.ROMANIZATION) }
         _selectedMainResult.value = mainResult
-        _selectedTranslationResult.value = translationResult
-        _selectedRomanResult.value = romanResult
+        _selectedTranslationResult.value = visibleTranslationResult
+        _selectedRomanResult.value = visibleRomanResult
         _isCurrentSelectionFromCache.value = fromCache && mainResult != null
         val combined = mainResult?.let {
             buildCombinedResult(
                 mainResult = it,
-                translationResult = translationResult,
-                romanResult = romanResult
+                translationResult = visibleTranslationResult,
+                romanResult = visibleRomanResult
             )
         }
         _selectedResult.value = combined
