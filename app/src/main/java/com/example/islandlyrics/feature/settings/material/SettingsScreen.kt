@@ -33,6 +33,8 @@ import com.example.islandlyrics.ui.material.blur.MaterialBlurAlertDialog
 import android.annotation.SuppressLint
 import android.app.Activity
 import com.example.islandlyrics.R
+import com.example.islandlyrics.core.feed.CommunityFeedAction
+import com.example.islandlyrics.core.feed.CommunityFeedActionStyle
 import com.example.islandlyrics.core.feed.CommunityFeedItem
 import com.example.islandlyrics.core.network.OfflineModeManager
 import com.example.islandlyrics.core.theme.ThemeHelper
@@ -1785,12 +1787,11 @@ fun CommunityActionItem(
 fun CommunityDetailsDialog(
     state: CommunityDialogState,
     onDismiss: () -> Unit,
-    onOpen: () -> Unit
+    onAction: (CommunityFeedAction) -> Unit
 ) {
     val markdown = buildCommunityMarkdown(state.item)
     val textColor = MaterialTheme.colorScheme.onSurface.toArgb()
-    val hasUrl = state.item.hasUrl
-    val openText = state.item.actionText.takeIf { it.isNotBlank() } ?: stringResource(R.string.community_dialog_open)
+    val actions = state.item.actions
 
     MaterialBlurAlertDialog(
         onDismissRequest = onDismiss,
@@ -1802,7 +1803,9 @@ fun CommunityDetailsDialog(
         },
         text = {
             Column(
-                modifier = Modifier.verticalScroll(rememberScrollState())
+                modifier = Modifier
+                    .heightIn(max = 360.dp)
+                    .verticalScroll(rememberScrollState())
             ) {
                 Text(
                     text = state.item.title,
@@ -1815,12 +1818,32 @@ fun CommunityDetailsDialog(
                     textColor = textColor,
                     modifier = Modifier.fillMaxWidth()
                 )
+                if (actions.size > 1) {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    actions.forEach { action ->
+                        val actionText = action.text.ifBlank { stringResource(R.string.community_dialog_open) }
+                        TextButton(
+                            onClick = { onAction(action) },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                text = actionText,
+                                color = if (action.style == CommunityFeedActionStyle.PRIMARY) {
+                                    MaterialTheme.colorScheme.primary
+                                } else {
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                }
+                            )
+                        }
+                    }
+                }
             }
         },
         confirmButton = {
-            if (hasUrl) {
-                TextButton(onClick = onOpen) {
-                    Text(openText)
+            if (actions.size == 1) {
+                val action = actions.first()
+                TextButton(onClick = { onAction(action) }) {
+                    Text(action.text.ifBlank { stringResource(R.string.community_dialog_open) })
                 }
             }
         },
