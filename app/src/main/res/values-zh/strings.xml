@@ -1079,6 +1079,11 @@
     <string name="online_lyric_debug_no_romanization_match">不匹配拼音歌词</string>
     <string name="online_lyric_debug_no_sidecar_summary">保留该歌词类型为空</string>
     <string name="online_lyric_debug_clean_title_badge">清洗标题重试</string>
+    <string name="online_lyric_debug_query_variant_fmt">查询变体：%1$s</string>
+    <string name="online_lyric_debug_attempt_query_fmt">查询：%1$s / %2$s</string>
+    <string name="online_lyric_debug_identity_score_fmt">身份分：%1$d</string>
+    <string name="online_lyric_debug_total_score_fmt">总分：%1$d</string>
+    <string name="online_lyric_debug_identity_evidence_fmt">身份证据：%1$s</string>
     <string name="online_lyric_debug_main_candidates">主歌词来源</string>
     <string name="online_lyric_debug_translation_candidates">翻译歌词来源</string>
     <string name="online_lyric_debug_roman_candidates">拼音歌词来源</string>

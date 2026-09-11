@@ -71,7 +71,7 @@ class DebugLyricViewModel(application: Application) : AndroidViewModel(applicati
 
     fun fetchLyrics() {
         val mediaInfo = liveMetadata.value
-        if (mediaInfo == null || mediaInfo.title.isBlank() || mediaInfo.artist.isBlank()) {
+        if (mediaInfo == null || (mediaInfo.title.isBlank() && mediaInfo.artist.isBlank())) {
             _error.value = "没有可用的歌曲信息"
             return
         }
@@ -89,7 +89,13 @@ class DebugLyricViewModel(application: Application) : AndroidViewModel(applicati
                 val outcome = fetcher.fetchLyrics(
                     title = mediaInfo.title,
                     artist = mediaInfo.artist,
-                    providerOrderIds = _providerOrder.value.orEmpty().map { it.id }
+                    album = mediaInfo.album,
+                    durationMs = mediaInfo.duration,
+                    albumArtist = mediaInfo.albumArtist,
+                    mediaId = mediaInfo.mediaId,
+                    mediaUri = mediaInfo.mediaUri,
+                    providerOrderIds = _providerOrder.value.orEmpty().map { it.id },
+                    collectAllResults = true
                 )
                 val filtered = outcome.attempts.mapNotNull { it.result }.sortedByDescending { it.score }
                 _apiResults.value = filtered
@@ -101,7 +107,14 @@ class DebugLyricViewModel(application: Application) : AndroidViewModel(applicati
                     _parsedLyrics.value = best.parsedLines ?: emptyList()
                     AppLogger.getInstance().log("DebugLyric", "自动选择: ${best.api} (分: ${best.score})")
                 } else {
-                    _error.value = "所有API都未返回结果"
+                    val returned = outcome.attempts.count { attempt ->
+                        attempt.result?.let { result -> result.error == null } == true
+                    }
+                    _error.value = if (returned > 0) {
+                        "有 $returned 个 API 返回了结果，但都未通过当前身份匹配/歌词可用性检查"
+                    } else {
+                        "所有 API 都未返回结果"
+                    }
                 }
             } catch (e: Exception) {
                 _error.value = "获取失败: ${e.message}"

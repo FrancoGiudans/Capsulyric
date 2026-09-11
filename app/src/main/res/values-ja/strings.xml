@@ -1079,6 +1079,11 @@
     <string name="online_lyric_debug_no_romanization_match">一致するローマ字なし</string>
     <string name="online_lyric_debug_no_sidecar_summary">サブ歌詞データなし</string>
     <string name="online_lyric_debug_clean_title_badge">クリーンタイトル</string>
+    <string name="online_lyric_debug_query_variant_fmt">検索バリアント：%1$s</string>
+    <string name="online_lyric_debug_attempt_query_fmt">検索：%1$s / %2$s</string>
+    <string name="online_lyric_debug_identity_score_fmt">曲目一致スコア：%1$d</string>
+    <string name="online_lyric_debug_total_score_fmt">総合スコア：%1$d</string>
+    <string name="online_lyric_debug_identity_evidence_fmt">一致根拠：%1$s</string>
     <string name="online_lyric_debug_main_candidates">メイン歌詞ソース</string>
     <string name="online_lyric_debug_translation_candidates">翻訳歌詞ソース</string>
     <string name="online_lyric_debug_roman_candidates">ローマ字歌詞ソース</string>

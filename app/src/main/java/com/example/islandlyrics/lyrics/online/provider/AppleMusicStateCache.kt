@@ -108,6 +108,10 @@ internal object AppleMusicStateCache {
             if (inited && !isAccessTokenRefreshRequired(accessToken)) return@withLock
             runCatching {
                 accessToken = fetchAccessToken(httpClient)
+                android.util.Log.i(
+                    "AppleMusicStateCache",
+                    "anonymous catalog token initialized=${accessToken.isNotBlank()}"
+                )
             }.onFailure { e ->
                 accessToken = ""
                 android.util.Log.w("AppleMusicStateCache", "fetch access token failed: ${e.message}")
@@ -137,12 +141,15 @@ internal object AppleMusicStateCache {
             "https://music.apple.com/us/browse",
             headers = mapOf("User-Agent" to USER_AGENT)
         ) ?: throw IllegalStateException("AppleMusic: browse page fetch failed")
+        android.util.Log.d("AppleMusicStateCache", "browse page length=${html.length}")
 
         val jsUrls = findIndexScriptUrls(html)
         if (jsUrls.isEmpty()) throw IllegalStateException("AppleMusic: Failed to find index*.js")
+        android.util.Log.d("AppleMusicStateCache", "index scripts=${jsUrls.size}")
 
         for (jsUrl in jsUrls) {
             val js = httpClient.get(jsUrl, headers = mapOf("User-Agent" to USER_AGENT)) ?: continue
+            android.util.Log.d("AppleMusicStateCache", "index script length=${js.length} url=${jsUrl.take(160)}")
             val token = findAccessTokenInScript(js)
             if (!token.isNullOrBlank()) return token
         }

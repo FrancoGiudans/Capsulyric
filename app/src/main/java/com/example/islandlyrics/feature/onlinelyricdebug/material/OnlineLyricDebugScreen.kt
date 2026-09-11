@@ -26,7 +26,6 @@ import android.graphics.Bitmap
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Arrangement
@@ -116,10 +115,6 @@ fun OnlineLyricDebugScreen(
     val error by viewModel.error.observeAsState()
     val customMatchTitle by viewModel.customMatchTitle.observeAsState("")
     val customMatchArtist by viewModel.customMatchArtist.observeAsState("")
-    val effectiveQuery by viewModel.effectiveQuery.observeAsState("" to "")
-    val querySourceLabel by viewModel.querySourceLabel.observeAsState("")
-    val cacheStatus by viewModel.cacheStatus.observeAsState()
-    val isCurrentSelectionFromCache by viewModel.isCurrentSelectionFromCache.observeAsState(false)
     val isInstrumental by viewModel.isInstrumental.observeAsState(false)
     val isAlbumInstrumental by viewModel.isAlbumInstrumental.observeAsState(false)
 
@@ -144,6 +139,24 @@ fun OnlineLyricDebugScreen(
     val duration = liveProgress?.duration?.takeIf { it > 0 } ?: mediaInfo?.duration ?: 0L
     val currentFullLyricsTitle = stringResource(R.string.online_lyric_rematch_current_full_lyrics)
     val resultFullLyricsTitle = stringResource(R.string.online_lyric_rematch_result_full_lyrics)
+    val mainCandidates = viewModel.groupAttemptsByProvider(
+        attempts = attempts,
+        role = OnlineLyricDebugViewModel.ResultRole.MAIN,
+        selectedResult = selectedMainResult
+    )
+    val translationCandidates = viewModel.groupAttemptsByProvider(
+        attempts = attempts,
+        role = OnlineLyricDebugViewModel.ResultRole.TRANSLATION,
+        selectedResult = selectedTranslationResult
+    )
+    val romanizationCandidates = viewModel.groupAttemptsByProvider(
+        attempts = attempts,
+        role = OnlineLyricDebugViewModel.ResultRole.ROMANIZATION,
+        selectedResult = selectedRomanResult
+    )
+    val hasOtherResults = mainCandidates.isNotEmpty() ||
+        translationCandidates.isNotEmpty() || selectedTranslationResult != null ||
+        romanizationCandidates.isNotEmpty() || selectedRomanResult != null
 
     MaterialBlurScaffold(
         topBar = {
@@ -302,30 +315,6 @@ fun OnlineLyricDebugScreen(
                             Spacer(modifier = Modifier.size(8.dp))
                             Text(stringResource(R.string.online_lyric_rematch_sidecar_action))
                         }
-                        Spacer(modifier = Modifier.height(10.dp))
-                        Text(
-                            text = stringResource(
-                                R.string.online_lyric_rematch_effective_query_fmt,
-                                effectiveQuery.first.ifBlank { stringResource(R.string.online_lyric_debug_none) },
-                                effectiveQuery.second.ifBlank { stringResource(R.string.online_lyric_debug_none) }
-                            ),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        if (querySourceLabel.isNotBlank()) {
-                            Text(
-                                text = querySourceLabel,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                        cacheStatus?.let {
-                            Text(
-                                text = it,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                        }
                         error?.let {
                             Text(
                                 text = it,
@@ -338,75 +327,49 @@ fun OnlineLyricDebugScreen(
                 }
             }
 
-            item { SettingsSectionHeader(text = stringResource(R.string.online_lyric_rematch_result_title)) }
-            item {
-                SettingsCard {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable(enabled = rematchedLyrics.isNotBlank()) {
-                                dialogTitle = resultFullLyricsTitle
-                                dialogText = rematchedLyrics
-                                dialogResult = selectedResult
-                                dialogRole = null
-                            }
-                            .padding(16.dp)
-                    ) {
-                        if (selectedResult != null) {
+            if (selectedResult != null && rematchedLyrics.isNotBlank()) {
+                item { SettingsSectionHeader(text = stringResource(R.string.online_lyric_rematch_result_title)) }
+                item {
+                    SettingsCard {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    dialogTitle = resultFullLyricsTitle
+                                    dialogText = rematchedLyrics
+                                    dialogResult = selectedResult
+                                    dialogRole = null
+                                }
+                                .padding(16.dp)
+                        ) {
                             Text(
-                                text = stringResource(R.string.online_lyric_rematch_result_source_fmt, selectedResult?.api.orEmpty()),
+                                text = selectedResult?.provider?.displayName(context).orEmpty(),
                                 style = MaterialTheme.typography.labelLarge,
                                 color = MaterialTheme.colorScheme.primary
                             )
-                            if (isCurrentSelectionFromCache) {
-                                Text(
-                                    text = stringResource(R.string.online_lyric_debug_cache_hit),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                            ResultBadges(
-                                labels = resultBadges(
-                                    result = selectedResult,
-                                    attempt = null,
-                                    selected = true
-                                )
-                            )
                             Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = rematchedLyrics,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                maxLines = 10,
+                                overflow = TextOverflow.Ellipsis
+                            )
                         }
-                        Text(
-                            text = rematchedLyrics.ifBlank { stringResource(R.string.online_lyric_rematch_no_result) },
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = if (rematchedLyrics.isBlank()) {
-                                MaterialTheme.colorScheme.onSurfaceVariant
-                            } else {
-                                MaterialTheme.colorScheme.onSurface
-                            },
-                            maxLines = 10,
-                            overflow = TextOverflow.Ellipsis
-                        )
                     }
                 }
             }
 
-            item { SettingsSectionHeader(text = stringResource(R.string.online_lyric_rematch_other_results)) }
-            item {
-                SettingsCard {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        if (attempts.isEmpty()) {
-                            Text(
-                                text = stringResource(R.string.online_lyric_rematch_no_other_results),
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        } else {
+            if (hasOtherResults) {
+                item { SettingsSectionHeader(text = stringResource(R.string.online_lyric_rematch_other_results)) }
+                item {
+                    SettingsCard {
+                        Column(modifier = Modifier.padding(16.dp)) {
                             CandidateSection(
                                 title = stringResource(R.string.online_lyric_debug_main_candidates),
-                                attempts = attempts,
+                                attempts = mainCandidates,
                                 selectedResult = selectedMainResult,
-                                canUse = { viewModel.canUseAttemptForRole(it, OnlineLyricDebugViewModel.ResultRole.MAIN) },
                                 preview = { viewModel.resultLyricsText(it) },
-                                emptyText = stringResource(R.string.online_lyric_debug_no_main_candidates),
                                 onOpen = {
                                     dialogRole = OnlineLyricDebugViewModel.ResultRole.MAIN
                                     viewModel.openAttempt(it)
@@ -414,11 +377,9 @@ fun OnlineLyricDebugScreen(
                             )
                             CandidateSection(
                                 title = stringResource(R.string.online_lyric_debug_translation_candidates),
-                                attempts = attempts,
+                                attempts = translationCandidates,
                                 selectedResult = selectedTranslationResult,
-                                canUse = { viewModel.canUseAttemptForRole(it, OnlineLyricDebugViewModel.ResultRole.TRANSLATION) },
                                 preview = { viewModel.resultTranslationText(it) },
-                                emptyText = stringResource(R.string.online_lyric_debug_no_translation_candidates),
                                 clearTitle = stringResource(R.string.online_lyric_debug_no_translation_match),
                                 onClear = {
                                     viewModel.clearSidecarForRole(OnlineLyricDebugViewModel.ResultRole.TRANSLATION)
@@ -430,11 +391,9 @@ fun OnlineLyricDebugScreen(
                             )
                             CandidateSection(
                                 title = stringResource(R.string.online_lyric_debug_roman_candidates),
-                                attempts = attempts,
+                                attempts = romanizationCandidates,
                                 selectedResult = selectedRomanResult,
-                                canUse = { viewModel.canUseAttemptForRole(it, OnlineLyricDebugViewModel.ResultRole.ROMANIZATION) },
                                 preview = { viewModel.resultRomanText(it) },
-                                emptyText = stringResource(R.string.online_lyric_debug_no_roman_candidates),
                                 clearTitle = stringResource(R.string.online_lyric_debug_no_romanization_match),
                                 onClear = {
                                     viewModel.clearSidecarForRole(OnlineLyricDebugViewModel.ResultRole.ROMANIZATION)
@@ -578,62 +537,36 @@ private fun CandidateSection(
     title: String,
     attempts: List<OnlineLyricFetcher.ProviderAttempt>,
     selectedResult: OnlineLyricFetcher.LyricResult?,
-    canUse: (OnlineLyricFetcher.ProviderAttempt) -> Boolean,
     preview: (OnlineLyricFetcher.LyricResult?) -> String,
-    emptyText: String,
     clearTitle: String? = null,
     onClear: (() -> Unit)? = null,
     onOpen: (OnlineLyricFetcher.ProviderAttempt) -> Unit
 ) {
     val context = LocalContext.current
-    val usableAttempts = attempts.filter(canUse)
+    val hasClearAction = selectedResult != null && clearTitle != null && onClear != null
+    if (attempts.isEmpty() && !hasClearAction) return
     Text(
         text = title,
         style = MaterialTheme.typography.labelLarge,
         color = MaterialTheme.colorScheme.primary,
         modifier = Modifier.padding(top = 8.dp, bottom = 8.dp)
     )
-    if (clearTitle != null && onClear != null) {
+    if (hasClearAction) {
         SourceResultRow(
-            title = clearTitle,
-            subtitle = if (selectedResult == null) {
-                stringResource(R.string.online_lyric_rematch_selected_result)
-            } else {
-                stringResource(R.string.online_lyric_debug_no_sidecar_summary)
-            },
-            badges = emptyList(),
+            title = clearTitle.orEmpty(),
             preview = "",
             enabled = true,
-            selected = selectedResult == null,
-            onClick = onClear
+            selected = false,
+            onClick = onClear!!
         )
     }
-    if (usableAttempts.isEmpty()) {
-        Text(
-            text = emptyText,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(bottom = 12.dp)
-        )
-        return
-    }
-    usableAttempts.forEach { attempt ->
+    attempts.forEach { attempt ->
         val result = attempt.result
-        val selected = result == selectedResult
+        val selected = result != null && result == selectedResult
         SourceResultRow(
             title = attempt.provider.displayName(context),
-            subtitle = if (selected) {
-                stringResource(R.string.online_lyric_rematch_selected_result)
-            } else {
-                stringResource(R.string.online_lyric_rematch_available_result)
-            },
-            badges = resultBadges(
-                result = result,
-                attempt = attempt,
-                selected = selected
-            ),
             preview = preview(result),
-            enabled = result != null,
+            enabled = true,
             selected = selected,
             onClick = { onOpen(attempt) }
         )
@@ -643,8 +576,6 @@ private fun CandidateSection(
 @Composable
 private fun SourceResultRow(
     title: String,
-    subtitle: String,
-    badges: List<String>,
     preview: String,
     enabled: Boolean,
     selected: Boolean,
@@ -671,12 +602,6 @@ private fun SourceResultRow(
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold
             )
-            Text(
-                text = subtitle,
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.primary
-            )
-            ResultBadges(labels = badges)
             if (preview.isNotBlank()) {
                 Spacer(modifier = Modifier.height(6.dp))
                 Text(
@@ -687,61 +612,6 @@ private fun SourceResultRow(
                     overflow = TextOverflow.Ellipsis
                 )
             }
-        }
-    }
-}
-
-@Composable
-private fun resultBadges(
-    result: OnlineLyricFetcher.LyricResult?,
-    attempt: OnlineLyricFetcher.ProviderAttempt?,
-    selected: Boolean
-): List<String> {
-    val labels = mutableListOf<String>()
-    if (selected) {
-        labels += stringResource(R.string.online_lyric_rematch_selected_result)
-    }
-    if (result != null && result.error == null && !result.parsedLines.isNullOrEmpty()) {
-        labels += if (result.hasSyllable || result.parsedLines.orEmpty().any { !it.syllables.isNullOrEmpty() }) {
-            stringResource(R.string.online_lyric_debug_result_syllable)
-        } else {
-            stringResource(R.string.online_lyric_debug_result_lrc_or_text)
-        }
-        if (!result.translationLyrics.isNullOrBlank()) {
-            labels += stringResource(R.string.online_lyric_debug_result_translation)
-        }
-        if (!result.romanLyrics.isNullOrBlank()) {
-            labels += stringResource(R.string.online_lyric_debug_result_romanization)
-        }
-    }
-    if (attempt?.usedCleanTitleFallback == true) {
-        labels += stringResource(R.string.online_lyric_debug_clean_title_badge)
-    }
-    return labels
-}
-
-@Composable
-private fun ResultBadges(labels: List<String>) {
-    if (labels.isEmpty()) return
-    Spacer(modifier = Modifier.height(6.dp))
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .horizontalScroll(rememberScrollState()),
-        horizontalArrangement = Arrangement.spacedBy(6.dp)
-    ) {
-        labels.forEach { label ->
-            Text(
-                text = label,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSecondaryContainer,
-                modifier = Modifier
-                    .background(
-                        color = MaterialTheme.colorScheme.secondaryContainer,
-                        shape = RoundedCornerShape(6.dp)
-                    )
-                    .padding(horizontal = 8.dp, vertical = 3.dp)
-            )
         }
     }
 }
@@ -793,7 +663,7 @@ private fun AttemptResultDialog(
         text = {
             val bodyText = attempt.result?.error?.let {
                 stringResource(R.string.online_lyric_debug_error_fmt, it)
-            } ?: text.ifBlank { stringResource(R.string.online_lyric_debug_no_result) }
+            } ?: text.ifBlank { stringResource(R.string.online_lyric_rematch_no_lyrics) }
             ResultTextSections(
                 mainText = bodyText,
                 translationText = if (attempt.result?.error == null) translationText else "",
