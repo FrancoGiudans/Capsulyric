@@ -175,10 +175,12 @@ jobs:
           }
 
           META_LINE=$(find_heading_line "Release Metadata")
-          CN_LINE=$(find_heading_line "Release Highlights")
-          EN_LINE=$(find_heading_line "English Highlights")
+          HIGHLIGHTS_LINE=$(find_heading_line "Release Highlights")
+          CN_LINE=$(find_heading_line "🇨🇳")
+          EN_LINE=$(find_heading_line "🇬🇧")
+          LEGACY_EN_LINE=$(find_heading_line "English Highlights")
 
-          echo "Found headings: Metadata@${META_LINE:-N/A}  CN@${CN_LINE:-N/A}  EN@${EN_LINE:-N/A}"
+          echo "Found headings: Metadata@${META_LINE:-N/A}  Highlights@${HIGHLIGHTS_LINE:-N/A}  CN@${CN_LINE:-N/A}  EN@${EN_LINE:-N/A}  LegacyEN@${LEGACY_EN_LINE:-N/A}"
 
           # Helper: get the first heading line number greater than a given line
           next_heading_after() {
@@ -224,35 +226,119 @@ jobs:
           fi
           echo "is_prerelease=${IS_PRERELEASE}" >> $GITHUB_OUTPUT
 
-          # --- Extract CN notes ---
-          CN_NOTES=""
-          if [ -n "$CN_LINE" ]; then
-            CN_END=$(next_heading_after "$CN_LINE")
-            CN_NOTES=$(sed -n "$((CN_LINE + 1)),$((CN_END - 1))p" CHANGELOG.md || true)
+          # --- Extract release highlights ---
+          : > /tmp/common_highlights.txt
+          : > /tmp/cn_highlights_only.txt
+          : > /tmp/en_highlights_only.txt
+          : > /tmp/cn_notes.txt
+          : > /tmp/en_notes.txt
+
+          if [ -n "$HIGHLIGHTS_LINE" ]; then
+            HIGHLIGHTS_END=$(next_heading_after "$HIGHLIGHTS_LINE")
+            HIGHLIGHTS_NOTES=$(sed -n "$((HIGHLIGHTS_LINE + 1)),$((HIGHLIGHTS_END - 1))p" CHANGELOG.md || true)
+            printf '%s\n' "$HIGHLIGHTS_NOTES" > /tmp/release_highlights_section.md
+
+            # Preferred format:
+            #   ## Release Highlights
+            #   <common content, e.g. image>
+            #   ### 🇨🇳
+            #   ...
+            #   ### 🇬🇧
+            #   ...
+            python3 - << 'PYEOF'
+          import re
+          from pathlib import Path
+
+          section = Path("/tmp/release_highlights_section.md").read_text(encoding="utf-8")
+          matches = list(re.finditer(r"(?m)^###\s+(.+?)\s*$", section))
+
+          def is_horizontal_rule(line):
+              value = line.strip()
+              return len(value) >= 3 and (
+                  set(value) == {"-"} or
+                  set(value) == {"*"} or
+                  set(value) == {"_"}
+              )
+
+          def clean(text):
+              lines = text.strip().splitlines()
+              while lines and is_horizontal_rule(lines[0]):
+                  lines.pop(0)
+              while lines and is_horizontal_rule(lines[-1]):
+                  lines.pop()
+              return "\n".join(lines).strip()
+
+          def is_cn(title):
+              value = title.strip().lower()
+              return "🇨🇳" in title or value in {"cn", "zh", "中文", "chinese"}
+
+          def is_en(title):
+              value = title.strip().lower()
+              return "🇬🇧" in title or value in {"en", "english"}
+
+          common = ""
+          cn = ""
+          en = ""
+          if matches:
+              common = clean(section[:matches[0].start()])
+              for index, match in enumerate(matches):
+                  end = matches[index + 1].start() if index + 1 < len(matches) else len(section)
+                  content = clean(section[match.end():end])
+                  title = match.group(1)
+                  if is_cn(title):
+                      cn = content
+                  elif is_en(title):
+                      en = content
+
+          def with_common(content):
+              parts = [part for part in (common, content) if part]
+              return "\n\n".join(parts)
+
+          Path("/tmp/highlights_has_nested.txt").write_text("true" if matches else "false", encoding="utf-8")
+          Path("/tmp/common_highlights.txt").write_text(common, encoding="utf-8")
+          Path("/tmp/cn_highlights_only.txt").write_text(cn, encoding="utf-8")
+          Path("/tmp/en_highlights_only.txt").write_text(en, encoding="utf-8")
+          Path("/tmp/cn_notes.txt").write_text(with_common(cn), encoding="utf-8")
+          Path("/tmp/en_notes.txt").write_text(with_common(en), encoding="utf-8")
+          PYEOF
+
+            HAS_NESTED_HIGHLIGHTS=$(cat /tmp/highlights_has_nested.txt)
+            if [ "$HAS_NESTED_HIGHLIGHTS" != "true" ]; then
+              # Backward compatibility for the former template where
+              # "Release Highlights" itself held the Chinese highlights.
+              printf '%s\n' "$HIGHLIGHTS_NOTES" > /tmp/cn_notes.txt
+              printf '%s\n' "$HIGHLIGHTS_NOTES" > /tmp/cn_highlights_only.txt
+            fi
           fi
 
-          # --- Extract EN notes ---
-          EN_NOTES=""
-          if [ -n "$EN_LINE" ]; then
-            EN_END=$(next_heading_after "$EN_LINE")
-            EN_NOTES=$(sed -n "$((EN_LINE + 1)),$((EN_END - 1))p" CHANGELOG.md || true)
+          if [ ! -s /tmp/cn_notes.txt ] && [ -n "$CN_LINE" ]; then
+            CN_END=$(next_heading_after "$CN_LINE")
+            CN_NOTES=$(sed -n "$((CN_LINE + 1)),$((CN_END - 1))p" CHANGELOG.md || true)
+            printf '%s\n' "$CN_NOTES" > /tmp/cn_notes.txt
+            printf '%s\n' "$CN_NOTES" > /tmp/cn_highlights_only.txt
+          fi
+
+          if [ ! -s /tmp/en_notes.txt ]; then
+            EFFECTIVE_EN_LINE="${EN_LINE:-$LEGACY_EN_LINE}"
+            if [ -n "$EFFECTIVE_EN_LINE" ]; then
+              EN_END=$(next_heading_after "$EFFECTIVE_EN_LINE")
+              EN_NOTES=$(sed -n "$((EFFECTIVE_EN_LINE + 1)),$((EN_END - 1))p" CHANGELOG.md || true)
+              printf '%s\n' "$EN_NOTES" > /tmp/en_notes.txt
+              printf '%s\n' "$EN_NOTES" > /tmp/en_highlights_only.txt
+            fi
           fi
 
           # Validate sections are non-empty (after stripping blank lines)
-          CN_TRIMMED=$(echo "$CN_NOTES" | sed '/^[[:space:]]*$/d' || true)
-          EN_TRIMMED=$(echo "$EN_NOTES" | sed '/^[[:space:]]*$/d' || true)
+          CN_TRIMMED=$(sed '/^[[:space:]]*$/d' /tmp/cn_notes.txt || true)
+          EN_TRIMMED=$(sed '/^[[:space:]]*$/d' /tmp/en_notes.txt || true)
 
-          echo "CN notes: $(echo "$CN_NOTES" | wc -l) lines (${#CN_TRIMMED} non-blank chars)"
-          echo "EN notes: $(echo "$EN_NOTES" | wc -l) lines (${#EN_TRIMMED} non-blank chars)"
+          echo "CN notes: $(wc -l < /tmp/cn_notes.txt) lines (${#CN_TRIMMED} non-blank chars)"
+          echo "EN notes: $(wc -l < /tmp/en_notes.txt) lines (${#EN_TRIMMED} non-blank chars)"
 
           if [ -z "$CN_TRIMMED" ] && [ -z "$EN_TRIMMED" ]; then
             echo "::error::Both highlights sections in CHANGELOG.md are empty. Please fill in at least one before opening the release PR."
             exit 1
           fi
-
-          # Save notes to temp files for later assembly
-          echo "$CN_NOTES" > /tmp/cn_notes.txt
-          echo "$EN_NOTES" > /tmp/en_notes.txt
 
           # --- Check for tag conflicts ---
           if git rev-parse "$TAG_NAME" >/dev/null 2>&1; then
@@ -427,22 +513,31 @@ jobs:
         run: |
           : > release_body.md
           NEED_SEP=0
-          if [ -n "$(sed '/^[[:space:]]*$/d' /tmp/cn_notes.txt)" ]; then
+          COMMON_HIGHLIGHTS_TRIMMED=$(sed '/^[[:space:]]*$/d' /tmp/common_highlights.txt || true)
+          CN_HIGHLIGHTS_TRIMMED=$(sed '/^[[:space:]]*$/d' /tmp/cn_highlights_only.txt || true)
+          EN_HIGHLIGHTS_TRIMMED=$(sed '/^[[:space:]]*$/d' /tmp/en_highlights_only.txt || true)
+
+          if [ -n "$COMMON_HIGHLIGHTS_TRIMMED" ] || [ -n "$CN_HIGHLIGHTS_TRIMMED" ] || [ -n "$EN_HIGHLIGHTS_TRIMMED" ]; then
             {
               echo "## Release Highlights"
               echo ""
-              cat /tmp/cn_notes.txt
-            } >> release_body.md
-            NEED_SEP=1
-          fi
-          if [ -n "$(sed '/^[[:space:]]*$/d' /tmp/en_notes.txt)" ]; then
-            if [ "$NEED_SEP" = "1" ]; then
-              printf '\n---\n\n' >> release_body.md
-            fi
-            {
-              echo "## English Highlights"
-              echo ""
-              cat /tmp/en_notes.txt
+              if [ -n "$COMMON_HIGHLIGHTS_TRIMMED" ]; then
+                cat /tmp/common_highlights.txt
+                echo ""
+              fi
+              if [ -n "$CN_HIGHLIGHTS_TRIMMED" ]; then
+                echo "### 🇨🇳"
+                echo ""
+                cat /tmp/cn_highlights_only.txt
+              fi
+              if [ -n "$EN_HIGHLIGHTS_TRIMMED" ]; then
+                if [ -n "$CN_HIGHLIGHTS_TRIMMED" ]; then
+                  echo ""
+                fi
+                echo "### 🇬🇧"
+                echo ""
+                cat /tmp/en_highlights_only.txt
+              fi
             } >> release_body.md
             NEED_SEP=1
           fi
@@ -510,13 +605,38 @@ jobs:
           gitee_files: ${{ steps.artifacts.outputs.apk }}
 
       # ============================================================
-      # Step 12.1: Publish Release to AppShare
+      # Step 12.1: Upload Release APK to LanZouCloud
+      # ============================================================
+      - name: Upload Release APK to LanZouCloud
+        id: lanzou_upload
+        if: success()
+        continue-on-error: true
+        timeout-minutes: 15
+        env:
+          LANZOU_YLOGIN: ${{ secrets.LANZOU_YLOGIN }}
+          LANZOU_PHPDISK_INFO: ${{ secrets.LANZOU_PHPDISK_INFO }}
+          LANZOU_PARENT_FOLDER_ID: ${{ vars.LANZOU_PARENT_FOLDER_ID }}
+        shell: bash
+        run: |
+          python3 -m pip install --disable-pip-version-check -r .github/scripts/requirements-lanzou.txt
+          PARENT_FOLDER_ID="${LANZOU_PARENT_FOLDER_ID:--1}"
+          python3 .github/scripts/publish_lanzou.py \
+            --apk "${{ steps.artifacts.outputs.apk }}" \
+            --channel "${{ steps.meta.outputs.channel }}" \
+            --version-name "${{ steps.meta.outputs.version_name }}" \
+            --parent-folder-id "$PARENT_FOLDER_ID"
+
+      # ============================================================
+      # Step 12.2: Publish Release to AppShare
       # ============================================================
       - name: Publish Release to AppShare
-        if: success()
+        id: appshare_publish
+        if: ${{ success() && steps.lanzou_upload.outputs.appshare_link != '' }}
+        continue-on-error: true
         env:
           appKey: ${{ secrets.appKey }}
           APPSHARE_APP_KEY: ${{ secrets.appKey }}
+          APPSHARE_LINK: ${{ steps.lanzou_upload.outputs.appshare_link }}
         shell: bash
         run: |
           python3 .github/scripts/publish_appshare.py \
@@ -527,10 +647,37 @@ jobs:
             --version-name "${{ steps.meta.outputs.version_name }}" \
             --channel "${{ steps.meta.outputs.channel }}" \
             --changelog-file "/tmp/cn_notes.txt" \
-            --link "https://github.com/${{ github.repository }}/releases/tag/${{ steps.meta.outputs.tag_name }}"
+            --link "$APPSHARE_LINK"
+
+      - name: Report AppShare skipped
+        if: ${{ steps.lanzou_upload.outputs.appshare_link == '' }}
+        shell: bash
+        run: echo "::warning::蓝奏云链接不可用，已跳过 AppShare；GitHub/Gitee 发版仍已完成。"
 
       # ============================================================
-      # Step 12.2: Prune old releases — keep 15 most recent Version.* (GitHub + Gitee)
+      # Step 12.3: Prune LanZouCloud history after successful AppShare publish
+      # ============================================================
+      - name: Prune LanZouCloud release history (keep 15)
+        if: ${{ steps.appshare_publish.outcome == 'success' }}
+        continue-on-error: true
+        timeout-minutes: 10
+        env:
+          LANZOU_YLOGIN: ${{ secrets.LANZOU_YLOGIN }}
+          LANZOU_PHPDISK_INFO: ${{ secrets.LANZOU_PHPDISK_INFO }}
+          LANZOU_PARENT_FOLDER_ID: ${{ vars.LANZOU_PARENT_FOLDER_ID }}
+        shell: bash
+        run: |
+          python3 -m pip install --disable-pip-version-check -r .github/scripts/requirements-lanzou.txt
+          PARENT_FOLDER_ID="${LANZOU_PARENT_FOLDER_ID:--1}"
+          python3 .github/scripts/publish_lanzou.py \
+            --channel "${{ steps.meta.outputs.channel }}" \
+            --version-name "${{ steps.meta.outputs.version_name }}" \
+            --keep 15 \
+            --parent-folder-id "$PARENT_FOLDER_ID" \
+            --prune-only
+
+      # ============================================================
+      # Step 12.4: Prune old releases — keep 15 most recent Version.* (GitHub + Gitee)
       # ============================================================
       - name: Prune old GitHub releases (keep 15)
         if: success()

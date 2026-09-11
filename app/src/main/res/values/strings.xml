@@ -536,6 +536,14 @@
     <string name="settings_backup_import_success_with_sensitive">Restored %1$d settings, %2$d lyric cache entries, and %3$d sensitive items</string>
     <string name="settings_backup_export_failed">Settings export failed</string>
     <string name="settings_backup_import_failed">Settings restore failed</string>
+    <string name="backup_progress_preview_title">Reading backup</string>
+    <string name="backup_progress_import_title">Restoring backup</string>
+    <string name="backup_progress_reading">Reading backup file</string>
+    <string name="backup_progress_extracting">Extracting backup archive</string>
+    <string name="backup_progress_settings">Importing app settings</string>
+    <string name="backup_progress_parser_rules">Importing parser rules</string>
+    <string name="backup_progress_lyric_cache">Importing lyric cache</string>
+    <string name="backup_progress_sensitive">Restoring sensitive data</string>
     <!-- Backup Category Dialog -->
     <string name="backup_dialog_export_title">Select data to export</string>
     <string name="backup_dialog_import_title">Select data to import</string>
@@ -1274,6 +1282,7 @@ Within the log interface, select the share/export icon. You can specify a timefr
     <string name="community_poll_title">Vote</string>
     <string name="community_open_in_browser">Open in browser</string>
     <string name="community_dialog_open">Open link</string>
+    <string name="community_dialog_open_failed">Unable to open link</string>
     <string name="community_dialog_close">Close</string>
     <string name="diag_lab_update_source_title">Update Source</string>
     <string name="diag_lab_update_source_desc">Choose the preferred update source. If it fails, the app automatically falls back to the other source. Releases are mirrored to both GitHub and Gitee.</string>

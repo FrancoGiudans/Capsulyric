@@ -497,6 +497,14 @@
     <string name="settings_backup_import_success_with_sensitive">已还原 %1$d 项设置、%2$d 条歌词缓存和 %3$d 项敏感数据</string>
     <string name="settings_backup_export_failed">配置导出失败</string>
     <string name="settings_backup_import_failed">配置还原失败</string>
+    <string name="backup_progress_preview_title">正在读取备份</string>
+    <string name="backup_progress_import_title">正在还原备份</string>
+    <string name="backup_progress_reading">正在读取备份文件</string>
+    <string name="backup_progress_extracting">正在解压备份压缩包</string>
+    <string name="backup_progress_settings">正在导入应用设置</string>
+    <string name="backup_progress_parser_rules">正在导入解析规则</string>
+    <string name="backup_progress_lyric_cache">正在导入歌词缓存</string>
+    <string name="backup_progress_sensitive">正在恢复敏感数据</string>
     <!-- Backup Category Dialog -->
     <string name="backup_dialog_export_title">选择要导出的数据</string>
     <string name="backup_dialog_import_title">选择要导入的数据</string>
@@ -1284,6 +1292,7 @@
     <string name="community_poll_title">投票</string>
     <string name="community_open_in_browser">在浏览器中打开</string>
     <string name="community_dialog_open">前往链接</string>
+    <string name="community_dialog_open_failed">无法打开链接</string>
     <string name="community_dialog_close">关闭</string>
     <string name="parser_online_conflict_title">关闭媒体通知歌词以发挥在线歌词的最佳效果</string>
     <string name="parser_online_conflict_message">如果希望在线歌词作为该应用的主要歌词来源，为避免错误检索和重复触发，建议关闭本规则的媒体通知歌词，并前往该音乐应用设置中关闭“车载蓝牙/通知栏歌词”。保留现有设置将取消开启在线歌词。</string>
