@@ -44,10 +44,15 @@ import org.json.JSONObject
 internal class QqMusicLyricProvider(
     private val httpClient: OnlineLyricHttpClient
 ) {
-    suspend fun fetch(title: String, artist: String): OnlineLyricFetcher.LyricResult? =
+    suspend fun fetch(
+        title: String,
+        artist: String,
+        album: String = "",
+        durationMs: Long = 0L
+    ): OnlineLyricFetcher.LyricResult? =
         withContext(Dispatchers.IO) {
             try {
-                val keyword = "$title $artist"
+                val keyword = ProviderSearchTerm.build(title, artist, album)
                 val searchPayload = """
                     {"music.search.SearchCgiService":{"method":"DoSearchForQQMusicDesktop","module":"music.search.SearchCgiService","param":{"num_per_page":10,"page_num":1,"query":"${escapeJson(keyword)}","search_type":0}}}
                 """.trimIndent()
@@ -79,13 +84,16 @@ internal class QqMusicLyricProvider(
                         songs.optJSONObject(index)?.let { add(QqSongCandidate(it)) }
                     }
                 }
-                val best = CandidateMatcher.pickBest(candidates, title, artist)
+                val best = CandidateMatcher.pickBest(candidates, title, artist, album, durationMs)
                     ?: return@withContext null
                 val firstSong = best.song
                 val songId = firstSong.optString("id").ifBlank { firstSong.optString("songid", "") }
                 val songMid = firstSong.optString("mid").ifBlank { firstSong.optString("songmid", "") }
                 val matchedTitle = best.matchedTitle
                 val matchedArtist = best.matchedArtist
+                val matchedAlbum = best.matchedAlbum
+                val matchedDurationMs = best.matchedDurationMs
+                val providerTrackId = best.providerTrackId
 
                 if (songMid.isBlank()) {
                     return@withContext OnlineLyricFetcher.LyricResult(
@@ -96,6 +104,9 @@ internal class QqMusicLyricProvider(
                         provider = OnlineLyricProvider.QQMusic,
                         matchedTitle = matchedTitle,
                         matchedArtist = matchedArtist,
+                        matchedAlbum = matchedAlbum,
+                        matchedDurationMs = matchedDurationMs,
+                        providerTrackId = providerTrackId,
                         error = "无 songMid"
                     )
                 }
@@ -140,6 +151,9 @@ internal class QqMusicLyricProvider(
                         provider = OnlineLyricProvider.QQMusic,
                         matchedTitle = matchedTitle,
                         matchedArtist = matchedArtist,
+                        matchedAlbum = matchedAlbum,
+                        matchedDurationMs = matchedDurationMs,
+                        providerTrackId = providerTrackId,
                         error = "无歌词内容"
                     )
                 }
@@ -178,6 +192,9 @@ internal class QqMusicLyricProvider(
                     provider = OnlineLyricProvider.QQMusic,
                     matchedTitle = matchedTitle,
                     matchedArtist = matchedArtist,
+                    matchedAlbum = matchedAlbum,
+                    matchedDurationMs = matchedDurationMs,
+                    providerTrackId = providerTrackId,
                     translationLyrics = transContent.takeIf { it.isNotBlank() },
                     romanLyrics = romanContent.takeIf { it.isNotBlank() }
                 )
@@ -279,6 +296,22 @@ internal class QqMusicLyricProvider(
                 }
                 ?.ifBlank { song.optString("singername", "") }
                 ?: song.optString("singername", "")
+
+        override val matchedAlbum: String?
+            get() = song.optJSONObject("album")?.optString("name").orEmpty()
+                .ifBlank { song.optString("albumname", "") }
+                .takeIf { it.isNotBlank() }
+
+        override val matchedDurationMs: Long?
+            get() = song.optLong("interval", 0L)
+                .takeIf { it > 0L }
+                ?.times(1000L)
+
+        override val providerTrackId: String?
+            get() = song.optString("mid")
+                .ifBlank { song.optString("songmid") }
+                .ifBlank { song.optString("id").ifBlank { song.optString("songid") } }
+                .takeIf { it.isNotBlank() }
     }
 }
 

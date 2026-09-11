@@ -171,10 +171,16 @@ fun MiuixDebugLyricScreen(
                             )
                             val summary = when {
                                 result == null -> "无可用结果"
-                                result.error != null -> "错误: ${result.error}"
+                                result.error != null -> if (result.error.startsWith("ISRC 桥接成功")) {
+                                    "状态: ${result.error}"
+                                } else {
+                                    "错误: ${result.error}"
+                                }
                                 else -> "${result.api} / ${result.score}分 / ${if (result.hasSyllable) "逐字" else "LRC"}"
                             }
                             Text(summary, color = MiuixTheme.colorScheme.onSurfaceSecondary)
+                            Text("查询变体: ${attempt.queryVariant}", color = MiuixTheme.colorScheme.onSurfaceSecondary)
+                            Text("实际查询: ${attempt.queryTitle.ifBlank { "—" }} / ${attempt.queryArtist.ifBlank { "—" }}", color = MiuixTheme.colorScheme.onSurfaceSecondary)
                             if (result?.lyrics != null && result.error == null) {
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Text(
@@ -182,6 +188,21 @@ fun MiuixDebugLyricScreen(
                                     color = MiuixTheme.colorScheme.onSurface,
                                     fontSize = MiuixTheme.textStyles.body2.fontSize
                                 )
+                           }
+                            if (result != null && result.error == null) {
+                                Text("来源评分: ${result.score} / 身份评分: ${result.identityScore}", color = MiuixTheme.colorScheme.onSurfaceSecondary)
+                                result.identityEvidence?.let { evidence ->
+                                    Text("身份依据: $evidence", color = MiuixTheme.colorScheme.onSurfaceSecondary)
+                                }
+                                result.matchedTitle?.let { Text("匹配标题: $it", color = MiuixTheme.colorScheme.onSurfaceSecondary) }
+                                result.matchedArtist?.let { Text("匹配艺术家: $it", color = MiuixTheme.colorScheme.onSurfaceSecondary) }
+                                result.matchedAlbum?.let { Text("匹配专辑: $it", color = MiuixTheme.colorScheme.onSurfaceSecondary) }
+                                result.matchedDurationMs?.let { Text("匹配时长: ${it}ms", color = MiuixTheme.colorScheme.onSurfaceSecondary) }
+                                result.providerTrackId?.let { Text("Provider 曲目ID: $it", color = MiuixTheme.colorScheme.onSurfaceSecondary) }
+                                result.isrc?.let { Text("ISRC: $it", color = MiuixTheme.colorScheme.onSurfaceSecondary) }
+                                Text("解析行数: ${result.parsedLines?.size ?: 0}", color = MiuixTheme.colorScheme.onSurfaceSecondary)
+                                if (!result.translationLyrics.isNullOrBlank()) Text("✓ 有翻译歌词", color = MiuixTheme.colorScheme.onSurfaceSecondary)
+                                if (!result.romanLyrics.isNullOrBlank()) Text("✓ 有罗马音歌词", color = MiuixTheme.colorScheme.onSurfaceSecondary)
                             }
                             Spacer(modifier = Modifier.height(6.dp))
                         }

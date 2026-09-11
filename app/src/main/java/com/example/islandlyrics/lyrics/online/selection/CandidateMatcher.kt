@@ -33,55 +33,143 @@ internal interface SearchCandidate {
     val matchedTitle: String
     /** 候选曲目歌手 */
     val matchedArtist: String
+    val matchedAlbum: String?
+        get() = null
+    val matchedDurationMs: Long?
+        get() = null
+    val providerTrackId: String?
+        get() = null
+    val isrc: String?
+        get() = null
 }
 
 /**
  * 多候选挑选器（混合式搜索架构的第一层）。
  *
- * 在 provider 内部对搜索返回的多个候选做轻量标题/歌手匹配，选出最匹配的一条
- * 再取歌词；全部不匹配时回退第 0 条（保持原有兜底行为）。
+ * 在 provider 内部对搜索返回的多个候选做轻量身份匹配，选出最匹配的一条
+ * 再取歌词；全部不匹配时返回 null，让上层继续扩展查询或等待人工确认。
  */
 internal object CandidateMatcher {
 
+    internal data class ScoredCandidate<T : SearchCandidate>(
+        val candidate: T,
+        val score: Int
+    )
+
     /**
-     * 从候选列表中挑选与 (title, artist) 最匹配的一条。
+     * 从候选列表中挑选与 (title, artist, album, duration) 最匹配的一条。
      * 评分规则：
      *  - 标题相等 +36 / cleanTitle 后相等 +20 / 互相包含 +8 / 不匹配 -30
      *  - 歌手 token 交集：全等 +18 / 单向全等 +12 / 部分 +6 / 无交集 -18 / 空 -4
-     *  - 标题分 <= 0（完全不匹配）的候选不入选，全部不匹配则回退第 0 条
+     *  - 时长相差超过 12 秒的候选直接拒绝；总身份分低于阈值时返回 null
      */
     fun <T : SearchCandidate> pickBest(
         candidates: List<T>,
         title: String,
-        artist: String
+        artist: String,
+        album: String = "",
+        durationMs: Long = 0L
     ): T? {
-        if (candidates.isEmpty()) return null
-        if (candidates.size == 1) return candidates[0]
-
-        var best: T? = null
-        var bestScore = Int.MIN_VALUE
-        for (candidate in candidates) {
-            val score = scoreCandidate(candidate, title, artist)
-            if (score > bestScore) {
-                bestScore = score
-                best = candidate
-            }
-        }
-
-        // 标题完全不匹配的候选不采用，回退第 0 条
-        return if (bestScore > 0) best ?: candidates[0] else candidates[0]
+        return rank(candidates, title, artist, album, durationMs)
+            .firstOrNull()
+            ?.takeIf { it.score >= MIN_ACCEPT_SCORE }
+            ?.candidate
     }
+
+    /**
+     * Returns candidates in descending identity score order.  The resolver uses
+     * this instead of merging independent storefront searches and taking the
+     * first non-empty ISRC.
+     */
+    fun <T : SearchCandidate> rank(
+        candidates: List<T>,
+        title: String,
+        artist: String,
+        album: String = "",
+        durationMs: Long = 0L
+    ): List<ScoredCandidate<T>> {
+        if (candidates.isEmpty()) return emptyList()
+
+        val scored = mutableListOf<ScoredCandidate<T>>()
+        val targetVersionTags = VersionTagDetector.detect(title, album)
+        for (candidate in candidates) {
+            if (durationConflict(durationMs, candidate.matchedDurationMs)) continue
+            val candidateVersionTags = VersionTagDetector.detect(candidate.matchedTitle, candidate.matchedAlbum)
+            if (hasHardVersionConflict(targetVersionTags, candidateVersionTags)) continue
+            val score = scoreCandidate(
+                candidate,
+                title,
+                artist,
+                album,
+                durationMs,
+                targetVersionTags,
+                candidateVersionTags
+            )
+            scored += ScoredCandidate(candidate, score)
+        }
+        return scored.sortedByDescending { it.score }
+    }
+
+    /**
+     * Search fallback must have a clear winner.  A direct song-id lookup does
+     * not use this method because the platform already supplied the identity.
+     */
+    fun <T : SearchCandidate> pickBestWithMargin(
+        candidates: List<T>,
+        title: String,
+        artist: String,
+        album: String = "",
+        durationMs: Long = 0L,
+        minimumMargin: Int = 12
+    ): T? {
+        val ranked = rank(candidates, title, artist, album, durationMs)
+        val best = ranked.firstOrNull() ?: return null
+        val runnerUp = ranked.drop(1).firstOrNull {
+            !hasSameStableIdentity(best.candidate, it.candidate)
+        }
+        if (best.score < MIN_ACCEPT_SCORE) return null
+        if (runnerUp != null && best.score - runnerUp.score < minimumMargin) return null
+        return best.candidate
+    }
+
+    private fun hasSameStableIdentity(first: SearchCandidate, second: SearchCandidate): Boolean {
+        val firstIsrc = normalizeStableId(first.isrc)
+        val secondIsrc = normalizeStableId(second.isrc)
+        if (firstIsrc.isNotBlank() && firstIsrc == secondIsrc) return true
+
+        val firstTrackId = first.providerTrackId?.trim().orEmpty()
+        val secondTrackId = second.providerTrackId?.trim().orEmpty()
+        return firstTrackId.isNotBlank() && firstTrackId == secondTrackId
+    }
+
+    private fun normalizeStableId(value: String?): String = value.orEmpty()
+        .filter(Char::isLetterOrDigit)
+        .uppercase()
 
     private fun scoreCandidate(
         candidate: SearchCandidate,
         title: String,
-        artist: String
+        artist: String,
+        album: String,
+        durationMs: Long,
+        targetVersionTags: Set<VersionTag>,
+        candidateVersionTags: Set<VersionTag>
     ): Int {
+        val albumScore = scoreAlbumMatch(album, candidate.matchedAlbum)
+        val durationScore = scoreDurationMatch(durationMs, candidate.matchedDurationMs)
+        // Exact album + near-exact duration can bridge both localized title
+        // and localized artist names. Treat this as a strong identity pair.
+        val stableEvidenceBonus = if (albumScore >= 15 && durationScore >= 14) 40 else 0
         return scoreTitleMatch(title, candidate.matchedTitle) +
-                scoreArtistMatch(artist, candidate.matchedArtist)
+                scoreArtistMatch(artist, candidate.matchedArtist) +
+                albumScore +
+                durationScore +
+                stableEvidenceBonus +
+                versionCompatibilityScore(targetVersionTags, candidateVersionTags)
     }
 
     fun scoreTitleMatch(targetTitle: String, matchedTitle: String?): Int {
+        if (targetTitle.isBlank()) return 0
         if (matchedTitle.isNullOrBlank()) return -30
         if (matchedTitle.equals(targetTitle, ignoreCase = true)) return 36
 
@@ -93,6 +181,74 @@ internal object CandidateMatcher {
             cleanMatched.contains(cleanTarget) || cleanTarget.contains(cleanMatched) -> 8
             else -> -30
         }
+    }
+
+    fun scoreAlbumMatch(targetAlbum: String, matchedAlbum: String?): Int {
+        if (targetAlbum.isBlank() || matchedAlbum.isNullOrBlank()) return 0
+        val cleanTarget = cleanTitle(targetAlbum).lowercase()
+        val cleanMatched = cleanTitle(matchedAlbum).lowercase()
+        return when {
+            cleanTarget.isBlank() || cleanMatched.isBlank() -> 0
+            cleanTarget == cleanMatched -> 15
+            cleanMatched.contains(cleanTarget) || cleanTarget.contains(cleanMatched) -> 8
+            else -> -8
+        }
+    }
+
+    fun scoreDurationMatch(targetDurationMs: Long, matchedDurationMs: Long?): Int {
+        if (targetDurationMs <= 0L || matchedDurationMs == null || matchedDurationMs <= 0L) return 0
+        val delta = kotlin.math.abs(targetDurationMs - matchedDurationMs)
+        return when {
+            delta <= 1_500L -> 20
+            delta <= 3_000L -> 14
+            delta <= 8_000L -> 5
+            else -> -40
+        }
+    }
+
+    private fun durationConflict(targetDurationMs: Long, matchedDurationMs: Long?): Boolean {
+        if (targetDurationMs <= 0L || matchedDurationMs == null || matchedDurationMs <= 0L) return false
+        return kotlin.math.abs(targetDurationMs - matchedDurationMs) > 12_000L
+    }
+
+    fun isDurationCompatible(targetDurationMs: Long, matchedDurationMs: Long?): Boolean =
+        !durationConflict(targetDurationMs, matchedDurationMs)
+
+    fun hasVersionConflict(
+        targetTitle: String,
+        targetAlbum: String,
+        matchedTitle: String,
+        matchedAlbum: String?
+    ): Boolean = hasHardVersionConflict(
+        VersionTagDetector.detect(targetTitle, targetAlbum),
+        VersionTagDetector.detect(matchedTitle, matchedAlbum)
+    )
+
+    private fun hasHardVersionConflict(
+        targetTags: Set<VersionTag>,
+        candidateTags: Set<VersionTag>
+    ): Boolean {
+        val hardTags = setOf(
+            VersionTag.LIVE,
+            VersionTag.REMIX,
+            VersionTag.COVER,
+            VersionTag.INSTRUMENTAL,
+            VersionTag.KARAOKE,
+            VersionTag.RADIO_EDIT
+        )
+        return candidateTags.any { it in hardTags && it !in targetTags }
+    }
+
+    private fun versionCompatibilityScore(
+        targetTags: Set<VersionTag>,
+        candidateTags: Set<VersionTag>
+    ): Int {
+        if (targetTags == candidateTags) return if (targetTags.isEmpty()) 0 else 12
+        if (targetTags.isEmpty() && candidateTags.isEmpty()) return 0
+        if (targetTags.intersect(candidateTags).isNotEmpty()) return 5
+        // A target with a version marker and a candidate without it is not a
+        // hard reject, because some providers omit suffixes in their metadata.
+        return if (targetTags.isNotEmpty() && candidateTags.isEmpty()) -8 else -18
     }
 
     fun scoreArtistMatch(targetArtist: String, matchedArtist: String?): Int {
@@ -135,4 +291,6 @@ internal object CandidateMatcher {
         }
         return clean.trim().replace("\\s+".toRegex(), " ")
     }
+
+    private const val MIN_ACCEPT_SCORE = 20
 }
