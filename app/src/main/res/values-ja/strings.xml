@@ -1287,6 +1287,7 @@
     <string name="community_poll_title">📊 アンケート</string>
     <string name="community_open_in_browser">ブラウザで開く</string>
     <string name="community_dialog_open">開く</string>
+    <string name="community_dialog_open_failed">リンクを開けません</string>
     <string name="community_dialog_close">閉じる</string>
     <string name="parser_online_conflict_title">オンライン歌詞を使用する場合は通知歌詞のオフを推奨</string>
     <string name="parser_online_conflict_message">オンライン歌詞を主に使用する場合、曲名への歌詞混入による検索失敗を防ぐため、本ルールのメディア通知歌詞をオフにし、音楽アプリ側でも「車載Bluetooth/通知歌詞」をオフにすることを推奨します。現在の設定を保持すると、オンライン歌詞は有効になりません。</string>

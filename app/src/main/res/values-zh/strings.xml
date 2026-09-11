@@ -1287,6 +1287,7 @@
     <string name="community_poll_title">投票</string>
     <string name="community_open_in_browser">在浏览器中打开</string>
     <string name="community_dialog_open">前往链接</string>
+    <string name="community_dialog_open_failed">无法打开链接</string>
     <string name="community_dialog_close">关闭</string>
     <string name="parser_online_conflict_title">关闭媒体通知歌词以发挥在线歌词的最佳效果</string>
     <string name="parser_online_conflict_message">如果希望在线歌词作为该应用的主要歌词来源，为避免错误检索和重复触发，建议关闭本规则的媒体通知歌词，并前往该音乐应用设置中关闭“车载蓝牙/通知栏歌词”。保留现有设置将取消开启在线歌词。</string>
