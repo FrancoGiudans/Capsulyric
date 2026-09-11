@@ -69,4 +69,44 @@ class OnlineLyricParserTest {
         val plainLrc = "[00:12.34]普通歌词"
         assertFalse(OnlineLyricParser.isWordLevelLyrics(plainLrc))
     }
+
+    @Test
+    fun parseTtmlLyrics_doesNotInsertSpacesBetweenAdjacentCjkSpans() {
+        val ttml = """
+            <tt><body><div>
+                <p begin="0s" end="2s">
+                    <span begin="0s" end="0.2s">太</span>
+                    <span begin="0.2s" end="0.4s">擁</span>
+                    <span begin="0.4s" end="0.6s">擠</span>
+                    <span begin="0.6s" end="0.8s">就</span>
+                    <span begin="0.8s" end="1s">開</span>
+                    <span begin="1s" end="1.2s">到</span>
+                    <span begin="1.2s" end="1.4s">了</span>
+                    <span begin="1.4s" end="1.6s">別</span>
+                    <span begin="1.6s" end="1.8s">的</span>
+                    <span begin="1.8s" end="2s">土壤</span>
+                </p>
+            </div></body></tt>
+        """.trimIndent()
+
+        val parsed = OnlineLyricParser.parseTtmlLyrics(ttml)
+
+        assertEquals(1, parsed.size)
+        assertEquals("太擁擠就開到了別的土壤", parsed.single().text)
+    }
+
+    @Test
+    fun parseTtmlLyricsPreservesExplicitWhitespaceSpan() {
+        val ttml = """
+            <tt><body><div><p begin="0s" end="1s">
+                <span begin="0s" end="0.3s">Hello</span>
+                <span begin="0.3s" end="0.4s"> </span>
+                <span begin="0.4s" end="1s">world</span>
+            </p></div></body></tt>
+        """.trimIndent()
+
+        val parsed = OnlineLyricParser.parseTtmlLyrics(ttml)
+
+        assertEquals("Hello world", parsed.single().text)
+    }
 }

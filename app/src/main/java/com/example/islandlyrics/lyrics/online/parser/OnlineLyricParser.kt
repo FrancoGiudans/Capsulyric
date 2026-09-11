@@ -309,13 +309,22 @@ internal object OnlineLyricParser {
             val lineEnd = parseFlexibleTimeToMs(lineAttributes["end"])
 
             val syllables = mutableListOf<OnlineLyricFetcher.SyllableInfo>()
+            val spanTexts = mutableListOf<String>()
             // 先收集 span 原始数据（begin/end/text），end 缺失时用行 end 或下一 span begin 兜底
             val spanData = mutableListOf<Triple<Long, Long?, String>>()
             for (spanMatch in spanRegex.findAll(lineBody)) {
                 val spanAttributes = parseXmlAttributes(spanMatch.groupValues[1])
+                // Whitespace between XML elements is formatting. Only keep
+                // whitespace that belongs to a span so adjacent CJK spans do
+                // not become "太 擁 擠", while explicit English separators
+                // such as <span> </span> remain intact.
+                val rawText = decodeXmlText(
+                    stripXmlTags(spanMatch.groupValues[2], separator = "")
+                ).replace(Regex("\\s+"), " ")
+                if (rawText.isNotEmpty()) spanTexts.add(rawText)
                 val start = parseFlexibleTimeToMs(spanAttributes["begin"]) ?: continue
                 val end = parseFlexibleTimeToMs(spanAttributes["end"])
-                val text = decodeXmlText(stripXmlTags(spanMatch.groupValues[2])).trim()
+                val text = rawText.trim()
                 if (text.isBlank()) continue
                 spanData.add(Triple(start, end, text))
             }
@@ -328,9 +337,15 @@ internal object OnlineLyricParser {
                 syllables.add(OnlineLyricFetcher.SyllableInfo(start, effectiveEnd, text))
             }
 
-            val text = decodeXmlText(stripXmlTags(lineBody))
-                .replace(Regex("\\s+"), " ")
-                .trim()
+            val text = if (spanTexts.isNotEmpty()) {
+                spanTexts.joinToString(separator = "")
+                    .replace(Regex("\\s+"), " ")
+                    .trim()
+            } else {
+                decodeXmlText(stripXmlTags(lineBody))
+                    .replace(Regex("\\s+"), " ")
+                    .trim()
+            }
             if (text.isBlank()) continue
 
             lines.add(
@@ -355,8 +370,8 @@ internal object OnlineLyricParser {
         return attributes
     }
 
-    private fun stripXmlTags(text: String): String {
-        return text.replace(Regex("<[^>]+>"), " ")
+    private fun stripXmlTags(text: String, separator: String = " "): String {
+        return text.replace(Regex("<[^>]+>"), separator)
     }
 
     private fun decodeXmlText(text: String): String {

@@ -242,7 +242,7 @@ class OnlineLyricSource(private val context: Context) {
                     useSmartSelection = rule.useSmartOnlineLyricSelection,
                     disabledProviderIds = rule.onlineLyricDisabledProviders
                 )
-                val result = outcome.bestResult
+                val mainResult = outcome.bestResult
 
                 // Staleness check: ensure the song hasn't changed while we were fetching
                 val current = LyricRepository.getInstance().liveMetadata.value
@@ -259,6 +259,20 @@ class OnlineLyricSource(private val context: Context) {
                     AppLogger.getInstance().i(TAG,
                         "⚠️ Stale fetch discarded (song changed). Expected: $pendingTitle")
                     return@launch
+                }
+
+                // The best main lyric and the best translation/romanization
+                // may come from different providers. Merge sidecars before
+                // snapshotting or caching so the normal playback path keeps
+                // the same cross-provider behavior as rematch.
+                val result = mainResult?.let { main ->
+                    OnlineLyricSidecarMerger.mergeSidecarsFromAttempts(
+                        main = main,
+                        attempts = outcome.attempts,
+                        rule = rule,
+                        targetTitle = queryTitle,
+                        targetArtist = queryArtist
+                    )
                 }
 
                 // 进程内抓取快照：保留所有源的 attempts 与最佳结果，供在线歌词重匹配页直接填充
