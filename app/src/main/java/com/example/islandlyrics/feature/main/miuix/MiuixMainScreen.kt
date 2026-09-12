@@ -287,19 +287,15 @@ fun MiuixMainScreen(
         MediaMonitorService.triggerRecheck()
     }
 
-    val serviceConnected by MediaMonitorService.isConnectedFlow.collectAsState()
+    val serviceConnectionState by MediaMonitorService.connectionStateFlow.collectAsState()
+    val serviceConnected = serviceConnectionState == MediaMonitorService.ConnectionState.CONNECTED
+    val serviceConnecting = serviceConnectionState == MediaMonitorService.ConnectionState.CONNECTING
     val coroutineScope = rememberCoroutineScope()
     var isRebinding by remember { mutableStateOf(false) }
     var rebindAttempts by remember { mutableIntStateOf(0) }
-    var coldStartGracePeriodPassed by remember { mutableStateOf(false) }
 
-    LaunchedEffect(Unit) {
-        delay(1200)
-        coldStartGracePeriodPassed = true
-    }
-
-    LaunchedEffect(serviceConnected) {
-        if (serviceConnected) {
+    LaunchedEffect(serviceConnectionState) {
+        if (serviceConnectionState == MediaMonitorService.ConnectionState.CONNECTED) {
             isRebinding = false
             rebindAttempts = 0
         }
@@ -330,9 +326,9 @@ fun MiuixMainScreen(
 
     val currentStatusType = when {
         !listenerEnabled -> BigStatusType.PERMISSION_REQUIRED
-        isRebinding || (!serviceConnected && !coldStartGracePeriodPassed) -> BigStatusType.CONNECTING
-        !serviceConnected && rebindAttempts >= 2 -> BigStatusType.REBIND_FAILED
-        !serviceConnected -> BigStatusType.DISCONNECTED
+        isRebinding || serviceConnecting -> BigStatusType.CONNECTING
+        serviceConnectionState == MediaMonitorService.ConnectionState.DISCONNECTED && rebindAttempts >= 2 -> BigStatusType.REBIND_FAILED
+        serviceConnectionState == MediaMonitorService.ConnectionState.DISCONNECTED -> BigStatusType.DISCONNECTED
         hasActiveSession && (repoPlaying || repoMetadata != null) -> BigStatusType.ACTIVE_PLAYING
         else -> BigStatusType.ACTIVE_IDLE
     }

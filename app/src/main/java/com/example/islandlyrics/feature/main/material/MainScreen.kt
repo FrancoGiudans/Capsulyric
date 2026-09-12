@@ -84,6 +84,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.LaunchedEffect
@@ -252,9 +253,12 @@ fun MainScreen(
         val listeners = Settings.Secure.getString(context.contentResolver, "enabled_notification_listeners")
         listeners?.contains(context.packageName) == true
     }
-    val serviceConnected = MediaMonitorService.isConnected
+    val serviceConnectionState by MediaMonitorService.connectionStateFlow.collectAsState()
+    val serviceConnected = serviceConnectionState == MediaMonitorService.ConnectionState.CONNECTED
+    val serviceConnecting = serviceConnectionState == MediaMonitorService.ConnectionState.CONNECTING
     val statusText = when {
         !listenerEnabled -> stringResource(R.string.main_status_permission_required)
+        serviceConnecting -> stringResource(R.string.main_status_connecting)
         whitelistedSessions.isNotEmpty() -> {
             if (repoPlaying || repoMetadata != null) {
                 val rawPackage = repoLyric?.sourceApp ?: repoMetadata?.packageName ?: whitelistedSessions.firstOrNull()?.packageName
