@@ -24,7 +24,14 @@ package com.example.islandlyrics.feature.settings
 
 import android.content.Context
 import android.net.Uri
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import com.example.islandlyrics.core.settings.SettingsBackupManager
+import com.example.islandlyrics.core.settings.SettingsBackupManager.ImportProgress
+import com.example.islandlyrics.core.settings.SettingsBackupManager.ImportResult
+import com.example.islandlyrics.core.settings.SettingsBackupManager.ImportStage
+import com.example.islandlyrics.core.settings.SettingsBackupManager.PreviewResult
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
@@ -104,5 +111,155 @@ object ParserBackupPreviewReader {
             prefsJson.opt("parser_rules_json")
         }
         return SettingsBackupManager.parserRulesJsonFromBackupValue(rawValue) ?: "[]"
+    }
+}
+
+/** The two user-visible operations that can report backup progress. */
+enum class BackupImportOperation {
+    PREVIEW,
+    IMPORT,
+}
+
+/** State shared by the Material and Miuix backup surfaces. */
+data class BackupImportStatus(
+    val operation: BackupImportOperation,
+    val isZip: Boolean,
+    val selectedLeafIds: Set<String> = emptySet(),
+    val selectedSensitiveItemIds: Set<String> = emptySet(),
+    val progress: ImportProgress,
+)
+
+/** Shared progress/lifecycle façade around [SettingsBackupManager]. */
+class BackupImportCoordinator(context: Context) {
+    private val appContext = context.applicationContext
+
+    var status by mutableStateOf<BackupImportStatus?>(null)
+        private set
+
+    val isBusy: Boolean
+        get() = status != null
+
+    suspend fun preview(uri: Uri): PreviewResult {
+        return runOperation(
+            operation = BackupImportOperation.PREVIEW,
+            isZip = false,
+        ) { onProgress ->
+            SettingsBackupManager.previewImportFile(appContext, uri, onProgress)
+        }
+    }
+
+    suspend fun importSelected(
+        uri: Uri,
+        preview: PreviewResult,
+        selectedLeafIds: Set<String>,
+        selectedSensitiveItemIds: Set<String> = emptySet(),
+        sensitivePassword: CharArray? = null,
+    ): ImportResult {
+        return runOperation(
+            operation = BackupImportOperation.IMPORT,
+            isZip = preview.isZip,
+            selectedLeafIds = selectedLeafIds,
+            selectedSensitiveItemIds = selectedSensitiveItemIds,
+        ) { onProgress ->
+            if (preview.isZip) {
+                SettingsBackupManager.importFromZip(
+                    appContext,
+                    uri,
+                    selectedLeafIds,
+                    selectedSensitiveItemIds,
+                    sensitivePassword,
+                    onProgress,
+                )
+            } else {
+                SettingsBackupManager.importSelected(
+                    appContext,
+                    uri,
+                    selectedLeafIds,
+                    onProgress,
+                )
+            }
+        }
+    }
+
+    private suspend fun <T> runOperation(
+        operation: BackupImportOperation,
+        isZip: Boolean,
+        selectedLeafIds: Set<String> = emptySet(),
+        selectedSensitiveItemIds: Set<String> = emptySet(),
+        block: suspend (suspend (ImportProgress) -> Unit) -> T,
+    ): T {
+        var archiveDetected = isZip
+        publishStatus(
+            BackupImportStatus(
+                operation = operation,
+                isZip = archiveDetected,
+                selectedLeafIds = selectedLeafIds,
+                selectedSensitiveItemIds = selectedSensitiveItemIds,
+                progress = ImportProgress(ImportStage.READING_BACKUP),
+            )
+        )
+
+        val onProgress: suspend (ImportProgress) -> Unit = { progress ->
+            if (progress.stage == ImportStage.EXTRACTING_ARCHIVE) {
+                archiveDetected = true
+            }
+            publishStatus(
+                BackupImportStatus(
+                    operation = operation,
+                    isZip = archiveDetected,
+                    selectedLeafIds = selectedLeafIds,
+                    selectedSensitiveItemIds = selectedSensitiveItemIds,
+                    progress = progress,
+                )
+            )
+        }
+
+        return try {
+            block(onProgress)
+        } finally {
+            publishStatus(null)
+        }
+    }
+
+    private suspend fun publishStatus(value: BackupImportStatus?) {
+        withContext(Dispatchers.Main.immediate) {
+            status = value
+        }
+    }
+}
+
+/** Keep the progress timeline in one place for both theme-specific dialogs. */
+fun BackupImportStatus.visibleStages(): List<ImportStage> {
+    return buildList {
+        add(ImportStage.READING_BACKUP)
+        if (operation == BackupImportOperation.PREVIEW) {
+            if (progress.stage == ImportStage.EXTRACTING_ARCHIVE) {
+                add(ImportStage.EXTRACTING_ARCHIVE)
+            }
+            return@buildList
+        }
+
+        if (isZip || progress.stage == ImportStage.EXTRACTING_ARCHIVE) {
+            add(ImportStage.EXTRACTING_ARCHIVE)
+        }
+        add(ImportStage.IMPORTING_SETTINGS)
+        if (
+            selectedLeafIds.any { it.startsWith("parser_") } ||
+                progress.stage == ImportStage.IMPORTING_PARSER_RULES
+        ) {
+            add(ImportStage.IMPORTING_PARSER_RULES)
+        }
+        if (
+            selectedLeafIds.contains("lyric_cache") ||
+                progress.stage == ImportStage.IMPORTING_LYRIC_CACHE
+        ) {
+            add(ImportStage.IMPORTING_LYRIC_CACHE)
+        }
+        if (
+            selectedSensitiveItemIds.isNotEmpty() ||
+                progress.stage == ImportStage.RESTORING_SENSITIVE_DATA
+        ) {
+            add(ImportStage.RESTORING_SENSITIVE_DATA)
+        }
     }
 }

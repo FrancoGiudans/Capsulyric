@@ -42,6 +42,10 @@ import com.example.islandlyrics.core.platform.RomUtils
 import com.example.islandlyrics.feature.faq.FAQActivity
 import com.example.islandlyrics.feature.lastfm.LastFmSettingsActivity
 import com.example.islandlyrics.feature.settings.AboutActivity
+import com.example.islandlyrics.feature.settings.BackupImportCoordinator
+import com.example.islandlyrics.feature.settings.BackupImportOperation
+import com.example.islandlyrics.feature.settings.BackupImportStatus
+import com.example.islandlyrics.feature.settings.visibleStages
 import com.example.islandlyrics.feature.settings.CommunityDialogState
 import com.example.islandlyrics.feature.settings.CommunityMarkdownBody
 import com.example.islandlyrics.feature.settings.ParserBackupPreviewReader
@@ -111,22 +115,8 @@ import com.example.islandlyrics.runtime.playingapp.NewPlayingAppNotifier
 import com.example.islandlyrics.ui.material.blur.MaterialBlurScaffold
 import com.example.islandlyrics.ui.theme.material.MaterialBlurTopAppBar
 import androidx.core.net.toUri
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import java.util.Locale
-
-private enum class BackupProgressMode {
-    PREVIEW,
-    IMPORT,
-}
-
-private data class BackupProgressRequest(
-    val mode: BackupProgressMode,
-    val isZip: Boolean,
-    val selectedLeafIds: Set<String> = emptySet(),
-    val selectedSensitiveItemIds: Set<String> = emptySet(),
-)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -158,6 +148,7 @@ fun SettingsScreen(
     val prefs = remember { context.getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE) }
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
+    val backupImportCoordinator = remember(context) { BackupImportCoordinator(context) }
     val backupExportSuccessFormat = stringResource(R.string.settings_backup_export_success)
     val backupExportSuccessWithCacheFormat = stringResource(R.string.settings_backup_export_success_with_cache)
     val backupExportSuccessWithSensitiveFormat = stringResource(R.string.settings_backup_export_success_with_sensitive)
@@ -188,8 +179,6 @@ fun SettingsScreen(
     var selectedSensitiveImportItems by remember { mutableStateOf(emptySet<String>()) }
     var pendingSensitiveImportPassword by remember { mutableStateOf<CharArray?>(null) }
     var showSensitiveImportPasswordDialog by remember { mutableStateOf(false) }
-    var backupProgressRequest by remember { mutableStateOf<BackupProgressRequest?>(null) }
-    var backupProgress by remember { mutableStateOf<SettingsBackupManager.ImportProgress?>(null) }
 
     // Parser conflict resolution state
     var showParserConflictDialog by remember { mutableStateOf(false) }
@@ -199,12 +188,6 @@ fun SettingsScreen(
     var pendingConflictSelections by remember { mutableStateOf(setOf<String>()) }
     var conflictKeepExisting by remember { mutableStateOf(setOf<String>()) }
 
-    val publishBackupProgress: suspend (SettingsBackupManager.ImportProgress) -> Unit = { progress ->
-        withContext(Dispatchers.Main.immediate) {
-            backupProgress = progress
-        }
-    }
-
     fun importBackup(
         uri: Uri,
         preview: PreviewResult,
@@ -212,39 +195,18 @@ fun SettingsScreen(
         selectedSensitiveItemIds: Set<String>,
         sensitivePassword: CharArray? = null
     ) {
-        if (backupProgressRequest != null) return
-        backupProgressRequest = BackupProgressRequest(
-            mode = BackupProgressMode.IMPORT,
-            isZip = preview.isZip,
-            selectedLeafIds = selectedLeafIds,
-            selectedSensitiveItemIds = selectedSensitiveItemIds,
-        )
-        backupProgress = SettingsBackupManager.ImportProgress(
-            SettingsBackupManager.ImportStage.READING_BACKUP
-        )
+        if (backupImportCoordinator.isBusy) return
         coroutineScope.launch {
             val result = try {
-                if (preview.isZip) {
-                    SettingsBackupManager.importFromZip(
-                        context,
-                        uri,
-                        selectedLeafIds,
-                        selectedSensitiveItemIds,
-                        sensitivePassword,
-                        publishBackupProgress
-                    )
-                } else {
-                    SettingsBackupManager.importSelected(
-                        context,
-                        uri,
-                        selectedLeafIds,
-                        publishBackupProgress
-                    )
-                }
+                backupImportCoordinator.importSelected(
+                    uri = uri,
+                    preview = preview,
+                    selectedLeafIds = selectedLeafIds,
+                    selectedSensitiveItemIds = selectedSensitiveItemIds,
+                    sensitivePassword = sensitivePassword,
+                )
             } finally {
                 if (!preview.isZip) sensitivePassword?.fill('\u0000')
-                backupProgressRequest = null
-                backupProgress = null
             }
             if (result.success && result.parserConflicts.isNotEmpty()) {
                 parserConflicts = result.parserConflicts
@@ -330,54 +292,38 @@ fun SettingsScreen(
         contract = ActivityResultContracts.OpenDocument()
     ) { uri ->
         if (uri == null) return@rememberLauncherForActivityResult
-        if (backupProgressRequest != null) return@rememberLauncherForActivityResult
-        backupProgressRequest = BackupProgressRequest(
-            mode = BackupProgressMode.PREVIEW,
-            isZip = false,
-        )
-        backupProgress = SettingsBackupManager.ImportProgress(
-            SettingsBackupManager.ImportStage.READING_BACKUP
-        )
+        if (backupImportCoordinator.isBusy) return@rememberLauncherForActivityResult
         coroutineScope.launch {
-            try {
-                val preview = SettingsBackupManager.previewImportFile(
-                    context,
-                    uri,
-                    publishBackupProgress
-                )
-                if (preview.success) {
-                    importPreviewResult = preview
-                    pendingImportUri = uri
-                    // Build dynamic categories list (including parser rules from backup file)
-                    val parserJson = ParserBackupPreviewReader.read(context, uri)
-                    val dynamicCategoriesList = BackupCategories.ALL_CATEGORIES.map { cat ->
-                        when (cat.id) {
-                            "parser_rules" -> cat.copy(
-                                subGroups = BackupCategories.parserAppSubGroupsFromJson(parserJson)
-                            )
-                            else -> cat
-                        }
+            val preview = backupImportCoordinator.preview(uri)
+            if (preview.success) {
+                importPreviewResult = preview
+                pendingImportUri = uri
+                // Build dynamic categories list (including parser rules from backup file)
+                val parserJson = ParserBackupPreviewReader.read(context, uri)
+                val dynamicCategoriesList = BackupCategories.ALL_CATEGORIES.map { cat ->
+                    when (cat.id) {
+                        "parser_rules" -> cat.copy(
+                            subGroups = BackupCategories.parserAppSubGroupsFromJson(parserJson)
+                        )
+                        else -> cat
                     }
-                    // Convert category IDs to leaf IDs for the dialog - ALL selected by default
-                    selectedImportCategories = preview.categoryCounts.keys.flatMap { catId ->
-                        val cat = dynamicCategoriesList.find { it.id == catId }
-                        if (cat != null && cat.subGroups.isNotEmpty()) {
-                            cat.subGroups.map { it.id }
-                        } else {
-                            listOf(catId)
-                        }
-                    }.toSet()
-                    // Also include lyric_cache if present in ZIP
-                    if (preview.lyricCacheEntryCount != 0) {
-                        selectedImportCategories = selectedImportCategories + "lyric_cache"
-                    }
-                    showImportPreviewDialog = true
-                } else {
-                    snackbarHostState.showSnackbar(backupImportFailedText)
                 }
-            } finally {
-                backupProgressRequest = null
-                backupProgress = null
+                // Convert category IDs to leaf IDs for the dialog - ALL selected by default
+                selectedImportCategories = preview.categoryCounts.keys.flatMap { catId ->
+                    val cat = dynamicCategoriesList.find { it.id == catId }
+                    if (cat != null && cat.subGroups.isNotEmpty()) {
+                        cat.subGroups.map { it.id }
+                    } else {
+                        listOf(catId)
+                    }
+                }.toSet()
+                // Also include lyric_cache if present in ZIP
+                if (preview.lyricCacheEntryCount != 0) {
+                    selectedImportCategories = selectedImportCategories + "lyric_cache"
+                }
+                showImportPreviewDialog = true
+            } else {
+                snackbarHostState.showSnackbar(backupImportFailedText)
             }
         }
     }
@@ -1120,46 +1066,18 @@ fun SettingsScreen(
             )
         }
 
-        backupProgressRequest?.let { request ->
-            backupProgress?.let { progress ->
-                BackupImportProgressDialog(
-                    request = request,
-                    progress = progress,
-                )
-            }
+        backupImportCoordinator.status?.let { status ->
+            BackupImportProgressDialog(status = status)
         }
     }
 }
 
 @Composable
 private fun BackupImportProgressDialog(
-    request: BackupProgressRequest,
-    progress: SettingsBackupManager.ImportProgress,
+    status: BackupImportStatus,
 ) {
-    val stages = buildList {
-        add(SettingsBackupManager.ImportStage.READING_BACKUP)
-        if (request.mode == BackupProgressMode.PREVIEW) {
-            if (progress.stage == SettingsBackupManager.ImportStage.EXTRACTING_ARCHIVE) {
-                add(SettingsBackupManager.ImportStage.EXTRACTING_ARCHIVE)
-            }
-        } else {
-            if (request.isZip) add(SettingsBackupManager.ImportStage.EXTRACTING_ARCHIVE)
-            add(SettingsBackupManager.ImportStage.IMPORTING_SETTINGS)
-            if (
-                request.selectedLeafIds.any { it.startsWith("parser_") } ||
-                progress.stage == SettingsBackupManager.ImportStage.IMPORTING_PARSER_RULES
-            ) {
-                add(SettingsBackupManager.ImportStage.IMPORTING_PARSER_RULES)
-            }
-            if (request.selectedLeafIds.contains("lyric_cache")) {
-                add(SettingsBackupManager.ImportStage.IMPORTING_LYRIC_CACHE)
-            }
-            if (request.selectedSensitiveItemIds.isNotEmpty()) {
-                add(SettingsBackupManager.ImportStage.RESTORING_SENSITIVE_DATA)
-            }
-        }
-    }
-    val currentIndex = stages.indexOf(progress.stage).let { if (it >= 0) it else 0 }
+    val stages = status.visibleStages()
+    val currentIndex = stages.indexOf(status.progress.stage).let { if (it >= 0) it else 0 }
 
     MaterialBlurAlertDialog(
         onDismissRequest = {},
@@ -1170,7 +1088,7 @@ private fun BackupImportProgressDialog(
         title = {
             Text(
                 stringResource(
-                    if (request.mode == BackupProgressMode.PREVIEW) {
+                    if (status.operation == BackupImportOperation.PREVIEW) {
                         R.string.backup_progress_preview_title
                     } else {
                         R.string.backup_progress_import_title
