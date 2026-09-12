@@ -82,6 +82,7 @@ object SettingsBackupManager {
 
     enum class ImportStage {
         READING_BACKUP,
+        VERIFYING_SENSITIVE_DATA,
         EXTRACTING_ARCHIVE,
         IMPORTING_SETTINGS,
         IMPORTING_PARSER_RULES,
@@ -256,6 +257,7 @@ object SettingsBackupManager {
                         "A sensitive backup password is required"
                     }
                     require(password.isNotEmpty()) { "A sensitive backup password is required" }
+                    onProgress(ImportProgress(ImportStage.VERIFYING_SENSITIVE_DATA))
                     prepareSensitiveImport(context, uri, sensitiveItemIds, password)
                 }
 
