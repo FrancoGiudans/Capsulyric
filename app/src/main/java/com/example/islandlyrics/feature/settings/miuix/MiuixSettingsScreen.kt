@@ -38,6 +38,10 @@ import com.example.islandlyrics.core.platform.RomUtils
 import com.example.islandlyrics.feature.faq.FAQActivity
 import com.example.islandlyrics.feature.lastfm.LastFmSettingsActivity
 import com.example.islandlyrics.feature.settings.AboutActivity
+import com.example.islandlyrics.feature.settings.BackupImportCoordinator
+import com.example.islandlyrics.feature.settings.BackupImportOperation
+import com.example.islandlyrics.feature.settings.BackupImportStatus
+import com.example.islandlyrics.feature.settings.visibleStages
 import com.example.islandlyrics.feature.settings.CommunityDialogState
 import com.example.islandlyrics.feature.settings.CommunityMarkdownBody
 import com.example.islandlyrics.feature.settings.ParserBackupPreviewReader
@@ -75,8 +79,6 @@ import androidx.core.content.edit
 import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import top.yukonga.miuix.kmp.basic.*
 import top.yukonga.miuix.kmp.preference.ArrowPreference as SuperArrow
 import com.example.islandlyrics.ui.miuix.preference.BlurOverlayDropdownPreference as SuperDropdown
@@ -110,18 +112,6 @@ import com.example.islandlyrics.ui.miuix.blur.MiuixBlurSnackbar
 import top.yukonga.miuix.kmp.basic.SnackbarHost as MiuixSnackbarHost
 import top.yukonga.miuix.kmp.basic.SnackbarHostState as MiuixSnackbarHostState
 import java.util.Locale
-
-private enum class BackupProgressMode {
-    PREVIEW,
-    IMPORT,
-}
-
-private data class BackupProgressRequest(
-    val mode: BackupProgressMode,
-    val isZip: Boolean,
-    val selectedLeafIds: Set<String> = emptySet(),
-    val selectedSensitiveItemIds: Set<String> = emptySet(),
-)
 
 @Composable
 @SuppressLint("BatteryLife")
@@ -158,6 +148,7 @@ fun MiuixSettingsScreen(
     val offlineModeEnabled = OfflineModeManager.isEnabled(context)
     val snackbarHostState = remember { MiuixSnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
+    val backupImportCoordinator = remember(context) { BackupImportCoordinator(context) }
     val scrollBehavior = MiuixScrollBehavior(rememberTopAppBarState())
     val listState = rememberLazyListState()
     val backupExportSuccessFormat = stringResource(R.string.settings_backup_export_success)
@@ -206,20 +197,12 @@ fun MiuixSettingsScreen(
     var selectedSensitiveImportItems by remember { mutableStateOf(emptySet<String>()) }
     var pendingSensitiveImportPassword by remember { mutableStateOf<CharArray?>(null) }
     var showSensitiveImportPasswordDialog by remember { mutableStateOf(false) }
-    var backupProgressRequest by remember { mutableStateOf<BackupProgressRequest?>(null) }
-    var backupProgress by remember { mutableStateOf<SettingsBackupManager.ImportProgress?>(null) }
 
     var showParserConflictDialog by remember { mutableStateOf(false) }
     var parserConflicts by remember { mutableStateOf<List<ParserConflict>>(emptyList()) }
     var pendingConflictImportUri by remember { mutableStateOf<Uri?>(null) }
     var pendingConflictSelections by remember { mutableStateOf(setOf<String>()) }
     var conflictKeepExisting by remember { mutableStateOf(setOf<String>()) }
-
-    val publishBackupProgress: suspend (SettingsBackupManager.ImportProgress) -> Unit = { progress ->
-        withContext(Dispatchers.Main.immediate) {
-            backupProgress = progress
-        }
-    }
 
     fun importBackup(
         uri: Uri,
@@ -228,39 +211,18 @@ fun MiuixSettingsScreen(
         selectedSensitiveItemIds: Set<String>,
         sensitivePassword: CharArray? = null
     ) {
-        if (backupProgressRequest != null) return
-        backupProgressRequest = BackupProgressRequest(
-            mode = BackupProgressMode.IMPORT,
-            isZip = preview.isZip,
-            selectedLeafIds = selectedLeafIds,
-            selectedSensitiveItemIds = selectedSensitiveItemIds,
-        )
-        backupProgress = SettingsBackupManager.ImportProgress(
-            SettingsBackupManager.ImportStage.READING_BACKUP
-        )
+        if (backupImportCoordinator.isBusy) return
         coroutineScope.launch {
             val result = try {
-                if (preview.isZip) {
-                    SettingsBackupManager.importFromZip(
-                        context,
-                        uri,
-                        selectedLeafIds,
-                        selectedSensitiveItemIds,
-                        sensitivePassword,
-                        publishBackupProgress
-                    )
-                } else {
-                    SettingsBackupManager.importSelected(
-                        context,
-                        uri,
-                        selectedLeafIds,
-                        publishBackupProgress
-                    )
-                }
+                backupImportCoordinator.importSelected(
+                    uri = uri,
+                    preview = preview,
+                    selectedLeafIds = selectedLeafIds,
+                    selectedSensitiveItemIds = selectedSensitiveItemIds,
+                    sensitivePassword = sensitivePassword,
+                )
             } finally {
                 if (!preview.isZip) sensitivePassword?.fill('\u0000')
-                backupProgressRequest = null
-                backupProgress = null
             }
             if (result.success && result.parserConflicts.isNotEmpty()) {
                 parserConflicts = result.parserConflicts
@@ -346,51 +308,35 @@ fun MiuixSettingsScreen(
         contract = ActivityResultContracts.OpenDocument()
     ) { uri ->
         if (uri == null) return@rememberLauncherForActivityResult
-        if (backupProgressRequest != null) return@rememberLauncherForActivityResult
-        backupProgressRequest = BackupProgressRequest(
-            mode = BackupProgressMode.PREVIEW,
-            isZip = false,
-        )
-        backupProgress = SettingsBackupManager.ImportProgress(
-            SettingsBackupManager.ImportStage.READING_BACKUP
-        )
+        if (backupImportCoordinator.isBusy) return@rememberLauncherForActivityResult
         coroutineScope.launch {
-            try {
-                val preview = SettingsBackupManager.previewImportFile(
-                    context,
-                    uri,
-                    publishBackupProgress
-                )
-                if (preview.success) {
-                    importPreviewResult = preview
-                    pendingImportUri = uri
-                    val parserJson = ParserBackupPreviewReader.read(context, uri)
-                    val dynamicCategoriesList = BackupCategories.ALL_CATEGORIES.map { cat ->
-                        when (cat.id) {
-                            "parser_rules" -> cat.copy(
-                                subGroups = BackupCategories.parserAppSubGroupsFromJson(parserJson)
-                            )
-                            else -> cat
-                        }
+            val preview = backupImportCoordinator.preview(uri)
+            if (preview.success) {
+                importPreviewResult = preview
+                pendingImportUri = uri
+                val parserJson = ParserBackupPreviewReader.read(context, uri)
+                val dynamicCategoriesList = BackupCategories.ALL_CATEGORIES.map { cat ->
+                    when (cat.id) {
+                        "parser_rules" -> cat.copy(
+                            subGroups = BackupCategories.parserAppSubGroupsFromJson(parserJson)
+                        )
+                        else -> cat
                     }
-                    selectedImportCategories = preview.categoryCounts.keys.flatMap { catId ->
-                        val cat = dynamicCategoriesList.find { it.id == catId }
-                        if (cat != null && cat.subGroups.isNotEmpty()) {
-                            cat.subGroups.map { it.id }
-                        } else {
-                            listOf(catId)
-                        }
-                    }.toSet()
-                    if (preview.lyricCacheEntryCount != 0) {
-                        selectedImportCategories = selectedImportCategories + "lyric_cache"
-                    }
-                    showImportPreviewDialog = true
-                } else {
-                    snackbarHostState.showSnackbar(message = backupImportFailedText)
                 }
-            } finally {
-                backupProgressRequest = null
-                backupProgress = null
+                selectedImportCategories = preview.categoryCounts.keys.flatMap { catId ->
+                    val cat = dynamicCategoriesList.find { it.id == catId }
+                    if (cat != null && cat.subGroups.isNotEmpty()) {
+                        cat.subGroups.map { it.id }
+                    } else {
+                        listOf(catId)
+                    }
+                }.toSet()
+                if (preview.lyricCacheEntryCount != 0) {
+                    selectedImportCategories = selectedImportCategories + "lyric_cache"
+                }
+                showImportPreviewDialog = true
+            } else {
+                snackbarHostState.showSnackbar(message = backupImportFailedText)
             }
         }
     }
@@ -1325,51 +1271,23 @@ fun MiuixSettingsScreen(
             }
         }
 
-        backupProgressRequest?.let { request ->
-            backupProgress?.let { progress ->
-                MiuixBackupImportProgressDialog(
-                    request = request,
-                    progress = progress,
-                )
-            }
+        backupImportCoordinator.status?.let { status ->
+            MiuixBackupImportProgressDialog(status = status)
         }
     }
 }
 
 @Composable
-private fun MiuixBackupImportProgressDialog(
-    request: BackupProgressRequest,
-    progress: SettingsBackupManager.ImportProgress,
+internal fun MiuixBackupImportProgressDialog(
+    status: BackupImportStatus,
 ) {
-    val stages = buildList {
-        add(SettingsBackupManager.ImportStage.READING_BACKUP)
-        if (request.mode == BackupProgressMode.PREVIEW) {
-            if (progress.stage == SettingsBackupManager.ImportStage.EXTRACTING_ARCHIVE) {
-                add(SettingsBackupManager.ImportStage.EXTRACTING_ARCHIVE)
-            }
-        } else {
-            if (request.isZip) add(SettingsBackupManager.ImportStage.EXTRACTING_ARCHIVE)
-            add(SettingsBackupManager.ImportStage.IMPORTING_SETTINGS)
-            if (
-                request.selectedLeafIds.any { it.startsWith("parser_") } ||
-                progress.stage == SettingsBackupManager.ImportStage.IMPORTING_PARSER_RULES
-            ) {
-                add(SettingsBackupManager.ImportStage.IMPORTING_PARSER_RULES)
-            }
-            if (request.selectedLeafIds.contains("lyric_cache")) {
-                add(SettingsBackupManager.ImportStage.IMPORTING_LYRIC_CACHE)
-            }
-            if (request.selectedSensitiveItemIds.isNotEmpty()) {
-                add(SettingsBackupManager.ImportStage.RESTORING_SENSITIVE_DATA)
-            }
-        }
-    }
-    val currentIndex = stages.indexOf(progress.stage).let { if (it >= 0) it else 0 }
+    val stages = status.visibleStages()
+    val currentIndex = stages.indexOf(status.progress.stage).let { if (it >= 0) it else 0 }
 
     MiuixBlurDialog(
         show = true,
         title = stringResource(
-            if (request.mode == BackupProgressMode.PREVIEW) {
+            if (status.operation == BackupImportOperation.PREVIEW) {
                 R.string.backup_progress_preview_title
             } else {
                 R.string.backup_progress_import_title
@@ -1473,7 +1391,7 @@ private fun miuixBackupProgressStageLabel(stage: SettingsBackupManager.ImportSta
 }
 
 @Composable
-private fun MiuixSensitiveBackupPasswordDialog(
+internal fun MiuixSensitiveBackupPasswordDialog(
     title: String,
     description: String,
     requireConfirmation: Boolean,
