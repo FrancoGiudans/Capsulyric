@@ -211,7 +211,10 @@ fun MiuixSettingsScreen(
         selectedSensitiveItemIds: Set<String>,
         sensitivePassword: CharArray? = null
     ) {
-        if (backupImportCoordinator.isBusy) return
+        if (backupImportCoordinator.isBusy) {
+            sensitivePassword?.fill('\u0000')
+            return
+        }
         coroutineScope.launch {
             val result = try {
                 backupImportCoordinator.importSelected(
@@ -231,6 +234,10 @@ fun MiuixSettingsScreen(
                 conflictKeepExisting = emptySet()
                 showParserConflictDialog = true
             } else {
+                val sensitiveImportFailed = !result.success && selectedSensitiveItemIds.isNotEmpty()
+                if (sensitiveImportFailed) {
+                    showSensitiveImportPasswordDialog = true
+                }
                 val message = if (result.success) {
                     if (result.sensitiveItemCount > 0) {
                         String.format(
@@ -251,13 +258,19 @@ fun MiuixSettingsScreen(
                         String.format(Locale.getDefault(), backupImportSuccessFormat, result.importedCount)
                     }
                 } else {
-                    backupImportFailedText
+                    if (selectedSensitiveItemIds.isNotEmpty()) {
+                        sensitivePasswordInvalidText
+                    } else {
+                        backupImportFailedText
+                    }
                 }
                 snackbarHostState.showSnackbar(message = message)
             }
-            selectedSensitiveImportItems = emptySet()
-            pendingImportUri = null
-            importPreviewResult = null
+            if (result.success || selectedSensitiveItemIds.isEmpty()) {
+                selectedSensitiveImportItems = emptySet()
+                pendingImportUri = null
+                importPreviewResult = null
+            }
         }
     }
 
@@ -1141,15 +1154,7 @@ fun MiuixSettingsScreen(
                 description = stringResource(R.string.backup_sensitive_password_import_description),
                 requireConfirmation = false,
                 onSubmit = { password ->
-                    val uri = pendingImportUri
-                    val preview = importPreviewResult
-                    if (uri == null || preview == null || !SettingsBackupManager.verifySensitiveImport(
-                            context,
-                            uri,
-                            selectedSensitiveImportItems,
-                            password.toCharArray()
-                        )
-                    ) {
+                    if (pendingImportUri == null || importPreviewResult == null) {
                         sensitivePasswordInvalidText
                     } else {
                         pendingSensitiveImportPassword?.fill('\u0000')
@@ -1381,6 +1386,7 @@ private fun miuixBackupProgressStageLabel(stage: SettingsBackupManager.ImportSta
     return stringResource(
         when (stage) {
             SettingsBackupManager.ImportStage.READING_BACKUP -> R.string.backup_progress_reading
+            SettingsBackupManager.ImportStage.VERIFYING_SENSITIVE_DATA -> R.string.backup_progress_verifying
             SettingsBackupManager.ImportStage.EXTRACTING_ARCHIVE -> R.string.backup_progress_extracting
             SettingsBackupManager.ImportStage.IMPORTING_SETTINGS -> R.string.backup_progress_settings
             SettingsBackupManager.ImportStage.IMPORTING_PARSER_RULES -> R.string.backup_progress_parser_rules
@@ -1432,6 +1438,7 @@ internal fun MiuixSensitiveBackupPasswordDialog(
                 },
                 label = stringResource(R.string.backup_sensitive_password),
                 visualTransformation = PasswordVisualTransformation(),
+                enabled = !submitting,
                 modifier = Modifier.fillMaxWidth()
             )
             if (requireConfirmation) {
@@ -1443,6 +1450,7 @@ internal fun MiuixSensitiveBackupPasswordDialog(
                     },
                     label = stringResource(R.string.backup_sensitive_password_confirm),
                     visualTransformation = PasswordVisualTransformation(),
+                    enabled = !submitting,
                     modifier = Modifier.fillMaxWidth()
                 )
             }
@@ -1462,6 +1470,7 @@ internal fun MiuixSensitiveBackupPasswordDialog(
                     onClick = {
                         if (!submitting) onDismiss()
                     },
+                    enabled = !submitting,
                     modifier = Modifier.weight(1f),
                     colors = ButtonDefaults.textButtonColors(
                         textColor = MiuixTheme.colorScheme.onSurfaceVariantActions
@@ -1476,8 +1485,8 @@ internal fun MiuixSensitiveBackupPasswordDialog(
                                 password.isBlank() -> error = requiredText
                                 requireConfirmation && password != confirmation -> error = mismatchText
                                 else -> {
+                                    submitting = true
                                     coroutineScope.launch {
-                                        submitting = true
                                         val submitError = try {
                                             onSubmit(password)
                                         } catch (_: Exception) {

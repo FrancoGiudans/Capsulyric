@@ -195,7 +195,10 @@ fun SettingsScreen(
         selectedSensitiveItemIds: Set<String>,
         sensitivePassword: CharArray? = null
     ) {
-        if (backupImportCoordinator.isBusy) return
+        if (backupImportCoordinator.isBusy) {
+            sensitivePassword?.fill('\u0000')
+            return
+        }
         coroutineScope.launch {
             val result = try {
                 backupImportCoordinator.importSelected(
@@ -215,6 +218,10 @@ fun SettingsScreen(
                 conflictKeepExisting = emptySet()
                 showParserConflictDialog = true
             } else {
+                val sensitiveImportFailed = !result.success && selectedSensitiveItemIds.isNotEmpty()
+                if (sensitiveImportFailed) {
+                    showSensitiveImportPasswordDialog = true
+                }
                 val message = if (result.success) {
                     if (result.sensitiveItemCount > 0) {
                         String.format(
@@ -235,13 +242,19 @@ fun SettingsScreen(
                         String.format(Locale.getDefault(), backupImportSuccessFormat, result.importedCount)
                     }
                 } else {
-                    backupImportFailedText
+                    if (selectedSensitiveItemIds.isNotEmpty()) {
+                        sensitivePasswordInvalidText
+                    } else {
+                        backupImportFailedText
+                    }
                 }
                 snackbarHostState.showSnackbar(message)
             }
-            selectedSensitiveImportItems = emptySet()
-            pendingImportUri = null
-            importPreviewResult = null
+            if (result.success || selectedSensitiveItemIds.isEmpty()) {
+                selectedSensitiveImportItems = emptySet()
+                pendingImportUri = null
+                importPreviewResult = null
+            }
         }
     }
 
@@ -948,15 +961,7 @@ fun SettingsScreen(
                 description = stringResource(R.string.backup_sensitive_password_import_description),
                 requireConfirmation = false,
                 onSubmit = { password ->
-                    val uri = pendingImportUri
-                    val preview = importPreviewResult
-                    if (uri == null || preview == null || !SettingsBackupManager.verifySensitiveImport(
-                            context,
-                            uri,
-                            selectedSensitiveImportItems,
-                            password.toCharArray()
-                        )
-                    ) {
+                    if (pendingImportUri == null || importPreviewResult == null) {
                         sensitivePasswordInvalidText
                     } else {
                         pendingSensitiveImportPassword?.fill('\u0000')
@@ -1183,6 +1188,7 @@ private fun backupProgressStageLabel(stage: SettingsBackupManager.ImportStage): 
     return stringResource(
         when (stage) {
             SettingsBackupManager.ImportStage.READING_BACKUP -> R.string.backup_progress_reading
+            SettingsBackupManager.ImportStage.VERIFYING_SENSITIVE_DATA -> R.string.backup_progress_verifying
             SettingsBackupManager.ImportStage.EXTRACTING_ARCHIVE -> R.string.backup_progress_extracting
             SettingsBackupManager.ImportStage.IMPORTING_SETTINGS -> R.string.backup_progress_settings
             SettingsBackupManager.ImportStage.IMPORTING_PARSER_RULES -> R.string.backup_progress_parser_rules
@@ -1890,8 +1896,8 @@ private fun SensitiveBackupPasswordDialog(
                         password.isBlank() -> error = requiredText
                         requireConfirmation && password != confirmation -> error = mismatchText
                         else -> {
+                            submitting = true
                             coroutineScope.launch {
-                                submitting = true
                                 val submitError = try {
                                     onSubmit(password)
                                 } catch (_: Exception) {
@@ -1915,7 +1921,7 @@ private fun SensitiveBackupPasswordDialog(
             }
         },
         dismissButton = {
-            TextButton(enabled = !submitting, onClick = onDismiss) {
+            TextButton(enabled = !submitting, onClick = { if (!submitting) onDismiss() }) {
                 Text(stringResource(R.string.backup_dialog_cancel))
             }
         }

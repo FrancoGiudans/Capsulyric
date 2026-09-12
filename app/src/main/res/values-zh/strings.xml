@@ -500,6 +500,7 @@
     <string name="backup_progress_preview_title">正在读取备份</string>
     <string name="backup_progress_import_title">正在还原备份</string>
     <string name="backup_progress_reading">正在读取备份文件</string>
+    <string name="backup_progress_verifying">正在验证备份口令</string>
     <string name="backup_progress_extracting">正在解压备份压缩包</string>
     <string name="backup_progress_settings">正在导入应用设置</string>
     <string name="backup_progress_parser_rules">正在导入解析规则</string>
