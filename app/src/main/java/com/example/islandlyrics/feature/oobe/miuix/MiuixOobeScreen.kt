@@ -105,13 +105,20 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.example.islandlyrics.R
 import com.example.islandlyrics.core.platform.RomUtils
 import com.example.islandlyrics.core.settings.AppPreferences
+import com.example.islandlyrics.core.settings.BackupCategories
 import com.example.islandlyrics.core.settings.SettingsBackupManager
+import com.example.islandlyrics.core.settings.SettingsBackupManager.PreviewResult
 import com.example.islandlyrics.core.theme.ThemeHelper
 import com.example.islandlyrics.feature.customsettings.CustomSettingsActivity
 import com.example.islandlyrics.feature.faq.FAQActivity
 import com.example.islandlyrics.feature.faq.material.FormattedText
 import com.example.islandlyrics.feature.parserrule.ParserRuleActivity
 import com.example.islandlyrics.feature.settings.SettingsActivity
+import com.example.islandlyrics.feature.settings.BackupImportCoordinator
+import com.example.islandlyrics.feature.settings.ParserBackupPreviewReader
+import com.example.islandlyrics.feature.settings.miuix.MiuixBackupCategoryDialog
+import com.example.islandlyrics.feature.settings.miuix.MiuixBackupImportProgressDialog
+import com.example.islandlyrics.feature.settings.miuix.MiuixSensitiveBackupPasswordDialog
 import com.example.islandlyrics.ui.miuix.blur.MiuixBlurDialog
 import com.example.islandlyrics.ui.miuix.blur.MiuixBlurScaffold
 import com.example.islandlyrics.ui.miuix.blur.MiuixBlurTopAppBar
@@ -144,11 +151,21 @@ fun MiuixOobeScreen(
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
+    val backupImportCoordinator = remember(context) { BackupImportCoordinator(context) }
     val backupImportSuccessFormat = stringResource(R.string.settings_backup_import_success)
     val backupImportSuccessWithCacheFormat = stringResource(R.string.settings_backup_import_success_with_cache)
+    val backupImportSuccessWithSensitiveFormat = stringResource(R.string.settings_backup_import_success_with_sensitive)
     val backupImportFailedText = stringResource(R.string.settings_backup_import_failed)
+    val sensitivePasswordInvalidText = stringResource(R.string.backup_sensitive_password_invalid)
     var currentStep by remember { mutableIntStateOf(0) }
     var showRuleGuideDialog by remember { mutableStateOf(false) }
+    var pendingImportUri by remember { mutableStateOf<Uri?>(null) }
+    var pendingImportPreview by remember { mutableStateOf<PreviewResult?>(null) }
+    var selectedImportCategories by remember { mutableStateOf(emptySet<String>()) }
+    var selectedSensitiveImportItems by remember { mutableStateOf(emptySet<String>()) }
+    var showImportCategoryDialog by remember { mutableStateOf(false) }
+    var pendingSensitiveImportPassword by remember { mutableStateOf<CharArray?>(null) }
+    var showSensitiveImportPasswordDialog by remember { mutableStateOf(false) }
     val appIcon = remember { appIconBitmap(context) }
     val lifecycleOwner = LocalLifecycleOwner.current
 
@@ -181,18 +198,38 @@ fun MiuixOobeScreen(
             guide = stringResource(R.string.oobe_guide_xiaomi)
         )
     )
-    val importSettingsLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.OpenDocument()
-    ) { uri ->
-        if (uri == null) return@rememberLauncherForActivityResult
+    fun importOobeBackup(
+        uri: Uri,
+        preview: PreviewResult,
+        selectedLeafIds: Set<String>,
+        selectedSensitiveItemIds: Set<String> = emptySet(),
+        sensitivePassword: CharArray? = null,
+    ) {
+        if (backupImportCoordinator.isBusy) {
+            sensitivePassword?.fill('\u0000')
+            return
+        }
         coroutineScope.launch {
-            val result = SettingsBackupManager.importFromUri(context, uri)
+            val result = try {
+                backupImportCoordinator.importSelected(
+                    uri = uri,
+                    preview = preview,
+                    selectedLeafIds = selectedLeafIds,
+                    selectedSensitiveItemIds = selectedSensitiveItemIds,
+                    sensitivePassword = sensitivePassword,
+                )
+            } finally {
+                if (!preview.isZip) sensitivePassword?.fill('\u0000')
+            }
             if (result.success) {
                 // Auto-resolve parser rule conflicts: overwrite all (OOBE backup restore)
                 if (result.parserConflicts.isNotEmpty()) {
                     SettingsBackupManager.resolveParserConflicts(
                         context,
-                        readParserJsonFromImportUri(context, uri),
+                        BackupCategories.filterParserRulesJson(
+                            ParserBackupPreviewReader.read(context, uri),
+                            selectedLeafIds
+                        ),
                         keepExistingPkgs = emptySet()  // overwrite all with imported rules
                     )
                 }
@@ -202,14 +239,67 @@ fun MiuixOobeScreen(
                 if (langCode.isNotEmpty()) {
                     ThemeHelper.setLanguage(context, langCode)
                 }
-                val message = if (result.lyricCacheCount > 0) {
-                    String.format(Locale.getDefault(), backupImportSuccessWithCacheFormat, result.importedCount, result.lyricCacheCount)
-                } else {
-                    String.format(Locale.getDefault(), backupImportSuccessFormat, result.importedCount)
+                val message = when {
+                    result.sensitiveItemCount > 0 -> String.format(
+                        Locale.getDefault(),
+                        backupImportSuccessWithSensitiveFormat,
+                        result.importedCount,
+                        result.lyricCacheCount,
+                        result.sensitiveItemCount
+                    )
+                    result.lyricCacheCount > 0 -> String.format(
+                        Locale.getDefault(),
+                        backupImportSuccessWithCacheFormat,
+                        result.importedCount,
+                        result.lyricCacheCount
+                    )
+                    else -> String.format(
+                        Locale.getDefault(),
+                        backupImportSuccessFormat,
+                        result.importedCount
+                    )
                 }
                 onImportAndFinish(message)
             } else {
                 Toast.makeText(context, backupImportFailedText, Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    val importSettingsLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        if (backupImportCoordinator.isBusy) return@rememberLauncherForActivityResult
+        coroutineScope.launch {
+            val preview = backupImportCoordinator.preview(uri)
+            if (!preview.success) {
+                Toast.makeText(context, backupImportFailedText, Toast.LENGTH_SHORT).show()
+            } else {
+                pendingImportUri = uri
+                pendingImportPreview = preview
+                val parserJson = ParserBackupPreviewReader.read(context, uri)
+                val dynamicCategories = BackupCategories.ALL_CATEGORIES.map { category ->
+                    if (category.id == "parser_rules") {
+                        category.copy(
+                            subGroups = BackupCategories.parserAppSubGroupsFromJson(parserJson)
+                        )
+                    } else {
+                        category
+                    }
+                }
+                selectedImportCategories = preview.categoryCounts.keys.flatMap { categoryId ->
+                    val category = dynamicCategories.find { it.id == categoryId }
+                    if (category != null && category.subGroups.isNotEmpty()) {
+                        category.subGroups.map { it.id }
+                    } else {
+                        listOf(categoryId)
+                    }
+                }.toSet().let { selected ->
+                    if (preview.lyricCacheEntryCount != 0) selected + "lyric_cache" else selected
+                }
+                selectedSensitiveImportItems = emptySet()
+                showImportCategoryDialog = true
             }
         }
     }
@@ -304,7 +394,9 @@ fun MiuixOobeScreen(
             ) {
                 RestoreStepBody(
                     onImportBackup = {
-                        importSettingsLauncher.launch(arrayOf("application/zip", "application/json", "*/*"))
+                        if (!backupImportCoordinator.isBusy) {
+                            importSettingsLauncher.launch(arrayOf("application/zip", "application/json", "*/*"))
+                        }
                     }
                 )
             }
@@ -357,6 +449,114 @@ fun MiuixOobeScreen(
                 onBack = { currentStep = 4 }
             )
         }
+    }
+    backupImportCoordinator.status?.let { status ->
+        MiuixBackupImportProgressDialog(status = status)
+    }
+    val importPublicCategories = BackupCategories.ALL_CATEGORIES.map { category ->
+        if (category.id == "parser_rules") {
+            val uri = pendingImportUri
+            val parserJson = if (uri != null) {
+                remember(uri) { ParserBackupPreviewReader.readBlocking(context, uri) }
+            } else {
+                null
+            }
+            category.copy(
+                subGroups = BackupCategories.parserAppSubGroupsFromJson(parserJson)
+            )
+        } else {
+            category
+        }
+    }
+    val importCategories = importPublicCategories + listOfNotNull(
+        pendingImportPreview?.let { SettingsBackupManager.sensitiveImportCategory(it) }
+    )
+    MiuixBackupCategoryDialog(
+        show = showImportCategoryDialog && pendingImportPreview != null,
+        titleRes = R.string.backup_dialog_import_title,
+        categories = importCategories,
+        categoryKeyCounts = pendingImportPreview?.categoryCounts,
+        initialSelected = selectedImportCategories,
+        onConfirm = { selected ->
+            val sensitiveItemIds = SettingsBackupManager.selectedSensitiveItemIds(selected)
+            selectedImportCategories = selected
+            selectedSensitiveImportItems = sensitiveItemIds
+            showImportCategoryDialog = false
+            val uri = pendingImportUri
+            val preview = pendingImportPreview
+            if (uri == null || preview == null) return@MiuixBackupCategoryDialog
+            if (sensitiveItemIds.isEmpty()) {
+                pendingImportUri = null
+                pendingImportPreview = null
+                selectedImportCategories = emptySet()
+                selectedSensitiveImportItems = emptySet()
+                importOobeBackup(uri, preview, selected - sensitiveItemIds)
+            } else {
+                showSensitiveImportPasswordDialog = true
+            }
+        },
+        onDismiss = {
+            showImportCategoryDialog = false
+            pendingImportUri = null
+            pendingImportPreview = null
+            selectedImportCategories = emptySet()
+            selectedSensitiveImportItems = emptySet()
+        }
+    )
+    if (showSensitiveImportPasswordDialog) {
+        MiuixSensitiveBackupPasswordDialog(
+            title = stringResource(R.string.backup_sensitive_password_import_title),
+            description = stringResource(R.string.backup_sensitive_password_import_description),
+            requireConfirmation = false,
+            onSubmit = { password ->
+                val uri = pendingImportUri
+                val preview = pendingImportPreview
+                val valid = uri != null && preview != null &&
+                    SettingsBackupManager.verifySensitiveImport(
+                        context,
+                        uri,
+                        selectedSensitiveImportItems,
+                        password.toCharArray()
+                    )
+                if (!valid) {
+                    sensitivePasswordInvalidText
+                } else {
+                    pendingSensitiveImportPassword?.fill('\u0000')
+                    pendingSensitiveImportPassword = password.toCharArray()
+                    null
+                }
+            },
+            onSuccess = {
+                showSensitiveImportPasswordDialog = false
+                val uri = pendingImportUri
+                val preview = pendingImportPreview
+                val password = pendingSensitiveImportPassword
+                val selectedSensitiveItems = selectedSensitiveImportItems
+                val selectedLeafIds = selectedImportCategories - selectedSensitiveItems
+                pendingSensitiveImportPassword = null
+                pendingImportUri = null
+                pendingImportPreview = null
+                selectedSensitiveImportItems = emptySet()
+                selectedImportCategories = emptySet()
+                if (uri != null && preview != null && password != null) {
+                    importOobeBackup(
+                        uri,
+                        preview,
+                        selectedLeafIds,
+                        selectedSensitiveItems,
+                        password
+                    )
+                } else {
+                    password?.fill('\u0000')
+                }
+            },
+            onDismiss = {
+                pendingSensitiveImportPassword?.fill('\u0000')
+                pendingSensitiveImportPassword = null
+                showSensitiveImportPasswordDialog = false
+                showImportCategoryDialog = true
+            }
+        )
     }
     }
 }
@@ -1146,59 +1346,6 @@ private fun checkPostNotification(context: Context): Boolean {
 private fun checkBatteryOptimization(context: Context): Boolean {
     val pm = context.getSystemService(Context.POWER_SERVICE) as android.os.PowerManager
     return pm.isIgnoringBatteryOptimizations(context.packageName)
-}
-
-/** Read parser_rules_json from a backup file (ZIP or legacy JSON) for conflict resolution. */
-private fun readParserJsonFromImportUri(context: Context, uri: Uri): String {
-    return try {
-        val header = ByteArray(4)
-        val isZip = context.contentResolver.openInputStream(uri)?.use { input ->
-            if (input.read(header) == 4) {
-                header[0] == 0x50.toByte() && header[1] == 0x4B.toByte() &&
-                    header[2] == 0x03.toByte() && header[3] == 0x04.toByte()
-            } else false
-        } ?: false
-
-        val text = if (isZip) {
-            val tempDir = java.io.File(context.cacheDir, "oobe_parser_${System.currentTimeMillis()}")
-            tempDir.mkdirs()
-            try {
-                context.contentResolver.openInputStream(uri)?.use { input ->
-                    java.util.zip.ZipInputStream(input).use { zip ->
-                        var entry = zip.nextEntry
-                        while (entry != null) {
-                            if (entry.name == "settings.json" && !entry.isDirectory) {
-                                val targetFile = java.io.File(tempDir, "settings.json")
-                                targetFile.outputStream().use { fileOut -> zip.copyTo(fileOut) }
-                                break
-                            }
-                            zip.closeEntry()
-                            entry = zip.nextEntry
-                        }
-                    }
-                }
-                java.io.File(tempDir, "settings.json").takeIf { it.exists() }?.readText(Charsets.UTF_8) ?: ""
-            } finally {
-                tempDir.deleteRecursively()
-            }
-        } else {
-            context.contentResolver.openInputStream(uri)?.bufferedReader(Charsets.UTF_8)?.readText() ?: ""
-        }
-
-        if (text.isEmpty()) return "[]"
-        val root = org.json.JSONObject(text)
-        val schemaVersion = root.optInt("schema_version", 1)
-        val rawValue = if (schemaVersion >= 2 && root.has("categories")) {
-            val catObj = root.optJSONObject("categories")
-            val parserBlock = catObj?.optJSONObject("parser_rules")
-            parserBlock?.optJSONArray("parsers")
-                ?: parserBlock?.optJSONObject("preferences")?.opt("parser_rules_json")
-        } else {
-            val prefsJson = root.optJSONObject("preferences") ?: root
-            prefsJson.opt("parser_rules_json")
-        }
-        SettingsBackupManager.parserRulesJsonFromBackupValue(rawValue) ?: "[]"
-    } catch (_: Exception) { "[]" }
 }
 
 private const val OOBE_LAST_STEP = 5
