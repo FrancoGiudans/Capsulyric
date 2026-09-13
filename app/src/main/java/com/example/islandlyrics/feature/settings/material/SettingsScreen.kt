@@ -65,6 +65,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
@@ -522,7 +523,6 @@ fun SettingsScreen(
 
 
     MaterialBlurScaffold(
-        contentWindowInsets = WindowInsets(0),
         snackbarHost = {
             Box(
                 modifier = Modifier
@@ -572,7 +572,7 @@ fun SettingsScreen(
             )
         ) {
             item {
-                OutlinedTextField(
+                TextField(
                     value = settingsSearchQuery,
                     onValueChange = {
                         settingsSearchQuery = it
@@ -581,10 +581,20 @@ fun SettingsScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 12.dp)
+                        .heightIn(min = 56.dp)
                         .onFocusChanged { focusState ->
                             if (focusState.isFocused) settingsSearchExpanded = true
                         },
                     singleLine = true,
+                    shape = RoundedCornerShape(28.dp),
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        disabledContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        focusedIndicatorColor = Color.Transparent,
+                        unfocusedIndicatorColor = Color.Transparent,
+                        disabledIndicatorColor = Color.Transparent,
+                    ),
                     placeholder = { Text(stringResource(R.string.settings_search)) },
                     leadingIcon = {
                         Icon(Icons.Filled.Search, contentDescription = null)

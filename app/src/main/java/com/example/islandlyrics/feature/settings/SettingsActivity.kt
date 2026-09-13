@@ -72,6 +72,7 @@ import com.example.islandlyrics.feature.customsettings.material.DesktopLyricsScr
 import com.example.islandlyrics.ui.theme.material.IslandLyricsMaterialTheme
 import android.widget.Toast
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
@@ -89,6 +90,8 @@ class SettingsActivity : BaseActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
+        window.isNavigationBarContrastEnforced = false
         
         // Retrieve version info
         var version = "Unknown"
