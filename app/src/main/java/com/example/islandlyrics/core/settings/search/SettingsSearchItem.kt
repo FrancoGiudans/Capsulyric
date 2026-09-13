@@ -28,12 +28,21 @@ import androidx.annotation.StringRes
 /**
  * 描述单个可被搜索的设置项。
  */
+enum class SettingsUiVariant {
+    MATERIAL,
+    MIUIX
+}
+
 data class SettingsSearchItem(
     val id: String,
     @StringRes val titleRes: Int,
     @StringRes val summaryRes: Int? = null,
     val breadcrumbResList: List<Int>,
     val keywords: List<String> = emptyList(),
+    val supportedVariants: Set<SettingsUiVariant> = setOf(
+        SettingsUiVariant.MATERIAL,
+        SettingsUiVariant.MIUIX
+    ),
     val isVisible: (Context) -> Boolean = { true },
     val action: SettingsSearchAction
 )

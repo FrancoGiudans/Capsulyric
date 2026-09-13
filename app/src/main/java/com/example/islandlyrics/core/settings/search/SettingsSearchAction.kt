@@ -52,6 +52,7 @@ sealed interface SettingsSearchAction {
 }
 
 enum class SettingsNavigationTarget {
+    MAIN_SETTINGS,
     CAPSULE_NOTIFICATION,
     APP_UI,
     DESKTOP_LYRICS,

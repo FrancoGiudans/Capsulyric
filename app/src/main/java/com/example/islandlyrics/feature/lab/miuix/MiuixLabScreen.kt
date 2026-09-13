@@ -68,6 +68,7 @@ import top.yukonga.miuix.kmp.utils.MiuixPopupUtils.Companion.MiuixPopupHost
 @Composable
 fun MiuixLabScreen(
     onBack: () -> Unit,
+    targetItemKey: String? = null,
     onOpenCapsuleNotification: (() -> Unit)? = null
 ) {
     val context = LocalContext.current
