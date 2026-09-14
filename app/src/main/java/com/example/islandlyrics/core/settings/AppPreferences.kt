@@ -157,14 +157,15 @@ object AppPreferences {
 
     fun miuixNavigationBarStyle(prefs: SharedPreferences): MiuixNavigationBarStyle {
         val storedStyle = prefs.getString(Keys.MIUIX_NAVIGATION_BAR_STYLE, null)
-        if (storedStyle != null) {
-            return MiuixNavigationBarStyle.fromPreference(storedStyle)
+        val style = when {
+            storedStyle != null -> MiuixNavigationBarStyle.fromPreference(storedStyle)
+            prefs.getBoolean(Keys.MIUIX_FLOATING_BOTTOM_BAR_ENABLED, false) -> MiuixNavigationBarStyle.FLOATING
+            else -> MiuixNavigationBarStyle.NORMAL
         }
-        return if (prefs.getBoolean(Keys.MIUIX_FLOATING_BOTTOM_BAR_ENABLED, false)) {
-            MiuixNavigationBarStyle.FLOATING
-        } else {
-            MiuixNavigationBarStyle.NORMAL
+        if (prefs.contains(Keys.MIUIX_FLOATING_BOTTOM_BAR_ENABLED)) {
+            setMiuixNavigationBarStyle(prefs, style)
         }
+        return style
     }
 
     fun setMiuixNavigationBarStyle(
@@ -173,7 +174,7 @@ object AppPreferences {
     ) {
         prefs.edit {
             putString(Keys.MIUIX_NAVIGATION_BAR_STYLE, style.preferenceValue)
-            putBoolean(Keys.MIUIX_FLOATING_BOTTOM_BAR_ENABLED, style != MiuixNavigationBarStyle.NORMAL)
+            remove(Keys.MIUIX_FLOATING_BOTTOM_BAR_ENABLED)
         }
     }
 

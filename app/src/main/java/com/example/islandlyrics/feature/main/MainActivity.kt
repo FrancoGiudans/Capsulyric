@@ -550,9 +550,7 @@ class MainActivity : BaseActivity() {
                 if (key == AppPreferences.Keys.CARD_BLUR_ENABLED) {
                     blurEnabled = prefs.getBoolean(key, false)
                 }
-                if (key == AppPreferences.Keys.MIUIX_NAVIGATION_BAR_STYLE ||
-                    key == AppPreferences.Keys.MIUIX_FLOATING_BOTTOM_BAR_ENABLED
-                ) {
+                if (key == AppPreferences.Keys.MIUIX_NAVIGATION_BAR_STYLE) {
                     navigationBarStyle = AppPreferences.miuixNavigationBarStyle(prefs)
                 }
             }
