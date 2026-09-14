@@ -92,6 +92,39 @@ class OnlineLyricSelectorTest {
     }
 
     @Test
+    fun romanizedTitleIsAcceptedByFinalSelector() {
+        val result = OnlineLyricFetcher.LyricResult(
+            api = "QQMusic",
+            lyrics = "[00:01.00]歌词",
+            parsedLines = listOf(
+                OnlineLyricFetcher.LyricLine(1_000L, 2_000L, "歌词")
+            ),
+            hasSyllable = false,
+            provider = OnlineLyricProvider.QQMusic,
+            matchedTitle = "さよなら",
+            matchedArtist = "Example Artist"
+        )
+
+        val selected = OnlineLyricSelector { it.trim() }.selectBestResult(
+            attempts = listOf(
+                OnlineLyricFetcher.ProviderAttempt(
+                    provider = OnlineLyricProvider.QQMusic,
+                    result = result,
+                    durationMs = 100L,
+                    usedCleanTitleFallback = false
+                )
+            ),
+            targetTitle = "sayonara",
+            targetArtist = "Example Artist",
+            providerOrder = listOf(OnlineLyricProvider.QQMusic),
+            useSmartSelection = true
+        )
+
+        assertEquals(result, selected)
+        assertTrue(result.identityEvidence?.contains("title=24") == true)
+    }
+
+    @Test
     fun mediumConfidenceResultDoesNotCancelSlowerProviders() {
         val result = OnlineLyricFetcher.LyricResult(
             api = "LrcApi",
