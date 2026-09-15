@@ -28,13 +28,6 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -89,7 +82,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.net.toUri
 import com.example.islandlyrics.R
 import com.example.islandlyrics.core.feed.CommunityFeed
 import com.example.islandlyrics.core.feed.CommunityFeedRepository
@@ -261,7 +253,6 @@ private fun MiuixAboutContent(
     var currentChannel by remember { mutableStateOf(UpdateChecker.getUpdateChannel(context)) }
     var experimentUpdatesEnabled by remember { mutableStateOf(LabFeatureManager.isExperimentUpdatesEnabled(context)) }
     var updateSourcePriority by remember { mutableStateOf(LabFeatureManager.getUpdateSourcePriority(context)) }
-    var showFeedbackPopup by remember { mutableStateOf(false) }
     var devStepCount by remember { mutableIntStateOf(0) }
 
     var headerHeightDp by remember { mutableStateOf(300.dp) }
@@ -400,9 +391,7 @@ private fun MiuixAboutContent(
                     blurColors = cardBlurColors
                 ) {
                     AboutSection(
-                        showFeedbackPopup = showFeedbackPopup,
-                        onToggleFeedback = { showFeedbackPopup = !showFeedbackPopup },
-                        versionInfoText = versionInfoText,
+                        versionNameText = updateVersionText,
                         onCopyVersion = ::copyVersionInfo
                     )
                 }
@@ -684,56 +673,29 @@ internal fun CommunitySection(
 
 @Composable
 private fun AboutSection(
-    showFeedbackPopup: Boolean,
-    onToggleFeedback: () -> Unit,
-    versionInfoText: String,
+    versionNameText: String,
     onCopyVersion: () -> Unit
 ) {
     val context = LocalContext.current
-    BasicComponent(
+    val feedbackOptions = listOf(
+        stringResource(R.string.dialog_feedback_github) to
+            "https://github.com/FrancoGiudans/Capsulyric/issues/new?template=bug_report.yml",
+        stringResource(R.string.dialog_feedback_wps) to "https://f.wps.cn/g/qACKW9I3/",
+        stringResource(R.string.dialog_feedback_wjx) to "https://v.wjx.cn/vm/rGK24xY.aspx"
+    )
+
+    SuperDropdown(
         title = stringResource(R.string.settings_feedback),
         summary = stringResource(R.string.summary_feedback),
-        endActions = {
-            androidx.compose.material3.Icon(
-                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                contentDescription = null,
-                tint = MiuixTheme.colorScheme.onSurfaceVariantActions,
-                modifier = Modifier.graphicsLayer {
-                    rotationZ = if (showFeedbackPopup) 90f else 0f
-                }
-            )
-        },
-        onClick = onToggleFeedback
-    )
-    AnimatedVisibility(
-        visible = showFeedbackPopup,
-        enter = fadeIn() + expandVertically(),
-        exit = fadeOut() + shrinkVertically()
-    ) {
-        Column {
-            BasicComponent(
-                title = stringResource(R.string.dialog_feedback_github),
-                summary = stringResource(R.string.dialog_feedback_github_desc),
-                onClick = {
-                    context.startActivity(Intent(Intent.ACTION_VIEW, "https://github.com/FrancoGiudans/Capsulyric/issues/new?template=bug_report.yml".toUri()))
-                }
-            )
-            BasicComponent(
-                title = stringResource(R.string.dialog_feedback_wps),
-                summary = stringResource(R.string.dialog_feedback_wps_desc),
-                onClick = {
-                    context.startActivity(Intent(Intent.ACTION_VIEW, "https://f.wps.cn/g/qACKW9I3/".toUri()))
-                }
-            )
-            BasicComponent(
-                title = stringResource(R.string.dialog_feedback_wjx),
-                summary = stringResource(R.string.dialog_feedback_wjx_desc),
-                onClick = {
-                    context.startActivity(Intent(Intent.ACTION_VIEW, "https://v.wjx.cn/vm/rGK24xY.aspx".toUri()))
-                }
-            )
+        items = feedbackOptions.map { it.first },
+        selectedIndex = -1,
+        showValue = false,
+        onSelectedIndexChange = { index ->
+            feedbackOptions.getOrNull(index)?.second?.let { url ->
+                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+            }
         }
-    }
+    )
 
     BasicComponent(
         title = stringResource(R.string.settings_about_github),
@@ -745,7 +707,7 @@ private fun AboutSection(
 
     BasicComponent(
         title = stringResource(R.string.about_version),
-        summary = versionInfoText,
+        summary = versionNameText,
         onClick = onCopyVersion
     )
 }
