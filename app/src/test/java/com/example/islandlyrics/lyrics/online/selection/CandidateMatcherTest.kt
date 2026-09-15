@@ -28,6 +28,43 @@ class CandidateMatcherTest {
     }
 
     @Test
+    fun hiraganaTitleMatchesRomanizedTitle() {
+        val candidate = Candidate(
+            matchedTitle = "さよなら",
+            matchedArtist = "Example Artist",
+            matchedAlbum = null,
+            matchedDurationMs = null
+        )
+
+        assertEquals(
+            candidate,
+            CandidateMatcher.pickBest(
+                candidates = listOf(candidate),
+                title = "SAYONARA",
+                artist = "Example Artist"
+            )
+        )
+    }
+
+    @Test
+    fun katakanaTitleMatchesHiraganaTitle() {
+        assertEquals(
+            24,
+            CandidateMatcher.scoreTitleMatch("サヨナラ", "さよなら")
+        )
+    }
+
+    @Test
+    fun commonRomanizationVariantsMatchKana() {
+        assertEquals(24, CandidateMatcher.scoreTitleMatch("ちいさなつ", "tiisana tu"))
+    }
+
+    @Test
+    fun unrelatedRomanizedTitleDoesNotMatchKana() {
+        assertEquals(-30, CandidateMatcher.scoreTitleMatch("さよなら", "arigatou"))
+    }
+
+    @Test
     fun titleMismatchCanBeRecoveredByArtistAlbumAndDuration() {
         val candidate = Candidate(
             matchedTitle = "ただ風を追いかけて",
