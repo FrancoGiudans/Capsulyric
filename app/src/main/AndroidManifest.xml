@@ -63,6 +63,7 @@
             android:name="com.example.islandlyrics.feature.settings.SettingsActivity"
             android:label="@string/title_app_settings"
             android:theme="@style/Theme.IslandLyrics.Translucent"
+            android:windowSoftInputMode="adjustResize"
             android:parentActivityName="com.example.islandlyrics.feature.main.MainActivity" />
         <activity
             android:name="com.example.islandlyrics.feature.lastfm.LastFmSettingsActivity"

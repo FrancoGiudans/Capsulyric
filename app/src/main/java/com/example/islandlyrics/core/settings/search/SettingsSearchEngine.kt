@@ -34,18 +34,24 @@ data class SettingsSearchResult(
 
 object SettingsSearchEngine {
 
-    fun search(context: Context, query: String): List<SettingsSearchResult> {
+    fun search(
+        context: Context,
+        query: String,
+        variant: SettingsUiVariant? = null
+    ): List<SettingsSearchResult> {
         return search(
             stringResolver = { resId -> context.getString(resId) },
             isVisible = { item -> item.isVisible(context) },
-            query = query
+            query = query,
+            variant = variant
         )
     }
 
     fun search(
         stringResolver: (Int) -> String,
         isVisible: (SettingsSearchItem) -> Boolean = { true },
-        query: String
+        query: String,
+        variant: SettingsUiVariant? = null
     ): List<SettingsSearchResult> {
         val q = query.trim().lowercase()
         if (q.isEmpty()) return emptyList()
@@ -54,6 +60,7 @@ object SettingsSearchEngine {
         val results = mutableListOf<SettingsSearchResult>()
 
         for (item in allItems) {
+            if (variant != null && variant !in item.supportedVariants) continue
             if (!isVisible(item)) continue
 
             val title = try { stringResolver(item.titleRes) } catch (_: Exception) { "" }
