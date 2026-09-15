@@ -176,6 +176,12 @@ class LyricService : Service() {
             lastFmScrobbleManager.onMetadataChanged(info)
 
             metadataLyricFetchCoordinator.onMetadataChanged(info, trackChanged)
+
+            // Metadata can arrive after the playback callback.  In that case
+            // the first callback saw no renderable content and stopped the
+            // display loop; make the renderer lifecycle follow the now-valid
+            // metadata before requesting the immediate frame below.
+            updateActiveHandler()
             
             // CRITICAL: Force immediate UI update to propagate new track metadata to SuperIsland
             displayManager.forceUpdate()
