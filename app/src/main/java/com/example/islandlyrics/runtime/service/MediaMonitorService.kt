@@ -52,9 +52,16 @@ import org.json.JSONObject
 
 class MediaMonitorService : NotificationListenerService() {
 
+    enum class ConnectionState {
+        CONNECTING,
+        CONNECTED,
+        DISCONNECTED
+    }
+
     private var mediaSessionManager: MediaSessionManager? = null
     private var componentName: ComponentName? = null
     private var prefs: SharedPreferences? = null
+    private var hasEstablishedConnection = false
 
     private val allowedPackages = HashSet<String>()
     private val configuredPackages = HashSet<String>()
@@ -158,6 +165,7 @@ class MediaMonitorService : NotificationListenerService() {
 
     override fun onListenerConnected() {
         super.onListenerConnected()
+        hasEstablishedConnection = true
         isConnected = true
         handler.removeCallbacks(rebindRetryRunnable)
         AppLogger.getInstance().log(TAG, "onListenerConnected - Service binding initiated")
@@ -214,7 +222,11 @@ class MediaMonitorService : NotificationListenerService() {
 
     override fun onListenerDisconnected() {
         super.onListenerDisconnected()
-        isConnected = false
+        if (hasEstablishedConnection) {
+            isConnected = false
+        } else {
+            AppLogger.getInstance().log(TAG, "onListenerDisconnected during initial binding; keep CONNECTING")
+        }
         AppLogger.getInstance().log(TAG, "onListenerDisconnected - Service unbound")
         
         // Stop health check
@@ -238,7 +250,10 @@ class MediaMonitorService : NotificationListenerService() {
 
     override fun onDestroy() {
         super.onDestroy()
-        if (instance === this) instance = null
+        if (instance === this) {
+            instance = null
+            isConnected = false
+        }
         handler.removeCallbacks(healthCheckRunnable)
         handler.removeCallbacks(rebindRetryRunnable)
         handler.removeCallbacksAndMessages(updateToken)
@@ -954,14 +969,27 @@ class MediaMonitorService : NotificationListenerService() {
         // Singleton instance — set in onCreate, cleared in onDestroy
         @Volatile private var instance: MediaMonitorService? = null
 
+        // 初始阶段属于“连接中”，不能把尚未完成首次绑定误报为“已断开”。
+        private val _connectionStateFlow = kotlinx.coroutines.flow.MutableStateFlow(ConnectionState.CONNECTING)
+        val connectionStateFlow: kotlinx.coroutines.flow.StateFlow<ConnectionState> get() = _connectionStateFlow
+
+        // 保留布尔状态流给旧调用方，实际状态统一由 connectionStateFlow 驱动。
         private val _isConnectedFlow = kotlinx.coroutines.flow.MutableStateFlow(false)
-        // 只读暴露连接状态流，供 UI 层 collectAsState 订阅
         val isConnectedFlow: kotlinx.coroutines.flow.StateFlow<Boolean> get() = _isConnectedFlow
+
+        private fun updateConnectionState(state: ConnectionState) {
+            _connectionStateFlow.value = state
+            _isConnectedFlow.value = state == ConnectionState.CONNECTED
+        }
 
         // 兼容老调用方：读写代理到 StateFlow，保持单一状态源
         var isConnected: Boolean
-            get() = _isConnectedFlow.value
-            set(value) { _isConnectedFlow.value = value }
+            get() = _connectionStateFlow.value == ConnectionState.CONNECTED
+            set(value) {
+                updateConnectionState(
+                    if (value) ConnectionState.CONNECTED else ConnectionState.DISCONNECTED
+                )
+            }
 
         @Volatile private var lastForegroundUptimeMs: Long = 0L
 
@@ -983,6 +1011,9 @@ class MediaMonitorService : NotificationListenerService() {
         fun requestRebind(context: Context) {
             val componentName = ComponentName(context, MediaMonitorService::class.java)
             AppLogger.getInstance().d(TAG, "Requesting rebind for $componentName")
+            if (!isConnected) {
+                updateConnectionState(ConnectionState.CONNECTING)
+            }
             try {
                 requestRebind(componentName)
             } catch (e: Exception) {
@@ -994,6 +1025,9 @@ class MediaMonitorService : NotificationListenerService() {
              val pm = context.packageManager
              val componentName = ComponentName(context, MediaMonitorService::class.java)
              AppLogger.getInstance().log(TAG, "☢️ Executing FORCE REBIND (Component Toggle) for $componentName")
+             if (!isConnected) {
+                 updateConnectionState(ConnectionState.CONNECTING)
+             }
              
              try {
                  // Disable
