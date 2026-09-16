@@ -1019,11 +1019,12 @@
     <string name="online_lyric_rematch_artist">アーティスト</string>
     <string name="online_lyric_rematch_action">再検索</string>
     <string name="online_lyric_rematch_sidecar_action">翻訳/ローマ字歌詞を照合</string>
-    <string name="online_lyric_rematch_current_playback_action">現在の再生情報を使用して再検索</string>
-    <string name="online_lyric_rematch_mark_instrumental">この曲はインストゥルメンタルです</string>
-    <string name="online_lyric_rematch_clear_instrumental">インストマークを解除</string>
-    <string name="online_lyric_rematch_mark_album_instrumental">このアルバムはすべてインストです</string>
-    <string name="online_lyric_rematch_clear_album_instrumental">アルバム全体のインストマークを解除</string>
+    <string name="online_lyric_rematch_current_playback_action">現在の曲を再検索</string>
+    <string name="online_lyric_rematch_fill_current_info">現在の曲情報を入力</string>
+    <string name="online_lyric_rematch_mark_instrumental">曲インスト</string>
+    <string name="online_lyric_rematch_clear_instrumental">インスト解除</string>
+    <string name="online_lyric_rematch_mark_album_instrumental">アルバムインスト</string>
+    <string name="online_lyric_rematch_clear_album_instrumental">アルバムインスト解除</string>
     <string name="online_lyric_rematch_unknown_album">不明なアルバム</string>
     <string name="online_lyric_rematch_result_title">再取得した歌詞</string>
     <string name="online_lyric_rematch_result_source_fmt">ソース: %1$s</string>

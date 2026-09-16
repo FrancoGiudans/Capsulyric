@@ -1019,10 +1019,11 @@
     <string name="online_lyric_rematch_artist">歌手</string>
     <string name="online_lyric_rematch_action">重新匹配</string>
     <string name="online_lyric_rematch_sidecar_action">匹配翻译/拼音歌词</string>
-    <string name="online_lyric_rematch_current_playback_action">使用当前播放信息重新匹配</string>
-    <string name="online_lyric_rematch_mark_instrumental">这首歌是纯音乐</string>
+    <string name="online_lyric_rematch_current_playback_action">当前歌曲重新匹配</string>
+    <string name="online_lyric_rematch_fill_current_info">填入当前歌曲信息</string>
+    <string name="online_lyric_rematch_mark_instrumental">此歌曲是纯音乐</string>
     <string name="online_lyric_rematch_clear_instrumental">取消纯音乐标记</string>
-    <string name="online_lyric_rematch_mark_album_instrumental">这张专辑均是纯音乐</string>
+    <string name="online_lyric_rematch_mark_album_instrumental">此专辑是纯音乐</string>
     <string name="online_lyric_rematch_clear_album_instrumental">取消专辑纯音乐标记</string>
     <string name="online_lyric_rematch_unknown_album">未知专辑</string>
     <string name="online_lyric_rematch_result_title">重新获取到的歌词</string>

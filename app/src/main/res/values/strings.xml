@@ -1009,11 +1009,12 @@ Within the log interface, select the share/export icon. You can specify a timefr
     <string name="online_lyric_rematch_artist">Artist</string>
     <string name="online_lyric_rematch_action">Rematch</string>
     <string name="online_lyric_rematch_sidecar_action">Match Translation/Romanization</string>
-    <string name="online_lyric_rematch_current_playback_action">Use Current Playback and Rematch</string>
-    <string name="online_lyric_rematch_mark_instrumental">This Song Is Instrumental</string>
-    <string name="online_lyric_rematch_clear_instrumental">Clear Instrumental Mark</string>
-    <string name="online_lyric_rematch_mark_album_instrumental">This Album Is Instrumental</string>
-    <string name="online_lyric_rematch_clear_album_instrumental">Clear Album Instrumental Mark</string>
+    <string name="online_lyric_rematch_current_playback_action">Rematch Current Song</string>
+    <string name="online_lyric_rematch_fill_current_info">Fill Current Song Info</string>
+    <string name="online_lyric_rematch_mark_instrumental">Song Instrumental</string>
+    <string name="online_lyric_rematch_clear_instrumental">Clear Instrumental</string>
+    <string name="online_lyric_rematch_mark_album_instrumental">Album Instrumental</string>
+    <string name="online_lyric_rematch_clear_album_instrumental">Clear Album Instrumental</string>
     <string name="online_lyric_rematch_unknown_album">Unknown Album</string>
     <string name="online_lyric_rematch_result_title">Fetched Lyrics</string>
     <string name="online_lyric_rematch_result_source_fmt">Source: %1$s</string>

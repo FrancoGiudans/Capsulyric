@@ -1019,11 +1019,12 @@
     <string name="online_lyric_rematch_artist">歌手</string>
     <string name="online_lyric_rematch_action">重新比對</string>
     <string name="online_lyric_rematch_sidecar_action">比對翻譯/拼音歌詞</string>
-    <string name="online_lyric_rematch_current_playback_action">使用目前播放資訊重新比對</string>
-    <string name="online_lyric_rematch_mark_instrumental">這首歌是純音樂</string>
-    <string name="online_lyric_rematch_clear_instrumental">取消純音樂標記</string>
-    <string name="online_lyric_rematch_mark_album_instrumental">這張專輯均是純音樂</string>
-    <string name="online_lyric_rematch_clear_album_instrumental">取消專輯純音樂標記</string>
+    <string name="online_lyric_rematch_current_playback_action">目前歌曲重新比對</string>
+    <string name="online_lyric_rematch_fill_current_info">填入當曲資訊</string>
+    <string name="online_lyric_rematch_mark_instrumental">歌曲純音樂</string>
+    <string name="online_lyric_rematch_clear_instrumental">取消純音樂</string>
+    <string name="online_lyric_rematch_mark_album_instrumental">專輯純音樂</string>
+    <string name="online_lyric_rematch_clear_album_instrumental">取消專輯純音樂</string>
     <string name="online_lyric_rematch_unknown_album">未知專輯</string>
     <string name="online_lyric_rematch_result_title">重新獲取到的歌詞</string>
     <string name="online_lyric_rematch_result_source_fmt">來源: %1$s</string>

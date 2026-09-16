@@ -211,14 +211,24 @@ fun OnlineLyricDebugScreen(
                             currentLyric = liveLyric?.lyric.orEmpty()
                         )
                         Spacer(modifier = Modifier.height(14.dp))
-                        Button(
-                            onClick = { viewModel.rematchWithCurrentPlayback() },
-                            enabled = !isFetching && !offlineModeEnabled,
-                            modifier = Modifier.fillMaxWidth()
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
-                            Spacer(modifier = Modifier.size(8.dp))
-                            Text(stringResource(R.string.online_lyric_rematch_current_playback_action))
+                            Button(
+                                onClick = { viewModel.rematchWithCurrentPlayback() },
+                                enabled = !isFetching && !offlineModeEnabled,
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text(stringResource(R.string.online_lyric_rematch_current_playback_action))
+                            }
+                            TextButton(
+                                onClick = { viewModel.importCurrentPlaybackToCustomMatch() },
+                                enabled = !isFetching,
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text(stringResource(R.string.online_lyric_rematch_fill_current_info))
+                            }
                         }
                         Spacer(modifier = Modifier.height(8.dp))
                         Row(
