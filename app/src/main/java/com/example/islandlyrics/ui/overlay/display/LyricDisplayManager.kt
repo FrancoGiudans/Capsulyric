@@ -105,6 +105,21 @@ class LyricDisplayManager(private val context: Context) {
     private var cachedPresentation: LyricPresentation? = null
     private var cachedPresentationLineIndex: Int = -2
     private var cachedPresentationTrackKey: String = ""
+    private var cachedPresentationContentKey: PresentationContentKey? = null
+
+    /**
+     * The line index alone is not enough to identify a presentation. Media
+     * notification lyrics are delivered as one changing line, so their index
+     * stays at -1 for the whole song. Keep the content that produced the
+     * cached presentation in the key as well.
+     */
+    private data class PresentationContentKey(
+        val liveLyric: LyricRepository.LyricInfo?,
+        val currentLine: OnlineLyricFetcher.LyricLine?,
+        val previousLine: OnlineLyricFetcher.LyricLine?,
+        val nextLine: OnlineLyricFetcher.LyricLine?,
+        val timelineCapability: LyricRepository.TimelineCapability
+    )
 
     // Observers
     private val parsedLyricsObserver = Observer<LyricRepository.ParsedLyricsInfo?> { parsedInfo ->
@@ -516,6 +531,13 @@ class LyricDisplayManager(private val context: Context) {
     ): LyricPresentation {
         val currentLineIndex = parsedState.currentLineIndex(position)
         val trackKey = "${metaInfo?.title}|${metaInfo?.artist}|${metaInfo?.packageName}"
+        val contentKey = PresentationContentKey(
+            liveLyric = lyricInfo,
+            currentLine = parsedState.lines?.getOrNull(currentLineIndex),
+            previousLine = parsedState.previousLine(currentLineIndex),
+            nextLine = parsedState.nextLine(currentLineIndex),
+            timelineCapability = parsedState.timelineCapability
+        )
 
         // Reuse cached presentation if line index and track haven't changed.
         // 逐字进度（wordProgress）随播放位置实时变化，不能随缓存冻结：
@@ -523,6 +545,7 @@ class LyricDisplayManager(private val context: Context) {
         if (cachedPresentation != null &&
             currentLineIndex == cachedPresentationLineIndex &&
             trackKey == cachedPresentationTrackKey &&
+            contentKey == cachedPresentationContentKey &&
             !useGapContext
         ) {
             val cached = cachedPresentation!!
@@ -543,6 +566,11 @@ class LyricDisplayManager(private val context: Context) {
             cachedPresentationLineIndex = -2
             cachedPresentationTrackKey = trackKey
         }
+        if (contentKey != cachedPresentationContentKey) {
+            cachedPresentation = null
+            cachedPresentationLineIndex = -2
+            cachedPresentationContentKey = contentKey
+        }
 
         val result = buildLyricPresentation(
             lyricInfo = lyricInfo,
@@ -557,6 +585,7 @@ class LyricDisplayManager(private val context: Context) {
         if (!useGapContext && result.currentLine != null) {
             cachedPresentation = result
             cachedPresentationLineIndex = currentLineIndex
+            cachedPresentationContentKey = contentKey
         }
 
         return result
