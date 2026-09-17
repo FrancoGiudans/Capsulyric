@@ -1047,7 +1047,6 @@
     <string name="online_lyric_debug_custom_artist">カスタム照合アーティスト</string>
     <string name="online_lyric_debug_save">キャッシュに保存</string>
     <string name="online_lyric_debug_clear_custom">カスタム照合を消去</string>
-    <string name="online_lyric_debug_import_current_playback">現在の再生情報をインポート</string>
     <string name="online_lyric_debug_live_status">リアルタイムステータス</string>
     <string name="online_lyric_debug_lyric_source_fmt">歌詞ソース: %1$s / %2$s</string>
     <string name="online_lyric_debug_current_lyric_fmt">現在の歌詞: %1$s</string>
@@ -1116,7 +1115,6 @@
     <string name="online_lyric_debug_snapshot_status">自動取得結果 (%1$s) · 再検索可能</string>
     <string name="online_lyric_debug_error_no_song">曲名を入力してください</string>
     <string name="online_lyric_debug_error_empty_override">オーバーライド内容を空にすることはできません</string>
-    <string name="online_lyric_debug_imported_current_playback">現在の再生情報をインポートしました</string>
     <string name="online_lyric_debug_override_saved">カスタムオーバーライドを保存しました</string>
     <string name="online_lyric_debug_override_cleared">カスタムオーバーライドを消去しました</string>
     <string name="online_lyric_debug_instrumental_status">インストゥルメンタルマーク状態</string>
