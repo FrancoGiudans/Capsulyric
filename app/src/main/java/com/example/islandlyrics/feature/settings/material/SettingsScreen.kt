@@ -244,15 +244,44 @@ fun SettingsScreen(
     var pendingConflictSelections by remember { mutableStateOf(setOf<String>()) }
     var conflictKeepExisting by remember { mutableStateOf(setOf<String>()) }
 
+    // Parser import mode chooser (merge vs replace) state
+    var showParserImportModeDialog by remember { mutableStateOf(false) }
+    var pendingModeImportUri by remember { mutableStateOf<Uri?>(null) }
+    var pendingModeImportPreview by remember { mutableStateOf<PreviewResult?>(null) }
+    var pendingModeImportLeafIds by remember { mutableStateOf<Set<String>>(emptySet()) }
+    var pendingModeImportSensitiveIds by remember { mutableStateOf<Set<String>>(emptySet()) }
+    var pendingModeImportPassword by remember { mutableStateOf<CharArray?>(null) }
+
+    fun clearPendingModeImport() {
+        pendingModeImportUri = null
+        pendingModeImportPreview = null
+        pendingModeImportLeafIds = emptySet()
+        pendingModeImportSensitiveIds = emptySet()
+        pendingModeImportPassword?.fill('\u0000')
+        pendingModeImportPassword = null
+    }
+
     fun importBackup(
         uri: Uri,
         preview: PreviewResult,
         selectedLeafIds: Set<String>,
         selectedSensitiveItemIds: Set<String>,
-        sensitivePassword: CharArray? = null
+        sensitivePassword: CharArray? = null,
+        parserImportMode: SettingsBackupManager.ParserImportMode? = null
     ) {
         if (backupImportCoordinator.isBusy) {
             sensitivePassword?.fill('\u0000')
+            return
+        }
+        // If the selection includes parser rules and no mode was chosen yet,
+        // ask the user whether to merge with or replace the existing rules.
+        if (parserImportMode == null && selectedLeafIds.any { it.startsWith("parser_") }) {
+            pendingModeImportUri = uri
+            pendingModeImportPreview = preview
+            pendingModeImportLeafIds = selectedLeafIds
+            pendingModeImportSensitiveIds = selectedSensitiveItemIds
+            pendingModeImportPassword = sensitivePassword
+            showParserImportModeDialog = true
             return
         }
         coroutineScope.launch {
@@ -263,6 +292,7 @@ fun SettingsScreen(
                     selectedLeafIds = selectedLeafIds,
                     selectedSensitiveItemIds = selectedSensitiveItemIds,
                     sensitivePassword = sensitivePassword,
+                    parserImportMode = parserImportMode ?: SettingsBackupManager.ParserImportMode.Merge,
                 )
             } finally {
                 if (!preview.isZip) sensitivePassword?.fill('\u0000')
@@ -311,6 +341,25 @@ fun SettingsScreen(
                 pendingImportUri = null
                 importPreviewResult = null
             }
+        }
+    }
+
+    // Resume the pending import with the chosen parser import mode.
+    // Password ownership moves back to importBackup (it zeroes the array when done).
+    fun resumePendingModeImport(mode: SettingsBackupManager.ParserImportMode) {
+        showParserImportModeDialog = false
+        val uri = pendingModeImportUri
+        val preview = pendingModeImportPreview
+        val leafIds = pendingModeImportLeafIds
+        val sensitiveIds = pendingModeImportSensitiveIds
+        val password = pendingModeImportPassword
+        pendingModeImportUri = null
+        pendingModeImportPreview = null
+        pendingModeImportLeafIds = emptySet()
+        pendingModeImportSensitiveIds = emptySet()
+        pendingModeImportPassword = null
+        if (uri != null && preview != null) {
+            importBackup(uri, preview, leafIds, sensitiveIds, password, mode)
         }
     }
 
@@ -1240,6 +1289,34 @@ fun SettingsScreen(
                     pendingSensitiveImportPassword = null
                     showSensitiveImportPasswordDialog = false
                     showImportPreviewDialog = true
+                }
+            )
+        }
+
+        // Parser import mode chooser dialog
+        if (showParserImportModeDialog) {
+            MaterialBlurAlertDialog(
+                onDismissRequest = {
+                    showParserImportModeDialog = false
+                    clearPendingModeImport()
+                },
+                title = { Text(stringResource(R.string.backup_parser_mode_title)) },
+                text = {
+                    Text(
+                        stringResource(R.string.backup_parser_mode_description),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                },
+                dismissButton = {
+                    TextButton(onClick = {
+                        resumePendingModeImport(SettingsBackupManager.ParserImportMode.Merge)
+                    }) { Text(stringResource(R.string.backup_parser_mode_merge)) }
+                },
+                confirmButton = {
+                    TextButton(onClick = {
+                        resumePendingModeImport(SettingsBackupManager.ParserImportMode.Replace)
+                    }) { Text(stringResource(R.string.backup_parser_mode_replace)) }
                 }
             )
         }

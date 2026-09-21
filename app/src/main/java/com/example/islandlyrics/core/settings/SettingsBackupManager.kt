@@ -29,6 +29,7 @@ import com.example.islandlyrics.integration.applemusic.AppleMusicSecureStore
 import com.example.islandlyrics.integration.lastfm.LastFmCredentials
 import com.example.islandlyrics.integration.lastfm.LastFmSecureStore
 import com.example.islandlyrics.lyrics.cache.OnlineLyricCacheStore
+import com.example.islandlyrics.rules.ParserRuleHelper
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
@@ -43,6 +44,9 @@ import java.util.zip.ZipInputStream
 import java.util.zip.ZipOutputStream
 
 object SettingsBackupManager {
+
+    /** How imported parser rules interact with rules already stored on the device. */
+    enum class ParserImportMode { Merge, Replace }
 
     private const val PREF_PARSER_RULES = AppPreferences.Keys.PARSER_RULES_JSON
     private const val PREF_PARSER_RULE_TEMPLATE = AppPreferences.Keys.PARSER_RULE_TEMPLATE_JSON
@@ -244,7 +248,8 @@ object SettingsBackupManager {
         selectedLeafIds: Set<String>,
         selectedSensitiveItemIds: Set<String> = emptySet(),
         sensitivePassword: CharArray? = null,
-        onProgress: suspend (ImportProgress) -> Unit = {}
+        onProgress: suspend (ImportProgress) -> Unit = {},
+        parserImportMode: ParserImportMode = ParserImportMode.Merge
     ): ImportResult = withContext(Dispatchers.IO) {
         try {
             runCatchingSuspend {
@@ -308,7 +313,8 @@ object SettingsBackupManager {
                             context,
                             settingsFile.readText(Charsets.UTF_8),
                             selectedLeafIds,
-                            onProgress
+                            onProgress,
+                            parserImportMode
                         )
                         if (!settingsResult.success) {
                             settingsResult
@@ -368,7 +374,8 @@ object SettingsBackupManager {
         context: Context,
         uri: Uri,
         selectedLeafIds: Set<String>,
-        onProgress: suspend (ImportProgress) -> Unit = {}
+        onProgress: suspend (ImportProgress) -> Unit = {},
+        parserImportMode: ParserImportMode = ParserImportMode.Merge
     ): ImportResult = withContext(Dispatchers.IO) {
         runCatchingSuspend {
             onProgress(ImportProgress(ImportStage.READING_BACKUP))
@@ -377,7 +384,7 @@ object SettingsBackupManager {
             } ?: throw IllegalStateException("openInputStream returned null")
 
             onProgress(ImportProgress(ImportStage.IMPORTING_SETTINGS))
-            importSettingsFromJson(context, text, selectedLeafIds, onProgress)
+            importSettingsFromJson(context, text, selectedLeafIds, onProgress, parserImportMode)
         }.getOrElse {
             ImportResult(success = false, importedCount = 0, error = it.message)
         }
@@ -639,7 +646,8 @@ object SettingsBackupManager {
         context: Context,
         text: String,
         selectedLeafIds: Set<String>,
-        onProgress: suspend (ImportProgress) -> Unit
+        onProgress: suspend (ImportProgress) -> Unit,
+        parserImportMode: ParserImportMode = ParserImportMode.Merge
     ): ImportResult {
         val root = JSONObject(text)
         val editor = AppPreferences.of(context).edit()
@@ -732,14 +740,23 @@ object SettingsBackupManager {
             onProgress(ImportProgress(ImportStage.IMPORTING_PARSER_RULES))
         }
 
-        val conflicts = if (!importedParserJson.isNullOrEmpty()) {
+        val conflicts = if (importedParserJson.isNullOrEmpty()) {
+            // Guard: nothing selected / empty backup data — leave existing rules untouched.
+            emptyList()
+        } else if (parserImportMode == ParserImportMode.Replace) {
+            // Replace: imported rules overwrite the stored rules entirely
+            // (OOBE restore). Guard above ensures we never write an empty array.
+            AppPreferences.of(context).edit {
+                putString(PREF_PARSER_RULES, importedParserJson)
+            }
+            ParserRuleHelper.invalidateCache()
+            emptyList()
+        } else {
             val existingConflicts = checkParserConflicts(context, importedParserJson)
             if (existingConflicts.isEmpty()) {
                 BackupCategories.mergeParserRulesJson(context, importedParserJson)
             }
             existingConflicts
-        } else {
-            emptyList()
         }
 
         return ImportResult(success = true, importedCount = count, parserConflicts = conflicts)
