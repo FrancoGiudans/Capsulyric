@@ -736,25 +736,26 @@ object SettingsBackupManager {
 
         editor.apply()
 
-        if (!importedParserJson.isNullOrEmpty()) {
+        val validatedParserJson = validatedParserRulesJson(importedParserJson)
+        if (validatedParserJson != null) {
             onProgress(ImportProgress(ImportStage.IMPORTING_PARSER_RULES))
         }
 
-        val conflicts = if (importedParserJson.isNullOrEmpty()) {
-            // Guard: nothing selected / empty backup data — leave existing rules untouched.
+        val conflicts = if (validatedParserJson == null) {
+            // Guard: nothing selected / invalid or empty backup data — leave existing rules untouched.
             emptyList()
         } else if (parserImportMode == ParserImportMode.Replace) {
             // Replace: imported rules overwrite the stored rules entirely
-            // (OOBE restore). Guard above ensures we never write an empty array.
+            // (OOBE restore). Guard above ensures only valid, non-empty arrays are written.
             AppPreferences.of(context).edit {
-                putString(PREF_PARSER_RULES, importedParserJson)
+                putString(PREF_PARSER_RULES, validatedParserJson)
             }
             ParserRuleHelper.invalidateCache()
             emptyList()
         } else {
-            val existingConflicts = checkParserConflicts(context, importedParserJson)
+            val existingConflicts = checkParserConflicts(context, validatedParserJson)
             if (existingConflicts.isEmpty()) {
-                BackupCategories.mergeParserRulesJson(context, importedParserJson)
+                BackupCategories.mergeParserRulesJson(context, validatedParserJson)
             }
             existingConflicts
         }
@@ -1078,6 +1079,22 @@ object SettingsBackupManager {
     }
 
     // ── Parser rule conflict detection & resolution ────────────────────
+
+    /** Return a non-empty parser-rule array only when every entry has a package name. */
+    internal fun validatedParserRulesJson(json: String?): String? {
+        if (json.isNullOrBlank()) return null
+        return try {
+            val array = JSONArray(json)
+            if (array.length() == 0) return null
+            for (index in 0 until array.length()) {
+                val rule = array.optJSONObject(index) ?: return null
+                if (!rule.has("pkg") || rule.isNull("pkg") || rule.optString("pkg").isBlank()) return null
+            }
+            json
+        } catch (_: Exception) {
+            null
+        }
+    }
 
     private fun parserRulesJsonToBackupArray(json: String): JSONArray {
         val source = runCatching { JSONArray(json) }.getOrNull() ?: return JSONArray()
