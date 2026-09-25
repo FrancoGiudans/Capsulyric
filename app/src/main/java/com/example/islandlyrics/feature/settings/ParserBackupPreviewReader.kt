@@ -154,6 +154,7 @@ class BackupImportCoordinator(context: Context) {
         selectedLeafIds: Set<String>,
         selectedSensitiveItemIds: Set<String> = emptySet(),
         sensitivePassword: CharArray? = null,
+        parserImportMode: SettingsBackupManager.ParserImportMode = SettingsBackupManager.ParserImportMode.Merge,
     ): ImportResult {
         return runOperation(
             operation = BackupImportOperation.IMPORT,
@@ -169,6 +170,7 @@ class BackupImportCoordinator(context: Context) {
                     selectedSensitiveItemIds,
                     sensitivePassword,
                     onProgress,
+                    parserImportMode,
                 )
             } else {
                 SettingsBackupManager.importSelected(
@@ -176,6 +178,7 @@ class BackupImportCoordinator(context: Context) {
                     uri,
                     selectedLeafIds,
                     onProgress,
+                    parserImportMode,
                 )
             }
         }
