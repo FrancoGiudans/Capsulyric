@@ -528,6 +528,10 @@
     <string name="backup_conflict_title">パーサールールの競合</string>
     <string name="backup_conflict_description">インポートするバックアップに既存のパッケージ名と同じルールが含まれています。処理方法を選択してください：</string>
     <string name="backup_conflict_apply">競合解決を適用</string>
+    <string name="backup_parser_mode_title">解析ルールのインポート方法</string>
+    <string name="backup_parser_mode_description">バックアップに解析ルールが含まれています。\nマージ：既存のルールを保持し、バックアップのルールを追加します。\n置き換え：バックアップのルールで既存のルールを完全に上書きします。</string>
+    <string name="backup_parser_mode_merge">マージ</string>
+    <string name="backup_parser_mode_replace">置き換え</string>
     <string name="backup_cat_capsule">カプセルとアイランド</string>
     <string name="backup_cat_notifications">通知とステータスバー</string>
     <string name="backup_cat_appearance">外観とテーマ</string>
