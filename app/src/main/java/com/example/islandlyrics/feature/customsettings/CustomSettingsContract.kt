@@ -23,7 +23,6 @@
 package com.example.islandlyrics.feature.customsettings
 
 import com.example.islandlyrics.core.platform.XmsfBypassMode
-import com.example.islandlyrics.core.settings.MiuixNavigationBarStyle
 import com.example.islandlyrics.ui.overlay.config.CapsuleRenderMode
 import com.example.islandlyrics.ui.navigation.PredictiveBackAnimationMode
 import com.example.islandlyrics.ui.navigation.PredictiveBackAnimationStyle
@@ -78,7 +77,7 @@ data class CustomSettingsUiState(
     val superIslandShareEnabled: Boolean = true,
     val superIslandShareFormat: String = "format_1",
     val miuixEnabled: Boolean = true,
-    val miuixNavigationBarStyle: MiuixNavigationBarStyle = MiuixNavigationBarStyle.NORMAL,
+    val miuixFloatingBottomBarEnabled: Boolean = false,
     val predictiveBackEnabled: Boolean = true,
     val predictiveBackAnimationMode: PredictiveBackAnimationMode = PredictiveBackAnimationMode.default,
     val predictiveBackAnimationStyle: PredictiveBackAnimationStyle = PredictiveBackAnimationStyle.default,
@@ -130,7 +129,7 @@ sealed interface CustomSettingsAction {
     data class SetXmsfBypassMode(val value: XmsfBypassMode) : CustomSettingsAction
     data class SetXmsfCustomDurationMs(val value: Int) : CustomSettingsAction
     data class SetMiuixEnabled(val value: Boolean) : CustomSettingsAction
-    data class SetMiuixNavigationBarStyle(val value: MiuixNavigationBarStyle) : CustomSettingsAction
+    data class SetMiuixFloatingBottomBarEnabled(val value: Boolean) : CustomSettingsAction
     data class SetMiuixThemeColorSource(val value: String) : CustomSettingsAction
     data class SetMiuixThemeCustomColor(val value: Int) : CustomSettingsAction
     data class SetMiuixThemeGlobalTintEnabled(val value: Boolean) : CustomSettingsAction

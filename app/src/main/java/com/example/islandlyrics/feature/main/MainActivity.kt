@@ -30,7 +30,6 @@ import com.example.islandlyrics.core.update.UpdateChecker
 import com.example.islandlyrics.core.logging.AppLogger
 import com.example.islandlyrics.core.network.OfflineModeManager
 import com.example.islandlyrics.core.settings.AppPreferences
-import com.example.islandlyrics.core.settings.MiuixNavigationBarStyle
 import com.example.islandlyrics.runtime.service.MediaMonitorService
 import com.example.islandlyrics.feature.cache.material.CacheManagementScreen
 import com.example.islandlyrics.feature.cache.miuix.MiuixCacheManagementScreen
@@ -56,7 +55,6 @@ import com.example.islandlyrics.feature.logviewer.material.LogViewerScreen
 import com.example.islandlyrics.feature.logviewer.miuix.MiuixLogViewerScreen
 import com.example.islandlyrics.feature.navigation.MaterialTopLevelNavigationBar
 import com.example.islandlyrics.feature.navigation.MiuixTopLevelFloatingNavigationBar
-import com.example.islandlyrics.feature.navigation.MiuixTopLevelLiquidGlassNavigationBar
 import com.example.islandlyrics.feature.navigation.MiuixTopLevelNavigationBar
 import com.example.islandlyrics.feature.navigation.TopLevelDestination
 import com.example.islandlyrics.feature.main.miuix.MiuixMainScreen
@@ -143,8 +141,6 @@ import top.yukonga.miuix.kmp.basic.SnackbarDuration as MiuixSnackbarDuration
 import top.yukonga.miuix.kmp.basic.SnackbarHost as MiuixSnackbarHost
 import top.yukonga.miuix.kmp.basic.SnackbarHostState as MiuixSnackbarHostState
 import top.yukonga.miuix.kmp.basic.SnackbarResult as MiuixSnackbarResult
-import com.kyant.backdrop.backdrops.layerBackdrop as liquidLayerBackdrop
-import com.kyant.backdrop.backdrops.rememberLayerBackdrop as rememberLiquidLayerBackdrop
 
 class MainActivity : BaseActivity() {
 
@@ -511,14 +507,10 @@ class MainActivity : BaseActivity() {
             drawRect(backdropBackground)
             drawContent()
         }
-        val liquidBackdrop = rememberLiquidLayerBackdrop {
-            drawRect(backdropBackground)
-            drawContent()
-        }
         val prefs = remember { AppPreferences.of(this) }
         var blurEnabled by remember { mutableStateOf(prefs.getBoolean(AppPreferences.Keys.CARD_BLUR_ENABLED, false)) }
-        var navigationBarStyle by remember {
-            mutableStateOf(AppPreferences.miuixNavigationBarStyle(prefs))
+        var floatingBottomBarEnabled by remember {
+            mutableStateOf(prefs.getBoolean(AppPreferences.Keys.MIUIX_FLOATING_BOTTOM_BAR_ENABLED, false))
         }
 
         androidx.compose.runtime.LaunchedEffect(pagerState.currentPage) {
@@ -529,10 +521,8 @@ class MainActivity : BaseActivity() {
                 if (key == AppPreferences.Keys.CARD_BLUR_ENABLED) {
                     blurEnabled = prefs.getBoolean(key, false)
                 }
-                if (key == AppPreferences.Keys.MIUIX_NAVIGATION_BAR_STYLE ||
-                    key == AppPreferences.Keys.MIUIX_FLOATING_BOTTOM_BAR_ENABLED
-                ) {
-                    navigationBarStyle = AppPreferences.miuixNavigationBarStyle(prefs)
+                if (key == AppPreferences.Keys.MIUIX_FLOATING_BOTTOM_BAR_ENABLED) {
+                    floatingBottomBarEnabled = prefs.getBoolean(key, false)
                 }
             }
             prefs.registerOnSharedPreferenceChangeListener(listener)
@@ -579,9 +569,7 @@ class MainActivity : BaseActivity() {
                 popupHost = { MiuixPopupHost() },
                 containerColor = Color.Transparent
             ) {
-                val targetBottomBarVisible =
-                    (if (navigationBarStyle == MiuixNavigationBarStyle.NORMAL) true else bottomBarVisible) &&
-                        pageStack.isEmpty()
+                val targetBottomBarVisible = (if (floatingBottomBarEnabled) bottomBarVisible else true) && pageStack.isEmpty()
                 PageStackHost(
                     stack = pageStack,
                     onPop = ::popPage,
@@ -594,13 +582,6 @@ class MainActivity : BaseActivity() {
                             .clipToBounds()
                             .background(MiuixTheme.colorScheme.surface)
                             .then(if (blurEnabled) Modifier.layerBackdrop(backdrop) else Modifier)
-                            .then(
-                                if (navigationBarStyle == MiuixNavigationBarStyle.LIQUID) {
-                                    Modifier.liquidLayerBackdrop(liquidBackdrop)
-                                } else {
-                                    Modifier
-                                }
-                            )
                     ) {
                         HorizontalPager(
                             state = pagerState,
@@ -670,48 +651,22 @@ class MainActivity : BaseActivity() {
                         exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
                         modifier = Modifier
                             .align(Alignment.BottomCenter)
-                            .then(
-                                if (navigationBarStyle == MiuixNavigationBarStyle.FLOATING) {
-                                    Modifier.padding(horizontal = 4.dp)
-                                } else {
-                                    Modifier
+                            .then(if (floatingBottomBarEnabled) Modifier.padding(horizontal = 4.dp) else Modifier)
+                    ) {
+                        if (floatingBottomBarEnabled) {
+                            MiuixTopLevelFloatingNavigationBar(
+                                currentDestination = TopLevelDestination.entries[pagerState.currentPage],
+                                onNavigate = { destination ->
+                                    scope.launch { pagerState.animateScrollToPage(TopLevelDestination.entries.indexOf(destination)) }
                                 }
                             )
-                    ) {
-                        when (navigationBarStyle) {
-                            MiuixNavigationBarStyle.NORMAL -> {
-                                MiuixTopLevelNavigationBar(
-                                    currentDestination = TopLevelDestination.entries[pagerState.currentPage],
-                                    onNavigate = { destination ->
-                                        scope.launch {
-                                            pagerState.animateScrollToPage(TopLevelDestination.entries.indexOf(destination))
-                                        }
-                                    }
-                                )
-                            }
-
-                            MiuixNavigationBarStyle.FLOATING -> {
-                                MiuixTopLevelFloatingNavigationBar(
-                                    currentDestination = TopLevelDestination.entries[pagerState.currentPage],
-                                    onNavigate = { destination ->
-                                        scope.launch {
-                                            pagerState.animateScrollToPage(TopLevelDestination.entries.indexOf(destination))
-                                        }
-                                    }
-                                )
-                            }
-
-                            MiuixNavigationBarStyle.LIQUID -> {
-                                MiuixTopLevelLiquidGlassNavigationBar(
-                                    currentDestination = TopLevelDestination.entries[pagerState.currentPage],
-                                    onNavigate = { destination ->
-                                        scope.launch {
-                                            pagerState.animateScrollToPage(TopLevelDestination.entries.indexOf(destination))
-                                        }
-                                    },
-                                    backdrop = liquidBackdrop
-                                )
-                            }
+                        } else {
+                            MiuixTopLevelNavigationBar(
+                                currentDestination = TopLevelDestination.entries[pagerState.currentPage],
+                                onNavigate = { destination ->
+                                    scope.launch { pagerState.animateScrollToPage(TopLevelDestination.entries.indexOf(destination)) }
+                                }
+                            )
                         }
                     }
 
