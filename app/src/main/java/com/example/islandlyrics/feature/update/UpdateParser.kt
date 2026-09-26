@@ -46,10 +46,7 @@ object UpdateParser {
             sections.english.ifBlank { sections.chinese }
         }
 
-        val highlights = localizedPart.takeIf { it.isNotBlank() }
-            ?.let { "$RELEASE_HIGHLIGHTS_HEADER\n\n$it" }.orEmpty()
-
-        return listOf(highlights, sections.shared)
+        return listOf(localizedPart, sections.shared)
             .filter { it.isNotBlank() }
             .joinToString("\n\n")
             .trim()

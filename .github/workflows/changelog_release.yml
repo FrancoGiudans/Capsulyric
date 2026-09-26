@@ -29,7 +29,6 @@ jobs:
       contents: write
       actions: read
       discussions: write
-      pull-requests: read
 
     steps:
       # ============================================================
@@ -444,13 +443,10 @@ jobs:
 
       # ============================================================
       # Step 9: Generate Changes grouped by conventional prefix
-      # Include native author mentions and PR links for GitHub contributor avatars
+      # (no labels, no emoji - groups: Features / Fixes / Improvements / Chores / Other)
       # ============================================================
       - name: Generate Grouped Changes
         id: auto_notes
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GH_REPO: ${{ github.repository }}
         run: |
           # Find previous release tag for comparison:
           #   Stable -> compare against last Stable tag only
@@ -459,18 +455,54 @@ jobs:
           CHANNEL="${{ steps.meta.outputs.channel }}"
 
           if [ "$CHANNEL" = "Stable" ]; then
-            PREV_TAG=$(git tag --sort=-creatordate | grep -v "Canary" | grep -E "^Version\..*\.Stable_C" | grep -vxF "$CURRENT_TAG" | head -n 1 || true)
+            PREV_TAG=$(git tag --sort=-creatordate | grep -v "Canary" | grep -E "^Version\..*\.Stable_C" | grep -vxF "$CURRENT_TAG" | head -n 1)
             echo "Stable release - searching previous Stable tags"
           else
-            PREV_TAG=$(git tag --sort=-creatordate | grep -v "Canary" | grep -E "^Version\." | grep -vxF "$CURRENT_TAG" | head -n 1 || true)
+            PREV_TAG=$(git tag --sort=-creatordate | grep -v "Canary" | grep -E "^Version\." | grep -vxF "$CURRENT_TAG" | head -n 1)
             echo "Preview/Experiment release - searching any previous tag"
           fi
           echo "Previous tag found: ${PREV_TAG:-none}"
 
-          python3 .github/scripts/generate_release_notes.py \
-            --repository "$GH_REPO" \
-            --previous-tag "$PREV_TAG" \
-            --output /tmp/auto_notes.md
+          if [ -n "$PREV_TAG" ]; then
+            echo "Comparing against previous tag: ${PREV_TAG}"
+            git log "${PREV_TAG}..HEAD" --pretty=format:'%s' --no-merges > /tmp/change_subjects.txt || true
+          else
+            echo "No previous tag found, using recent history."
+            git log -30 --pretty=format:'%s' --no-merges > /tmp/change_subjects.txt || true
+          fi
+
+          # Group subjects by conventional-commit prefix (no labels, no emoji)
+          python3 - << 'PYEOF' > /tmp/auto_notes.md
+          import re
+          from collections import OrderedDict
+          groups = OrderedDict([("Features", []), ("Fixes", []), ("Improvements", []), ("Chores", []), ("Other", [])])
+          with open("/tmp/change_subjects.txt", encoding="utf-8") as f:
+              subjects = [line.strip() for line in f if line.strip()]
+          for s in subjects:
+              m = re.match(r"(?i)^\s*([a-z]+)(\([^)]*\))?\s*[:：]\s*(.+)$", s)
+              prefix = m.group(1).lower() if m else ""
+              title = m.group(3).strip() if m else s
+              if prefix == "feat":
+                  groups["Features"].append(title)
+              elif prefix == "fix":
+                  groups["Fixes"].append(title)
+              elif prefix in ("ui", "opt"):
+                  groups["Improvements"].append(title)
+              elif prefix in ("ci", "build", "chore", "docs"):
+                  groups["Chores"].append(title)
+              else:
+                  groups["Other"].append(title)
+          print("## Changes")
+          print()
+          for name, items in groups.items():
+              if not items:
+                  continue
+              print("### " + name)
+              print()
+              for item in items:
+                  print("- " + item)
+              print()
+          PYEOF
 
           echo "Auto-generated notes saved."
 

@@ -25,18 +25,17 @@ class UpdateParserTest {
 
             ---
 
-            ## What's Changed
+            ## Changes
             ### Features
             - Generated feature
         """.trimIndent()
 
         val parsed = UpdateParser.parseChangelog(rawBody, isChinese = true)
-        assertTrue(parsed.startsWith("## Release Highlights\n\n"))
 
         assertTrue(parsed.contains("<img src=\"logo.png\" width=\"100%\" />"))
         assertTrue(parsed.contains("- 中文重点"))
         assertTrue(parsed.contains("## Release Metadata"))
-        assertTrue(parsed.contains("## What's Changed"))
+        assertTrue(parsed.contains("## Changes"))
         assertFalse(parsed.contains("- English highlight"))
         assertFalse(parsed.contains("### 🇨🇳"))
         assertFalse(parsed.contains("### 🇬🇧"))
@@ -56,17 +55,16 @@ class UpdateParserTest {
 
             ---
 
-            ## What's Changed
+            ## Changes
             ### Fixes
             - Generated fix
         """.trimIndent()
 
         val parsed = UpdateParser.parseChangelog(rawBody, isChinese = false)
-        assertTrue(parsed.startsWith("## Release Highlights\n\n"))
 
         assertTrue(parsed.contains("<img src=\"logo.png\" width=\"100%\" />"))
         assertTrue(parsed.contains("- English highlight"))
-        assertTrue(parsed.contains("## What's Changed"))
+        assertTrue(parsed.contains("## Changes"))
         assertFalse(parsed.contains("- 中文重点"))
     }
 
@@ -83,15 +81,14 @@ class UpdateParserTest {
 
             ---
 
-            ## What's Changed
+            ## Changes
             - Generated change
         """.trimIndent()
 
         val parsed = UpdateParser.parseChangelog(rawBody, isChinese = true)
-        assertTrue(parsed.startsWith("## Release Highlights\n\n"))
 
         assertTrue(parsed.contains("- 中文旧格式"))
-        assertTrue(parsed.contains("## What's Changed"))
+        assertTrue(parsed.contains("## Changes"))
         assertFalse(parsed.contains("- English legacy"))
     }
 
@@ -108,15 +105,14 @@ class UpdateParserTest {
 
             ---
 
-            ## What's Changed
+            ## Changes
             - Generated change
         """.trimIndent()
 
         val parsed = UpdateParser.parseChangelog(rawBody, isChinese = false)
-        assertTrue(parsed.startsWith("## Release Highlights\n\n"))
 
         assertTrue(parsed.contains("- English current format"))
-        assertTrue(parsed.contains("## What's Changed"))
+        assertTrue(parsed.contains("## Changes"))
         assertFalse(parsed.contains("- 中文当前格式"))
     }
 }
