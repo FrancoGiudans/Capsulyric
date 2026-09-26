@@ -401,13 +401,12 @@ fun MiuixParserRuleEditorScreen(
             ) {
                 when (sourceConfigSheetType) {
                     ParserRuleSourceConfigType.NOTIFICATION ->
-                        MiuixNotificationSourceConfigPage(state, ::updateSourceState, renderInRootScaffold = false)
+                        MiuixNotificationSourceConfigPage(state, ::updateSourceState)
                     ParserRuleSourceConfigType.ONLINE ->
                         MiuixOnlineSourceConfigPage(
                             state = state,
                             onStateChange = ::updateSourceState,
-                            onOpenProviderOrder = { showOnlineProviderOrderSheet = true },
-                            renderInRootScaffold = false
+                            onOpenProviderOrder = { showOnlineProviderOrderSheet = true }
                         )
                     ParserRuleSourceConfigType.LYRICON ->
                         MiuixLyriconSourceConfigPage(state, ::updateSourceState)
@@ -567,8 +566,7 @@ fun MiuixParserRuleSourceConfigScreen(
 fun MiuixNotificationSourceConfigPage(
     state: ParserRuleEditorState,
     onStateChange: (ParserRuleEditorState) -> Unit,
-    modifier: Modifier = Modifier,
-    renderInRootScaffold: Boolean = true
+    modifier: Modifier = Modifier
 ) {
     val separators = listOf("-", " - ", " | ")
     val orders = listOf(FieldOrder.ARTIST_TITLE, FieldOrder.TITLE_ARTIST)
@@ -579,7 +577,6 @@ fun MiuixNotificationSourceConfigPage(
                 title = stringResource(R.string.parser_separator_label),
                 items = separators,
                 selectedIndex = separators.indexOf(state.separator).coerceAtLeast(0),
-                renderInRootScaffold = renderInRootScaffold,
                 onSelectedIndexChange = { onStateChange(state.copy(separator = separators[it])) }
             )
             SuperDropdown(
@@ -589,7 +586,6 @@ fun MiuixNotificationSourceConfigPage(
                     else stringResource(R.string.parser_order_title_artist)
                 },
                 selectedIndex = orders.indexOf(state.fieldOrder).coerceAtLeast(0),
-                renderInRootScaffold = renderInRootScaffold,
                 onSelectedIndexChange = { onStateChange(state.copy(fieldOrder = orders[it])) }
             )
         }
@@ -601,8 +597,7 @@ fun MiuixOnlineSourceConfigPage(
     state: ParserRuleEditorState,
     onStateChange: (ParserRuleEditorState) -> Unit,
     onOpenProviderOrder: () -> Unit,
-    modifier: Modifier = Modifier,
-    renderInRootScaffold: Boolean = true
+    modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
     Column(modifier = modifier) {
@@ -642,7 +637,7 @@ fun MiuixOnlineSourceConfigPage(
                     onClick = onOpenProviderOrder
                 )
             }
-            MiuixAppleMusicOverrideSection(state, onStateChange, renderInRootScaffold = renderInRootScaffold)
+            MiuixAppleMusicOverrideSection(state, onStateChange)
         }
     }
 }
@@ -665,8 +660,7 @@ private val appleLanguageOptions = listOf(
 @Composable
 private fun MiuixAppleMusicOverrideSection(
     state: ParserRuleEditorState,
-    onStateChange: (ParserRuleEditorState) -> Unit,
-    renderInRootScaffold: Boolean = true
+    onStateChange: (ParserRuleEditorState) -> Unit
 ) {
     val context = LocalContext.current
     var expanded by remember { mutableStateOf(false) }
@@ -714,7 +708,6 @@ private fun MiuixAppleMusicOverrideSection(
                     selectedIndex = appleStorefrontOptions
                         .indexOfFirst { it.first == state.appleMusicStorefrontOverride }
                         .coerceAtLeast(0),
-                    renderInRootScaffold = renderInRootScaffold,
                     onSelectedIndexChange = { index ->
                         onStateChange(
                             state.copy(appleMusicStorefrontOverride = appleStorefrontOptions[index].first)
@@ -727,7 +720,6 @@ private fun MiuixAppleMusicOverrideSection(
                     selectedIndex = appleLanguageOptions
                         .indexOfFirst { it.first == state.appleMusicLanguageOverride }
                         .coerceAtLeast(0),
-                    renderInRootScaffold = renderInRootScaffold,
                     onSelectedIndexChange = { index ->
                         onStateChange(
                             state.copy(appleMusicLanguageOverride = appleLanguageOptions[index].first)
