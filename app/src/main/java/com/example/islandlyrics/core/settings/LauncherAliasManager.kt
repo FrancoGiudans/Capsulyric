@@ -32,8 +32,7 @@ import com.example.islandlyrics.R
 /**
  * Manages the launcher alias visibility.
  * When hidden, the app icon is removed from the home screen launcher.
- * Users can still access the app via Quick Settings tile, URL scheme, or Manage Space,
- * which opens the Cache Management page.
+ * Users can still access the app via Quick Settings tile, URL scheme, or Manage Space.
  */
 object LauncherAliasManager {
 
