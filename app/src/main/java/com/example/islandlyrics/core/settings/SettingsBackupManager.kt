@@ -155,6 +155,22 @@ object SettingsBackupManager {
         return exportToZip(context, uri, allLeafIds, includeLyricCache)
     }
 
+    /** Full import – auto-detects ZIP vs legacy JSON. */
+    suspend fun importFromUri(
+        context: Context,
+        uri: Uri,
+        onProgress: suspend (ImportProgress) -> Unit = {}
+    ): ImportResult {
+        val allLeafIds = BackupCategories.ALL_CATEGORIES.flatMap { c ->
+            if (c.subGroups.isNotEmpty()) c.subGroups.map { it.id } else listOf(c.id)
+        }.toSet()
+        return if (isZipFile(context, uri)) {
+            importFromZip(context, uri, allLeafIds, onProgress = onProgress)
+        } else {
+            importSelected(context, uri, allLeafIds, onProgress = onProgress)
+        }
+    }
+
     // ── ZIP export (always ZIP format) ───────────────────────────────
 
     /**
