@@ -1047,6 +1047,7 @@
     <string name="online_lyric_debug_custom_artist">自訂比對歌手</string>
     <string name="online_lyric_debug_save">儲存至快取</string>
     <string name="online_lyric_debug_clear_custom">清除自訂</string>
+    <string name="online_lyric_debug_import_current_playback">匯入目前播放</string>
     <string name="online_lyric_debug_live_status">即時狀態</string>
     <string name="online_lyric_debug_lyric_source_fmt">歌詞來源: %1$s / %2$s</string>
     <string name="online_lyric_debug_current_lyric_fmt">目前歌詞: %1$s</string>
@@ -1115,6 +1116,7 @@
     <string name="online_lyric_debug_snapshot_status">結果來自最近自動獲取 (%1$s) · 可重新比對</string>
     <string name="online_lyric_debug_error_no_song">請先輸入歌曲名稱</string>
     <string name="online_lyric_debug_error_empty_override">覆寫內容不可為空</string>
+    <string name="online_lyric_debug_imported_current_playback">已匯入目前播放資訊</string>
     <string name="online_lyric_debug_override_saved">自訂覆寫已儲存</string>
     <string name="online_lyric_debug_override_cleared">自訂覆寫已清除</string>
     <string name="online_lyric_debug_instrumental_status">純音樂標記狀態</string>

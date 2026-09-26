@@ -467,6 +467,18 @@ class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(app
         _customMatchArtist.value = value
     }
 
+    fun importCurrentPlaybackToCustomMatch() {
+        val mediaInfo = liveMetadata.value
+        if (mediaInfo == null || (mediaInfo.title.isBlank() && mediaInfo.artist.isBlank())) {
+            _error.value = s(R.string.online_lyric_debug_error_no_song)
+            return
+        }
+        _customMatchTitle.value = mediaInfo.title.trim()
+        _customMatchArtist.value = mediaInfo.artist.trim()
+        _error.value = null
+        _cacheStatus.value = s(R.string.online_lyric_debug_imported_current_playback)
+    }
+
     fun rematchWithCurrentPlayback() {
         val mediaInfo = liveMetadata.value
         if (mediaInfo == null || (mediaInfo.title.isBlank() && mediaInfo.artist.isBlank())) {
