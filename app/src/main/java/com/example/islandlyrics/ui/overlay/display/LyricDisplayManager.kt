@@ -164,12 +164,6 @@ class LyricDisplayManager(private val context: Context) {
     fun start() {
         if (isRunning) return
         isRunning = true
-
-        // The output renderers may have been stopped while the same track was
-        // still active.  A fresh start must always publish one complete state;
-        // otherwise the tick cache can mistake the first frame for a duplicate
-        // of the last frame emitted before the stop.
-        invalidateTickCache()
         
         val prefs = AppPreferences.of(context)
         displayConfig = OverlayDisplayConfig.from(prefs)
@@ -197,8 +191,6 @@ class LyricDisplayManager(private val context: Context) {
     fun stop() {
         if (!isRunning) return
         isRunning = false
-
-        invalidateTickCache()
         
         AppPreferences.of(context).unregisterOnSharedPreferenceChangeListener(prefChangeListener)
         
@@ -210,9 +202,6 @@ class LyricDisplayManager(private val context: Context) {
     
     fun forceUpdate() {
         // Run tick immediately without waiting for timer
-        // A force update is also used when a renderer is attached or a new
-        // track arrives.  It must bypass the tick-level de-duplication cache.
-        invalidateTickCache()
         if (isRunning) {
             if (immediateUpdateQueued) return
             immediateUpdateQueued = true
@@ -221,11 +210,6 @@ class LyricDisplayManager(private val context: Context) {
         } else {
             pendingImmediateUpdate = true
         }
-    }
-
-    private fun invalidateTickCache() {
-        lastTickInputHash = 0
-        lastTickProgressPercent = -1
     }
 
     fun notifyLyricChanged(newLyric: String) {

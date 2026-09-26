@@ -151,8 +151,6 @@ class FloatingLyricsRenderer(private val context: Context) {
     private var displayConfig = FloatingLyricsDisplayConfig.from(prefs())
     private var chrome = FloatingLyricsChrome.from(prefs())
     private var crossWindowBlurEnabled = false
-    /** Desired lifecycle state.  Unlike [isRunning], this includes queued work. */
-    private var shouldBeRunning = false
 
     private val crossWindowBlurListener = Consumer<Boolean> { enabled ->
         mainHandler.post {
@@ -226,44 +224,30 @@ class FloatingLyricsRenderer(private val context: Context) {
     // ── Public API ────────────────────────────────────────────────────────────
 
     fun start() {
-        if (shouldBeRunning) return
+        if (isRunning) return
         if (!Settings.canDrawOverlays(context)) {
             Log.w(TAG, "SYSTEM_ALERT_WINDOW not granted"); return
         }
-        shouldBeRunning = true
         mainHandler.post {
-            // A stop request may have cancelled this queued start.
-            if (!shouldBeRunning || isRunning) return@post
             prefs().registerOnSharedPreferenceChangeListener(prefChangeListener)
             loadPrefs()
-            if (!attachWindow()) {
-                prefs().unregisterOnSharedPreferenceChangeListener(prefChangeListener)
-                shouldBeRunning = false
-                return@post
-            }
+            attachWindow()
             switchToExpanded()
         }
     }
 
     fun stop() {
-        if (!shouldBeRunning && !isRunning) return
-        shouldBeRunning = false
+        if (!isRunning) return
         mainHandler.post {
-            // A newer start request supersedes this queued stop.
-            if (shouldBeRunning || !isRunning) return@post
             prefs().unregisterOnSharedPreferenceChangeListener(prefChangeListener)
             detachWindow() 
         }
     }
 
     fun render(state: UIState) {
-        // Keep the latest state even while the window is being attached.  The
-        // first state often arrives before the asynchronous Dialog mount.
+        if (!isRunning) return
         lastState = state
-        if (!isRunning || !shouldBeRunning) return
-        mainHandler.post {
-            if (isRunning && shouldBeRunning) applyState(state)
-        }
+        mainHandler.post { applyState(state) }
     }
 
     // ── Prefs ─────────────────────────────────────────────────────────────────
@@ -279,8 +263,8 @@ class FloatingLyricsRenderer(private val context: Context) {
 
     // ── Window ────────────────────────────────────────────────────────────────
 
-    private fun attachWindow(): Boolean {
-        if (isRunning) return true
+    private fun attachWindow() {
+        if (isRunning) return
 
         val windowManager = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
         wm = windowManager
@@ -337,7 +321,7 @@ class FloatingLyricsRenderer(private val context: Context) {
             setCancelable(false)
             setCanceledOnTouchOutside(false)
         }
-        val window = dialog.window ?: return false
+        val window = dialog.window ?: return
         window.setType(WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY)
         window.setGravity(Gravity.TOP or Gravity.CENTER_HORIZONTAL)
         window.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
@@ -354,7 +338,6 @@ class FloatingLyricsRenderer(private val context: Context) {
         isRunning = true
         windowManager.addCrossWindowBlurEnabledListener(crossWindowBlurListener)
         Log.i(TAG, "Floating lyrics overlay attached")
-        return true
     }
 
     private fun detachWindow() {
@@ -372,10 +355,7 @@ class FloatingLyricsRenderer(private val context: Context) {
         minimalAlbumArtIv = null; expandedAlbumArtIv = null
         minimalContainer = null; expandedContainer = null
         minimalTextBackgroundContainer = null
-        // Keep lastState so a subsequent asynchronous start can render the
-        // latest track immediately even if the display manager emits no new
-        // state between stop and start.
-        currentState = DisplayState.MINIMAL
+        lastState = null; currentState = DisplayState.MINIMAL
         lastAppliedSnapshot = null
         completedWordAnimationLine = null
         crossWindowBlurEnabled = false
