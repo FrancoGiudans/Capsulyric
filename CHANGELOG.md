@@ -1,17 +1,16 @@
 <!--
-发版说明（保护分支后流程）：新建一个标题包含 [release] 的 PR 来修改本文件，
-合入 develop / main 后自动发版。
+发版说明：PR 修改本文件，最终合并提交保留以 [release] 开头的标题行。
+合入 develop 发布 Preview；合入 main 发布 Stable。频道由目标分支决定。
+正式发版使用 develop -> main 的 PR，并选择 Create a merge commit，禁止 squash/rebase。
+完整流程见 docs/RELEASING.md。
 
 PR 标题示例：
-  [release]              → 自动版本（如 26.9.Stable_C1234）
-  [release]26.9.1        → 26.9.1.Stable_C{commitCount}
-  [release]26.9.Preview  → 预览版（pre-release）
+  [release]              → 按日期自动版本，频道由分支决定
+  [release]26.9.1        → main: Stable；develop: Preview
+  [release]26.9.Preview  → 仅允许 develop
 
-下方 Preview 设为 `true` 可强制预发版（优先级高于 PR 标题）。
+手动发版也仅允许 main / develop；不再使用 Preview 元数据覆盖频道。
 -->
-
-## Release Metadata
-- **Preview**: `false`
 
 ## Release Highlights
 ### 🇨🇳
