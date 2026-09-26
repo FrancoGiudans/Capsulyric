@@ -27,6 +27,9 @@ jobs:
         with:
           fetch-depth: 1
 
+      - name: Test release policy
+        run: bash .github/scripts/test_resolve_release.sh
+
       - name: Set up JDK 26
         uses: actions/setup-java@v5
         with:

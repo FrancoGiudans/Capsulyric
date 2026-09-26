@@ -23,7 +23,8 @@ jobs:
   release:
     if: |
       github.event_name == 'workflow_dispatch' ||
-      contains(github.event.head_commit.message, '[release]')
+      startsWith(github.event.head_commit.message, '[release]') ||
+      contains(github.event.head_commit.message, format('{0}[release]', fromJSON('"\n"')))
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -54,68 +55,23 @@ jobs:
       # ============================================================
       # Step 2: Parse commit message, CHANGELOG.md, and codename
       # ============================================================
+      - name: Resolve release branch and version
+        id: release_policy
+        env:
+          HEAD_COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+          RELEASE_VERSION: ${{ inputs.version }}
+        run: bash .github/scripts/resolve_release.sh
+
       - name: Parse Metadata
         id: meta
         shell: bash
         run: |
           set -e
 
-          # --- Parse commit message or workflow_dispatch input ---
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            RAW="${{ inputs.version }}"
-            echo "Manual trigger — version input: '${RAW}'"
-          else
-            COMMIT_MSG="${{ github.event.head_commit.message }}"
-            # Protected branches: the marker arrives via the PR title inside a
-            # merge/squash commit message, so take the first line containing it.
-            RAW=$(echo "$COMMIT_MSG" | grep -m 1 -o '\[release\].*' | sed -E 's/^\[release\][[:space:]]*//' | xargs || true)
-            echo "Commit raw version input: '${RAW}'"
-          fi
-
-          # Auto prefix: YY.M (Shanghai timezone)
-          AUTO_PREFIX="$(TZ=Asia/Shanghai date +'%y').$(TZ=Asia/Shanghai date +'%-m')"
-
-          # Defaults
-          CHANNEL="Stable"
-          VERSION_NUMS=""
-
-          if [ -z "$RAW" ]; then
-            # Bare [release] -> auto everything
-            CHANNEL="Stable"
-            VERSION_NUMS=""
-          else
-            # Check if last dot-separated segment is a channel word
-            LAST_PART=$(echo "$RAW" | grep -oE '[^.]+$' || echo "")
-            LAST_PART_LOWER=$(echo "$LAST_PART" | tr '[:upper:]' '[:lower:]')
-            case "$LAST_PART_LOWER" in
-              preview)
-                CHANNEL="Preview"
-                VERSION_NUMS="${RAW%.*}"
-                ;;
-              stable)
-                CHANNEL="Stable"
-                VERSION_NUMS="${RAW%.*}"
-                ;;
-              experiment)
-                CHANNEL="Experiment"
-                VERSION_NUMS="${RAW%.*}"
-                ;;
-              *)
-                # No channel word - entire RAW is version numbers
-                CHANNEL="Stable"
-                VERSION_NUMS="$RAW"
-                ;;
-            esac
-          fi
-
-          if [ -z "$VERSION_NUMS" ]; then
-            VERSION_PREFIX="$AUTO_PREFIX"
-          else
-            VERSION_PREFIX="${VERSION_NUMS}"
-          fi
-
-          echo "version_prefix=${VERSION_PREFIX}" >> $GITHUB_OUTPUT
-          echo "channel=${CHANNEL}" >> $GITHUB_OUTPUT
+          VERSION_PREFIX="${{ steps.release_policy.outputs.version_prefix }}"
+          CHANNEL="${{ steps.release_policy.outputs.channel }}"
+          echo "version_prefix=${VERSION_PREFIX}" >> "$GITHUB_OUTPUT"
+          echo "channel=${CHANNEL}" >> "$GITHUB_OUTPUT"
 
           # --- Determine prerelease flag ---
           IS_PRERELEASE="false"
@@ -195,36 +151,6 @@ jobs:
             echo "$((TOTAL_LINES + 1))"
           }
 
-          # --- Parse Preview flag from Release Metadata section ---
-          CHANGELOG_PREVIEW=""
-          if [ -n "$META_LINE" ]; then
-            META_END=$(next_heading_after "$META_LINE")
-            META_SECTION=$(sed -n "${META_LINE},$((META_END - 1))p" CHANGELOG.md || true)
-            CHANGELOG_PREVIEW=$(echo "$META_SECTION" | grep -i 'preview' | grep -oE '`(true|false)`' | tr -d '`' | head -n 1 || true)
-          fi
-          echo "CHANGELOG Preview flag: '${CHANGELOG_PREVIEW:-not set}'"
-
-          if [ "${CHANGELOG_PREVIEW,,}" = "true" ]; then
-            echo "CHANGELOG overrides: Preview=true"
-
-            # Override channel to Preview (CHANGELOG flag always wins)
-            CHANNEL="Preview"
-            IS_PRERELEASE="true"
-            BUILD_TYPE="Prerelease"
-            APK_DIR="app/build/outputs/apk/prerelease"
-            SIGNED_APK="${APK_DIR}/app-prerelease-signed.apk"
-
-            # Recompute version name and tag with the new channel
-            VERSION_NAME="${VERSION_PREFIX}.${CHANNEL}_C${COMMIT_COUNT}"
-            TAG_NAME="Version.${VERSION_NAME}"
-
-            echo "channel=${CHANNEL}" >> $GITHUB_OUTPUT
-            echo "version_name=${VERSION_NAME}" >> $GITHUB_OUTPUT
-            echo "tag_name=${TAG_NAME}" >> $GITHUB_OUTPUT
-            echo "build_type=${BUILD_TYPE}" >> $GITHUB_OUTPUT
-            echo "apk_dir=${APK_DIR}" >> $GITHUB_OUTPUT
-            echo "signed_apk=${SIGNED_APK}" >> $GITHUB_OUTPUT
-          fi
           echo "is_prerelease=${IS_PRERELEASE}" >> $GITHUB_OUTPUT
 
           # --- Extract release highlights ---
