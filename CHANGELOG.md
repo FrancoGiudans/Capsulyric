@@ -11,7 +11,7 @@ PR 标题示例：
 -->
 
 ## Release Metadata
-- **Preview**: `false`
+- **Preview**: `true`
 
 ## Release Highlights
 ### 🇨🇳
