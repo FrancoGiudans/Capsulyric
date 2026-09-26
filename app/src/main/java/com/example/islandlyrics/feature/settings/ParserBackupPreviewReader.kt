@@ -239,12 +239,6 @@ fun BackupImportStatus.visibleStages(): List<ImportStage> {
             return@buildList
         }
 
-        if (
-            selectedSensitiveItemIds.isNotEmpty() ||
-                progress.stage == ImportStage.VERIFYING_SENSITIVE_DATA
-        ) {
-            add(ImportStage.VERIFYING_SENSITIVE_DATA)
-        }
         if (isZip || progress.stage == ImportStage.EXTRACTING_ARCHIVE) {
             add(ImportStage.EXTRACTING_ARCHIVE)
         }

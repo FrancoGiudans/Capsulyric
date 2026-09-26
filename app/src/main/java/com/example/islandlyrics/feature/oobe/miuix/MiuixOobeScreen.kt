@@ -261,18 +261,7 @@ fun MiuixOobeScreen(
                 }
                 onImportAndFinish(message)
             } else {
-                if (selectedSensitiveItemIds.isNotEmpty()) {
-                    showSensitiveImportPasswordDialog = true
-                }
-                Toast.makeText(
-                    context,
-                    if (selectedSensitiveItemIds.isNotEmpty()) {
-                        sensitivePasswordInvalidText
-                    } else {
-                        backupImportFailedText
-                    },
-                    Toast.LENGTH_SHORT
-                ).show()
+                Toast.makeText(context, backupImportFailedText, Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -520,7 +509,16 @@ fun MiuixOobeScreen(
             description = stringResource(R.string.backup_sensitive_password_import_description),
             requireConfirmation = false,
             onSubmit = { password ->
-                if (pendingImportUri == null || pendingImportPreview == null) {
+                val uri = pendingImportUri
+                val preview = pendingImportPreview
+                val valid = uri != null && preview != null &&
+                    SettingsBackupManager.verifySensitiveImport(
+                        context,
+                        uri,
+                        selectedSensitiveImportItems,
+                        password.toCharArray()
+                    )
+                if (!valid) {
                     sensitivePasswordInvalidText
                 } else {
                     pendingSensitiveImportPassword?.fill('\u0000')
@@ -536,6 +534,10 @@ fun MiuixOobeScreen(
                 val selectedSensitiveItems = selectedSensitiveImportItems
                 val selectedLeafIds = selectedImportCategories - selectedSensitiveItems
                 pendingSensitiveImportPassword = null
+                pendingImportUri = null
+                pendingImportPreview = null
+                selectedSensitiveImportItems = emptySet()
+                selectedImportCategories = emptySet()
                 if (uri != null && preview != null && password != null) {
                     importOobeBackup(
                         uri,
