@@ -178,7 +178,6 @@ internal object CandidateMatcher {
         return when {
             cleanTarget.isBlank() || cleanMatched.isBlank() -> -30
             cleanMatched == cleanTarget -> 20
-            JapaneseRomajiMatcher.areEquivalent(cleanTarget, cleanMatched) -> 24
             cleanMatched.contains(cleanTarget) || cleanTarget.contains(cleanMatched) -> 8
             else -> -30
         }
