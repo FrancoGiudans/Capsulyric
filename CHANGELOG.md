@@ -16,8 +16,23 @@ PR 标题示例：
 ## Release Highlights
 <img src="https://raw.githubusercontent.com/FrancoGiudans/Capsulyric/refs/heads/main/screenshots/logo26.8.png" width="100%" />
 
-### 🇨🇳
-- 只写用户可感知的发布重点，一句话一条
+**功能更新**
+- 只写用户可感知的变化，一句话一条
 
-### 🇬🇧
-- Write user-facing release highlights only, one sentence per item
+**体验优化**
+- …
+
+**问题修复**
+- …
+
+---
+
+## English Highlights
+**Features**
+- …
+
+**Improvements**
+- …
+
+**Fixes**
+- …
