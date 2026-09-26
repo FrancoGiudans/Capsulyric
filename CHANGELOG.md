@@ -11,15 +11,13 @@ PR 标题示例：
 -->
 
 ## Release Metadata
-- **Preview**: `true`
+- **Preview**: `false`
 
 ## Release Highlights
+<img src="https://raw.githubusercontent.com/FrancoGiudans/Capsulyric/refs/heads/main/screenshots/logo26.8.png" width="100%" />
+
 ### 🇨🇳
-- 新增液态玻璃样式导航栏，优化拖拽交互与视觉效果。
-- 新增设置项搜索与快捷跳转，更快找到并打开所需设置。
-- 全面优化在线歌词匹配，提高识别命中率，并完善罗马音、Sidecar 与 TTML 歌词支持。
+- 只写用户可感知的发布重点，一句话一条
 
 ### 🇬🇧
-- Added a liquid glass navigation bar with smoother dragging and refined visual effects.
-- Added settings search and quick navigation to help you find and open settings faster.
-- Improved online lyrics matching accuracy, including better support for romanized, sidecar, and TTML lyrics.
+- Write user-facing release highlights only, one sentence per item
