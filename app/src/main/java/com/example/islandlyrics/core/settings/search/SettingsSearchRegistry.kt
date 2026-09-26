@@ -87,7 +87,7 @@ object SettingsSearchRegistry {
             breadcrumbResList = listOf(R.string.settings_general_header),
             keywords = listOf("推荐媒体应用", "推荐播放器", "自动推荐"),
             action = SettingsSearchAction.Navigate(
-                target = SettingsNavigationTarget.MAIN_SETTINGS,
+                target = SettingsNavigationTarget.APP_UI,
                 targetItemKey = "key_recommend_media_app"
             )
         ),
@@ -98,7 +98,7 @@ object SettingsSearchRegistry {
             breadcrumbResList = listOf(R.string.settings_general_header),
             keywords = listOf("发现新播放应用提示", "新应用提醒", "未配置应用"),
             action = SettingsSearchAction.Navigate(
-                target = SettingsNavigationTarget.MAIN_SETTINGS,
+                target = SettingsNavigationTarget.APP_UI,
                 targetItemKey = "key_new_playing_app_alert"
             )
         ),
@@ -109,7 +109,7 @@ object SettingsSearchRegistry {
             breadcrumbResList = listOf(R.string.settings_general_header),
             keywords = listOf("最近任务中隐藏", "后台隐藏", "多任务卡片"),
             action = SettingsSearchAction.Navigate(
-                target = SettingsNavigationTarget.MAIN_SETTINGS,
+                target = SettingsNavigationTarget.APP_UI,
                 targetItemKey = "key_hide_recents"
             )
         ),
@@ -300,7 +300,7 @@ object SettingsSearchRegistry {
             action = SettingsSearchAction.Navigate(
                 target = SettingsNavigationTarget.APP_UI,
                 tab = CustomSettingsTab.APP_UI,
-                targetItemKey = "key_theme_pure_black"
+                targetItemKey = "key_theme_dark_mode"
             )
         ),
         SettingsSearchItem(
@@ -343,7 +343,6 @@ object SettingsSearchRegistry {
             summaryRes = R.string.settings_theme_custom_color_global_tint_desc,
             breadcrumbResList = listOf(R.string.page_title_personalization, R.string.tab_app_ui),
             keywords = listOf("全局着色", "主题色覆盖", "全局色调"),
-            supportedVariants = setOf(SettingsUiVariant.MIUIX),
             action = SettingsSearchAction.Navigate(
                 target = SettingsNavigationTarget.APP_UI,
                 tab = CustomSettingsTab.APP_UI,
@@ -356,7 +355,6 @@ object SettingsSearchRegistry {
             summaryRes = R.string.settings_card_blur_desc,
             breadcrumbResList = listOf(R.string.page_title_personalization, R.string.tab_app_ui),
             keywords = listOf("高级材质", "毛玻璃", "卡片模糊", "透明", "模糊效果", "mbl", "blur"),
-            supportedVariants = setOf(SettingsUiVariant.MIUIX),
             action = SettingsSearchAction.Navigate(
                 target = SettingsNavigationTarget.APP_UI,
                 tab = CustomSettingsTab.APP_UI,
@@ -369,7 +367,6 @@ object SettingsSearchRegistry {
             summaryRes = R.string.settings_edge_highlight_texture_desc,
             breadcrumbResList = listOf(R.string.page_title_personalization, R.string.tab_app_ui),
             keywords = listOf("边缘高光", "高光纹理", "质感高光", "边缘反光"),
-            supportedVariants = setOf(SettingsUiVariant.MIUIX),
             action = SettingsSearchAction.Navigate(
                 target = SettingsNavigationTarget.APP_UI,
                 tab = CustomSettingsTab.APP_UI,
@@ -382,7 +379,6 @@ object SettingsSearchRegistry {
             summaryRes = R.string.settings_navigation_bar_style_desc,
             breadcrumbResList = listOf(R.string.page_title_personalization, R.string.tab_app_ui),
             keywords = listOf("导航栏样式", "浮动药丸", "药丸导航栏", "悬浮导航", "水滴导航"),
-            supportedVariants = setOf(SettingsUiVariant.MIUIX),
             action = SettingsSearchAction.Navigate(
                 target = SettingsNavigationTarget.APP_UI,
                 tab = CustomSettingsTab.APP_UI,
@@ -401,46 +397,7 @@ object SettingsSearchRegistry {
                 targetItemKey = "key_predictive_back"
             )
         ),
-        SettingsSearchItem(
-            id = "pref_edge_scroll_haptic",
-            titleRes = R.string.settings_edge_scroll_haptic_title,
-            summaryRes = R.string.settings_edge_scroll_haptic_desc,
-            breadcrumbResList = listOf(R.string.page_title_personalization, R.string.tab_app_ui),
-            keywords = listOf("边缘滚动触感", "滚动震动", "触感反馈"),
-            supportedVariants = setOf(SettingsUiVariant.MIUIX),
-            action = SettingsSearchAction.Navigate(
-                target = SettingsNavigationTarget.APP_UI,
-                tab = CustomSettingsTab.APP_UI,
-                targetItemKey = "key_edge_scroll_haptic"
-            )
-        ),
-        SettingsSearchItem(
-            id = "pref_home_lyric_preview",
-            titleRes = R.string.settings_home_lyric_preview_title,
-            summaryRes = R.string.settings_home_lyric_preview_summary_fmt,
-            breadcrumbResList = listOf(R.string.page_title_personalization, R.string.tab_app_ui),
-            keywords = listOf("首页歌词预览", "歌词预览", "首页显示歌词"),
-            action = SettingsSearchAction.Navigate(
-                target = SettingsNavigationTarget.APP_UI,
-                tab = CustomSettingsTab.APP_UI,
-                targetItemKey = "key_home_lyric_preview"
-            )
-        ),
 
-        // Material-only laboratory settings
-        SettingsSearchItem(
-            id = "pref_material_page_blur",
-            titleRes = R.string.diag_lab_material_blur_title,
-            summaryRes = R.string.diag_lab_material_blur_desc,
-            breadcrumbResList = listOf(R.string.settings_developer_mode_header, R.string.title_lab),
-            keywords = listOf("Material 模糊", "Material 毛玻璃", "页面模糊", "背景模糊"),
-            supportedVariants = setOf(SettingsUiVariant.MATERIAL),
-            isVisible = { LyricRepository.getInstance().devModeEnabled.value == true },
-            action = SettingsSearchAction.Navigate(
-                target = SettingsNavigationTarget.LAB,
-                targetItemKey = "key_material_page_blur"
-            )
-        ),
         // ═════════════════════════════════════════════════════════════════════
         // 二级设置项：灵动岛胶囊 (Capsule Tab)
         // ═════════════════════════════════════════════════════════════════════

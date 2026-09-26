@@ -31,9 +31,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
-import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.relocation.BringIntoViewRequester
-import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import com.example.islandlyrics.ui.material.blur.MaterialBlurAlertDialog
@@ -68,39 +65,14 @@ import com.example.islandlyrics.feature.settings.material.SettingsSwitchItem
 import com.example.islandlyrics.ui.theme.material.materialPageContainerColor
 import com.example.islandlyrics.ui.material.blur.MaterialBlurScaffold
 import com.example.islandlyrics.ui.theme.material.MaterialBlurTopAppBar
-import com.example.islandlyrics.ui.material.search.materialSettingHighlight
-import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LabScreen(
     onBack: () -> Unit,
-    targetItemKey: String? = null,
     onOpenCapsuleNotification: (() -> Unit)? = null
 ) {
     val context = LocalContext.current
-    val listState = rememberLazyListState()
-    val targetBringIntoViewRequester = androidx.compose.runtime.remember { BringIntoViewRequester() }
-    var activeTargetKey by remember(targetItemKey) { mutableStateOf(targetItemKey) }
-    @Composable
-    fun targetModifier(key: String): Modifier {
-        val targetModifier = if (activeTargetKey == key) {
-            Modifier.bringIntoViewRequester(targetBringIntoViewRequester)
-        } else {
-            Modifier
-        }
-        return targetModifier.materialSettingHighlight(
-            targetKey = activeTargetKey,
-            currentKey = key,
-            onHighlightComplete = { activeTargetKey = null }
-        )
-    }
-    androidx.compose.runtime.LaunchedEffect(targetItemKey) {
-        if (targetItemKey != null) {
-            delay(120)
-            targetBringIntoViewRequester.bringIntoView()
-        }
-    }
     var offlineModeEnabled by remember { mutableStateOf(OfflineModeManager.isEnabled(context)) }
     var superIslandAdvancedStyleEnabled by remember {
         mutableStateOf(LabFeatureManager.isSuperIslandAdvancedStyleEnabled(context))
@@ -150,7 +122,6 @@ fun LabScreen(
         containerColor = materialPageContainerColor()
     ) { padding ->
         androidx.compose.foundation.lazy.LazyColumn(
-            state = listState,
             modifier = Modifier.fillMaxSize(),
             contentPadding = androidx.compose.foundation.layout.PaddingValues(
                 start = padding.calculateStartPadding(androidx.compose.ui.platform.LocalLayoutDirection.current),
@@ -311,7 +282,6 @@ fun LabScreen(
                         title = stringResource(R.string.diag_lab_material_blur_title),
                         subtitle = stringResource(R.string.diag_lab_material_blur_desc),
                         checked = materialBlurEnabled,
-                        modifier = targetModifier("key_material_page_blur"),
                         onCheckedChange = {
                             materialBlurEnabled = it
                             LabFeatureManager.setMaterialBlurEnabled(context, it)

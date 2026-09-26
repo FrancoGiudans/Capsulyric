@@ -33,15 +33,12 @@ import com.example.islandlyrics.ui.miuix.theme.MiuixAppTheme
 import com.example.islandlyrics.feature.customsettings.material.CustomSettingsScreen
 import com.example.islandlyrics.ui.theme.material.IslandLyricsMaterialTheme
 import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.res.stringResource
 
 class CustomSettingsActivity : BaseActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
-        window.isNavigationBarContrastEnforced = false
         setContent {
             if (isMiuixEnabled(this@CustomSettingsActivity)) {
                 MiuixAppTheme {

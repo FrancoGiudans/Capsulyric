@@ -510,7 +510,6 @@ class MainActivity : BaseActivity() {
         }
         fun handleNavigate(action: SettingsSearchAction.Navigate) {
             when (action.target) {
-                SettingsNavigationTarget.MAIN_SETTINGS -> Unit
                 SettingsNavigationTarget.CAPSULE_NOTIFICATION -> pushPage(AppPage.CapsuleNotification(initialTab = action.tab, targetItemKey = action.targetItemKey))
                 SettingsNavigationTarget.APP_UI -> pushPage(AppPage.CustomSettings(targetItemKey = action.targetItemKey))
                 SettingsNavigationTarget.DESKTOP_LYRICS -> pushPage(AppPage.DesktopLyrics(targetItemKey = action.targetItemKey))

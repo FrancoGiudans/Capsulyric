@@ -72,7 +72,6 @@ import com.example.islandlyrics.feature.customsettings.material.DesktopLyricsScr
 import com.example.islandlyrics.ui.theme.material.IslandLyricsMaterialTheme
 import android.widget.Toast
 import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
@@ -90,8 +89,6 @@ class SettingsActivity : BaseActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
-        window.isNavigationBarContrastEnforced = false
         
         // Retrieve version info
         var version = "Unknown"
@@ -118,7 +115,6 @@ class SettingsActivity : BaseActivity() {
                     }
                     fun handleNavigate(action: SettingsSearchAction.Navigate) {
                         when (action.target) {
-                            SettingsNavigationTarget.MAIN_SETTINGS -> Unit
                             SettingsNavigationTarget.CAPSULE_NOTIFICATION -> pushPage(SettingsPage.CapsuleNotification(initialTab = action.tab, targetItemKey = action.targetItemKey))
                             SettingsNavigationTarget.APP_UI -> pushPage(SettingsPage.CustomSettings(targetItemKey = action.targetItemKey))
                             SettingsNavigationTarget.DESKTOP_LYRICS -> pushPage(SettingsPage.DesktopLyrics(targetItemKey = action.targetItemKey))
@@ -131,7 +127,7 @@ class SettingsActivity : BaseActivity() {
                             SettingsNavigationTarget.COMMUNITY -> pushPage(SettingsPage.Community)
                             SettingsNavigationTarget.ABOUT -> pushPage(SettingsPage.About)
                             SettingsNavigationTarget.DIAGNOSTICS -> pushPage(SettingsPage.Diagnostics)
-                            SettingsNavigationTarget.LAB -> pushPage(SettingsPage.Lab(targetItemKey = action.targetItemKey))
+                            SettingsNavigationTarget.LAB -> pushPage(SettingsPage.Lab)
                             SettingsNavigationTarget.PARSER_RULES -> startActivity(android.content.Intent(this@SettingsActivity, com.example.islandlyrics.feature.parserrule.ParserRuleActivity::class.java))
                         }
                     }
@@ -175,7 +171,7 @@ class SettingsActivity : BaseActivity() {
                                     onOpenOnlineLyricRematch = { pushPage(SettingsPage.OnlineLyricDebug) },
                                     onOpenLastFm = { pushPage(SettingsPage.LastFm) },
                                     onOpenCacheManagement = { pushPage(SettingsPage.CacheManagement) },
-                                    onOpenLab = { pushPage(SettingsPage.Lab()) },
+                                    onOpenLab = { pushPage(SettingsPage.Lab) },
                                     onNavigateAction = ::handleNavigate,
                                     updateReleaseInfo = updateReleaseInfo,
                                     onUpdateDismiss = { updateReleaseInfo = null },
@@ -207,25 +203,6 @@ class SettingsActivity : BaseActivity() {
                     fun popPage() {
                         if (pageStack.isNotEmpty()) pageStack.removeAt(pageStack.lastIndex)
                     }
-                    fun handleNavigate(action: SettingsSearchAction.Navigate) {
-                        when (action.target) {
-                            SettingsNavigationTarget.MAIN_SETTINGS -> Unit
-                            SettingsNavigationTarget.CAPSULE_NOTIFICATION -> pushPage(SettingsPage.CapsuleNotification(initialTab = action.tab, targetItemKey = action.targetItemKey))
-                            SettingsNavigationTarget.APP_UI -> pushPage(SettingsPage.CustomSettings(targetItemKey = action.targetItemKey))
-                            SettingsNavigationTarget.DESKTOP_LYRICS -> pushPage(SettingsPage.DesktopLyrics(targetItemKey = action.targetItemKey))
-                            SettingsNavigationTarget.LOCAL_LYRIC_DIRECTORIES -> pushPage(SettingsPage.LocalLyricDirectories)
-                            SettingsNavigationTarget.CACHE_MANAGEMENT -> pushPage(SettingsPage.CacheManagement)
-                            SettingsNavigationTarget.ONLINE_LYRIC_REMATCH -> pushPage(SettingsPage.OnlineLyricDebug)
-                            SettingsNavigationTarget.LAST_FM -> pushPage(SettingsPage.LastFm)
-                            SettingsNavigationTarget.APPLE_MUSIC -> startActivity(android.content.Intent(this@SettingsActivity, com.example.islandlyrics.feature.applemusic.AppleMusicSettingsActivity::class.java))
-                            SettingsNavigationTarget.FAQ -> pushPage(SettingsPage.Faq)
-                            SettingsNavigationTarget.COMMUNITY -> pushPage(SettingsPage.Community)
-                            SettingsNavigationTarget.ABOUT -> pushPage(SettingsPage.About)
-                            SettingsNavigationTarget.DIAGNOSTICS -> pushPage(SettingsPage.Diagnostics)
-                            SettingsNavigationTarget.LAB -> pushPage(SettingsPage.Lab(targetItemKey = action.targetItemKey))
-                            SettingsNavigationTarget.PARSER_RULES -> startActivity(android.content.Intent(this@SettingsActivity, com.example.islandlyrics.feature.parserrule.ParserRuleActivity::class.java))
-                        }
-                    }
                     PredictiveBackActivity(enabled = pageStack.isEmpty()) {
                         PageStackHost(
                             stack = pageStack,
@@ -254,8 +231,7 @@ class SettingsActivity : BaseActivity() {
                                     onOpenOnlineLyricRematch = { pushPage(SettingsPage.OnlineLyricDebug) },
                                     onOpenLastFm = { pushPage(SettingsPage.LastFm) },
                                     onOpenCacheManagement = { pushPage(SettingsPage.CacheManagement) },
-                                    onOpenLab = { pushPage(SettingsPage.Lab()) },
-                                    onNavigateAction = ::handleNavigate
+                                    onOpenLab = { pushPage(SettingsPage.Lab) }
                                 )
 
                                 if (updateReleaseInfo != null) {
@@ -274,7 +250,6 @@ class SettingsActivity : BaseActivity() {
                                     page = page,
                                     onBack = ::popPage,
                                     onPushPage = ::pushPage,
-                                    onNavigate = ::handleNavigate,
                                     updateVersionText = version,
                                     updateBuildText = build
                                 )
@@ -291,27 +266,13 @@ class SettingsActivity : BaseActivity() {
         page: SettingsPage,
         onBack: () -> Unit,
         onPushPage: (SettingsPage) -> Unit,
-        onNavigate: (SettingsSearchAction.Navigate) -> Unit,
         updateVersionText: String,
         updateBuildText: String
     ) {
         when (page) {
-            is SettingsPage.CustomSettings -> AppUiScreen(
-                onBack = onBack,
-                targetItemKey = page.targetItemKey,
-                onNavigate = onNavigate
-            )
-            is SettingsPage.CapsuleNotification -> CapsuleNotificationScreen(
-                onBack = onBack,
-                targetItemKey = page.targetItemKey,
-                initialTab = page.initialTab,
-                onNavigate = onNavigate
-            )
-            is SettingsPage.DesktopLyrics -> DesktopLyricsScreen(
-                onBack = onBack,
-                targetItemKey = page.targetItemKey,
-                onNavigate = onNavigate
-            )
+            is SettingsPage.CustomSettings -> AppUiScreen(onBack = onBack)
+            is SettingsPage.CapsuleNotification -> CapsuleNotificationScreen(onBack = onBack)
+            is SettingsPage.DesktopLyrics -> DesktopLyricsScreen(onBack = onBack)
             SettingsPage.Community -> CommunityScreen(onBack = onBack)
             SettingsPage.LocalLyricDirectories -> LocalLyricDirectoriesScreen(
                 onBack = onBack,
@@ -343,11 +304,7 @@ class SettingsActivity : BaseActivity() {
             SettingsPage.OnlineLyricDebug -> OnlineLyricDebugScreen(onBack = onBack)
             SettingsPage.LastFm -> LastFmSettingsScreen(onBack = onBack)
             SettingsPage.CacheManagement -> CacheManagementScreen(onBack = onBack)
-            is SettingsPage.Lab -> LabScreen(
-                onBack = onBack,
-                targetItemKey = page.targetItemKey,
-                onOpenCapsuleNotification = { onPushPage(SettingsPage.CapsuleNotification()) }
-            )
+            SettingsPage.Lab -> LabScreen(onBack = onBack, onOpenCapsuleNotification = { onPushPage(SettingsPage.CapsuleNotification()) })
             SettingsPage.LogViewer -> LogViewerScreen(onBack = onBack)
             is SettingsPage.LocalLyricDirectory -> LocalLyricDirectoryScreen(
                 directoryUri = page.directoryUri.toUri(),
@@ -414,11 +371,7 @@ class SettingsActivity : BaseActivity() {
             SettingsPage.OnlineLyricDebug -> MiuixOnlineLyricDebugScreen(onBack = onBack)
             SettingsPage.LastFm -> MiuixLastFmSettingsScreen(onBack = onBack)
             SettingsPage.CacheManagement -> MiuixCacheManagementScreen(onBack = onBack)
-            is SettingsPage.Lab -> MiuixLabScreen(
-                onBack = onBack,
-                targetItemKey = page.targetItemKey,
-                onOpenCapsuleNotification = { onPushPage(SettingsPage.CapsuleNotification()) }
-            )
+            SettingsPage.Lab -> MiuixLabScreen(onBack = onBack, onOpenCapsuleNotification = { onPushPage(SettingsPage.CapsuleNotification()) })
             SettingsPage.LogViewer -> MiuixLogViewerScreen(onBack = onBack)
             is SettingsPage.LocalLyricDirectory -> MiuixLocalLyricDirectoryScreen(
                 directoryUri = page.directoryUri.toUri(),
@@ -558,7 +511,7 @@ private sealed class SettingsPage {
     data object OnlineLyricDebug : SettingsPage()
     data object LastFm : SettingsPage()
     data object CacheManagement : SettingsPage()
-    data class Lab(val targetItemKey: String? = null) : SettingsPage()
+    data object Lab : SettingsPage()
     data object LogViewer : SettingsPage()
     data class LocalLyricDirectory(
         val directoryUri: String,

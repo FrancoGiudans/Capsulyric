@@ -62,10 +62,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.relocation.BringIntoViewRequester
-import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
@@ -75,7 +72,6 @@ import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
@@ -95,14 +91,12 @@ import androidx.compose.material.icons.automirrored.filled.Help
 import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.BatterySaver
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Upload
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Science
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -116,17 +110,10 @@ import com.example.islandlyrics.core.settings.SettingsBackupManager.ParserConfli
 import com.example.islandlyrics.core.settings.BackupCategories
 import com.example.islandlyrics.core.settings.SettingsBackupManager.PreviewResult
 import com.example.islandlyrics.core.settings.LabFeatureManager
-import com.example.islandlyrics.core.settings.search.MainSettingsDialogType
-import com.example.islandlyrics.core.settings.search.SettingsNavigationTarget
-import com.example.islandlyrics.core.settings.search.SettingsSearchAction
-import com.example.islandlyrics.core.settings.search.SettingsSearchEngine
-import com.example.islandlyrics.core.settings.search.SettingsSearchHistoryStore
-import com.example.islandlyrics.core.settings.search.SettingsUiVariant
 import com.example.islandlyrics.runtime.service.MediaMonitorService
 import com.example.islandlyrics.runtime.playingapp.NewPlayingAppNotifier
 import com.example.islandlyrics.ui.material.blur.MaterialBlurScaffold
 import com.example.islandlyrics.ui.theme.material.MaterialBlurTopAppBar
-import com.example.islandlyrics.ui.material.search.materialSettingHighlight
 import androidx.core.net.toUri
 import kotlinx.coroutines.launch
 import java.util.Locale
@@ -153,7 +140,6 @@ fun SettingsScreen(
     onOpenLastFm: (() -> Unit)? = null,
     onOpenCacheManagement: (() -> Unit)? = null,
     onOpenLab: (() -> Unit)? = null,
-    onNavigateAction: ((SettingsSearchAction.Navigate) -> Unit)? = null,
     showBackButton: Boolean = true,
     extraBottomPadding: androidx.compose.ui.unit.Dp = 0.dp
 ) {
@@ -175,48 +161,6 @@ fun SettingsScreen(
     val devModeEnabled by LyricRepository.getInstance().devModeEnabled.observeAsState(false)
     var floatingLyricsLabEnabled by remember { mutableStateOf(LabFeatureManager.isFloatingLyricsEnabled(prefs)) }
     val offlineModeEnabled = OfflineModeManager.isEnabled(context)
-    val mainSettingBringIntoViewRequester = remember { BringIntoViewRequester() }
-    var mainSettingHighlightKey by remember { mutableStateOf<String?>(null) }
-
-    // Settings search state
-    var settingsSearchQuery by remember { mutableStateOf("") }
-    var settingsSearchExpanded by remember { mutableStateOf(false) }
-    var searchHistory by remember { mutableStateOf(emptyList<String>()) }
-    LaunchedEffect(settingsSearchExpanded) {
-        if (settingsSearchExpanded) {
-            searchHistory = SettingsSearchHistoryStore.getHistory(context)
-        }
-    }
-    val searchResults = remember(settingsSearchQuery, context) {
-        if (settingsSearchQuery.isNotBlank()) {
-            SettingsSearchEngine.search(context, settingsSearchQuery, SettingsUiVariant.MATERIAL)
-        } else {
-            emptyList()
-        }
-    }
-    var showLanguageDropdown by remember { mutableStateOf(false) }
-    var showPrivacyDialog by remember { mutableStateOf(false) }
-
-    @Composable
-    fun mainSettingModifier(key: String): Modifier {
-        val targetModifier = if (mainSettingHighlightKey == key) {
-            Modifier.bringIntoViewRequester(mainSettingBringIntoViewRequester)
-        } else {
-            Modifier
-        }
-        return targetModifier.materialSettingHighlight(
-            targetKey = mainSettingHighlightKey,
-            currentKey = key,
-            onHighlightComplete = { mainSettingHighlightKey = null }
-        )
-    }
-
-    LaunchedEffect(mainSettingHighlightKey) {
-        if (mainSettingHighlightKey != null) {
-            kotlinx.coroutines.delay(120)
-            mainSettingBringIntoViewRequester.bringIntoView()
-        }
-    }
 
     // Backup category selection states
     var showExportCategoryDialog by remember { mutableStateOf(false) }
@@ -396,66 +340,13 @@ fun SettingsScreen(
             }
         }
     }
-
-    fun handleSearchAction(action: SettingsSearchAction) {
-        when (action) {
-            is SettingsSearchAction.Navigate -> {
-                if (action.target == SettingsNavigationTarget.MAIN_SETTINGS) {
-                    settingsSearchExpanded = false
-                    settingsSearchQuery = ""
-                    mainSettingHighlightKey = action.targetItemKey
-                } else if (onNavigateAction != null) {
-                    onNavigateAction(action)
-                } else {
-                    when (action.target) {
-                        SettingsNavigationTarget.MAIN_SETTINGS -> Unit
-                        SettingsNavigationTarget.CAPSULE_NOTIFICATION -> onOpenCapsuleNotification()
-                        SettingsNavigationTarget.APP_UI -> onOpenCustomSettings()
-                        SettingsNavigationTarget.DESKTOP_LYRICS -> onOpenDesktopLyrics?.invoke() ?: onOpenCustomSettings()
-                        SettingsNavigationTarget.LOCAL_LYRIC_DIRECTORIES -> onOpenLocalLyricDirectories()
-                        SettingsNavigationTarget.CACHE_MANAGEMENT -> onOpenCacheManagement?.invoke() ?: Unit
-                        SettingsNavigationTarget.ONLINE_LYRIC_REMATCH -> onOpenOnlineLyricRematch?.invoke() ?: Unit
-                        SettingsNavigationTarget.LAST_FM -> onOpenLastFm?.invoke() ?: Unit
-                        SettingsNavigationTarget.APPLE_MUSIC -> context.startActivity(
-                            Intent(context, com.example.islandlyrics.feature.applemusic.AppleMusicSettingsActivity::class.java)
-                        )
-                        SettingsNavigationTarget.FAQ -> onOpenFaq?.invoke() ?: Unit
-                        SettingsNavigationTarget.COMMUNITY -> onOpenCommunity?.invoke() ?: Unit
-                        SettingsNavigationTarget.ABOUT -> onOpenAbout?.invoke() ?: Unit
-                        SettingsNavigationTarget.DIAGNOSTICS -> onShowDiagnostics()
-                        SettingsNavigationTarget.LAB -> onOpenLab?.invoke() ?: Unit
-                        SettingsNavigationTarget.PARSER_RULES -> context.startActivity(
-                            Intent(context, com.example.islandlyrics.feature.parserrule.ParserRuleActivity::class.java)
-                        )
-                    }
-                }
-            }
-            is SettingsSearchAction.TriggerDialog -> {
-                when (action.dialog) {
-                    MainSettingsDialogType.PRIVACY_NOTIFICATION_LISTENER -> showPrivacyDialog = true
-                    MainSettingsDialogType.HIDE_LAUNCHER -> showHideLauncherDialog = true
-                    MainSettingsDialogType.BACKUP_EXPORT -> showExportCategoryDialog = true
-                    MainSettingsDialogType.BACKUP_IMPORT -> {
-                        importSettingsLauncher.launch(arrayOf("application/zip", "application/json", "*/*"))
-                    }
-                    MainSettingsDialogType.LANGUAGE_PICKER -> showLanguageDropdown = true
-                }
-            }
-            is SettingsSearchAction.LaunchIntent -> {
-                try {
-                    context.startActivity(action.intentBuilder(context))
-                } catch (_: Exception) {
-                    // Ignore unavailable system settings on this device.
-                }
-            }
-        }
-    }
-
     var dynamicIconEnabled by remember { mutableStateOf(prefs.getBoolean("dynamic_icon_enabled", false)) }
     var iconStyle by remember { mutableStateOf(prefs.getString("dynamic_icon_style", "classic") ?: "classic") }
     
     // Dialog State
+    var showLanguageDropdown by remember { mutableStateOf(false) }
     var showIconStyleDialog by remember { mutableStateOf(false) }
+    var showPrivacyDialog by remember { mutableStateOf(false) }
     // Notification Action Style State
     var actionStyle by remember { mutableStateOf(prefs.getString("notification_actions_style", "disabled") ?: "disabled") }
     var showActionStyleDialog by remember { mutableStateOf(false) }
@@ -523,6 +414,7 @@ fun SettingsScreen(
 
 
     MaterialBlurScaffold(
+        contentWindowInsets = WindowInsets(0),
         snackbarHost = {
             Box(
                 modifier = Modifier
@@ -571,140 +463,6 @@ fun SettingsScreen(
                 bottom = paddingValues.calculateBottomPadding() + 24.dp + extraBottomPadding,
             )
         ) {
-            item {
-                TextField(
-                    value = settingsSearchQuery,
-                    onValueChange = {
-                        settingsSearchQuery = it
-                        settingsSearchExpanded = true
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 12.dp)
-                        .heightIn(min = 56.dp)
-                        .onFocusChanged { focusState ->
-                            if (focusState.isFocused) settingsSearchExpanded = true
-                        },
-                    singleLine = true,
-                    shape = RoundedCornerShape(28.dp),
-                    colors = TextFieldDefaults.colors(
-                        focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                        disabledContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                        focusedIndicatorColor = Color.Transparent,
-                        unfocusedIndicatorColor = Color.Transparent,
-                        disabledIndicatorColor = Color.Transparent,
-                    ),
-                    placeholder = { Text(stringResource(R.string.settings_search)) },
-                    leadingIcon = {
-                        Icon(Icons.Filled.Search, contentDescription = null)
-                    },
-                    trailingIcon = if (settingsSearchExpanded) {
-                        {
-                            IconButton(
-                                onClick = {
-                                    settingsSearchQuery = ""
-                                    settingsSearchExpanded = false
-                                }
-                            ) {
-                                Icon(
-                                    Icons.Filled.Close,
-                                    contentDescription = stringResource(R.string.backup_dialog_cancel)
-                                )
-                            }
-                        }
-                    } else {
-                        null
-                    }
-                )
-            }
-
-            if (settingsSearchExpanded) {
-                if (settingsSearchQuery.isBlank()) {
-                    if (searchHistory.isNotEmpty()) {
-                        item {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = stringResource(R.string.settings_search_history),
-                                    style = MaterialTheme.typography.titleMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                                TextButton(
-                                    onClick = {
-                                        SettingsSearchHistoryStore.clearHistory(context)
-                                        searchHistory = emptyList()
-                                    }
-                                ) {
-                                    Text(stringResource(R.string.settings_search_clear))
-                                }
-                            }
-                            searchHistory.forEach { historyQuery ->
-                                AssistChip(
-                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp),
-                                    onClick = { settingsSearchQuery = historyQuery },
-                                    label = { Text(historyQuery) }
-                                )
-                            }
-                        }
-                    }
-                } else if (searchResults.isEmpty()) {
-                    item {
-                        SettingsCard {
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(24.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
-                                Text(
-                                    text = stringResource(R.string.settings_search_no_results),
-                                    style = MaterialTheme.typography.titleMedium
-                                )
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Text(
-                                    text = stringResource(R.string.settings_search_no_results_desc),
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
-                    }
-                } else {
-                    item {
-                        SettingsCard {
-                            searchResults.forEach { match ->
-                                val summary = buildString {
-                                    append(match.breadcrumbText)
-                                    match.summary?.let {
-                                        append(" · ")
-                                        append(it)
-                                    }
-                                }
-                                SettingsActionItem(
-                                    title = match.title,
-                                    summary = summary,
-                                    icon = Icons.Filled.Search,
-                                    onClick = {
-                                        SettingsSearchHistoryStore.addHistory(context, settingsSearchQuery.trim())
-                                        searchHistory = SettingsSearchHistoryStore.getHistory(context)
-                                        settingsSearchExpanded = false
-                                        handleSearchAction(match.item.action)
-                                    }
-                                )
-                                if (match != searchResults.last()) {
-                                    SettingsCardDivider()
-                                }
-                            }
-                        }
-                    }
-                }
-            } else {
             item { SettingsSectionHeader(text = stringResource(R.string.settings_core_header)) }
             item {
                 SettingsCard {
@@ -771,7 +529,6 @@ fun SettingsScreen(
                         title = stringResource(R.string.settings_recommend_media_app),
                         subtitle = stringResource(R.string.settings_recommend_media_app_desc),
                         checked = recommendMediaAppEnabled,
-                        modifier = mainSettingModifier("key_recommend_media_app"),
                         onCheckedChange = {
                             recommendMediaAppEnabled = it
                             prefs.edit { putBoolean("recommend_media_app", it) }
@@ -784,7 +541,6 @@ fun SettingsScreen(
                         title = stringResource(R.string.settings_new_playing_app_alert),
                         subtitle = stringResource(R.string.settings_new_playing_app_alert_desc),
                         checked = newPlayingAppAlertEnabled,
-                        modifier = mainSettingModifier("key_new_playing_app_alert"),
                         onCheckedChange = {
                             newPlayingAppAlertEnabled = it
                             prefs.edit { putBoolean(NewPlayingAppNotifier.PREF_ENABLED, it) }
@@ -800,7 +556,6 @@ fun SettingsScreen(
                         title = stringResource(R.string.settings_hide_recents),
                         subtitle = stringResource(R.string.settings_hide_recents_desc),
                         checked = hideRecentsEnabled,
-                        modifier = mainSettingModifier("key_hide_recents"),
                         onCheckedChange = {
                             hideRecentsEnabled = it
                             prefs.edit { putBoolean("hide_recents_enabled", it) }
@@ -1000,7 +755,6 @@ fun SettingsScreen(
             }
 
             item { Spacer(modifier = Modifier.height(8.dp)) }
-            }
         }
 
         if (showPrivacyDialog) {
@@ -1851,12 +1605,10 @@ fun SettingsSwitchItem(
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
     enabled: Boolean = true,
-    onClick: (() -> Unit)? = null,
-    modifier: Modifier = Modifier
+    onClick: (() -> Unit)? = null
 ) {
     ListItem(
         modifier = Modifier
-            .then(modifier)
             .fillMaxWidth()
             .clickable(enabled = enabled) { onClick?.invoke() ?: onCheckedChange(!checked) },
         colors = ListItemDefaults.colors(
@@ -2034,12 +1786,10 @@ fun SettingsTextItem(
     title: String,
     subtitle: String? = null,
     value: String,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    onClick: () -> Unit
 ) {
     ListItem(
         modifier = Modifier
-            .then(modifier)
             .fillMaxWidth()
             .clickable(onClick = onClick),
         colors = ListItemDefaults.colors(

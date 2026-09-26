@@ -81,11 +81,10 @@ internal fun MaterialEditableColorSection(
     onColorChanged: (Color) -> Unit,
     onApply: () -> Unit,
     onCancel: () -> Unit,
-    onUseDefault: () -> Unit,
-    modifier: Modifier = Modifier
+    onUseDefault: () -> Unit
 ) {
     Column(
-        modifier = modifier
+        modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 20.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)

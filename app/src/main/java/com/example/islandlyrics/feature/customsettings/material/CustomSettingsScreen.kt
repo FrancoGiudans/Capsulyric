@@ -58,15 +58,11 @@ import com.example.islandlyrics.feature.settings.material.SettingsTextItem
 import com.example.islandlyrics.feature.settings.material.SettingsCard
 import com.example.islandlyrics.feature.settings.material.SettingsCardDivider
 import com.example.islandlyrics.feature.settings.material.SettingsSectionHeader
-import com.example.islandlyrics.feature.settings.material.MaterialLookingForOtherSettings
-import com.example.islandlyrics.feature.settings.material.MaterialOtherSettingLink
 import com.example.islandlyrics.feature.main.MainActivity
 import com.example.islandlyrics.ui.overlay.model.SecondaryTextMode
 import com.example.islandlyrics.feature.customsettings.CustomSettingsAction
 import com.example.islandlyrics.feature.customsettings.CustomSettingsTab
 import com.example.islandlyrics.feature.customsettings.CustomSettingsViewModel
-import com.example.islandlyrics.core.settings.search.SettingsSearchAction
-import com.example.islandlyrics.ui.material.search.materialSettingHighlight
 import android.content.Context
 import android.content.Intent
 import android.graphics.Color as AndroidColor
@@ -83,8 +79,6 @@ import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.foundation.relocation.BringIntoViewRequester
-import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -108,7 +102,6 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
@@ -122,9 +115,6 @@ fun CustomSettingsScreen(
     updateBuildText: String = "",
     title: String = stringResource(R.string.page_title_personalization),
     tabs: Set<CustomSettingsTab> = CustomSettingsTab.entries.toSet(),
-    initialTab: CustomSettingsTab? = null,
-    targetItemKey: String? = null,
-    onNavigate: ((SettingsSearchAction.Navigate) -> Unit)? = null,
     viewModel: CustomSettingsViewModel = viewModel()
 ) {
     val context = LocalContext.current
@@ -148,48 +138,6 @@ fun CustomSettingsScreen(
         }
     }
     val pagerState = rememberPagerState(pageCount = { orderedTabs.size })
-    val pageScrollStates = orderedTabs.map { rememberScrollState() }
-    val targetBringIntoViewRequester = remember { BringIntoViewRequester() }
-    var activeHighlightKey by remember(targetItemKey) { mutableStateOf(targetItemKey) }
-
-    LaunchedEffect(initialTab) {
-        val targetIndex = initialTab?.let(orderedTabs::indexOf) ?: -1
-        if (targetIndex >= 0 && targetIndex != pagerState.currentPage) {
-            pagerState.scrollToPage(targetIndex)
-        }
-    }
-
-    val targetTab = initialTab ?: if (orderedTabs.size == 1) orderedTabs.firstOrNull() else null
-    LaunchedEffect(targetItemKey, pagerState.currentPage) {
-        if (targetItemKey != null && (targetTab == null || orderedTabs.getOrNull(pagerState.currentPage) == targetTab)) {
-            delay(120)
-            targetBringIntoViewRequester.bringIntoView()
-        }
-    }
-
-    @Composable
-    fun settingModifier(key: String): Modifier {
-        val targetModifier = if (activeHighlightKey == key) {
-            Modifier.bringIntoViewRequester(targetBringIntoViewRequester)
-        } else {
-            Modifier
-        }
-        return targetModifier.materialSettingHighlight(
-            targetKey = activeHighlightKey,
-            currentKey = key,
-            onHighlightComplete = { activeHighlightKey = null }
-        )
-    }
-
-    fun handleNavigate(action: SettingsSearchAction.Navigate) {
-        if (action.tab != null && orderedTabs.contains(action.tab)) {
-            scope.launch {
-                pagerState.animateScrollToPage(orderedTabs.indexOf(action.tab))
-            }
-        } else {
-            onNavigate?.invoke(action)
-        }
-    }
 
     // --- State Duplication ---
 
@@ -559,7 +507,7 @@ fun CustomSettingsScreen(
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
-                        .verticalScroll(pageScrollStates[page])
+                        .verticalScroll(rememberScrollState())
                 ) {
                     when (orderedTabs[page]) {
                         CustomSettingsTab.CAPSULE -> { // Capsule (Moved from 1)
@@ -586,7 +534,6 @@ fun CustomSettingsScreen(
                                 subtitle = stringResource(R.string.settings_disable_scrolling_desc),
                                 checked = disableScrolling || forceDisableScrollingForSuperIslandLyricMode,
                                 enabled = !forceDisableScrollingForSuperIslandLyricMode,
-                                modifier = settingModifier("key_disable_scrolling"),
                                 onCheckedChange = {
                                     disableScrolling = it
                                     viewModel.dispatch(CustomSettingsAction.SetDisableScrolling(it))
@@ -608,7 +555,6 @@ fun CustomSettingsScreen(
                                         title = stringResource(R.string.settings_lyric_text_display_mode),
                                         subtitle = stringResource(R.string.settings_lyric_text_display_mode_desc),
                                         value = lyricTextModeLabels[currentLyricTextModeIndex],
-                                        modifier = settingModifier("key_lyric_text_display_mode"),
                                         onClick = { showLyricTextDisplayModeDropdown = true }
                                     )
                                     Box(modifier = Modifier.matchParentSize().wrapContentSize(Alignment.Center)) {
@@ -689,7 +635,6 @@ fun CustomSettingsScreen(
                                         SettingsTextItem(
                                             title = stringResource(R.string.settings_capsule_mode),
                                             value = capsuleModeLabels[currentCapsuleModeIndex],
-                                            modifier = settingModifier("key_capsule_mode"),
                                             onClick = { showCapsuleModeDropdown = true }
                                         )
                                         Box(modifier = Modifier.matchParentSize().wrapContentSize(Alignment.Center)) {
@@ -797,7 +742,6 @@ fun CustomSettingsScreen(
                                             title = stringResource(R.string.settings_super_island_lyric_mode),
                                             subtitle = lyricModeSubtitle,
                                             value = lyricModeDisplay,
-                                            modifier = settingModifier("key_super_island_lyric_mode"),
                                             onClick = { showSuperIslandLyricModeDropdown = true }
                                         )
                                         Box(modifier = Modifier.matchParentSize().wrapContentSize(Alignment.Center)) {
@@ -846,7 +790,6 @@ fun CustomSettingsScreen(
                                             title = stringResource(R.string.settings_super_island_standard_show_left_cover),
                                             subtitle = stringResource(R.string.settings_super_island_standard_show_left_cover_desc),
                                             checked = superIslandStandardShowLeftCover,
-                                            modifier = settingModifier("key_super_island_show_left_cover"),
                                             onCheckedChange = {
                                                 superIslandStandardShowLeftCover = it
                                                 viewModel.dispatch(CustomSettingsAction.SetSuperIslandStandardShowLeftCover(it))
@@ -903,7 +846,6 @@ fun CustomSettingsScreen(
                                         title = stringResource(R.string.settings_super_island_colorize),
                                         subtitle = stringResource(R.string.settings_super_island_colorize_desc),
                                         checked = superIslandTextColorEnabled,
-                                        modifier = settingModifier("key_super_island_colorize"),
                                         onCheckedChange = { enabled ->
                                             if (!enabled && superIslandColorEditing) {
                                                 superIslandCustomColor = superIslandColorSnapshot
@@ -949,7 +891,6 @@ fun CustomSettingsScreen(
                                                 title = stringResource(R.string.settings_super_island_color_source),
                                                 subtitle = stringResource(R.string.settings_super_island_color_source_desc),
                                                 value = colorSourceLabels[currentColorSourceIndex],
-                                                modifier = settingModifier("key_super_island_color_source"),
                                                 onClick = { showSuperIslandColorSourceDropdown = true }
                                             )
                                             Box(modifier = Modifier.matchParentSize().wrapContentSize(Alignment.Center)) {
@@ -1022,7 +963,6 @@ fun CustomSettingsScreen(
                                         title = stringResource(R.string.settings_super_island_share),
                                         subtitle = stringResource(R.string.settings_super_island_share_desc),
                                         checked = superIslandShareEnabled,
-                                        modifier = settingModifier("key_super_island_share"),
                                         onCheckedChange = {
                                             superIslandShareEnabled = it
                                             viewModel.dispatch(CustomSettingsAction.SetSuperIslandShareEnabled(it))
@@ -1083,7 +1023,6 @@ fun CustomSettingsScreen(
                                                     XmsfBypassMode.AGGRESSIVE -> stringResource(R.string.settings_block_xmsf_mode_aggressive)
                                                     XmsfBypassMode.DISABLED -> stringResource(R.string.settings_block_xmsf_mode_disabled)
                                                 },
-                                                modifier = settingModifier("key_block_xmsf"),
                                                 onClick = { showBlockXmsfModeDropdown = true }
                                             )
                                             Box(modifier = Modifier.matchParentSize().wrapContentSize(Alignment.Center)) {
@@ -1201,7 +1140,6 @@ fun CustomSettingsScreen(
                                     SettingsTextItem(
                                         title = stringResource(R.string.settings_notification_actions),
                                         value = actionStyleDisplay,
-                                        modifier = settingModifier("key_notification_actions"),
                                         onClick = { showActionStyleDropdown = true }
                                     )
                                     Box(modifier = Modifier.matchParentSize().wrapContentSize(Alignment.Center)) {
@@ -1250,7 +1188,6 @@ fun CustomSettingsScreen(
                                         title = stringResource(R.string.settings_progress_color),
                                         subtitle = stringResource(R.string.settings_progress_color_desc),
                                         checked = progressColorEnabled,
-                                        modifier = settingModifier("key_progress_color"),
                                         onCheckedChange = {
                                             progressColorEnabled = it
                                             viewModel.dispatch(CustomSettingsAction.SetProgressColorEnabled(it))
@@ -1270,7 +1207,6 @@ fun CustomSettingsScreen(
                                     SettingsTextItem(
                                         title = stringResource(R.string.settings_super_island_notification_style),
                                         value = notificationStyleDisplayName,
-                                        modifier = settingModifier("key_super_island_notification_style"),
                                         onClick = { showSuperIslandNotificationStyleDropdown = true }
                                     )
                                     Box(modifier = Modifier.matchParentSize().wrapContentSize(Alignment.Center)) {
@@ -1311,7 +1247,6 @@ fun CustomSettingsScreen(
                                         SettingsTextItem(
                                             title = stringResource(R.string.settings_super_island_dual_line_mode),
                                             value = dualLineModeDisplayName,
-                                            modifier = settingModifier("key_super_island_dual_line_mode"),
                                             onClick = { showSuperIslandDualLineModeDropdown = true }
                                         )
                                         Box(modifier = Modifier.matchParentSize().wrapContentSize(Alignment.Center)) {
@@ -1351,7 +1286,6 @@ fun CustomSettingsScreen(
                                         SettingsTextItem(
                                             title = stringResource(R.string.settings_super_island_media_button_layout),
                                             value = layoutDisplayName,
-                                            modifier = settingModifier("key_super_island_media_button_layout"),
                                             onClick = { showSuperIslandMediaButtonLayoutDropdown = true }
                                         )
                                         Box(modifier = Modifier.matchParentSize().wrapContentSize(Alignment.Center)) {
@@ -1409,7 +1343,6 @@ fun CustomSettingsScreen(
                                         title = stringResource(R.string.settings_super_island_show_progress_bar),
                                         subtitle = stringResource(R.string.settings_super_island_show_progress_bar_desc),
                                         checked = superIslandShowProgressBar,
-                                        modifier = settingModifier("key_super_island_show_progress_bar"),
                                         onCheckedChange = {
                                             superIslandShowProgressBar = it
                                             viewModel.dispatch(CustomSettingsAction.SetSuperIslandShowProgressBar(it))
@@ -1449,7 +1382,6 @@ fun CustomSettingsScreen(
                                         title = stringResource(R.string.settings_progress_color),
                                         subtitle = stringResource(R.string.settings_progress_color_desc),
                                         checked = progressColorEnabled,
-                                        modifier = settingModifier("key_progress_color"),
                                         onCheckedChange = {
                                             progressColorEnabled = it
                                             viewModel.dispatch(CustomSettingsAction.SetProgressColorEnabled(it))
@@ -1473,7 +1405,6 @@ fun CustomSettingsScreen(
                                         SettingsTextItem(
                                             title = stringResource(R.string.settings_super_island_template2_pic_source),
                                             value = template2PicDisplay,
-                                            modifier = settingModifier("key_super_island_template2_pic_source"),
                                             onClick = { showTemplate2PicSourceDropdown = true }
                                         )
                                         Box(modifier = Modifier.matchParentSize().wrapContentSize(Alignment.Center)) {
@@ -1542,7 +1473,6 @@ fun CustomSettingsScreen(
                                 title = stringResource(R.string.settings_lock_screen_hide_notification),
                                 subtitle = stringResource(R.string.settings_lock_screen_hide_notification_desc),
                                 checked = lockScreenHideNotification,
-                                modifier = settingModifier("key_lock_screen_hide_notification"),
                                 onCheckedChange = {
                                     lockScreenHideNotification = it
                                     viewModel.dispatch(CustomSettingsAction.SetLockScreenHideNotification(it))
@@ -1559,7 +1489,6 @@ fun CustomSettingsScreen(
                                 SettingsTextItem(
                                     title = stringResource(R.string.settings_click_action_title),
                                     value = clickStyleDisplay,
-                                    modifier = settingModifier("key_click_action"),
                                     onClick = { showNotificationClickDropdown = true }
                                 )
                                 Box(modifier = Modifier.matchParentSize().wrapContentSize(Alignment.Center)) {
@@ -1607,7 +1536,6 @@ fun CustomSettingsScreen(
                                 SettingsTextItem(
                                     title = stringResource(R.string.settings_dismiss_delay_title),
                                     value = dismissDelayText,
-                                    modifier = settingModifier("key_dismiss_delay"),
                                     onClick = { showDismissDelayDropdown = true }
                                 )
                                 Box(modifier = Modifier.matchParentSize().wrapContentSize(Alignment.Center)) {
@@ -1651,7 +1579,6 @@ fun CustomSettingsScreen(
                                     SettingsTextItem(
                                         title = stringResource(R.string.settings_app_ui_style),
                                         value = uiStyleDisplay,
-                                        modifier = settingModifier("key_app_ui_style"),
                                         onClick = { showUiStyleDropdown = true }
                                     )
                                     Box(modifier = Modifier.matchParentSize().wrapContentSize(Alignment.Center)) {
@@ -1694,7 +1621,6 @@ fun CustomSettingsScreen(
                                 SettingsSwitchItem(
                                     title = stringResource(R.string.settings_theme_follow_system),
                                     checked = followSystem,
-                                    modifier = settingModifier("key_theme_follow_system"),
                                     onCheckedChange = {
                                         followSystem = it
                                         viewModel.dispatch(CustomSettingsAction.SetFollowSystem(it))
@@ -1705,7 +1631,6 @@ fun CustomSettingsScreen(
                                     title = stringResource(R.string.settings_theme_dark_mode),
                                     checked = darkMode,
                                     enabled = !followSystem,
-                                    modifier = settingModifier("key_theme_dark_mode"),
                                     onCheckedChange = {
                                         darkMode = it
                                         viewModel.dispatch(CustomSettingsAction.SetDarkMode(it))
@@ -1717,7 +1642,6 @@ fun CustomSettingsScreen(
                                     subtitle = stringResource(R.string.settings_theme_pure_black_desc),
                                     checked = pureBlack,
                                     enabled = useDarkTheme,
-                                    modifier = settingModifier("key_theme_pure_black"),
                                     onCheckedChange = {
                                         pureBlack = it
                                         viewModel.dispatch(CustomSettingsAction.SetPureBlack(it))
@@ -1728,7 +1652,6 @@ fun CustomSettingsScreen(
                                     title = stringResource(R.string.settings_theme_dynamic_color),
                                     subtitle = stringResource(R.string.settings_theme_dynamic_color_desc),
                                     checked = dynamicColor,
-                                    modifier = settingModifier("key_theme_dynamic_color"),
                                     onCheckedChange = {
                                         dynamicColor = it
                                         viewModel.dispatch(CustomSettingsAction.SetDynamicColor(it))
@@ -1751,7 +1674,6 @@ fun CustomSettingsScreen(
                                         SettingsTextItem(
                                             title = stringResource(R.string.settings_theme_color_source),
                                             value = themeColorSourceLabels[currentThemeColorSourceIndex],
-                                            modifier = settingModifier("key_theme_color_source"),
                                             onClick = { showThemeColorSourceDropdown = true }
                                         )
                                         Box(modifier = Modifier.matchParentSize().wrapContentSize(Alignment.Center)) {
@@ -1781,7 +1703,6 @@ fun CustomSettingsScreen(
                                         MaterialEditableColorSection(
                                             title = stringResource(R.string.settings_theme_custom_color),
                                             color = customThemeColor,
-                                            modifier = settingModifier("key_theme_custom_color"),
                                             isEditing = materialThemeColorEditing,
                                             defaultActionText = stringResource(R.string.settings_theme_color_source_default),
                                             onStartEditing = {
@@ -1819,7 +1740,6 @@ fun CustomSettingsScreen(
                                     title = stringResource(R.string.settings_predictive_back),
                                     subtitle = stringResource(R.string.settings_predictive_back_desc),
                                     checked = predictiveBackEnabled,
-                                    modifier = settingModifier("key_predictive_back"),
                                     onCheckedChange = {
                                         predictiveBackEnabled = it
                                         viewModel.dispatch(CustomSettingsAction.SetPredictiveBackEnabled(it))
@@ -1836,7 +1756,6 @@ fun CustomSettingsScreen(
                                         title = stringResource(R.string.settings_predictive_back_animation_mode),
                                         subtitle = stringResource(R.string.settings_predictive_back_animation_mode_desc),
                                         value = predictiveBackModeLabels[currentPredictiveBackModeIndex],
-                                        modifier = settingModifier("key_predictive_back_animation_mode"),
                                         onClick = { showPredictiveBackAnimationModeDropdown = true }
                                     )
                                     Box(modifier = Modifier.matchParentSize().wrapContentSize(Alignment.Center)) {
@@ -1872,7 +1791,6 @@ fun CustomSettingsScreen(
                                             title = stringResource(R.string.settings_predictive_back_animation),
                                             subtitle = stringResource(R.string.settings_predictive_back_animation_desc),
                                             value = predictiveBackStyleLabels[currentPredictiveBackStyleIndex],
-                                            modifier = settingModifier("key_predictive_back_animation"),
                                             onClick = { showPredictiveBackAnimationDropdown = true }
                                         )
                                         Box(modifier = Modifier.matchParentSize().wrapContentSize(Alignment.Center)) {
@@ -1904,7 +1822,6 @@ fun CustomSettingsScreen(
                                 SettingsTextItem(
                                     title = stringResource(R.string.settings_home_lyric_preview_title),
                                     value = homeLyricPreviewDisplayModes.labelForHomeLyricPreview(),
-                                    modifier = settingModifier("key_home_lyric_preview"),
                                     onClick = { showHomeLyricPreviewDialog = true }
                                 )
                             }
@@ -1913,101 +1830,6 @@ fun CustomSettingsScreen(
                             FloatingLyricsSettingsSubScreen(prefs)
                         }
                     }
-                    MaterialLookingForOtherSettings(
-                        links = when (orderedTabs[page]) {
-                            CustomSettingsTab.CAPSULE -> listOf(
-                                MaterialOtherSettingLink(
-                                    titleRes = R.string.tab_notification,
-                                    action = SettingsSearchAction.Navigate(
-                                        target = com.example.islandlyrics.core.settings.search.SettingsNavigationTarget.CAPSULE_NOTIFICATION,
-                                        tab = CustomSettingsTab.NOTIFICATION
-                                    )
-                                ),
-                                MaterialOtherSettingLink(
-                                    titleRes = R.string.tab_app_ui,
-                                    action = SettingsSearchAction.Navigate(
-                                        target = com.example.islandlyrics.core.settings.search.SettingsNavigationTarget.APP_UI,
-                                        tab = CustomSettingsTab.APP_UI
-                                    )
-                                ),
-                                MaterialOtherSettingLink(
-                                    titleRes = R.string.settings_floating_lyrics,
-                                    action = SettingsSearchAction.Navigate(
-                                        target = com.example.islandlyrics.core.settings.search.SettingsNavigationTarget.DESKTOP_LYRICS
-                                    )
-                                )
-                            )
-                            CustomSettingsTab.NOTIFICATION -> listOf(
-                                MaterialOtherSettingLink(
-                                    titleRes = R.string.tab_capsule,
-                                    action = SettingsSearchAction.Navigate(
-                                        target = com.example.islandlyrics.core.settings.search.SettingsNavigationTarget.CAPSULE_NOTIFICATION,
-                                        tab = CustomSettingsTab.CAPSULE
-                                    )
-                                ),
-                                MaterialOtherSettingLink(
-                                    titleRes = R.string.tab_app_ui,
-                                    action = SettingsSearchAction.Navigate(
-                                        target = com.example.islandlyrics.core.settings.search.SettingsNavigationTarget.APP_UI,
-                                        tab = CustomSettingsTab.APP_UI
-                                    )
-                                ),
-                                MaterialOtherSettingLink(
-                                    titleRes = R.string.settings_floating_lyrics,
-                                    action = SettingsSearchAction.Navigate(
-                                        target = com.example.islandlyrics.core.settings.search.SettingsNavigationTarget.DESKTOP_LYRICS
-                                    )
-                                )
-                            )
-                            CustomSettingsTab.APP_UI -> listOf(
-                                MaterialOtherSettingLink(
-                                    titleRes = R.string.tab_capsule,
-                                    action = SettingsSearchAction.Navigate(
-                                        target = com.example.islandlyrics.core.settings.search.SettingsNavigationTarget.CAPSULE_NOTIFICATION,
-                                        tab = CustomSettingsTab.CAPSULE
-                                    )
-                                ),
-                                MaterialOtherSettingLink(
-                                    titleRes = R.string.tab_notification,
-                                    action = SettingsSearchAction.Navigate(
-                                        target = com.example.islandlyrics.core.settings.search.SettingsNavigationTarget.CAPSULE_NOTIFICATION,
-                                        tab = CustomSettingsTab.NOTIFICATION
-                                    )
-                                ),
-                                MaterialOtherSettingLink(
-                                    titleRes = R.string.settings_floating_lyrics,
-                                    action = SettingsSearchAction.Navigate(
-                                        target = com.example.islandlyrics.core.settings.search.SettingsNavigationTarget.DESKTOP_LYRICS
-                                    )
-                                )
-                            )
-                            CustomSettingsTab.DESKTOP_LYRICS -> listOf(
-                                MaterialOtherSettingLink(
-                                    titleRes = R.string.tab_capsule,
-                                    action = SettingsSearchAction.Navigate(
-                                        target = com.example.islandlyrics.core.settings.search.SettingsNavigationTarget.CAPSULE_NOTIFICATION,
-                                        tab = CustomSettingsTab.CAPSULE
-                                    )
-                                ),
-                                MaterialOtherSettingLink(
-                                    titleRes = R.string.tab_notification,
-                                    action = SettingsSearchAction.Navigate(
-                                        target = com.example.islandlyrics.core.settings.search.SettingsNavigationTarget.CAPSULE_NOTIFICATION,
-                                        tab = CustomSettingsTab.NOTIFICATION
-                                    )
-                                ),
-                                MaterialOtherSettingLink(
-                                    titleRes = R.string.tab_app_ui,
-                                    action = SettingsSearchAction.Navigate(
-                                        target = com.example.islandlyrics.core.settings.search.SettingsNavigationTarget.APP_UI,
-                                        tab = CustomSettingsTab.APP_UI
-                                    )
-                                )
-                            )
-                        },
-                        onNavigate = ::handleNavigate,
-                        modifier = Modifier.padding(top = 8.dp)
-                    )
                     Spacer(modifier = Modifier.height(24.dp))
                 }
             }
@@ -2481,18 +2303,12 @@ private fun List<String>.labelForHomeLyricPreview(): String {
 @Composable
 fun CapsuleNotificationScreen(
     onBack: () -> Unit,
-    initialTab: CustomSettingsTab? = null,
-    targetItemKey: String? = null,
-    onNavigate: ((SettingsSearchAction.Navigate) -> Unit)? = null,
     viewModel: CustomSettingsViewModel = viewModel()
 ) {
     CustomSettingsScreen(
         onBack = onBack,
         title = stringResource(R.string.settings_capsule_notification_title),
         tabs = setOf(CustomSettingsTab.CAPSULE, CustomSettingsTab.NOTIFICATION),
-        initialTab = initialTab,
-        targetItemKey = targetItemKey,
-        onNavigate = onNavigate,
         viewModel = viewModel
     )
 }
@@ -2500,16 +2316,12 @@ fun CapsuleNotificationScreen(
 @Composable
 fun AppUiScreen(
     onBack: () -> Unit,
-    targetItemKey: String? = null,
-    onNavigate: ((SettingsSearchAction.Navigate) -> Unit)? = null,
     viewModel: CustomSettingsViewModel = viewModel()
 ) {
     CustomSettingsScreen(
         onBack = onBack,
         title = stringResource(R.string.page_title_personalization),
         tabs = setOf(CustomSettingsTab.APP_UI),
-        targetItemKey = targetItemKey,
-        onNavigate = onNavigate,
         viewModel = viewModel
     )
 }
@@ -2517,16 +2329,12 @@ fun AppUiScreen(
 @Composable
 fun DesktopLyricsScreen(
     onBack: () -> Unit,
-    targetItemKey: String? = null,
-    onNavigate: ((SettingsSearchAction.Navigate) -> Unit)? = null,
     viewModel: CustomSettingsViewModel = viewModel()
 ) {
     CustomSettingsScreen(
         onBack = onBack,
         title = stringResource(R.string.settings_floating_lyrics),
         tabs = setOf(CustomSettingsTab.DESKTOP_LYRICS),
-        targetItemKey = targetItemKey,
-        onNavigate = onNavigate,
         viewModel = viewModel
     )
 }

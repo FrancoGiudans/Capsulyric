@@ -56,8 +56,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.relocation.BringIntoViewRequester
-import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
@@ -100,7 +98,6 @@ import com.example.islandlyrics.core.settings.search.MainSettingsDialogType
 import com.example.islandlyrics.core.settings.search.SettingsNavigationTarget
 import com.example.islandlyrics.core.settings.search.SettingsSearchEngine
 import com.example.islandlyrics.core.settings.search.SettingsSearchHistoryStore
-import com.example.islandlyrics.core.settings.search.SettingsUiVariant
 import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
@@ -112,10 +109,8 @@ import com.example.islandlyrics.runtime.playingapp.NewPlayingAppNotifier
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import com.example.islandlyrics.ui.miuix.blur.MiuixBlurSnackbar
-import com.example.islandlyrics.ui.miuix.search.miuixSettingHighlight
 import top.yukonga.miuix.kmp.basic.SnackbarHost as MiuixSnackbarHost
 import top.yukonga.miuix.kmp.basic.SnackbarHostState as MiuixSnackbarHostState
-import kotlinx.coroutines.delay
 import java.util.Locale
 
 @Composable
@@ -156,8 +151,6 @@ fun MiuixSettingsScreen(
     val backupImportCoordinator = remember(context) { BackupImportCoordinator(context) }
     val scrollBehavior = MiuixScrollBehavior(rememberTopAppBarState())
     val listState = rememberLazyListState()
-    val mainSettingBringIntoViewRequester = remember { BringIntoViewRequester() }
-    var mainSettingHighlightKey by remember { mutableStateOf<String?>(null) }
     val backupExportSuccessFormat = stringResource(R.string.settings_backup_export_success)
     val backupExportSuccessWithCacheFormat = stringResource(R.string.settings_backup_export_success_with_cache)
     val backupExportSuccessWithSensitiveFormat = stringResource(R.string.settings_backup_export_success_with_sensitive)
@@ -181,30 +174,9 @@ fun MiuixSettingsScreen(
     }
     val searchResults = remember(settingsSearchQuery, context) {
         if (settingsSearchQuery.isNotBlank()) {
-            SettingsSearchEngine.search(context, settingsSearchQuery, SettingsUiVariant.MIUIX)
+            SettingsSearchEngine.search(context, settingsSearchQuery)
         } else {
             emptyList()
-        }
-    }
-
-    @Composable
-    fun mainSettingModifier(key: String): Modifier {
-        val targetModifier = if (mainSettingHighlightKey == key) {
-            Modifier.bringIntoViewRequester(mainSettingBringIntoViewRequester)
-        } else {
-            Modifier
-        }
-        return targetModifier.miuixSettingHighlight(
-            targetKey = mainSettingHighlightKey,
-            currentKey = key,
-            onHighlightComplete = { mainSettingHighlightKey = null }
-        )
-    }
-
-    LaunchedEffect(mainSettingHighlightKey) {
-        if (mainSettingHighlightKey != null) {
-            delay(120)
-            mainSettingBringIntoViewRequester.bringIntoView()
         }
     }
 
@@ -468,15 +440,10 @@ fun MiuixSettingsScreen(
     fun handleSearchAction(action: SettingsSearchAction) {
         when (action) {
             is SettingsSearchAction.Navigate -> {
-                if (action.target == SettingsNavigationTarget.MAIN_SETTINGS) {
-                    settingsSearchExpanded = false
-                    settingsSearchQuery = ""
-                    mainSettingHighlightKey = action.targetItemKey
-                } else if (onNavigateAction != null) {
+                if (onNavigateAction != null) {
                     onNavigateAction(action)
                 } else {
                     when (action.target) {
-                        SettingsNavigationTarget.MAIN_SETTINGS -> Unit
                         SettingsNavigationTarget.CAPSULE_NOTIFICATION -> onOpenCapsuleNotification()
                         SettingsNavigationTarget.APP_UI -> onOpenCustomSettings()
                         SettingsNavigationTarget.DESKTOP_LYRICS -> onOpenDesktopLyrics?.invoke() ?: onOpenCustomSettings()
@@ -787,7 +754,6 @@ fun MiuixSettingsScreen(
                         title = stringResource(R.string.settings_recommend_media_app),
                         summary = stringResource(R.string.settings_recommend_media_app_desc),
                         checked = recommendMediaAppEnabled,
-                        modifier = mainSettingModifier("key_recommend_media_app"),
                         onCheckedChange = {
                             recommendMediaAppEnabled = it
                             prefs.edit { putBoolean("recommend_media_app", it) }
@@ -799,7 +765,6 @@ fun MiuixSettingsScreen(
                         title = stringResource(R.string.settings_new_playing_app_alert),
                         summary = stringResource(R.string.settings_new_playing_app_alert_desc),
                         checked = newPlayingAppAlertEnabled,
-                        modifier = mainSettingModifier("key_new_playing_app_alert"),
                         onCheckedChange = {
                             newPlayingAppAlertEnabled = it
                             prefs.edit { putBoolean(NewPlayingAppNotifier.PREF_ENABLED, it) }
@@ -817,7 +782,6 @@ fun MiuixSettingsScreen(
                         title = stringResource(R.string.settings_hide_recents),
                         summary = stringResource(R.string.settings_hide_recents_desc),
                         checked = hideRecentsEnabled,
-                        modifier = mainSettingModifier("key_hide_recents"),
                         onCheckedChange = {
                             hideRecentsEnabled = it
                             prefs.edit { putBoolean("hide_recents_enabled", it) }
