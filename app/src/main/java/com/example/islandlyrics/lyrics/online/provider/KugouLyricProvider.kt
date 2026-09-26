@@ -45,15 +45,10 @@ import java.util.zip.Inflater
 internal class KugouLyricProvider(
     private val httpClient: OnlineLyricHttpClient
 ) {
-    suspend fun fetch(
-        title: String,
-        artist: String,
-        album: String = "",
-        durationMs: Long = 0L
-    ): OnlineLyricFetcher.LyricResult? =
+    suspend fun fetch(title: String, artist: String): OnlineLyricFetcher.LyricResult? =
         withContext(Dispatchers.IO) {
             try {
-                val keywords = ProviderSearchTerm.build(title, artist, album)
+                val keywords = "$title $artist"
                 val searchUrl = "https://mobilecdn.kugou.com/api/v3/search/song?format=json&keyword=${keywords.encodeURL()}&page=1&pagesize=20&showtype=1"
                 val searchResponse = httpClient.get(searchUrl)
                 if (searchResponse == null) {
@@ -74,14 +69,11 @@ internal class KugouLyricProvider(
                         infoArray.optJSONObject(index)?.let { add(KugouSongCandidate(it)) }
                     }
                 }
-                val best = CandidateMatcher.pickBest(searchCandidates, title, artist, album, durationMs)
+                val best = CandidateMatcher.pickBest(searchCandidates, title, artist)
                     ?: return@withContext null
                 val firstSong = best.song
                 val matchedTitle = best.matchedTitle
                 val matchedArtist = best.matchedArtist
-                val matchedAlbum = best.matchedAlbum
-                val matchedDurationMs = best.matchedDurationMs
-                val providerTrackId = best.providerTrackId
                 val hash = firstSong.optString("hash", "")
                 if (hash.isEmpty()) {
                     return@withContext OnlineLyricFetcher.LyricResult(
@@ -181,10 +173,7 @@ internal class KugouLyricProvider(
                     hasSyllable,
                     provider = OnlineLyricProvider.Kugou,
                     matchedTitle = matchedTitle,
-                    matchedArtist = matchedArtist,
-                    matchedAlbum = matchedAlbum,
-                    matchedDurationMs = matchedDurationMs,
-                    providerTrackId = providerTrackId
+                    matchedArtist = matchedArtist
                 )
             } catch (e: Exception) {
                 AppLogger.getInstance().log("OnlineLyric", "Kugou API错误: ${e.message}")
@@ -245,21 +234,6 @@ internal class KugouLyricProvider(
 
         override val matchedArtist: String
             get() = song.optString("singername", "")
-
-        override val matchedAlbum: String?
-            get() = song.optString("album_name", "")
-                .ifBlank { song.optString("albumname", "") }
-                .takeIf { it.isNotBlank() }
-
-        override val matchedDurationMs: Long?
-            get() = song.optLong("duration", 0L)
-                .takeIf { it > 0L }
-                ?.times(1000L)
-
-        override val providerTrackId: String?
-            get() = song.optString("hash")
-                .ifBlank { song.optString("audio_id") }
-                .takeIf { it.isNotBlank() }
     }
 }
 

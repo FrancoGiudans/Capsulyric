@@ -37,15 +37,10 @@ import java.net.URLEncoder
 internal class SodaMusicLyricProvider(
     private val httpClient: OnlineLyricHttpClient
 ) {
-    suspend fun fetch(
-        title: String,
-        artist: String,
-        album: String = "",
-        durationMs: Long = 0L
-    ): OnlineLyricFetcher.LyricResult? =
+    suspend fun fetch(title: String, artist: String): OnlineLyricFetcher.LyricResult? =
         withContext(Dispatchers.IO) {
             try {
-                val keyword = ProviderSearchTerm.build(title, artist, album)
+                val keyword = "$title $artist"
                 val searchUrl = "https://api.qishui.com/luna/pc/search/track?aid=386088&app_name=&region=&geo_region=&os_region=&sim_region=&device_id=&cdid=&iid=&version_name=&version_code=&channel=&build_mode=&network_carrier=&ac=&tz_name=&resolution=&device_platform=&device_type=&os_version=&fp=&q=${keyword.encodeURL()}&cursor=&search_id=&search_method=input&debug_params=&from_search_id=&search_scene="
                 val searchResponse = httpClient.get(searchUrl, headers = sodaHeaders()) ?: return@withContext null
                 val searchJson = JSONObject(searchResponse)
@@ -71,15 +66,12 @@ internal class SodaMusicLyricProvider(
                 if (tracks.isEmpty()) return@withContext null
 
                 val candidates = tracks.map { SodaTrackCandidate(it) }
-                val best = CandidateMatcher.pickBest(candidates, title, artist, album, durationMs)
+                val best = CandidateMatcher.pickBest(candidates, title, artist)
                     ?: return@withContext null
                 val firstTrack = best.track
                 val trackId = firstTrack.optString("id", "")
                 val matchedTitle = best.matchedTitle
                 val matchedArtist = best.matchedArtist
-                val matchedAlbum = best.matchedAlbum
-                val matchedDurationMs = best.matchedDurationMs
-                val providerTrackId = best.providerTrackId
 
                 if (trackId.isBlank()) {
                     return@withContext OnlineLyricFetcher.LyricResult(
@@ -90,9 +82,6 @@ internal class SodaMusicLyricProvider(
                         provider = OnlineLyricProvider.SodaMusic,
                         matchedTitle = matchedTitle,
                         matchedArtist = matchedArtist,
-                        matchedAlbum = matchedAlbum,
-                        matchedDurationMs = matchedDurationMs,
-                        providerTrackId = providerTrackId,
                         error = "无 track_id"
                     )
                 }
@@ -121,9 +110,6 @@ internal class SodaMusicLyricProvider(
                         provider = OnlineLyricProvider.SodaMusic,
                         matchedTitle = matchedTitle,
                         matchedArtist = matchedArtist,
-                        matchedAlbum = matchedAlbum,
-                        matchedDurationMs = matchedDurationMs,
-                        providerTrackId = providerTrackId,
                         error = "无歌词内容"
                     )
                 }
@@ -137,10 +123,7 @@ internal class SodaMusicLyricProvider(
                     hasSyllable = hasSyllable,
                     provider = OnlineLyricProvider.SodaMusic,
                     matchedTitle = matchedTitle,
-                    matchedArtist = matchedArtist,
-                    matchedAlbum = matchedAlbum,
-                    matchedDurationMs = matchedDurationMs,
-                    providerTrackId = providerTrackId
+                    matchedArtist = matchedArtist
                 )
             } catch (e: Exception) {
                 AppLogger.getInstance().log("OnlineLyric", "SodaMusic API错误: ${e.message}")
@@ -175,20 +158,6 @@ internal class SodaMusicLyricProvider(
                     }
                 }
                 .orEmpty()
-
-        override val matchedAlbum: String?
-            get() = track.optJSONObject("album")?.optString("name", "")
-                .orEmpty()
-                .ifBlank { track.optString("album_name", "") }
-                .takeIf { it.isNotBlank() }
-
-        override val matchedDurationMs: Long?
-            get() = track.optLong("duration_ms", 0L)
-                .takeIf { it > 0L }
-                ?: track.optLong("duration", 0L).takeIf { it > 0L }?.times(1000L)
-
-        override val providerTrackId: String?
-            get() = track.optString("id", "").takeIf { it.isNotBlank() }
     }
 }
 

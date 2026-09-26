@@ -44,15 +44,10 @@ import java.net.URLEncoder
 internal class NeteaseLyricProvider(
     private val httpClient: OnlineLyricHttpClient
 ) {
-    suspend fun fetch(
-        title: String,
-        artist: String,
-        album: String = "",
-        durationMs: Long = 0L
-    ): OnlineLyricFetcher.LyricResult? =
+    suspend fun fetch(title: String, artist: String): OnlineLyricFetcher.LyricResult? =
         withContext(Dispatchers.IO) {
             try {
-                val keywords = ProviderSearchTerm.build(title, artist, album)
+                val keywords = "$title $artist"
                 val searchUrl = "https://music.163.com/api/search/get?s=${keywords.encodeURL()}&type=1&limit=10"
                 val searchResponse = httpClient.get(searchUrl) ?: return@withContext null
 
@@ -68,14 +63,11 @@ internal class NeteaseLyricProvider(
                         songs.optJSONObject(index)?.let { add(NeteaseSongCandidate(it)) }
                     }
                 }
-                val best = CandidateMatcher.pickBest(candidates, title, artist, album, durationMs)
+                val best = CandidateMatcher.pickBest(candidates, title, artist)
                     ?: return@withContext null
                 val firstSong = best.song
                 val matchedTitle = best.matchedTitle
                 val matchedArtist = best.matchedArtist
-                val matchedAlbum = best.matchedAlbum
-                val matchedDurationMs = best.matchedDurationMs
-                val providerTrackId = best.providerTrackId
                 val songId = firstSong.optLong("id", 0)
 
                 if (songId == 0L) {
@@ -116,9 +108,6 @@ internal class NeteaseLyricProvider(
                     provider = OnlineLyricProvider.Netease,
                     matchedTitle = matchedTitle,
                     matchedArtist = matchedArtist,
-                    matchedAlbum = matchedAlbum,
-                    matchedDurationMs = matchedDurationMs,
-                    providerTrackId = providerTrackId,
                     translationLyrics = translationContent.takeIf { it.isNotBlank() },
                     romanLyrics = romanContent.takeIf { it.isNotBlank() }
                 )
@@ -212,17 +201,6 @@ internal class NeteaseLyricProvider(
                     }
                 }
                 .orEmpty()
-
-        override val matchedAlbum: String?
-            get() = song.optJSONObject("album")?.optString("name", "")
-                .orEmpty()
-                .takeIf { it.isNotBlank() }
-
-        override val matchedDurationMs: Long?
-            get() = song.optLong("dt", 0L).takeIf { it > 0L }
-
-        override val providerTrackId: String?
-            get() = song.optLong("id", 0L).takeIf { it > 0L }?.toString()
     }
 
     private companion object {

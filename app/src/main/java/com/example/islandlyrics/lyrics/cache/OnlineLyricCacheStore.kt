@@ -165,10 +165,6 @@ class OnlineLyricCacheStore(context: Context) {
         val hasSyllable: Boolean = false,
         val matchedTitle: String? = null,
         val matchedArtist: String? = null,
-        val matchedAlbum: String? = null,
-        val matchedDurationMs: Long? = null,
-        val providerTrackId: String? = null,
-        val isrc: String? = null,
         val translationLyrics: String? = null,
         val romanLyrics: String? = null,
         val hasTranslation: Boolean = false,
@@ -297,10 +293,6 @@ class OnlineLyricCacheStore(context: Context) {
                 provider = OnlineLyricProvider.fromId(entry.providerId) ?: OnlineLyricProvider.LrcApi,
                 matchedTitle = entry.matchedTitle,
                 matchedArtist = entry.matchedArtist,
-                matchedAlbum = entry.matchedAlbum,
-                matchedDurationMs = entry.matchedDurationMs,
-                providerTrackId = entry.providerTrackId,
-                isrc = entry.isrc,
                 translationLyrics = entry.translationLyrics,
                 romanLyrics = entry.romanLyrics
             ),
@@ -343,10 +335,6 @@ class OnlineLyricCacheStore(context: Context) {
             hasSyllable = result.hasSyllable,
             matchedTitle = result.matchedTitle,
             matchedArtist = result.matchedArtist,
-            matchedAlbum = result.matchedAlbum,
-            matchedDurationMs = result.matchedDurationMs,
-            providerTrackId = result.providerTrackId,
-            isrc = result.isrc,
             translationLyrics = result.translationLyrics,
             romanLyrics = result.romanLyrics,
             hasTranslation = !result.translationLyrics.isNullOrBlank(),
@@ -1024,10 +1012,6 @@ class OnlineLyricCacheStore(context: Context) {
         put("hasSyllable", hasSyllable)
         put("matchedTitle", matchedTitle)
         put("matchedArtist", matchedArtist)
-        put("matchedAlbum", matchedAlbum)
-        put("matchedDurationMs", matchedDurationMs)
-        put("providerTrackId", providerTrackId)
-        put("isrc", isrc)
         put("translationLyrics", translationLyrics)
         put("romanLyrics", romanLyrics)
         put("hasTranslation", hasTranslation)
@@ -1113,10 +1097,6 @@ class OnlineLyricCacheStore(context: Context) {
             hasSyllable = optBoolean("hasSyllable", false),
             matchedTitle = optNullableString("matchedTitle"),
             matchedArtist = optNullableString("matchedArtist"),
-            matchedAlbum = optNullableString("matchedAlbum"),
-            matchedDurationMs = optNullableLong("matchedDurationMs"),
-            providerTrackId = optNullableString("providerTrackId"),
-            isrc = optNullableString("isrc"),
             translationLyrics = translationLyrics,
             romanLyrics = romanLyrics,
             hasTranslation = optBoolean("hasTranslation", !translationLyrics.isNullOrBlank()),
