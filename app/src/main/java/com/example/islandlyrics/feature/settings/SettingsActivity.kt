@@ -56,9 +56,6 @@ import com.example.islandlyrics.feature.settings.miuix.MiuixLocalLyricDirectorie
 import com.example.islandlyrics.feature.customsettings.miuix.MiuixCapsuleNotificationScreen
 import com.example.islandlyrics.feature.customsettings.miuix.MiuixAppUiScreen
 import com.example.islandlyrics.feature.customsettings.miuix.MiuixDesktopLyricsScreen
-import com.example.islandlyrics.core.settings.search.SettingsSearchAction
-import com.example.islandlyrics.core.settings.search.SettingsNavigationTarget
-import com.example.islandlyrics.feature.customsettings.CustomSettingsTab
 import com.example.islandlyrics.ui.miuix.theme.MiuixAppTheme
 import com.example.islandlyrics.feature.update.material.UpdateDialog
 import com.example.islandlyrics.feature.settings.material.SettingsScreen
@@ -106,42 +103,11 @@ class SettingsActivity : BaseActivity() {
             if (isMiuixEnabled(this@SettingsActivity)) {
                 MiuixAppTheme {
                     val pageStack = remember { mutableStateListOf<SettingsPage>() }
-                    val initialOpenPage = remember { intent.getStringExtra("open_page") }
                     fun pushPage(page: SettingsPage) {
                         pageStack.add(page)
                     }
                     fun popPage() {
                         if (pageStack.isNotEmpty()) pageStack.removeAt(pageStack.lastIndex)
-                    }
-                    fun handleNavigate(action: SettingsSearchAction.Navigate) {
-                        when (action.target) {
-                            SettingsNavigationTarget.CAPSULE_NOTIFICATION -> pushPage(SettingsPage.CapsuleNotification(initialTab = action.tab, targetItemKey = action.targetItemKey))
-                            SettingsNavigationTarget.APP_UI -> pushPage(SettingsPage.CustomSettings(targetItemKey = action.targetItemKey))
-                            SettingsNavigationTarget.DESKTOP_LYRICS -> pushPage(SettingsPage.DesktopLyrics(targetItemKey = action.targetItemKey))
-                            SettingsNavigationTarget.LOCAL_LYRIC_DIRECTORIES -> pushPage(SettingsPage.LocalLyricDirectories)
-                            SettingsNavigationTarget.CACHE_MANAGEMENT -> pushPage(SettingsPage.CacheManagement)
-                            SettingsNavigationTarget.ONLINE_LYRIC_REMATCH -> pushPage(SettingsPage.OnlineLyricDebug)
-                            SettingsNavigationTarget.LAST_FM -> pushPage(SettingsPage.LastFm)
-                            SettingsNavigationTarget.APPLE_MUSIC -> startActivity(android.content.Intent(this@SettingsActivity, com.example.islandlyrics.feature.applemusic.AppleMusicSettingsActivity::class.java))
-                            SettingsNavigationTarget.FAQ -> pushPage(SettingsPage.Faq)
-                            SettingsNavigationTarget.COMMUNITY -> pushPage(SettingsPage.Community)
-                            SettingsNavigationTarget.ABOUT -> pushPage(SettingsPage.About)
-                            SettingsNavigationTarget.DIAGNOSTICS -> pushPage(SettingsPage.Diagnostics)
-                            SettingsNavigationTarget.LAB -> pushPage(SettingsPage.Lab)
-                            SettingsNavigationTarget.PARSER_RULES -> startActivity(android.content.Intent(this@SettingsActivity, com.example.islandlyrics.feature.parserrule.ParserRuleActivity::class.java))
-                        }
-                    }
-                    LaunchedEffect(initialOpenPage) {
-                        when (initialOpenPage) {
-                            "local_lyrics" -> pushPage(SettingsPage.LocalLyricDirectories)
-                            "cache_management" -> pushPage(SettingsPage.CacheManagement)
-                            "online_rematch" -> pushPage(SettingsPage.OnlineLyricDebug)
-                            "last_fm" -> pushPage(SettingsPage.LastFm)
-                            "capsule" -> pushPage(SettingsPage.CapsuleNotification(initialTab = CustomSettingsTab.CAPSULE))
-                            "notification" -> pushPage(SettingsPage.CapsuleNotification(initialTab = CustomSettingsTab.NOTIFICATION))
-                            "app_ui" -> pushPage(SettingsPage.CustomSettings())
-                            "desktop_lyrics" -> pushPage(SettingsPage.DesktopLyrics())
-                        }
                     }
                     PredictiveBackActivity(enabled = pageStack.isEmpty()) {
                         PageStackHost(
@@ -158,9 +124,9 @@ class SettingsActivity : BaseActivity() {
                                     updateVersionText = version,
                                     updateCodenameText = codename,
                                     updateBuildText = build,
-                                    onOpenCustomSettings = { pushPage(SettingsPage.CustomSettings()) },
-                                    onOpenCapsuleNotification = { pushPage(SettingsPage.CapsuleNotification()) },
-                                    onOpenDesktopLyrics = { pushPage(SettingsPage.DesktopLyrics()) },
+                                    onOpenCustomSettings = { pushPage(SettingsPage.CustomSettings) },
+                                    onOpenCapsuleNotification = { pushPage(SettingsPage.CapsuleNotification) },
+                                    onOpenDesktopLyrics = { pushPage(SettingsPage.DesktopLyrics) },
                                     onOpenCommunity = { pushPage(SettingsPage.Community) },
                                     onOpenFaq = { pushPage(SettingsPage.Faq) },
                                     onOpenAbout = { pushPage(SettingsPage.About) },
@@ -172,7 +138,6 @@ class SettingsActivity : BaseActivity() {
                                     onOpenLastFm = { pushPage(SettingsPage.LastFm) },
                                     onOpenCacheManagement = { pushPage(SettingsPage.CacheManagement) },
                                     onOpenLab = { pushPage(SettingsPage.Lab) },
-                                    onNavigateAction = ::handleNavigate,
                                     updateReleaseInfo = updateReleaseInfo,
                                     onUpdateDismiss = { updateReleaseInfo = null },
                                     onUpdateIgnore = { version ->
@@ -186,7 +151,6 @@ class SettingsActivity : BaseActivity() {
                                     page = page,
                                     onBack = ::popPage,
                                     onPushPage = ::pushPage,
-                                    onNavigate = ::handleNavigate,
                                     updateVersionText = version,
                                     updateBuildText = build
                                 )
@@ -218,9 +182,9 @@ class SettingsActivity : BaseActivity() {
                                     updateVersionText = version,
                                     updateCodenameText = codename,
                                     updateBuildText = build,
-                                    onOpenCustomSettings = { pushPage(SettingsPage.CustomSettings()) },
-                                    onOpenCapsuleNotification = { pushPage(SettingsPage.CapsuleNotification()) },
-                                    onOpenDesktopLyrics = { pushPage(SettingsPage.DesktopLyrics()) },
+                                    onOpenCustomSettings = { pushPage(SettingsPage.CustomSettings) },
+                                    onOpenCapsuleNotification = { pushPage(SettingsPage.CapsuleNotification) },
+                                    onOpenDesktopLyrics = { pushPage(SettingsPage.DesktopLyrics) },
                                     onOpenCommunity = { pushPage(SettingsPage.Community) },
                                     onOpenFaq = { pushPage(SettingsPage.Faq) },
                                     onOpenAbout = { pushPage(SettingsPage.About) },
@@ -270,9 +234,9 @@ class SettingsActivity : BaseActivity() {
         updateBuildText: String
     ) {
         when (page) {
-            is SettingsPage.CustomSettings -> AppUiScreen(onBack = onBack)
-            is SettingsPage.CapsuleNotification -> CapsuleNotificationScreen(onBack = onBack)
-            is SettingsPage.DesktopLyrics -> DesktopLyricsScreen(onBack = onBack)
+            SettingsPage.CustomSettings -> AppUiScreen(onBack = onBack)
+            SettingsPage.CapsuleNotification -> CapsuleNotificationScreen(onBack = onBack)
+            SettingsPage.DesktopLyrics -> DesktopLyricsScreen(onBack = onBack)
             SettingsPage.Community -> CommunityScreen(onBack = onBack)
             SettingsPage.LocalLyricDirectories -> LocalLyricDirectoriesScreen(
                 onBack = onBack,
@@ -304,7 +268,7 @@ class SettingsActivity : BaseActivity() {
             SettingsPage.OnlineLyricDebug -> OnlineLyricDebugScreen(onBack = onBack)
             SettingsPage.LastFm -> LastFmSettingsScreen(onBack = onBack)
             SettingsPage.CacheManagement -> CacheManagementScreen(onBack = onBack)
-            SettingsPage.Lab -> LabScreen(onBack = onBack, onOpenCapsuleNotification = { onPushPage(SettingsPage.CapsuleNotification()) })
+            SettingsPage.Lab -> LabScreen(onBack = onBack, onOpenCapsuleNotification = { onPushPage(SettingsPage.CapsuleNotification) })
             SettingsPage.LogViewer -> LogViewerScreen(onBack = onBack)
             is SettingsPage.LocalLyricDirectory -> LocalLyricDirectoryScreen(
                 directoryUri = page.directoryUri.toUri(),
@@ -319,27 +283,13 @@ class SettingsActivity : BaseActivity() {
         page: SettingsPage,
         onBack: () -> Unit,
         onPushPage: (SettingsPage) -> Unit,
-        onNavigate: (SettingsSearchAction.Navigate) -> Unit,
         updateVersionText: String,
         updateBuildText: String
     ) {
         when (page) {
-            is SettingsPage.CustomSettings -> MiuixAppUiScreen(
-                onBack = onBack,
-                targetItemKey = page.targetItemKey,
-                onNavigate = onNavigate
-            )
-            is SettingsPage.CapsuleNotification -> MiuixCapsuleNotificationScreen(
-                onBack = onBack,
-                initialTab = page.initialTab,
-                targetItemKey = page.targetItemKey,
-                onNavigate = onNavigate
-            )
-            is SettingsPage.DesktopLyrics -> MiuixDesktopLyricsScreen(
-                onBack = onBack,
-                targetItemKey = page.targetItemKey,
-                onNavigate = onNavigate
-            )
+            SettingsPage.CustomSettings -> MiuixAppUiScreen(onBack = onBack)
+            SettingsPage.CapsuleNotification -> MiuixCapsuleNotificationScreen(onBack = onBack)
+            SettingsPage.DesktopLyrics -> MiuixDesktopLyricsScreen(onBack = onBack)
             SettingsPage.Community -> MiuixCommunityScreen(onBack = onBack)
             SettingsPage.LocalLyricDirectories -> MiuixLocalLyricDirectoriesScreen(
                 onBack = onBack,
@@ -371,7 +321,7 @@ class SettingsActivity : BaseActivity() {
             SettingsPage.OnlineLyricDebug -> MiuixOnlineLyricDebugScreen(onBack = onBack)
             SettingsPage.LastFm -> MiuixLastFmSettingsScreen(onBack = onBack)
             SettingsPage.CacheManagement -> MiuixCacheManagementScreen(onBack = onBack)
-            SettingsPage.Lab -> MiuixLabScreen(onBack = onBack, onOpenCapsuleNotification = { onPushPage(SettingsPage.CapsuleNotification()) })
+            SettingsPage.Lab -> MiuixLabScreen(onBack = onBack, onOpenCapsuleNotification = { onPushPage(SettingsPage.CapsuleNotification) })
             SettingsPage.LogViewer -> MiuixLogViewerScreen(onBack = onBack)
             is SettingsPage.LocalLyricDirectory -> MiuixLocalLyricDirectoryScreen(
                 directoryUri = page.directoryUri.toUri(),
@@ -500,9 +450,9 @@ class SettingsActivity : BaseActivity() {
 }
 
 private sealed class SettingsPage {
-    data class CustomSettings(val targetItemKey: String? = null) : SettingsPage()
-    data class CapsuleNotification(val initialTab: CustomSettingsTab? = null, val targetItemKey: String? = null) : SettingsPage()
-    data class DesktopLyrics(val targetItemKey: String? = null) : SettingsPage()
+    data object CustomSettings : SettingsPage()
+    data object CapsuleNotification : SettingsPage()
+    data object DesktopLyrics : SettingsPage()
     data object Community : SettingsPage()
     data object LocalLyricDirectories : SettingsPage()
     data object Faq : SettingsPage()
