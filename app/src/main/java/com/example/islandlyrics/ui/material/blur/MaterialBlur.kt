@@ -191,7 +191,20 @@ fun MaterialBlurScaffold(
             MiuixScaffold(
                 modifier = modifier,
                 topBar = topBar,
-                bottomBar = bottomBar,
+                bottomBar = {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .materialBlurPanel(
+                                shape = RectangleShape,
+                                enabled = true,
+                                radius = blurRadius,
+                                tint = blurBackground,
+                            )
+                    ) {
+                        bottomBar()
+                    }
+                },
                 snackbarHost = snackbarHost,
                 floatingActionButton = floatingActionButton,
                 floatingActionButtonPosition = miuixFabPosition,
