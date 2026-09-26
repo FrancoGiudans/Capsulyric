@@ -77,10 +77,7 @@ internal class LyricCapsuleNotificationBuilder(
                 builder.addAction(0, context.getString(R.string.action_next), intents.nextIntent)
             }
             "miplay" -> {
-                // MiPlay is HyperOS-only; skip the button on other ROMs
-                if (RomUtils.isHyperOs()) {
-                    builder.addAction(0, context.getString(R.string.action_miplay), intents.miplayIntent)
-                }
+                builder.addAction(0, context.getString(R.string.action_miplay), intents.miplayIntent)
             }
         }
 
