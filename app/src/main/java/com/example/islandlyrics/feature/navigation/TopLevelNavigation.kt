@@ -75,7 +75,6 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -344,8 +343,6 @@ fun MiuixTopLevelLiquidGlassNavigationBar(
 ) {
     val destinations = TopLevelDestination.entries
     val selectedIndex = destinations.indexOf(currentDestination).coerceAtLeast(0)
-    val latestSelectedIndex = rememberUpdatedState(selectedIndex)
-    val latestOnNavigate = rememberUpdatedState(onNavigate)
     val density = LocalDensity.current
     val isLtr = LocalLayoutDirection.current == LayoutDirection.Ltr
     val animationScope = rememberCoroutineScope()
@@ -355,16 +352,11 @@ fun MiuixTopLevelLiquidGlassNavigationBar(
     val combinedBackdrop = rememberCombinedBackdrop(backdrop, tabsBackdrop)
     val selectedPosition = remember { Animatable(selectedIndex.toFloat()) }
     var isDragging by remember { mutableStateOf(false) }
-    var dragTargetPosition by remember { mutableFloatStateOf(selectedIndex.toFloat()) }
-    var dragStartIndex by remember { mutableStateOf(selectedIndex) }
-    var dragNavigationIndex by remember { mutableStateOf(selectedIndex) }
+    var dragPosition by remember { mutableFloatStateOf(selectedIndex.toFloat()) }
     var dragDistancePx by remember { mutableFloatStateOf(0f) }
 
     LaunchedEffect(selectedIndex) {
         if (!isDragging) {
-            dragTargetPosition = selectedIndex.toFloat()
-            dragStartIndex = selectedIndex
-            dragNavigationIndex = selectedIndex
             selectedPosition.animateTo(
                 targetValue = selectedIndex.toFloat(),
                 animationSpec = spring(
@@ -402,7 +394,8 @@ fun MiuixTopLevelLiquidGlassNavigationBar(
             val tabWidth = (maxWidth - horizontalPadding * 2) / destinations.size
             val tabWidthPx = with(density) { tabWidth.toPx() }
             val maxIndex = destinations.lastIndex.toFloat()
-            val elasticPosition = liquidGlassElasticPosition(selectedPosition.value, maxIndex)
+            val displayedPosition = if (isDragging) dragPosition else selectedPosition.value
+            val elasticPosition = liquidGlassElasticPosition(displayedPosition, maxIndex)
             val dragFraction = if (constraints.maxWidth > 0) {
                 (abs(dragDistancePx) / constraints.maxWidth).coerceIn(0f, 1f)
             } else {
@@ -413,59 +406,47 @@ fun MiuixTopLevelLiquidGlassNavigationBar(
             val panelOffsetPx by animateFloatAsState(
                 targetValue = if (isDragging) targetPanelOffsetPx else 0f,
                 animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioNoBouncy,
-                    stiffness = 300f,
-                    visibilityThreshold = 0.5f
+                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                    stiffness = Spring.StiffnessMedium
                 ),
                 label = "liquidNavigationPanelOffset"
             )
             val pressProgress by animateFloatAsState(
                 targetValue = if (isDragging || isNavigationItemPressed) 1f else 0f,
                 animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioNoBouncy,
-                    stiffness = 1000f,
-                    visibilityThreshold = 0.001f
+                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                    stiffness = Spring.StiffnessMediumLow
                 ),
                 label = "liquidNavigationPressProgress"
             )
             val indicatorScaleX by animateFloatAsState(
                 targetValue = 1f + pressProgress * (0.16f + dragFraction * 0.06f),
                 animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioNoBouncy,
-                    stiffness = 700f,
-                    visibilityThreshold = 0.001f
+                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                    stiffness = Spring.StiffnessMediumLow
                 ),
                 label = "liquidNavigationIndicatorScaleX"
             )
             val indicatorScaleY by animateFloatAsState(
-                targetValue = 1f + pressProgress * 0.12f,
+                targetValue = 1f + pressProgress * 0.08f,
                 animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioNoBouncy,
-                    stiffness = 700f,
-                    visibilityThreshold = 0.001f
+                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                    stiffness = Spring.StiffnessMediumLow
                 ),
                 label = "liquidNavigationIndicatorScaleY"
             )
             val hiddenTabScale = 1f + pressProgress * 0.2f
-            val indicatorVelocity = if (isDragging) selectedPosition.velocity / 10f else 0f
-
-            fun navigateDuringDrag(targetIndex: Int) {
-                if (targetIndex != dragNavigationIndex) {
-                    dragNavigationIndex = targetIndex
-                    latestOnNavigate.value(destinations[targetIndex])
-                }
-            }
 
             fun finishDrag(navigate: Boolean) {
                 val targetIndex = if (navigate) {
-                    dragTargetPosition.roundToInt().coerceIn(0, destinations.lastIndex)
+                    dragPosition.roundToInt().coerceIn(0, destinations.lastIndex)
                 } else {
-                    dragStartIndex
+                    selectedIndex
                 }
-                navigateDuringDrag(targetIndex)
+                val settledPosition = dragPosition.coerceIn(0f, maxIndex)
                 animationScope.launch {
                     selectedPosition.stop()
-                    dragTargetPosition = targetIndex.toFloat()
+                    selectedPosition.snapTo(settledPosition)
                     isDragging = false
                     dragDistancePx = 0f
                     selectedPosition.animateTo(
@@ -476,18 +457,37 @@ fun MiuixTopLevelLiquidGlassNavigationBar(
                         )
                     )
                 }
+                if (navigate) {
+                    onNavigate(destinations[targetIndex])
+                }
             }
 
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(64.dp)
+                    .graphicsLayer { translationX = panelOffsetPx }
+                    .drawBackdrop(
+                        backdrop = backdrop,
+                        shape = { containerShape },
+                        effects = {
+                            vibrancy()
+                            blur(2.dp.toPx())
+                            lens(24.dp.toPx(), 24.dp.toPx())
+                        },
+                        highlight = { LiquidHighlight.Default.copy(alpha = 0.75f) },
+                        layerBlock = {
+                            val width = size.width.coerceAtLeast(1f)
+                            val scale = 1f + 16.dp.toPx() / width * pressProgress
+                            scaleX = scale
+                            scaleY = scale
+                        },
+                        onDrawSurface = { drawRect(containerColor) }
+                    )
                     .pointerInput(tabWidthPx, isLtr) {
                         detectDragGestures(
                             onDragStart = {
-                                dragStartIndex = latestSelectedIndex.value
-                                dragNavigationIndex = latestSelectedIndex.value
-                                dragTargetPosition = selectedPosition.value
+                                dragPosition = selectedPosition.value
                                 dragDistancePx = 0f
                                 isDragging = true
                                 animationScope.launch { selectedPosition.stop() }
@@ -498,30 +498,17 @@ fun MiuixTopLevelLiquidGlassNavigationBar(
                             change.consume()
                             dragDistancePx += dragAmount.x
                             val direction = if (isLtr) 1f else -1f
-                            val targetPosition = (
-                                dragTargetPosition + direction * dragAmount.x / tabWidthPx
-                            ).coerceIn(-0.35f, maxIndex + 0.35f)
-                            dragTargetPosition = targetPosition
-                            animationScope.launch {
-                                selectedPosition.animateTo(
-                                    targetValue = targetPosition,
-                                    animationSpec = spring(
-                                        dampingRatio = Spring.DampingRatioNoBouncy,
-                                        stiffness = 1000f,
-                                        visibilityThreshold = 0.001f
-                                    )
-                                )
-                            }
-                            navigateDuringDrag(
-                                targetPosition.roundToInt().coerceIn(0, destinations.lastIndex)
-                            )
+                            dragPosition = (
+                                dragPosition + direction * dragAmount.x / tabWidthPx
+                                ).coerceIn(-0.35f, maxIndex + 0.35f)
                         }
                     }
             ) {
-                Box(
+                Row(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .height(64.dp)
+                        .clearAndSetSemantics {}
+                        .alpha(0f)
+                        .liquidLayerBackdrop(tabsBackdrop)
                         .graphicsLayer { translationX = panelOffsetPx }
                         .drawBackdrop(
                             backdrop = backdrop,
@@ -531,121 +518,37 @@ fun MiuixTopLevelLiquidGlassNavigationBar(
                                 blur(2.dp.toPx())
                                 lens(24.dp.toPx(), 24.dp.toPx())
                             },
-                            highlight = { LiquidHighlight.Default.copy(alpha = 0.75f) },
-                            layerBlock = {
-                                val width = size.width.coerceAtLeast(1f)
-                                val scale = 1f + 16.dp.toPx() / width * pressProgress
-                                scaleX = scale
-                                scaleY = scale
+                            highlight = {
+                                LiquidHighlight.Default.copy(alpha = pressProgress)
                             },
                             onDrawSurface = { drawRect(containerColor) }
                         )
+                        .fillMaxWidth()
+                        .height(56.dp)
+                        .padding(horizontal = horizontalPadding),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(
-                        modifier = Modifier
-                            .clearAndSetSemantics {}
-                            .alpha(0f)
-                            .liquidLayerBackdrop(tabsBackdrop)
-                            .graphicsLayer { translationX = panelOffsetPx }
-                            .drawBackdrop(
-                                backdrop = backdrop,
-                                shape = { containerShape },
-                                effects = {
-                                    vibrancy()
-                                    blur(2.dp.toPx())
-                                    lens(24.dp.toPx(), 24.dp.toPx())
-                                },
-                                highlight = {
-                                    LiquidHighlight.Default.copy(alpha = pressProgress)
-                                },
-                                onDrawSurface = { drawRect(containerColor) }
-                            )
-                            .fillMaxWidth()
-                            .height(56.dp)
-                            .padding(horizontal = horizontalPadding),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        destinations.forEach { destination ->
-                            val selected = currentDestination == destination
-                            LiquidGlassNavigationItemContent(
-                                destination = destination,
-                                selected = selected,
-                                label = stringResource(destination.labelRes),
-                                color = accentColor,
-                                scale = (if (selected) 1.06f else 1f) * hiddenTabScale,
-                                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium
-                            )
-                        }
-                    }
-
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(64.dp)
-                            .padding(horizontal = horizontalPadding)
-                            .selectableGroup(),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        destinations.forEachIndexed { index, destination ->
-                            val selected = currentDestination == destination
-                            val label = stringResource(destination.labelRes)
-                            val itemColor by animateColorAsState(
-                                targetValue = if (selected) accentColor else inactiveColor,
-                                animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
-                                label = "liquidNavigationItemColor"
-                            )
-                            val itemScale by animateFloatAsState(
-                                targetValue = if (selected) 1.06f else 1f,
-                                animationSpec = spring(
-                                    dampingRatio = Spring.DampingRatioMediumBouncy,
-                                    stiffness = Spring.StiffnessMediumLow
-                                ),
-                                label = "liquidNavigationItemScale"
-                            )
-                            LiquidGlassNavigationItemContent(
-                                destination = destination,
-                                selected = selected,
-                                label = label,
-                                color = itemColor,
-                                scale = itemScale,
-                                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
-                                modifier = Modifier
-                                    .clip(indicatorShape)
-                                    .selectable(
-                                        selected = selected,
-                                        role = Role.Tab,
-                                        interactionSource = navigationInteractionSource,
-                                        indication = null,
-                                        onClick = {
-                                            dragTargetPosition = index.toFloat()
-                                            dragNavigationIndex = index
-                                            animationScope.launch {
-                                                selectedPosition.animateTo(
-                                                    targetValue = index.toFloat(),
-                                                    animationSpec = spring(
-                                                        dampingRatio = Spring.DampingRatioMediumBouncy,
-                                                        stiffness = Spring.StiffnessMediumLow
-                                                    )
-                                                )
-                                            }
-                                            onNavigate(destination)
-                                        }
-                                    )
-                            )
-                        }
+                    destinations.forEach { destination ->
+                        val selected = currentDestination == destination
+                        LiquidGlassNavigationItemContent(
+                            destination = destination,
+                            selected = selected,
+                            label = stringResource(destination.labelRes),
+                            color = accentColor,
+                            scale = (if (selected) 1.06f else 1f) * hiddenTabScale,
+                            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium
+                        )
                     }
                 }
 
                 Box(
                     modifier = Modifier
                         .zIndex(1f)
-                        .padding(start = horizontalPadding)
+                        .padding(start = horizontalPadding, top = 4.dp, bottom = 4.dp)
                         .width(tabWidth)
-                        .height(56.dp)
-                        .align(Alignment.CenterStart)
+                        .fillMaxHeight()
                         .graphicsLayer {
-                            translationX = panelOffsetPx +
-                                elasticPosition * tabWidthPx * if (isLtr) 1f else -1f
+                            translationX = elasticPosition * tabWidthPx * if (isLtr) 1f else -1f
                         }
                         .drawBackdrop(
                             backdrop = combinedBackdrop,
@@ -671,10 +574,8 @@ fun MiuixTopLevelLiquidGlassNavigationBar(
                                 )
                             },
                             layerBlock = {
-                                val velocityScaleX = (indicatorVelocity * 0.75f).coerceIn(-0.08f, 0.08f)
-                                val velocityScaleY = (indicatorVelocity * 0.25f).coerceIn(-0.04f, 0.04f)
-                                scaleX = indicatorScaleX / (1f - velocityScaleX)
-                                scaleY = indicatorScaleY * (1f - velocityScaleY)
+                                scaleX = indicatorScaleX
+                                scaleY = indicatorScaleY
                             },
                             onDrawSurface = {
                                 drawRect(
@@ -689,6 +590,61 @@ fun MiuixTopLevelLiquidGlassNavigationBar(
                             }
                         )
                 )
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(64.dp)
+                        .padding(horizontal = horizontalPadding)
+                        .selectableGroup(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    destinations.forEachIndexed { index, destination ->
+                        val selected = currentDestination == destination
+                        val label = stringResource(destination.labelRes)
+                        val itemColor by animateColorAsState(
+                            targetValue = if (selected) accentColor else inactiveColor,
+                            animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+                            label = "liquidNavigationItemColor"
+                        )
+                        val itemScale by animateFloatAsState(
+                            targetValue = if (selected) 1.06f else 1f,
+                            animationSpec = spring(
+                                dampingRatio = Spring.DampingRatioMediumBouncy,
+                                stiffness = Spring.StiffnessMediumLow
+                            ),
+                            label = "liquidNavigationItemScale"
+                        )
+                        LiquidGlassNavigationItemContent(
+                            destination = destination,
+                            selected = selected,
+                            label = label,
+                            color = itemColor,
+                            scale = itemScale,
+                            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
+                            modifier = Modifier
+                                .clip(indicatorShape)
+                                .selectable(
+                                    selected = selected,
+                                    role = Role.Tab,
+                                    interactionSource = navigationInteractionSource,
+                                    indication = null,
+                                    onClick = {
+                                        animationScope.launch {
+                                            selectedPosition.animateTo(
+                                                targetValue = index.toFloat(),
+                                                animationSpec = spring(
+                                                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                                                    stiffness = Spring.StiffnessMediumLow
+                                                )
+                                            )
+                                        }
+                                        onNavigate(destination)
+                                    }
+                                )
+                        )
+                    }
+                }
             }
         }
     }
