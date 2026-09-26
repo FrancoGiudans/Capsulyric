@@ -528,10 +528,6 @@
     <string name="backup_conflict_title">解析規則衝突</string>
     <string name="backup_conflict_description">匯入的備份中含有與本機已存在套件名稱相同的規則。請選擇如何處理衝突：</string>
     <string name="backup_conflict_apply">套用規則解決方案</string>
-    <string name="backup_parser_mode_title">解析規則匯入方式</string>
-    <string name="backup_parser_mode_description">備份中含有解析規則。\n合併：保留現有規則，並新增備份中的規則。\n取代：備份中的規則將完全覆蓋現有規則。</string>
-    <string name="backup_parser_mode_merge">合併</string>
-    <string name="backup_parser_mode_replace">取代</string>
     <string name="backup_cat_capsule">膠囊與小島</string>
     <string name="backup_cat_notifications">通知與狀態列</string>
     <string name="backup_cat_appearance">外觀與主題</string>

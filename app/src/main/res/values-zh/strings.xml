@@ -528,10 +528,6 @@
     <string name="backup_conflict_title">解析规则冲突</string>
     <string name="backup_conflict_description">以下应用已存在规则\n勾选应用以导入（替换现有规则）</string>
     <string name="backup_conflict_apply">应用</string>
-    <string name="backup_parser_mode_title">解析规则导入方式</string>
-    <string name="backup_parser_mode_description">备份中包含解析规则。\n合并：保留现有规则，并添加备份中的规则。\n替换：备份中的规则将完全覆盖现有规则。</string>
-    <string name="backup_parser_mode_merge">合并</string>
-    <string name="backup_parser_mode_replace">替换</string>
     <string name="backup_cat_capsule">胶囊</string>
     <string name="backup_cat_notifications">通知</string>
     <string name="backup_cat_appearance">应用外观</string>

@@ -567,10 +567,6 @@
     <string name="backup_conflict_title">Parser Rule Conflicts</string>
     <string name="backup_conflict_description">The following apps already have rules.\nCheck apps to IMPORT (replace existing)</string>
     <string name="backup_conflict_apply">Apply</string>
-    <string name="backup_parser_mode_title">Import Parser Rules</string>
-    <string name="backup_parser_mode_description">The backup contains parser rules.\nMerge: keep existing rules and add the ones from the backup.\nReplace: the backup rules fully replace the existing ones.</string>
-    <string name="backup_parser_mode_merge">Merge</string>
-    <string name="backup_parser_mode_replace">Replace</string>
     <string name="backup_cat_capsule">Capsule</string>
     <string name="backup_cat_notifications">Notifications</string>
     <string name="backup_cat_appearance">Appearance</string>

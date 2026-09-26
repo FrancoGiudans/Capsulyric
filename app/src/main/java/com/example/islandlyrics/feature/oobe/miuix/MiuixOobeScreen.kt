@@ -217,14 +217,22 @@ fun MiuixOobeScreen(
                     selectedLeafIds = selectedLeafIds,
                     selectedSensitiveItemIds = selectedSensitiveItemIds,
                     sensitivePassword = sensitivePassword,
-                    parserImportMode = SettingsBackupManager.ParserImportMode.Replace,
                 )
             } finally {
                 if (!preview.isZip) sensitivePassword?.fill('\u0000')
             }
             if (result.success) {
-                // Parser rules were already applied in Replace mode inside the import
-                // (backup rules overwrite built-in defaults entirely, no merge/conflicts).
+                // Auto-resolve parser rule conflicts: overwrite all (OOBE backup restore)
+                if (result.parserConflicts.isNotEmpty()) {
+                    SettingsBackupManager.resolveParserConflicts(
+                        context,
+                        BackupCategories.filterParserRulesJson(
+                            ParserBackupPreviewReader.read(context, uri),
+                            selectedLeafIds
+                        ),
+                        keepExistingPkgs = emptySet()  // overwrite all with imported rules
+                    )
+                }
                 // Apply imported language before finishing OOBE
                 val prefs = AppPreferences.of(context)
                 val langCode = prefs.getString(AppPreferences.Keys.LANGUAGE_CODE, "") ?: ""
