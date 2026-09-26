@@ -427,9 +427,7 @@ object SettingsBackupManager {
     /** Build the settings.json JSONObject from SharedPreferences filtered by leaf IDs. */
     private fun buildSettingsJson(context: Context, selectedLeafIds: Set<String>): JSONObject {
         val prefs = AppPreferences.of(context)
-        val all = prefs.all.toMutableMap()
-        all[AppPreferences.Keys.MIUIX_NAVIGATION_BAR_STYLE] =
-            AppPreferences.miuixNavigationBarStyle(prefs).preferenceValue
+        val all = prefs.all
         val selectedKeys = BackupCategories.collectKeysForLeafIds(all.keys, selectedLeafIds)
 
         val categoriesJson = JSONObject()
@@ -677,7 +675,6 @@ object SettingsBackupManager {
                         }
                     }
                     val prefsJson = catBlock.optJSONObject("preferences") ?: continue
-                    migrateNavigationBarStyle(prefsJson)
                     val keyIter = prefsJson.keys()
                     while (keyIter.hasNext()) {
                         val key = keyIter.next()
@@ -706,12 +703,11 @@ object SettingsBackupManager {
         } else {
             val allowedPatterns = BackupCategories.patternsForLeafIds(selectedLeafIds)
             val prefsJson = root.optJSONObject("preferences") ?: root
-            migrateNavigationBarStyle(prefsJson)
             val iterator = prefsJson.keys()
             while (iterator.hasNext()) {
                 val key = iterator.next()
                 if (key in BackupCategories.EXCLUDED_KEYS) continue
-                if ((allowedPatterns.isNotEmpty() || key == AppPreferences.Keys.MIUIX_NAVIGATION_BAR_STYLE) &&
+                if (allowedPatterns.isNotEmpty() &&
                     !allowedPatterns.any { BackupCategories.matchesPattern(key, it) }) continue
                 if (key == PREF_PARSER_RULES && selectedLeafIds.any { it.startsWith("parser_") }) {
                     importedParserJson = BackupCategories.filterParserRulesJson(
@@ -843,7 +839,6 @@ object SettingsBackupManager {
                     val catId = catIter.next()
                     val catBlock = categoriesObj.optJSONObject(catId) ?: continue
                     val prefsJson = catBlock.optJSONObject("preferences")
-                    prefsJson?.let { migrateNavigationBarStyle(it) }
                     var n = prefsJson?.length() ?: 0
                     if (catId == "parser_rules") {
                         n += catBlock.optJSONArray("parsers")?.length() ?: 0
@@ -858,7 +853,6 @@ object SettingsBackupManager {
         }
         // v1: detect categories from flat preferences
         val prefsJson = root.optJSONObject("preferences") ?: root
-        migrateNavigationBarStyle(prefsJson)
         val counts = BackupCategories.detectCategoriesFromJson(prefsJson)
         var total = 0
         counts.values.forEach { total += it }
@@ -956,29 +950,11 @@ object SettingsBackupManager {
         }
     }
 
-    private fun migrateNavigationBarStyle(prefsJson: JSONObject) {
-        val legacyValue = prefsJson.remove(AppPreferences.Keys.MIUIX_FLOATING_BOTTOM_BAR_ENABLED)
-        if (prefsJson.has(AppPreferences.Keys.MIUIX_NAVIGATION_BAR_STYLE)) return
-        val enabled = if (legacyValue is JSONObject) {
-            if (legacyValue.optString("type") != "boolean") return
-            legacyValue.opt("value") as? Boolean
-        } else {
-            legacyValue as? Boolean
-        } ?: return
-        val style = if (enabled) MiuixNavigationBarStyle.FLOATING else MiuixNavigationBarStyle.NORMAL
-        prefsJson.put(AppPreferences.Keys.MIUIX_NAVIGATION_BAR_STYLE, wrapValue(style.preferenceValue))
-    }
-
     private fun applyValue(
         editor: android.content.SharedPreferences.Editor,
         key: String,
         rawValue: Any?
     ): Boolean {
-        if (key == AppPreferences.Keys.MIUIX_NAVIGATION_BAR_STYLE) {
-            editor.putString(key, unwrapStringValue(rawValue) ?: return false)
-            editor.remove(AppPreferences.Keys.MIUIX_FLOATING_BOTTOM_BAR_ENABLED)
-            return true
-        }
         if (rawValue is JSONObject && rawValue.has("type")) {
             val type = rawValue.optString("type")
             val value = rawValue.opt("value")
