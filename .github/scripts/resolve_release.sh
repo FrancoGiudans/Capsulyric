@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Resolve the channel from the branch, never from stale changelog metadata.
+# Resolve the channel from the target branch and require matching changelog metadata.
 set -euo pipefail
 
 case "${GITHUB_REF:-}" in
@@ -7,6 +7,8 @@ case "${GITHUB_REF:-}" in
   refs/heads/develop) CHANNEL=Preview ;;
   *) echo '::error::Releases must run on main or develop.' >&2; exit 1 ;;
 esac
+
+bash .github/scripts/validate_release_metadata.sh "${GITHUB_REF#refs/heads/}"
 
 if [[ "${GITHUB_EVENT_NAME:-}" == workflow_dispatch ]]; then
   RAW="${RELEASE_VERSION:-}"
