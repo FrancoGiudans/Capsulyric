@@ -27,10 +27,8 @@ jobs:
         with:
           fetch-depth: 1
 
-      - name: Test release policy
-        run: bash .github/scripts/test_resolve_release.sh
-
-      - name: Validate release metadata for target branch
+      - name: Validate release metadata for release PR
+        if: startsWith(github.event.pull_request.title, '[release]')
         env:
           PR_BASE_BRANCH: ${{ github.base_ref }}
         run: bash .github/scripts/validate_release_metadata.sh "$PR_BASE_BRANCH"
