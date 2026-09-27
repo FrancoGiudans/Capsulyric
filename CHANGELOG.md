@@ -1,6 +1,6 @@
 <!--
-发版说明：PR 修改本文件，最终合并提交保留以 [release] 开头的标题行。
-合入 develop 发布 Preview；合入 main 发布 Stable。频道由目标分支决定。
+发版说明：发版提交信息包含以 [release] 开头的标题行即可触发工作流，不要求本次修改本文件。
+合入 develop 发布 Preview；合入 main 发布 Stable。频道由目标分支决定，且需与下方 Preview 标记一致。
 正式发版使用 develop -> main 的 PR，并选择 Create a merge commit，禁止 squash/rebase。
 完整流程见 docs/RELEASING.md。
 
@@ -9,8 +9,11 @@ PR 标题示例：
   [release]26.9.1        → main: Stable；develop: Preview
   [release]26.9.Preview  → 仅允许 develop
 
-手动发版也仅允许 main / develop；不再使用 Preview 元数据覆盖频道。
+手动发版也仅允许 main / develop，并校验 Preview 标记与目标分支一致。
 -->
+
+## Release Metadata
+- **Preview**: `true`
 
 ## Release Highlights
 ### 🇨🇳
