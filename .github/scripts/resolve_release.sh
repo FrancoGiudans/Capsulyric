@@ -15,7 +15,7 @@ PREVIEW_MARKER=$(awk '
   in_metadata && /^- \*\*Preview\*\*: `(true|false)`[[:space:]]*$/ {
     if (found != "") { duplicate=1 }
     value=$0
-    sub(/^.*`/, "", value)
+    sub(/^[^`]*`/, "", value)
     sub(/`.*/, "", value)
     found=value
   }

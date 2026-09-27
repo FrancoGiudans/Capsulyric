@@ -13,12 +13,17 @@ check() {
   fi
   printf '## Release Metadata\n- **Preview**: `%s`\n' "$preview" > "$changelog"
   : > "$output"
-  if GITHUB_REF="$branch" GITHUB_EVENT_NAME="$event" RELEASE_VERSION="$input" HEAD_COMMIT_MESSAGE="$message" GITHUB_OUTPUT="$output" CHANGELOG_FILE="$changelog" bash .github/scripts/resolve_release.sh 2>/dev/null; then
+  local result
+  if result=$(GITHUB_REF="$branch" GITHUB_EVENT_NAME="$event" RELEASE_VERSION="$input" HEAD_COMMIT_MESSAGE="$message" GITHUB_OUTPUT="$output" CHANGELOG_FILE="$changelog" bash .github/scripts/resolve_release.sh 2>&1); then
     [[ "$expected" != fail ]] || { echo "Unexpected success: $branch $input $message"; exit 1; }
     grep -qx "channel=$expected" "$output"
     grep -qE '^version_prefix=[0-9]+(\.[0-9]+)*$' "$output"
   else
-    [[ "$expected" == fail ]] || { echo "Unexpected failure: $branch $input $message"; exit 1; }
+    if [[ "$expected" != fail ]]; then
+      printf '%s\n' "$result"
+      echo "Unexpected failure: $branch $input $message"
+      exit 1
+    fi
   fi
   count=$((count + 1))
 }
