@@ -2,8 +2,6 @@ name: Changelog Release
 
 on:
   push:
-    paths:
-      - 'CHANGELOG.md'
     branches:
       - develop
       - main
