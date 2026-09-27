@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Resolve the channel from the branch, never from stale changelog metadata.
+# Resolve the channel from the target branch and require matching changelog metadata.
 set -euo pipefail
 
 case "${GITHUB_REF:-}" in
@@ -7,6 +7,38 @@ case "${GITHUB_REF:-}" in
   refs/heads/develop) CHANNEL=Preview ;;
   *) echo '::error::Releases must run on main or develop.' >&2; exit 1 ;;
 esac
+
+CHANGELOG_FILE=${CHANGELOG_FILE:-CHANGELOG.md}
+PREVIEW_MARKER=$(awk '
+  /^## Release Metadata[[:space:]]*$/ { in_metadata=1; next }
+  /^## / { in_metadata=0 }
+  in_metadata && /^- \*\*Preview\*\*: `(true|false)`[[:space:]]*$/ {
+    if (found != "") { duplicate=1 }
+    value=$0
+    sub(/^.*`/, "", value)
+    sub(/`.*/, "", value)
+    found=value
+  }
+  END {
+    if (duplicate) exit 2
+    if (found != "") print found
+  }
+' "$CHANGELOG_FILE") || {
+  echo '::error::CHANGELOG.md must contain exactly one Preview marker under Release Metadata.' >&2
+  exit 1
+}
+if [[ -z "$PREVIEW_MARKER" ]]; then
+  echo '::error::CHANGELOG.md is missing `- **Preview**: `true` or `false`` under `## Release Metadata`.' >&2
+  exit 1
+fi
+EXPECTED_PREVIEW=false
+if [[ "$CHANNEL" == Preview ]]; then
+  EXPECTED_PREVIEW=true
+fi
+if [[ "$PREVIEW_MARKER" != "$EXPECTED_PREVIEW" ]]; then
+  echo "::error::${GITHUB_REF} requires CHANGELOG Preview: ${EXPECTED_PREVIEW}, found ${PREVIEW_MARKER}." >&2
+  exit 1
+fi
 
 if [[ "${GITHUB_EVENT_NAME:-}" == workflow_dispatch ]]; then
   RAW="${RELEASE_VERSION:-}"

@@ -2,12 +2,18 @@
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 output=$(mktemp)
-trap 'rm -f "$output"' EXIT
+changelog=$(mktemp)
+trap 'rm -f "$output" "$changelog"' EXIT
 count=0
 check() {
   local branch=$1 event=$2 input=$3 message=$4 expected=$5
+  local preview=false
+  if [[ "$branch" == refs/heads/develop ]]; then
+    preview=true
+  fi
+  printf '## Release Metadata\n- **Preview**: `%s`\n' "$preview" > "$changelog"
   : > "$output"
-  if GITHUB_REF="$branch" GITHUB_EVENT_NAME="$event" RELEASE_VERSION="$input" HEAD_COMMIT_MESSAGE="$message" GITHUB_OUTPUT="$output" bash .github/scripts/resolve_release.sh 2>/dev/null; then
+  if GITHUB_REF="$branch" GITHUB_EVENT_NAME="$event" RELEASE_VERSION="$input" HEAD_COMMIT_MESSAGE="$message" GITHUB_OUTPUT="$output" CHANGELOG_FILE="$changelog" bash .github/scripts/resolve_release.sh 2>/dev/null; then
     [[ "$expected" != fail ]] || { echo "Unexpected success: $branch $input $message"; exit 1; }
     grep -qx "channel=$expected" "$output"
     grep -qE '^version_prefix=[0-9]+(\.[0-9]+)*$' "$output"
