@@ -16,6 +16,7 @@
 普通同步 PR 的最终提交信息不要包含发版标题行。
 
 频道由目标分支决定：main 为 Stable，develop 为 Preview。发版前还必须在 `CHANGELOG.md` 的 `## Release Metadata` 下提供且只提供一项 Preview 标记：main 必须设为 `false`，develop 必须设为 `true`。标记缺失、重复或与分支不匹配都会在构建和发布前失败。
+PR 的必需 `build-debug` 检查也会按 PR 目标分支校验该标记，不匹配时阻止合并。
 输入仅允许数字版本及可选频道，如 `26.9.1`、`26.9.Preview`、`Preview` 或空值。
 Experiment 使用独立的 Experiment / Preview Build 工作流。
 
