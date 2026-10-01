@@ -1,6 +1,6 @@
 # Miuix Components Quick Reference
 
-Source of truth: `C:\Android\IslandLyrics\reference\miuix-0.9.3`.
+Source of truth: `C:\Android\IslandLyrics\reference\miuix` (Miuix 0.9.4).
 
 ## Scaffold And Hosts
 
@@ -57,3 +57,11 @@ Source of truth: `C:\Android\IslandLyrics\reference\miuix-0.9.3`.
 - Forms in sheets/dialogs must account for IME/insets.
 - Long content needs explicit scrolling policy; avoid unbounded vertical content in bottom sheets.
 - Popup/dialog close behavior must handle system back, outside tap, and programmatic dismissal coherently.
+
+## Navigation
+
+- For Miuix pages, the existing `PageStackHost` selects `MiuixNavPageStackHost` in PageSpecific mode when predictive back is enabled. Keep the Material and Consistent-mode paths unchanged unless they are explicitly in scope.
+- `OverlaySheetHost(useMiuixNavForDefault = true)` is used by the Miuix parser-rule inline editor; it registers the editor as a Modal entry and clears editor state after that entry leaves the display.
+- Keep application page data as the source of truth. The adapter uses unique in-memory entry IDs and a root entry; do not add a second business back stack.
+- System predictive back is handled by `NavDisplay`. Do not also register a competing handler for the same destination. Page swipe-to-dismiss is opt-in; this app leaves it disabled.
+- `LocalNavTransitionScope.current` is valid only inside a `NavDisplay` entry. Use `rememberNavBackStack<Routes>(Routes.Home)` with an explicit serializable route supertype only when process-restorable routes are required; the app's generic page adapter is intentionally in-memory.

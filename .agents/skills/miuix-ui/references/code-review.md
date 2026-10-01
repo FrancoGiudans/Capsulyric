@@ -8,7 +8,9 @@
 ## Architecture
 
 - Is each new wrapper justified by real behavior, not just styling?
-- Could an upstream 0.9.3 component or existing project wrapper do the same job?
+- Could an upstream 0.9.4 component or existing project wrapper do the same job?
+- Does a Miuix navigation change preserve the PageSpecific/Consistent split, entry identity, root fallback, and local back-handler priority?
+- Is `LocalNavTransitionScope` read only inside a Miuix `NavDisplay` entry, and is swipe dismissal still opt-in?
 - Are page-local helpers kept local until reused?
 - Is state owned above presentation and passed through a minimal interface?
 
