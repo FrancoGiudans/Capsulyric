@@ -50,6 +50,7 @@ import com.example.islandlyrics.feature.settings.CommunityDialogState
 import com.example.islandlyrics.feature.settings.CommunityMarkdownBody
 import com.example.islandlyrics.feature.settings.ParserBackupPreviewReader
 import com.example.islandlyrics.feature.settings.buildCommunityMarkdown
+import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -75,6 +76,7 @@ import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.graphics.Color
@@ -94,6 +96,7 @@ import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.automirrored.filled.Help
 import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.BatterySaver
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Download
@@ -158,6 +161,7 @@ fun SettingsScreen(
     extraBottomPadding: androidx.compose.ui.unit.Dp = 0.dp
 ) {
     val context = LocalContext.current
+    val focusManager = LocalFocusManager.current
     val layoutDirection = LocalLayoutDirection.current
     val prefs = remember { context.getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE) }
     val snackbarHostState = remember { SnackbarHostState() }
@@ -446,8 +450,46 @@ fun SettingsScreen(
         }
     }
 
+    fun checkPostNotificationPermission(): Boolean {
+        return ContextCompat.checkSelfPermission(context, android.Manifest.permission.POST_NOTIFICATIONS) == android.content.pm.PackageManager.PERMISSION_GRANTED
+    }
+
+    var postNotificationGranted by remember { mutableStateOf(checkPostNotificationPermission()) }
+    var showPostNotificationSettings by remember { mutableStateOf(false) }
+    val postNotificationLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        postNotificationGranted = granted
+        showPostNotificationSettings = !granted
+    }
+
+    fun openPostNotificationSettings() {
+        val intent = Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+            putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+        }
+        try {
+            context.startActivity(intent)
+        } catch (_: ActivityNotFoundException) {
+            context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                data = Uri.fromParts("package", context.packageName, null)
+            })
+        }
+    }
+
+    fun requestPostNotificationPermission() {
+        if (postNotificationGranted) {
+            openPostNotificationSettings()
+        } else {
+            postNotificationLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
+
     fun handleSearchAction(action: SettingsSearchAction) {
         when (action) {
+            SettingsSearchAction.RequestPostNotificationPermission -> {
+                focusManager.clearFocus()
+                requestPostNotificationPermission()
+            }
             is SettingsSearchAction.Navigate -> {
                 if (action.target == SettingsNavigationTarget.MAIN_SETTINGS) {
                     settingsSearchExpanded = false
@@ -525,12 +567,7 @@ fun SettingsScreen(
     fun checkNotificationPermission(): Boolean {
         return NotificationManagerCompat.getEnabledListenerPackages(context).contains(context.packageName)
     }
-    fun checkPostNotificationPermission(): Boolean {
-        return ContextCompat.checkSelfPermission(context, android.Manifest.permission.POST_NOTIFICATIONS) == android.content.pm.PackageManager.PERMISSION_GRANTED
-    }
-
     var notificationGranted by remember { mutableStateOf(checkNotificationPermission()) }
-    var postNotificationGranted by remember { mutableStateOf(checkPostNotificationPermission()) }
 
     // ... (lifecycle observer) ...
 
@@ -895,13 +932,17 @@ fun SettingsScreen(
                         subtitle = stringResource(R.string.perm_post_notif_desc),
                         checked = postNotificationGranted,
                         enabled = true,
-                        onClick = {
-                            val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
-                            intent.data = Uri.fromParts("package", context.packageName, null)
-                            context.startActivity(intent)
-                        },
+                        onClick = { requestPostNotificationPermission() },
                         onCheckedChange = {}
                     )
+                    if (showPostNotificationSettings && !postNotificationGranted) {
+                        SettingsCardDivider()
+                        SettingsActionItem(
+                            title = stringResource(R.string.main_status_open_settings),
+                            icon = Icons.Filled.Settings,
+                            onClick = { openPostNotificationSettings() }
+                        )
+                    }
                     SettingsCardDivider()
                     SettingsActionItem(
                         title = stringResource(R.string.settings_general_battery),

@@ -26,6 +26,7 @@ package com.example.islandlyrics.feature.oobe.miuix
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
@@ -812,6 +813,26 @@ private fun PermissionsStepBody(
     val autostartIntent = remember { RomUtils.getAutostartPermissionIntent(context) }
     val showAutostart = RomUtils.isHeavySkin() && autostartIntent != null
     var showListenerScopeDialog by remember { mutableStateOf(false) }
+    var showPostNotificationSettings by remember { mutableStateOf(false) }
+    val postNotificationLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        onPostGrantedChange(granted)
+        showPostNotificationSettings = !granted
+    }
+
+    fun openPostNotificationSettings() {
+        val intent = Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+            putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+        }
+        try {
+            context.startActivity(intent)
+        } catch (_: ActivityNotFoundException) {
+            context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                data = Uri.fromParts("package", context.packageName, null)
+            })
+        }
+    }
 
     DisposableEffect(lifecycleOwner) {
         val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
@@ -861,12 +882,20 @@ private fun PermissionsStepBody(
                     }
                 },
                 onClick = {
-                    val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
-                        data = Uri.fromParts("package", context.packageName, null)
+                    if (postGranted) {
+                        openPostNotificationSettings()
+                    } else {
+                        postNotificationLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
                     }
-                    context.startActivity(intent)
                 }
             )
+            if (showPostNotificationSettings && !postGranted) {
+                HorizontalDivider(modifier = Modifier.padding(horizontal = 20.dp))
+                SuperArrow(
+                    title = stringResource(R.string.main_status_open_settings),
+                    onClick = { openPostNotificationSettings() }
+                )
+            }
             if (showAutostart) {
                 HorizontalDivider(modifier = Modifier.padding(horizontal = 20.dp))
                 SuperArrow(
