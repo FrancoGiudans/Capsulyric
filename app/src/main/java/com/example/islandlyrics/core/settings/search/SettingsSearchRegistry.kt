@@ -24,7 +24,6 @@ package com.example.islandlyrics.core.settings.search
 
 import android.content.Context
 import android.content.Intent
-import android.net.Uri
 import android.provider.Settings
 import androidx.core.net.toUri
 import com.example.islandlyrics.R
@@ -135,11 +134,7 @@ object SettingsSearchRegistry {
             summaryRes = R.string.perm_post_notif_desc,
             breadcrumbResList = listOf(R.string.settings_permissions_header),
             keywords = listOf("发送通知权限", "通知权限", "POST_NOTIFICATIONS"),
-            action = SettingsSearchAction.LaunchIntent { ctx ->
-                Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
-                    data = Uri.fromParts("package", ctx.packageName, null)
-                }
-            }
+            action = SettingsSearchAction.RequestPostNotificationPermission
         ),
         SettingsSearchItem(
             id = "perm_battery",

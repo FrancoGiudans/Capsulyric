@@ -27,6 +27,8 @@ import android.content.Intent
 import com.example.islandlyrics.feature.customsettings.CustomSettingsTab
 
 sealed interface SettingsSearchAction {
+    data object RequestPostNotificationPermission : SettingsSearchAction
+
     /**
      * 导航至指定设置页面，可选指定目标 Tab 与需要定位高亮的具体设置项 Key。
      */

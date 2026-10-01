@@ -3,6 +3,8 @@ package com.example.islandlyrics
 import android.content.ComponentName
 import android.net.Uri
 import android.provider.Settings
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import com.example.islandlyrics.core.update.UpdateChecker
 import com.example.islandlyrics.core.platform.RomUtils
 import com.example.islandlyrics.runtime.service.LyricService
@@ -60,6 +62,11 @@ fun MiuixDebugCenterScreen(
 
     // Floating Lyrics toggle state
     val canDrawOverlays = remember { mutableStateOf(Settings.canDrawOverlays(context)) }
+    val overlayPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) {
+        canDrawOverlays.value = Settings.canDrawOverlays(context)
+    }
     var floatingLyricsEnabled by remember {
         mutableStateOf(prefs.getBoolean(FloatingLyricsRenderer.PREF_KEY, false))
     }
@@ -260,7 +267,7 @@ fun MiuixDebugCenterScreen(
                                     Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
                                     Uri.parse("package:${context.packageName}")
                                 )
-                                context.startActivity(intent)
+                                overlayPermissionLauncher.launch(intent)
                             }
                         )
                     } else {

@@ -46,6 +46,7 @@ import com.example.islandlyrics.feature.settings.CommunityDialogState
 import com.example.islandlyrics.feature.settings.CommunityMarkdownBody
 import com.example.islandlyrics.feature.settings.ParserBackupPreviewReader
 import com.example.islandlyrics.feature.settings.buildCommunityMarkdown
+import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.content.Context
 import android.net.Uri
@@ -453,6 +454,35 @@ fun MiuixSettingsScreen(
 
     var notificationGranted by remember { mutableStateOf(checkNotificationPermission()) }
     var postNotificationGranted by remember { mutableStateOf(checkPostNotificationPermission()) }
+    var showPostNotificationSettings by remember { mutableStateOf(false) }
+    val postNotificationLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        postNotificationGranted = granted
+        showPostNotificationSettings = !granted
+    }
+
+    fun openPostNotificationSettings() {
+        val intent = Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+            putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+        }
+        try {
+            context.startActivity(intent)
+        } catch (_: ActivityNotFoundException) {
+            context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                data = Uri.fromParts("package", context.packageName, null)
+            })
+        }
+    }
+
+    fun requestPostNotificationPermission() {
+        if (postNotificationGranted) {
+            openPostNotificationSettings()
+        } else {
+            postNotificationLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
+
     var newPlayingAppAlertEnabled by remember { mutableStateOf(prefs.getBoolean(NewPlayingAppNotifier.PREF_ENABLED, false)) }
 
     LaunchedEffect(isHyperOsSupported) {
@@ -516,6 +546,7 @@ fun MiuixSettingsScreen(
 
     fun handleSearchAction(action: SettingsSearchAction) {
         when (action) {
+            SettingsSearchAction.RequestPostNotificationPermission -> requestPostNotificationPermission()
             is SettingsSearchAction.Navigate -> {
                 if (action.target == SettingsNavigationTarget.MAIN_SETTINGS) {
                     settingsSearchExpanded = false
@@ -908,12 +939,14 @@ fun MiuixSettingsScreen(
                         title = stringResource(R.string.perm_post_notif),
                         summary = stringResource(R.string.perm_post_notif_desc),
                         checked = postNotificationGranted,
-                        onCheckedChange = {
-                            val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
-                            intent.data = Uri.fromParts("package", context.packageName, null)
-                            context.startActivity(intent)
-                        }
+                        onCheckedChange = { requestPostNotificationPermission() }
                     )
+                    if (showPostNotificationSettings && !postNotificationGranted) {
+                        SuperArrow(
+                            title = stringResource(R.string.main_status_open_settings),
+                            onClick = { openPostNotificationSettings() }
+                        )
+                    }
 
 
                     SuperArrow(
