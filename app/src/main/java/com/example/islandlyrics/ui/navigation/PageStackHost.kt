@@ -60,6 +60,7 @@ fun <T> PageStackHost(
     backdropColor: Color,
     modifier: Modifier = Modifier,
     key: (T) -> Any = { it as Any },
+    useMiuixNavForDefault: Boolean = false,
     backgroundContent: @Composable BoxScope.() -> Unit,
     pageContent: @Composable BoxScope.(T) -> Unit,
 ) {
@@ -79,6 +80,20 @@ fun <T> PageStackHost(
     val predictiveBackEnabled = rememberPredictiveBackEnabledState(prefs)
     val animationMode = rememberPredictiveBackAnimationModeState(prefs)
     val animationStyle = rememberPredictiveBackAnimationStyleState(prefs)
+
+    if (useMiuixNavForDefault && predictiveBackEnabled && animationMode == PredictiveBackAnimationMode.PageSpecific) {
+        MiuixNavPageStackHost(
+            stack = stack,
+            onPop = onPop,
+            backdropColor = backdropColor,
+            modifier = modifier,
+            key = key,
+            backgroundContent = backgroundContent,
+            pageContent = pageContent,
+        )
+        return
+    }
+
     val useConsistentAnimation = predictiveBackEnabled && animationMode == PredictiveBackAnimationMode.Consistent
     val transitionState = navEventState.transitionState
     val gestureState = if (predictiveBackEnabled) {
