@@ -57,6 +57,9 @@ fun OverlaySheetHost(
     onDismissRequest: () -> Unit,
     modifier: Modifier = Modifier,
     scrimColor: Color = Color.Black,
+    useMiuixNavForDefault: Boolean = false,
+    entryKey: Any? = null,
+    onExitComplete: ((Any?) -> Unit)? = null,
     content: @Composable BoxScope.() -> Unit,
     sheetContent: @Composable BoxScope.() -> Unit,
 ) {
@@ -65,10 +68,28 @@ fun OverlaySheetHost(
         AppPreferences.of(context)
     }
     val currentOnDismissRequest by rememberUpdatedState(onDismissRequest)
+    val currentOnExitComplete by rememberUpdatedState(onExitComplete)
+    var wasVisible by remember { mutableStateOf(visible) }
+    var activeEntryKey by remember { mutableStateOf(entryKey) }
     val navEventState = rememberNavigationEventState(NavigationEventInfo.None)
     val predictiveBackEnabled = rememberPredictiveBackEnabledState(prefs)
     val animationMode = rememberPredictiveBackAnimationModeState(prefs)
     val animationStyle = rememberPredictiveBackAnimationStyleState(prefs)
+
+    if (useMiuixNavForDefault && predictiveBackEnabled && animationMode == PredictiveBackAnimationMode.PageSpecific) {
+        MiuixNavOverlaySheetHost(
+            visible = visible,
+            onDismissRequest = onDismissRequest,
+            onExitComplete = onExitComplete,
+            entryKey = entryKey,
+            scrimColor = scrimColor,
+            modifier = modifier,
+            content = content,
+            sheetContent = sheetContent,
+        )
+        return
+    }
+
     val useConsistentAnimation = predictiveBackEnabled && animationMode == PredictiveBackAnimationMode.Consistent
     var latestGestureProgress by remember { mutableFloatStateOf(0f) }
     var latestGestureDirection by remember { mutableFloatStateOf(1f) }
@@ -122,6 +143,15 @@ fun OverlaySheetHost(
         animationSpec = tween(durationMillis = 400, easing = FastOutSlowInEasing),
         label = "overlaySheetProgress"
     )
+    LaunchedEffect(visible, entryKey, visibilityProgress) {
+        if (visible) {
+            wasVisible = true
+            activeEntryKey = entryKey
+        } else if (wasVisible && visibilityProgress <= 0.001f) {
+            wasVisible = false
+            currentOnExitComplete?.invoke(activeEntryKey)
+        }
+    }
     val density = LocalDensity.current
     val backgroundShiftPx = with(density) { 12.dp.toPx() }
     val closeProgress = (1f - visibilityProgress).coerceIn(0f, 1f)

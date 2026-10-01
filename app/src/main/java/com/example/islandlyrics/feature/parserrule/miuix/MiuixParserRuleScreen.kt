@@ -68,7 +68,6 @@ import com.example.islandlyrics.ui.miuix.effects.miuixPageScroll
 import com.example.islandlyrics.ui.navigation.OverlaySheetHost
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.delay
 
 private data class InlineParserRuleEditorState(
     val initialRule: ParserRule,
@@ -197,18 +196,20 @@ fun MiuixParserRuleScreen(
     }
 
     LaunchedEffect(inlineEditorVisible) {
-        if (inlineEditorVisible) {
-            onBottomBarVisibilityChange(false)
-        } else {
-            delay(430)
-            inlineEditorState = null
-            onBottomBarVisibilityChange(true)
-        }
+        if (inlineEditorVisible) onBottomBarVisibilityChange(false)
     }
 
     OverlaySheetHost(
         visible = inlineEditorVisible && inlineEditorState != null,
         onDismissRequest = ::closeRuleEditor,
+        useMiuixNavForDefault = true,
+        entryKey = inlineEditorState,
+        onExitComplete = { closedEditor ->
+            if (!inlineEditorVisible && inlineEditorState === closedEditor) {
+                inlineEditorState = null
+                onBottomBarVisibilityChange(true)
+            }
+        },
         content = {
             MiuixBlurScaffold(
                 topBar = {
