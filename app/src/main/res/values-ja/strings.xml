@@ -743,7 +743,6 @@
     <!-- OOBE -->
     <string name="oobe_welcome_title">Capsulyric へようこそ</string>
     <string name="oobe_welcome_subtitle">軽量で美しい Android ステータスバー＆スーパーアイランド歌詞ツール</string>
-    <string name="oobe_status_perfectly_compatible">完全対応</string>
     <string name="oobe_warning_community_verified">コミュニティ検証済み</string>
     <string name="oobe_warning_untested_system">未テストのシステム環境</string>
     <string name="oobe_warning_super_island_limited">スーパーアイランド機能制限あり</string>
@@ -763,7 +762,6 @@
     <string name="oobe_perm_required_hint">続行するには必要な権限を許可してください</string>
     
     <string name="oobe_step_apps">プレイヤーの設定</string>
-    <string name="oobe_apps_intro">歌詞を取得するため、音楽アプリ側で「車載/Bluetooth歌詞」を有効にすることを推奨します。非対応プレイヤーやBluetooth機器がない場合は、下記の「オンライン歌詞」も利用できます。</string>
     <string name="oobe_tab_qq">QQ音楽</string>
     <string name="oobe_tab_netease">NetEase Cloud Music</string>
     <string name="oobe_tab_xiaomi">Xiaomi音楽</string>
@@ -780,20 +778,14 @@
     <string name="oobe_i_understand">設定完了</string>
     <string name="oobe_add_rule_guide_title">ルールの追加方法</string>
     
-    <string name="oobe_step_finish">セットアップ完了</string>
     <string name="oobe_step_restore">バックアップを復元</string>
     <string name="oobe_restore_intro_desc">以前にCapsulyricの設定バックアップを保存している場合は、ここで復元できます：</string>
     <string name="oobe_restore_import_desc">ZIPバックアップファイルを選択して設定とパーサールールを復元</string>
     <string name="oobe_restore_fresh_start">新規として開始</string>
-    <string name="oobe_finish_title">準備が完了しました！</string>
     <string name="oobe_finish_subtitle">音楽を再生すると、ステータスバーやスーパーアイランドに歌詞が表示されます。</string>
     <string name="oobe_finish_start">利用を開始</string>
-    <string name="oobe_btn_settings">詳細設定へ</string>
-    <string name="oobe_btn_start">ホームへ</string>
 
     <string name="oobe_next">次へ</string>
-    <string name="oobe_back">戻る</string>
-    <string name="oobe_skip">スキップ</string>
 
     <!-- OOBE Feature Intro -->
     <string name="oobe_step_features">主な機能</string>
