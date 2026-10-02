@@ -177,7 +177,7 @@ screenshots/  perf-artifacts/      # UI screenshots and performance artifacts
 
 ## Feature & Page Map (功能/页面文件归属)
 
-Navigation model: the app has three top-level destinations — **Home**, **Rules**, **Settings** — defined in `feature/navigation/TopLevelNavigation.kt`. `MainActivity` additionally hosts a single-activity page stack (`AppPage` sealed class inside `feature/main/MainActivity.kt`) for pages that benefit from in-process transitions; most of those pages also have a standalone Activity declared in the manifest (deep-linkable / direct entry). Every page has a Material and a Miuix presentation, chosen at runtime by `ui/miuix/theme/isMiuixEnabled`.
+Navigation model: the app has three top-level destinations — **Home**, **Rules**, **Settings** — defined in `feature/navigation/TopLevelNavigation.kt`. `MainActivity` additionally hosts a single-activity page stack (`AppPage` sealed class inside `feature/main/MainActivity.kt`) for pages that benefit from in-process transitions; most of those pages also have a standalone Activity declared in the manifest (deep-linkable / direct entry). Pages other than OOBE have a Material and a Miuix presentation, chosen at runtime by `ui/miuix/theme/isMiuixEnabled`. OOBE always uses Miuix; a UI style restored from backup is used when entering the main screen.
 
 | Page (EN / CN) | Entry point | State / contract | Material screen | Miuix screen | Backing logic / notes |
 | :--- | :--- | :--- | :--- | :--- | :--- |
@@ -199,7 +199,7 @@ Navigation model: the app has three top-level destinations — **Home**, **Rules
 | Last.fm | `feature/lastfm/LastFmSettingsActivity.kt` + in-app page (AppPage.LastFm) | — | `feature/lastfm/material/LastFmSettingsScreen.kt` | `feature/lastfm/miuix/MiuixLastFmSettingsScreen.kt` | Backend: `integration/lastfm/` (client, scrobble manager, secure store) |
 | Lyrics Directories (歌词目录) | `feature/settings/LocalLyricDirectoriesSection.kt` (settings) + `feature/locallyrics/LocalLyricDirectoryActivity.kt` (per-directory) + in-app pages | — | `feature/settings/material/LocalLyricDirectoriesScreen.kt`, `feature/locallyrics/material/LocalLyricDirectoryScreen.kt` | `feature/settings/miuix/MiuixLocalLyricDirectoriesScreen.kt`, `feature/locallyrics/miuix/MiuixLocalLyricDirectoryScreen.kt` | Uses `lyrics/local/LocalLyricDirectoryManager.kt` |
 | FAQ | `feature/faq/FAQActivity.kt` + in-app page (AppPage.Faq) | — | `feature/faq/material/FAQScreen.kt` | `feature/faq/miuix/MiuixFAQScreen.kt` | Static Q&A content |
-| OOBE (首次引导) | `feature/oobe/OobeActivity.kt` | — | `feature/oobe/material/OobeScreen.kt` | `feature/oobe/miuix/MiuixOobeScreen.kt` | First-run welcome/permissions |
+| OOBE (首次引导) | `feature/oobe/OobeActivity.kt` | — | — | `feature/oobe/miuix/MiuixOobeScreen.kt` | First-run welcome/permissions and backup restore; always uses Miuix |
 | Media Control (媒体控制弹窗) | `feature/mediacontrol/MediaControlActivity.kt` (transparent, singleInstance) | — | `feature/mediacontrol/material/MediaControlDialog.kt` | `feature/mediacontrol/miuix/MiuixMediaControlDialog.kt` | Commands via `runtime/media/LyricMediaCommandRouter.kt` |
 | Update Dialog (更新弹窗) | shown from Home/About | — | `feature/update/material/UpdateDialog.kt` | `feature/update/miuix/MiuixUpdateDialog.kt` | Changelog parsing: `feature/update/UpdateParser.kt`, `feature/update/UpdateMarkdown.kt` |
 

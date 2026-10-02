@@ -812,7 +812,6 @@ Within the log interface, select the share/export icon. You can specify a timefr
     <!-- OOBE -->
     <string name="oobe_welcome_title">Welcome to Capsulyric</string>
     <string name="oobe_welcome_subtitle">Based on Live Update and Xiaomi SuperIsland. Experience dynamic lyrics in your status bar.</string>
-    <string name="oobe_status_perfectly_compatible">Perfectly Compatible</string>
     <string name="oobe_warning_community_verified">⚠️ Community Reported\nLive Update works on this ROM based on user reports, but the developer has not officially tested it. Stability may vary.</string>
     <string name="oobe_warning_untested_system">⚠️ Untested System\nAndroid 16 detected. Live Update should work in theory, but there are no reports for this ROM yet.</string>
     <string name="oobe_warning_super_island_limited">⚠️ Limited Support\nNative Live Update is unavailable on this version. Xiaomi Super Island notifications will be enabled by default.</string>
@@ -832,7 +831,6 @@ Within the log interface, select the share/export icon. You can specify a timefr
     <string name="oobe_perm_required_hint">Please grant Notification Listener and Post Notifications first</string>
     
     <string name="oobe_step_apps">App Setup</string>
-    <string name="oobe_apps_intro">To broadcast lyrics, it is recommended to enable "Bluetooth/Car Lyrics" in your music app. If unsupported or no Bluetooth device is available, you can also use "Online Lyrics" below.</string>
     <string name="oobe_tab_qq">QQ Music</string>
     <string name="oobe_tab_netease">Netease Music</string>
     <string name="oobe_tab_xiaomi">Xiaomi Music by TME</string>
@@ -849,19 +847,14 @@ Within the log interface, select the share/export icon. You can specify a timefr
     <string name="oobe_i_understand">I understand</string>
     <string name="oobe_add_rule_guide_title">How to add parser rules</string>
     
-    <string name="oobe_step_finish">All Set!</string>
     <string name="oobe_step_restore">Backup Restore</string>
     <string name="oobe_restore_intro_desc">If you used Capsulyric before, you can directly import a ZIP backup to restore your settings on this new phone.</string>
     <string name="oobe_restore_import_desc">Choose a ZIP backup file to restore all settings, then go straight to the main screen.</string>
     <string name="oobe_restore_fresh_start">Start Fresh</string>
-    <string name="oobe_finish_title">Ready to Go</string>
     <string name="oobe_finish_subtitle">Starting "Island Lyrics" service...</string>
     <string name="oobe_finish_start">Start Using</string>
-    <string name="oobe_btn_settings">Customize Settings</string>
 
     <string name="oobe_next">Next</string>
-    <string name="oobe_back">Back</string>
-    <string name="oobe_skip">Skip setup</string>
 
     <!-- OOBE Feature Intro -->
     <string name="oobe_step_features">Features</string>
@@ -902,7 +895,6 @@ Within the log interface, select the share/export icon. You can specify a timefr
     <string name="settings_click_action_media_desc">Shows a popup without opening the app</string>
     <string name="settings_click_action_open_playing_app">Open Playing App</string>
     <string name="settings_click_action_open_playing_app_desc">Opens the app currently playing media (falls back to this app)</string>
-    <string name="oobe_btn_start">Start</string>
 
     <!-- Diagnostics Strings -->
     <string name="diag_header_tools">Common Tools</string>

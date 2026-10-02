@@ -743,7 +743,6 @@
     <!-- OOBE -->
     <string name="oobe_welcome_title">歡迎使用 Capsulyric</string>
     <string name="oobe_welcome_subtitle">輕量、優雅的 Android 狀態列與超級小島歌詞小工具</string>
-    <string name="oobe_status_perfectly_compatible">完全相容</string>
     <string name="oobe_warning_community_verified">社群驗證相容</string>
     <string name="oobe_warning_untested_system">未測試系統環境</string>
     <string name="oobe_warning_super_island_limited">超級小島功能受限</string>
@@ -763,7 +762,6 @@
     <string name="oobe_perm_required_hint">請完成必要權限授權以繼續</string>
     
     <string name="oobe_step_apps">播放器設定</string>
-    <string name="oobe_apps_intro">為了廣播歌詞，推薦在音樂 App 中開啟「車載/藍牙歌詞」；若播放器不支援或無藍牙裝置，亦可使用下方的「線上歌詞」方案。</string>
     <string name="oobe_tab_qq">QQ 音樂</string>
     <string name="oobe_tab_netease">網易雲音樂</string>
     <string name="oobe_tab_xiaomi">小米音樂</string>
@@ -780,20 +778,14 @@
     <string name="oobe_i_understand">我已完成設定</string>
     <string name="oobe_add_rule_guide_title">如何新增規則</string>
     
-    <string name="oobe_step_finish">設定完成</string>
     <string name="oobe_step_restore">還原備份</string>
     <string name="oobe_restore_intro_desc">如果您之前匯出過 Capsulyric 設定備份，可在此直接還原：</string>
     <string name="oobe_restore_import_desc">選取 ZIP 備份檔案以還原偏好設定與解析規則</string>
     <string name="oobe_restore_fresh_start">全新開始使用</string>
-    <string name="oobe_finish_title">一切準備就緒！</string>
     <string name="oobe_finish_subtitle">現在播放音樂，即可在狀態列或超級小島欣賞即時歌詞。</string>
     <string name="oobe_finish_start">開始使用</string>
-    <string name="oobe_btn_settings">前往進階設定</string>
-    <string name="oobe_btn_start">進入主畫面</string>
 
     <string name="oobe_next">下一步</string>
-    <string name="oobe_back">上一步</string>
-    <string name="oobe_skip">略過</string>
 
     <!-- OOBE Feature Intro -->
     <string name="oobe_step_features">特色功能</string>

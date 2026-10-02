@@ -743,7 +743,6 @@
     <!-- OOBE -->
     <string name="oobe_welcome_title">欢迎使用 Capsulyric</string>
     <string name="oobe_welcome_subtitle">基于Live Update和小米超级岛,在你的状态栏体验灵动歌词。</string>
-    <string name="oobe_status_perfectly_compatible">完美兼容</string>
     <string name="oobe_warning_community_verified">⚠️ 社区已验证\n根据用户报告，在该 ROM 上 Live Update 运行良好，但开发者尚未进行官方测试。稳定性可能有所差异。</string>
     <string name="oobe_warning_untested_system">⚠️ 未经测试的系统\n检测到 Android 16。理论上支持 Live Update，但目前尚无该 ROM 的使用报告。</string>
     <string name="oobe_warning_super_island_limited">⚠️ 受限支持\n此版本暂不支持原生实时更新，将默认启用小米超级岛通知。</string>
@@ -763,7 +762,6 @@
     <string name="oobe_perm_required_hint">请先授予通知使用权和通知发送权</string>
     
     <string name="oobe_step_apps">应用设置</string>
-    <string name="oobe_apps_intro">为了广播歌词，推荐在音乐App中开启“车载/蓝牙歌词”；若播放器不支持或无蓝牙设备，亦可使用下方的“在线歌词”方案。</string>
     <string name="oobe_tab_qq">QQ音乐</string>
     <string name="oobe_tab_netease">网易云音乐</string>
     <string name="oobe_tab_xiaomi">小米音乐</string>
@@ -780,20 +778,14 @@
     <string name="oobe_i_understand">我已了解</string>
     <string name="oobe_add_rule_guide_title">如何添加解析规则</string>
     
-    <string name="oobe_step_finish">进入应用</string>
     <string name="oobe_step_restore">备份还原</string>
     <string name="oobe_restore_intro_desc">如果你之前使用过 Capsulyric，可直接导入 ZIP 备份，在新手机上恢复原有配置。</string>
     <string name="oobe_restore_import_desc">选择 ZIP 备份文件后将恢复全部配置，并直接进入主界面。</string>
     <string name="oobe_restore_fresh_start">全新开始</string>
-    <string name="oobe_finish_title">一切准备就绪</string>
     <string name="oobe_finish_subtitle">欢迎使用 Capsulyric</string>
     <string name="oobe_finish_start">开始使用</string>
-    <string name="oobe_btn_settings">自定义设置</string>
-    <string name="oobe_btn_start">下一步</string>
 
     <string name="oobe_next">下一步</string>
-    <string name="oobe_back">上一步</string>
-    <string name="oobe_skip">跳过设置</string>
 
     <!-- OOBE Feature Intro -->
     <string name="oobe_step_features">功能介绍</string>
