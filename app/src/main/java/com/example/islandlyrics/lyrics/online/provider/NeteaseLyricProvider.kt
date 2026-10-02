@@ -70,13 +70,25 @@ internal class NeteaseLyricProvider(
                 }
                 val best = CandidateMatcher.pickBest(candidates, title, artist, album, durationMs)
                     ?: return@withContext null
-                val firstSong = best.song
-                val matchedTitle = best.matchedTitle
-                val matchedArtist = best.matchedArtist
-                val matchedAlbum = best.matchedAlbum
-                val matchedDurationMs = best.matchedDurationMs
-                val providerTrackId = best.providerTrackId
-                val songId = firstSong.optLong("id", 0)
+                fetchById(best.providerTrackId.orEmpty(), best)
+            } catch (e: Exception) {
+                AppLogger.getInstance().log("OnlineLyric", "Netease API错误: ${e.message}")
+                null
+            }
+        }
+
+    suspend fun fetchById(
+        trackId: String,
+        candidate: SearchCandidate? = null
+    ): OnlineLyricFetcher.LyricResult? =
+        withContext(Dispatchers.IO) {
+            try {
+                val matchedTitle = candidate?.matchedTitle
+                val matchedArtist = candidate?.matchedArtist
+                val matchedAlbum = candidate?.matchedAlbum
+                val matchedDurationMs = candidate?.matchedDurationMs
+                val providerTrackId = trackId
+                val songId = trackId.toLongOrNull() ?: return@withContext null
 
                 if (songId == 0L) {
                     return@withContext null

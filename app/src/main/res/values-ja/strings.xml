@@ -1296,4 +1296,23 @@
     <string name="diag_lab_update_source_desc">優先するアップデート取得元を選択。失敗時は自動的にもう一方にフォールバックします。</string>
     <string name="diag_lab_update_source_github">GitHub (グローバル)</string>
     <string name="diag_lab_update_source_gitee">Gitee (中国国内アクセラレーション)</string>
+    <string name="online_lyric_track_id_title">曲 ID で歌詞を取得</string>
+    <string name="online_lyric_track_id_platform">サービス</string>
+    <string name="online_lyric_track_id_label">曲 ID</string>
+    <string name="online_lyric_track_id_qq_label">曲 ID / MID</string>
+    <string name="online_lyric_track_id_hash_label">曲の hash</string>
+    <string name="online_lyric_track_id_numeric_hint">このサービスの数字の曲 ID を入力してください。共有リンクには対応していません。</string>
+    <string name="online_lyric_track_id_qq_hint">QQ Music の曲 MID または数字の曲 ID を入力してください。共有リンクには対応していません。</string>
+    <string name="online_lyric_track_id_hash_hint">32 桁の曲の hash を入力してください。Kugou の数字の曲 ID には対応していません。</string>
+    <string name="online_lyric_track_id_lrclib_hint">LRCLIB の数字のレコード ID を入力してください。他のサービスの曲 ID は使用できません。</string>
+    <string name="online_lyric_track_id_apple_hint">Apple Music の数字のカタログ曲 ID を入力してください。事前に Apple Music へのログインが必要です。</string>
+    <string name="online_lyric_track_id_musixmatch_hint">Musixmatch の数字の track_id を入力してください。CAPTCHA により取得できない場合があります。</string>
+    <string name="online_lyric_track_id_fetch">取得してプレビュー</string>
+    <string name="online_lyric_track_id_invalid">選択したサービスの ID 形式ではありません。上の説明を確認してください。</string>
+    <string name="online_lyric_track_id_not_found">この ID の歌詞を取得できませんでした。サービス、ID、ネットワークを確認してください。</string>
+    <string name="online_lyric_track_id_instrumental">曲またはアルバムのインストゥルメンタル設定を解除してから取得してください。</string>
+    <string name="online_lyric_track_id_song_changed">再生中の曲が変わりました。歌詞を再取得してください。</string>
+    <string name="online_lyric_track_id_preview_id">ID: %1$s</string>
+    <string name="online_lyric_track_id_preview_target">適用先: %1$s · %2$s</string>
+    <string name="online_lyric_track_id_no_timing">この歌詞には利用可能なタイムラインがないため、プレビューのみ可能です。</string>
 </resources>

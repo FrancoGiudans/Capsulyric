@@ -73,13 +73,24 @@ internal class SodaMusicLyricProvider(
                 val candidates = tracks.map { SodaTrackCandidate(it) }
                 val best = CandidateMatcher.pickBest(candidates, title, artist, album, durationMs)
                     ?: return@withContext null
-                val firstTrack = best.track
-                val trackId = firstTrack.optString("id", "")
-                val matchedTitle = best.matchedTitle
-                val matchedArtist = best.matchedArtist
-                val matchedAlbum = best.matchedAlbum
-                val matchedDurationMs = best.matchedDurationMs
-                val providerTrackId = best.providerTrackId
+                fetchById(best.providerTrackId.orEmpty(), best)
+            } catch (e: Exception) {
+                AppLogger.getInstance().log("OnlineLyric", "SodaMusic API错误: ${e.message}")
+                null
+            }
+        }
+
+    suspend fun fetchById(
+        trackId: String,
+        candidate: SearchCandidate? = null
+    ): OnlineLyricFetcher.LyricResult? =
+        withContext(Dispatchers.IO) {
+            try {
+                val matchedTitle = candidate?.matchedTitle
+                val matchedArtist = candidate?.matchedArtist
+                val matchedAlbum = candidate?.matchedAlbum
+                val matchedDurationMs = candidate?.matchedDurationMs
+                val providerTrackId = trackId
 
                 if (trackId.isBlank()) {
                     return@withContext OnlineLyricFetcher.LyricResult(
@@ -97,14 +108,13 @@ internal class SodaMusicLyricProvider(
                     )
                 }
 
-                val detailResponse = httpClient.postForm(
-                    url = "https://api.qishui.com/luna/pc/track_v2",
-                    form = linkedMapOf(
-                        "track_id" to trackId,
-                        "media_type" to "track",
-                        "queue_type" to ""
-                    ),
-                    headers = sodaHeaders()
+                val detailResponse = httpClient.get(
+                    url = "https://beta-luna.douyin.com/luna/h5/seo_track?track_id=$trackId&device_platform=web",
+                    headers = mapOf(
+                        "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+                        "Accept" to "application/json",
+                        "Referer" to "https://api.qishui.com/"
+                    )
                 ) ?: return@withContext null
 
                 val detailJson = JSONObject(detailResponse)
@@ -130,16 +140,18 @@ internal class SodaMusicLyricProvider(
 
                 val hasSyllable = OnlineLyricParser.isWordLevelLyrics(lyricContent, lyricType)
                 val parsedLines = OnlineLyricParser.parseSodaLyrics(lyricContent, lyricType)
+                val matched = candidate ?: detailJson.optJSONObject("seo_track")?.optJSONObject("track")
+                    ?.let(::SodaTrackCandidate)
                 OnlineLyricFetcher.LyricResult(
                     api = "SodaMusic",
                     lyrics = lyricContent,
                     parsedLines = parsedLines,
                     hasSyllable = hasSyllable,
                     provider = OnlineLyricProvider.SodaMusic,
-                    matchedTitle = matchedTitle,
-                    matchedArtist = matchedArtist,
-                    matchedAlbum = matchedAlbum,
-                    matchedDurationMs = matchedDurationMs,
+                    matchedTitle = matched?.matchedTitle,
+                    matchedArtist = matched?.matchedArtist,
+                    matchedAlbum = matched?.matchedAlbum,
+                    matchedDurationMs = matched?.matchedDurationMs,
                     providerTrackId = providerTrackId
                 )
             } catch (e: Exception) {

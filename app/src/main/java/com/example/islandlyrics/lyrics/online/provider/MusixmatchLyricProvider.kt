@@ -64,24 +64,36 @@ internal class MusixmatchLyricProvider(
     }
 
     suspend fun fetch(title: String, artist: String): OnlineLyricFetcher.LyricResult? =
+        fetchTrack(title, artist)
+
+    suspend fun fetchById(trackId: String): OnlineLyricFetcher.LyricResult? =
+        fetchTrack("", "", trackId)
+
+    private suspend fun fetchTrack(
+        title: String,
+        artist: String,
+        directTrackId: String? = null
+    ): OnlineLyricFetcher.LyricResult? =
         withContext(Dispatchers.IO) {
             try {
                 // 1. 搜索曲目
-                val trackResponse = musixmatchGet(
-                    "matcher.track.get" +
-                        "?q_track=${title.encodeURL()}" +
-                        "&q_artist=${artist.encodeURL()}"
-                ) ?: return@withContext null
+                val track = if (directTrackId == null) {
+                    val trackResponse = musixmatchGet(
+                        "matcher.track.get" +
+                            "?q_track=${title.encodeURL()}" +
+                            "&q_artist=${artist.encodeURL()}"
+                    ) ?: return@withContext null
 
-                val track = JSONObject(trackResponse)
-                    .optJSONObject("message")
-                    ?.optJSONObject("body")
-                    ?.optJSONObject("track")
-                    ?: return@withContext null
-                val trackId = track.optString("track_id", "")
+                    JSONObject(trackResponse)
+                        .optJSONObject("message")
+                        ?.optJSONObject("body")
+                        ?.optJSONObject("track")
+                        ?: return@withContext null
+                } else null
+                val trackId = directTrackId ?: track?.optString("track_id", "").orEmpty()
                 if (trackId.isBlank()) return@withContext null
-                val matchedTitle = track.optString("track_name", "")
-                val matchedArtist = track.optString("artist_name", "")
+                val matchedTitle = track?.optString("track_name", "")
+                val matchedArtist = track?.optString("artist_name", "")
 
                 // 2. 取歌词（richsync 优先）
                 val lyricResponse = musixmatchGet(
@@ -116,7 +128,8 @@ internal class MusixmatchLyricProvider(
                             hasSyllable = true,
                             provider = OnlineLyricProvider.Musixmatch,
                             matchedTitle = matchedTitle,
-                            matchedArtist = matchedArtist
+                            matchedArtist = matchedArtist,
+                            providerTrackId = trackId
                         )
                     }
                 }
@@ -139,7 +152,8 @@ internal class MusixmatchLyricProvider(
                             hasSyllable = false,
                             provider = OnlineLyricProvider.Musixmatch,
                             matchedTitle = matchedTitle,
-                            matchedArtist = matchedArtist
+                            matchedArtist = matchedArtist,
+                            providerTrackId = trackId
                         )
                     }
                 }

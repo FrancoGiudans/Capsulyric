@@ -86,6 +86,33 @@ internal class QqMusicLyricProvider(
                 }
                 val best = CandidateMatcher.pickBest(candidates, title, artist, album, durationMs)
                     ?: return@withContext null
+                fetchSong(best)
+            } catch (e: Exception) {
+                AppLogger.getInstance().log("OnlineLyric", "QQMusic API错误: ${e.message}")
+                null
+            }
+        }
+
+    suspend fun fetchById(trackId: String): OnlineLyricFetcher.LyricResult? =
+        withContext(Dispatchers.IO) {
+            try {
+                val parameter = if (trackId.all { it in '0'..'9' }) "songid" else "songmid"
+                val response = httpClient.get(
+                    "https://c.y.qq.com/v8/fcg-bin/fcg_play_single_song.fcg?format=json&$parameter=$trackId",
+                    headers = qqHeaders()
+                ) ?: return@withContext null
+                val song = JSONObject(response).optJSONArray("data")?.optJSONObject(0)
+                    ?: return@withContext null
+                fetchSong(QqSongCandidate(song))
+            } catch (e: Exception) {
+                AppLogger.getInstance().log("OnlineLyric", "QQMusic API错误: ${e.message}")
+                null
+            }
+        }
+
+    private suspend fun fetchSong(best: QqSongCandidate): OnlineLyricFetcher.LyricResult? =
+        withContext(Dispatchers.IO) {
+            try {
                 val firstSong = best.song
                 val songId = firstSong.optString("id").ifBlank { firstSong.optString("songid", "") }
                 val songMid = firstSong.optString("mid").ifBlank { firstSong.optString("songmid", "") }

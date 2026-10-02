@@ -42,12 +42,14 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -55,6 +57,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -69,15 +73,18 @@ import com.example.islandlyrics.feature.applemusic.AppleMusicSettingsActivity
 import com.example.islandlyrics.feature.cache.CacheManagementActivity
 import com.example.islandlyrics.feature.parserrule.ParserRuleActivity
 import com.example.islandlyrics.lyrics.online.OnlineLyricFetcher
+import com.example.islandlyrics.lyrics.online.provider.OnlineLyricProvider
 import com.example.islandlyrics.feature.onlinelyricdebug.OnlineLyricDebugViewModel
 import com.example.islandlyrics.ui.miuix.blur.MiuixBlurDialog
 import com.example.islandlyrics.ui.miuix.blur.MiuixBlurScaffold
 import com.example.islandlyrics.ui.miuix.blur.MiuixBlurTopAppBar
 import com.example.islandlyrics.ui.miuix.effects.miuixPageScroll
 import com.example.islandlyrics.ui.miuix.navigation.MiuixBackIcon
+import com.example.islandlyrics.ui.miuix.preference.BlurOverlayDropdownPreference
 import com.example.islandlyrics.ui.miuix.search.MiuixLookingForOtherSettings
 import com.example.islandlyrics.ui.miuix.search.OtherSettingLink
 import top.yukonga.miuix.kmp.basic.Button
+import top.yukonga.miuix.kmp.basic.BasicComponent
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
@@ -112,6 +119,7 @@ fun MiuixOnlineLyricDebugScreen(
     val selectedRomanResult by viewModel.selectedRomanResult.observeAsState()
     val attempts by viewModel.attempts.observeAsState(emptyList())
     val dialogAttempt by viewModel.dialogAttempt.observeAsState()
+    val trackIdPreview by viewModel.trackIdPreview.observeAsState()
     val error by viewModel.error.observeAsState()
     val customMatchTitle by viewModel.customMatchTitle.observeAsState("")
     val customMatchArtist by viewModel.customMatchArtist.observeAsState("")
@@ -122,6 +130,8 @@ fun MiuixOnlineLyricDebugScreen(
     var dialogText by remember { mutableStateOf("") }
     var dialogResult by remember { mutableStateOf<OnlineLyricFetcher.LyricResult?>(null) }
     var dialogRole by remember { mutableStateOf<OnlineLyricDebugViewModel.ResultRole?>(null) }
+
+    LaunchedEffect(mediaInfo) { viewModel.syncTrackIdSong() }
 
     LaunchedEffect(mediaInfo?.packageName, mediaInfo?.title, mediaInfo?.artist, mediaInfo?.album) {
         if (mediaInfo != null) {
@@ -329,6 +339,10 @@ fun MiuixOnlineLyricDebugScreen(
                 }
             }
 
+            item {
+                TrackIdInputCard(viewModel, isFetching, offlineModeEnabled, isInstrumental || isAlbumInstrumental)
+            }
+
             if (selectedResult != null && rematchedLyrics.isNotBlank()) {
                 item { SmallTitle(text = stringResource(R.string.online_lyric_rematch_result_title)) }
                 item {
@@ -468,6 +482,21 @@ fun MiuixOnlineLyricDebugScreen(
             }
         }
 
+        trackIdPreview?.takeIf { it.mediaInfo == mediaInfo }?.let { preview ->
+            AttemptResultDialog(
+                attempt = preview.attempt,
+                text = viewModel.resultLyricsText(preview.attempt.result),
+                translationText = viewModel.resultTranslationText(preview.attempt.result),
+                romanText = viewModel.resultRomanText(preview.attempt.result),
+                canSelect = viewModel.canUseAttemptForRole(preview.attempt, OnlineLyricDebugViewModel.ResultRole.MAIN),
+                selectLabel = stringResource(R.string.online_lyric_debug_use_as_main),
+                isFetching = isFetching,
+                onSelect = viewModel::applyTrackIdPreview,
+                onDismiss = viewModel::closeTrackIdPreview,
+                details = viewModel.trackIdPreviewDetails(preview)
+            )
+        }
+
         dialogAttempt?.let { attempt ->
             val role = dialogRole ?: OnlineLyricDebugViewModel.ResultRole.MAIN
             AttemptResultDialog(
@@ -495,6 +524,69 @@ fun MiuixOnlineLyricDebugScreen(
             )
         }
 
+    }
+}
+
+@Composable
+private fun TrackIdInputCard(
+    viewModel: OnlineLyricDebugViewModel,
+    isFetching: Boolean,
+    offlineModeEnabled: Boolean,
+    isInstrumental: Boolean
+) {
+    val context = LocalContext.current
+    val keyboard = LocalSoftwareKeyboardController.current
+    val mediaInfo by viewModel.liveMetadata.observeAsState()
+    val error by viewModel.trackIdError.observeAsState()
+    val providers = remember { OnlineLyricProvider.defaultOrder().filter { it.supportsTrackId } }
+    var provider by rememberSaveable(mediaInfo) {
+        mutableStateOf(OnlineLyricProvider.defaultOrderForPackage(mediaInfo?.packageName).first())
+    }
+    var input by rememberSaveable(mediaInfo) { mutableStateOf("") }
+    Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
+        BasicComponent(
+            title = stringResource(R.string.online_lyric_track_id_title)
+        )
+        BlurOverlayDropdownPreference(
+            title = stringResource(R.string.online_lyric_track_id_platform),
+            items = providers.map { it.displayName(context) },
+            selectedIndex = providers.indexOf(provider),
+            enabled = !isFetching,
+            onSelectedIndexChange = { index ->
+                if (provider != providers[index]) input = ""
+                provider = providers[index]
+                viewModel.clearTrackIdError()
+            }
+        )
+        Column(modifier = Modifier.padding(16.dp)) {
+            TextField(
+                value = input,
+                onValueChange = { input = it; viewModel.clearTrackIdError() },
+                label = stringResource(provider.trackIdLabelResId),
+                singleLine = true,
+                enabled = !isFetching,
+                keyboardOptions = KeyboardOptions(
+                    autoCorrectEnabled = false,
+                    keyboardType = if (provider == OnlineLyricProvider.QQMusic || provider == OnlineLyricProvider.Kugou)
+                        KeyboardType.Ascii else KeyboardType.Number
+                ),
+                modifier = Modifier.fillMaxWidth()
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(stringResource(provider.trackIdHintResId), style = MiuixTheme.textStyles.footnote1)
+            if (isInstrumental) {
+                Text(stringResource(R.string.online_lyric_track_id_instrumental), style = MiuixTheme.textStyles.footnote1)
+            }
+            error?.let { Text(it, color = MiuixTheme.colorScheme.error) }
+            Spacer(modifier = Modifier.height(12.dp))
+            Button(
+                onClick = { keyboard?.hide(); viewModel.fetchLyricsById(provider, input) },
+                enabled = !isFetching && !offlineModeEnabled && !isInstrumental && mediaInfo != null && input.isNotBlank(),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(stringResource(if (isFetching) R.string.online_lyric_debug_fetching else R.string.online_lyric_track_id_fetch))
+            }
+        }
     }
 }
 
@@ -678,7 +770,8 @@ private fun AttemptResultDialog(
     selectLabel: String,
     isFetching: Boolean,
     onSelect: () -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    details: String? = null
 ) {
     MiuixBlurDialog(
         title = attempt.provider.displayName(LocalContext.current),
@@ -691,6 +784,7 @@ private fun AttemptResultDialog(
                 } ?: text.ifBlank { stringResource(R.string.online_lyric_rematch_no_lyrics) }
             ResultTextSections(
                 mainText = bodyText,
+                details = details,
                 translationText = if (attempt.result?.error == null) translationText else "",
                 romanText = if (attempt.result?.error == null) romanText else "",
                 modifier = Modifier
@@ -724,9 +818,14 @@ private fun ResultTextSections(
     mainText: String,
     translationText: String,
     romanText: String,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    details: String? = null
 ) {
     Column(modifier = modifier.verticalScroll(rememberScrollState())) {
+        details?.let {
+            Text(it, style = MiuixTheme.textStyles.footnote1)
+            Spacer(modifier = Modifier.height(14.dp))
+        }
         if (mainText.isNotBlank()) {
             ResultTextSection(
                 title = stringResource(R.string.online_lyric_debug_result_main_lyrics),

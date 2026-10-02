@@ -76,13 +76,24 @@ internal class KugouLyricProvider(
                 }
                 val best = CandidateMatcher.pickBest(searchCandidates, title, artist, album, durationMs)
                     ?: return@withContext null
-                val firstSong = best.song
-                val matchedTitle = best.matchedTitle
-                val matchedArtist = best.matchedArtist
-                val matchedAlbum = best.matchedAlbum
-                val matchedDurationMs = best.matchedDurationMs
-                val providerTrackId = best.providerTrackId
-                val hash = firstSong.optString("hash", "")
+                fetchById(best.song.optString("hash", ""), best)
+            } catch (e: Exception) {
+                AppLogger.getInstance().log("OnlineLyric", "Kugou API错误: ${e.message}")
+                null
+            }
+        }
+
+    suspend fun fetchById(
+        hash: String,
+        candidate: SearchCandidate? = null
+    ): OnlineLyricFetcher.LyricResult? =
+        withContext(Dispatchers.IO) {
+            try {
+                val matchedTitle = candidate?.matchedTitle
+                val matchedArtist = candidate?.matchedArtist
+                val matchedAlbum = candidate?.matchedAlbum
+                val matchedDurationMs = candidate?.matchedDurationMs
+                val providerTrackId = hash
                 if (hash.isEmpty()) {
                     return@withContext OnlineLyricFetcher.LyricResult(
                         "Kugou",

@@ -38,6 +38,8 @@ import com.example.islandlyrics.lyrics.cache.OnlineLyricCacheStore
 import com.example.islandlyrics.lyrics.online.parser.OnlineLyricSidecarMerger
 import com.example.islandlyrics.lyrics.online.provider.OnlineLyricProvider
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import com.example.islandlyrics.R
@@ -92,6 +94,18 @@ class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(app
 
     private val _dialogAttempt = MutableLiveData<OnlineLyricFetcher.ProviderAttempt?>(null)
     val dialogAttempt: LiveData<OnlineLyricFetcher.ProviderAttempt?> = _dialogAttempt
+
+    data class TrackIdPreview(
+        val mediaInfo: LyricRepository.MediaInfo,
+        val attempt: OnlineLyricFetcher.ProviderAttempt
+    )
+
+    private val _trackIdPreview = MutableLiveData<TrackIdPreview?>(null)
+    val trackIdPreview: LiveData<TrackIdPreview?> = _trackIdPreview
+    private val _trackIdError = MutableLiveData<String?>(null)
+    val trackIdError: LiveData<String?> = _trackIdError
+    private var trackIdJob: Job? = null
+    private var trackIdMediaInfo: LyricRepository.MediaInfo? = null
 
     private val _customMatchTitle = MutableLiveData("")
     val customMatchTitle: LiveData<String> = _customMatchTitle
@@ -398,7 +412,8 @@ class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(app
         mainResult: OnlineLyricFetcher.LyricResult,
         translationResult: OnlineLyricFetcher.LyricResult?,
         romanResult: OnlineLyricFetcher.LyricResult?,
-        cacheMessage: String? = null
+        cacheMessage: String? = null,
+        fromTrackId: Boolean = false
     ) {
         val combinedResult = buildCombinedResult(mainResult, translationResult, romanResult)
         withContext(Dispatchers.IO) {
@@ -408,6 +423,12 @@ class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(app
                 queryArtist = queryArtist,
                 result = combinedResult
             )
+        }
+        if (fromTrackId) {
+            if (liveMetadata.value != mediaInfo) return
+            translationDisabledByUser = false
+            romanDisabledByUser = false
+            _usedCleanTitleFallback.value = false
         }
         applyResultToRepository(mediaInfo, combinedResult)
         setSelectionState(mainResult, translationResult, romanResult)
@@ -994,6 +1015,147 @@ class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(app
             } finally {
                 _isFetching.value = false
                 syncCurrentSongQuery()
+            }
+        }
+    }
+
+    fun syncTrackIdSong() {
+        if (trackIdMediaInfo == liveMetadata.value) return
+        trackIdJob?.cancel()
+        trackIdMediaInfo = liveMetadata.value
+        _trackIdPreview.value = null
+        _trackIdError.value = null
+    }
+
+    fun clearTrackIdError() {
+        _trackIdError.value = null
+    }
+
+    fun closeTrackIdPreview() {
+        _trackIdPreview.value = null
+    }
+
+    fun trackIdPreviewDetails(preview: TrackIdPreview): String = buildString {
+        val result = preview.attempt.result
+        appendLine(s(R.string.online_lyric_track_id_preview_id, result?.providerTrackId.orEmpty()))
+        listOfNotNull(result?.matchedTitle, result?.matchedArtist)
+            .filter { it.isNotBlank() }.joinToString(" · ").takeIf { it.isNotBlank() }
+            ?.let { appendLine(it) }
+        append(s(R.string.online_lyric_track_id_preview_target, preview.mediaInfo.title, preview.mediaInfo.artist))
+        if (!canUseResultForRole(result, ResultRole.MAIN)) {
+            append("\n\n")
+            append(s(R.string.online_lyric_track_id_no_timing))
+        }
+    }
+
+    fun fetchLyricsById(provider: OnlineLyricProvider, input: String) {
+        if (_isFetching.value == true) return
+        val mediaInfo = liveMetadata.value
+        if (mediaInfo == null || (mediaInfo.title.isBlank() && mediaInfo.artist.isBlank())) {
+            _trackIdError.value = s(R.string.online_lyric_debug_error_no_song)
+            return
+        }
+        if (OfflineModeManager.isEnabled(appContext)) {
+            _trackIdError.value = s(R.string.offline_mode_network_blocked)
+            return
+        }
+        val id = provider.normalizeTrackId(input)
+        if (id == null) {
+            _trackIdError.value = s(R.string.online_lyric_track_id_invalid)
+            return
+        }
+        syncTrackIdSong()
+        _isFetching.value = true
+        _trackIdError.value = null
+        _trackIdPreview.value = null
+        trackIdJob = viewModelScope.launch {
+            try {
+                val state = currentTrackIdSongState(mediaInfo)
+                if (liveMetadata.value != mediaInfo) return@launch
+                if (state.isInstrumental) {
+                    _trackIdError.value = s(R.string.online_lyric_track_id_instrumental)
+                    return@launch
+                }
+                val start = android.os.SystemClock.elapsedRealtime()
+                val result = fetcher.fetchLyricsById(provider, id)
+                if (liveMetadata.value != mediaInfo) return@launch
+                if (result == null || result.error != null || resultLyricsText(result).isBlank()) {
+                    _trackIdError.value = result?.error ?: s(R.string.online_lyric_track_id_not_found)
+                    return@launch
+                }
+                _trackIdPreview.value = TrackIdPreview(
+                    mediaInfo,
+                    OnlineLyricFetcher.ProviderAttempt(
+                        provider = provider,
+                        result = result,
+                        durationMs = android.os.SystemClock.elapsedRealtime() - start,
+                        usedCleanTitleFallback = false,
+                        queryVariant = "track_id"
+                    )
+                )
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                if (liveMetadata.value == mediaInfo) {
+                    _trackIdError.value = s(R.string.online_lyric_debug_error_fetch_failed_fmt, e.message.orEmpty())
+                }
+            } finally {
+                _isFetching.value = false
+            }
+        }
+    }
+
+    private suspend fun currentTrackIdSongState(mediaInfo: LyricRepository.MediaInfo) =
+        withContext(Dispatchers.IO) {
+            val rule = ParserRuleHelper.getRuleForPackage(getApplication(), mediaInfo.packageName)
+                ?: ParserRuleHelper.createDefaultRule(mediaInfo.packageName)
+            cacheStore.getCurrentSongState(
+                mediaInfo = mediaInfo,
+                fallbackTitle = mediaInfo.title,
+                fallbackArtist = mediaInfo.artist,
+                useRawMetadata = rule.useRawMetadataForOnlineMatching
+            )
+        }
+
+    fun applyTrackIdPreview() {
+        if (_isFetching.value == true) return
+        val preview = _trackIdPreview.value ?: return
+        val result = preview.attempt.result ?: return
+        if (liveMetadata.value != preview.mediaInfo) {
+            closeTrackIdPreview()
+            _trackIdError.value = s(R.string.online_lyric_track_id_song_changed)
+            return
+        }
+        if (!canUseResultForRole(result, ResultRole.MAIN)) return
+        _isFetching.value = true
+        trackIdJob = viewModelScope.launch {
+            try {
+                val state = currentTrackIdSongState(preview.mediaInfo)
+                if (liveMetadata.value != preview.mediaInfo) return@launch
+                if (state.isInstrumental) {
+                    closeTrackIdPreview()
+                    _trackIdError.value = s(R.string.online_lyric_track_id_instrumental)
+                    return@launch
+                }
+                persistAndApplySelection(
+                    mediaInfo = preview.mediaInfo,
+                    queryTitle = state.effectiveTitle,
+                    queryArtist = state.effectiveArtist,
+                    mainResult = result,
+                    translationResult = result.takeIf { !it.translationLyrics.isNullOrBlank() },
+                    romanResult = result.takeIf { !it.romanLyrics.isNullOrBlank() },
+                    fromTrackId = true
+                )
+                closeTrackIdPreview()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                if (liveMetadata.value == preview.mediaInfo) {
+                    closeTrackIdPreview()
+                    _trackIdError.value = s(R.string.online_lyric_debug_error_fetch_failed_fmt, e.message.orEmpty())
+                }
+            } finally {
+                _isFetching.value = false
             }
         }
     }
