@@ -12,15 +12,15 @@ activityCompose = "1.13.0"
 composeBom = "2026.09.00"
 markwon = "4.6.2"
 coil = "2.7.0"
-miuix = "0.9.3"
-miuixBlur = "0.9.3"
+miuix = "0.9.4"
+miuixBlur = "0.9.4"
 shizuku = "13.1.5"
 focusApi = "1.4"
 hiddenApiBypass = "6.1"
 palette = "1.0.0"
 okhttp = "5.5.0"
 coroutines = "1.11.0"
-navigationEvent = "1.1.0"
+navigationEvent = "1.1.2"
 lifecycle = "2.11.0"
 aboutLibraries = "15.2.0"
 backdrop = "2.0.1"
@@ -58,6 +58,7 @@ miuix-ui = { group = "top.yukonga.miuix.kmp", name = "miuix-ui-android", version
 miuix-icons = { group = "top.yukonga.miuix.kmp", name = "miuix-icons-android", version.ref = "miuix" }
 miuix-preference = { group = "top.yukonga.miuix.kmp", name = "miuix-preference-android", version.ref = "miuix" }
 miuix-blur = { group = "top.yukonga.miuix.kmp", name = "miuix-blur-android", version.ref = "miuixBlur" }
+miuix-nav = { group = "top.yukonga.miuix.kmp", name = "miuix-nav", version.ref = "miuix" }
 
 # Shizuku
 shizuku-api = { group = "dev.rikka.shizuku", name = "api", version.ref = "shizuku" }
@@ -71,7 +72,7 @@ palette-ktx = { group = "androidx.palette", name = "palette-ktx", version.ref = 
 okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhttp" }
 kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "coroutines" }
 kotlinx-coroutines-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-core", version.ref = "coroutines" }
-navigationevent-compose = { group = "org.jetbrains.androidx.navigationevent", name = "navigationevent-compose", version.ref = "navigationEvent" }
+navigationevent-compose = { group = "androidx.navigationevent", name = "navigationevent-compose", version.ref = "navigationEvent" }
 aboutlibraries-compose-m3 = { group = "com.mikepenz", name = "aboutlibraries-compose-m3", version.ref = "aboutLibraries" }
 backdrop = { group = "io.github.kyant0", name = "backdrop", version.ref = "backdrop" }
 

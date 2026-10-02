@@ -179,6 +179,8 @@ screenshots/  perf-artifacts/      # UI screenshots and performance artifacts
 
 Navigation model: the app has three top-level destinations — **Home**, **Rules**, **Settings** — defined in `feature/navigation/TopLevelNavigation.kt`. `MainActivity` additionally hosts a single-activity page stack (`AppPage` sealed class inside `feature/main/MainActivity.kt`) for pages that benefit from in-process transitions; most of those pages also have a standalone Activity declared in the manifest (deep-linkable / direct entry). Pages other than OOBE have a Material and a Miuix presentation, chosen at runtime by `ui/miuix/theme/isMiuixEnabled`. OOBE always uses Miuix; a UI style restored from backup is used when entering the main screen.
 
+For Miuix, `PageStackHost` delegates PageSpecific navigation to `MiuixNavPageStackHost` when predictive back is enabled. The adapter keeps the existing page list as the source of truth and maps it to miuix-nav entries with stable per-entry IDs and a fixed root entry. Material and Consistent animation mode continue to use the existing page-stack host. The Miuix parser-rule inline editor uses a nested miuix-nav Modal entry through `MiuixNavOverlaySheetHost`; its editor state is released when the entry leaves the display. Page swipe-to-dismiss remains disabled; Android system predictive back is handled by `NavDisplay`.
+
 | Page (EN / CN) | Entry point | State / contract | Material screen | Miuix screen | Backing logic / notes |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | Home (首页) | `feature/main/MainActivity.kt` (launcher alias target; also `capsulyric://settings` deep link) | — | `feature/main/material/MainScreen.kt` | `feature/main/miuix/MiuixMainScreen.kt` | Lyric preview: `feature/main/HomeLyricPreviewDisplay.kt`; observes `lyrics/state/LyricRepository.kt` + `ui/overlay/model/UIState.kt`; hosts in-activity pages (AppPage) |
@@ -203,7 +205,7 @@ Navigation model: the app has three top-level destinations — **Home**, **Rules
 | Media Control (媒体控制弹窗) | `feature/mediacontrol/MediaControlActivity.kt` (transparent, singleInstance) | — | `feature/mediacontrol/material/MediaControlDialog.kt` | `feature/mediacontrol/miuix/MiuixMediaControlDialog.kt` | Commands via `runtime/media/LyricMediaCommandRouter.kt` |
 | Update Dialog (更新弹窗) | shown from Home/About | — | `feature/update/material/UpdateDialog.kt` | `feature/update/miuix/MiuixUpdateDialog.kt` | Changelog parsing: `feature/update/UpdateParser.kt`, `feature/update/UpdateMarkdown.kt` |
 
-Shared activity plumbing (theme wrappers, predictive back, page-stack host): `ui/navigation/BaseActivity.kt`, `ui/navigation/PredictiveBackActivity.kt`, `ui/navigation/PredictiveBackAnimation.kt`, `ui/navigation/PageStackHost.kt`, `ui/navigation/OverlaySheetHost.kt`, `ui/navigation/LayeredPagerTransition.kt`.
+Shared activity plumbing (theme wrappers, predictive back, page-stack host): `ui/navigation/BaseActivity.kt`, `ui/navigation/PredictiveBackActivity.kt`, `ui/navigation/PredictiveBackAnimation.kt`, `ui/navigation/PageStackHost.kt`, `ui/navigation/MiuixNavPageStackHost.kt`, `ui/navigation/OverlaySheetHost.kt`, `ui/navigation/MiuixNavOverlaySheetHost.kt`, `ui/navigation/LayeredPagerTransition.kt`.
 
 ## Runtime Services & Background Components (运行时服务)
 

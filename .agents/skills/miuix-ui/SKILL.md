@@ -1,6 +1,6 @@
 ---
 name: miuix-ui
-description: Build, review, and refactor Compose Miuix UI in IslandLyrics using Miuix 0.9.3 conventions, the app blur wrapper stack, theme tokens, popup-host rules, and compile-first verification. Use for any Miuix screen or component work; do not use for Material-only UI.
+description: Build, review, and refactor Compose Miuix UI in IslandLyrics using Miuix 0.9.4 conventions, the app blur wrapper stack, theme tokens, popup-host rules, Miuix navigation, and compile-first verification. Use for any Miuix screen or component work; do not use for Material-only UI.
 ---
 
 # Miuix UI
@@ -8,11 +8,13 @@ description: Build, review, and refactor Compose Miuix UI in IslandLyrics using 
 ## First Decisions
 
 1. Treat Material and Miuix as separate stacks. Change only the requested stack; never edit `ui/material` to fix a Miuix issue unless explicitly asked.
-2. Prefer an existing upstream 0.9.3 component before creating a wrapper. Add a project wrapper only when it supplies real behavior such as blur, fallback, preference listening, predictive back, drag reorder, or cross-page style policy.
+2. Prefer an existing upstream 0.9.4 component before creating a wrapper. Add a project wrapper only when it supplies real behavior such as blur, fallback, preference listening, predictive back, drag reorder, or cross-page style policy.
 3. Read the closest reference before inventing layout:
-   - Upstream source: `reference/miuix-0.9.3`
-   - Chinese docs: `reference/miuix-0.9.3/docs/zh_CN/components` and `/guide`
+   - Upstream source: `reference/miuix`
+   - Chinese docs: `reference/miuix/docs/zh_CN/components` and `/guide`
    - Project wrappers: `app/src/main/java/com/example/islandlyrics/ui/miuix`
+
+For 0.9.4 API migration details, read `references/miuix-0.9.4.md`.
 
 ## Non-Negotiable Rules
 
@@ -31,6 +33,7 @@ description: Build, review, and refactor Compose Miuix UI in IslandLyrics using 
 - Dropdown settings rows: use `BlurOverlayDropdownPreference` (often imported as `SuperDropdown`) for the established blur + edge-highlight behavior.
 - Lists: use `BasicComponent` / preference components first; promote a local row helper only after reuse appears across pages.
 - Reordering: use `MiuixBlurReorderablePanel`; do not put it inside another vertically scrollable container without checking measurement.
+- Navigation: Miuix `PageStackHost` uses miuix-nav in the PageSpecific mode when predictive back is enabled; keep Material and Consistent-mode paths on their existing hosts. Use `OverlaySheetHost(useMiuixNavForDefault = true)` for the existing Miuix inline rule-editor sheet. Built-in swipe dismissal is opt-in and remains disabled here.
 
 ## Component Selection
 
@@ -89,5 +92,6 @@ Then choose the smallest additional check that proves the change:
 Read only what is relevant:
 
 - `references/components.md`: common components, selection rules, host requirements.
+- `references/miuix-0.9.4.md`: breaking API changes and miuix-nav integration rules.
 - `references/theme-and-effects.md`: theme tokens, text styles, blur/backdrop/highlight constraints.
 - `references/code-review.md`: checklist for reviewing/refactoring Miuix changes.

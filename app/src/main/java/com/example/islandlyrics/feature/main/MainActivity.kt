@@ -607,6 +607,7 @@ class MainActivity : BaseActivity() {
                     onPop = ::popPage,
                     backdropColor = MiuixTheme.colorScheme.surface,
                     modifier = Modifier.fillMaxSize(),
+                    useMiuixNavForDefault = true,
                     backgroundContent = {
                     Box(
                         modifier = Modifier

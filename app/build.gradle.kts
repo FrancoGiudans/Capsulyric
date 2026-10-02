@@ -65,6 +65,7 @@ dependencies {
     implementation(libs.miuix.icons)
     implementation(libs.miuix.preference)
     implementation(libs.miuix.blur)
+    implementation(libs.miuix.nav)
     implementation(libs.navigationevent.compose)
     implementation(libs.aboutlibraries.compose.m3)
 
