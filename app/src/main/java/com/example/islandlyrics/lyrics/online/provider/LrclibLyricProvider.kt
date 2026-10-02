@@ -36,9 +36,14 @@ internal class LrclibLyricProvider(
     private val httpClient: OnlineLyricHttpClient
 ) {
     suspend fun fetch(title: String, artist: String): OnlineLyricFetcher.LyricResult? =
+        fetchUrl("https://lrclib.net/api/get?track_name=${title.encodeURL()}&artist_name=${artist.encodeURL()}")
+
+    suspend fun fetchById(trackId: String): OnlineLyricFetcher.LyricResult? =
+        fetchUrl("https://lrclib.net/api/get/$trackId")
+
+    private suspend fun fetchUrl(url: String): OnlineLyricFetcher.LyricResult? =
         withContext(Dispatchers.IO) {
             try {
-                val url = "https://lrclib.net/api/get?track_name=${title.encodeURL()}&artist_name=${artist.encodeURL()}"
                 val response = httpClient.get(url) ?: return@withContext null
                 val json = JSONObject(response)
 
@@ -51,12 +56,13 @@ internal class LrclibLyricProvider(
                         provider = OnlineLyricProvider.Lrclib,
                         matchedTitle = json.optString("trackName"),
                         matchedArtist = json.optString("artistName"),
+                        providerTrackId = json.optString("id").takeIf { it.isNotBlank() },
                         error = "纯音乐"
                     )
                 }
 
-                val synced = json.optString("syncedLyrics", "")
-                val plain = json.optString("plainLyrics", "")
+                val synced = if (json.isNull("syncedLyrics")) "" else json.optString("syncedLyrics", "")
+                val plain = if (json.isNull("plainLyrics")) "" else json.optString("plainLyrics", "")
                 val lyricContent = synced.ifBlank { plain }
                 if (lyricContent.isBlank()) return@withContext null
 
@@ -72,7 +78,9 @@ internal class LrclibLyricProvider(
                     hasSyllable = false,
                     provider = OnlineLyricProvider.Lrclib,
                     matchedTitle = json.optString("trackName"),
-                    matchedArtist = json.optString("artistName")
+                    matchedArtist = json.optString("artistName"),
+                    matchedAlbum = json.optString("albumName").takeIf { it.isNotBlank() },
+                    providerTrackId = json.optString("id").takeIf { it.isNotBlank() }
                 )
             } catch (e: Exception) {
                 AppLogger.getInstance().log("OnlineLyric", "LRCLIB错误: ${e.message}")

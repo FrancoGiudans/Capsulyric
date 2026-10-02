@@ -156,6 +156,25 @@ class OnlineLyricFetcher(
     private val appleMusicProvider = AppleMusicLyricProvider()
     private val musixmatchProvider = MusixmatchLyricProvider(httpClient)
     private val selector = OnlineLyricSelector(::cleanTitle)
+
+    /** Fetch exactly one platform ID, without search, scoring or cross-provider fallback. */
+    suspend fun fetchLyricsById(provider: OnlineLyricProvider, trackId: String): LyricResult? {
+        val id = provider.normalizeTrackId(trackId) ?: return null
+        if (!networkAllowed()) return null
+        currentCoroutineContext().ensureActive()
+        val result = when (provider) {
+            OnlineLyricProvider.QQMusic -> qqMusicProvider.fetchById(id)
+            OnlineLyricProvider.Kugou -> kugouProvider.fetchById(id)
+            OnlineLyricProvider.SodaMusic -> sodaMusicProvider.fetchById(id)
+            OnlineLyricProvider.Lrclib -> lrclibProvider.fetchById(id)
+            OnlineLyricProvider.Netease -> neteaseProvider.fetchById(id)
+            OnlineLyricProvider.AppleMusic -> appleMusicProvider.fetchById(id)
+            OnlineLyricProvider.Musixmatch -> musixmatchProvider.fetchById(id)
+            OnlineLyricProvider.LrcApi -> null
+        }
+        currentCoroutineContext().ensureActive()
+        return result?.copy(providerTrackId = result.providerTrackId ?: id)
+    }
     
     /**
      * 从多个API获取歌词并选择最佳结果

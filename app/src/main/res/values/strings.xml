@@ -1283,4 +1283,23 @@ Within the log interface, select the share/export icon. You can specify a timefr
     <string name="diag_lab_update_source_desc">Choose the preferred update source. If it fails, the app automatically falls back to the other source. Releases are mirrored to both GitHub and Gitee.</string>
     <string name="diag_lab_update_source_github">GitHub</string>
     <string name="diag_lab_update_source_gitee">Gitee</string>
+    <string name="online_lyric_track_id_title">Get lyrics by song ID</string>
+    <string name="online_lyric_track_id_platform">Platform</string>
+    <string name="online_lyric_track_id_label">Song ID</string>
+    <string name="online_lyric_track_id_qq_label">Song ID / MID</string>
+    <string name="online_lyric_track_id_hash_label">Song hash</string>
+    <string name="online_lyric_track_id_numeric_hint">Enter the numeric song ID from this platform, without a share link.</string>
+    <string name="online_lyric_track_id_qq_hint">Enter a QQ Music song MID or numeric song ID, without a share link.</string>
+    <string name="online_lyric_track_id_hash_hint">Enter the 32-character song hash. Numeric Kugou IDs are not supported.</string>
+    <string name="online_lyric_track_id_lrclib_hint">Enter the numeric LRCLIB record ID, not an ID from another platform.</string>
+    <string name="online_lyric_track_id_apple_hint">Enter the numeric Apple Music catalog song ID. Sign in to Apple Music first.</string>
+    <string name="online_lyric_track_id_musixmatch_hint">Enter the numeric Musixmatch track_id. A captcha may prevent retrieval.</string>
+    <string name="online_lyric_track_id_fetch">Fetch and preview</string>
+    <string name="online_lyric_track_id_invalid">The ID format does not match this platform. Check the hint above.</string>
+    <string name="online_lyric_track_id_not_found">No lyrics were returned for this ID. Check the platform, ID and network.</string>
+    <string name="online_lyric_track_id_instrumental">Clear the song or album instrumental marker before fetching by ID.</string>
+    <string name="online_lyric_track_id_song_changed">The current song changed. Fetch the lyrics again.</string>
+    <string name="online_lyric_track_id_preview_id">ID: %1$s</string>
+    <string name="online_lyric_track_id_preview_target">Apply to: %1$s · %2$s</string>
+    <string name="online_lyric_track_id_no_timing">These lyrics have no usable timeline and can only be previewed.</string>
 </resources>

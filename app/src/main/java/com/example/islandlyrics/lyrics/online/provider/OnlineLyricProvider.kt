@@ -22,6 +22,8 @@
 
 package com.example.islandlyrics.lyrics.online.provider
 
+import com.example.islandlyrics.R
+
 enum class OnlineLyricProvider(
     val id: String,
     @param:androidx.annotation.StringRes val nameResId: Int
@@ -34,6 +36,41 @@ enum class OnlineLyricProvider(
     LrcApi("lrc_api", com.example.islandlyrics.R.string.provider_lrcapi),
     AppleMusic("apple_music", com.example.islandlyrics.R.string.provider_apple_music),
     Musixmatch("musixmatch", com.example.islandlyrics.R.string.provider_musixmatch);
+
+    val supportsTrackId: Boolean get() = this != LrcApi
+
+    val trackIdLabelResId: Int get() = when (this) {
+        QQMusic -> R.string.online_lyric_track_id_qq_label
+        Kugou -> R.string.online_lyric_track_id_hash_label
+        else -> R.string.online_lyric_track_id_label
+    }
+
+    val trackIdHintResId: Int get() = when (this) {
+        QQMusic -> R.string.online_lyric_track_id_qq_hint
+        Kugou -> R.string.online_lyric_track_id_hash_hint
+        Lrclib -> R.string.online_lyric_track_id_lrclib_hint
+        AppleMusic -> R.string.online_lyric_track_id_apple_hint
+        Musixmatch -> R.string.online_lyric_track_id_musixmatch_hint
+        else -> R.string.online_lyric_track_id_numeric_hint
+    }
+
+    /** Accept bare platform IDs only; do not turn a malformed ID into a keyword search. */
+    fun normalizeTrackId(input: String): String? {
+        val value = input.trim()
+        return when (this) {
+            LrcApi -> null
+            Kugou -> value.takeIf { it.matches(Regex("[0-9a-fA-F]{32}")) }?.uppercase()
+            QQMusic -> value.takeIf {
+                it.matches(Regex("[0-9A-Za-z]+")) && it.any { char -> char != '0' }
+            }
+            Netease -> value.takeIf {
+                it.matches(Regex("[0-9]+")) && (it.toLongOrNull() ?: 0L) > 0L
+            }
+            else -> value.takeIf {
+                it.matches(Regex("[0-9]+")) && it.any { char -> char != '0' }
+            }
+        }
+    }
 
     companion object {
         fun fromId(id: String?): OnlineLyricProvider? {
