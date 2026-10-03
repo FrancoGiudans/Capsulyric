@@ -75,6 +75,7 @@ import com.example.islandlyrics.feature.parserrule.ParserRuleActivity
 import com.example.islandlyrics.lyrics.online.OnlineLyricFetcher
 import com.example.islandlyrics.lyrics.online.provider.OnlineLyricProvider
 import com.example.islandlyrics.feature.onlinelyricdebug.OnlineLyricDebugViewModel
+import com.example.islandlyrics.feature.onlinelyricdebug.trackIdSongKey
 import com.example.islandlyrics.ui.miuix.blur.MiuixBlurDialog
 import com.example.islandlyrics.ui.miuix.blur.MiuixBlurScaffold
 import com.example.islandlyrics.ui.miuix.blur.MiuixBlurTopAppBar
@@ -108,6 +109,7 @@ fun MiuixOnlineLyricDebugScreen(
     val offlineModeEnabled = OfflineModeManager.isEnabled(context)
     val scrollBehavior = MiuixScrollBehavior(rememberTopAppBarState())
     val mediaInfo by viewModel.liveMetadata.observeAsState()
+    val songKey = trackIdSongKey(mediaInfo)
     val albumArt by viewModel.liveAlbumArt.observeAsState()
     val liveProgress by viewModel.liveProgress.observeAsState()
     val liveLyric by viewModel.liveLyric.observeAsState()
@@ -131,7 +133,7 @@ fun MiuixOnlineLyricDebugScreen(
     var dialogResult by remember { mutableStateOf<OnlineLyricFetcher.LyricResult?>(null) }
     var dialogRole by remember { mutableStateOf<OnlineLyricDebugViewModel.ResultRole?>(null) }
 
-    LaunchedEffect(mediaInfo) { viewModel.syncTrackIdSong() }
+    LaunchedEffect(songKey) { viewModel.syncTrackIdSong() }
 
     LaunchedEffect(mediaInfo?.packageName, mediaInfo?.title, mediaInfo?.artist, mediaInfo?.album) {
         if (mediaInfo != null) {
@@ -482,7 +484,7 @@ fun MiuixOnlineLyricDebugScreen(
             }
         }
 
-        trackIdPreview?.takeIf { it.mediaInfo == mediaInfo }?.let { preview ->
+        trackIdPreview?.takeIf { trackIdSongKey(it.mediaInfo) == songKey }?.let { preview ->
             AttemptResultDialog(
                 attempt = preview.attempt,
                 text = viewModel.resultLyricsText(preview.attempt.result),
@@ -537,12 +539,13 @@ private fun TrackIdInputCard(
     val context = LocalContext.current
     val keyboard = LocalSoftwareKeyboardController.current
     val mediaInfo by viewModel.liveMetadata.observeAsState()
+    val songKey = trackIdSongKey(mediaInfo)
     val error by viewModel.trackIdError.observeAsState()
     val providers = remember { OnlineLyricProvider.defaultOrder().filter { it.supportsTrackId } }
-    var provider by rememberSaveable(mediaInfo) {
+    var provider by rememberSaveable(songKey) {
         mutableStateOf(OnlineLyricProvider.defaultOrderForPackage(mediaInfo?.packageName).first())
     }
-    var input by rememberSaveable(mediaInfo) { mutableStateOf("") }
+    var input by rememberSaveable(songKey) { mutableStateOf("") }
     Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
         BasicComponent(
             title = stringResource(R.string.online_lyric_track_id_title)

@@ -92,6 +92,7 @@ import com.example.islandlyrics.core.network.OfflineModeManager
 import com.example.islandlyrics.lyrics.online.OnlineLyricFetcher
 import com.example.islandlyrics.lyrics.online.provider.OnlineLyricProvider
 import com.example.islandlyrics.feature.onlinelyricdebug.OnlineLyricDebugViewModel
+import com.example.islandlyrics.feature.onlinelyricdebug.trackIdSongKey
 import com.example.islandlyrics.feature.settings.material.SettingsCard
 import com.example.islandlyrics.feature.settings.material.SettingsSectionHeader
 import com.example.islandlyrics.ui.theme.material.materialPageContainerColor
@@ -108,6 +109,7 @@ fun OnlineLyricDebugScreen(
     val context = LocalContext.current
     val offlineModeEnabled = OfflineModeManager.isEnabled(context)
     val mediaInfo by viewModel.liveMetadata.observeAsState()
+    val songKey = trackIdSongKey(mediaInfo)
     val albumArt by viewModel.liveAlbumArt.observeAsState()
     val liveProgress by viewModel.liveProgress.observeAsState()
     val liveLyric by viewModel.liveLyric.observeAsState()
@@ -131,7 +133,7 @@ fun OnlineLyricDebugScreen(
     var dialogResult by remember { mutableStateOf<OnlineLyricFetcher.LyricResult?>(null) }
     var dialogRole by remember { mutableStateOf<OnlineLyricDebugViewModel.ResultRole?>(null) }
 
-    LaunchedEffect(mediaInfo) { viewModel.syncTrackIdSong() }
+    LaunchedEffect(songKey) { viewModel.syncTrackIdSong() }
 
     LaunchedEffect(mediaInfo?.packageName, mediaInfo?.title, mediaInfo?.artist, mediaInfo?.album) {
         if (mediaInfo != null) {
@@ -438,7 +440,7 @@ fun OnlineLyricDebugScreen(
         )
     }
 
-    trackIdPreview?.takeIf { it.mediaInfo == mediaInfo }?.let { preview ->
+    trackIdPreview?.takeIf { trackIdSongKey(it.mediaInfo) == songKey }?.let { preview ->
         AttemptResultDialog(
             attempt = preview.attempt,
             text = viewModel.resultLyricsText(preview.attempt.result),
@@ -492,12 +494,13 @@ private fun TrackIdInputCard(
     val context = LocalContext.current
     val keyboard = LocalSoftwareKeyboardController.current
     val mediaInfo by viewModel.liveMetadata.observeAsState()
+    val songKey = trackIdSongKey(mediaInfo)
     val error by viewModel.trackIdError.observeAsState()
     val providers = remember { OnlineLyricProvider.defaultOrder().filter { it.supportsTrackId } }
-    var provider by rememberSaveable(mediaInfo) {
+    var provider by rememberSaveable(songKey) {
         mutableStateOf(OnlineLyricProvider.defaultOrderForPackage(mediaInfo?.packageName).first())
     }
-    var input by rememberSaveable(mediaInfo) { mutableStateOf("") }
+    var input by rememberSaveable(songKey) { mutableStateOf("") }
     var menuExpanded by remember { mutableStateOf(false) }
     SettingsCard {
         Column(modifier = Modifier.padding(16.dp)) {

@@ -44,6 +44,25 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import com.example.islandlyrics.R
 
+internal fun trackIdSongKey(mediaInfo: LyricRepository.MediaInfo?): String? =
+    mediaInfo?.let { "${it.packageName}|${it.title}|${it.artist}" }
+
+internal fun retainTrackIdAttempt(
+    attempts: List<OnlineLyricFetcher.ProviderAttempt>,
+    attempt: OnlineLyricFetcher.ProviderAttempt
+): List<OnlineLyricFetcher.ProviderAttempt> = attempts.filterNot {
+    it.queryVariant == "track_id" && it.provider == attempt.provider &&
+        it.result?.providerTrackId == attempt.result?.providerTrackId
+} + attempt
+
+internal fun preferredProviderAttempt(
+    attempts: List<OnlineLyricFetcher.ProviderAttempt>,
+    selectedResult: OnlineLyricFetcher.LyricResult?
+): OnlineLyricFetcher.ProviderAttempt? =
+    attempts.firstOrNull { it.result == selectedResult }
+        ?: attempts.lastOrNull { it.queryVariant == "track_id" }
+        ?: attempts.maxByOrNull { it.result?.score ?: Int.MIN_VALUE }
+
 class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(application) {
     enum class ResultRole {
         MAIN,
@@ -105,7 +124,7 @@ class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(app
     private val _trackIdError = MutableLiveData<String?>(null)
     val trackIdError: LiveData<String?> = _trackIdError
     private var trackIdJob: Job? = null
-    private var trackIdMediaInfo: LyricRepository.MediaInfo? = null
+    private var trackIdMediaKey: String? = null
 
     private val _customMatchTitle = MutableLiveData("")
     val customMatchTitle: LiveData<String> = _customMatchTitle
@@ -235,8 +254,7 @@ class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(app
             .groupBy { it.provider }
             .values
             .mapNotNull { providerAttempts ->
-                providerAttempts.firstOrNull { it.result == selectedResult }
-                    ?: providerAttempts.maxByOrNull { it.result?.score ?: Int.MIN_VALUE }
+                preferredProviderAttempt(providerAttempts, selectedResult)
             }
     }
 
@@ -413,7 +431,7 @@ class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(app
         translationResult: OnlineLyricFetcher.LyricResult?,
         romanResult: OnlineLyricFetcher.LyricResult?,
         cacheMessage: String? = null,
-        fromTrackId: Boolean = false
+        trackIdAttempt: OnlineLyricFetcher.ProviderAttempt? = null
     ) {
         val combinedResult = buildCombinedResult(mainResult, translationResult, romanResult)
         withContext(Dispatchers.IO) {
@@ -424,11 +442,12 @@ class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(app
                 result = combinedResult
             )
         }
-        if (fromTrackId) {
-            if (liveMetadata.value != mediaInfo) return
+        if (trackIdAttempt != null) {
+            if (trackIdSongKey(liveMetadata.value) != trackIdSongKey(mediaInfo)) return
             translationDisabledByUser = false
             romanDisabledByUser = false
             _usedCleanTitleFallback.value = false
+            _attempts.value = retainTrackIdAttempt(_attempts.value.orEmpty(), trackIdAttempt)
         }
         applyResultToRepository(mediaInfo, combinedResult)
         setSelectionState(mainResult, translationResult, romanResult)
@@ -1020,9 +1039,10 @@ class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(app
     }
 
     fun syncTrackIdSong() {
-        if (trackIdMediaInfo == liveMetadata.value) return
+        val songKey = trackIdSongKey(liveMetadata.value)
+        if (trackIdMediaKey == songKey) return
         trackIdJob?.cancel()
-        trackIdMediaInfo = liveMetadata.value
+        trackIdMediaKey = songKey
         _trackIdPreview.value = null
         _trackIdError.value = null
     }
@@ -1065,20 +1085,21 @@ class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(app
             return
         }
         syncTrackIdSong()
+        val songKey = trackIdSongKey(mediaInfo)
         _isFetching.value = true
         _trackIdError.value = null
         _trackIdPreview.value = null
         trackIdJob = viewModelScope.launch {
             try {
                 val state = currentTrackIdSongState(mediaInfo)
-                if (liveMetadata.value != mediaInfo) return@launch
+                if (trackIdSongKey(liveMetadata.value) != songKey) return@launch
                 if (state.isInstrumental) {
                     _trackIdError.value = s(R.string.online_lyric_track_id_instrumental)
                     return@launch
                 }
                 val start = android.os.SystemClock.elapsedRealtime()
                 val result = fetcher.fetchLyricsById(provider, id)
-                if (liveMetadata.value != mediaInfo) return@launch
+                if (trackIdSongKey(liveMetadata.value) != songKey) return@launch
                 if (result == null || result.error != null || resultLyricsText(result).isBlank()) {
                     _trackIdError.value = result?.error ?: s(R.string.online_lyric_track_id_not_found)
                     return@launch
@@ -1096,7 +1117,7 @@ class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(app
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                if (liveMetadata.value == mediaInfo) {
+                if (trackIdSongKey(liveMetadata.value) == songKey) {
                     _trackIdError.value = s(R.string.online_lyric_debug_error_fetch_failed_fmt, e.message.orEmpty())
                 }
             } finally {
@@ -1121,7 +1142,8 @@ class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(app
         if (_isFetching.value == true) return
         val preview = _trackIdPreview.value ?: return
         val result = preview.attempt.result ?: return
-        if (liveMetadata.value != preview.mediaInfo) {
+        val songKey = trackIdSongKey(preview.mediaInfo)
+        if (trackIdSongKey(liveMetadata.value) != songKey) {
             closeTrackIdPreview()
             _trackIdError.value = s(R.string.online_lyric_track_id_song_changed)
             return
@@ -1131,7 +1153,7 @@ class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(app
         trackIdJob = viewModelScope.launch {
             try {
                 val state = currentTrackIdSongState(preview.mediaInfo)
-                if (liveMetadata.value != preview.mediaInfo) return@launch
+                if (trackIdSongKey(liveMetadata.value) != songKey) return@launch
                 if (state.isInstrumental) {
                     closeTrackIdPreview()
                     _trackIdError.value = s(R.string.online_lyric_track_id_instrumental)
@@ -1144,13 +1166,13 @@ class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(app
                     mainResult = result,
                     translationResult = result.takeIf { !it.translationLyrics.isNullOrBlank() },
                     romanResult = result.takeIf { !it.romanLyrics.isNullOrBlank() },
-                    fromTrackId = true
+                    trackIdAttempt = preview.attempt
                 )
                 closeTrackIdPreview()
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                if (liveMetadata.value == preview.mediaInfo) {
+                if (trackIdSongKey(liveMetadata.value) == songKey) {
                     closeTrackIdPreview()
                     _trackIdError.value = s(R.string.online_lyric_debug_error_fetch_failed_fmt, e.message.orEmpty())
                 }
