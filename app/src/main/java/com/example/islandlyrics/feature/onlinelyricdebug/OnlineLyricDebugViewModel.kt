@@ -63,6 +63,12 @@ internal fun preferredProviderAttempt(
         ?: attempts.lastOrNull { it.queryVariant == "track_id" }
         ?: attempts.maxByOrNull { it.result?.score ?: Int.MIN_VALUE }
 
+internal fun restoredMainResult(
+    snapshot: OnlineLyricFetchSnapshotStore.Snapshot,
+    cachedResult: OnlineLyricFetcher.LyricResult?
+): OnlineLyricFetcher.LyricResult? =
+    if (snapshot.songKey != null) snapshot.bestResult else cachedResult ?: snapshot.bestResult
+
 class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(application) {
     enum class ResultRole {
         MAIN,
@@ -433,6 +439,8 @@ class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(app
         cacheMessage: String? = null,
         trackIdAttempt: OnlineLyricFetcher.ProviderAttempt? = null
     ) {
+        val songKey = trackIdSongKey(mediaInfo)
+        if (trackIdSongKey(liveMetadata.value) != songKey) return
         val combinedResult = buildCombinedResult(mainResult, translationResult, romanResult)
         withContext(Dispatchers.IO) {
             cacheStore.saveLyricResult(
@@ -442,8 +450,10 @@ class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(app
                 result = combinedResult
             )
         }
+        if (trackIdSongKey(liveMetadata.value) != songKey) return
+        val retained = OnlineLyricFetchSnapshotStore.getTrackId(songKey)
+        _attempts.value = retained?.attempts.orEmpty().fold(_attempts.value.orEmpty(), ::retainTrackIdAttempt)
         if (trackIdAttempt != null) {
-            if (trackIdSongKey(liveMetadata.value) != trackIdSongKey(mediaInfo)) return
             translationDisabledByUser = false
             romanDisabledByUser = false
             _usedCleanTitleFallback.value = false
@@ -454,7 +464,8 @@ class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(app
         val previousSnapshot = OnlineLyricFetchSnapshotStore.get(
             mediaInfo.packageName,
             queryTitle,
-            queryArtist
+            queryArtist,
+            songKey
         )
         OnlineLyricFetchSnapshotStore.save(
             OnlineLyricFetchSnapshotStore.Snapshot(
@@ -464,7 +475,8 @@ class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(app
                 fetchedAt = previousSnapshot?.fetchedAt ?: System.currentTimeMillis(),
                 bestResult = combinedResult,
                 attempts = _attempts.value.orEmpty(),
-                usedCleanTitleFallback = _usedCleanTitleFallback.value == true
+                usedCleanTitleFallback = _usedCleanTitleFallback.value == true,
+                songKey = songKey.takeIf { _attempts.value.orEmpty().any { it.queryVariant == "track_id" } }
             )
         )
         hydratedSnapshotKey = OnlineLyricFetchSnapshotStore.buildKey(
@@ -530,6 +542,7 @@ class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(app
 
     fun syncCurrentSongQuery() {
         val mediaInfo = liveMetadata.value ?: return
+        val songKey = trackIdSongKey(mediaInfo)
         val rule = ParserRuleHelper.getRuleForPackage(getApplication(), mediaInfo.packageName)
             ?: ParserRuleHelper.createDefaultRule(mediaInfo.packageName)
         viewModelScope.launch {
@@ -541,15 +554,6 @@ class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(app
                     useRawMetadata = rule.useRawMetadataForOnlineMatching
                 )
             }
-            val snapshot = if (!state.isInstrumental) {
-                OnlineLyricFetchSnapshotStore.get(
-                    mediaInfo.packageName,
-                    state.effectiveTitle,
-                    state.effectiveArtist
-                )
-            } else {
-                null
-            }
             val cachedHit = if (!state.isInstrumental) {
                 withContext(Dispatchers.IO) {
                     cacheStore.getCachedLyric(
@@ -558,6 +562,17 @@ class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(app
                         state.effectiveArtist
                     )
                 }
+            } else {
+                null
+            }
+            if (trackIdSongKey(liveMetadata.value) != songKey) return@launch
+            val snapshot = if (!state.isInstrumental) {
+                OnlineLyricFetchSnapshotStore.get(
+                    mediaInfo.packageName,
+                    state.effectiveTitle,
+                    state.effectiveArtist,
+                    songKey
+                )
             } else {
                 null
             }
@@ -586,13 +601,13 @@ class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(app
                 hydratedSnapshotKey = snapshotKey
                 _attempts.value = snapshot.attempts
                 _usedCleanTitleFallback.value = snapshot.usedCleanTitleFallback
-                val main = cachedHit?.result ?: snapshot.bestResult
+                val main = restoredMainResult(snapshot, cachedHit?.result)
                 if (main != null) {
                     setSelectionState(
                         mainResult = main,
                         translationResult = main.takeIf { !it.translationLyrics.isNullOrBlank() },
                         romanResult = main.takeIf { !it.romanLyrics.isNullOrBlank() },
-                        fromCache = cachedHit != null && snapshot.bestResult != main
+                        fromCache = snapshot.songKey == null && cachedHit != null && snapshot.bestResult != main
                     )
                 }
                 _cacheStatus.value = if (snapshot.fromCache) {
@@ -1219,6 +1234,7 @@ class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(app
                         useRawMetadata = rule.useRawMetadataForOnlineMatching
                     )
                 }
+                if (trackIdSongKey(liveMetadata.value) != trackIdSongKey(mediaInfo)) return@launch
                 val currentMain = when (role) {
                     ResultRole.MAIN -> result
                     ResultRole.TRANSLATION,
@@ -1307,6 +1323,7 @@ class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(app
                         useRawMetadata = rule.useRawMetadataForOnlineMatching
                     )
                 }
+                if (trackIdSongKey(liveMetadata.value) != trackIdSongKey(mediaInfo)) return@launch
                 val nextTranslation = when (role) {
                     ResultRole.TRANSLATION -> {
                         translationDisabledByUser = true
