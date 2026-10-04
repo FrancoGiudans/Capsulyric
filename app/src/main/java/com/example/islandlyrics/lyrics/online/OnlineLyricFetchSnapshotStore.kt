@@ -36,33 +36,48 @@ object OnlineLyricFetchSnapshotStore {
         val bestResult: OnlineLyricFetcher.LyricResult?,
         val attempts: List<OnlineLyricFetcher.ProviderAttempt>,
         val usedCleanTitleFallback: Boolean,
-        val fromCache: Boolean = false
+        val fromCache: Boolean = false,
+        val songKey: String? = null
     )
 
     private var snapshot: Snapshot? = null
+    private var trackIdSnapshot: Snapshot? = null
 
     fun save(snapshot: Snapshot) {
         synchronized(this) {
             this.snapshot = snapshot
+            val idAttempts = snapshot.attempts.filter { it.queryVariant == "track_id" }
+            if (snapshot.songKey != null && idAttempts.isNotEmpty()) {
+                trackIdSnapshot = snapshot.copy(attempts = idAttempts)
+            }
         }
     }
 
     fun get(
         packageName: String,
         queryTitle: String,
-        queryArtist: String
+        queryArtist: String,
+        songKey: String? = null
     ): Snapshot? = synchronized(this) {
-        val current = snapshot
-        if (current != null && current.matches(packageName, queryTitle, queryArtist)) {
-            current
-        } else {
-            null
+        val current = snapshot?.takeIf {
+            it.matches(packageName, queryTitle, queryArtist) &&
+                (songKey == null || it.songKey == null || it.songKey == songKey)
         }
+        val retained = trackIdSnapshot?.takeIf { songKey != null && it.songKey == songKey }
+        // ID selections belong to the song, even when notification lyrics change the query.
+        retained?.copy(
+            attempts = current?.attempts.orEmpty().filterNot { it.queryVariant == "track_id" } + retained.attempts
+        ) ?: current
+    }
+
+    fun getTrackId(songKey: String?): Snapshot? = synchronized(this) {
+        trackIdSnapshot?.takeIf { songKey != null && it.songKey == songKey }
     }
 
     fun clear() {
         synchronized(this) {
             snapshot = null
+            trackIdSnapshot = null
         }
     }
 

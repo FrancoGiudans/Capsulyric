@@ -1018,7 +1018,7 @@
     <string name="online_lyric_rematch_current_playback_action">使用当前播放信息重新匹配</string>
     <string name="online_lyric_rematch_mark_instrumental">这首歌是纯音乐</string>
     <string name="online_lyric_rematch_clear_instrumental">取消纯音乐标记</string>
-    <string name="online_lyric_rematch_mark_album_instrumental">这张专辑均是纯音乐</string>
+    <string name="online_lyric_rematch_mark_album_instrumental">此专辑均是纯音乐</string>
     <string name="online_lyric_rematch_clear_album_instrumental">取消专辑纯音乐标记</string>
     <string name="online_lyric_rematch_unknown_album">未知专辑</string>
     <string name="online_lyric_rematch_result_title">重新获取到的歌词</string>
@@ -1296,4 +1296,23 @@
     <string name="diag_lab_update_source_desc">选择优先使用的更新源；如果失败，应用会自动回退到另一个源。发布已双向同步至 GitHub 与 Gitee。</string>
     <string name="diag_lab_update_source_github">GitHub</string>
     <string name="diag_lab_update_source_gitee">Gitee</string>
+    <string name="online_lyric_track_id_title">通过歌曲 ID 获取</string>
+    <string name="online_lyric_track_id_platform">平台</string>
+    <string name="online_lyric_track_id_label">歌曲 ID</string>
+    <string name="online_lyric_track_id_qq_label">歌曲 ID / MID</string>
+    <string name="online_lyric_track_id_hash_label">歌曲 hash</string>
+    <string name="online_lyric_track_id_numeric_hint">填写此平台的纯数字歌曲 ID，不支持分享链接。</string>
+    <string name="online_lyric_track_id_qq_hint">填写 QQ 音乐歌曲 MID 或数字歌曲 ID，不支持分享链接。</string>
+    <string name="online_lyric_track_id_hash_hint">填写 32 位歌曲 hash，不支持酷狗数字歌曲 ID。</string>
+    <string name="online_lyric_track_id_lrclib_hint">填写 LRCLIB 的纯数字歌词记录 ID，不是其他平台的歌曲 ID。</string>
+    <string name="online_lyric_track_id_apple_hint">填写 Apple Music 的纯数字 catalog 歌曲 ID，需要先登录 Apple Music。</string>
+    <string name="online_lyric_track_id_musixmatch_hint">填写 Musixmatch 的纯数字 track_id，获取可能受到验证码限制。</string>
+    <string name="online_lyric_track_id_fetch">获取并预览</string>
+    <string name="online_lyric_track_id_invalid">ID 格式与所选平台不符，请按照上方提示填写。</string>
+    <string name="online_lyric_track_id_not_found">此 ID 未返回歌词，请检查平台、ID 和网络。</string>
+    <string name="online_lyric_track_id_instrumental">请先取消当前歌曲或专辑的纯音乐标记，再通过 ID 获取。</string>
+    <string name="online_lyric_track_id_song_changed">当前歌曲已切换，请重新获取歌词。</string>
+    <string name="online_lyric_track_id_preview_id">ID：%1$s</string>
+    <string name="online_lyric_track_id_preview_target">应用到：%1$s · %2$s</string>
+    <string name="online_lyric_track_id_no_timing">这份歌词没有可用时间轴，仅支持预览。</string>
 </resources>

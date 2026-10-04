@@ -142,6 +142,19 @@ internal class AppleMusicLyricProvider {
         durationMs: Long = 0L,
         storefront: String? = null,
         language: String? = null
+    ): OnlineLyricFetcher.LyricResult? = fetchTrack(title, artist, album, durationMs, storefront, language)
+
+    suspend fun fetchById(trackId: String): OnlineLyricFetcher.LyricResult? =
+        fetchTrack("", "", directTrackId = trackId)
+
+    private suspend fun fetchTrack(
+        title: String,
+        artist: String,
+        album: String = "",
+        durationMs: Long = 0L,
+        storefront: String? = null,
+        language: String? = null,
+        directTrackId: String? = null
     ): OnlineLyricFetcher.LyricResult? = withContext(Dispatchers.IO) {
         try {
             // Apple 的歌词接口要求登录态（media-user-token），匿名模式只能搜索到歌曲、拿不到歌词
@@ -181,32 +194,28 @@ internal class AppleMusicLyricProvider {
             )
 
             // 1. 搜索（多候选）
-            val searchUrl = "https://amp-api.music.apple.com/v1/catalog/$effectiveStorefront/search" +
-                "?term=${"$title $artist".trim().encodeURL()}" +
-                "&types=songs&limit=20" +
-                "&l=${effectiveLanguage.encodeURL()}"
-            val searchResponse = getWithTokenRetry(searchUrl) ?: return@withContext null
-            val searchJson = JSONObject(searchResponse)
-            val songs = searchJson
-                .optJSONObject("results")
-                ?.optJSONObject("songs")
-                ?.optJSONArray("data")
-                ?: return@withContext null
+            val best = if (directTrackId == null) {
+                val searchUrl = "https://amp-api.music.apple.com/v1/catalog/$effectiveStorefront/search" +
+                    "?term=${"$title $artist".trim().encodeURL()}" +
+                    "&types=songs&limit=20" +
+                    "&l=${effectiveLanguage.encodeURL()}"
+                val searchResponse = getWithTokenRetry(searchUrl) ?: return@withContext null
+                val searchJson = JSONObject(searchResponse)
+                val songs = searchJson
+                    .optJSONObject("results")
+                    ?.optJSONObject("songs")
+                    ?.optJSONArray("data")
+                    ?: return@withContext null
 
-            val candidates = buildList {
-                for (index in 0 until songs.length()) {
-                    songs.optJSONObject(index)?.let { add(AppleSongCandidate(it)) }
+                val candidates = buildList {
+                    for (index in 0 until songs.length()) {
+                        songs.optJSONObject(index)?.let { add(AppleSongCandidate(it)) }
+                    }
                 }
-            }
-            val best = CandidateMatcher.pickBest(candidates, title, artist, album, durationMs)
-                ?: return@withContext null
-            val songId = best.song.optString("id", "")
-            val matchedTitle = best.matchedTitle
-            val matchedArtist = best.matchedArtist
-            val matchedAlbum = best.matchedAlbum
-            val matchedDurationMs = best.matchedDurationMs
-            val providerTrackId = best.providerTrackId
-            val isrc = best.isrc
+                CandidateMatcher.pickBest(candidates, title, artist, album, durationMs)
+                    ?: return@withContext null
+            } else null
+            val songId = directTrackId ?: best?.providerTrackId.orEmpty()
             if (songId.isBlank()) return@withContext null
 
             // 2. 歌词（逐字 TTML）
@@ -215,6 +224,14 @@ internal class AppleMusicLyricProvider {
                 "&l=${effectiveLanguage.encodeURL()}" +
                 "&extend=ttmlLocalizations"
             val lyricResponse = getWithTokenRetry(lyricUrl) ?: return@withContext null
+            val matched = best ?: JSONObject(lyricResponse).optJSONArray("data")?.optJSONObject(0)
+                ?.let(::AppleSongCandidate)
+            val matchedTitle = matched?.matchedTitle
+            val matchedArtist = matched?.matchedArtist
+            val matchedAlbum = matched?.matchedAlbum
+            val matchedDurationMs = matched?.matchedDurationMs
+            val providerTrackId = songId
+            val isrc = matched?.isrc
 
             var ttml = extractTtml(lyricResponse)
             if (ttml.isBlank()) {

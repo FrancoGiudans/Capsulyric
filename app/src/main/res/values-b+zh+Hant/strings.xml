@@ -1296,4 +1296,23 @@
     <string name="diag_lab_update_source_desc">切換更新資料的取得線路，失敗時自動回退。</string>
     <string name="diag_lab_update_source_github">GitHub (全球)</string>
     <string name="diag_lab_update_source_gitee">Gitee (中國大陸加速)</string>
+    <string name="online_lyric_track_id_title">透過歌曲 ID 取得</string>
+    <string name="online_lyric_track_id_platform">平台</string>
+    <string name="online_lyric_track_id_label">歌曲 ID</string>
+    <string name="online_lyric_track_id_qq_label">歌曲 ID / MID</string>
+    <string name="online_lyric_track_id_hash_label">歌曲 hash</string>
+    <string name="online_lyric_track_id_numeric_hint">填寫此平台的純數字歌曲 ID，不支援分享連結。</string>
+    <string name="online_lyric_track_id_qq_hint">填寫 QQ 音樂歌曲 MID 或數字歌曲 ID，不支援分享連結。</string>
+    <string name="online_lyric_track_id_hash_hint">填寫 32 位歌曲 hash，不支援酷狗數字歌曲 ID。</string>
+    <string name="online_lyric_track_id_lrclib_hint">填寫 LRCLIB 的純數字歌詞記錄 ID，不是其他平台的歌曲 ID。</string>
+    <string name="online_lyric_track_id_apple_hint">填寫 Apple Music 的純數字 catalog 歌曲 ID，需要先登入 Apple Music。</string>
+    <string name="online_lyric_track_id_musixmatch_hint">填寫 Musixmatch 的純數字 track_id，取得時可能受到驗證碼限制。</string>
+    <string name="online_lyric_track_id_fetch">取得並預覽</string>
+    <string name="online_lyric_track_id_invalid">ID 格式與所選平台不符，請按照上方提示填寫。</string>
+    <string name="online_lyric_track_id_not_found">此 ID 未傳回歌詞，請檢查平台、ID 和網路。</string>
+    <string name="online_lyric_track_id_instrumental">請先取消目前歌曲或專輯的純音樂標記，再透過 ID 取得。</string>
+    <string name="online_lyric_track_id_song_changed">目前歌曲已切換，請重新取得歌詞。</string>
+    <string name="online_lyric_track_id_preview_id">ID：%1$s</string>
+    <string name="online_lyric_track_id_preview_target">套用至：%1$s · %2$s</string>
+    <string name="online_lyric_track_id_no_timing">這份歌詞沒有可用時間軸，僅支援預覽。</string>
 </resources>

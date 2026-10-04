@@ -50,6 +50,7 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Translate
 import com.example.islandlyrics.ui.material.blur.MaterialBlurAlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -67,6 +68,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -74,6 +76,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
@@ -85,11 +90,14 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.islandlyrics.R
 import com.example.islandlyrics.core.network.OfflineModeManager
 import com.example.islandlyrics.lyrics.online.OnlineLyricFetcher
+import com.example.islandlyrics.lyrics.online.provider.OnlineLyricProvider
 import com.example.islandlyrics.feature.onlinelyricdebug.OnlineLyricDebugViewModel
+import com.example.islandlyrics.feature.onlinelyricdebug.trackIdSongKey
 import com.example.islandlyrics.feature.settings.material.SettingsCard
 import com.example.islandlyrics.feature.settings.material.SettingsSectionHeader
 import com.example.islandlyrics.ui.theme.material.materialPageContainerColor
 import com.example.islandlyrics.ui.material.blur.MaterialBlurScaffold
+import com.example.islandlyrics.ui.material.blur.MaterialBlurDropdownMenu
 import com.example.islandlyrics.ui.theme.material.MaterialBlurTopAppBar
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -101,6 +109,7 @@ fun OnlineLyricDebugScreen(
     val context = LocalContext.current
     val offlineModeEnabled = OfflineModeManager.isEnabled(context)
     val mediaInfo by viewModel.liveMetadata.observeAsState()
+    val songKey = trackIdSongKey(mediaInfo)
     val albumArt by viewModel.liveAlbumArt.observeAsState()
     val liveProgress by viewModel.liveProgress.observeAsState()
     val liveLyric by viewModel.liveLyric.observeAsState()
@@ -112,6 +121,7 @@ fun OnlineLyricDebugScreen(
     val selectedRomanResult by viewModel.selectedRomanResult.observeAsState()
     val attempts by viewModel.attempts.observeAsState(emptyList())
     val dialogAttempt by viewModel.dialogAttempt.observeAsState()
+    val trackIdPreview by viewModel.trackIdPreview.observeAsState()
     val error by viewModel.error.observeAsState()
     val customMatchTitle by viewModel.customMatchTitle.observeAsState("")
     val customMatchArtist by viewModel.customMatchArtist.observeAsState("")
@@ -122,6 +132,8 @@ fun OnlineLyricDebugScreen(
     var dialogText by remember { mutableStateOf("") }
     var dialogResult by remember { mutableStateOf<OnlineLyricFetcher.LyricResult?>(null) }
     var dialogRole by remember { mutableStateOf<OnlineLyricDebugViewModel.ResultRole?>(null) }
+
+    LaunchedEffect(songKey) { viewModel.syncTrackIdSong() }
 
     LaunchedEffect(mediaInfo?.packageName, mediaInfo?.title, mediaInfo?.artist, mediaInfo?.album) {
         if (mediaInfo != null) {
@@ -327,6 +339,10 @@ fun OnlineLyricDebugScreen(
                 }
             }
 
+            item {
+                TrackIdInputCard(viewModel, isFetching, offlineModeEnabled, isInstrumental || isAlbumInstrumental)
+            }
+
             if (selectedResult != null && rematchedLyrics.isNotBlank()) {
                 item { SettingsSectionHeader(text = stringResource(R.string.online_lyric_rematch_result_title)) }
                 item {
@@ -424,6 +440,21 @@ fun OnlineLyricDebugScreen(
         )
     }
 
+    trackIdPreview?.takeIf { trackIdSongKey(it.mediaInfo) == songKey }?.let { preview ->
+        AttemptResultDialog(
+            attempt = preview.attempt,
+            text = viewModel.resultLyricsText(preview.attempt.result),
+            translationText = viewModel.resultTranslationText(preview.attempt.result),
+            romanText = viewModel.resultRomanText(preview.attempt.result),
+            canSelect = viewModel.canUseAttemptForRole(preview.attempt, OnlineLyricDebugViewModel.ResultRole.MAIN),
+            selectLabel = stringResource(R.string.online_lyric_debug_use_as_main),
+            isFetching = isFetching,
+            onSelect = viewModel::applyTrackIdPreview,
+            onDismiss = viewModel::closeTrackIdPreview,
+            details = viewModel.trackIdPreviewDetails(preview)
+        )
+    }
+
     dialogAttempt?.let { attempt ->
         val role = dialogRole ?: OnlineLyricDebugViewModel.ResultRole.MAIN
         AttemptResultDialog(
@@ -451,6 +482,81 @@ fun OnlineLyricDebugScreen(
         )
     }
 
+}
+
+@Composable
+private fun TrackIdInputCard(
+    viewModel: OnlineLyricDebugViewModel,
+    isFetching: Boolean,
+    offlineModeEnabled: Boolean,
+    isInstrumental: Boolean
+) {
+    val context = LocalContext.current
+    val keyboard = LocalSoftwareKeyboardController.current
+    val mediaInfo by viewModel.liveMetadata.observeAsState()
+    val songKey = trackIdSongKey(mediaInfo)
+    val error by viewModel.trackIdError.observeAsState()
+    val providers = remember { OnlineLyricProvider.defaultOrder().filter { it.supportsTrackId } }
+    var provider by rememberSaveable(songKey) {
+        mutableStateOf(OnlineLyricProvider.defaultOrderForPackage(mediaInfo?.packageName).first())
+    }
+    var input by rememberSaveable(songKey) { mutableStateOf("") }
+    var menuExpanded by remember { mutableStateOf(false) }
+    SettingsCard {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = stringResource(R.string.online_lyric_track_id_title),
+                style = MaterialTheme.typography.titleMedium
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            Box {
+                OutlinedButton(onClick = { menuExpanded = true }, enabled = !isFetching) {
+                    Text(stringResource(R.string.online_lyric_track_id_platform) + ": " + provider.displayName(context))
+                }
+                MaterialBlurDropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
+                    providers.forEach { item ->
+                        DropdownMenuItem(
+                            text = { Text(item.displayName(context)) },
+                            onClick = {
+                                if (provider != item) input = ""
+                                provider = item
+                                menuExpanded = false
+                                viewModel.clearTrackIdError()
+                            }
+                        )
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.height(12.dp))
+            OutlinedTextField(
+                value = input,
+                onValueChange = { input = it; viewModel.clearTrackIdError() },
+                label = { Text(stringResource(provider.trackIdLabelResId)) },
+                singleLine = true,
+                enabled = !isFetching,
+                keyboardOptions = KeyboardOptions(
+                    autoCorrectEnabled = false,
+                    keyboardType = if (provider == OnlineLyricProvider.QQMusic || provider == OnlineLyricProvider.Kugou)
+                        KeyboardType.Ascii else KeyboardType.Number
+                ),
+                modifier = Modifier.fillMaxWidth()
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(stringResource(provider.trackIdHintResId), style = MaterialTheme.typography.bodySmall)
+            if (isInstrumental) {
+                Text(stringResource(R.string.online_lyric_track_id_instrumental), style = MaterialTheme.typography.bodySmall)
+            }
+            error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+            Spacer(modifier = Modifier.height(12.dp))
+            Button(
+                onClick = { keyboard?.hide(); viewModel.fetchLyricsById(provider, input) },
+                enabled = !isFetching && !offlineModeEnabled && !isInstrumental && mediaInfo != null && input.isNotBlank(),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(stringResource(if (isFetching) R.string.online_lyric_debug_fetching else R.string.online_lyric_track_id_fetch))
+            }
+        }
+    }
 }
 
 @Composable
@@ -655,7 +761,8 @@ private fun AttemptResultDialog(
     selectLabel: String,
     isFetching: Boolean,
     onSelect: () -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    details: String? = null
 ) {
     MaterialBlurAlertDialog(
         onDismissRequest = onDismiss,
@@ -666,6 +773,7 @@ private fun AttemptResultDialog(
             } ?: text.ifBlank { stringResource(R.string.online_lyric_rematch_no_lyrics) }
             ResultTextSections(
                 mainText = bodyText,
+                details = details,
                 translationText = if (attempt.result?.error == null) translationText else "",
                 romanText = if (attempt.result?.error == null) romanText else "",
                 modifier = Modifier
@@ -693,11 +801,16 @@ private fun ResultTextSections(
     mainText: String,
     translationText: String,
     romanText: String,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    details: String? = null
 ) {
     Column(
         modifier = modifier.verticalScroll(rememberScrollState())
     ) {
+        details?.let {
+            Text(it, style = MaterialTheme.typography.bodySmall)
+            Spacer(modifier = Modifier.height(14.dp))
+        }
         ResultTextSection(
             title = stringResource(R.string.online_lyric_debug_result_main_lyrics),
             text = mainText
