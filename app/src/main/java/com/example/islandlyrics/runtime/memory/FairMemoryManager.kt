@@ -44,7 +44,7 @@ import java.io.File
 /**
  * Handles the cross-OEM Fair Memory Mechanism (公平运行内存机制).
  *
- * Supported ROMs: HyperOS, ColorOS, OriginOS/FuntouchOS, MagicOS, RealmeUI
+ * Supported ROMs: HyperOS, ColorOS, OriginOS, FuntouchOS, MagicOS, RealmeUI
  * System requirement: Android 16+ (API 36)
  *
  * Listens for [ACTION_TRIM] broadcasts. On TRIM, releases caches.
@@ -76,7 +76,9 @@ class FairMemoryManager private constructor() : IBinder.DeathRecipient {
         const val BUNDLE_KEY_HEAP_CAPACITY = "heapCapacity"
 
         // Notify types
+        @Suppress("unused")
         const val NOTIFY_TYPE_PHYSICAL = 1000
+        @Suppress("unused")
         const val NOTIFY_TYPE_JAVA_HEAP = 2000
 
         // Action values in the bundle
@@ -94,7 +96,7 @@ class FairMemoryManager private constructor() : IBinder.DeathRecipient {
         const val BACKUP_FILE = "fair_memory_backup.json"
 
         // Target ROMs that support this mechanism
-        val TARGET_ROMS = setOf("HyperOS", "ColorOS", "OriginOS/FuntouchOS", "MagicOS", "RealmeUI")
+        val TARGET_ROMS = setOf("HyperOS", "ColorOS", "OriginOS", "FuntouchOS", "OriginOS/FuntouchOS", "MagicOS", "RealmeUI")
 
         fun getInstance(): FairMemoryManager = Instance.INSTANCE
     }
@@ -116,7 +118,7 @@ class FairMemoryManager private constructor() : IBinder.DeathRecipient {
             if (mInitialized) return
 
             // Guard 1: must be a target ROM
-            val romType = RomUtils.getRomType()
+            val romType = RomUtils.getRomType(context)
             if (romType !in TARGET_ROMS) {
                 AppLogger.getInstance().log(TAG, "ROM '$romType' not in target list — skipping")
                 return
@@ -135,11 +137,7 @@ class FairMemoryManager private constructor() : IBinder.DeathRecipient {
             mHandler = Handler(mHandlerThread!!.looper)
 
             val filter = IntentFilter(ACTION_TRIM)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                context.registerReceiver(mReceiver, filter, null, mHandler, Context.RECEIVER_EXPORTED)
-            } else {
-                context.registerReceiver(mReceiver, filter, null, mHandler)
-            }
+            context.registerReceiver(mReceiver, filter, null, mHandler, Context.RECEIVER_EXPORTED)
 
             mInitialized = true
             AppLogger.getInstance().log(TAG, "Initialized on $romType / API ${Build.VERSION.SDK_INT}")
@@ -373,7 +371,7 @@ class FairMemoryManager private constructor() : IBinder.DeathRecipient {
                     mRemote = callback
                     mRemote!!.linkToDeath(this, 0)
                     true
-                } catch (e: RemoteException) {
+                } catch (_: RemoteException) {
                     mRemote = null
                     false
                 }
@@ -386,7 +384,7 @@ class FairMemoryManager private constructor() : IBinder.DeathRecipient {
     fun reply(notifyType: Int, notifyId: Int, result: Int, extra: Bundle?) {
         synchronized(this) {
             val remote = mRemote ?: return
-            var bundle = extra ?: Bundle()
+            val bundle = extra ?: Bundle()
 
             var data: Parcel? = null
             var reply: Parcel? = null
