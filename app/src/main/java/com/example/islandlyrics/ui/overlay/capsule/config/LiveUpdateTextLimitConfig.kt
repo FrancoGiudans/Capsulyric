@@ -34,8 +34,9 @@ object LiveUpdateTextLimitConfig {
 
     fun defaultChars(): Float {
         return when (RomUtils.getRomType()) {
-            "AOSP", "OneUI" -> MIN_CHARS
-            else -> MAX_CHARS
+            "HyperOS", "ColorOS", "RealmeUI", "OriginOS", "FuntouchOS", "OriginOS/FuntouchOS",
+            "Flyme", "MagicOS", "DerpFest", "LineageOS", "PixelExperience", "Evolution X" -> MAX_CHARS
+            else -> MIN_CHARS
         }
     }
 
