@@ -155,6 +155,7 @@ class SettingsActivity : BaseActivity() {
                             modifier = Modifier
                                 .fillMaxSize()
                                 .background(top.yukonga.miuix.kmp.theme.MiuixTheme.colorScheme.surface),
+                            useMiuixNavForDefault = true,
                             backgroundContent = {
                                 MiuixSettingsScreen(
                                     onCheckUpdate = { performUpdateCheck() },
