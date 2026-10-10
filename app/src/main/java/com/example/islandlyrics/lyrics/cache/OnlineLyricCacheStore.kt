@@ -34,7 +34,11 @@ import com.example.islandlyrics.lyrics.importer.LyricifyTrackIdentity
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
+import java.io.FileOutputStream
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption
 import java.security.MessageDigest
+import java.util.UUID
 
 class OnlineLyricCacheStore(context: Context) {
 
@@ -194,6 +198,7 @@ class OnlineLyricCacheStore(context: Context) {
     private val entriesDir = File(storeDir, "lyrics")
     private val indexFile = File(storeDir, "index.json")
     private val albumMarksFile = File(storeDir, "album_instrumental.json")
+    private val importTransactionDir = File(storeDir, "lyricify-import-transaction")
 
     // ── v1 legacy file (for migration) ──
     private val legacyStoreFile = File(storeDir, "online_lyric_cache.json")
@@ -358,50 +363,242 @@ class OnlineLyricCacheStore(context: Context) {
         return if (identity.providerIds.isEmpty()) null else matching(imported.keys - byMetadata).singleOrNull()
     }
 
+    fun hasImportedLyrics(): Boolean = synchronized(lock) {
+        ensureMigrated()
+        readIndex().values.any { it.lyricifyImported }
+    }
+
     fun importLyricifyTracks(
         tracks: List<Pair<LyricifyTrackIdentity, LyricifyImportSelection>>, mode: LyricifyImportMode
-    ): Pair<Int, Int> = synchronized(lock) {
-        ensureMigrated()
-        val index = readIndex()
-        val entries = index.keys.mapNotNull { readEntryFile(it) }.associateBy { it.id }.toMutableMap()
-        var imported = 0
-        var skipped = 0
-        for ((identity, incoming) in tracks) {
-            val matches = entries.values.filter {
-                (it.hasLyricContent() || it.instrumental) && LyricifyDatabaseImporter.sameTrack(identity, it.importIdentity())
-            }
-            if (mode == LyricifyImportMode.SKIP && matches.isNotEmpty()) { skipped++; continue }
-            val shared = matches.firstOrNull { it.lyricifyImported }
-            val existingResults = matches.filter { it.hasLyricContent() }
-                .flatMap { listOf(it.toLyricResult()) + it.lyricifyCandidates.map { candidate -> candidate.toLyricResult() } }
-                .distinctBy(LyricifyDatabaseImporter::candidateKey)
-            val previous = existingResults.takeIf { it.isNotEmpty() }?.let {
-                LyricifyImportSelection(it, shared?.toLyricResult() ?: it.first())
-            }
-            val selection = LyricifyDatabaseImporter.resolveSelection(previous, incoming, mode) ?: continue
-            val id = shared?.id ?: sha256(listOf("lyricify-import", normalizeKey(identity.title), normalizeKey(identity.artist), normalizeKey(identity.album), identity.durationMs).joinToString("|"))
-            val base = CacheEntry(
-                id = id, packageName = "Lyricify", title = identity.title, artist = identity.artist,
-                rawTitle = identity.title, rawArtist = identity.artist, duration = identity.durationMs,
-                queryTitle = identity.title, queryArtist = identity.artist
-            )
-            val entry = base.withImportedResult(selection.selected).copy(
-                lyricifyImported = true, lyricifyAliases = identity.providerIds,
-                matchedAlbum = identity.album.ifBlank { selection.selected.matchedAlbum },
-                lyricifyCandidates = selection.candidates.map { base.withImportedResult(it) }
-            )
-            val changed = if (mode == LyricifyImportMode.OVERWRITE) {
-                matches.filter { !it.lyricifyImported }.map { it.withImportedResult(selection.selected) }
-            } else emptyList()
-            for (updated in changed + entry) {
-                writeEntryFileInternal(updated)
-                entries[updated.id] = updated
-                index[updated.id] = updated.toIndexEntry()
-            }
-            writeIndex(index)
-            imported++
+    ): Pair<Int, Int> = importLyricifyTracks(tracks.asSequence(), mode, 0L) {}
+
+    internal fun importLyricifyTracks(
+        tracks: Sequence<Pair<LyricifyTrackIdentity, LyricifyImportSelection>>, mode: LyricifyImportMode,
+        inputBytes: Long, checkActive: () -> Unit
+    ): Pair<Int, Int> {
+        check(storeDir.isDirectory || storeDir.mkdirs()) { "Cannot create the lyric cache directory" }
+        val preparedDir = Files.createTempDirectory(appContext.cacheDir.toPath(), "lyricify-prepared-").toFile()
+        var temporaryBytes = inputBytes
+        fun reserve(bytes: Long) {
+            // Leave room for a bounded atomic-copy buffer file during commit or recovery.
+            LyricifyDatabaseImporter.checkSize(temporaryBytes + bytes + LyricifyDatabaseImporter.MAX_ENTRY_BYTES,
+                LyricifyDatabaseImporter.MAX_TEMPORARY_BYTES, "Import temporary files")
+            check(storeDir.usableSpace >= bytes + LyricifyDatabaseImporter.MAX_ENTRY_BYTES) { "Not enough free space to import lyrics" }
+            temporaryBytes += bytes
         }
-        imported to skipped
+        fun stage(file: File, entry: CacheEntry) {
+            val bytes = entry.toJson().toString().toByteArray(Charsets.UTF_8)
+            LyricifyDatabaseImporter.checkSize(bytes.size.toLong(), LyricifyDatabaseImporter.MAX_ENTRY_BYTES, "Parsed song")
+            reserve(bytes.size.toLong())
+            file.writeBytes(bytes)
+        }
+        try {
+            var count = 0
+            for ((identity, selection) in tracks) {
+                checkActive()
+                require(++count <= LyricifyDatabaseImporter.MAX_TRACKS) { "Too many songs to import" }
+                val base = CacheEntry(id = "", packageName = "Lyricify", title = identity.title, artist = identity.artist,
+                    rawTitle = identity.title, rawArtist = identity.artist, duration = identity.durationMs,
+                    queryTitle = identity.title, queryArtist = identity.artist)
+                stage(File(preparedDir, "$count.json"), base.withImportedResult(selection.selected).copy(
+                    lyricifyAliases = identity.providerIds, matchedAlbum = identity.album.ifBlank { selection.selected.matchedAlbum },
+                    lyricifyCandidates = selection.candidates.map { base.withImportedResult(it) }
+                ))
+            }
+            return synchronized(lock) {
+                ensureMigrated()
+                val index = readIndex(strict = true)
+                val identities = mutableMapOf<String, LyricifyTrackIdentity>()
+                val matchingKeys = mutableMapOf<String, MutableSet<String>>()
+                fun keys(identity: LyricifyTrackIdentity) = listOf("text:${normalizeKey(identity.title)}|${normalizeKey(identity.artist)}") +
+                    identity.providerIds.map { (platform, id) -> "id:$platform:${id.lowercase(java.util.Locale.ROOT)}" }
+                fun rememberIdentity(id: String, identity: LyricifyTrackIdentity) {
+                    identities[id]?.let { old -> keys(old).forEach { matchingKeys[it]?.remove(id) } }
+                    identities[id] = identity
+                    keys(identity).forEach { matchingKeys.getOrPut(it) { mutableSetOf() }.add(id) }
+                }
+                for ((id, header) in index) {
+                    checkActive()
+                    if (!header.hasLyricContent() && !header.instrumental) continue
+                    require(id.matches(Regex("[0-9a-f]{64}"))) { "Invalid existing cache key" }
+                    val json = readImportJson(entryFile(id))
+                    require(json.getString("id") == id) { "Invalid existing cache identity" }
+                    json.remove("parsedLines")
+                    json.remove("lyricifyCandidates")
+                    json.remove("lyrics")
+                    json.remove("translationLyrics")
+                    json.remove("romanLyrics")
+                    rememberIdentity(id, json.toEntry().importIdentity())
+                }
+                check(importTransactionDir.mkdir()) { "Cannot create import transaction" }
+                val stagedDir = File(importTransactionDir, "new").also { check(it.mkdir()) }
+                val backupDir = File(importTransactionDir, "old").also { check(it.mkdir()) }
+                val changedIds = linkedSetOf<String>()
+                fun currentFile(id: String): File =
+                    File(stagedDir, "$id.json").takeIf { it.exists() } ?: entryFile(id)
+                fun currentEntry(id: String): CacheEntry = readImportJson(currentFile(id)).toEntry()
+                var imported = 0
+                var skipped = 0
+                try {
+                    for (position in 1..count) {
+                        checkActive()
+                        val incomingEntry = readImportJson(File(preparedDir, "$position.json")).toEntry()
+                        val identity = incomingEntry.importIdentity()
+                        val matchIds = keys(identity).flatMap { matchingKeys[it].orEmpty() }.distinct()
+                            .filter { LyricifyDatabaseImporter.sameTrack(identity, identities.getValue(it)) }
+                        if (mode == LyricifyImportMode.SKIP && matchIds.isNotEmpty()) { skipped++; continue }
+                        LyricifyDatabaseImporter.checkSize(matchIds.sumOf { currentFile(it).length() },
+                            LyricifyDatabaseImporter.MAX_ENTRY_BYTES, "Existing song cache")
+                        val matches = matchIds.map(::currentEntry)
+                        val shared = matches.firstOrNull { it.lyricifyImported }
+                        val existingResults = matches.filter { it.hasLyricContent() }
+                            .flatMap { listOf(it.toLyricResult()) + it.lyricifyCandidates.map { candidate -> candidate.toLyricResult() } }
+                            .distinctBy(LyricifyDatabaseImporter::candidateKey)
+                        val previous = existingResults.takeIf { it.isNotEmpty() }?.let {
+                            LyricifyImportSelection(it, shared?.takeIf { it.hasLyricContent() }?.toLyricResult() ?: it.first())
+                        }
+                        val incoming = LyricifyImportSelection(incomingEntry.lyricifyCandidates.map { it.toLyricResult() }, incomingEntry.toLyricResult())
+                        val selection = LyricifyDatabaseImporter.resolveSelection(previous, incoming, mode) ?: continue
+                        var id = shared?.id ?: LyricifyDatabaseImporter.importedEntryId(identity)
+                        if (shared == null) {
+                            while (index.containsKey(id) || entryFile(id).exists()) id = sha256("$id|${UUID.randomUUID()}")
+                        }
+                        val oldAliases = matches.fold(emptyMap<String, String>()) { aliases, entry ->
+                            LyricifyDatabaseImporter.mergeAliases(aliases, entry.importIdentity().providerIds)
+                        }
+                        val aliases = LyricifyDatabaseImporter.mergeAliases(oldAliases, identity.providerIds)
+                        val base = incomingEntry.copy(id = id, lyricifyCandidates = emptyList())
+                        val entry = base.withImportedResult(selection.selected).copy(
+                            lyricifyImported = true, lyricifyAliases = aliases,
+                            matchedAlbum = identity.album.ifBlank { selection.selected.matchedAlbum },
+                            lyricifyCandidates = selection.candidates.map { base.withImportedResult(it).copy(lyricifyAliases = emptyMap()) }
+                        )
+                        val changed = if (mode == LyricifyImportMode.OVERWRITE) {
+                            matches.filter { !it.lyricifyImported }.map { it.withImportedResult(selection.selected) }
+                        } else emptyList()
+                        for (updated in changed + entry) {
+                            val file = File(stagedDir, "${updated.id}.json")
+                            temporaryBytes -= file.length()
+                            stage(file, updated)
+                            changedIds.add(updated.id)
+                            index[updated.id] = updated.toIndexEntry()
+                            rememberIdentity(updated.id, updated.importIdentity())
+                        }
+                        imported++
+                    }
+                    if (changedIds.isEmpty()) return@synchronized imported to skipped
+                    val stagedIndex = File(stagedDir, "index.json")
+                    writeIndex(index, stagedIndex) { bytes ->
+                        LyricifyDatabaseImporter.checkSize(bytes, LyricifyDatabaseImporter.MAX_ENTRY_BYTES, "Cache index")
+                        reserve(bytes)
+                    }
+                    val existed = changedIds.filter { entryFile(it).exists() }
+                    for (id in existed) {
+                        checkActive()
+                        val file = entryFile(id)
+                        reserve(file.length())
+                        file.copyTo(File(backupDir, "$id.json"))
+                    }
+                    if (indexFile.exists()) {
+                        reserve(indexFile.length())
+                        indexFile.copyTo(File(backupDir, "index.json"))
+                    }
+                    val manifest = JSONObject().put("ids", JSONArray(changedIds.toList()))
+                        .put("existingIds", JSONArray(existed)).put("hadIndex", indexFile.exists())
+                    val manifestBytes = manifest.toString().toByteArray(Charsets.UTF_8)
+                    reserve(manifestBytes.size.toLong())
+                    val preparedManifest = File(importTransactionDir, "manifest-prepared.json")
+                    FileOutputStream(preparedManifest).use { output ->
+                        output.write(manifestBytes); output.fd.sync()
+                    }
+                    Files.move(preparedManifest.toPath(), File(importTransactionDir, "manifest.json").toPath(), StandardCopyOption.ATOMIC_MOVE)
+                    for (id in changedIds) {
+                        checkActive()
+                        atomicImportCopy(File(stagedDir, "$id.json"), entryFile(id), keepRecoverySpace = true)
+                    }
+                    checkActive()
+                    atomicImportCopy(stagedIndex, indexFile, keepRecoverySpace = true)
+                    checkActive()
+                    val commitMarker = File(importTransactionDir, "commit-prepared")
+                    FileOutputStream(commitMarker).use { it.fd.sync() }
+                    Files.move(commitMarker.toPath(), File(importTransactionDir, "committed").toPath(), StandardCopyOption.ATOMIC_MOVE)
+                    imported to skipped
+                } catch (error: Throwable) {
+                    try { recoverLyricifyImport() } catch (recoveryError: Throwable) { error.addSuppressed(recoveryError) }
+                    throw error
+                } finally {
+                    if (File(importTransactionDir, "committed").exists() || !File(importTransactionDir, "manifest.json").exists()) {
+                        importTransactionDir.deleteRecursively()
+                    }
+                }
+            }
+        } finally {
+            preparedDir.deleteRecursively()
+        }
+    }
+
+    private fun readImportJson(file: File): JSONObject {
+        require(file.isFile) { "Missing existing cache file: ${file.name}" }
+        LyricifyDatabaseImporter.checkSize(file.length(), LyricifyDatabaseImporter.MAX_ENTRY_BYTES, "Cache entry")
+        return JSONObject(file.readText(Charsets.UTF_8))
+    }
+
+    private fun atomicImportCopy(source: File, destination: File, keepRecoverySpace: Boolean = false) {
+        val parent = destination.parentFile!!
+        check(parent.isDirectory || parent.mkdirs()) { "Cannot create cache entry directory" }
+        val recoverySpace = if (keepRecoverySpace) LyricifyDatabaseImporter.MAX_ENTRY_BYTES else 0L
+        check(storeDir.usableSpace >= source.length() + recoverySpace) { "Not enough free space to commit lyrics" }
+        val temporary = File(parent, "${destination.name}.lyricify-tmp")
+        try {
+            FileOutputStream(temporary).use { output ->
+                source.inputStream().use { it.copyTo(output) }
+                output.fd.sync()
+            }
+            Files.move(temporary.toPath(), destination.toPath(), StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING)
+        } finally {
+            temporary.delete()
+        }
+    }
+
+    /** Called under the existing store lock before any cache operation, including after a process restart. */
+    private fun recoverLyricifyImport() {
+        if (!importTransactionDir.exists()) return
+        val manifestFile = File(importTransactionDir, "manifest.json")
+        if (manifestFile.exists() && !File(importTransactionDir, "committed").exists()) {
+            val manifest = JSONObject(manifestFile.readText(Charsets.UTF_8))
+            fun ids(key: String) = manifest.getJSONArray(key).let { array -> (0 until array.length()).map { array.getString(it) } }
+            val ids = ids("ids")
+            require(ids.all { it.matches(Regex("[0-9a-f]{64}")) }) { "Invalid import recovery record" }
+            val existing = ids("existingIds").toSet()
+            val backupDir = File(importTransactionDir, "old")
+            fun restore(source: File, destination: File) {
+                require(source.isFile) { "Missing import rollback backup" }
+                if (!destination.isFile || fileDigest(source) != fileDigest(destination)) atomicImportCopy(source, destination)
+            }
+            fun removeTemporary(destination: File) {
+                val temporary = File(destination.parentFile, "${destination.name}.lyricify-tmp")
+                check(!temporary.exists() || temporary.delete()) { "Cannot remove an interrupted import copy" }
+            }
+            for (id in ids) {
+                val file = entryFile(id)
+                if (id in existing) restore(File(backupDir, "$id.json"), file)
+                else check(!file.exists() || file.delete()) { "Cannot remove uncommitted lyric entry" }
+                removeTemporary(file)
+            }
+            if (manifest.getBoolean("hadIndex")) restore(File(backupDir, "index.json"), indexFile)
+            else check(!indexFile.exists() || indexFile.delete()) { "Cannot restore cache index" }
+            removeTemporary(indexFile)
+        }
+        check(importTransactionDir.deleteRecursively()) { "Cannot clean up import recovery files" }
+    }
+
+    private fun fileDigest(file: File): String {
+        val digest = MessageDigest.getInstance("SHA-256")
+        file.inputStream().use { input ->
+            val buffer = ByteArray(8 * 1024)
+            while (true) { val count = input.read(buffer); if (count < 0) break; digest.update(buffer, 0, count) }
+        }
+        return digest.digest().joinToString("") { "%02x".format(it) }
     }
 
     private fun CacheEntry.importIdentity(): LyricifyTrackIdentity = LyricifyTrackIdentity(
@@ -857,6 +1054,7 @@ class OnlineLyricCacheStore(context: Context) {
 
     /** Migrate from v1 (single JSON file) to v2 (split files + index) if needed. */
     private fun ensureMigrated() {
+        recoverLyricifyImport()
         if (migrated) return
         if (!legacyStoreFile.exists()) {
             migrated = true
@@ -946,11 +1144,12 @@ class OnlineLyricCacheStore(context: Context) {
         return sha256(payload)
     }
 
-    private fun readIndex(): MutableMap<String, IndexEntry> {
+    private fun readIndex(strict: Boolean = false): MutableMap<String, IndexEntry> {
         if (!indexFile.exists()) return mutableMapOf()
         return runCatching {
+            if (strict) LyricifyDatabaseImporter.checkSize(indexFile.length(), LyricifyDatabaseImporter.MAX_ENTRY_BYTES, "Cache index")
             val root = JSONObject(indexFile.readText(Charsets.UTF_8))
-            val entriesJson = root.optJSONObject("entries") ?: return mutableMapOf()
+            val entriesJson = root.optJSONObject("entries") ?: if (strict) error("Invalid cache index") else return mutableMapOf()
             val map = mutableMapOf<String, IndexEntry>()
             for (key in entriesJson.keys()) {
                 val obj = entriesJson.getJSONObject(key)
@@ -977,10 +1176,12 @@ class OnlineLyricCacheStore(context: Context) {
                 )
             }
             map
-        }.getOrDefault(mutableMapOf())
+        }.getOrElse { if (strict) throw it else mutableMapOf() }
     }
 
-    private fun writeIndex(index: MutableMap<String, IndexEntry>) {
+    private fun writeIndex(
+        index: MutableMap<String, IndexEntry>, destination: File = indexFile, beforeWrite: (Long) -> Unit = {}
+    ) {
         storeDir.mkdirs()
         val entriesJson = JSONObject()
         for ((id, ie) in index) {
@@ -1010,7 +1211,9 @@ class OnlineLyricCacheStore(context: Context) {
             put("version", 2)
             put("entries", entriesJson)
         }
-        indexFile.writeText(root.toString(), Charsets.UTF_8)
+        val bytes = root.toString().toByteArray(Charsets.UTF_8)
+        beforeWrite(bytes.size.toLong())
+        destination.writeBytes(bytes)
     }
 
     // ── Entry file I/O ───────────────────────────────────────────────

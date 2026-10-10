@@ -2,6 +2,11 @@ package com.example.islandlyrics.lyrics.importer
 
 import com.example.islandlyrics.lyrics.online.OnlineLyricFetcher
 import com.example.islandlyrics.lyrics.online.provider.OnlineLyricProvider
+import com.example.islandlyrics.lyrics.source.sameLyricRequestTrack
+import com.example.islandlyrics.lyrics.state.LyricRepository
+import java.io.InputStream
+import java.io.OutputStream
+import kotlinx.coroutines.CancellationException
 import org.junit.Assert.*
 import org.junit.Test
 
@@ -71,6 +76,110 @@ class LyricifyDatabaseImporterTest {
     @Test fun contradictoryPlatformIdsAreKeptSeparate() {
         val track = LyricifyTrackIdentity("Title", "Artist", "Album", 180_000, mapOf("netease" to "123"))
         assertFalse(LyricifyDatabaseImporter.sameTrack(track, track.copy(providerIds = mapOf("netease" to "456"))))
+        assertFalse(LyricifyDatabaseImporter.sameTrack(
+            track.copy(providerIds = mapOf("qq_music" to "123", "kugou" to "A")),
+            track.copy(title = "Another song", providerIds = mapOf("qq_music" to "123", "kugou" to "B"))
+        ))
+    }
+
+    @Test fun differentPlatformIdsProduceDifferentStorageKeys() {
+        val first = LyricifyTrackIdentity("Title", "Artist", "Album", 180_000, mapOf("netease" to "123"))
+        assertNotEquals(LyricifyDatabaseImporter.importedEntryId(first),
+            LyricifyDatabaseImporter.importedEntryId(first.copy(providerIds = mapOf("netease" to "456"))))
+    }
+
+    @Test fun storageKeysIncludeTheIdNamespaceAndIgnoreMapOrder() {
+        val first = LyricifyTrackIdentity("Title", "Artist", providerIds = linkedMapOf("netease" to "123", "qq_music" to "456"))
+        assertEquals(LyricifyDatabaseImporter.importedEntryId(first), LyricifyDatabaseImporter.importedEntryId(
+            first.copy(providerIds = linkedMapOf("qq_music" to "456", "netease" to "123"))))
+        assertNotEquals(LyricifyDatabaseImporter.importedEntryId(first.copy(providerIds = mapOf("netease" to "123"))),
+            LyricifyDatabaseImporter.importedEntryId(first.copy(providerIds = mapOf("qq_music" to "123"))))
+    }
+
+    @Test fun storageKeyFieldsCannotCollideThroughSeparators() {
+        val first = LyricifyTrackIdentity("Title|Artist", "Name", "Album", 180_000)
+        assertNotEquals(LyricifyDatabaseImporter.importedEntryId(first),
+            LyricifyDatabaseImporter.importedEntryId(first.copy(title = "Title", artist = "Artist|Name")))
+    }
+
+    @Test fun mergingPartialAliasesRetainsTheOldQqId() {
+        val old = mapOf("netease" to "123", "qq_music" to "456")
+        assertEquals(old, LyricifyDatabaseImporter.mergeAliases(old, mapOf("netease" to "123")))
+        assertEquals(old + ("qq_music:mid" to "001AbC"),
+            LyricifyDatabaseImporter.mergeAliases(old, mapOf("qq_music:mid" to "001AbC")))
+    }
+
+    @Test fun contradictoryAliasesCannotSilentlyReplaceAnOldId() {
+        val old = mapOf("netease" to "123", "qq_music" to "456")
+        assertThrows(IllegalArgumentException::class.java) {
+            LyricifyDatabaseImporter.mergeAliases(old, mapOf("netease" to "123", "qq_music" to "789"))
+        }
+        assertEquals("456", old["qq_music"])
+    }
+
+    @Test fun metadataEnrichmentDoesNotInvalidateTheLyricRequest() {
+        val first = LyricRepository.MediaInfo("Title", "Artist", "player", 0L)
+        assertTrue(sameLyricRequestTrack(first, first.copy(duration = 180_000L, album = "Album", mediaId = "123")))
+        assertFalse(sameLyricRequestTrack(first, first.copy(title = "Another song")))
+        assertFalse(sameLyricRequestTrack(first, first.copy(packageName = "another player")))
+        assertFalse(sameLyricRequestTrack(first, null))
+    }
+
+    @Test fun databaseCopyStopsBeforeWritingBeyondTheLimit() {
+        var remaining = LyricifyDatabaseImporter.MAX_DATABASE_BYTES + 1
+        val input = object : InputStream() {
+            override fun read(): Int = if (remaining-- > 0) 0 else -1
+            override fun read(buffer: ByteArray, offset: Int, length: Int): Int {
+                if (remaining <= 0) return -1
+                val count = minOf(length.toLong(), remaining).toInt()
+                remaining -= count
+                return count
+            }
+        }
+        var written = 0L
+        val output = object : OutputStream() {
+            override fun write(value: Int) { written++ }
+            override fun write(buffer: ByteArray, offset: Int, length: Int) { written += length }
+        }
+        assertThrows(LyricifyDatabaseImporter.LimitExceeded::class.java) {
+            LyricifyDatabaseImporter.copyDatabase(input, output)
+        }
+        assertEquals(LyricifyDatabaseImporter.MAX_DATABASE_BYTES, written)
+    }
+
+    @Test fun databaseCopyHonorsCancellation() {
+        var checked = 0
+        val input = object : InputStream() { override fun read(): Int = 0 }
+        assertThrows(CancellationException::class.java) {
+            LyricifyDatabaseImporter.copyDatabase(input, object : OutputStream() { override fun write(value: Int) {} }) {
+                if (++checked == 3) throw CancellationException("cancelled")
+            }
+        }
+        assertEquals(3, checked)
+    }
+
+    @Test fun oversizedAndDeeplyNestedPayloadsAreRejectedBeforeParsing() {
+        assertThrows(LyricifyDatabaseImporter.LimitExceeded::class.java) {
+            LyricifyDatabaseImporter.validatePayload("a".repeat(LyricifyDatabaseImporter.MAX_PAYLOAD_BYTES.toInt() + 1))
+        }
+        assertThrows(LyricifyDatabaseImporter.LimitExceeded::class.java) {
+            LyricifyDatabaseImporter.validatePayload("[".repeat(65) + "]".repeat(65))
+        }
+        LyricifyDatabaseImporter.validatePayload("{\"text\":\"" + "[".repeat(100) + "\"}")
+    }
+
+    @Test fun excessiveTimingElementsAreRejectedBeforeTheParserRuns() {
+        assertThrows(LyricifyDatabaseImporter.LimitExceeded::class.java) {
+            LyricifyDatabaseImporter.parseDocument("Lrc", "[00:01]word\n".repeat(25_001))
+        }
+    }
+
+    @Test fun payloadBudgetsAcceptTheBoundaryAndRejectTheNextByte() {
+        for (limit in listOf(LyricifyDatabaseImporter.MAX_TRACK_PAYLOAD_BYTES,
+            LyricifyDatabaseImporter.MAX_TOTAL_PAYLOAD_BYTES, LyricifyDatabaseImporter.MAX_TEMPORARY_BYTES)) {
+            LyricifyDatabaseImporter.checkSize(limit, limit, "test")
+            assertThrows(LyricifyDatabaseImporter.LimitExceeded::class.java) { LyricifyDatabaseImporter.checkSize(limit + 1, limit, "test") }
+        }
     }
 
     @Test fun overwriteChangesTheSelectedLyrics() {

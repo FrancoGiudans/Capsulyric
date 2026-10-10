@@ -10,8 +10,14 @@ import com.example.islandlyrics.lyrics.online.parser.OnlineLyricParser
 import com.example.islandlyrics.lyrics.online.provider.OnlineLyricProvider
 import org.json.JSONObject
 import java.io.File
+import java.io.InputStream
+import java.io.OutputStream
+import java.security.MessageDigest
 import java.util.Locale
 import kotlin.math.abs
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 
 enum class LyricifyImportMode { OVERWRITE, MERGE, SKIP }
 
@@ -30,31 +36,86 @@ data class LyricifyImportSelection(
 
 /** Compatibility is limited to the inspected Lyricify catalog and payload v2. */
 object LyricifyDatabaseImporter {
+    internal const val MAX_DATABASE_BYTES = 64L * 1024 * 1024
+    internal const val MAX_PAYLOAD_BYTES = 1024L * 1024
+    internal const val MAX_TRACK_PAYLOAD_BYTES = 4L * 1024 * 1024
+    internal const val MAX_TOTAL_PAYLOAD_BYTES = 32L * 1024 * 1024
+    internal const val MAX_TEMPORARY_BYTES = 128L * 1024 * 1024
+    internal const val MAX_ENTRY_BYTES = 8L * 1024 * 1024
+    internal const val MAX_TRACKS = 5_000
+    private const val MAX_ASSETS = 20_000
+    private const val MAX_PARSE_UNITS = 50_000
+
+    internal class LimitExceeded(message: String) : IllegalArgumentException(message)
     data class Report(val imported: Int, val skipped: Int, val failed: Int)
 
     private data class Asset(val id: Long, val verified: Boolean, val result: OnlineLyricFetcher.LyricResult, val providerIds: Map<String, String>)
-    private data class Track(val identity: LyricifyTrackIdentity, val selection: LyricifyImportSelection)
-
-    fun importDatabase(context: Context, uri: Uri, mode: LyricifyImportMode): Report {
+    suspend fun importDatabase(context: Context, uri: Uri, mode: LyricifyImportMode): Report {
         check(LabFeatureManager.isLyricifyImportEnabled(context)) { "Import is disabled" }
+        val jobContext = currentCoroutineContext()
+        val checkActive = {
+            jobContext.ensureActive()
+            check(LabFeatureManager.isLyricifyImportEnabled(context)) { "Import is disabled" }
+        }
         val copy = File.createTempFile("lyricify-import-", ".db", context.cacheDir)
         try {
             context.contentResolver.openInputStream(uri)?.use { input ->
-                copy.outputStream().use { output -> input.copyTo(output) }
+                copy.outputStream().use { output -> copyDatabase(input, output) {
+                    checkActive()
+                    check(copy.parentFile!!.usableSpace >= 64 * 1024L) { "Not enough free space to copy the database" }
+                } }
             } ?: error("Cannot read the selected file")
-            val (tracks, failed) = SQLiteDatabase.openDatabase(
+            return SQLiteDatabase.openDatabase(
                 copy.absolutePath, null, SQLiteDatabase.OPEN_READONLY
-            ).use { readTracks(it) }
-            check(LabFeatureManager.isLyricifyImportEnabled(context)) { "Import is disabled" }
-            val cache = OnlineLyricCacheStore(context)
-            val (imported, skipped) = cache.importLyricifyTracks(tracks.map { it.identity to it.selection }, mode)
-            return Report(imported, skipped, failed)
+            ).use { db ->
+                validateDatabase(db)
+                var failed = 0
+                val tracks = readTracks(db, checkActive) { failed++ }
+                val (imported, skipped) = OnlineLyricCacheStore(context).importLyricifyTracks(
+                    tracks, mode, copy.length(), checkActive
+                )
+                Report(imported, skipped, failed)
+            }
         } finally {
             copy.delete()
         }
     }
 
-    private fun readTracks(db: SQLiteDatabase): Pair<List<Track>, Int> {
+    internal fun checkSize(bytes: Long, limit: Long, label: String) {
+        if (bytes < 0 || bytes > limit) throw LimitExceeded("$label exceeds the import limit ($limit bytes)")
+    }
+
+    internal fun copyDatabase(input: InputStream, output: OutputStream, checkActive: () -> Unit = {}) {
+        val buffer = ByteArray(8 * 1024)
+        var copied = 0L
+        while (true) {
+            checkActive()
+            val count = input.read(buffer)
+            if (count < 0) break
+            copied += count
+            checkSize(copied, MAX_DATABASE_BYTES, "Database")
+            output.write(buffer, 0, count)
+        }
+    }
+
+    internal fun importedEntryId(identity: LyricifyTrackIdentity): String {
+        fun normalized(value: String) = value.trim().lowercase(Locale.ROOT).replace(Regex("\\s+"), " ")
+        val parts = listOf("lyricify-import", normalized(identity.title), normalized(identity.artist),
+            normalized(identity.album), identity.durationMs.toString()) +
+            identity.providerIds.entries.sortedBy { it.key }.flatMap { listOf(it.key.lowercase(Locale.ROOT), it.value.lowercase(Locale.ROOT)) }
+        val payload = parts.joinToString("") { "${it.length}:$it" }
+        return MessageDigest.getInstance("SHA-256").digest(payload.toByteArray(Charsets.UTF_8))
+            .joinToString("") { "%02x".format(it) }
+    }
+
+    internal fun mergeAliases(existing: Map<String, String>, incoming: Map<String, String>): Map<String, String> {
+        for ((namespace, id) in incoming) {
+            require(existing[namespace]?.equals(id, ignoreCase = true) != false) { "Conflicting $namespace song IDs" }
+        }
+        return incoming + existing
+    }
+
+    private fun validateDatabase(db: SQLiteDatabase) {
         val requiredColumns = mapOf(
             "catalog_tracks" to setOf("id", "title", "artist", "album", "duration_ms", "selected_asset_id"),
             "lyrics_assets" to setOf("id", "track_id", "provider", "local_name", "payload_json", "is_verified"),
@@ -66,49 +127,63 @@ object LyricifyDatabaseImporter {
             }
             require(columns.containsAll(required)) { "Unsupported Lyricify database structure" }
         }
-        val aliases = mutableMapOf<Long, MutableMap<String, String>>()
-        db.rawQuery("SELECT track_id, platform, external_id FROM track_aliases", null).use { cursor ->
-            while (cursor.moveToNext()) {
-                val provider = providerFor(cursor.getString(1)) ?: continue
-                val id = provider.normalizeTrackId(cursor.getString(2)) ?: continue
-                aliases.getOrPut(cursor.getLong(0)) { mutableMapOf() }.putAll(identityIds(provider, id))
-            }
-        }
-        val assets = mutableMapOf<Long, MutableList<Asset>>()
-        db.rawQuery("SELECT id, track_id, provider, local_name, payload_json, is_verified FROM lyrics_assets ORDER BY id", null).use { cursor ->
-            while (cursor.moveToNext()) {
-                val payload = runCatching { JSONObject(cursor.getString(4)) }.getOrNull() ?: continue
-                val result = runCatching {
-                    convertPayload(payload, cursor.getString(2), cursor.getString(3))
-                }.getOrNull() ?: continue
-                assets.getOrPut(cursor.getLong(1)) { mutableListOf() }.add(
-                    Asset(cursor.getLong(0), cursor.getInt(5) != 0, result,
-                        listOf("Identifier", "SecondaryIdentifier", "TertiaryIdentifier").flatMap { key ->
-                            identityIds(result.provider, payload.optJSONObject("providerTrack")?.optString(key)).entries.map { it.toPair() }
-                        }.toMap())
-                )
-            }
-        }
-        var failed = 0
-        val tracks = buildList {
-            db.rawQuery("SELECT id, title, artist, album, duration_ms, selected_asset_id FROM catalog_tracks ORDER BY id", null).use { cursor ->
-                while (cursor.moveToNext()) {
-                    val candidates = assets[cursor.getLong(0)].orEmpty()
-                    if (candidates.isEmpty()) { failed++; continue }
-                    val selectedId = if (cursor.isNull(5)) null else cursor.getLong(5)
-                    val selected = candidates.firstOrNull { it.id == selectedId }
-                        ?: candidates.firstOrNull { it.verified }
-                        ?: candidates.firstOrNull { it.result.hasSyllable }
-                        ?: candidates.first()
-                    val ids = aliases[cursor.getLong(0)].orEmpty() + candidates.flatMap { it.providerIds.entries.map { entry -> entry.toPair() } }.toMap()
-                    add(Track(
-                        LyricifyTrackIdentity(cursor.getString(1), cursor.getString(2), cursor.getString(3).orEmpty(), cursor.getLong(4), ids),
-                        LyricifyImportSelection(candidates.map { it.result }, selected.result)
-                    ))
+        fun scalar(sql: String) = db.rawQuery(sql, null).use { cursor -> cursor.moveToFirst(); cursor.getLong(0) }
+        require(scalar("SELECT COUNT(*) FROM catalog_tracks") <= MAX_TRACKS) { "Too many songs to import" }
+        require(scalar("SELECT COUNT(*) FROM lyrics_assets") <= MAX_ASSETS) { "Too many lyric assets to import" }
+        require(scalar("SELECT COUNT(*) FROM track_aliases") <= MAX_TRACKS * 10L) { "Too many song aliases to import" }
+        checkSize(scalar("SELECT COALESCE(MAX(length(CAST(payload_json AS BLOB))), 0) FROM lyrics_assets"), MAX_PAYLOAD_BYTES, "Lyric payload")
+        checkSize(scalar("SELECT COALESCE(SUM(length(CAST(payload_json AS BLOB))), 0) FROM lyrics_assets"), MAX_TOTAL_PAYLOAD_BYTES, "Total lyric payloads")
+        checkSize(scalar("SELECT COALESCE(MAX(bytes), 0) FROM (SELECT SUM(length(CAST(payload_json AS BLOB))) AS bytes FROM lyrics_assets GROUP BY track_id)"), MAX_TRACK_PAYLOAD_BYTES, "Song payloads")
+    }
+
+    private fun readTracks(db: SQLiteDatabase, checkActive: () -> Unit, onFailed: () -> Unit) = sequence {
+        db.rawQuery("SELECT id, title, artist, album, duration_ms, selected_asset_id FROM catalog_tracks ORDER BY id", null).use { tracks ->
+            while (tracks.moveToNext()) {
+                checkActive()
+                val trackId = tracks.getLong(0).toString()
+                val ids = mutableMapOf<String, String>()
+                db.rawQuery("SELECT platform, external_id FROM track_aliases WHERE track_id = ?", arrayOf(trackId)).use { aliases ->
+                    while (aliases.moveToNext()) {
+                        val provider = providerFor(aliases.getString(0)) ?: continue
+                        ids.putAll(identityIds(provider, aliases.getString(1)))
+                    }
                 }
+                val candidates = mutableListOf<Asset>()
+                var parsedUnits = 0L
+                db.rawQuery("SELECT id, provider, local_name, payload_json, is_verified FROM lyrics_assets WHERE track_id = ? ORDER BY id", arrayOf(trackId)).use { assets ->
+                    while (assets.moveToNext()) {
+                        checkActive()
+                        val payloadText = assets.getString(3) ?: continue
+                        validatePayload(payloadText)
+                        val asset = try {
+                            val payload = JSONObject(payloadText)
+                            val result = convertPayload(payload, assets.getString(1), assets.getString(2))
+                            val lines = result.parsedLines.orEmpty()
+                            parsedUnits += lines.size + lines.sumOf { it.syllables.orEmpty().size.toLong() }
+                            if (parsedUnits > MAX_PARSE_UNITS) throw LimitExceeded("Too many parsed song elements")
+                            Asset(assets.getLong(0), assets.getInt(4) != 0, result,
+                                listOf("Identifier", "SecondaryIdentifier", "TertiaryIdentifier").flatMap { key ->
+                                    identityIds(result.provider, payload.optJSONObject("providerTrack")?.optString(key)).entries.map { it.toPair() }
+                                }.toMap())
+                        } catch (error: Exception) {
+                            if (error is CancellationException || error is LimitExceeded) throw error
+                            continue
+                        }
+                        candidates.add(asset)
+                    }
+                }
+                if (candidates.isEmpty()) { onFailed(); continue }
+                val selectedId = if (tracks.isNull(5)) null else tracks.getLong(5)
+                val selected = candidates.firstOrNull { it.id == selectedId }
+                    ?: candidates.firstOrNull { it.verified }
+                    ?: candidates.firstOrNull { it.result.hasSyllable }
+                    ?: candidates.first()
+                candidates.forEach { ids.putAll(it.providerIds) }
+                ids.putAll(selected.providerIds)
+                yield(LyricifyTrackIdentity(tracks.getString(1), tracks.getString(2), tracks.getString(3).orEmpty(), tracks.getLong(4), ids) to
+                    LyricifyImportSelection(candidates.map { it.result }, selected.result))
             }
         }
-        return tracks to failed
     }
 
     internal fun providerFor(name: String?): OnlineLyricProvider? = when (name?.lowercase(Locale.ROOT)?.replace("_", "")?.replace("-", "")) {
@@ -125,8 +200,8 @@ object LyricifyDatabaseImporter {
 
     internal fun sameTrack(first: LyricifyTrackIdentity, second: LyricifyTrackIdentity): Boolean {
         val sharedProviders = first.providerIds.keys.intersect(second.providerIds.keys)
-        if (sharedProviders.any { first.providerIds[it].equals(second.providerIds[it], ignoreCase = true) }) return true
-        if (sharedProviders.isNotEmpty()) return false
+        if (sharedProviders.any { !first.providerIds[it].equals(second.providerIds[it], ignoreCase = true) }) return false
+        if (sharedProviders.isNotEmpty()) return true
         fun normalized(value: String) = value.trim().lowercase(Locale.ROOT).replace(Regex("\\s+"), " ")
         if (first.title.isBlank() || first.artist.isBlank() ||
             normalized(first.title) != normalized(second.title) || normalized(first.artist) != normalized(second.artist)) return false
@@ -158,7 +233,25 @@ object LyricifyDatabaseImporter {
     )
 
     internal fun convertPayload(payload: String, providerName: String?, localName: String? = null): OnlineLyricFetcher.LyricResult {
+        validatePayload(payload)
         return convertPayload(JSONObject(payload), providerName, localName)
+    }
+
+    internal fun validatePayload(text: String) {
+        checkSize(text.toByteArray(Charsets.UTF_8).size.toLong(), MAX_PAYLOAD_BYTES, "Lyric payload")
+        // Bound nesting before JSONObject allocates a recursive object tree.
+        var quoted = false
+        var escaped = false
+        var depth = 0
+        for (char in text) {
+            if (quoted) {
+                if (escaped) escaped = false else if (char == '\\') escaped = true else if (char == '"') quoted = false
+            } else when (char) {
+                '"' -> quoted = true
+                '{', '[' -> { depth++; if (depth > 64) throw LimitExceeded("Lyric JSON is nested too deeply") }
+                '}', ']' -> depth--
+            }
+        }
     }
 
     private fun convertPayload(root: JSONObject, providerName: String?, localName: String?): OnlineLyricFetcher.LyricResult {
@@ -176,6 +269,7 @@ object LyricifyDatabaseImporter {
         }
         val translation = language?.let { translations?.optJSONObject(it) }?.let { document ->
             val translated = if (document.optString("format").equals("Musixmatch", true)) {
+                validatePayload(document.getString("text"))
                 parseMusixmatchTranslation(document.getString("text"), originalLines)
             } else parseDocument(document.getString("format"), document.getString("text"))
             toLrc(shiftLines(translated, offset)).takeIf { it.isNotBlank() }
@@ -201,22 +295,33 @@ object LyricifyDatabaseImporter {
         )
     }
 
-    internal fun parseDocument(format: String, text: String): List<OnlineLyricFetcher.LyricLine> = when (format.lowercase(Locale.ROOT)) {
-        "lrc" -> OnlineLyricParser.parseLrcLyrics(normalizeLrc(text))
-        "qrc" -> OnlineLyricParser.parseQrcLyrics(text)
-        "krc" -> OnlineLyricParser.parseKrcLyrics(text)
-        "yrc" -> OnlineLyricParser.parseYrcLyrics(normalizeYrc(text))
-        "musixmatch" -> {
-            val calls = JSONObject(text).getJSONObject("message").getJSONObject("body").getJSONObject("macro_calls")
-            fun body(key: String) = calls.optJSONObject(key)?.optJSONObject("message")?.optJSONObject("body")
-            val richsync = body("track.richsync.get")?.optJSONObject("richsync")?.optString("richsync_body").orEmpty()
-            OnlineLyricParser.parseMusixmatchRichsync(richsync).ifEmpty {
-                val subtitle = body("track.subtitles.get")?.optJSONArray("subtitle_list")?.optJSONObject(0)
-                    ?.optJSONObject("subtitle")?.optString("subtitle_body").orEmpty()
-                OnlineLyricParser.parseLrcLyrics(normalizeLrc(subtitle))
+    internal fun parseDocument(format: String, text: String): List<OnlineLyricFetcher.LyricLine> {
+        validatePayload(text)
+        if (text.count { it == '[' || it == '<' || it == '(' || it == '\n' } > MAX_PARSE_UNITS) {
+            throw LimitExceeded("Too many lyric timing elements")
+        }
+        return when (format.lowercase(Locale.ROOT)) {
+            "lrc" -> OnlineLyricParser.parseLrcLyrics(normalizeLrc(text))
+            "qrc" -> OnlineLyricParser.parseQrcLyrics(text)
+            "krc" -> OnlineLyricParser.parseKrcLyrics(text)
+            "yrc" -> OnlineLyricParser.parseYrcLyrics(normalizeYrc(text))
+            "musixmatch" -> {
+                val calls = JSONObject(text).getJSONObject("message").getJSONObject("body").getJSONObject("macro_calls")
+                fun body(key: String) = calls.optJSONObject(key)?.optJSONObject("message")?.optJSONObject("body")
+                val richsync = body("track.richsync.get")?.optJSONObject("richsync")?.optString("richsync_body").orEmpty()
+                validatePayload(richsync)
+                OnlineLyricParser.parseMusixmatchRichsync(richsync).ifEmpty {
+                    val subtitle = body("track.subtitles.get")?.optJSONArray("subtitle_list")?.optJSONObject(0)
+                        ?.optJSONObject("subtitle")?.optString("subtitle_body").orEmpty()
+                    OnlineLyricParser.parseLrcLyrics(normalizeLrc(subtitle))
+                }
+            }
+            else -> error("Unsupported lyric format: $format")
+        }.also { lines ->
+            if (lines.size + lines.sumOf { it.syllables.orEmpty().size.toLong() } > MAX_PARSE_UNITS) {
+                throw LimitExceeded("Too many parsed lyric elements")
             }
         }
-        else -> error("Unsupported lyric format: $format")
     }
 
     private fun parseMusixmatchTranslation(text: String, lines: List<OnlineLyricFetcher.LyricLine>): List<OnlineLyricFetcher.LyricLine> {

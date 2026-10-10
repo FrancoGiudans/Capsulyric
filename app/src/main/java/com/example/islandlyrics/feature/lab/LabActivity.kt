@@ -32,6 +32,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import com.example.islandlyrics.R
@@ -59,17 +60,23 @@ internal data class LyricifyImportUiState(
 internal fun rememberLyricifyImporter(): LyricifyImportUiState {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    var importMode by remember { mutableStateOf(LyricifyImportMode.MERGE) }
+    var pendingImportMode by rememberSaveable { mutableStateOf<String?>(null) }
     var importing by remember { mutableStateOf(false) }
     var importMessage by remember { mutableStateOf<String?>(null) }
     val importPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        val mode = pendingImportMode?.let { saved -> LyricifyImportMode.entries.firstOrNull { it.name == saved } }
+        pendingImportMode = null
         if (uri != null && !importing && LabFeatureManager.isLyricifyImportEnabled(context)) {
+            if (mode == null) {
+                importMessage = context.getString(R.string.lab_lyricify_import_error, "Import mode was not restored. Select the file again.")
+                return@rememberLauncherForActivityResult
+            }
             importing = true
             importMessage = null
             scope.launch {
                 try {
                     val report = withContext(Dispatchers.IO) {
-                        LyricifyDatabaseImporter.importDatabase(context, uri, importMode)
+                        LyricifyDatabaseImporter.importDatabase(context, uri, mode)
                     }
                     importMessage = context.getString(R.string.lab_lyricify_import_result, report.imported, report.skipped, report.failed)
                 } catch (cancelled: CancellationException) {
@@ -84,8 +91,8 @@ internal fun rememberLyricifyImporter(): LyricifyImportUiState {
     }
 
     return LyricifyImportUiState(importing, importMessage) { mode ->
-        if (!importing && LabFeatureManager.isLyricifyImportEnabled(context)) {
-            importMode = mode
+        if (!importing && pendingImportMode == null && LabFeatureManager.isLyricifyImportEnabled(context)) {
+            pendingImportMode = mode.name
             importPicker.launch(arrayOf("*/*"))
         }
     }
