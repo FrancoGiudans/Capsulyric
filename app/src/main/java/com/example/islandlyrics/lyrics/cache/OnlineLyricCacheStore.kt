@@ -26,6 +26,11 @@ import android.content.Context
 import com.example.islandlyrics.lyrics.state.LyricRepository
 import com.example.islandlyrics.lyrics.online.OnlineLyricFetcher
 import com.example.islandlyrics.lyrics.online.provider.OnlineLyricProvider
+import com.example.islandlyrics.lyrics.online.provider.AppleMusicMediaRef
+import com.example.islandlyrics.lyrics.importer.LyricifyDatabaseImporter
+import com.example.islandlyrics.lyrics.importer.LyricifyImportMode
+import com.example.islandlyrics.lyrics.importer.LyricifyImportSelection
+import com.example.islandlyrics.lyrics.importer.LyricifyTrackIdentity
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
@@ -140,7 +145,8 @@ class OnlineLyricCacheStore(context: Context) {
         val instrumentalUpdatedAt: Long?,
         val cachedAt: Long?,
         val updatedAt: Long,
-        val sizeBytes: Long
+        val sizeBytes: Long,
+        val lyricifyImported: Boolean = false
     )
 
     // ── Full cache entry: stored in individual lyrics/{id}.json files ──
@@ -175,7 +181,10 @@ class OnlineLyricCacheStore(context: Context) {
         val hasRomanization: Boolean = false,
         val parsedLines: List<OnlineLyricFetcher.LyricLine> = emptyList(),
         val cachedAt: Long? = null,
-        val updatedAt: Long = System.currentTimeMillis()
+        val updatedAt: Long = System.currentTimeMillis(),
+        val lyricifyImported: Boolean = false,
+        val lyricifyAliases: Map<String, String> = emptyMap(),
+        val lyricifyCandidates: List<CacheEntry> = emptyList()
     )
 
     private val appContext = context.applicationContext
@@ -189,7 +198,11 @@ class OnlineLyricCacheStore(context: Context) {
     // ── v1 legacy file (for migration) ──
     private val legacyStoreFile = File(storeDir, "online_lyric_cache.json")
 
-    private val lock = Any()
+    private val lock = storeLock
+
+    private companion object {
+        val storeLock = Any()
+    }
 
     @Volatile
     private var migrated = false
@@ -274,12 +287,15 @@ class OnlineLyricCacheStore(context: Context) {
         val index = readIndex()
         val matchId = if (index.containsKey(id)) id
             else if (index.containsKey(legacyId)) legacyId
-            else return null
-        val entry = readEntryFile(matchId) ?: return null
+            else null
+        val current = matchId?.let { readEntryFile(it) }
+        if (current?.instrumental == true) return null
+        val entry = current?.takeIf { !it.lyrics.isNullOrBlank() && it.parsedLines.isNotEmpty() }
+            ?: findImportedEntry(mediaInfo, queryTitle, queryArtist, index) ?: return null
         if (entry.instrumental) return null
-        val queryTitleMatches = entry.queryTitle.isNullOrBlank() ||
+        val queryTitleMatches = entry.lyricifyImported || entry.queryTitle.isNullOrBlank() ||
             entry.queryTitle.trim().equals(queryTitle.trim(), ignoreCase = true)
-        val queryArtistMatches = entry.queryArtist.isNullOrBlank() ||
+        val queryArtistMatches = entry.lyricifyImported || entry.queryArtist.isNullOrBlank() ||
             entry.queryArtist.trim().equals(queryArtist.trim(), ignoreCase = true)
         if (!queryTitleMatches || !queryArtistMatches) return null
         if (entry.lyrics.isNullOrBlank() || entry.parsedLines.isEmpty()) return null
@@ -289,21 +305,7 @@ class OnlineLyricCacheStore(context: Context) {
         writeEntryFile(updatedEntry)
 
         CachedLyricHit(
-            result = OnlineLyricFetcher.LyricResult(
-                api = entry.api ?: "Cache",
-                lyrics = entry.lyrics,
-                parsedLines = entry.parsedLines,
-                hasSyllable = entry.hasSyllable,
-                provider = OnlineLyricProvider.fromId(entry.providerId) ?: OnlineLyricProvider.LrcApi,
-                matchedTitle = entry.matchedTitle,
-                matchedArtist = entry.matchedArtist,
-                matchedAlbum = entry.matchedAlbum,
-                matchedDurationMs = entry.matchedDurationMs,
-                providerTrackId = entry.providerTrackId,
-                isrc = entry.isrc,
-                translationLyrics = entry.translationLyrics,
-                romanLyrics = entry.romanLyrics
-            ),
+            result = entry.toLyricResult(),
             cachedAt = entry.cachedAt ?: now,
             updatedAt = now,
             queryTitle = entry.queryTitle ?: queryTitle,
@@ -311,6 +313,122 @@ class OnlineLyricCacheStore(context: Context) {
             hasCustomMatch = !entry.overrideTitle.isNullOrBlank() || !entry.overrideArtist.isNullOrBlank()
         )
     }
+
+    fun getImportedCandidates(
+        mediaInfo: LyricRepository.MediaInfo, queryTitle: String, queryArtist: String
+    ): List<OnlineLyricFetcher.LyricResult> = synchronized(lock) {
+        ensureMigrated()
+        val entry = findImportedEntry(mediaInfo, queryTitle, queryArtist, readIndex()) ?: return emptyList()
+        (listOf(entry) + entry.lyricifyCandidates).filter { it.hasLyricContent() }
+            .map { it.toLyricResult() }.distinctBy(LyricifyDatabaseImporter::candidateKey)
+    }
+
+    /** Only imported entries participate in the shared lookup; existing player keys stay unchanged. */
+    private fun findImportedEntry(
+        mediaInfo: LyricRepository.MediaInfo, queryTitle: String, queryArtist: String,
+        index: Map<String, IndexEntry>
+    ): CacheEntry? {
+        val imported = index.filterValues { it.lyricifyImported }
+        if (imported.isEmpty()) return null
+        val current = readEntryFile(buildEntryId(mediaInfo))
+        val playerProvider = when (mediaInfo.packageName) {
+            "com.tencent.qqmusic" -> OnlineLyricProvider.QQMusic
+            "com.netease.cloudmusic" -> OnlineLyricProvider.Netease
+            "com.kugou.android" -> OnlineLyricProvider.Kugou
+            "com.luna.music" -> OnlineLyricProvider.SodaMusic
+            "com.apple.android.music" -> OnlineLyricProvider.AppleMusic
+            else -> null
+        }
+        val observedId = if (playerProvider == OnlineLyricProvider.AppleMusic) {
+            AppleMusicMediaRef.extractSongId(mediaInfo.mediaId) ?: AppleMusicMediaRef.extractSongId(mediaInfo.mediaUri)
+                ?: playerProvider.normalizeTrackId(mediaInfo.mediaId)
+        } else playerProvider?.normalizeTrackId(mediaInfo.mediaId)
+        val identity = LyricifyTrackIdentity(
+            queryTitle, queryArtist, mediaInfo.album, mediaInfo.duration,
+            current?.takeIf { it.hasLyricContent() }?.importIdentity()?.providerIds.orEmpty() +
+                if (playerProvider != null) LyricifyDatabaseImporter.identityIds(playerProvider, observedId) else emptyMap()
+        )
+        val byMetadata = imported.filterValues {
+            normalizeKey(it.title) == normalizeKey(queryTitle) && normalizeKey(it.artist) == normalizeKey(queryArtist)
+        }.keys
+        fun matching(ids: Collection<String>) = ids.mapNotNull { readEntryFile(it) }
+            .filter { it.hasLyricContent() && LyricifyDatabaseImporter.sameTrack(identity, it.importIdentity()) }
+        val matches = matching(byMetadata)
+        if (matches.isNotEmpty()) return matches.singleOrNull()
+        return if (identity.providerIds.isEmpty()) null else matching(imported.keys - byMetadata).singleOrNull()
+    }
+
+    fun importLyricifyTracks(
+        tracks: List<Pair<LyricifyTrackIdentity, LyricifyImportSelection>>, mode: LyricifyImportMode
+    ): Pair<Int, Int> = synchronized(lock) {
+        ensureMigrated()
+        val index = readIndex()
+        val entries = index.keys.mapNotNull { readEntryFile(it) }.associateBy { it.id }.toMutableMap()
+        var imported = 0
+        var skipped = 0
+        for ((identity, incoming) in tracks) {
+            val matches = entries.values.filter {
+                (it.hasLyricContent() || it.instrumental) && LyricifyDatabaseImporter.sameTrack(identity, it.importIdentity())
+            }
+            if (mode == LyricifyImportMode.SKIP && matches.isNotEmpty()) { skipped++; continue }
+            val shared = matches.firstOrNull { it.lyricifyImported }
+            val existingResults = matches.filter { it.hasLyricContent() }
+                .flatMap { listOf(it.toLyricResult()) + it.lyricifyCandidates.map { candidate -> candidate.toLyricResult() } }
+                .distinctBy(LyricifyDatabaseImporter::candidateKey)
+            val previous = existingResults.takeIf { it.isNotEmpty() }?.let {
+                LyricifyImportSelection(it, shared?.toLyricResult() ?: it.first())
+            }
+            val selection = LyricifyDatabaseImporter.resolveSelection(previous, incoming, mode) ?: continue
+            val id = shared?.id ?: sha256(listOf("lyricify-import", normalizeKey(identity.title), normalizeKey(identity.artist), normalizeKey(identity.album), identity.durationMs).joinToString("|"))
+            val base = CacheEntry(
+                id = id, packageName = "Lyricify", title = identity.title, artist = identity.artist,
+                rawTitle = identity.title, rawArtist = identity.artist, duration = identity.durationMs,
+                queryTitle = identity.title, queryArtist = identity.artist
+            )
+            val entry = base.withImportedResult(selection.selected).copy(
+                lyricifyImported = true, lyricifyAliases = identity.providerIds,
+                matchedAlbum = identity.album.ifBlank { selection.selected.matchedAlbum },
+                lyricifyCandidates = selection.candidates.map { base.withImportedResult(it) }
+            )
+            val changed = if (mode == LyricifyImportMode.OVERWRITE) {
+                matches.filter { !it.lyricifyImported }.map { it.withImportedResult(selection.selected) }
+            } else emptyList()
+            for (updated in changed + entry) {
+                writeEntryFileInternal(updated)
+                entries[updated.id] = updated
+                index[updated.id] = updated.toIndexEntry()
+            }
+            writeIndex(index)
+            imported++
+        }
+        imported to skipped
+    }
+
+    private fun CacheEntry.importIdentity(): LyricifyTrackIdentity = LyricifyTrackIdentity(
+        queryTitle ?: rawTitle.ifBlank { title }, queryArtist ?: rawArtist.ifBlank { artist },
+        matchedAlbum.orEmpty(), duration.takeIf { it > 0 } ?: matchedDurationMs ?: 0L,
+        lyricifyAliases + OnlineLyricProvider.fromId(providerId)?.let {
+            LyricifyDatabaseImporter.identityIds(it, providerTrackId)
+        }.orEmpty()
+    )
+
+    private fun CacheEntry.withImportedResult(result: OnlineLyricFetcher.LyricResult): CacheEntry = copy(
+        instrumental = false, instrumentalUpdatedAt = null,
+        api = result.api, providerId = result.provider.id, lyrics = result.lyrics, hasSyllable = result.hasSyllable,
+        matchedTitle = result.matchedTitle, matchedArtist = result.matchedArtist, matchedAlbum = result.matchedAlbum,
+        matchedDurationMs = result.matchedDurationMs, providerTrackId = result.providerTrackId, isrc = result.isrc,
+        translationLyrics = result.translationLyrics, romanLyrics = result.romanLyrics,
+        hasTranslation = !result.translationLyrics.isNullOrBlank(), hasRomanization = !result.romanLyrics.isNullOrBlank(),
+        parsedLines = result.parsedLines.orEmpty(), cachedAt = System.currentTimeMillis(), updatedAt = System.currentTimeMillis()
+    )
+
+    private fun CacheEntry.toLyricResult(): OnlineLyricFetcher.LyricResult = OnlineLyricFetcher.LyricResult(
+        api = api ?: "Cache", lyrics = lyrics, parsedLines = parsedLines, hasSyllable = hasSyllable,
+        provider = OnlineLyricProvider.fromId(providerId) ?: OnlineLyricProvider.LrcApi,
+        matchedTitle = matchedTitle, matchedArtist = matchedArtist, matchedAlbum = matchedAlbum,
+        matchedDurationMs = matchedDurationMs, providerTrackId = providerTrackId, isrc = isrc,
+        translationLyrics = translationLyrics, romanLyrics = romanLyrics
+    )
 
     fun saveLyricResult(
         mediaInfo: LyricRepository.MediaInfo,
@@ -854,7 +972,8 @@ class OnlineLyricCacheStore(context: Context) {
                     instrumentalUpdatedAt = obj.optNullableLong("instrumentalUpdatedAt"),
                     cachedAt = obj.optNullableLong("cachedAt"),
                     updatedAt = obj.optLong("updatedAt", System.currentTimeMillis()),
-                    sizeBytes = obj.optLong("sizeBytes", 0L)
+                    sizeBytes = obj.optLong("sizeBytes", 0L),
+                    lyricifyImported = obj.optBoolean("lyricifyImported", false)
                 )
             }
             map
@@ -884,6 +1003,7 @@ class OnlineLyricCacheStore(context: Context) {
                 ie.cachedAt?.let { put("cachedAt", it) }
                 put("updatedAt", ie.updatedAt)
                 put("sizeBytes", ie.sizeBytes)
+                if (ie.lyricifyImported) put("lyricifyImported", true)
             })
         }
         val root = JSONObject().apply {
@@ -978,7 +1098,8 @@ class OnlineLyricCacheStore(context: Context) {
             instrumentalUpdatedAt = instrumentalUpdatedAt,
             cachedAt = cachedAt,
             updatedAt = updatedAt,
-            sizeBytes = estimateEntrySize(this)
+            sizeBytes = estimateEntrySize(this),
+            lyricifyImported = lyricifyImported
         )
     }
 
@@ -1034,6 +1155,9 @@ class OnlineLyricCacheStore(context: Context) {
         put("hasRomanization", hasRomanization)
         put("cachedAt", cachedAt)
         put("updatedAt", updatedAt)
+        if (lyricifyImported) put("lyricifyImported", true)
+        if (lyricifyAliases.isNotEmpty()) put("lyricifyAliases", JSONObject(lyricifyAliases))
+        if (lyricifyCandidates.isNotEmpty()) put("lyricifyCandidates", JSONArray(lyricifyCandidates.map { it.toJson() }))
         put(
             "parsedLines",
             JSONArray(parsedLines.map { line ->
@@ -1123,7 +1247,14 @@ class OnlineLyricCacheStore(context: Context) {
             hasRomanization = optBoolean("hasRomanization", !romanLyrics.isNullOrBlank()),
             parsedLines = parsedLines,
             cachedAt = optNullableLong("cachedAt"),
-            updatedAt = optLong("updatedAt", System.currentTimeMillis())
+            updatedAt = optLong("updatedAt", System.currentTimeMillis()),
+            lyricifyImported = optBoolean("lyricifyImported", false),
+            lyricifyAliases = optJSONObject("lyricifyAliases")?.let { aliases ->
+                aliases.keys().asSequence().associateWith { aliases.getString(it) }
+            }.orEmpty(),
+            lyricifyCandidates = optJSONArray("lyricifyCandidates")?.let { candidates ->
+                (0 until candidates.length()).map { candidates.getJSONObject(it).toEntry() }
+            }.orEmpty()
         )
     }
 
