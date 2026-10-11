@@ -29,6 +29,7 @@ import com.example.islandlyrics.runtime.service.LyricService
 import com.example.islandlyrics.rules.ParserRuleHelper
 import com.example.islandlyrics.lyrics.state.LyricRepository
 import com.example.islandlyrics.lyrics.cache.OnlineLyricCacheStore
+import com.example.islandlyrics.lyrics.importer.LyricifyDatabaseImporter
 import com.example.islandlyrics.lyrics.cache.TrackIdentityCacheStore
 import com.example.islandlyrics.lyrics.online.OnlineLyricFetcher
 import com.example.islandlyrics.lyrics.online.OnlineLyricFetchSnapshotStore
@@ -39,6 +40,12 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.ensureActive
+import kotlin.coroutines.coroutineContext
+
+// Keep this consistent with LyricService's metadataObserver track key.
+internal fun sameLyricRequestTrack(first: LyricRepository.MediaInfo, second: LyricRepository.MediaInfo?): Boolean =
+    second != null && first.packageName == second.packageName && first.title == second.title && first.artist == second.artist
 
 /**
  * OnlineLyricSource
@@ -91,12 +98,69 @@ class OnlineLyricSource(private val context: Context) {
         }
     }
 
+    fun fetchImportedFor(metadata: LyricRepository.MediaInfo, onResolve: (Boolean) -> Unit) {
+        fetchJob?.cancel()
+        fetchJob = null
+        val hasImportedLyrics = try {
+            cacheStore.hasImportedLyrics()
+        } catch (error: Exception) {
+            AppLogger.getInstance().e(TAG, "Imported lyric index lookup failed: ${error.message}")
+            if (sameLyricRequestTrack(metadata, LyricRepository.getInstance().liveMetadata.value)) onResolve(false)
+            return
+        }
+        if (!hasImportedLyrics) {
+            if (sameLyricRequestTrack(metadata, LyricRepository.getInstance().liveMetadata.value)) onResolve(false)
+            return
+        }
+        val rule = ParserRuleHelper.getRuleForPackage(context, metadata.packageName)
+            ?: ParserRuleHelper.createDefaultRule(metadata.packageName)
+        fetchJob = scope.launch {
+            try {
+                val (state, candidates, hit) = withContext(Dispatchers.IO) {
+                    val state = cacheStore.getCurrentSongState(metadata, metadata.title, metadata.artist, rule.useRawMetadataForOnlineMatching)
+                    val candidates = if (state.isInstrumental) emptyList() else
+                        cacheStore.getImportedCandidates(metadata, state.effectiveTitle, state.effectiveArtist)
+                    Triple(state, candidates, if (candidates.isEmpty()) null else
+                        cacheStore.getCachedLyric(metadata, state.effectiveTitle, state.effectiveArtist))
+                }
+                coroutineContext.ensureActive()
+                if (!sameLyricRequestTrack(metadata, LyricRepository.getInstance().liveMetadata.value)) return@launch
+                if (hit == null) { onResolve(false); return@launch }
+                val attempts = (listOf(hit.result) + candidates).distinctBy(LyricifyDatabaseImporter::candidateKey).map { result ->
+                    OnlineLyricFetcher.ProviderAttempt(result.provider, result, 0L, false, queryVariant = "lyricify_import")
+                }
+                OnlineLyricFetchSnapshotStore.save(OnlineLyricFetchSnapshotStore.Snapshot(
+                    packageName = metadata.packageName, queryTitle = state.effectiveTitle, queryArtist = state.effectiveArtist,
+                    fetchedAt = hit.updatedAt, bestResult = hit.result, attempts = attempts,
+                    usedCleanTitleFallback = false, fromCache = true
+                ))
+                LyricRepository.getInstance().updateParsedLyrics(
+                    lines = OnlineLyricSidecarMerger.withSidecars(hit.result, rule), hasSyllable = hit.result.hasSyllable,
+                    sourceLabel = "${hit.result.api} · Cache", apiPath = "Online Cache",
+                    timelineCapability = LyricRepository.TimelineCapability.MULTI_LINE
+                )
+                onResolve(true)
+            } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                AppLogger.getInstance().e(TAG, "Imported lyric lookup failed: ${error.message}")
+                coroutineContext.ensureActive()
+                if (sameLyricRequestTrack(metadata, LyricRepository.getInstance().liveMetadata.value)) onResolve(false)
+            }
+        }
+    }
+
     /**
      * Triggers an online lyric fetch for the given track.
      * A concurrent fetch for a previous track is cancelled automatically.
      */
     fun fetchFor(title: String, artist: String, packageName: String, onResolve: ((found: Boolean) -> Unit)? = null) {
         if (OfflineModeManager.isEnabled(context)) {
+            val metadata = LyricRepository.getInstance().liveMetadata.value
+            if (metadata?.packageName == packageName) {
+                fetchImportedFor(metadata) { onResolve?.invoke(it) }
+                return
+            }
             AppLogger.getInstance().i(TAG, "[$packageName] Offline mode enabled — skipped")
             cancel()
             onResolve?.invoke(false)

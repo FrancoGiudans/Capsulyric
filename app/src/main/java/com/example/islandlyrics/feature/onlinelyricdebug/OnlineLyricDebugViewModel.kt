@@ -35,6 +35,7 @@ import com.example.islandlyrics.rules.ParserRuleHelper
 import com.example.islandlyrics.lyrics.online.OnlineLyricFetcher
 import com.example.islandlyrics.lyrics.online.OnlineLyricFetchSnapshotStore
 import com.example.islandlyrics.lyrics.cache.OnlineLyricCacheStore
+import com.example.islandlyrics.lyrics.importer.LyricifyDatabaseImporter
 import com.example.islandlyrics.lyrics.online.parser.OnlineLyricSidecarMerger
 import com.example.islandlyrics.lyrics.online.provider.OnlineLyricProvider
 import kotlinx.coroutines.Dispatchers
@@ -255,13 +256,22 @@ class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(app
         role: ResultRole,
         selectedResult: OnlineLyricFetcher.LyricResult?
     ): List<OnlineLyricFetcher.ProviderAttempt> {
-        return attempts
-            .filter { canUseAttemptForRole(it, role) }
+        val (imported, online) = attempts.filter { canUseAttemptForRole(it, role) }
+            .partition { it.queryVariant == "lyricify_import" }
+        return (imported + online
             .groupBy { it.provider }
             .values
             .mapNotNull { providerAttempts ->
                 preferredProviderAttempt(providerAttempts, selectedResult)
-            }
+            }).distinctBy { it.result?.let(LyricifyDatabaseImporter::candidateKey) }
+    }
+
+    private suspend fun importedAttempts(
+        mediaInfo: LyricRepository.MediaInfo, title: String, artist: String
+    ): List<OnlineLyricFetcher.ProviderAttempt> = withContext(Dispatchers.IO) {
+        cacheStore.getImportedCandidates(mediaInfo, title, artist).map {
+            OnlineLyricFetcher.ProviderAttempt(it.provider, it, 0L, false, queryVariant = "lyricify_import")
+        }
     }
 
     private fun selectBestSidecarResult(
@@ -565,6 +575,8 @@ class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(app
             } else {
                 null
             }
+            val imported = if (state.isInstrumental) emptyList() else
+                importedAttempts(mediaInfo, state.effectiveTitle, state.effectiveArtist)
             if (trackIdSongKey(liveMetadata.value) != songKey) return@launch
             val snapshot = if (!state.isInstrumental) {
                 OnlineLyricFetchSnapshotStore.get(
@@ -661,6 +673,13 @@ class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(app
                     }
                     else -> s(R.string.online_lyric_debug_no_cached_lyric)
                 }
+            }
+            if (imported.isNotEmpty()) {
+                val current = (_selectedMainResult.value ?: cachedHit?.result)?.let {
+                    OnlineLyricFetcher.ProviderAttempt(it.provider, it, 0L, false, queryVariant = "lyricify_import")
+                }
+                _attempts.value = (listOfNotNull(current) + imported + _attempts.value.orEmpty())
+                    .distinctBy { it.result?.let(LyricifyDatabaseImporter::candidateKey) }
             }
         }
     }
@@ -837,7 +856,7 @@ class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(app
                     useSmartSelection = rule.useSmartOnlineLyricSelection,
                     collectAllResults = true
                 )
-                _attempts.value = outcome.attempts
+                _attempts.value = outcome.attempts + importedAttempts(mediaInfo, queryTitle, queryArtist)
                 _usedCleanTitleFallback.value = outcome.usedCleanTitleFallback
                 OnlineLyricFetchSnapshotStore.save(
                     OnlineLyricFetchSnapshotStore.Snapshot(
@@ -898,9 +917,8 @@ class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(app
         if (OfflineModeManager.isEnabled(appContext)) {
             _isFetching.value = false
             _error.value = s(R.string.offline_mode_network_blocked)
-            _attempts.value = emptyList()
-            clearSelectionState()
             _usedCleanTitleFallback.value = false
+            syncCurrentSongQuery()
             return
         }
         val mediaInfo = liveMetadata.value
@@ -967,9 +985,10 @@ class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(app
                                 provider = cacheHit.result.provider,
                                 result = cacheHit.result,
                                 durationMs = 0L,
-                                usedCleanTitleFallback = false
+                                usedCleanTitleFallback = false,
+                                queryVariant = "lyricify_import"
                             )
-                        )
+                        ) + importedAttempts(mediaInfo, queryTitle, queryArtist)
                         hydratedSnapshotKey = OnlineLyricFetchSnapshotStore.buildKey(
                             mediaInfo.packageName,
                             queryTitle,
@@ -997,7 +1016,7 @@ class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(app
                     useSmartSelection = rule.useSmartOnlineLyricSelection,
                     collectAllResults = true
                 )
-                _attempts.value = outcome.attempts
+                _attempts.value = outcome.attempts + importedAttempts(mediaInfo, queryTitle, queryArtist)
                 _usedCleanTitleFallback.value = outcome.usedCleanTitleFallback
                 OnlineLyricFetchSnapshotStore.save(
                     OnlineLyricFetchSnapshotStore.Snapshot(

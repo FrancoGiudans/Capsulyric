@@ -1315,4 +1315,21 @@
     <string name="online_lyric_track_id_preview_id">ID：%1$s</string>
     <string name="online_lyric_track_id_preview_target">应用到：%1$s · %2$s</string>
     <string name="online_lyric_track_id_no_timing">这份歌词没有可用时间轴，仅支持预览。</string>
+    <string name="lab_lyricify_import_title">Lyricify 数据库导入</string>
+    <string name="lab_lyricify_import_desc">Lyricify Lite 数据库还在前期阶段，结构尚未稳定，导入暂为实验性功能。稳定后将移动至设置页下的备份与回复分组</string>
+    <string name="lab_lyricify_import_button">导入 Lyricify 数据库</string>
+    <string name="lab_lyricify_import_mode_title">处理已有歌词选择</string>
+    <string name="lab_lyricify_import_mode_desc">选择同一首歌已有歌词选择时的处理方式。没有冲突的歌曲正常导入。</string>
+    <string name="lab_lyricify_import_overwrite">覆盖：使用 Lyricify 的选择</string>
+    <string name="lab_lyricify_import_merge">合并：保留当前选择，加入导入候选</string>
+    <string name="lab_lyricify_import_skip">跳过：不导入发生冲突的歌曲</string>
+    <string name="lab_lyricify_import_overwrite_title">覆盖</string>
+    <string name="lab_lyricify_import_overwrite_summary">使用 Lyricify 的选择</string>
+    <string name="lab_lyricify_import_merge_title">合并</string>
+    <string name="lab_lyricify_import_merge_summary">保留当前选择，加入导入候选</string>
+    <string name="lab_lyricify_import_skip_title">跳过</string>
+    <string name="lab_lyricify_import_skip_summary">不导入发生冲突的歌曲</string>
+    <string name="lab_lyricify_import_progress">正在导入歌词…</string>
+    <string name="lab_lyricify_import_result">已导入 %1$d 首，跳过 %2$d 首，失败 %3$d 首。</string>
+    <string name="lab_lyricify_import_error">导入失败：%1$s</string>
 </resources>

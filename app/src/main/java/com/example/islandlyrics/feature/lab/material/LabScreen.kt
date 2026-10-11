@@ -59,6 +59,9 @@ import com.example.islandlyrics.core.network.OfflineModeManager
 import com.example.islandlyrics.core.platform.RomUtils
 import com.example.islandlyrics.core.settings.AppPreferences
 import com.example.islandlyrics.core.settings.LabFeatureManager
+import com.example.islandlyrics.feature.lab.rememberLyricifyImporter
+import com.example.islandlyrics.lyrics.importer.LyricifyImportMode
+import androidx.compose.material3.LinearProgressIndicator
 import com.example.islandlyrics.ui.overlay.superisland.config.SuperIslandColorSource
 import com.example.islandlyrics.feature.customsettings.CustomSettingsActivity
 import com.example.islandlyrics.feature.settings.material.SettingsCard
@@ -79,6 +82,9 @@ fun LabScreen(
     onOpenCapsuleNotification: (() -> Unit)? = null
 ) {
     val context = LocalContext.current
+    val lyricifyImporter = rememberLyricifyImporter()
+    var lyricifyImportEnabled by remember { mutableStateOf(LabFeatureManager.isLyricifyImportEnabled(context)) }
+    var showLyricifyImportDialog by remember { mutableStateOf(false) }
     val listState = rememberLazyListState()
     val targetBringIntoViewRequester = androidx.compose.runtime.remember { BringIntoViewRequester() }
     var activeTargetKey by remember(targetItemKey) { mutableStateOf(targetItemKey) }
@@ -184,6 +190,31 @@ fun LabScreen(
                             }
                         }
                     )
+                }
+            }
+
+            item {
+                SettingsCard {
+                    SettingsSwitchItem(
+                        title = stringResource(R.string.lab_lyricify_import_title),
+                        subtitle = stringResource(R.string.lab_lyricify_import_desc),
+                        checked = lyricifyImportEnabled,
+                        onCheckedChange = {
+                            lyricifyImportEnabled = it
+                            LabFeatureManager.setLyricifyImportEnabled(context, it)
+                        }
+                    )
+                    if (lyricifyImportEnabled) {
+                        TextButton(onClick = { showLyricifyImportDialog = true }, enabled = !lyricifyImporter.importing,
+                            modifier = Modifier.fillMaxWidth()) {
+                            Text(stringResource(R.string.lab_lyricify_import_button))
+                        }
+                    }
+                    if (lyricifyImporter.importing) {
+                        LinearProgressIndicator(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp))
+                        Text(stringResource(R.string.lab_lyricify_import_progress), modifier = Modifier.padding(16.dp))
+                    }
+                    lyricifyImporter.message?.let { Text(it, modifier = Modifier.padding(16.dp)) }
                 }
             }
 
@@ -357,6 +388,32 @@ fun LabScreen(
                 }
             }
         }
+    }
+
+    if (showLyricifyImportDialog) {
+        MaterialBlurAlertDialog(
+            onDismissRequest = { showLyricifyImportDialog = false },
+            title = { Text(stringResource(R.string.lab_lyricify_import_mode_title)) },
+            text = {
+                androidx.compose.foundation.layout.Column {
+                    Text(stringResource(R.string.lab_lyricify_import_mode_desc))
+                    listOf(
+                        LyricifyImportMode.OVERWRITE to R.string.lab_lyricify_import_overwrite,
+                        LyricifyImportMode.MERGE to R.string.lab_lyricify_import_merge,
+                        LyricifyImportMode.SKIP to R.string.lab_lyricify_import_skip
+                    ).forEach { (mode, label) ->
+                        TextButton(onClick = {
+                            showLyricifyImportDialog = false
+                            lyricifyImporter.chooseFile(mode)
+                        }, modifier = Modifier.fillMaxWidth()) { Text(stringResource(label)) }
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = { showLyricifyImportDialog = false }) { Text(stringResource(android.R.string.cancel)) }
+            }
+        )
     }
 
     if (showOfflineModeDialog) {
