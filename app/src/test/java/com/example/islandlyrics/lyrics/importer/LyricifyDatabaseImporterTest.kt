@@ -216,6 +216,61 @@ class LyricifyDatabaseImporterTest {
         assertEquals(listOf("Hello", "World", "Again"), lines.map { it.text })
     }
 
+    @Test fun timestampOnlyAssetsAreRejected() {
+        val lines = LyricifyDatabaseImporter.parseDocument("Lrc", "[00:01]\n[00:02]")
+        assertEquals(listOf("", ""), lines.map { it.text })
+        assertFalse(LyricifyDatabaseImporter.hasDisplayableLyrics(lines))
+    }
+
+    @Test fun emptyAndWhitespaceAssetsAreRejected() {
+        for (text in listOf("", " \n\t", "[00:01] \t\n[00:02]\t")) {
+            assertFalse(LyricifyDatabaseImporter.hasDisplayableLyrics(
+                LyricifyDatabaseImporter.parseDocument("Lrc", text)
+            ))
+        }
+    }
+
+    @Test fun validLyricsKeepLeadingTransitionAndTrailingBlankLines() {
+        val text = "[00:00]\n[00:01]A\n[00:02]\n[00:03]B\n[00:04]"
+        val lines = LyricifyDatabaseImporter.parseDocument("Lrc", text)
+        assertTrue(LyricifyDatabaseImporter.hasDisplayableLyrics(lines))
+        assertEquals(listOf("", "A", "", "B", ""), lines.map { it.text })
+        assertEquals(listOf(0L, 1_000L, 2_000L, 3_000L, 4_000L), lines.map { it.startTime })
+        assertEquals(2_000L, lines[1].endTime)
+        assertEquals(3_000L, lines[2].endTime)
+    }
+
+    @Test fun wordTextCanProvideContentWhenTheLineTextIsBlank() {
+        val line = OnlineLyricFetcher.LyricLine(1_000, 2_000, " \t",
+            listOf(OnlineLyricFetcher.SyllableInfo(1_000, 2_000, "Word")))
+        assertTrue(LyricifyDatabaseImporter.hasDisplayableLyrics(listOf(line)))
+        assertFalse(LyricifyDatabaseImporter.hasDisplayableLyrics(listOf(line.copy(
+            syllables = listOf(OnlineLyricFetcher.SyllableInfo(1_000, 2_000, " \t"))
+        ))))
+    }
+
+    @Test fun rejectedSelectedAssetFallsBackToAnotherUsableAsset() {
+        assertFalse(LyricifyDatabaseImporter.hasDisplayableLyrics(
+            LyricifyDatabaseImporter.parseDocument("Lrc", "[00:01]\n[00:02]")
+        ))
+        val usable = LyricifyDatabaseImporter.Asset(2L, false, result("Good"), emptyMap())
+        assertEquals(usable, LyricifyDatabaseImporter.selectAsset(listOf(usable), 1L))
+    }
+
+    @Test fun usableAssetSelectionKeepsTheExistingPriority() {
+        val plain = LyricifyDatabaseImporter.Asset(1L, false, incoming, emptyMap())
+        val verified = LyricifyDatabaseImporter.Asset(2L, true, incoming, emptyMap())
+        val wordLevel = LyricifyDatabaseImporter.Asset(3L, false, incoming.copy(hasSyllable = true), emptyMap())
+        assertEquals(plain, LyricifyDatabaseImporter.selectAsset(listOf(plain, verified, wordLevel), 1L))
+        assertEquals(verified, LyricifyDatabaseImporter.selectAsset(listOf(plain, verified, wordLevel), 99L))
+        assertEquals(wordLevel, LyricifyDatabaseImporter.selectAsset(listOf(plain, wordLevel), 99L))
+        assertEquals(plain, LyricifyDatabaseImporter.selectAsset(listOf(plain), null))
+    }
+
+    @Test fun noUsableAssetsProduceNoSelection() {
+        assertNull(LyricifyDatabaseImporter.selectAsset(emptyList(), 1L))
+    }
+
     @Test fun reusesWordLevelParsers() {
         val documents = mapOf(
             "Qrc" to "[1000,1000]你(1000,500)好(1500,500)",
@@ -224,6 +279,7 @@ class LyricifyDatabaseImporterTest {
         )
         for ((format, text) in documents) {
             val line = LyricifyDatabaseImporter.parseDocument(format, text).single()
+            assertTrue(format, LyricifyDatabaseImporter.hasDisplayableLyrics(listOf(line)))
             assertEquals(format, "你好", line.text)
             assertEquals(format, listOf(1_000L, 1_500L), line.syllables!!.map { it.startTime })
         }

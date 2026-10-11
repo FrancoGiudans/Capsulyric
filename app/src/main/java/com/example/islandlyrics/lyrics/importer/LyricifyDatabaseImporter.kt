@@ -49,7 +49,7 @@ object LyricifyDatabaseImporter {
     internal class LimitExceeded(message: String) : IllegalArgumentException(message)
     data class Report(val imported: Int, val skipped: Int, val failed: Int)
 
-    private data class Asset(val id: Long, val verified: Boolean, val result: OnlineLyricFetcher.LyricResult, val providerIds: Map<String, String>)
+    internal data class Asset(val id: Long, val verified: Boolean, val result: OnlineLyricFetcher.LyricResult, val providerIds: Map<String, String>)
     suspend fun importDatabase(context: Context, uri: Uri, mode: LyricifyImportMode): Report {
         check(LabFeatureManager.isLyricifyImportEnabled(context)) { "Import is disabled" }
         val jobContext = currentCoroutineContext()
@@ -172,12 +172,9 @@ object LyricifyDatabaseImporter {
                         candidates.add(asset)
                     }
                 }
-                if (candidates.isEmpty()) { onFailed(); continue }
                 val selectedId = if (tracks.isNull(5)) null else tracks.getLong(5)
-                val selected = candidates.firstOrNull { it.id == selectedId }
-                    ?: candidates.firstOrNull { it.verified }
-                    ?: candidates.firstOrNull { it.result.hasSyllable }
-                    ?: candidates.first()
+                val selected = selectAsset(candidates, selectedId)
+                if (selected == null) { onFailed(); continue }
                 candidates.forEach { ids.putAll(it.providerIds) }
                 ids.putAll(selected.providerIds)
                 yield(LyricifyTrackIdentity(tracks.getString(1), tracks.getString(2), tracks.getString(3).orEmpty(), tracks.getLong(4), ids) to
@@ -185,6 +182,12 @@ object LyricifyDatabaseImporter {
             }
         }
     }
+
+    internal fun selectAsset(candidates: List<Asset>, selectedId: Long?): Asset? =
+        candidates.firstOrNull { it.id == selectedId }
+            ?: candidates.firstOrNull { it.verified }
+            ?: candidates.firstOrNull { it.result.hasSyllable }
+            ?: candidates.firstOrNull()
 
     internal fun providerFor(name: String?): OnlineLyricProvider? = when (name?.lowercase(Locale.ROOT)?.replace("_", "")?.replace("-", "")) {
         "qqmusic" -> OnlineLyricProvider.QQMusic
@@ -260,7 +263,7 @@ object LyricifyDatabaseImporter {
             else error("Unsupported lyric provider: $providerName")
         val lyrics = root.getJSONObject("lyrics")
         val originalLines = parseDocument(lyrics.getString("format"), lyrics.getString("text"))
-        require(originalLines.isNotEmpty()) { "No timed lyrics" }
+        require(hasDisplayableLyrics(originalLines)) { "No displayable lyrics" }
         val offset = root.optLong("offsetMs", 0L)
         val lines = shiftLines(originalLines, offset)
         val translations = root.optJSONObject("translations")
@@ -293,6 +296,10 @@ object LyricifyDatabaseImporter {
             providerTrackId = trackId,
             translationLyrics = translation
         )
+    }
+
+    internal fun hasDisplayableLyrics(lines: List<OnlineLyricFetcher.LyricLine>): Boolean = lines.any { line ->
+        line.text.isNotBlank() || line.syllables.orEmpty().any { it.text.isNotBlank() }
     }
 
     internal fun parseDocument(format: String, text: String): List<OnlineLyricFetcher.LyricLine> {
