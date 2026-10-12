@@ -57,30 +57,34 @@ class MetadataLyricFetchCoordinator(
             }
         }
 
-        if (rule.useOnlineLyrics) {
-            if (rule.useLocalLyrics) {
+        onlineLyricSource.fetchImportedFor(info) { imported ->
+            if (imported) {
+                markResolveFinished(true)
+            } else if (rule.useOnlineLyrics) {
+                if (rule.useLocalLyrics) {
+                    localLyricSource.fetchFor(info.title, info.artist, info.packageName) { found ->
+                        if (found) {
+                            repo.updateLyricResolveState(LyricRepository.LyricResolveState.FOUND)
+                        } else if (!rule.usesCarProtocol) {
+                            AppLogger.getInstance().log(TAG, "[${info.packageName}] Local miss, triggering online fetch...")
+                            onlineLyricSource.fetchFor(info.title, info.artist, info.packageName, onResolve = markResolveFinished)
+                        } else {
+                            repo.reportLyricResolveFailed()
+                        }
+                    }
+                } else if (!rule.usesCarProtocol) {
+                    AppLogger.getInstance().log(TAG, "[${info.packageName}] Non-CarProtocol app, triggering fetch...")
+                    onlineLyricSource.fetchFor(info.title, info.artist, info.packageName, onResolve = markResolveFinished)
+                } else {
+                    AppLogger.getInstance().log(TAG, "[${info.packageName}] CarProtocol app, waiting for lyric observer trigger...")
+                }
+            } else if (rule.useLocalLyrics) {
                 localLyricSource.fetchFor(info.title, info.artist, info.packageName) { found ->
                     if (found) {
                         repo.updateLyricResolveState(LyricRepository.LyricResolveState.FOUND)
-                    } else if (!rule.usesCarProtocol) {
-                        AppLogger.getInstance().log(TAG, "[${info.packageName}] Local miss, triggering online fetch...")
-                        onlineLyricSource.fetchFor(info.title, info.artist, info.packageName, onResolve = markResolveFinished)
                     } else {
                         repo.reportLyricResolveFailed()
                     }
-                }
-            } else if (!rule.usesCarProtocol) {
-                AppLogger.getInstance().log(TAG, "[${info.packageName}] Non-CarProtocol app, triggering fetch...")
-                onlineLyricSource.fetchFor(info.title, info.artist, info.packageName, onResolve = markResolveFinished)
-            } else {
-                AppLogger.getInstance().log(TAG, "[${info.packageName}] CarProtocol app, waiting for lyric observer trigger...")
-            }
-        } else if (rule.useLocalLyrics) {
-            localLyricSource.fetchFor(info.title, info.artist, info.packageName) { found ->
-                if (found) {
-                    repo.updateLyricResolveState(LyricRepository.LyricResolveState.FOUND)
-                } else {
-                    repo.reportLyricResolveFailed()
                 }
             }
         }

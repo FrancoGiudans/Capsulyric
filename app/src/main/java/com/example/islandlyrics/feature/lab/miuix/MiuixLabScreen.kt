@@ -23,6 +23,8 @@
 package com.example.islandlyrics.feature.lab.miuix
 
 import android.content.Intent
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.Text
@@ -36,6 +38,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlin.math.roundToInt
@@ -44,6 +47,8 @@ import com.example.islandlyrics.core.network.OfflineModeManager
 import com.example.islandlyrics.core.platform.RomUtils
 import com.example.islandlyrics.core.settings.AppPreferences
 import com.example.islandlyrics.core.settings.LabFeatureManager
+import com.example.islandlyrics.feature.lab.rememberLyricifyImporter
+import com.example.islandlyrics.lyrics.importer.LyricifyImportMode
 import com.example.islandlyrics.ui.overlay.superisland.config.SuperIslandColorSource
 import com.example.islandlyrics.feature.customsettings.CustomSettingsActivity
 import com.example.islandlyrics.ui.miuix.navigation.MiuixBackHandler
@@ -53,6 +58,7 @@ import com.example.islandlyrics.ui.miuix.blur.MiuixBlurScaffold
 import com.example.islandlyrics.ui.miuix.blur.MiuixBlurTopAppBar
 import com.example.islandlyrics.ui.miuix.effects.miuixPageScroll
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
+import top.yukonga.miuix.kmp.basic.BasicComponent
 import top.yukonga.miuix.kmp.basic.ButtonDefaults
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.IconButton
@@ -61,6 +67,7 @@ import top.yukonga.miuix.kmp.basic.SliderDefaults
 import top.yukonga.miuix.kmp.basic.SmallTitle
 import top.yukonga.miuix.kmp.basic.TextButton
 import top.yukonga.miuix.kmp.basic.rememberTopAppBarState
+import top.yukonga.miuix.kmp.preference.ArrowPreference as SuperArrow
 import top.yukonga.miuix.kmp.preference.SwitchPreference as SuperSwitch
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.MiuixPopupUtils.Companion.MiuixPopupHost
@@ -72,6 +79,9 @@ fun MiuixLabScreen(
     onOpenCapsuleNotification: (() -> Unit)? = null
 ) {
     val context = LocalContext.current
+    val lyricifyImporter = rememberLyricifyImporter()
+    var lyricifyImportEnabled by remember { mutableStateOf(LabFeatureManager.isLyricifyImportEnabled(context)) }
+    var showLyricifyImportDialog by remember { mutableStateOf(false) }
     val scrollBehavior = MiuixScrollBehavior(rememberTopAppBarState())
     val listState = rememberLazyListState()
     var offlineModeEnabled by remember { mutableStateOf(OfflineModeManager.isEnabled(context)) }
@@ -107,11 +117,12 @@ fun MiuixLabScreen(
     val showLiveUpdateTextLimitsDialog = remember { mutableStateOf(false) }
 
     MiuixBackHandler(
-        enabled = showOfflineModeDialog.value || showAdvancedStyleDialog.value || showLiveUpdateTextLimitsDialog.value
+        enabled = showOfflineModeDialog.value || showAdvancedStyleDialog.value || showLiveUpdateTextLimitsDialog.value || showLyricifyImportDialog
     ) {
         showOfflineModeDialog.value = false
         showAdvancedStyleDialog.value = false
         showLiveUpdateTextLimitsDialog.value = false
+        showLyricifyImportDialog = false
     }
 
     MiuixBlurScaffold(
@@ -163,6 +174,37 @@ fun MiuixLabScreen(
                             }
                         }
                     )
+                }
+            }
+
+            item { Spacer(modifier = Modifier.height(8.dp)) }
+            item {
+                Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
+                    SuperSwitch(
+                        title = stringResource(R.string.lab_lyricify_import_title),
+                        summary = stringResource(R.string.lab_lyricify_import_desc),
+                        checked = lyricifyImportEnabled,
+                        onCheckedChange = {
+                            lyricifyImportEnabled = it
+                            LabFeatureManager.setLyricifyImportEnabled(context, it)
+                        }
+                    )
+                    if (lyricifyImportEnabled) {
+                        SuperArrow(
+                            title = stringResource(R.string.lab_lyricify_import_button),
+                            onClick = { showLyricifyImportDialog = true },
+                            enabled = !lyricifyImporter.importing
+                        )
+                    }
+                    if (lyricifyImporter.importing) {
+                        Text(stringResource(R.string.lab_lyricify_import_progress),
+                            style = MiuixTheme.textStyles.body2, color = MiuixTheme.colorScheme.onSurface,
+                            modifier = Modifier.padding(16.dp))
+                    }
+                    lyricifyImporter.message?.let {
+                        Text(it, style = MiuixTheme.textStyles.body2, color = MiuixTheme.colorScheme.onSurface,
+                            modifier = Modifier.padding(16.dp))
+                    }
                 }
             }
 
@@ -325,6 +367,53 @@ fun MiuixLabScreen(
                     )
 
                 }
+            }
+        }
+
+        MiuixBlurDialog(
+            title = stringResource(R.string.lab_lyricify_import_mode_title),
+            summary = stringResource(R.string.lab_lyricify_import_mode_desc),
+            show = showLyricifyImportDialog,
+            onDismissRequest = { showLyricifyImportDialog = false }
+        ) {
+            Column(modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState())) {
+                listOf(
+                    Triple(
+                        LyricifyImportMode.OVERWRITE,
+                        R.string.lab_lyricify_import_overwrite_title,
+                        R.string.lab_lyricify_import_overwrite_summary
+                    ),
+                    Triple(
+                        LyricifyImportMode.MERGE,
+                        R.string.lab_lyricify_import_merge_title,
+                        R.string.lab_lyricify_import_merge_summary
+                    ),
+                    Triple(
+                        LyricifyImportMode.SKIP,
+                        R.string.lab_lyricify_import_skip_title,
+                        R.string.lab_lyricify_import_skip_summary
+                    )
+                ).forEach { (mode, title, summary) ->
+                    BasicComponent(
+                        title = stringResource(title),
+                        summary = stringResource(summary),
+                        insideMargin = PaddingValues(vertical = 12.dp),
+                        role = Role.Button,
+                        onClick = {
+                            showLyricifyImportDialog = false
+                            lyricifyImporter.chooseFile(mode)
+                        }
+                    )
+                }
+                Spacer(modifier = Modifier.height(12.dp))
+                TextButton(
+                    text = stringResource(android.R.string.cancel),
+                    onClick = { showLyricifyImportDialog = false },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.textButtonColors(
+                        textColor = MiuixTheme.colorScheme.onSurfaceVariantActions
+                    )
+                )
             }
         }
 

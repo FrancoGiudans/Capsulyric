@@ -1302,4 +1302,21 @@ Within the log interface, select the share/export icon. You can specify a timefr
     <string name="online_lyric_track_id_preview_id">ID: %1$s</string>
     <string name="online_lyric_track_id_preview_target">Apply to: %1$s · %2$s</string>
     <string name="online_lyric_track_id_no_timing">These lyrics have no usable timeline and can only be previewed.</string>
+    <string name="lab_lyricify_import_title">Lyricify database import</string>
+    <string name="lab_lyricify_import_desc">Experimental support for the local Lyricify Lite Insider database. Turning this off disables importing; imported lyrics remain available.</string>
+    <string name="lab_lyricify_import_button">Import Lyricify database</string>
+    <string name="lab_lyricify_import_mode_title">Handle existing lyric selections</string>
+    <string name="lab_lyricify_import_mode_desc">Choose how to handle songs that already have a lyric selection. Songs without a conflict will be imported normally.</string>
+    <string name="lab_lyricify_import_overwrite">Overwrite: use the Lyricify selection</string>
+    <string name="lab_lyricify_import_merge">Merge: keep the current selection and add candidates</string>
+    <string name="lab_lyricify_import_skip">Skip: leave conflicting songs unchanged</string>
+    <string name="lab_lyricify_import_overwrite_title">Overwrite</string>
+    <string name="lab_lyricify_import_overwrite_summary">Use the Lyricify selection</string>
+    <string name="lab_lyricify_import_merge_title">Merge</string>
+    <string name="lab_lyricify_import_merge_summary">Keep the current selection and add candidates</string>
+    <string name="lab_lyricify_import_skip_title">Skip</string>
+    <string name="lab_lyricify_import_skip_summary">Leave conflicting songs unchanged</string>
+    <string name="lab_lyricify_import_progress">Importing lyrics…</string>
+    <string name="lab_lyricify_import_result">Imported %1$d songs, skipped %2$d, failed %3$d.</string>
+    <string name="lab_lyricify_import_error">Import failed: %1$s</string>
 </resources>
