@@ -47,7 +47,7 @@ import com.example.islandlyrics.core.network.OfflineModeManager
 import com.example.islandlyrics.core.platform.RomUtils
 import com.example.islandlyrics.core.settings.AppPreferences
 import com.example.islandlyrics.core.settings.LabFeatureManager
-import com.example.islandlyrics.feature.lab.rememberLyricifyImporter
+import com.example.islandlyrics.feature.lab.LyricifyImportUiState
 import com.example.islandlyrics.lyrics.importer.LyricifyImportMode
 import com.example.islandlyrics.ui.overlay.superisland.config.SuperIslandColorSource
 import com.example.islandlyrics.feature.customsettings.CustomSettingsActivity
@@ -62,6 +62,7 @@ import top.yukonga.miuix.kmp.basic.BasicComponent
 import top.yukonga.miuix.kmp.basic.ButtonDefaults
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.IconButton
+import top.yukonga.miuix.kmp.basic.LinearProgressIndicator
 import top.yukonga.miuix.kmp.basic.Slider
 import top.yukonga.miuix.kmp.basic.SliderDefaults
 import top.yukonga.miuix.kmp.basic.SmallTitle
@@ -73,13 +74,13 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.MiuixPopupUtils.Companion.MiuixPopupHost
 
 @Composable
-fun MiuixLabScreen(
+internal fun MiuixLabScreen(
     onBack: () -> Unit,
+    lyricifyImporter: LyricifyImportUiState,
     targetItemKey: String? = null,
     onOpenCapsuleNotification: (() -> Unit)? = null
 ) {
     val context = LocalContext.current
-    val lyricifyImporter = rememberLyricifyImporter()
     var lyricifyImportEnabled by remember { mutableStateOf(LabFeatureManager.isLyricifyImportEnabled(context)) }
     var showLyricifyImportDialog by remember { mutableStateOf(false) }
     val scrollBehavior = MiuixScrollBehavior(rememberTopAppBarState())
@@ -195,15 +196,6 @@ fun MiuixLabScreen(
                             onClick = { showLyricifyImportDialog = true },
                             enabled = !lyricifyImporter.importing
                         )
-                    }
-                    if (lyricifyImporter.importing) {
-                        Text(stringResource(R.string.lab_lyricify_import_progress),
-                            style = MiuixTheme.textStyles.body2, color = MiuixTheme.colorScheme.onSurface,
-                            modifier = Modifier.padding(16.dp))
-                    }
-                    lyricifyImporter.message?.let {
-                        Text(it, style = MiuixTheme.textStyles.body2, color = MiuixTheme.colorScheme.onSurface,
-                            modifier = Modifier.padding(16.dp))
                     }
                 }
             }
@@ -367,6 +359,35 @@ fun MiuixLabScreen(
                     )
 
                 }
+            }
+        }
+
+        MiuixBlurDialog(
+            title = stringResource(R.string.lab_lyricify_import_button),
+            show = lyricifyImporter.showDialog,
+            onDismissRequest = {}
+        ) {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                lyricifyImporter.message?.let {
+                    Text(it, style = MiuixTheme.textStyles.body2, color = MiuixTheme.colorScheme.onSurface)
+                }
+                if (lyricifyImporter.importing) {
+                    Spacer(Modifier.height(16.dp))
+                    LinearProgressIndicator(
+                        progress = lyricifyImporter.state.progress.fraction.takeIf { lyricifyImporter.state.canCancel }
+                    )
+                    lyricifyImporter.count?.let {
+                        Spacer(Modifier.height(8.dp))
+                        Text(it, style = MiuixTheme.textStyles.body2, color = MiuixTheme.colorScheme.onSurfaceSecondary)
+                    }
+                }
+                Spacer(Modifier.height(16.dp))
+                TextButton(
+                    text = stringResource(if (lyricifyImporter.importing) android.R.string.cancel else R.string.lab_lyricify_import_done),
+                    onClick = if (lyricifyImporter.importing) lyricifyImporter.cancel else lyricifyImporter.dismiss,
+                    enabled = !lyricifyImporter.importing || lyricifyImporter.state.canCancel,
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
         }
 

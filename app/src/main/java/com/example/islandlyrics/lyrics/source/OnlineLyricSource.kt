@@ -72,16 +72,16 @@ class OnlineLyricSource(private val context: Context) {
     private var pendingArtist = ""
     private var pendingPackageName = ""
 
-    private fun resolveQuery(
+    private suspend fun resolveQuery(
         packageName: String,
         fallbackTitle: String,
         fallbackArtist: String
-    ): OnlineLyricCacheStore.CurrentSongCacheState? {
+    ): OnlineLyricCacheStore.CurrentSongCacheState? = withContext(Dispatchers.IO) {
         val rule = ParserRuleHelper.getRuleForPackage(context, packageName)
             ?: ParserRuleHelper.createDefaultRule(packageName)
         val liveMetadata = LyricRepository.getInstance().liveMetadata.value
         val metadata = if (liveMetadata?.packageName == packageName) liveMetadata else null
-        return if (metadata != null) {
+        if (metadata != null) {
             cacheStore.getCurrentSongState(
                 mediaInfo = metadata,
                 fallbackTitle = fallbackTitle,
@@ -101,30 +101,23 @@ class OnlineLyricSource(private val context: Context) {
     fun fetchImportedFor(metadata: LyricRepository.MediaInfo, onResolve: (Boolean) -> Unit) {
         fetchJob?.cancel()
         fetchJob = null
-        val hasImportedLyrics = try {
-            cacheStore.hasImportedLyrics()
-        } catch (error: Exception) {
-            AppLogger.getInstance().e(TAG, "Imported lyric index lookup failed: ${error.message}")
-            if (sameLyricRequestTrack(metadata, LyricRepository.getInstance().liveMetadata.value)) onResolve(false)
-            return
-        }
-        if (!hasImportedLyrics) {
-            if (sameLyricRequestTrack(metadata, LyricRepository.getInstance().liveMetadata.value)) onResolve(false)
-            return
-        }
         val rule = ParserRuleHelper.getRuleForPackage(context, metadata.packageName)
             ?: ParserRuleHelper.createDefaultRule(metadata.packageName)
         fetchJob = scope.launch {
             try {
-                val (state, candidates, hit) = withContext(Dispatchers.IO) {
-                    val state = cacheStore.getCurrentSongState(metadata, metadata.title, metadata.artist, rule.useRawMetadataForOnlineMatching)
-                    val candidates = if (state.isInstrumental) emptyList() else
-                        cacheStore.getImportedCandidates(metadata, state.effectiveTitle, state.effectiveArtist)
-                    Triple(state, candidates, if (candidates.isEmpty()) null else
-                        cacheStore.getCachedLyric(metadata, state.effectiveTitle, state.effectiveArtist))
+                val lookup = withContext(Dispatchers.IO) {
+                    if (!cacheStore.hasImportedLyrics()) null else {
+                        val state = cacheStore.getCurrentSongState(metadata, metadata.title, metadata.artist, rule.useRawMetadataForOnlineMatching)
+                        val candidates = if (state.isInstrumental) emptyList() else
+                            cacheStore.getImportedCandidates(metadata, state.effectiveTitle, state.effectiveArtist)
+                        Triple(state, candidates, if (candidates.isEmpty()) null else
+                            cacheStore.getCachedLyric(metadata, state.effectiveTitle, state.effectiveArtist))
+                    }
                 }
                 coroutineContext.ensureActive()
                 if (!sameLyricRequestTrack(metadata, LyricRepository.getInstance().liveMetadata.value)) return@launch
+                if (lookup == null) { onResolve(false); return@launch }
+                val (state, candidates, hit) = lookup
                 if (hit == null) { onResolve(false); return@launch }
                 val attempts = (listOf(hit.result) + candidates).distinctBy(LyricifyDatabaseImporter::candidateKey).map { result ->
                     OnlineLyricFetcher.ProviderAttempt(result.provider, result, 0L, false, queryVariant = "lyricify_import")
@@ -176,44 +169,36 @@ class OnlineLyricSource(private val context: Context) {
             return
         }
 
-        val currentSongState = resolveQuery(packageName, title, artist) ?: return
-        if (currentSongState.isInstrumental) {
-            AppLogger.getInstance().i(TAG, "[$packageName] Marked instrumental — using no-lyrics state")
-            cancel()
-            LyricRepository.getInstance().updateLyric(
-                "",
-                packageName,
-                LyricRepository.API_PATH_INSTRUMENTAL
-            )
-            LyricRepository.getInstance().updateParsedLyrics(
-                lines = emptyList(),
-                hasSyllable = false,
-                timelineCapability = LyricRepository.TimelineCapability.NONE
-            )
-            LyricRepository.getInstance().updateCurrentLine(null)
-            onResolve?.invoke(true)
-            return
-        }
-
-        val queryTitle = currentSongState.effectiveTitle
-        val queryArtist = currentSongState.effectiveArtist
-
-        if (queryTitle.isBlank() && queryArtist.isBlank()) {
-            AppLogger.getInstance().log(TAG, "Missing title/artist — cannot fetch")
-            onResolve?.invoke(false)
-            return
-        }
-
         // Cancel any in-flight request (e.g. rapid song skips)
         fetchJob?.cancel()
-        pendingTitle  = queryTitle
-        pendingArtist = queryArtist
-        pendingPackageName = packageName
-
-        AppLogger.getInstance().i(TAG, "🚀 Online fetch: $queryTitle - $queryArtist [$packageName]")
+        val requestedMetadata = LyricRepository.getInstance().liveMetadata.value?.takeIf { it.packageName == packageName }
 
         fetchJob = scope.launch {
             try {
+                val currentSongState = resolveQuery(packageName, title, artist) ?: return@launch
+                if (requestedMetadata != null && !sameLyricRequestTrack(requestedMetadata, LyricRepository.getInstance().liveMetadata.value)) return@launch
+                if (currentSongState.isInstrumental) {
+                    AppLogger.getInstance().i(TAG, "[$packageName] Marked instrumental — using no-lyrics state")
+                    LyricRepository.getInstance().updateLyric("", packageName, LyricRepository.API_PATH_INSTRUMENTAL)
+                    LyricRepository.getInstance().updateParsedLyrics(
+                        lines = emptyList(), hasSyllable = false,
+                        timelineCapability = LyricRepository.TimelineCapability.NONE
+                    )
+                    LyricRepository.getInstance().updateCurrentLine(null)
+                    onResolve?.invoke(true)
+                    return@launch
+                }
+                val queryTitle = currentSongState.effectiveTitle
+                val queryArtist = currentSongState.effectiveArtist
+                if (queryTitle.isBlank() && queryArtist.isBlank()) {
+                    AppLogger.getInstance().log(TAG, "Missing title/artist — cannot fetch")
+                    onResolve?.invoke(false)
+                    return@launch
+                }
+                pendingTitle = queryTitle
+                pendingArtist = queryArtist
+                pendingPackageName = packageName
+                AppLogger.getInstance().i(TAG, "🚀 Online fetch: $queryTitle - $queryArtist [$packageName]")
                 val metadata = LyricRepository.getInstance().liveMetadata.value
                 val cacheHit = if (metadata?.packageName == packageName) {
                     withContext(Dispatchers.IO) {
