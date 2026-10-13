@@ -51,6 +51,8 @@ import com.example.islandlyrics.feature.faq.material.FAQScreen
 import com.example.islandlyrics.feature.faq.miuix.MiuixFAQScreen
 import com.example.islandlyrics.feature.lab.material.LabScreen
 import com.example.islandlyrics.feature.lab.miuix.MiuixLabScreen
+import com.example.islandlyrics.feature.lab.LyricifyImportUiState
+import com.example.islandlyrics.feature.lab.rememberLyricifyImporter
 import com.example.islandlyrics.feature.lastfm.material.LastFmSettingsScreen
 import com.example.islandlyrics.feature.lastfm.miuix.MiuixLastFmSettingsScreen
 import com.example.islandlyrics.feature.locallyrics.material.LocalLyricDirectoryScreen
@@ -194,12 +196,13 @@ class MainActivity : BaseActivity() {
         val useMiuix = isMiuixEnabled(this)
 
         setContent {
+            val lyricifyImporter = rememberLyricifyImporter()
             if (useMiuix) {
                 MiuixAppTheme {
-                    MiuixTopLevelPager()
+                    MiuixTopLevelPager(lyricifyImporter)
                 }
             } else {
-                MaterialThemeHost()
+                MaterialThemeHost(lyricifyImporter)
             }
         }
 
@@ -305,7 +308,7 @@ class MainActivity : BaseActivity() {
     }
 
     @Composable
-    private fun MaterialThemeHost() {
+    private fun MaterialThemeHost(lyricifyImporter: LyricifyImportUiState) {
         IslandLyricsMaterialTheme {
             val snackbarHostState = remember { SnackbarHostState() }
             val pendingRelease = pendingUpdateSnackbarReleaseInfo
@@ -346,7 +349,7 @@ class MainActivity : BaseActivity() {
             }
 
             Box(modifier = Modifier.fillMaxSize()) {
-                MaterialTopLevelPager()
+                MaterialTopLevelPager(lyricifyImporter)
                 SnackbarHost(
                     hostState = snackbarHostState,
                     modifier = Modifier
@@ -378,11 +381,15 @@ class MainActivity : BaseActivity() {
     }
 
     @Composable
-    private fun MaterialTopLevelPager() {
+    private fun MaterialTopLevelPager(lyricifyImporter: LyricifyImportUiState) {
         val pagerState = rememberPagerState(pageCount = { TopLevelDestination.entries.size })
         val scope = rememberCoroutineScope()
         var bottomBarVisible by androidx.compose.runtime.remember { mutableStateOf(true) }
-        val pageStack = remember { androidx.compose.runtime.mutableStateListOf<AppPage>() }
+        val pageStack = remember {
+            androidx.compose.runtime.mutableStateListOf<AppPage>().apply {
+                if (lyricifyImporter.restoreLab) add(AppPage.Lab)
+            }
+        }
         fun pushPage(page: AppPage) {
             pageStack.add(page)
         }
@@ -489,6 +496,7 @@ class MainActivity : BaseActivity() {
             pageContent = { page ->
                 MaterialAppPage(
                     page = page,
+                    lyricifyImporter = lyricifyImporter,
                     onBack = ::popPage,
                     onPushPage = ::pushPage
                 )
@@ -497,11 +505,15 @@ class MainActivity : BaseActivity() {
         }
 
     @Composable
-    private fun MiuixTopLevelPager() {
+    private fun MiuixTopLevelPager(lyricifyImporter: LyricifyImportUiState) {
         val pagerState = rememberPagerState(pageCount = { TopLevelDestination.entries.size })
         val scope = rememberCoroutineScope()
         var bottomBarVisible by androidx.compose.runtime.remember { mutableStateOf(true) }
-        val pageStack = remember { androidx.compose.runtime.mutableStateListOf<AppPage>() }
+        val pageStack = remember {
+            androidx.compose.runtime.mutableStateListOf<AppPage>().apply {
+                if (lyricifyImporter.restoreLab) add(AppPage.Lab)
+            }
+        }
         fun pushPage(page: AppPage) {
             pageStack.add(page)
         }
@@ -760,6 +772,7 @@ class MainActivity : BaseActivity() {
                     pageContent = { page ->
                         MiuixAppPage(
                             page = page,
+                            lyricifyImporter = lyricifyImporter,
                             onBack = ::popPage,
                             onPushPage = ::pushPage,
                             onNavigate = ::handleNavigate
@@ -895,6 +908,7 @@ class MainActivity : BaseActivity() {
     @Composable
     private fun MaterialAppPage(
         page: AppPage,
+        lyricifyImporter: LyricifyImportUiState,
         onBack: () -> Unit,
         onPushPage: (AppPage) -> Unit
     ) {
@@ -933,7 +947,7 @@ class MainActivity : BaseActivity() {
             AppPage.OnlineLyricDebug -> OnlineLyricDebugScreen(onBack = onBack)
             AppPage.LastFm -> LastFmSettingsScreen(onBack = onBack)
             AppPage.CacheManagement -> CacheManagementScreen(onBack = onBack)
-            AppPage.Lab -> LabScreen(onBack = onBack, onOpenCapsuleNotification = { onPushPage(AppPage.CapsuleNotification()) })
+            AppPage.Lab -> LabScreen(onBack = onBack, lyricifyImporter = lyricifyImporter, onOpenCapsuleNotification = { onPushPage(AppPage.CapsuleNotification()) })
             AppPage.LogViewer -> LogViewerScreen(onBack = onBack)
             is AppPage.LocalLyricDirectory -> LocalLyricDirectoryScreen(
                 directoryUri = page.directoryUri.toUri(),
@@ -991,6 +1005,7 @@ class MainActivity : BaseActivity() {
     @Composable
     private fun MiuixAppPage(
         page: AppPage,
+        lyricifyImporter: LyricifyImportUiState,
         onBack: () -> Unit,
         onPushPage: (AppPage) -> Unit,
         onNavigate: (SettingsSearchAction.Navigate) -> Unit
@@ -1043,7 +1058,7 @@ class MainActivity : BaseActivity() {
             AppPage.OnlineLyricDebug -> MiuixOnlineLyricDebugScreen(onBack = onBack)
             AppPage.LastFm -> MiuixLastFmSettingsScreen(onBack = onBack)
             AppPage.CacheManagement -> MiuixCacheManagementScreen(onBack = onBack)
-            AppPage.Lab -> MiuixLabScreen(onBack = onBack, onOpenCapsuleNotification = { onPushPage(AppPage.CapsuleNotification()) })
+            AppPage.Lab -> MiuixLabScreen(onBack = onBack, lyricifyImporter = lyricifyImporter, onOpenCapsuleNotification = { onPushPage(AppPage.CapsuleNotification()) })
             AppPage.LogViewer -> MiuixLogViewerScreen(onBack = onBack)
             is AppPage.LocalLyricDirectory -> MiuixLocalLyricDirectoryScreen(
                 directoryUri = page.directoryUri.toUri(),

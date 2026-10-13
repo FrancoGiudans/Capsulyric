@@ -1316,7 +1316,23 @@ Within the log interface, select the share/export icon. You can specify a timefr
     <string name="lab_lyricify_import_merge_summary">Keep the current selection and add candidates</string>
     <string name="lab_lyricify_import_skip_title">Skip</string>
     <string name="lab_lyricify_import_skip_summary">Leave conflicting songs unchanged</string>
-    <string name="lab_lyricify_import_progress">Importing lyrics…</string>
+    <string name="lab_lyricify_import_copying">Copying database…</string>
+    <string name="lab_lyricify_import_validating">Checking database…</string>
+    <string name="lab_lyricify_import_parsing">Parsing lyrics…</string>
+    <string name="lab_lyricify_import_reading_cache">Reading existing lyrics…</string>
+    <string name="lab_lyricify_import_matching">Handling existing selections…</string>
+    <string name="lab_lyricify_import_backing_up">Backing up existing lyrics…</string>
+    <string name="lab_lyricify_import_writing">Saving lyrics…</string>
+    <string name="lab_lyricify_import_committing">Completing import…</string>
+    <string name="lab_lyricify_import_cleaning_up">Cleaning up temporary files…</string>
+    <string name="lab_lyricify_import_rolling_back">Restoring previous lyrics…</string>
+    <string name="lab_lyricify_import_cancelling">Cancelling import. Please wait…</string>
+    <string name="lab_lyricify_import_song_count">%1$d / %2$d songs</string>
+    <string name="lab_lyricify_import_entry_count">%1$d / %2$d entries</string>
+    <string name="lab_lyricify_import_file_count">%1$d / %2$d files</string>
+    <string name="lab_lyricify_import_done">Done</string>
+    <string name="lab_lyricify_import_mode_lost">Import mode was not restored. Select the file again.</string>
+    <string name="lab_lyricify_import_rollback_error">Could not restore the previous lyrics: %1$s. Open Cache management to retry recovery.</string>
     <string name="lab_lyricify_import_result">Imported %1$d songs, skipped %2$d, failed %3$d.</string>
     <string name="lab_lyricify_import_error">Import failed: %1$s</string>
 </resources>

@@ -21,6 +21,21 @@ import kotlinx.coroutines.ensureActive
 
 enum class LyricifyImportMode { OVERWRITE, MERGE, SKIP }
 
+enum class LyricifyImportStage {
+    COPYING, VALIDATING, PARSING, READING_CACHE, MATCHING, BACKING_UP, WRITING,
+    COMMITTING, CLEANING_UP, ROLLING_BACK
+}
+
+data class LyricifyImportProgress(
+    val stage: LyricifyImportStage,
+    val processed: Int = 0,
+    val total: Int? = null
+) {
+    val fraction: Float? get() = total?.takeIf { it > 0 }?.let { processed.toFloat() / it }
+    val canCancel: Boolean get() = stage != LyricifyImportStage.COMMITTING &&
+        stage != LyricifyImportStage.CLEANING_UP && stage != LyricifyImportStage.ROLLING_BACK
+}
+
 data class LyricifyTrackIdentity(
     val title: String,
     val artist: String,
@@ -50,15 +65,21 @@ object LyricifyDatabaseImporter {
     data class Report(val imported: Int, val skipped: Int, val failed: Int)
 
     internal data class Asset(val id: Long, val verified: Boolean, val result: OnlineLyricFetcher.LyricResult, val providerIds: Map<String, String>)
-    suspend fun importDatabase(context: Context, uri: Uri, mode: LyricifyImportMode): Report {
+    suspend fun importDatabase(
+        context: Context, uri: Uri, mode: LyricifyImportMode,
+        onProgress: (LyricifyImportProgress) -> Unit = {},
+        isCancellationRequested: () -> Boolean = { false }
+    ): Report {
         check(LabFeatureManager.isLyricifyImportEnabled(context)) { "Import is disabled" }
         val jobContext = currentCoroutineContext()
         val checkActive = {
             jobContext.ensureActive()
+            if (isCancellationRequested()) throw CancellationException("Import cancelled")
             check(LabFeatureManager.isLyricifyImportEnabled(context)) { "Import is disabled" }
         }
         val copy = File.createTempFile("lyricify-import-", ".db", context.cacheDir)
         try {
+            onProgress(LyricifyImportProgress(LyricifyImportStage.COPYING))
             context.contentResolver.openInputStream(uri)?.use { input ->
                 copy.outputStream().use { output -> copyDatabase(input, output) {
                     checkActive()
@@ -68,15 +89,19 @@ object LyricifyDatabaseImporter {
             return SQLiteDatabase.openDatabase(
                 copy.absolutePath, null, SQLiteDatabase.OPEN_READONLY
             ).use { db ->
-                validateDatabase(db)
+                checkActive()
+                onProgress(LyricifyImportProgress(LyricifyImportStage.VALIDATING))
+                val total = validateDatabase(db)
                 var failed = 0
-                val tracks = readTracks(db, checkActive) { failed++ }
+                onProgress(LyricifyImportProgress(LyricifyImportStage.PARSING, total = total))
+                val tracks = readTracks(db, checkActive, total, onProgress) { failed++ }
                 val (imported, skipped) = OnlineLyricCacheStore(context).importLyricifyTracks(
-                    tracks, mode, copy.length(), checkActive
+                    tracks, mode, copy.length(), checkActive, onProgress
                 )
                 Report(imported, skipped, failed)
             }
         } finally {
+            onProgress(LyricifyImportProgress(LyricifyImportStage.CLEANING_UP))
             copy.delete()
         }
     }
@@ -115,7 +140,7 @@ object LyricifyDatabaseImporter {
         return incoming + existing
     }
 
-    private fun validateDatabase(db: SQLiteDatabase) {
+    private fun validateDatabase(db: SQLiteDatabase): Int {
         val requiredColumns = mapOf(
             "catalog_tracks" to setOf("id", "title", "artist", "album", "duration_ms", "selected_asset_id"),
             "lyrics_assets" to setOf("id", "track_id", "provider", "local_name", "payload_json", "is_verified"),
@@ -128,15 +153,21 @@ object LyricifyDatabaseImporter {
             require(columns.containsAll(required)) { "Unsupported Lyricify database structure" }
         }
         fun scalar(sql: String) = db.rawQuery(sql, null).use { cursor -> cursor.moveToFirst(); cursor.getLong(0) }
-        require(scalar("SELECT COUNT(*) FROM catalog_tracks") <= MAX_TRACKS) { "Too many songs to import" }
+        val total = scalar("SELECT COUNT(*) FROM catalog_tracks")
+        require(total <= MAX_TRACKS) { "Too many songs to import" }
         require(scalar("SELECT COUNT(*) FROM lyrics_assets") <= MAX_ASSETS) { "Too many lyric assets to import" }
         require(scalar("SELECT COUNT(*) FROM track_aliases") <= MAX_TRACKS * 10L) { "Too many song aliases to import" }
         checkSize(scalar("SELECT COALESCE(MAX(length(CAST(payload_json AS BLOB))), 0) FROM lyrics_assets"), MAX_PAYLOAD_BYTES, "Lyric payload")
         checkSize(scalar("SELECT COALESCE(SUM(length(CAST(payload_json AS BLOB))), 0) FROM lyrics_assets"), MAX_TOTAL_PAYLOAD_BYTES, "Total lyric payloads")
         checkSize(scalar("SELECT COALESCE(MAX(bytes), 0) FROM (SELECT SUM(length(CAST(payload_json AS BLOB))) AS bytes FROM lyrics_assets GROUP BY track_id)"), MAX_TRACK_PAYLOAD_BYTES, "Song payloads")
+        return total.toInt()
     }
 
-    private fun readTracks(db: SQLiteDatabase, checkActive: () -> Unit, onFailed: () -> Unit) = sequence {
+    private fun readTracks(
+        db: SQLiteDatabase, checkActive: () -> Unit, total: Int,
+        onProgress: (LyricifyImportProgress) -> Unit, onFailed: () -> Unit
+    ) = sequence {
+        var processed = 0
         db.rawQuery("SELECT id, title, artist, album, duration_ms, selected_asset_id FROM catalog_tracks ORDER BY id", null).use { tracks ->
             while (tracks.moveToNext()) {
                 checkActive()
@@ -174,6 +205,7 @@ object LyricifyDatabaseImporter {
                 }
                 val selectedId = if (tracks.isNull(5)) null else tracks.getLong(5)
                 val selected = selectAsset(candidates, selectedId)
+                onProgress(LyricifyImportProgress(LyricifyImportStage.PARSING, ++processed, total))
                 if (selected == null) { onFailed(); continue }
                 candidates.forEach { ids.putAll(it.providerIds) }
                 ids.putAll(selected.providerIds)

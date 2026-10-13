@@ -42,6 +42,8 @@ import com.example.islandlyrics.feature.faq.material.FAQScreen
 import com.example.islandlyrics.feature.faq.miuix.MiuixFAQScreen
 import com.example.islandlyrics.feature.lab.material.LabScreen
 import com.example.islandlyrics.feature.lab.miuix.MiuixLabScreen
+import com.example.islandlyrics.feature.lab.LyricifyImportUiState
+import com.example.islandlyrics.feature.lab.rememberLyricifyImporter
 import com.example.islandlyrics.feature.lastfm.material.LastFmSettingsScreen
 import com.example.islandlyrics.feature.lastfm.miuix.MiuixLastFmSettingsScreen
 import com.example.islandlyrics.feature.locallyrics.material.LocalLyricDirectoryScreen
@@ -106,9 +108,14 @@ class SettingsActivity : BaseActivity() {
         }
 
         setContent {
+            val lyricifyImporter = rememberLyricifyImporter()
             if (isMiuixEnabled(this@SettingsActivity)) {
                 MiuixAppTheme {
-                    val pageStack = remember { mutableStateListOf<SettingsPage>() }
+                    val pageStack = remember {
+                        mutableStateListOf<SettingsPage>().apply {
+                            if (lyricifyImporter.restoreLab) add(SettingsPage.Lab())
+                        }
+                    }
                     val initialOpenPage = remember { intent.getStringExtra("open_page") }
                     fun pushPage(page: SettingsPage) {
                         pageStack.add(page)
@@ -136,6 +143,7 @@ class SettingsActivity : BaseActivity() {
                         }
                     }
                     LaunchedEffect(initialOpenPage) {
+                        if (lyricifyImporter.restoreLab) return@LaunchedEffect
                         when (initialOpenPage) {
                             "local_lyrics" -> pushPage(SettingsPage.LocalLyricDirectories)
                             "cache_management" -> pushPage(SettingsPage.CacheManagement)
@@ -189,6 +197,7 @@ class SettingsActivity : BaseActivity() {
                             pageContent = { page ->
                                 MiuixSettingsPage(
                                     page = page,
+                                    lyricifyImporter = lyricifyImporter,
                                     onBack = ::popPage,
                                     onPushPage = ::pushPage,
                                     onNavigate = ::handleNavigate,
@@ -201,7 +210,11 @@ class SettingsActivity : BaseActivity() {
                 }
             } else {
                 IslandLyricsMaterialTheme {
-                    val pageStack = remember { mutableStateListOf<SettingsPage>() }
+                    val pageStack = remember {
+                        mutableStateListOf<SettingsPage>().apply {
+                            if (lyricifyImporter.restoreLab) add(SettingsPage.Lab())
+                        }
+                    }
                     fun pushPage(page: SettingsPage) {
                         pageStack.add(page)
                     }
@@ -273,6 +286,7 @@ class SettingsActivity : BaseActivity() {
                             pageContent = { page ->
                                 MaterialSettingsPage(
                                     page = page,
+                                    lyricifyImporter = lyricifyImporter,
                                     onBack = ::popPage,
                                     onPushPage = ::pushPage,
                                     onNavigate = ::handleNavigate,
@@ -290,6 +304,7 @@ class SettingsActivity : BaseActivity() {
     @Composable
     private fun MaterialSettingsPage(
         page: SettingsPage,
+        lyricifyImporter: LyricifyImportUiState,
         onBack: () -> Unit,
         onPushPage: (SettingsPage) -> Unit,
         onNavigate: (SettingsSearchAction.Navigate) -> Unit,
@@ -346,6 +361,7 @@ class SettingsActivity : BaseActivity() {
             SettingsPage.CacheManagement -> CacheManagementScreen(onBack = onBack)
             is SettingsPage.Lab -> LabScreen(
                 onBack = onBack,
+                lyricifyImporter = lyricifyImporter,
                 targetItemKey = page.targetItemKey,
                 onOpenCapsuleNotification = { onPushPage(SettingsPage.CapsuleNotification()) }
             )
@@ -361,6 +377,7 @@ class SettingsActivity : BaseActivity() {
     @Composable
     private fun MiuixSettingsPage(
         page: SettingsPage,
+        lyricifyImporter: LyricifyImportUiState,
         onBack: () -> Unit,
         onPushPage: (SettingsPage) -> Unit,
         onNavigate: (SettingsSearchAction.Navigate) -> Unit,
@@ -417,6 +434,7 @@ class SettingsActivity : BaseActivity() {
             SettingsPage.CacheManagement -> MiuixCacheManagementScreen(onBack = onBack)
             is SettingsPage.Lab -> MiuixLabScreen(
                 onBack = onBack,
+                lyricifyImporter = lyricifyImporter,
                 targetItemKey = page.targetItemKey,
                 onOpenCapsuleNotification = { onPushPage(SettingsPage.CapsuleNotification()) }
             )

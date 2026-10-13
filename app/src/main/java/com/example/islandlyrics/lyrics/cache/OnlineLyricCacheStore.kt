@@ -29,7 +29,9 @@ import com.example.islandlyrics.lyrics.online.provider.OnlineLyricProvider
 import com.example.islandlyrics.lyrics.online.provider.AppleMusicMediaRef
 import com.example.islandlyrics.lyrics.importer.LyricifyDatabaseImporter
 import com.example.islandlyrics.lyrics.importer.LyricifyImportMode
+import com.example.islandlyrics.lyrics.importer.LyricifyImportProgress
 import com.example.islandlyrics.lyrics.importer.LyricifyImportSelection
+import com.example.islandlyrics.lyrics.importer.LyricifyImportStage
 import com.example.islandlyrics.lyrics.importer.LyricifyTrackIdentity
 import org.json.JSONArray
 import org.json.JSONObject
@@ -370,11 +372,12 @@ class OnlineLyricCacheStore(context: Context) {
 
     fun importLyricifyTracks(
         tracks: List<Pair<LyricifyTrackIdentity, LyricifyImportSelection>>, mode: LyricifyImportMode
-    ): Pair<Int, Int> = importLyricifyTracks(tracks.asSequence(), mode, 0L) {}
+    ): Pair<Int, Int> = importLyricifyTracks(tracks.asSequence(), mode, 0L, checkActive = {})
 
     internal fun importLyricifyTracks(
         tracks: Sequence<Pair<LyricifyTrackIdentity, LyricifyImportSelection>>, mode: LyricifyImportMode,
-        inputBytes: Long, checkActive: () -> Unit
+        inputBytes: Long, checkActive: () -> Unit,
+        onProgress: (LyricifyImportProgress) -> Unit = {}
     ): Pair<Int, Int> {
         check(storeDir.isDirectory || storeDir.mkdirs()) { "Cannot create the lyric cache directory" }
         val preparedDir = Files.createTempDirectory(appContext.cacheDir.toPath(), "lyricify-prepared-").toFile()
@@ -405,7 +408,9 @@ class OnlineLyricCacheStore(context: Context) {
                     lyricifyCandidates = selection.candidates.map { base.withImportedResult(it) }
                 ))
             }
+            onProgress(LyricifyImportProgress(LyricifyImportStage.READING_CACHE))
             return synchronized(lock) {
+                checkActive()
                 ensureMigrated()
                 val index = readIndex(strict = true)
                 val identities = mutableMapOf<String, LyricifyTrackIdentity>()
@@ -417,9 +422,14 @@ class OnlineLyricCacheStore(context: Context) {
                     identities[id] = identity
                     keys(identity).forEach { matchingKeys.getOrPut(it) { mutableSetOf() }.add(id) }
                 }
+                var read = 0
+                onProgress(LyricifyImportProgress(LyricifyImportStage.READING_CACHE, total = index.size))
                 for ((id, header) in index) {
                     checkActive()
-                    if (!header.hasLyricContent() && !header.instrumental) continue
+                    if (!header.hasLyricContent() && !header.instrumental) {
+                        onProgress(LyricifyImportProgress(LyricifyImportStage.READING_CACHE, ++read, index.size))
+                        continue
+                    }
                     require(id.matches(Regex("[0-9a-f]{64}"))) { "Invalid existing cache key" }
                     val json = readImportJson(entryFile(id))
                     require(json.getString("id") == id) { "Invalid existing cache identity" }
@@ -429,6 +439,7 @@ class OnlineLyricCacheStore(context: Context) {
                     json.remove("translationLyrics")
                     json.remove("romanLyrics")
                     rememberIdentity(id, json.toEntry().importIdentity())
+                    onProgress(LyricifyImportProgress(LyricifyImportStage.READING_CACHE, ++read, index.size))
                 }
                 check(importTransactionDir.mkdir()) { "Cannot create import transaction" }
                 val stagedDir = File(importTransactionDir, "new").also { check(it.mkdir()) }
@@ -440,13 +451,18 @@ class OnlineLyricCacheStore(context: Context) {
                 var imported = 0
                 var skipped = 0
                 try {
+                    onProgress(LyricifyImportProgress(LyricifyImportStage.MATCHING, total = count))
                     for (position in 1..count) {
                         checkActive()
                         val incomingEntry = readImportJson(File(preparedDir, "$position.json")).toEntry()
                         val identity = incomingEntry.importIdentity()
                         val matchIds = keys(identity).flatMap { matchingKeys[it].orEmpty() }.distinct()
                             .filter { LyricifyDatabaseImporter.sameTrack(identity, identities.getValue(it)) }
-                        if (mode == LyricifyImportMode.SKIP && matchIds.isNotEmpty()) { skipped++; continue }
+                        if (mode == LyricifyImportMode.SKIP && matchIds.isNotEmpty()) {
+                            skipped++
+                            onProgress(LyricifyImportProgress(LyricifyImportStage.MATCHING, position, count))
+                            continue
+                        }
                         LyricifyDatabaseImporter.checkSize(matchIds.sumOf { currentFile(it).length() },
                             LyricifyDatabaseImporter.MAX_ENTRY_BYTES, "Existing song cache")
                         val matches = matchIds.map(::currentEntry)
@@ -485,7 +501,9 @@ class OnlineLyricCacheStore(context: Context) {
                             rememberIdentity(updated.id, updated.importIdentity())
                         }
                         imported++
+                        onProgress(LyricifyImportProgress(LyricifyImportStage.MATCHING, position, count))
                     }
+                    checkActive()
                     if (changedIds.isEmpty()) return@synchronized imported to skipped
                     val stagedIndex = File(stagedDir, "index.json")
                     writeIndex(index, stagedIndex) { bytes ->
@@ -493,15 +511,20 @@ class OnlineLyricCacheStore(context: Context) {
                         reserve(bytes)
                     }
                     val existed = changedIds.filter { entryFile(it).exists() }
-                    for (id in existed) {
+                    val backupCount = existed.size + if (indexFile.exists()) 1 else 0
+                    onProgress(LyricifyImportProgress(LyricifyImportStage.BACKING_UP, total = backupCount))
+                    for ((position, id) in existed.withIndex()) {
                         checkActive()
                         val file = entryFile(id)
                         reserve(file.length())
                         file.copyTo(File(backupDir, "$id.json"))
+                        onProgress(LyricifyImportProgress(LyricifyImportStage.BACKING_UP, position + 1, backupCount))
                     }
                     if (indexFile.exists()) {
+                        checkActive()
                         reserve(indexFile.length())
                         indexFile.copyTo(File(backupDir, "index.json"))
+                        onProgress(LyricifyImportProgress(LyricifyImportStage.BACKING_UP, backupCount, backupCount))
                     }
                     val manifest = JSONObject().put("ids", JSONArray(changedIds.toList()))
                         .put("existingIds", JSONArray(existed)).put("hadIndex", indexFile.exists())
@@ -512,10 +535,14 @@ class OnlineLyricCacheStore(context: Context) {
                         output.write(manifestBytes); output.fd.sync()
                     }
                     Files.move(preparedManifest.toPath(), File(importTransactionDir, "manifest.json").toPath(), StandardCopyOption.ATOMIC_MOVE)
-                    for (id in changedIds) {
+                    onProgress(LyricifyImportProgress(LyricifyImportStage.WRITING, total = changedIds.size))
+                    for ((position, id) in changedIds.withIndex()) {
                         checkActive()
                         atomicImportCopy(File(stagedDir, "$id.json"), entryFile(id), keepRecoverySpace = true)
+                        onProgress(LyricifyImportProgress(LyricifyImportStage.WRITING, position + 1, changedIds.size))
                     }
+                    // Close the UI cancellation window, then honor any request already made.
+                    onProgress(LyricifyImportProgress(LyricifyImportStage.COMMITTING))
                     checkActive()
                     atomicImportCopy(stagedIndex, indexFile, keepRecoverySpace = true)
                     checkActive()
@@ -524,9 +551,11 @@ class OnlineLyricCacheStore(context: Context) {
                     Files.move(commitMarker.toPath(), File(importTransactionDir, "committed").toPath(), StandardCopyOption.ATOMIC_MOVE)
                     imported to skipped
                 } catch (error: Throwable) {
+                    onProgress(LyricifyImportProgress(LyricifyImportStage.ROLLING_BACK))
                     try { recoverLyricifyImport() } catch (recoveryError: Throwable) { error.addSuppressed(recoveryError) }
                     throw error
                 } finally {
+                    onProgress(LyricifyImportProgress(LyricifyImportStage.CLEANING_UP))
                     if (File(importTransactionDir, "committed").exists() || !File(importTransactionDir, "manifest.json").exists()) {
                         importTransactionDir.deleteRecursively()
                     }

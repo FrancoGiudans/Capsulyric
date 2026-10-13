@@ -1329,7 +1329,23 @@
     <string name="lab_lyricify_import_merge_summary">保留当前选择，加入导入候选</string>
     <string name="lab_lyricify_import_skip_title">跳过</string>
     <string name="lab_lyricify_import_skip_summary">不导入发生冲突的歌曲</string>
-    <string name="lab_lyricify_import_progress">正在导入歌词…</string>
+    <string name="lab_lyricify_import_copying">正在复制数据库…</string>
+    <string name="lab_lyricify_import_validating">正在校验数据库…</string>
+    <string name="lab_lyricify_import_parsing">正在解析歌词…</string>
+    <string name="lab_lyricify_import_reading_cache">正在读取已有歌词…</string>
+    <string name="lab_lyricify_import_matching">正在处理已有歌词选择…</string>
+    <string name="lab_lyricify_import_backing_up">正在备份已有歌词…</string>
+    <string name="lab_lyricify_import_writing">正在保存歌词…</string>
+    <string name="lab_lyricify_import_committing">正在完成导入…</string>
+    <string name="lab_lyricify_import_cleaning_up">正在清理临时文件…</string>
+    <string name="lab_lyricify_import_rolling_back">正在恢复原有歌词…</string>
+    <string name="lab_lyricify_import_cancelling">正在取消导入，请稍候…</string>
+    <string name="lab_lyricify_import_song_count">%1$d / %2$d 首</string>
+    <string name="lab_lyricify_import_entry_count">%1$d / %2$d 条</string>
+    <string name="lab_lyricify_import_file_count">%1$d / %2$d 个文件</string>
+    <string name="lab_lyricify_import_done">完成</string>
+    <string name="lab_lyricify_import_mode_lost">导入模式未能恢复，请重新选择文件。</string>
+    <string name="lab_lyricify_import_rollback_error">未能恢复原有歌词：%1$s。请进入缓存管理重试恢复。</string>
     <string name="lab_lyricify_import_result">已导入 %1$d 首，跳过 %2$d 首，失败 %3$d 首。</string>
     <string name="lab_lyricify_import_error">导入失败：%1$s</string>
 </resources>

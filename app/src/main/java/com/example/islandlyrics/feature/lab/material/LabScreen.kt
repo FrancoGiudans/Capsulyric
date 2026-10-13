@@ -53,13 +53,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.DialogProperties
 import kotlin.math.roundToInt
 import com.example.islandlyrics.R
 import com.example.islandlyrics.core.network.OfflineModeManager
 import com.example.islandlyrics.core.platform.RomUtils
 import com.example.islandlyrics.core.settings.AppPreferences
 import com.example.islandlyrics.core.settings.LabFeatureManager
-import com.example.islandlyrics.feature.lab.rememberLyricifyImporter
+import com.example.islandlyrics.feature.lab.LyricifyImportUiState
 import com.example.islandlyrics.lyrics.importer.LyricifyImportMode
 import androidx.compose.material3.LinearProgressIndicator
 import com.example.islandlyrics.ui.overlay.superisland.config.SuperIslandColorSource
@@ -76,13 +77,13 @@ import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun LabScreen(
+internal fun LabScreen(
     onBack: () -> Unit,
+    lyricifyImporter: LyricifyImportUiState,
     targetItemKey: String? = null,
     onOpenCapsuleNotification: (() -> Unit)? = null
 ) {
     val context = LocalContext.current
-    val lyricifyImporter = rememberLyricifyImporter()
     var lyricifyImportEnabled by remember { mutableStateOf(LabFeatureManager.isLyricifyImportEnabled(context)) }
     var showLyricifyImportDialog by remember { mutableStateOf(false) }
     val listState = rememberLazyListState()
@@ -210,11 +211,6 @@ fun LabScreen(
                             Text(stringResource(R.string.lab_lyricify_import_button))
                         }
                     }
-                    if (lyricifyImporter.importing) {
-                        LinearProgressIndicator(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp))
-                        Text(stringResource(R.string.lab_lyricify_import_progress), modifier = Modifier.padding(16.dp))
-                    }
-                    lyricifyImporter.message?.let { Text(it, modifier = Modifier.padding(16.dp)) }
                 }
             }
 
@@ -388,6 +384,43 @@ fun LabScreen(
                 }
             }
         }
+    }
+
+    if (lyricifyImporter.showDialog) {
+        MaterialBlurAlertDialog(
+            onDismissRequest = {},
+            properties = DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false),
+            title = { Text(stringResource(R.string.lab_lyricify_import_button)) },
+            text = {
+                Column {
+                    lyricifyImporter.message?.let { Text(it) }
+                    if (lyricifyImporter.importing) {
+                        Spacer(Modifier.height(16.dp))
+                        val progress = lyricifyImporter.state.progress.fraction.takeIf { lyricifyImporter.state.canCancel }
+                        if (progress == null) {
+                            LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                        } else {
+                            LinearProgressIndicator(progress = { progress }, modifier = Modifier.fillMaxWidth())
+                        }
+                        lyricifyImporter.count?.let {
+                            Spacer(Modifier.height(8.dp))
+                            Text(it, style = MaterialTheme.typography.bodyMedium)
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                if (lyricifyImporter.importing) {
+                    TextButton(onClick = lyricifyImporter.cancel, enabled = lyricifyImporter.state.canCancel) {
+                        Text(stringResource(android.R.string.cancel))
+                    }
+                } else {
+                    TextButton(onClick = lyricifyImporter.dismiss) {
+                        Text(stringResource(R.string.lab_lyricify_import_done))
+                    }
+                }
+            }
+        )
     }
 
     if (showLyricifyImportDialog) {
