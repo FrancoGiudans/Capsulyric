@@ -25,7 +25,7 @@ package com.example.islandlyrics.ui.overlay.superisland.config
 import android.content.SharedPreferences
 import androidx.core.content.edit
 import com.example.islandlyrics.core.settings.AppPreferences
-import com.example.islandlyrics.core.settings.LabFeatureManager
+import com.example.islandlyrics.ui.overlay.config.CapsuleRenderMode
 
 /**
  * 旧版本「通知按键」偏好迁移到新版「播放按键布局 + 显示进度条」推导模型：
@@ -72,9 +72,11 @@ internal object SuperIslandPreferenceMigration {
     private fun restoreScrollingPreferenceIfNoLongerForced(prefs: SharedPreferences) {
         val wasForced = prefs.getBoolean(KEY_FORCED_SCROLLING, false) ||
             prefs.getBoolean(KEY_LEGACY_FORCED_SCROLLING, false)
-        if (!wasForced ||
-            AppPreferences.superIslandNotificationStyle(prefs) != LabFeatureManager.SUPER_ISLAND_STYLE_STANDARD
-        ) {
+        val fullLyricModeIsActive = CapsuleRenderMode.shouldDisableLyricScrolling(
+            CapsuleRenderMode.effective(prefs),
+            AppPreferences.superIslandLyricMode(prefs)
+        )
+        if (!wasForced || fullLyricModeIsActive) {
             return
         }
 

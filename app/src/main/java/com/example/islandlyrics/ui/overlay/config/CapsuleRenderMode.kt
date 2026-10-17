@@ -33,6 +33,12 @@ enum class CapsuleRenderMode(val prefValue: String) {
     companion object {
         const val PREF_KEY = "capsule_render_mode"
 
+        fun shouldDisableLyricScrolling(
+            renderMode: CapsuleRenderMode,
+            superIslandLyricMode: String
+        ): Boolean =
+            renderMode == XIAOMI_SUPER_ISLAND && superIslandLyricMode == "full"
+
         fun read(context: Context): CapsuleRenderMode =
             read(AppPreferences.of(context))
 

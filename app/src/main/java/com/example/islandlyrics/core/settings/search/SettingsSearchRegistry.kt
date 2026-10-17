@@ -436,6 +436,18 @@ object SettingsSearchRegistry {
                 targetItemKey = "key_material_page_blur"
             )
         ),
+        SettingsSearchItem(
+            id = "pref_lyric_visual_center",
+            titleRes = R.string.diag_lab_lyric_visual_center_title,
+            summaryRes = R.string.diag_lab_lyric_visual_center_desc,
+            breadcrumbResList = listOf(R.string.settings_developer_mode_header, R.string.title_lab),
+            keywords = listOf("逐字歌词视觉中心", "歌词居中", "长歌词居中", "胶囊歌词滚动"),
+            isVisible = { LyricRepository.getInstance().devModeEnabled.value == true },
+            action = SettingsSearchAction.Navigate(
+                target = SettingsNavigationTarget.LAB,
+                targetItemKey = "key_lyric_visual_center"
+            )
+        ),
         // ═════════════════════════════════════════════════════════════════════
         // 二级设置项：灵动岛胶囊 (Capsule Tab)
         // ═════════════════════════════════════════════════════════════════════

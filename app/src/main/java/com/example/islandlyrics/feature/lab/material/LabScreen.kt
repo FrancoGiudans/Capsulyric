@@ -127,6 +127,9 @@ internal fun LabScreen(
     var liveUpdateTextLimitsEnabled by remember {
         mutableStateOf(LabFeatureManager.isLiveUpdateTextLimitsEnabled(context))
     }
+    var lyricVisualCenterEnabled by remember {
+        mutableStateOf(LabFeatureManager.isLyricVisualCenterEnabled(context))
+    }
     var floatingLyricsLabEnabled by remember {
         mutableStateOf(LabFeatureManager.isFloatingLyricsEnabled(context))
     }
@@ -331,6 +334,17 @@ internal fun LabScreen(
                                 LabFeatureManager.setLiveUpdateTextLimitsEnabled(context, false)
                                 liveUpdateTextLimitsEnabled = false
                             }
+                        }
+                    )
+                    SettingsCardDivider()
+                    SettingsSwitchItem(
+                        title = stringResource(R.string.diag_lab_lyric_visual_center_title),
+                        subtitle = stringResource(R.string.diag_lab_lyric_visual_center_desc),
+                        checked = lyricVisualCenterEnabled,
+                        modifier = targetModifier("key_lyric_visual_center"),
+                        onCheckedChange = { enabled ->
+                            lyricVisualCenterEnabled = enabled
+                            LabFeatureManager.setLyricVisualCenterEnabled(context, enabled)
                         }
                     )
                     SettingsCardDivider()

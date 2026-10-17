@@ -466,7 +466,7 @@
     <string name="super_island_lyric_mode_standard">Standard</string>
     <string name="super_island_lyric_mode_standard_desc">Shows playback info on the left and the current lyric on the right. Best for centered camera cutouts.</string>
     <string name="super_island_lyric_mode_full">Full Lyrics</string>
-    <string name="super_island_lyric_mode_full_desc">Shows lyrics on both sides. Standard style scrolls long lines smoothly; advanced styles keep scrolling disabled.</string>
+    <string name="super_island_lyric_mode_full_desc">Shows lyrics on both sides without scrolling.</string>
     <string name="settings_super_island_full_lyric_show_left_cover">Show Album Cover on Left</string>
     <string name="settings_super_island_full_lyric_show_left_cover_desc">Keep the album cover in the left island area in Full Lyrics mode.</string>
     <string name="settings_super_island_standard_show_left_cover">Show Album Cover on Left</string>
@@ -923,6 +923,8 @@ Within the log interface, select the share/export icon. You can specify a timefr
     <string name="settings_edge_highlight_texture_desc">Add a glass-like highlight along the edges of MIUIX blur surfaces.</string>
     <string name="diag_lab_live_update_text_limits_title">Live Update Text Limits</string>
     <string name="diag_lab_live_update_text_limits_desc">Show a control for tuning the Live Update lyric text limit in Capsule &amp; Notification.</string>
+    <string name="diag_lab_lyric_visual_center_title">Lyric Visual Center</string>
+    <string name="diag_lab_lyric_visual_center_desc">Keep the active word near the center of long timed lyrics in the capsule and Xiaomi Super Island.</string>
     <string name="diag_lab_material_blur_title">Material Page Blur</string>
     <string name="diag_lab_material_blur_desc">Enable backdrop blur for Material pages. Miuix pages are not affected.</string>
     <string name="diag_lab_experiment_updates_title">Receive Test Builds</string>
