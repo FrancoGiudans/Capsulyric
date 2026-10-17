@@ -183,7 +183,7 @@ internal class SuperIslandStandardFocusBuilder(
                         showHighlightColor = showHighlightColor,
                         title = state.title,
                         artist = state.artist,
-                        enableStandardFullLyricScrolling =
+                        fullLyricUsesDedicatedRightColumn =
                             preferences.notificationStyle == LabFeatureManager.SUPER_ISLAND_STYLE_STANDARD
                     )
                 }

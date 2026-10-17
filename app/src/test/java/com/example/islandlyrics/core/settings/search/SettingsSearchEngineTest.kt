@@ -129,6 +129,27 @@ class SettingsSearchEngineTest {
     }
 
     @Test
+    fun lyricVisualCenterSearch_opensTheLabSetting() {
+        val item = SettingsSearchRegistry.getAllItems()
+            .first { it.id == "pref_lyric_visual_center" }
+
+        assertTrue(SettingsUiVariant.MIUIX in item.supportedVariants)
+        assertTrue(SettingsUiVariant.MATERIAL in item.supportedVariants)
+        assertEquals(
+            "key_lyric_visual_center",
+            (item.action as SettingsSearchAction.Navigate).targetItemKey
+        )
+
+        val results = SettingsSearchEngine.search(
+            stringResolver = { "mock_$it" },
+            isVisible = { true },
+            query = "歌词居中",
+            variant = SettingsUiVariant.MIUIX
+        )
+        assertTrue(results.any { it.item.id == item.id })
+    }
+
+    @Test
     fun testMainSettingsItemsNavigateToMainSettings() {
         val mainSettingIds = setOf(
             "pref_recommend_media_app",

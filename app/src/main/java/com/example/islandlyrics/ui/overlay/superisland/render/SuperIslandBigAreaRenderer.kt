@@ -63,7 +63,7 @@ internal object SuperIslandBigAreaRenderer {
         showHighlightColor: Boolean,
         title: String = "",
         artist: String = "",
-        enableStandardFullLyricScrolling: Boolean = false
+        fullLyricUsesDedicatedRightColumn: Boolean = false
     ) {
         if (config.lyricMode == "full") {
             applyFullMode(
@@ -76,7 +76,7 @@ internal object SuperIslandBigAreaRenderer {
                 showHighlightColor = showHighlightColor,
                 title = title,
                 artist = artist,
-                enableStandardFullLyricScrolling = enableStandardFullLyricScrolling
+                fullLyricUsesDedicatedRightColumn = fullLyricUsesDedicatedRightColumn
             )
             return
         }
@@ -123,14 +123,9 @@ internal object SuperIslandBigAreaRenderer {
         showHighlightColor: Boolean,
         title: String,
         artist: String,
-        enableStandardFullLyricScrolling: Boolean
+        fullLyricUsesDedicatedRightColumn: Boolean
     ) {
-        val lyricCandidates = if (enableStandardFullLyricScrolling) {
-            sequenceOf(displayLyric, fullLyric)
-        } else {
-            sequenceOf(fullLyric, displayLyric)
-        }
-        val resolvedLyric = lyricCandidates
+        val resolvedLyric = sequenceOf(fullLyric, displayLyric)
             .firstOrNull { !SuperIslandTextResolver.isPlaceholder(it) }
             .orEmpty()
         val hasLyric = resolvedLyric.isNotBlank()
@@ -167,7 +162,7 @@ internal object SuperIslandBigAreaRenderer {
             rightText = split.right.ifEmpty { "♪" },
             showHighlightColor = showHighlightColor,
             narrowLeftFont = false,
-            useMatchingRightColumn = enableStandardFullLyricScrolling
+            useMatchingRightColumn = fullLyricUsesDedicatedRightColumn
         )
     }
 

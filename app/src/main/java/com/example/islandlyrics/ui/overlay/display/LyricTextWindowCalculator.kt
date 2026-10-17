@@ -21,6 +21,11 @@
  */
 
 package com.example.islandlyrics.ui.overlay.display
+
+import com.example.islandlyrics.lyrics.online.OnlineLyricFetcher
+import java.text.BreakIterator
+import java.util.Locale
+
 internal object LyricTextWindowCalculator {
     private const val DEFAULT_SHIFT_WEIGHT = 2
     private const val WESTERN_SCROLL_START_MIN_WEIGHT = 4
@@ -100,6 +105,103 @@ internal object LyricTextWindowCalculator {
         val targetOffset = maxOf(0, sungWeight - scrollStartThreshold)
         val finalOffset = minOf(targetOffset, maxOffset)
         return extractByWeight(fullText, finalOffset, maxDisplayWeight)
+    }
+
+    /**
+     * Returns a width-limited lyric window centered on the syllable active at [position].
+     * Returns null when the syllable text cannot be aligned with [fullText].
+     */
+    fun visualCenterSyllableWindow(
+        fullText: String,
+        syllables: List<OnlineLyricFetcher.SyllableInfo>?,
+        position: Long,
+        maxDisplayWeight: Int
+    ): String? {
+        if (maxDisplayWeight <= 0) return null
+        if (weight(fullText) <= maxDisplayWeight) return fullText
+
+        val nonWhitespaceOffsets = fullText.indices.filterNot { fullText[it].isWhitespace() }
+        val normalizedText = buildString(nonWhitespaceOffsets.size) {
+            nonWhitespaceOffsets.forEach { append(fullText[it]) }
+        }
+        val alignedSyllables = syllables
+            ?.asSequence()
+            ?.filter { it.text.any { char -> !char.isWhitespace() } }
+            ?.toList()
+            ?.takeIf { it.isNotEmpty() }
+            ?: return null
+
+        var normalizedOffset = 0
+        var focusedRange: IntRange? = null
+        alignedSyllables.forEach { syllable ->
+            val normalizedSyllable = syllable.text.filterNot { it.isWhitespace() }
+            if (normalizedSyllable.isEmpty() ||
+                normalizedOffset + normalizedSyllable.length > normalizedText.length ||
+                !normalizedText.regionMatches(normalizedOffset, normalizedSyllable, 0, normalizedSyllable.length)
+            ) {
+                return null
+            }
+
+            val range = nonWhitespaceOffsets[normalizedOffset]..nonWhitespaceOffsets[
+                normalizedOffset + normalizedSyllable.length - 1
+            ]
+            if (position >= syllable.startTime) focusedRange = range
+            normalizedOffset += normalizedSyllable.length
+        }
+        if (normalizedOffset != normalizedText.length) return null
+
+        val range = focusedRange
+        val focusWeight = if (range == null) {
+            0.0
+        } else {
+            weight(fullText.substring(0, range.first)) +
+                weight(fullText.substring(range.first, range.last + 1)) / 2.0
+        }
+        val totalWeight = weight(fullText)
+        val maxStartWeight = maxOf(0, totalWeight - maxDisplayWeight)
+        val targetStartWeight =
+            (focusWeight - maxDisplayWeight / 2.0).coerceIn(0.0, maxStartWeight.toDouble())
+
+        var bestStartIndex = 0
+        var bestStartWeight = 0
+        var bestDistance = kotlin.math.abs(targetStartWeight)
+        val boundaries = BreakIterator.getCharacterInstance(Locale.ROOT).apply { setText(fullText) }
+        var segmentStart = boundaries.first()
+        var prefixWeight = 0
+        var segmentEnd = boundaries.next()
+        while (segmentEnd != BreakIterator.DONE) {
+            // The first boundary at or past maxStartWeight is the earliest
+            // suffix that fits. Pin to it at the tail, even when rounding
+            // backwards would preserve more context but hide the last glyph.
+            val isTailBoundary = prefixWeight >= maxStartWeight
+            val pinToTail = isTailBoundary && targetStartWeight == maxStartWeight.toDouble()
+            val distance = kotlin.math.abs(prefixWeight - targetStartWeight)
+            if (pinToTail || distance < bestDistance ||
+                (distance == bestDistance && prefixWeight < bestStartWeight)
+            ) {
+                bestStartIndex = segmentStart
+                bestStartWeight = prefixWeight
+                bestDistance = distance
+            }
+            if (isTailBoundary) break
+            prefixWeight += weight(fullText.substring(segmentStart, segmentEnd))
+            segmentStart = segmentEnd
+            segmentEnd = boundaries.next()
+        }
+
+        var endIndex = bestStartIndex
+        var windowWeight = 0
+        boundaries.setText(fullText)
+        var nextBoundary = boundaries.following(bestStartIndex)
+        while (nextBoundary != BreakIterator.DONE) {
+            val segmentWeight = weight(fullText.substring(endIndex, nextBoundary))
+            if (windowWeight + segmentWeight > maxDisplayWeight) break
+            windowWeight += segmentWeight
+            endIndex = nextBoundary
+            nextBoundary = boundaries.next()
+        }
+        if (endIndex <= bestStartIndex) return null
+        return fullText.substring(bestStartIndex, endIndex).trim()
     }
 
     fun smartShiftWeight(text: String, currentOffset: Int): Int {

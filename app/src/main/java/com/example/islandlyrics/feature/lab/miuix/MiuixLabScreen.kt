@@ -27,10 +27,13 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.material3.Text
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -57,6 +60,7 @@ import com.example.islandlyrics.ui.miuix.blur.MiuixBlurDialog
 import com.example.islandlyrics.ui.miuix.blur.MiuixBlurScaffold
 import com.example.islandlyrics.ui.miuix.blur.MiuixBlurTopAppBar
 import com.example.islandlyrics.ui.miuix.effects.miuixPageScroll
+import com.example.islandlyrics.ui.miuix.search.miuixSettingHighlight
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
 import top.yukonga.miuix.kmp.basic.BasicComponent
 import top.yukonga.miuix.kmp.basic.ButtonDefaults
@@ -72,6 +76,7 @@ import top.yukonga.miuix.kmp.preference.ArrowPreference as SuperArrow
 import top.yukonga.miuix.kmp.preference.SwitchPreference as SuperSwitch
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.MiuixPopupUtils.Companion.MiuixPopupHost
+import kotlinx.coroutines.delay
 
 @Composable
 internal fun MiuixLabScreen(
@@ -85,6 +90,27 @@ internal fun MiuixLabScreen(
     var showLyricifyImportDialog by remember { mutableStateOf(false) }
     val scrollBehavior = MiuixScrollBehavior(rememberTopAppBarState())
     val listState = rememberLazyListState()
+    var activeTargetKey by remember(targetItemKey) { mutableStateOf(targetItemKey) }
+    val targetBringIntoViewRequester = remember { BringIntoViewRequester() }
+    @Composable
+    fun targetModifier(key: String): Modifier {
+        val modifier = if (activeTargetKey == key) {
+            Modifier.bringIntoViewRequester(targetBringIntoViewRequester)
+        } else {
+            Modifier
+        }
+        return modifier.miuixSettingHighlight(
+            targetKey = activeTargetKey,
+            currentKey = key,
+            onHighlightComplete = { activeTargetKey = null }
+        )
+    }
+    LaunchedEffect(targetItemKey) {
+        if (targetItemKey != null) {
+            delay(120)
+            targetBringIntoViewRequester.bringIntoView()
+        }
+    }
     var offlineModeEnabled by remember { mutableStateOf(OfflineModeManager.isEnabled(context)) }
     var superIslandAdvancedStyleEnabled by remember {
         mutableStateOf(LabFeatureManager.isSuperIslandAdvancedStyleEnabled(context))
@@ -103,6 +129,9 @@ internal fun MiuixLabScreen(
     }
     var liveUpdateTextLimitsEnabled by remember {
         mutableStateOf(LabFeatureManager.isLiveUpdateTextLimitsEnabled(context))
+    }
+    var lyricVisualCenterEnabled by remember {
+        mutableStateOf(LabFeatureManager.isLyricVisualCenterEnabled(context))
     }
     var floatingLyricsLabEnabled by remember {
         mutableStateOf(LabFeatureManager.isFloatingLyricsEnabled(context))
@@ -319,6 +348,17 @@ internal fun MiuixLabScreen(
                                 LabFeatureManager.setLiveUpdateTextLimitsEnabled(context, false)
                                 liveUpdateTextLimitsEnabled = false
                             }
+                        }
+                    )
+
+                    SuperSwitch(
+                        title = stringResource(R.string.diag_lab_lyric_visual_center_title),
+                        summary = stringResource(R.string.diag_lab_lyric_visual_center_desc),
+                        checked = lyricVisualCenterEnabled,
+                        modifier = targetModifier("key_lyric_visual_center"),
+                        onCheckedChange = { enabled ->
+                            lyricVisualCenterEnabled = enabled
+                            LabFeatureManager.setLyricVisualCenterEnabled(context, enabled)
                         }
                     )
 

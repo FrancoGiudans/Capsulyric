@@ -839,7 +839,7 @@
     <string name="super_island_lyric_mode_standard">标准</string>
     <string name="super_island_lyric_mode_standard_desc">左侧显示播放信息，右侧显示当前歌词。适合常规中置摄像头设备。</string>
     <string name="super_island_lyric_mode_full">全歌词</string>
-    <string name="super_island_lyric_mode_full_desc">左右两侧均显示歌词；标准样式会平滑滚动长歌词，高级样式仍自动关闭滚动。</string>
+    <string name="super_island_lyric_mode_full_desc">左右两侧均显示歌词，不会滚动。</string>
     <string name="settings_super_island_full_lyric_show_left_cover">左侧显示专辑封面</string>
     <string name="settings_super_island_full_lyric_show_left_cover_desc">全歌词模式下保留左侧岛区域的专辑封面。</string>
     <string name="settings_super_island_standard_show_left_cover">左侧显示专辑封面</string>
@@ -933,6 +933,8 @@
     <string name="settings_edge_highlight_texture_desc">为 MIUIX 模糊组件添加玻璃质感的边缘高光。</string>
     <string name="diag_lab_live_update_text_limits_title">Live Update 字数上限调节</string>
     <string name="diag_lab_live_update_text_limits_desc">开启后，“胶囊与通知”页会显示 Live Update 歌词字数上限调节。</string>
+    <string name="diag_lab_lyric_visual_center_title">逐字歌词视觉中心</string>
+    <string name="diag_lab_lyric_visual_center_desc">播放长逐字歌词时，让正在唱的字／词尽量处于胶囊与小米超级岛歌词区域中央。</string>
     <string name="diag_lab_material_blur_title">Material 页面模糊</string>
     <string name="diag_lab_material_blur_desc">为 Material 页面启用背景模糊。不会影响 Miuix 页面。</string>
     <string name="diag_lab_experiment_updates_title">接收测试版本</string>

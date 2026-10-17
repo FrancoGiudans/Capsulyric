@@ -32,6 +32,7 @@ object LabFeatureManager {
     private const val KEY_SUPER_ISLAND_TEXT_LIMITS_ENABLED = "lab_super_island_text_limits_enabled"
     private const val KEY_SUPER_ISLAND_RELAXED_TEXT_LIMITS_ENABLED = "lab_super_island_relaxed_text_limits_enabled"
     const val KEY_LIVE_UPDATE_TEXT_LIMITS_ENABLED = "lab_live_update_text_limits_enabled"
+    const val KEY_LYRIC_VISUAL_CENTER_ENABLED = "lab_lyric_visual_center_enabled"
     const val KEY_FLOATING_LYRICS_ENABLED = "lab_floating_lyrics_enabled"
     const val KEY_FLOATING_WORD_HIGH_FPS_ENABLED = "lab_floating_word_high_fps_enabled"
     const val KEY_MATERIAL_BLUR_ENABLED = "lab_material_blur_enabled"
@@ -194,6 +195,22 @@ object LabFeatureManager {
     fun isLiveUpdateTextLimitsEnabled(prefs: SharedPreferences): Boolean {
         ensureInitialized(prefs)
         return prefs.getBoolean(KEY_LIVE_UPDATE_TEXT_LIMITS_ENABLED, false)
+    }
+
+    fun isLyricVisualCenterEnabled(context: Context): Boolean =
+        isLyricVisualCenterEnabled(context.prefs())
+
+    fun isLyricVisualCenterEnabled(prefs: SharedPreferences): Boolean =
+        prefs.getBoolean(KEY_LYRIC_VISUAL_CENTER_ENABLED, true)
+
+    fun setLyricVisualCenterEnabled(context: Context, enabled: Boolean) {
+        setLyricVisualCenterEnabled(context.prefs(), enabled)
+    }
+
+    fun setLyricVisualCenterEnabled(prefs: SharedPreferences, enabled: Boolean) {
+        prefs.edit()
+            .putBoolean(KEY_LYRIC_VISUAL_CENTER_ENABLED, enabled)
+            .apply()
     }
 
     fun setLiveUpdateTextLimitsEnabled(context: Context, enabled: Boolean) {

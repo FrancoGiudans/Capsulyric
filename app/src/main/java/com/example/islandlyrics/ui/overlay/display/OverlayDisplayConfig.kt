@@ -34,24 +34,22 @@ internal data class OverlayDisplayConfig(
     val disableScrolling: Boolean,
     val lyricTextDisplayMode: String,
     val capsuleRenderMode: CapsuleRenderMode,
-    val superIslandNotificationStyle: String,
     val superIslandLyricMode: String,
     val superIslandRightTextWeight: Int,
-    val superIslandFullLyricTextWeight: Int,
     val liveUpdateTextLimitsEnabled: Boolean,
-    val liveUpdateTextWeight: Int
+    val liveUpdateTextWeight: Int,
+    val lyricVisualCenterEnabled: Boolean
 ) {
-    val standardFullLyricScrollingEnabled: Boolean
-        get() = RomUtils.isHyperOs() &&
-            capsuleRenderMode == CapsuleRenderMode.XIAOMI_SUPER_ISLAND &&
-            superIslandNotificationStyle == LabFeatureManager.SUPER_ISLAND_STYLE_STANDARD &&
-            superIslandLyricMode == "full"
+    val isSuperIslandFullLyricMode: Boolean
+        get() = CapsuleRenderMode.shouldDisableLyricScrolling(capsuleRenderMode, superIslandLyricMode)
+
+    val scrollingDisabled: Boolean
+        get() = disableScrolling || isSuperIslandFullLyricMode
 
     fun maxDisplayWeight(baseMaxDisplayWeight: Int): Int {
         return when {
             capsuleRenderMode == CapsuleRenderMode.LIVE_UPDATE ->
                 if (liveUpdateTextLimitsEnabled) liveUpdateTextWeight else LiveUpdateTextLimitConfig.defaultWeight()
-            standardFullLyricScrollingEnabled -> superIslandFullLyricTextWeight
             RomUtils.isHyperOs() &&
                 capsuleRenderMode == CapsuleRenderMode.XIAOMI_SUPER_ISLAND &&
                 superIslandLyricMode == "standard" -> superIslandRightTextWeight
@@ -71,26 +69,17 @@ internal data class OverlayDisplayConfig(
                     relaxed = relaxedLimitsEnabled
                 )
             )
-            val superIslandFullLyricLeftTextWeight = SuperIslandTextLimitConfig.weightForChars(
-                SuperIslandTextLimitConfig.leftChars(
-                    prefs = prefs,
-                    showLeftCover = AppPreferences.isSuperIslandFullLyricLeftCoverEnabled(prefs),
-                    relaxed = relaxedLimitsEnabled
-                )
-            )
             return OverlayDisplayConfig(
                 disableScrolling = AppPreferences.isLyricScrollingDisabled(prefs),
                 lyricTextDisplayMode = LyricTextDisplayMode.read(prefs),
                 capsuleRenderMode = CapsuleRenderMode.effective(prefs),
-                superIslandNotificationStyle = AppPreferences.superIslandNotificationStyle(prefs),
                 superIslandLyricMode = AppPreferences.superIslandLyricMode(prefs),
                 superIslandRightTextWeight = superIslandRightTextWeight,
-                superIslandFullLyricTextWeight =
-                    superIslandFullLyricLeftTextWeight + superIslandRightTextWeight,
                 liveUpdateTextLimitsEnabled = LabFeatureManager.isLiveUpdateTextLimitsEnabled(prefs),
                 liveUpdateTextWeight = LiveUpdateTextLimitConfig.weightForChars(
                     LiveUpdateTextLimitConfig.chars(prefs)
-                )
+                ),
+                lyricVisualCenterEnabled = LabFeatureManager.isLyricVisualCenterEnabled(prefs)
             )
         }
     }

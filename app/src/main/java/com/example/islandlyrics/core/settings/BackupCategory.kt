@@ -62,7 +62,13 @@ object BackupCategories {
         subGroups = listOf(
             SubGroup("capsule_style", listOf(
                 "super_island_notification_style", "super_island_dual_line_mode", "super_island_lyric_mode",
-                "super_island_enabled", "capsule_render_mode"
+                "super_island_enabled", "capsule_render_mode",
+                // Keep forced scrolling state and its original value together,
+                // including when only the capsule style sub-group is selected.
+                "super_island_lyric_mode_forced_disable_scrolling",
+                "disable_lyric_scrolling_before_super_island_lyric_mode",
+                "full_super_island_forced_disable_scrolling",
+                "disable_lyric_scrolling_before_full_super_island"
             )),
             SubGroup("capsule_layout", listOf(
                 "super_island_full_lyric_show_left_cover",
