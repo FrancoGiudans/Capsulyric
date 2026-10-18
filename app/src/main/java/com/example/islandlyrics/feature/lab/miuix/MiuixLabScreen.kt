@@ -115,6 +115,12 @@ internal fun MiuixLabScreen(
     var superIslandAdvancedStyleEnabled by remember {
         mutableStateOf(LabFeatureManager.isSuperIslandAdvancedStyleEnabled(context))
     }
+    var superIslandTemplate18Enabled by remember {
+        mutableStateOf(LabFeatureManager.isSuperIslandTemplate18Enabled(context))
+    }
+    var superIslandRightIslandProgressEnabled by remember {
+        mutableStateOf(LabFeatureManager.isSuperIslandRightIslandProgressLabEnabled(context))
+    }
     var superIslandTextLimitsEnabled by remember {
         mutableStateOf(LabFeatureManager.isSuperIslandTextLimitsEnabled(context))
     }
@@ -244,6 +250,28 @@ internal fun MiuixLabScreen(
                                     LabFeatureManager.setSuperIslandAdvancedStyleEnabled(context, false)
                                     superIslandAdvancedStyleEnabled = false
                                 }
+                            }
+                        )
+
+                        if (RomUtils.isHyperOsVersionAtLeast(3, 0, 0)) {
+                            SuperSwitch(
+                                title = stringResource(R.string.diag_lab_super_island_template18_title),
+                                summary = stringResource(R.string.diag_lab_super_island_template18_desc),
+                                checked = superIslandTemplate18Enabled,
+                                onCheckedChange = {
+                                    superIslandTemplate18Enabled = it
+                                    LabFeatureManager.setSuperIslandTemplate18Enabled(context, it)
+                                }
+                            )
+                        }
+
+                        SuperSwitch(
+                            title = stringResource(R.string.diag_lab_super_island_right_progress_title),
+                            summary = stringResource(R.string.diag_lab_super_island_right_progress_desc),
+                            checked = superIslandRightIslandProgressEnabled,
+                            onCheckedChange = {
+                                superIslandRightIslandProgressEnabled = it
+                                LabFeatureManager.setSuperIslandRightIslandProgressLabEnabled(context, it)
                             }
                         )
 

@@ -24,6 +24,8 @@ package com.example.islandlyrics.ui.overlay.superisland.cache
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Paint
 import android.graphics.drawable.Icon
 import com.example.islandlyrics.lyrics.state.LyricRepository
 
@@ -31,6 +33,8 @@ internal class SuperIslandIconCache(
     private val context: Context
 ) {
     var avatarIcon: Icon? = null
+        private set
+    var coverInfoIcon: Icon? = null
         private set
     var islandIcon: Icon? = null
         private set
@@ -65,6 +69,7 @@ internal class SuperIslandIconCache(
         lastAppHash = 0
         lastActionsHash = 0
         avatarIcon = null
+        coverInfoIcon = null
         islandIcon = null
         islandSmallIcon = null
         shareIcon = null
@@ -98,6 +103,14 @@ internal class SuperIslandIconCache(
         return bitmapScaler.scaleRound(src, targetSize)
     }
 
+    private fun createPortraitCover(source: Bitmap): Bitmap {
+        val target = Bitmap.createBitmap(224, 288, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(target)
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
+        canvas.drawBitmap(scaleBitmap(source, 224), 0f, 32f, paint)
+        return target
+    }
+
     private fun updateAlbumArtIcons(
         metadata: LyricRepository.MediaInfo?,
         albumArt: Bitmap?
@@ -106,11 +119,13 @@ internal class SuperIslandIconCache(
         if (albumArtHash != lastAlbumArtHash) {
             if (albumArt != null) {
                 avatarIcon = Icon.createWithBitmap(scaleBitmap(albumArt, 480))
+                coverInfoIcon = Icon.createWithBitmap(createPortraitCover(albumArt))
                 islandIcon = Icon.createWithBitmap(scaleBitmap(albumArt, 120))
                 islandSmallIcon = Icon.createWithBitmap(scaleBitmap(albumArt, 88))
                 shareIcon = Icon.createWithBitmap(scaleBitmap(albumArt, 224))
             } else {
                 avatarIcon = null
+                coverInfoIcon = null
                 islandIcon = null
                 islandSmallIcon = null
                 shareIcon = null
@@ -140,7 +155,11 @@ internal class SuperIslandIconCache(
         mediaButtonLayout: String,
         notificationStyle: String
     ) {
-        val effectiveButtonLayout = if (notificationStyle == "advanced_beta" || notificationStyle == "advanced_lyrics_dual") "three_button" else mediaButtonLayout
+        val effectiveButtonLayout = if (
+            notificationStyle == "advanced_beta" ||
+            notificationStyle == "advanced_lyrics_dual" ||
+            mediaButtonLayout == "single_button"
+        ) "three_button" else mediaButtonLayout
         val actionsHash = if (actionStyle == "media_controls") {
             "$isPlaying|$effectiveButtonLayout".hashCode()
         } else {

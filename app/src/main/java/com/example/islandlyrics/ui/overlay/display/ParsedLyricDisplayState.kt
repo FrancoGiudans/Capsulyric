@@ -62,11 +62,11 @@ internal data class ParsedLyricDisplayState(
         return currentLines.getOrNull(index - 1)
     }
 
-    fun nextLine(index: Int): OnlineLyricFetcher.LyricLine? {
+    fun nextLine(index: Int, offset: Int = 1): OnlineLyricFetcher.LyricLine? {
         val currentLines = lines ?: return null
-        if (index < 0) return null
+        if (index < 0 || offset < 1) return null
         if (timelineCapability != LyricRepository.TimelineCapability.MULTI_LINE) return null
-        return currentLines.getOrNull(index + 1)
+        return currentLines.getOrNull(index + offset)
     }
 
     fun lineIndexBefore(position: Long): Int {

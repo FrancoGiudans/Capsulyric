@@ -33,6 +33,77 @@ class SuperIslandScrollingBackupTest {
         }
     }
 
+    @Test
+    fun smallIslandProgress_migratesExpandedPreferenceOnceThenRemainsIndependent() {
+        val values = mutableMapOf<String, Any>(
+            AppPreferences.Keys.SUPER_ISLAND_SHOW_PROGRESS_BAR to false
+        )
+        val prefs = inMemoryPreferences(values)
+
+        assertFalse(AppPreferences.isSuperIslandSmallIslandProgressBarEnabled(prefs))
+        assertFalse(prefs.getBoolean(AppPreferences.Keys.SUPER_ISLAND_SMALL_ISLAND_SHOW_PROGRESS_BAR, true))
+
+        prefs.edit().putBoolean(AppPreferences.Keys.SUPER_ISLAND_SHOW_PROGRESS_BAR, true).apply()
+        assertFalse(AppPreferences.isSuperIslandSmallIslandProgressBarEnabled(prefs))
+    }
+
+    @Test
+    fun smallIslandProgress_advancedMigrationPreservesRingForBothExpandedValues() {
+        for (style in listOf("advanced_beta", "advanced_lyrics_dual")) {
+            for (expanded in listOf(false, true)) {
+                val values = mutableMapOf<String, Any>(
+                    AppPreferences.Keys.SUPER_ISLAND_NOTIFICATION_STYLE to style,
+                    AppPreferences.Keys.SUPER_ISLAND_SHOW_PROGRESS_BAR to expanded
+                )
+                val prefs = inMemoryPreferences(values)
+                assertTrue("$style / expanded=$expanded", AppPreferences.isSuperIslandSmallIslandProgressBarEnabled(prefs))
+                prefs.edit().putBoolean(AppPreferences.Keys.SUPER_ISLAND_SHOW_PROGRESS_BAR, !expanded).apply()
+                assertTrue(AppPreferences.isSuperIslandSmallIslandProgressBarEnabled(prefs))
+            }
+        }
+    }
+
+    @Test
+    fun smallIslandProgress_explicitChoiceWinsOverStyleAndExpandedProgress() {
+        for (style in listOf("standard", "advanced_beta", "advanced_lyrics_dual")) {
+            for (collapsed in listOf(false, true)) {
+                val values = mutableMapOf<String, Any>(
+                    AppPreferences.Keys.SUPER_ISLAND_NOTIFICATION_STYLE to style,
+                    AppPreferences.Keys.SUPER_ISLAND_SHOW_PROGRESS_BAR to !collapsed,
+                    AppPreferences.Keys.SUPER_ISLAND_SMALL_ISLAND_SHOW_PROGRESS_BAR to collapsed
+                )
+                assertEquals(collapsed, AppPreferences.isSuperIslandSmallIslandProgressBarEnabled(inMemoryPreferences(values)))
+            }
+        }
+    }
+
+    @Test
+    fun smallIslandProgress_defaultsAndEnabledStandardMigrationKeepRing() {
+        assertTrue(AppPreferences.isSuperIslandSmallIslandProgressBarEnabled(inMemoryPreferences(mutableMapOf())))
+        val values = mutableMapOf<String, Any>(
+            AppPreferences.Keys.SUPER_ISLAND_NOTIFICATION_STYLE to "standard",
+            AppPreferences.Keys.SUPER_ISLAND_SHOW_PROGRESS_BAR to true
+        )
+        val prefs = inMemoryPreferences(values)
+        assertTrue(AppPreferences.isSuperIslandSmallIslandProgressBarEnabled(prefs))
+        prefs.edit().putBoolean(AppPreferences.Keys.SUPER_ISLAND_SHOW_PROGRESS_BAR, false).apply()
+        assertTrue(AppPreferences.isSuperIslandSmallIslandProgressBarEnabled(prefs))
+    }
+
+    @Test
+    fun capsuleLayoutBackup_includesIndependentCollapsedProgressPreferences() {
+        val keys = setOf(
+            AppPreferences.Keys.SUPER_ISLAND_SMALL_ISLAND_SHOW_PROGRESS_BAR,
+            AppPreferences.Keys.SUPER_ISLAND_COLLAPSED_RIGHT_PROGRESS_RING,
+            AppPreferences.Keys.SUPER_ISLAND_TEMPLATE18_TEXT_MODES,
+            AppPreferences.Keys.SUPER_ISLAND_TEMPLATE18_BUTTON_ACTION
+        )
+
+        val selected = BackupCategories.collectKeysForLeafIds(keys, setOf("capsule_layout"))
+
+        assertTrue(selected.containsAll(keys))
+    }
+
     private fun assertRoundTrip(leaves: Set<String>, originalDisabled: Boolean, legacy: Boolean) {
         val forcedKey = if (legacy) {
             "full_super_island_forced_disable_scrolling"

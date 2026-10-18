@@ -27,6 +27,8 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
+import android.content.ComponentCallbacks
+import android.content.res.Configuration
 import android.graphics.BitmapFactory
 import android.graphics.drawable.Icon
 import android.net.Uri
@@ -50,6 +52,8 @@ import com.example.islandlyrics.ui.overlay.superisland.render.SuperIslandDualLin
 import com.example.islandlyrics.ui.overlay.superisland.render.SuperIslandNotificationBuilder
 import com.example.islandlyrics.ui.overlay.superisland.render.SuperIslandRemoteViewsFactory
 import com.example.islandlyrics.ui.overlay.superisland.render.SuperIslandStandardFocusBuilder
+import com.example.islandlyrics.ui.overlay.superisland.render.SuperIslandTemplate18TextResolver
+import com.example.islandlyrics.ui.overlay.superisland.render.SuperIslandTemplate18PlaybackInfo
 import com.example.islandlyrics.ui.overlay.superisland.render.SuperIslandTextResolver
 import com.example.islandlyrics.ui.overlay.superisland.state.SuperIslandRenderStateTracker
 import kotlinx.coroutines.CoroutineScope
@@ -71,6 +75,19 @@ class SuperIslandHandler(
         private set
 
     private var lastState: UIState? = null
+    private var nightMode = context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK
+    private val themeCallbacks = object : ComponentCallbacks {
+        override fun onConfigurationChanged(newConfig: Configuration) {
+            val nextMode = newConfig.uiMode and Configuration.UI_MODE_NIGHT_MASK
+            if (nextMode == nightMode) return
+            nightMode = nextMode
+            renderStateTracker.forceNotify("themeChanged")
+            refreshVisibility()
+        }
+
+        @Deprecated("No longer called by the platform")
+        override fun onLowMemory() = Unit
+    }
     private var lastNotifiedVisibility = Notification.VISIBILITY_PUBLIC
 
     private val scope = CoroutineScope(Dispatchers.Main + Job())
@@ -89,6 +106,10 @@ class SuperIslandHandler(
         },
         onXmsfModeChanged = { mode ->
             notificationDispatcher.onModeChanged(mode)
+        },
+        onRenderConfigChanged = {
+            renderStateTracker.forceNotify("renderConfigChanged")
+            refreshVisibility()
         }
     )
 
@@ -118,6 +139,8 @@ class SuperIslandHandler(
     fun start() {
         if (isRunning) return
         isRunning = true
+        nightMode = context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK
+        context.registerComponentCallbacks(themeCallbacks)
         startPreferences()
 
         renderStateTracker.resetForStart()
@@ -136,6 +159,7 @@ class SuperIslandHandler(
     fun stop() {
         if (!isRunning) return
         isRunning = false
+        context.unregisterComponentCallbacks(themeCallbacks)
         preferences.stop()
         manager?.cancel(NOTIFICATION_ID)
         renderStateTracker.clearFocusSignature()
@@ -171,8 +195,21 @@ class SuperIslandHandler(
         val albumColor = state.albumColor
         val notificationVisibility = LockScreenNotificationPolicy.visibility(context)
         val visibilityChanged = notificationVisibility != lastNotifiedVisibility
-        // 显示模式的次要文本仅在模板2（标准样式 + 无按键 + 不显示进度条）时使用
-        val secondaryText = if (effectiveActionStyle == ACTION_STYLE_TEMPLATE2) {
+        val template18Content = if (
+            preferences.notificationStyle == LabFeatureManager.SUPER_ISLAND_STYLE_STANDARD &&
+                preferences.mediaButtonLayout == "single_button"
+        ) {
+            SuperIslandTemplate18TextResolver.resolve(state, preferences.template18TextModes)
+        } else {
+            null
+        }
+        val effectiveRenderedActionStyle = when {
+            template18Content?.canRenderThreeLines == true -> ACTION_STYLE_TEMPLATE18
+            template18Content != null -> ACTION_STYLE_TEMPLATE2
+            else -> effectiveActionStyle
+        }
+        // Template 18 falls back to the existing two-line text mode if two selected sources are unavailable.
+        val secondaryText = if (effectiveRenderedActionStyle == ACTION_STYLE_TEMPLATE2) {
             SuperIslandDualLineTextResolver.resolveSecondary(
                 state = state,
                 modes = preferences.secondaryTextModes
@@ -204,7 +241,21 @@ class SuperIslandHandler(
             renderStateTracker.forceNotify("lockScreenVisibility")
         }
 
-        val extraContentSignature = dualLineText?.signature ?: secondaryText.orEmpty()
+        val extraContentSignature = when {
+            dualLineText != null -> dualLineText.signature
+            template18Content != null -> listOf(
+                template18Content.currentLyric,
+                template18Content.secondaryTexts.joinToString("\u0000"),
+                state.title,
+                state.artist,
+                preferences.template18ButtonAction.preferenceValue,
+                SuperIslandTemplate18PlaybackInfo.elapsed(state.playbackPositionMs, state.playbackDurationMs),
+                SuperIslandTemplate18PlaybackInfo.total(state.playbackDurationMs),
+                nightMode.toString(),
+                effectiveRenderedActionStyle
+            ).joinToString("\u0001")
+            else -> secondaryText.orEmpty()
+        }
 
         val renderDecision = renderStateTracker.prepare(
             state = state,
@@ -229,7 +280,11 @@ class SuperIslandHandler(
             metadata = metadata,
             albumArt = albumArt,
             isPlaying = state.isPlaying,
-            actionStyle = effectiveActionStyle,
+            actionStyle = if (effectiveRenderedActionStyle == ACTION_STYLE_TEMPLATE18) {
+                "media_controls"
+            } else {
+                effectiveRenderedActionStyle
+            },
             mediaButtonLayout = preferences.mediaButtonLayout,
             notificationStyle = preferences.notificationStyle
         )
@@ -257,9 +312,13 @@ class SuperIslandHandler(
             progressBarColor = progressBarColor,
             packageName = packageName,
             titleWithArtist = titleWithArtist,
-            effectiveActionStyle = effectiveActionStyle,
+            effectiveActionStyle = effectiveRenderedActionStyle,
+            darkMode = nightMode == Configuration.UI_MODE_NIGHT_YES,
             template2Icon = template2Icon,
-            secondaryText = secondaryText
+            secondaryText = secondaryText,
+            template18Content = template18Content?.takeIf {
+                effectiveRenderedActionStyle == ACTION_STYLE_TEMPLATE18
+            }
         )
 
         val extras = if (customExpandEnabled) {
@@ -283,7 +342,8 @@ class SuperIslandHandler(
         val newParams = extras.getString("miui.focus.param")
         val newCustomParams = extras.getString("miui.focus.param.custom")
 
-        val focusSignature = if (customExpandEnabled) newCustomParams.orEmpty() else newParams.orEmpty()
+        val focusSignature = (if (customExpandEnabled) newCustomParams.orEmpty() else newParams.orEmpty()) +
+            if (effectiveRenderedActionStyle == ACTION_STYLE_TEMPLATE18) "|night=$nightMode" else ""
         if (renderStateTracker.isDuplicateFocusSignature(focusSignature, renderDecision.colorChanged)) {
             return
         }
@@ -297,7 +357,7 @@ class SuperIslandHandler(
             .setContentTitle(notificationTitle)
             .setContentText(notificationText)
             .setSubText(if (state.mediaPackage.isNotBlank()) state.mediaPackage else null)
-            .setColor(if (effectiveActionStyle == "media_controls") 0xFF757575.toInt() else accentColor)
+            .setColor(if (effectiveRenderedActionStyle == "media_controls") 0xFF757575.toInt() else accentColor)
             .addExtras(extras)
         if (preferences.clickStyle == "open_playing_app") {
             notificationBuilder.setContentIntent(
@@ -399,5 +459,6 @@ class SuperIslandHandler(
         private const val CHANNEL_ID = "lyric_capsule_channel"
         private const val NOTIFICATION_ID = 1001
         private const val ACTION_STYLE_TEMPLATE2 = "template2"
+        private const val ACTION_STYLE_TEMPLATE18 = "template18"
     }
 }

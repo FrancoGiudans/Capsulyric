@@ -41,6 +41,8 @@ import com.example.islandlyrics.ui.overlay.superisland.config.SuperIslandColorSo
 import com.example.islandlyrics.ui.overlay.superisland.config.SuperIslandDualLineMode
 import com.example.islandlyrics.ui.overlay.superisland.config.SuperIslandSecondaryTextMode
 import com.example.islandlyrics.ui.overlay.superisland.config.SuperIslandTemplate2PicSource
+import com.example.islandlyrics.ui.overlay.superisland.config.SuperIslandTemplate18ButtonAction
+import com.example.islandlyrics.ui.overlay.superisland.config.SuperIslandTemplate18TextMode
 import com.example.islandlyrics.ui.overlay.superisland.config.SuperIslandTextLimitConfig
 import com.example.islandlyrics.R
 import com.example.islandlyrics.core.platform.XmsfBypassMode
@@ -186,6 +188,18 @@ fun MiuixCustomSettingsScreen(
     var superIslandShowProgressBar by remember(uiState.superIslandShowProgressBar) {
         mutableStateOf(uiState.superIslandShowProgressBar)
     }
+    var superIslandSmallIslandShowProgressBar by remember(uiState.superIslandSmallIslandShowProgressBar) {
+        mutableStateOf(uiState.superIslandSmallIslandShowProgressBar)
+    }
+    var superIslandCollapsedRightProgressRing by remember(uiState.superIslandCollapsedRightProgressRing) {
+        mutableStateOf(uiState.superIslandCollapsedRightProgressRing)
+    }
+    var superIslandTemplate18TextModes by remember(uiState.superIslandTemplate18TextModes) {
+        mutableStateOf(uiState.superIslandTemplate18TextModes)
+    }
+    var superIslandTemplate18ButtonAction by remember(uiState.superIslandTemplate18ButtonAction) {
+        mutableStateOf(uiState.superIslandTemplate18ButtonAction)
+    }
     var liveUpdateShowProgressBar by remember(uiState.liveUpdateShowProgressBar) {
         mutableStateOf(uiState.liveUpdateShowProgressBar)
     }
@@ -193,6 +207,8 @@ fun MiuixCustomSettingsScreen(
         mutableStateOf(uiState.superIslandSecondaryTextModes)
     }
     var showSecondaryTextModeDialog by remember { mutableStateOf(false) }
+    var showTemplate18TextModeDialog by remember { mutableStateOf(false) }
+    var showTemplate18ButtonActionDropdown by remember { mutableStateOf(false) }
     var template2PicSource by remember(uiState.superIslandTemplate2PicSource) {
         mutableStateOf(uiState.superIslandTemplate2PicSource)
     }
@@ -201,6 +217,12 @@ fun MiuixCustomSettingsScreen(
     }
     var superIslandAdvancedStyleLabEnabled by remember(uiState.superIslandAdvancedStyleLabEnabled) {
         mutableStateOf(uiState.superIslandAdvancedStyleLabEnabled)
+    }
+    var superIslandTemplate18LabEnabled by remember(uiState.superIslandTemplate18LabEnabled) {
+        mutableStateOf(uiState.superIslandTemplate18LabEnabled)
+    }
+    var superIslandRightIslandProgressLabEnabled by remember(uiState.superIslandRightIslandProgressLabEnabled) {
+        mutableStateOf(uiState.superIslandRightIslandProgressLabEnabled)
     }
     var superIslandTextLimitsLabEnabled by remember(uiState.superIslandTextLimitsLabEnabled) {
         mutableStateOf(uiState.superIslandTextLimitsLabEnabled)
@@ -340,6 +362,8 @@ fun MiuixCustomSettingsScreen(
      */
     val effectiveActionStyle = if (superIslandEnabled) {
         when {
+            superIslandNotificationStyle == LabFeatureManager.SUPER_ISLAND_STYLE_STANDARD &&
+                superIslandMediaButtonLayout == "single_button" -> "template18"
             superIslandNotificationStyle == LabFeatureManager.SUPER_ISLAND_STYLE_ADVANCED ||
                 superIslandNotificationStyle == LabFeatureManager.SUPER_ISLAND_STYLE_ADVANCED_LYRICS_DUAL -> "media_controls"
             superIslandMediaButtonLayout == "no_button" &&
@@ -546,10 +570,51 @@ fun MiuixCustomSettingsScreen(
                                     superIslandCustomColor = superIslandCustomColor,
                                     superIslandSmartMinContrast = uiState.superIslandSmartMinContrast,
                                     superIslandSmartWhiteRatio = uiState.superIslandSmartWhiteRatio,
+                                    rightIslandProgressRingEnabled = superIslandRightIslandProgressLabEnabled &&
+                                        superIslandCollapsedRightProgressRing,
                                     showBorder = previewIsDarkTheme
                                 )
                             }
                             item { Spacer(modifier = Modifier.height(16.dp)) }
+                            if (superIslandEnabled) {
+                                item {
+                                    Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
+                                        SuperSwitch(
+                                            title = stringResource(R.string.settings_super_island_small_progress),
+                                            summary = stringResource(R.string.settings_super_island_small_progress_desc),
+                                            checked = superIslandSmallIslandShowProgressBar,
+                                            modifier = Modifier.miuixSettingHighlight(
+                                                activeHighlightKey,
+                                                "key_super_island_small_island_show_progress_bar"
+                                            ),
+                                            onCheckedChange = {
+                                                superIslandSmallIslandShowProgressBar = it
+                                                viewModel.dispatch(
+                                                    CustomSettingsAction.SetSuperIslandSmallIslandShowProgressBar(it)
+                                                )
+                                            }
+                                        )
+                                        if (superIslandRightIslandProgressLabEnabled) {
+                                            SuperSwitch(
+                                                title = stringResource(R.string.settings_super_island_right_progress),
+                                                summary = stringResource(R.string.settings_super_island_right_progress_desc),
+                                                checked = superIslandCollapsedRightProgressRing,
+                                                modifier = Modifier.miuixSettingHighlight(
+                                                    activeHighlightKey,
+                                                    "key_super_island_collapsed_right_progress_ring"
+                                                ),
+                                                onCheckedChange = {
+                                                    superIslandCollapsedRightProgressRing = it
+                                                    viewModel.dispatch(
+                                                        CustomSettingsAction.SetSuperIslandCollapsedRightProgressRing(it)
+                                                    )
+                                                }
+                                            )
+                                        }
+                                    }
+                                }
+                                item { Spacer(modifier = Modifier.height(16.dp)) }
+                            }
                             item {
                                 Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
                                     SuperSwitch(
@@ -1023,7 +1088,10 @@ fun MiuixCustomSettingsScreen(
                                     showProgressBar = if (superIslandEnabled) superIslandShowProgressBar else liveUpdateShowProgressBar,
                                     template2PicSource = template2PicSource,
                                     showBorder = previewIsDarkTheme,
-                                    superIslandSecondaryTextModes = secondaryTextModes
+                                    superIslandSecondaryTextModes = secondaryTextModes,
+                                    template18SecondaryTextModes = superIslandTemplate18TextModes,
+                                    template18ButtonAction = superIslandTemplate18ButtonAction,
+                                    previewDarkTheme = previewIsDarkTheme
                                 )
                             }
                             item { Spacer(modifier = Modifier.height(16.dp)) }
@@ -1111,6 +1179,8 @@ fun MiuixCustomSettingsScreen(
                                             }
                                         )
 
+
+
                                         // 第二行内容（高级双行歌词样式专属）
                                         if (superIslandNotificationStyle == LabFeatureManager.SUPER_ISLAND_STYLE_ADVANCED_LYRICS_DUAL) {
                                             val dualLineModes = SuperIslandDualLineMode.values
@@ -1139,12 +1209,17 @@ fun MiuixCustomSettingsScreen(
 
                                         // 3. 播放按键布局（仅标准样式时显示）
                                         if (superIslandNotificationStyle == LabFeatureManager.SUPER_ISLAND_STYLE_STANDARD) {
-                                            val buttonLayoutItems = listOf(
+                                            val buttonLayoutItems = listOfNotNull(
                                                 Triple(
                                                     "no_button",
                                                     stringResource(R.string.super_island_media_button_layout_none),
                                                     stringResource(R.string.super_island_media_button_layout_none_desc)
                                                 ),
+                                                if (superIslandTemplate18LabEnabled) Triple(
+                                                    "single_button",
+                                                    stringResource(R.string.super_island_media_button_layout_single),
+                                                    stringResource(R.string.super_island_media_button_layout_single_desc)
+                                                ) else null,
                                                 Triple(
                                                     "two_button",
                                                     stringResource(R.string.super_island_media_button_layout_two),
@@ -1173,6 +1248,46 @@ fun MiuixCustomSettingsScreen(
                                                         )
                                                     }
                                                 )
+                                            )
+                                        }
+
+                                        if (superIslandNotificationStyle == LabFeatureManager.SUPER_ISLAND_STYLE_STANDARD &&
+                                            superIslandMediaButtonLayout == "single_button"
+                                        ) {
+                                            val template18ModeLabels = superIslandTemplate18TextModes
+                                                .mapNotNull { SuperIslandTemplate18TextMode.from(it) }
+                                                .map { stringResource(it.titleRes) }
+                                            val template18ModesLabel = template18ModeLabels.joinToString(" / ")
+                                            SuperArrow(
+                                                title = stringResource(R.string.settings_super_island_template18_text_modes),
+                                                summary = template18ModesLabel,
+                                                modifier = Modifier.miuixSettingHighlight(
+                                                    activeHighlightKey,
+                                                    "key_super_island_template18_text_modes"
+                                                ),
+                                                onClick = { showTemplate18TextModeDialog = true }
+                                            )
+
+                                            val actionOptions = SuperIslandTemplate18ButtonAction.entries
+                                            val actionNames = actionOptions.map { stringResource(it.titleRes) }
+                                            val selectedActionIndex = actionOptions.indexOf(
+                                                SuperIslandTemplate18ButtonAction.from(superIslandTemplate18ButtonAction)
+                                            ).coerceAtLeast(0)
+                                            SuperDropdown(
+                                                title = stringResource(R.string.settings_super_island_template18_button_action),
+                                                items = actionNames,
+                                                selectedIndex = selectedActionIndex,
+                                                modifier = Modifier.miuixSettingHighlight(
+                                                    activeHighlightKey,
+                                                    "key_super_island_template18_button_action"
+                                                ),
+                                                onSelectedIndexChange = { index ->
+                                                    val action = actionOptions[index]
+                                                    superIslandTemplate18ButtonAction = action.preferenceValue
+                                                    viewModel.dispatch(
+                                                        CustomSettingsAction.SetSuperIslandTemplate18ButtonAction(action.preferenceValue)
+                                                    )
+                                                }
                                             )
                                         }
 
@@ -1732,6 +1847,16 @@ fun MiuixCustomSettingsScreen(
                 }
             )
         }
+        if (showTemplate18TextModeDialog) {
+            MiuixTemplate18TextModeBottomSheet(
+                selectedModes = superIslandTemplate18TextModes,
+                onDismiss = { showTemplate18TextModeDialog = false },
+                onCommit = { modes ->
+                    superIslandTemplate18TextModes = modes
+                    viewModel.dispatch(CustomSettingsAction.SetSuperIslandTemplate18TextModes(modes))
+                }
+            )
+        }
     }
 }
 }
@@ -1883,6 +2008,94 @@ private fun MiuixSecondaryTextModeBottomSheet(
         }
     }
 }
+@Composable
+private fun MiuixTemplate18TextModeBottomSheet(
+    selectedModes: List<String>,
+    onDismiss: () -> Unit,
+    onCommit: (List<String>) -> Unit
+) {
+    val context = LocalContext.current
+    val keepTwoText = stringResource(R.string.settings_super_island_template18_min_two)
+    var modes by remember(selectedModes) { mutableStateOf(selectedModes) }
+    var modeOrder by remember(selectedModes) {
+        mutableStateOf(template18TextModeOrderOf(selectedModes))
+    }
+
+    MiuixBlurBottomSheet(
+        show = true,
+        title = stringResource(R.string.settings_super_island_template18_text_modes),
+        onDismissRequest = onDismiss,
+        startAction = {
+            IconButton(onClick = onDismiss) {
+                Icon(
+                    imageVector = MiuixIcons.Close,
+                    contentDescription = stringResource(R.string.backup_dialog_cancel),
+                    tint = MiuixTheme.colorScheme.onSurfaceVariantActions
+                )
+            }
+        },
+        endAction = {
+            IconButton(
+                onClick = {
+                    val selected = modes.mapNotNull { SuperIslandTemplate18TextMode.from(it) }
+                    val finalModes = (selected.takeIf {
+                        it.size >= SuperIslandTemplate18TextMode.MIN_SELECTED
+                    } ?: SuperIslandTemplate18TextMode.DEFAULT).map { it.preferenceValue }
+                    onCommit(finalModes)
+                    onDismiss()
+                }
+            ) {
+                Icon(
+                    imageVector = MiuixIcons.Ok,
+                    contentDescription = stringResource(R.string.backup_dialog_confirm),
+                    tint = MiuixTheme.colorScheme.primary
+                )
+            }
+        }
+    ) {
+        Column(modifier = Modifier.fillMaxWidth()) {
+            Text(
+                text = stringResource(R.string.settings_super_island_template18_text_modes_desc),
+                style = MiuixTheme.textStyles.body2,
+                color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+            )
+            MiuixBlurReorderablePanel(
+                items = modeOrder.map { id ->
+                    MiuixReorderableListItem(
+                        id = id,
+                        title = stringResource(SuperIslandTemplate18TextMode.from(id)!!.titleRes),
+                        checked = id in modes
+                    )
+                },
+                onMove = { from, to ->
+                    modeOrder = modeOrder.toMutableList().apply { add(to, removeAt(from)) }
+                    modes = modeOrder.filter { it in modes }
+                },
+                onCheckedChange = { id, checked ->
+                    if (checked) {
+                        modes = modeOrder.filter { it == id || it in modes }
+                    } else {
+                        if (modes.size <= SuperIslandTemplate18TextMode.MIN_SELECTED) {
+                            Toast.makeText(context, keepTwoText, Toast.LENGTH_SHORT).show()
+                            return@MiuixBlurReorderablePanel
+                        }
+                        modes = modes - id
+                    }
+                },
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+    }
+}
+
+private fun template18TextModeOrderOf(modes: List<String>): List<String> {
+    val result = LinkedHashSet<String>()
+    modes.forEach { mode -> SuperIslandTemplate18TextMode.from(mode)?.let { result.add(it.preferenceValue) } }
+    SuperIslandTemplate18TextMode.entries.forEach { result.add(it.preferenceValue) }
+    return result.toList()
+}
+
 private fun SuperIslandSecondaryTextMode.labelRes(): Int = when (this) {
     SuperIslandSecondaryTextMode.NEXT_LYRIC -> R.string.super_island_secondary_text_next_lyric
     SuperIslandSecondaryTextMode.ROMANIZATION -> R.string.super_island_secondary_text_romanization

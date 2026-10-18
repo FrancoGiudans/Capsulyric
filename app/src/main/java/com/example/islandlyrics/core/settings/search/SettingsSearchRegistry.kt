@@ -557,6 +557,28 @@ object SettingsSearchRegistry {
                 targetItemKey = "key_super_island_share"
             )
         ),
+        SettingsSearchItem(
+            id = "pref_super_island_small_island_progress",
+            titleRes = R.string.settings_super_island_small_progress,
+            breadcrumbResList = listOf(R.string.settings_capsule_notification, R.string.tab_capsule),
+            keywords = listOf("小岛", "收缩态", "小岛进度环", "独立岛进度"),
+            action = SettingsSearchAction.Navigate(
+                target = SettingsNavigationTarget.CAPSULE_NOTIFICATION,
+                tab = CustomSettingsTab.CAPSULE,
+                targetItemKey = "key_super_island_small_island_show_progress_bar"
+            )
+        ),
+        SettingsSearchItem(
+            id = "pref_super_island_collapsed_right_progress_ring",
+            titleRes = R.string.settings_super_island_right_progress,
+            breadcrumbResList = listOf(R.string.settings_capsule_notification, R.string.tab_capsule),
+            keywords = listOf("收缩态", "歌词旁进度环", "大岛进度", "进度环"),
+            action = SettingsSearchAction.Navigate(
+                target = SettingsNavigationTarget.CAPSULE_NOTIFICATION,
+                tab = CustomSettingsTab.CAPSULE,
+                targetItemKey = "key_super_island_collapsed_right_progress_ring"
+            )
+        ),
 
         // ═════════════════════════════════════════════════════════════════════
         // 二级设置项：状态栏通知 (Notification Tab)
@@ -565,7 +587,7 @@ object SettingsSearchRegistry {
             id = "pref_super_island_notification_style",
             titleRes = R.string.settings_super_island_notification_style,
             breadcrumbResList = listOf(R.string.settings_capsule_notification, R.string.tab_notification),
-            keywords = listOf("超级岛通知样式", "通知样式", "高级双行歌词样式", "模板样式", "紧凑样式"),
+            keywords = listOf("超级岛通知样式", "通知样式", "高级双行歌词样式", "三行歌词卡片", "模板样式", "紧凑样式"),
             action = SettingsSearchAction.Navigate(
                 target = SettingsNavigationTarget.CAPSULE_NOTIFICATION,
                 tab = CustomSettingsTab.NOTIFICATION,
@@ -576,11 +598,22 @@ object SettingsSearchRegistry {
             id = "pref_super_island_media_button_layout",
             titleRes = R.string.settings_super_island_media_button_layout,
             breadcrumbResList = listOf(R.string.settings_capsule_notification, R.string.tab_notification),
-            keywords = listOf("播放按键布局", "双按键", "三按键", "无按键", "快捷控制按键"),
+            keywords = listOf("播放按键布局", "单一按键", "三行歌词", "双按键", "三按键", "无按键", "快捷控制按键"),
             action = SettingsSearchAction.Navigate(
                 target = SettingsNavigationTarget.CAPSULE_NOTIFICATION,
                 tab = CustomSettingsTab.NOTIFICATION,
                 targetItemKey = "key_super_island_media_button_layout"
+            )
+        ),
+        SettingsSearchItem(
+            id = "pref_super_island_template18_text_modes",
+            titleRes = R.string.settings_super_island_template18_text_modes,
+            breadcrumbResList = listOf(R.string.settings_capsule_notification, R.string.tab_notification),
+            keywords = listOf("三行歌词", "翻译", "拼音", "下一句", "下二句", "播放信息"),
+            action = SettingsSearchAction.Navigate(
+                target = SettingsNavigationTarget.CAPSULE_NOTIFICATION,
+                tab = CustomSettingsTab.NOTIFICATION,
+                targetItemKey = "key_super_island_template18_text_modes"
             )
         ),
         SettingsSearchItem(

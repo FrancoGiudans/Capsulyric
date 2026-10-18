@@ -42,6 +42,8 @@ import com.example.islandlyrics.ui.overlay.superisland.config.SuperIslandColorSo
 import com.example.islandlyrics.ui.overlay.superisland.config.SuperIslandDualLineMode
 import com.example.islandlyrics.ui.overlay.superisland.config.SuperIslandSecondaryTextMode
 import com.example.islandlyrics.ui.overlay.superisland.config.SuperIslandTemplate2PicSource
+import com.example.islandlyrics.ui.overlay.superisland.config.SuperIslandTemplate18ButtonAction
+import com.example.islandlyrics.ui.overlay.superisland.config.SuperIslandTemplate18TextMode
 import com.example.islandlyrics.ui.overlay.superisland.config.SuperIslandTextLimitConfig
 import com.example.islandlyrics.R
 import com.example.islandlyrics.core.platform.XmsfBypassMode
@@ -231,6 +233,18 @@ fun CustomSettingsScreen(
     var superIslandShowProgressBar by remember(uiState.superIslandShowProgressBar) {
         mutableStateOf(uiState.superIslandShowProgressBar)
     }
+    var superIslandSmallIslandShowProgressBar by remember(uiState.superIslandSmallIslandShowProgressBar) {
+        mutableStateOf(uiState.superIslandSmallIslandShowProgressBar)
+    }
+    var superIslandCollapsedRightProgressRing by remember(uiState.superIslandCollapsedRightProgressRing) {
+        mutableStateOf(uiState.superIslandCollapsedRightProgressRing)
+    }
+    var superIslandTemplate18TextModes by remember(uiState.superIslandTemplate18TextModes) {
+        mutableStateOf(uiState.superIslandTemplate18TextModes)
+    }
+    var superIslandTemplate18ButtonAction by remember(uiState.superIslandTemplate18ButtonAction) {
+        mutableStateOf(uiState.superIslandTemplate18ButtonAction)
+    }
     var liveUpdateShowProgressBar by remember(uiState.liveUpdateShowProgressBar) {
         mutableStateOf(uiState.liveUpdateShowProgressBar)
     }
@@ -244,9 +258,17 @@ fun CustomSettingsScreen(
         mutableStateOf(uiState.superIslandTemplate2CustomPicUri)
     }
     var showSecondaryTextModeDialog by remember { mutableStateOf(false) }
+    var showTemplate18TextModeDialog by remember { mutableStateOf(false) }
+    var showTemplate18ButtonActionDropdown by remember { mutableStateOf(false) }
     var showTemplate2PicSourceDropdown by remember { mutableStateOf(false) }
     var superIslandAdvancedStyleLabEnabled by remember(uiState.superIslandAdvancedStyleLabEnabled) {
         mutableStateOf(uiState.superIslandAdvancedStyleLabEnabled)
+    }
+    var superIslandTemplate18LabEnabled by remember(uiState.superIslandTemplate18LabEnabled) {
+        mutableStateOf(uiState.superIslandTemplate18LabEnabled)
+    }
+    var superIslandRightIslandProgressLabEnabled by remember(uiState.superIslandRightIslandProgressLabEnabled) {
+        mutableStateOf(uiState.superIslandRightIslandProgressLabEnabled)
     }
     var superIslandTextLimitsLabEnabled by remember(uiState.superIslandTextLimitsLabEnabled) {
         mutableStateOf(uiState.superIslandTextLimitsLabEnabled)
@@ -374,6 +396,8 @@ fun CustomSettingsScreen(
      */
     val effectiveActionStyle = if (superIslandEnabled) {
         when {
+            superIslandNotificationStyle == LabFeatureManager.SUPER_ISLAND_STYLE_STANDARD &&
+                superIslandMediaButtonLayout == "single_button" -> "template18"
             superIslandNotificationStyle == LabFeatureManager.SUPER_ISLAND_STYLE_ADVANCED ||
                 superIslandNotificationStyle == LabFeatureManager.SUPER_ISLAND_STYLE_ADVANCED_LYRICS_DUAL -> "media_controls"
             superIslandMediaButtonLayout == "no_button" &&
@@ -574,9 +598,44 @@ fun CustomSettingsScreen(
                                 superIslandCustomColor = superIslandCustomColor,
                                 superIslandSmartMinContrast = uiState.superIslandSmartMinContrast,
                                 superIslandSmartWhiteRatio = uiState.superIslandSmartWhiteRatio,
+                                rightIslandProgressRingEnabled = superIslandRightIslandProgressLabEnabled &&
+                                    superIslandCollapsedRightProgressRing,
                                 showBorder = useDarkTheme
                             )
                             Spacer(modifier = Modifier.height(16.dp))
+
+                            if (superIslandEnabled) {
+                                SettingsCard {
+                                    SettingsSwitchItem(
+                                        title = stringResource(R.string.settings_super_island_small_progress),
+                                        subtitle = stringResource(R.string.settings_super_island_small_progress_desc),
+                                        checked = superIslandSmallIslandShowProgressBar,
+                                        modifier = settingModifier("key_super_island_small_island_show_progress_bar"),
+                                        onCheckedChange = {
+                                            superIslandSmallIslandShowProgressBar = it
+                                            viewModel.dispatch(
+                                                CustomSettingsAction.SetSuperIslandSmallIslandShowProgressBar(it)
+                                            )
+                                        }
+                                    )
+                                    if (superIslandRightIslandProgressLabEnabled) {
+                                        SettingsCardDivider()
+                                        SettingsSwitchItem(
+                                            title = stringResource(R.string.settings_super_island_right_progress),
+                                            subtitle = stringResource(R.string.settings_super_island_right_progress_desc),
+                                            checked = superIslandCollapsedRightProgressRing,
+                                            modifier = settingModifier("key_super_island_collapsed_right_progress_ring"),
+                                            onCheckedChange = {
+                                                superIslandCollapsedRightProgressRing = it
+                                                viewModel.dispatch(
+                                                    CustomSettingsAction.SetSuperIslandCollapsedRightProgressRing(it)
+                                                )
+                                            }
+                                        )
+                                    }
+                                }
+                                Spacer(modifier = Modifier.height(16.dp))
+                            }
 
                             SettingsCard {
                             SettingsSwitchItem(
@@ -1183,7 +1242,10 @@ fun CustomSettingsScreen(
                                  showProgressBar = if (superIslandEnabled) superIslandShowProgressBar else liveUpdateShowProgressBar,
                                  template2PicSource = template2PicSource,
                                  showBorder = useDarkTheme,
-                                 superIslandSecondaryTextModes = secondaryTextModes
+                                 superIslandSecondaryTextModes = secondaryTextModes,
+                                 template18SecondaryTextModes = superIslandTemplate18TextModes,
+                                 template18ButtonAction = superIslandTemplate18ButtonAction,
+                                 previewDarkTheme = useDarkTheme
                              )
                              Spacer(modifier = Modifier.height(16.dp))
 
@@ -1297,6 +1359,8 @@ fun CustomSettingsScreen(
                                     }
                                 }
 
+
+
                                 // 第二行内容（高级双行歌词样式专属）
                                 if (superIslandNotificationStyle == LabFeatureManager.SUPER_ISLAND_STYLE_ADVANCED_LYRICS_DUAL) {
                                     val dualLineModeDisplayName = when (superIslandDualLineMode) {
@@ -1340,6 +1404,7 @@ fun CustomSettingsScreen(
                                 // 2. 播放按键布局（仅标准样式时显示）
                                 if (superIslandNotificationStyle == LabFeatureManager.SUPER_ISLAND_STYLE_STANDARD) {
                                     val layoutDisplayName = when (superIslandMediaButtonLayout) {
+                                        "single_button" -> stringResource(R.string.super_island_media_button_layout_single)
                                         "three_button" -> stringResource(R.string.super_island_media_button_layout_three)
                                         "no_button" -> stringResource(R.string.super_island_media_button_layout_none)
                                         else -> stringResource(R.string.super_island_media_button_layout_two)
@@ -1357,12 +1422,17 @@ fun CustomSettingsScreen(
                                                 expanded = showSuperIslandMediaButtonLayoutDropdown,
                                                 onDismissRequest = { showSuperIslandMediaButtonLayoutDropdown = false }
                                             ) {
-                                                val layoutOptions = listOf(
+                                                val layoutOptions = listOfNotNull(
                                                     Triple(
                                                         "no_button",
                                                         R.string.super_island_media_button_layout_none,
                                                         R.string.super_island_media_button_layout_none_desc
                                                     ),
+                                                    if (superIslandTemplate18LabEnabled) Triple(
+                                                        "single_button",
+                                                        R.string.super_island_media_button_layout_single,
+                                                        R.string.super_island_media_button_layout_single_desc
+                                                    ) else null,
                                                     Triple(
                                                         "two_button",
                                                         R.string.super_island_media_button_layout_two,
@@ -1390,6 +1460,54 @@ fun CustomSettingsScreen(
                                                             superIslandMediaButtonLayout = layoutId
                                                             viewModel.dispatch(CustomSettingsAction.SetSuperIslandMediaButtonLayout(layoutId))
                                                             showSuperIslandMediaButtonLayoutDropdown = false
+                                                        }
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+
+                                if (superIslandNotificationStyle == LabFeatureManager.SUPER_ISLAND_STYLE_STANDARD &&
+                                    superIslandMediaButtonLayout == "single_button"
+                                ) {
+                                    val template18ModeLabels = superIslandTemplate18TextModes
+                                        .mapNotNull { SuperIslandTemplate18TextMode.from(it) }
+                                        .map { stringResource(it.titleRes) }
+                                    val template18ModesLabel = template18ModeLabels.joinToString(" / ")
+                                    SettingsCardDivider()
+                                    SettingsTextItem(
+                                        title = stringResource(R.string.settings_super_island_template18_text_modes),
+                                        value = template18ModesLabel,
+                                        modifier = settingModifier("key_super_island_template18_text_modes"),
+                                        onClick = { showTemplate18TextModeDialog = true }
+                                    )
+
+                                    val template18ButtonName = stringResource(
+                                        SuperIslandTemplate18ButtonAction.from(superIslandTemplate18ButtonAction).titleRes
+                                    )
+                                    SettingsCardDivider()
+                                    Box(modifier = Modifier.fillMaxWidth()) {
+                                        SettingsTextItem(
+                                            title = stringResource(R.string.settings_super_island_template18_button_action),
+                                            value = template18ButtonName,
+                                            modifier = settingModifier("key_super_island_template18_button_action"),
+                                            onClick = { showTemplate18ButtonActionDropdown = true }
+                                        )
+                                        Box(modifier = Modifier.matchParentSize().wrapContentSize(Alignment.Center)) {
+                                            MaterialBlurDropdownMenu(
+                                                expanded = showTemplate18ButtonActionDropdown,
+                                                onDismissRequest = { showTemplate18ButtonActionDropdown = false }
+                                            ) {
+                                                SuperIslandTemplate18ButtonAction.entries.forEach { action ->
+                                                    DropdownMenuItem(
+                                                        text = { Text(stringResource(action.titleRes)) },
+                                                        onClick = {
+                                                            superIslandTemplate18ButtonAction = action.preferenceValue
+                                                            viewModel.dispatch(
+                                                                CustomSettingsAction.SetSuperIslandTemplate18ButtonAction(action.preferenceValue)
+                                                            )
+                                                            showTemplate18ButtonActionDropdown = false
                                                         }
                                                     )
                                                 }
@@ -2061,6 +2179,16 @@ fun CustomSettingsScreen(
                     }
                 )
             }
+            if (showTemplate18TextModeDialog) {
+                MaterialTemplate18TextModeDialog(
+                    selectedModes = superIslandTemplate18TextModes,
+                    onDismiss = { showTemplate18TextModeDialog = false },
+                    onCommit = { modes ->
+                        superIslandTemplate18TextModes = modes
+                        viewModel.dispatch(CustomSettingsAction.SetSuperIslandTemplate18TextModes(modes))
+                    }
+                )
+            }
 
         }
     }
@@ -2153,6 +2281,97 @@ private fun MaterialSecondaryTextModeDialog(
             TextButton(onClick = onDismiss) {
                 Text(stringResource(R.string.dialog_btn_cancel))
             }
+        }
+    )
+}
+
+@Composable
+private fun MaterialTemplate18TextModeDialog(
+    selectedModes: List<String>,
+    onDismiss: () -> Unit,
+    onCommit: (List<String>) -> Unit
+) {
+    val context = LocalContext.current
+    val keepTwoText = stringResource(R.string.settings_super_island_template18_min_two)
+    var modes by remember(selectedModes) { mutableStateOf(selectedModes) }
+    var draggingMode by remember { mutableStateOf<String?>(null) }
+
+    fun toggle(mode: SuperIslandTemplate18TextMode, checked: Boolean) {
+        val id = mode.preferenceValue
+        if (checked && id !in modes) {
+            modes = modes + id
+        } else if (!checked && id in modes) {
+            if (modes.size <= SuperIslandTemplate18TextMode.MIN_SELECTED) {
+                Toast.makeText(context, keepTwoText, Toast.LENGTH_SHORT).show()
+            } else {
+                modes = modes - id
+            }
+        }
+    }
+
+    MaterialBlurAlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.settings_super_island_template18_text_modes)) },
+        text = {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    text = stringResource(R.string.settings_super_island_template18_text_modes_desc),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                SuperIslandTemplate18TextMode.entries.forEach { mode ->
+                    MaterialHomeLyricPreviewOption(
+                        title = stringResource(mode.titleRes),
+                        checked = mode.preferenceValue in modes,
+                        onCheckedChange = { toggle(mode, it) }
+                    )
+                }
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = stringResource(R.string.settings_super_island_secondary_text_priority),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(start = 48.dp)
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                val rowHeight = 48.dp
+                val orderedModes = modes.mapNotNull { SuperIslandTemplate18TextMode.from(it) }
+                Box(modifier = Modifier.fillMaxWidth().height(rowHeight * orderedModes.size)) {
+                    orderedModes.forEachIndexed { index, mode ->
+                        key(mode.preferenceValue) {
+                            MaterialSecondaryModeDragRow(
+                                label = stringResource(mode.titleRes),
+                                index = index,
+                                rowHeight = rowHeight,
+                                itemCount = orderedModes.size,
+                                isDragging = draggingMode == mode.preferenceValue,
+                                onDragStart = { draggingMode = mode.preferenceValue },
+                                onDragMove = { from, to -> modes = modes.moveItem(from, to) },
+                                onDragCancel = { draggingMode = null },
+                                onDragEnd = { draggingMode = null }
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    val selected = modes.mapNotNull { SuperIslandTemplate18TextMode.from(it) }
+                    val finalModes = (selected.takeIf { it.size >= SuperIslandTemplate18TextMode.MIN_SELECTED }
+                        ?: SuperIslandTemplate18TextMode.DEFAULT)
+                        .map { it.preferenceValue }
+                    onCommit(finalModes)
+                    onDismiss()
+                }
+            ) {
+                Text(stringResource(R.string.backup_dialog_confirm))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.dialog_btn_cancel)) }
         }
     )
 }

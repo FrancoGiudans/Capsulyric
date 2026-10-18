@@ -63,7 +63,10 @@ internal object SuperIslandBigAreaRenderer {
         showHighlightColor: Boolean,
         title: String = "",
         artist: String = "",
-        fullLyricUsesDedicatedRightColumn: Boolean = false
+        fullLyricUsesDedicatedRightColumn: Boolean = false,
+        rightProgressRingEnabled: Boolean = false,
+        progressPercent: Int = 0,
+        progressReachColor: String = "#757575"
     ) {
         if (config.lyricMode == "full") {
             applyFullMode(
@@ -76,7 +79,10 @@ internal object SuperIslandBigAreaRenderer {
                 showHighlightColor = showHighlightColor,
                 title = title,
                 artist = artist,
-                fullLyricUsesDedicatedRightColumn = fullLyricUsesDedicatedRightColumn
+                fullLyricUsesDedicatedRightColumn = fullLyricUsesDedicatedRightColumn,
+                rightProgressRingEnabled = rightProgressRingEnabled,
+                progressPercent = progressPercent,
+                progressReachColor = progressReachColor
             )
             return
         }
@@ -89,7 +95,10 @@ internal object SuperIslandBigAreaRenderer {
                 islandKey = islandKey,
                 showHighlightColor = showHighlightColor,
                 title = title,
-                artist = artist
+                artist = artist,
+                rightProgressRingEnabled = rightProgressRingEnabled,
+                progressPercent = progressPercent,
+                progressReachColor = progressReachColor
             )
             return
         }
@@ -109,7 +118,10 @@ internal object SuperIslandBigAreaRenderer {
             leftText = leftTitle,
             rightText = rightLyric,
             showHighlightColor = showHighlightColor,
-            narrowLeftFont = null
+            narrowLeftFont = null,
+            rightProgressRingEnabled = rightProgressRingEnabled,
+            progressPercent = progressPercent,
+            progressReachColor = progressReachColor
         )
     }
 
@@ -123,7 +135,10 @@ internal object SuperIslandBigAreaRenderer {
         showHighlightColor: Boolean,
         title: String,
         artist: String,
-        fullLyricUsesDedicatedRightColumn: Boolean
+        fullLyricUsesDedicatedRightColumn: Boolean,
+        rightProgressRingEnabled: Boolean,
+        progressPercent: Int,
+        progressReachColor: String
     ) {
         val resolvedLyric = sequenceOf(fullLyric, displayLyric)
             .firstOrNull { !SuperIslandTextResolver.isPlaceholder(it) }
@@ -139,7 +154,10 @@ internal object SuperIslandBigAreaRenderer {
                 islandKey = islandKey,
                 showHighlightColor = showHighlightColor,
                 title = title,
-                artist = artist
+                artist = artist,
+                rightProgressRingEnabled = rightProgressRingEnabled,
+                progressPercent = progressPercent,
+                progressReachColor = progressReachColor
             )
             return
         }
@@ -162,7 +180,10 @@ internal object SuperIslandBigAreaRenderer {
             rightText = split.right.ifEmpty { "♪" },
             showHighlightColor = showHighlightColor,
             narrowLeftFont = false,
-            useMatchingRightColumn = fullLyricUsesDedicatedRightColumn
+            useMatchingRightColumn = fullLyricUsesDedicatedRightColumn,
+            rightProgressRingEnabled = rightProgressRingEnabled,
+            progressPercent = progressPercent,
+            progressReachColor = progressReachColor
         )
     }
 
@@ -172,7 +193,10 @@ internal object SuperIslandBigAreaRenderer {
         islandKey: String?,
         showHighlightColor: Boolean,
         title: String,
-        artist: String
+        artist: String,
+        rightProgressRingEnabled: Boolean,
+        progressPercent: Int,
+        progressReachColor: String
     ) {
         val leftText = SuperIslandLyricLayout.takeByWeight(
             title.ifBlank { "♪" },
@@ -189,7 +213,10 @@ internal object SuperIslandBigAreaRenderer {
             leftText = leftText,
             rightText = rightText,
             showHighlightColor = showHighlightColor,
-            narrowLeftFont = false
+            narrowLeftFont = false,
+            rightProgressRingEnabled = rightProgressRingEnabled,
+            progressPercent = progressPercent,
+            progressReachColor = progressReachColor
         )
     }
 
@@ -200,7 +227,10 @@ internal object SuperIslandBigAreaRenderer {
         rightText: String,
         showHighlightColor: Boolean,
         narrowLeftFont: Boolean?,
-        useMatchingRightColumn: Boolean = false
+        useMatchingRightColumn: Boolean = false,
+        rightProgressRingEnabled: Boolean = false,
+        progressPercent: Int = 0,
+        progressReachColor: String = "#757575"
     ) {
         imageTextInfoLeft {
             type = 1
@@ -218,7 +248,21 @@ internal object SuperIslandBigAreaRenderer {
                 }
             }
         }
-        if (useMatchingRightColumn) {
+        if (rightProgressRingEnabled) {
+            progressTextInfo {
+                textInfo {
+                    title = rightText
+                    this.showHighlightColor = showHighlightColor
+                    narrowFont = false
+                }
+                progressInfo {
+                    isCCW = true
+                    progress = progressPercent.coerceIn(0, 100)
+                    colorReach = progressReachColor
+                    colorUnReach = "#333333"
+                }
+            }
+        } else if (useMatchingRightColumn) {
             imageTextInfoRight {
                 type = 2
                 textInfo {
