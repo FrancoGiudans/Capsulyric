@@ -215,6 +215,21 @@ internal object LyricTextWindowCalculator {
             segmentEnd = boundaries.next()
         }
 
+        if (leftColumnWeight != null && range != null) {
+            val focusedStart = boundaries.preceding(range.first + 1)
+            val focusedEnd = boundaries.following(range.first)
+            val focusedWeight = weight(fullText.substring(focusedStart, focusedEnd))
+            // A grapheme wider than the right column must fit in the left.
+            // Drop preceding graphemes only when they would push it out.
+            if (focusedWeight > rightColumnWeight && focusedWeight <= leftColumnWeight) {
+                while (bestStartIndex < focusedStart &&
+                    weight(fullText.substring(bestStartIndex, focusedEnd)) > leftColumnWeight
+                ) {
+                    bestStartIndex = boundaries.following(bestStartIndex)
+                }
+            }
+        }
+
         var endIndex = bestStartIndex
         var columnWeight = 0
         var columnLimit = leftColumnWeight ?: maxDisplayWeight

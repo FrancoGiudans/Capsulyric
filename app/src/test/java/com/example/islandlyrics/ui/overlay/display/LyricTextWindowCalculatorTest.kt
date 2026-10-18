@@ -175,6 +175,34 @@ class LyricTextWindowCalculatorTest {
     }
 
     @Test
+    fun fullLyricWindow_keepsCurrentGraphemeThatOnlyFitsLeftColumn() {
+        val prefix = "一二三四五六七八九十"
+        val current = "e" + "\u0301".repeat(12)
+        for (suffix in listOf("", "甲乙丙丁戊己庚辛壬癸")) {
+            val text = prefix + current + suffix
+            val units = charSyllables(prefix) + syllable(1000, current) +
+                suffix.mapIndexed { index, char -> syllable(1100 + index * 100L, char.toString()) }
+            val window = center(text, units, position = 1000, width = 28, leftColumnWeight = 16)
+            val split = SuperIslandLyricLayout.splitFullLyric(
+                window, showLeftCover = false, leftMaxWeight = 16, rightMaxWeight = 12
+            )
+            val message = "suffix=$suffix window=$window split=$split"
+
+            assertTrue(message, window.contains(current))
+            assertTrue(message, split.left.contains(current))
+            assertEquals(
+                message,
+                window.filterNot(Char::isWhitespace),
+                (split.left + split.right).filterNot(Char::isWhitespace)
+            )
+            assertTrue(message, LyricTextWindowCalculator.weight(split.left) <= 16)
+            assertTrue(message, LyricTextWindowCalculator.weight(split.right) <= 12)
+            val boundaries = BreakIterator.getCharacterInstance(Locale.ROOT).apply { setText(window) }
+            assertTrue(message, boundaries.isBoundary(split.left.length))
+        }
+    }
+
+    @Test
     fun fullLyricWindow_fitsBothColumnsWithoutLosingOrSplittingCharacters() {
         val texts = listOf(
             "一二三四五六七八九十甲乙丙丁戊己庚辛壬癸",
