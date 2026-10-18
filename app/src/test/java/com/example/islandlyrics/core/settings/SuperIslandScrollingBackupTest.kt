@@ -10,7 +10,7 @@ import java.lang.reflect.Proxy
 
 class SuperIslandScrollingBackupTest {
     @Test
-    fun fullBackup_restoresOriginalScrollingChoiceAfterLeavingFullLyrics() {
+    fun fullBackup_restoresOriginalScrollingChoiceWhileFullLyricsRemainSelected() {
         val allLeaves = BackupCategories.ALL_CATEGORIES.flatMap { category ->
             if (category.subGroups.isEmpty()) listOf(category.id) else category.subGroups.map { it.id }
         }.toSet()
@@ -61,14 +61,32 @@ class SuperIslandScrollingBackupTest {
         assertEquals(originalDisabled, prefs.getBoolean(backupKey, !originalDisabled))
 
         SuperIslandPreferenceMigration.migrate(prefs)
-        assertTrue("Full Lyrics must retain the forced state", prefs.getBoolean(forcedKey, false))
-
-        restored["super_island_lyric_mode"] = "standard"
-        SuperIslandPreferenceMigration.migrate(prefs)
-
+        assertEquals("full", prefs.getString("super_island_lyric_mode", null))
         assertEquals(originalDisabled, prefs.getBoolean("disable_lyric_scrolling", !originalDisabled))
         assertFalse(prefs.contains(forcedKey))
         assertFalse(prefs.contains(backupKey))
+
+        // A later user choice must survive subsequent migrations.
+        restored["disable_lyric_scrolling"] = !originalDisabled
+        SuperIslandPreferenceMigration.migrate(prefs)
+        assertEquals(!originalDisabled, prefs.getBoolean("disable_lyric_scrolling", originalDisabled))
+    }
+
+    @Test
+    fun importedForcedState_restoresWithoutRestartingOrChangingModes() {
+        val values = mutableMapOf<String, Any>(
+            "super_island_lyric_mode" to "full",
+            "disable_lyric_scrolling" to true,
+            "super_island_lyric_mode_forced_disable_scrolling" to true,
+            "disable_lyric_scrolling_before_super_island_lyric_mode" to false
+        )
+        val prefs = inMemoryPreferences(values)
+
+        SuperIslandPreferenceMigration.restoreLegacyScrollingPreference(prefs)
+
+        assertFalse(prefs.getBoolean("disable_lyric_scrolling", true))
+        assertEquals("full", prefs.getString("super_island_lyric_mode", null))
+        assertFalse(prefs.contains("super_island_lyric_mode_forced_disable_scrolling"))
     }
 
     private fun inMemoryPreferences(values: MutableMap<String, Any>): SharedPreferences {

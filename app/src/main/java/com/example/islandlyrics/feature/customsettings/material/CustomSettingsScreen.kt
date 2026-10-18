@@ -385,38 +385,6 @@ fun CustomSettingsScreen(
     } else {
         actionStyle
     }
-    val forceDisableScrollingForSuperIslandLyricMode =
-        islandStyleCapsuleEnabled &&
-            superIslandLyricMode == "full"
-
-    fun applySuperIslandScrollForce(force: Boolean, restoreLegacyState: Boolean = false) {
-        val currentDisableScrolling = disableScrolling
-        val forcedKey = "super_island_lyric_mode_forced_disable_scrolling"
-        val legacyForcedKey = "full_super_island_forced_disable_scrolling"
-        val wasForced = prefs.getBoolean(forcedKey, false) || prefs.getBoolean(legacyForcedKey, false)
-        disableScrolling = when {
-            force -> true
-            wasForced -> {
-                val backupKey = "disable_lyric_scrolling_before_super_island_lyric_mode"
-                val legacyBackupKey = "disable_lyric_scrolling_before_full_super_island"
-                if (prefs.contains(backupKey)) {
-                    prefs.getBoolean(backupKey, false)
-                } else {
-                    prefs.getBoolean(legacyBackupKey, false)
-                }
-            }
-            restoreLegacyState && currentDisableScrolling -> false
-            else -> currentDisableScrolling
-        }
-        viewModel.dispatch(
-            CustomSettingsAction.ApplySuperIslandScrollForce(
-                force = force,
-                restoreLegacyState = restoreLegacyState,
-                currentDisableScrolling = currentDisableScrolling
-            )
-        )
-    }
-
     fun setCapsuleRenderMode(mode: CapsuleRenderMode) {
         if (capsuleRenderMode == mode) return
 
@@ -442,9 +410,6 @@ fun CustomSettingsScreen(
         liveUpdateTextChars = LiveUpdateTextLimitConfig.chars(prefs)
         liveUpdateShowProgressBar = AppPreferences.isLiveUpdateShowProgressBar(prefs)
         superIslandNotificationStyle = LabFeatureManager.sanitizeSuperIslandNotificationStyle(context)
-    }
-    LaunchedEffect(forceDisableScrollingForSuperIslandLyricMode) {
-        applySuperIslandScrollForce(forceDisableScrollingForSuperIslandLyricMode)
     }
 
     // Force disable unsupported features
@@ -582,8 +547,7 @@ fun CustomSettingsScreen(
                             SettingsSwitchItem(
                                 title = stringResource(R.string.settings_disable_scrolling),
                                 subtitle = stringResource(R.string.settings_disable_scrolling_desc),
-                                checked = disableScrolling || forceDisableScrollingForSuperIslandLyricMode,
-                                enabled = !forceDisableScrollingForSuperIslandLyricMode,
+                                checked = disableScrolling,
                                 modifier = settingModifier("key_disable_scrolling"),
                                 onCheckedChange = {
                                     disableScrolling = it
@@ -784,9 +748,6 @@ fun CustomSettingsScreen(
                                     fun setSuperIslandLyricMode(newMode: String) {
                                         superIslandLyricMode = newMode
                                         viewModel.dispatch(CustomSettingsAction.SetSuperIslandLyricMode(newMode))
-                                        if (newMode == "standard") {
-                                            applySuperIslandScrollForce(force = false, restoreLegacyState = true)
-                                        }
                                     }
 
                                     SettingsCardDivider()

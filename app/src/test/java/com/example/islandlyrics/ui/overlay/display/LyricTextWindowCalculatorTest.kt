@@ -1,11 +1,14 @@
 package com.example.islandlyrics.ui.overlay.display
 
 import com.example.islandlyrics.lyrics.online.OnlineLyricFetcher
+import com.example.islandlyrics.ui.overlay.superisland.config.SuperIslandLyricLayout
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.text.BreakIterator
+import java.util.Locale
 
 class LyricTextWindowCalculatorTest {
     @Test
@@ -146,13 +149,81 @@ class LyricTextWindowCalculatorTest {
         )
     }
 
+    @Test
+    fun fullLyricWindow_movesFromStartToTailUsingBothColumns() {
+        val text = "一二三四五六七八九十甲乙丙丁戊己庚辛壬癸"
+        val units = charSyllables(text)
+
+        val start = center(text, units, position = 0, width = 26, leftColumnWeight = 12)
+        val middle = center(text, units, position = 1100, width = 26, leftColumnWeight = 12)
+        val tail = center(text, units, position = 1900, width = 26, leftColumnWeight = 12)
+
+        assertEquals(text.take(13), start)
+        assertFalse(start == middle)
+        assertEquals(text.takeLast(13), tail)
+        assertEquals(start, center(text, units, position = 0, width = 26, leftColumnWeight = 12))
+        assertEquals(tail, center(text, units, position = 1900, width = 26, leftColumnWeight = 12))
+    }
+
+    @Test
+    fun fullLyricWindow_keepsTailWhenSummedHalfCharacterBudgetsCannotFitWholeLine() {
+        val text = "一二三四五六七八九十甲乙"
+        val units = charSyllables(text)
+
+        assertEquals(text.take(11), center(text, units, position = 0, width = 24, leftColumnWeight = 11))
+        assertEquals(text.takeLast(11), center(text, units, position = 1100, width = 24, leftColumnWeight = 11))
+    }
+
+    @Test
+    fun fullLyricWindow_fitsBothColumnsWithoutLosingOrSplittingCharacters() {
+        val texts = listOf(
+            "一二三四五六七八九十甲乙丙丁戊己庚辛壬癸",
+            "ab一二三四五六七八九十甲乙丙丁戊己Z",
+            "we make changes and keep moving forward",
+            "一二😀三四五e\u0301六七八😀九十甲乙丙丁戊己",
+            "😀"
+        )
+        val budgets = listOf(8 to 12, 9 to 13, 11 to 13, 12 to 14, 16 to 14)
+        for (text in texts) {
+            val units = text.codePoints().toArray().mapIndexed { index, codePoint ->
+                syllable(index * 100L, String(Character.toChars(codePoint)))
+            }
+            for ((leftWeight, rightWeight) in budgets) {
+                for (index in units.indices) {
+                    val window = center(
+                        text, units, index * 100L, leftWeight + rightWeight, leftColumnWeight = leftWeight
+                    )
+                    val split = SuperIslandLyricLayout.splitFullLyric(
+                        window, showLeftCover = true, leftMaxWeight = leftWeight, rightMaxWeight = rightWeight
+                    )
+                    val message = "text=$text left=$leftWeight right=$rightWeight position=$index window=$window split=$split"
+                    assertEquals(
+                        message,
+                        window.filterNot(Char::isWhitespace),
+                        (split.left + split.right).filterNot(Char::isWhitespace)
+                    )
+                    assertTrue(message, LyricTextWindowCalculator.weight(split.left) <= leftWeight)
+                    assertTrue(message, LyricTextWindowCalculator.weight(split.right) <= rightWeight)
+                    val boundaries = BreakIterator.getCharacterInstance(Locale.ROOT).apply { setText(window) }
+                    assertTrue(message, boundaries.isBoundary(split.left.length))
+                    assertFalse(message, window.isNotEmpty() && Character.isLowSurrogate(window.first()))
+                    assertFalse(message, window.isNotEmpty() && Character.isHighSurrogate(window.last()))
+                    if (index == units.lastIndex) {
+                        assertTrue(message, window.endsWith(units.last().text))
+                    }
+                }
+            }
+        }
+    }
+
     private fun center(
         text: String,
         units: List<OnlineLyricFetcher.SyllableInfo>,
         position: Long,
-        width: Int
+        width: Int,
+        leftColumnWeight: Int? = null
     ): String = checkNotNull(
-        LyricTextWindowCalculator.visualCenterSyllableWindow(text, units, position, width)
+        LyricTextWindowCalculator.visualCenterSyllableWindow(text, units, position, width, leftColumnWeight)
     )
 
     private fun charSyllables(text: String): List<OnlineLyricFetcher.SyllableInfo> =

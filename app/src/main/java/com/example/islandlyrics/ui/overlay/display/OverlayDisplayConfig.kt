@@ -36,20 +36,28 @@ internal data class OverlayDisplayConfig(
     val capsuleRenderMode: CapsuleRenderMode,
     val superIslandLyricMode: String,
     val superIslandRightTextWeight: Int,
+    val superIslandFullLyricShowLeftCover: Boolean,
+    val superIslandLeftWithCoverTextWeight: Int,
+    val superIslandLeftNoCoverTextWeight: Int,
     val liveUpdateTextLimitsEnabled: Boolean,
     val liveUpdateTextWeight: Int,
     val lyricVisualCenterEnabled: Boolean
 ) {
     val isSuperIslandFullLyricMode: Boolean
-        get() = CapsuleRenderMode.shouldDisableLyricScrolling(capsuleRenderMode, superIslandLyricMode)
+        get() = capsuleRenderMode == CapsuleRenderMode.XIAOMI_SUPER_ISLAND && superIslandLyricMode == "full"
 
-    val scrollingDisabled: Boolean
-        get() = disableScrolling || isSuperIslandFullLyricMode
+    fun fullLyricLeftTextWeight(hasAlbumArt: Boolean): Int =
+        if (superIslandFullLyricShowLeftCover && hasAlbumArt) {
+            superIslandLeftWithCoverTextWeight
+        } else {
+            superIslandLeftNoCoverTextWeight
+        }
 
-    fun maxDisplayWeight(baseMaxDisplayWeight: Int): Int {
+    fun maxDisplayWeight(baseMaxDisplayWeight: Int, hasAlbumArt: Boolean): Int {
         return when {
             capsuleRenderMode == CapsuleRenderMode.LIVE_UPDATE ->
                 if (liveUpdateTextLimitsEnabled) liveUpdateTextWeight else LiveUpdateTextLimitConfig.defaultWeight()
+            isSuperIslandFullLyricMode -> fullLyricLeftTextWeight(hasAlbumArt) + superIslandRightTextWeight
             RomUtils.isHyperOs() &&
                 capsuleRenderMode == CapsuleRenderMode.XIAOMI_SUPER_ISLAND &&
                 superIslandLyricMode == "standard" -> superIslandRightTextWeight
@@ -75,6 +83,13 @@ internal data class OverlayDisplayConfig(
                 capsuleRenderMode = CapsuleRenderMode.effective(prefs),
                 superIslandLyricMode = AppPreferences.superIslandLyricMode(prefs),
                 superIslandRightTextWeight = superIslandRightTextWeight,
+                superIslandFullLyricShowLeftCover = AppPreferences.isSuperIslandFullLyricLeftCoverEnabled(prefs),
+                superIslandLeftWithCoverTextWeight = SuperIslandTextLimitConfig.weightForChars(
+                    SuperIslandTextLimitConfig.leftChars(prefs, showLeftCover = true, relaxed = relaxedLimitsEnabled)
+                ),
+                superIslandLeftNoCoverTextWeight = SuperIslandTextLimitConfig.weightForChars(
+                    SuperIslandTextLimitConfig.leftChars(prefs, showLeftCover = false, relaxed = relaxedLimitsEnabled)
+                ),
                 liveUpdateTextLimitsEnabled = LabFeatureManager.isLiveUpdateTextLimitsEnabled(prefs),
                 liveUpdateTextWeight = LiveUpdateTextLimitConfig.weightForChars(
                     LiveUpdateTextLimitConfig.chars(prefs)
