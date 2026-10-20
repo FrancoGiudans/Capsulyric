@@ -125,7 +125,7 @@ internal object SuperIslandBigAreaRenderer {
         artist: String,
         fullLyricUsesDedicatedRightColumn: Boolean
     ) {
-        val resolvedLyric = sequenceOf(fullLyric, displayLyric)
+        val resolvedLyric = sequenceOf(displayLyric, fullLyric)
             .firstOrNull { !SuperIslandTextResolver.isPlaceholder(it) }
             .orEmpty()
         val hasLyric = resolvedLyric.isNotBlank()

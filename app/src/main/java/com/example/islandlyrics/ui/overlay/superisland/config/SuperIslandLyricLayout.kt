@@ -21,6 +21,10 @@
  */
 
 package com.example.islandlyrics.ui.overlay.superisland.config
+
+import java.text.BreakIterator
+import java.util.Locale
+
 object SuperIslandLyricLayout {
     private const val FULL_LYRIC_LEFT_WITH_COVER_WEIGHT = 13
     private const val FULL_LYRIC_LEFT_NO_COVER_WEIGHT = 16
@@ -74,8 +78,10 @@ object SuperIslandLyricLayout {
         if (normalized.isEmpty()) return Split("", "")
 
         val chars = normalized.toList()
+        val boundaries = BreakIterator.getCharacterInstance(Locale.ROOT).apply { setText(normalized) }
         val fullFit = findBestSplit(
             chars = chars,
+            boundaries = boundaries,
             endIndices = chars.size..chars.size,
             leftMaxWeight = leftMaxWeight,
             rightMaxWeight = rightMaxWeight,
@@ -84,6 +90,7 @@ object SuperIslandLyricLayout {
         )
         val best = fullFit ?: findBestSplit(
             chars = chars,
+            boundaries = boundaries,
             endIndices = 2..chars.size,
             leftMaxWeight = leftMaxWeight,
             rightMaxWeight = rightMaxWeight,
@@ -118,6 +125,7 @@ object SuperIslandLyricLayout {
 
     private fun findBestSplit(
         chars: List<Char>,
+        boundaries: BreakIterator,
         endIndices: IntRange,
         leftMaxWeight: Int,
         rightMaxWeight: Int,
@@ -127,7 +135,9 @@ object SuperIslandLyricLayout {
         var best: Candidate? = null
 
         for (endIndex in endIndices) {
-            for (splitIndex in 1 until endIndex) {
+            if (!boundaries.isBoundary(endIndex)) continue
+            for (splitIndex in 0..endIndex) {
+                if (!boundaries.isBoundary(splitIndex)) continue
                 val left = chars.subList(0, splitIndex).joinToString("").trim()
                 val right = chars.subList(splitIndex, endIndex).joinToString("").trim()
                 val leftWeight = calculateWeight(left)

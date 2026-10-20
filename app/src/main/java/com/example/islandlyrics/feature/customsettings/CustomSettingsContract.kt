@@ -102,11 +102,6 @@ sealed interface CustomSettingsAction {
     data class SetProgressColorEnabled(val value: Boolean) : CustomSettingsAction
     data class SetDisableScrolling(val value: Boolean) : CustomSettingsAction
     data class SetLockScreenHideNotification(val value: Boolean) : CustomSettingsAction
-    data class ApplySuperIslandScrollForce(
-        val force: Boolean,
-        val restoreLegacyState: Boolean,
-        val currentDisableScrolling: Boolean
-    ) : CustomSettingsAction
     data class SetLyricTextDisplayMode(val value: String) : CustomSettingsAction
     data class SetOneUiCapsuleColorMode(val value: String) : CustomSettingsAction
     data class SetCapsuleRenderMode(val value: CapsuleRenderMode) : CustomSettingsAction

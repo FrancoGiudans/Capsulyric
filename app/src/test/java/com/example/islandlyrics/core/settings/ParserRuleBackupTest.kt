@@ -30,6 +30,13 @@ import org.junit.Test
 class ParserRuleBackupTest {
 
     @Test
+    fun validatedParserRulesJson_acceptsValidRules() {
+        val json = """[{"pkg":"com.example.player"}]"""
+
+        assertEquals(json, SettingsBackupManager.validatedParserRulesJson(json))
+    }
+
+    @Test
     fun validatedParserRulesJson_rejectsEmptyMalformedAndInvalidArrays() {
         assertNull(SettingsBackupManager.validatedParserRulesJson("[]"))
         assertNull(SettingsBackupManager.validatedParserRulesJson("not-json"))

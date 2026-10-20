@@ -25,7 +25,6 @@ package com.example.islandlyrics.ui.overlay.superisland.config
 import android.content.SharedPreferences
 import androidx.core.content.edit
 import com.example.islandlyrics.core.settings.AppPreferences
-import com.example.islandlyrics.ui.overlay.config.CapsuleRenderMode
 
 /**
  * 旧版本「通知按键」偏好迁移到新版「播放按键布局 + 显示进度条」推导模型：
@@ -41,7 +40,7 @@ internal object SuperIslandPreferenceMigration {
     private const val KEY_LEGACY_SCROLLING_BACKUP = "disable_lyric_scrolling_before_full_super_island"
 
     fun migrate(prefs: SharedPreferences) {
-        restoreScrollingPreferenceIfNoLongerForced(prefs)
+        restoreLegacyScrollingPreference(prefs)
         if (prefs.getBoolean(KEY_MIGRATED, false)) return
 
         val actionStyle = prefs.getString(AppPreferences.Keys.NOTIFICATION_ACTIONS_STYLE, "disabled")
@@ -69,14 +68,10 @@ internal object SuperIslandPreferenceMigration {
         }
     }
 
-    private fun restoreScrollingPreferenceIfNoLongerForced(prefs: SharedPreferences) {
+    fun restoreLegacyScrollingPreference(prefs: SharedPreferences) {
         val wasForced = prefs.getBoolean(KEY_FORCED_SCROLLING, false) ||
             prefs.getBoolean(KEY_LEGACY_FORCED_SCROLLING, false)
-        val fullLyricModeIsActive = CapsuleRenderMode.shouldDisableLyricScrolling(
-            CapsuleRenderMode.effective(prefs),
-            AppPreferences.superIslandLyricMode(prefs)
-        )
-        if (!wasForced || fullLyricModeIsActive) {
+        if (!wasForced) {
             return
         }
 

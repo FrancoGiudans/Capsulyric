@@ -89,12 +89,6 @@ class CustomSettingsViewModel(application: Application) : AndroidViewModel(appli
                 prefs.edit { putBoolean(AppPreferences.Keys.DISABLE_LYRIC_SCROLLING, action.value) }
             is CustomSettingsAction.SetLockScreenHideNotification ->
                 prefs.edit { putBoolean(AppPreferences.Keys.NOTIFICATION_LOCK_SCREEN_HIDDEN, action.value) }
-            is CustomSettingsAction.ApplySuperIslandScrollForce ->
-                applySuperIslandScrollForce(
-                    force = action.force,
-                    restoreLegacyState = action.restoreLegacyState,
-                    currentDisableScrolling = action.currentDisableScrolling
-                )
             is CustomSettingsAction.SetLyricTextDisplayMode ->
                 LyricTextDisplayMode.write(prefs, action.value)
             is CustomSettingsAction.SetOneUiCapsuleColorMode ->
@@ -234,37 +228,4 @@ class CustomSettingsViewModel(application: Application) : AndroidViewModel(appli
         )
     }
 
-    private fun applySuperIslandScrollForce(
-        force: Boolean,
-        restoreLegacyState: Boolean,
-        currentDisableScrolling: Boolean
-    ) {
-        val forcedKey = "super_island_lyric_mode_forced_disable_scrolling"
-        val backupKey = "disable_lyric_scrolling_before_super_island_lyric_mode"
-        val legacyForcedKey = "full_super_island_forced_disable_scrolling"
-        val legacyBackupKey = "disable_lyric_scrolling_before_full_super_island"
-        val wasForced = prefs.getBoolean(forcedKey, false) || prefs.getBoolean(legacyForcedKey, false)
-        prefs.edit {
-            if (force) {
-                if (!wasForced) {
-                    putBoolean(backupKey, currentDisableScrolling)
-                    putBoolean(forcedKey, true)
-                }
-                putBoolean(AppPreferences.Keys.DISABLE_LYRIC_SCROLLING, true)
-            } else if (wasForced) {
-                val restoredValue = if (prefs.contains(backupKey)) {
-                    prefs.getBoolean(backupKey, false)
-                } else {
-                    prefs.getBoolean(legacyBackupKey, false)
-                }
-                putBoolean(AppPreferences.Keys.DISABLE_LYRIC_SCROLLING, restoredValue)
-                remove(backupKey)
-                remove(forcedKey)
-                remove(legacyBackupKey)
-                remove(legacyForcedKey)
-            } else if (restoreLegacyState && currentDisableScrolling) {
-                putBoolean(AppPreferences.Keys.DISABLE_LYRIC_SCROLLING, false)
-            }
-        }
-    }
 }

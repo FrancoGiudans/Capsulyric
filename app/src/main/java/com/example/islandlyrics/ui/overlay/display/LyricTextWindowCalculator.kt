@@ -115,10 +115,39 @@ internal object LyricTextWindowCalculator {
         fullText: String,
         syllables: List<OnlineLyricFetcher.SyllableInfo>?,
         position: Long,
-        maxDisplayWeight: Int
+        maxDisplayWeight: Int,
+        leftColumnWeight: Int? = null
     ): String? {
         if (maxDisplayWeight <= 0) return null
-        if (weight(fullText) <= maxDisplayWeight) return fullText
+        val totalWeight = weight(fullText)
+        if (leftColumnWeight == null && totalWeight <= maxDisplayWeight) return fullText
+
+        val boundaries = BreakIterator.getCharacterInstance(Locale.ROOT).apply { setText(fullText) }
+        val rightColumnWeight = maxDisplayWeight - (leftColumnWeight ?: 0)
+        var maxStartWeight = maxOf(0, totalWeight - maxDisplayWeight)
+        if (leftColumnWeight != null) {
+            // Fit the suffix into the right column, then the left. A summed
+            // budget alone can hide the last glyph at half-character limits.
+            var tailStartIndex = fullText.length
+            var columnWeight = 0
+            var columnLimit = rightColumnWeight
+            var isLeftColumn = false
+            var previousBoundary = boundaries.preceding(tailStartIndex)
+            while (previousBoundary != BreakIterator.DONE) {
+                val segmentWeight = weight(fullText.substring(previousBoundary, tailStartIndex))
+                if (columnWeight + segmentWeight > columnLimit && !isLeftColumn) {
+                    isLeftColumn = true
+                    columnLimit = leftColumnWeight
+                    columnWeight = 0
+                }
+                if (columnWeight + segmentWeight > columnLimit) break
+                columnWeight += segmentWeight
+                tailStartIndex = previousBoundary
+                previousBoundary = boundaries.previous()
+            }
+            if (tailStartIndex == 0) return fullText
+            maxStartWeight = weight(fullText.substring(0, tailStartIndex))
+        }
 
         val nonWhitespaceOffsets = fullText.indices.filterNot { fullText[it].isWhitespace() }
         val normalizedText = buildString(nonWhitespaceOffsets.size) {
@@ -157,15 +186,12 @@ internal object LyricTextWindowCalculator {
             weight(fullText.substring(0, range.first)) +
                 weight(fullText.substring(range.first, range.last + 1)) / 2.0
         }
-        val totalWeight = weight(fullText)
-        val maxStartWeight = maxOf(0, totalWeight - maxDisplayWeight)
         val targetStartWeight =
             (focusWeight - maxDisplayWeight / 2.0).coerceIn(0.0, maxStartWeight.toDouble())
 
         var bestStartIndex = 0
         var bestStartWeight = 0
         var bestDistance = kotlin.math.abs(targetStartWeight)
-        val boundaries = BreakIterator.getCharacterInstance(Locale.ROOT).apply { setText(fullText) }
         var segmentStart = boundaries.first()
         var prefixWeight = 0
         var segmentEnd = boundaries.next()
@@ -189,14 +215,36 @@ internal object LyricTextWindowCalculator {
             segmentEnd = boundaries.next()
         }
 
+        if (leftColumnWeight != null && range != null) {
+            val focusedStart = boundaries.preceding(range.first + 1)
+            val focusedEnd = boundaries.following(range.first)
+            val focusedWeight = weight(fullText.substring(focusedStart, focusedEnd))
+            // A grapheme wider than the right column must fit in the left.
+            // Drop preceding graphemes only when they would push it out.
+            if (focusedWeight > rightColumnWeight && focusedWeight <= leftColumnWeight) {
+                while (bestStartIndex < focusedStart &&
+                    weight(fullText.substring(bestStartIndex, focusedEnd)) > leftColumnWeight
+                ) {
+                    bestStartIndex = boundaries.following(bestStartIndex)
+                }
+            }
+        }
+
         var endIndex = bestStartIndex
-        var windowWeight = 0
+        var columnWeight = 0
+        var columnLimit = leftColumnWeight ?: maxDisplayWeight
+        var isRightColumn = leftColumnWeight == null
         boundaries.setText(fullText)
         var nextBoundary = boundaries.following(bestStartIndex)
         while (nextBoundary != BreakIterator.DONE) {
             val segmentWeight = weight(fullText.substring(endIndex, nextBoundary))
-            if (windowWeight + segmentWeight > maxDisplayWeight) break
-            windowWeight += segmentWeight
+            if (columnWeight + segmentWeight > columnLimit && !isRightColumn) {
+                isRightColumn = true
+                columnLimit = rightColumnWeight
+                columnWeight = 0
+            }
+            if (columnWeight + segmentWeight > columnLimit) break
+            columnWeight += segmentWeight
             endIndex = nextBoundary
             nextBoundary = boundaries.next()
         }
