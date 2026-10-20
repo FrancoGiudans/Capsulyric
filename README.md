@@ -229,7 +229,7 @@ For package boundaries and runtime data flow, see [Architecture](docs/ARCHITECTU
 ## Build (构建)
 
 **Prerequisites / 环境要求:**
-- **JDK 26** (e.g., Temurin 26) — required to compile Java 26 bytecode. / 需要 JDK 26（如 Temurin 26）以编译 Java 26 字节码。
+- **JDK 27** — selected by the project's Gradle Daemon JVM criteria; Java/JVM bytecode targets are 27 (Java source level: 26). / 项目通过 Gradle Daemon JVM 条件选择 Temurin JDK 27；Java/JVM 字节码目标为 27（Java 源码级别为 26）。
 - **Android SDK Platform 37** (API 37) — install via Android Studio SDK Manager. / 通过 Android Studio SDK Manager 安装 API 37 平台。
 
 ```bash

@@ -33,10 +33,10 @@ jobs:
           PR_BASE_BRANCH: ${{ github.base_ref }}
         run: bash .github/scripts/validate_release_metadata.sh "$PR_BASE_BRANCH"
 
-      - name: Set up JDK 26
+      - name: Set up JDK 27
         uses: actions/setup-java@v5
         with:
-          java-version: '26'
+          java-version: '27'
           distribution: 'temurin'
 
       - name: Setup Gradle
