@@ -12,6 +12,6 @@ android {
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_26
-        targetCompatibility = JavaVersion.VERSION_26
+        targetCompatibility = JavaVersion.VERSION_27
     }
 }

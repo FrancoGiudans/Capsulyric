@@ -20,7 +20,7 @@ android {
         def communityFeedBaseUrl = appVersioning.buildMetadata(project, "appCommunityFeedBaseUrl", "APP_COMMUNITY_FEED_BASE_URL", "https://raw.githubusercontent.com/FrancoGiudans/CapsulyricFeed/main/data")
         versionName = "${baseVersion}_C${appVersioning.gitCommitCount(project)}"
 
-        buildConfigField "String", "GIT_COMMIT_HASH", "\"${appVersioning.gitCommitHash()}\""
+        buildConfigField "String", "GIT_COMMIT_HASH", "\"${appVersioning.gitCommitHash(project)}\""
         buildConfigField "String", "VERSION_CODENAME", "\"${appVersioning.escapeForBuildConfig(appCodename)}\""
         buildConfigField "String", "COMMUNITY_FEED_BASE_URL", "\"${appVersioning.escapeForBuildConfig(communityFeedBaseUrl)}\""
         buildConfigField "boolean", "LIVE_UPDATE_ENABLED", "true"
@@ -50,7 +50,7 @@ android {
 
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_26
-        targetCompatibility JavaVersion.VERSION_26
+        targetCompatibility JavaVersion.VERSION_27
     }
 
     buildFeatures {

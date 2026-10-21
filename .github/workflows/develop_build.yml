@@ -123,10 +123,10 @@ jobs:
           echo "codename=$CODENAME" >> $GITHUB_OUTPUT
           echo "version_prefix=$VERSION_PREFIX" >> $GITHUB_OUTPUT
 
-      - name: Set up JDK 26
+      - name: Set up JDK 27
         uses: actions/setup-java@v5
         with:
-          java-version: '26'
+          java-version: '27'
           distribution: 'temurin'
 
       - name: Setup Gradle
