@@ -65,8 +65,6 @@ data/
 rules/
   ParserRule.kt                            # Parser-rule model
   ParserRuleHelper.kt                      # Rule matching, cache, notification-text extraction
-  WhitelistHelper.kt                       # App whitelist matching
-  WhitelistItem.kt                         # Whitelist item model
 lyrics/
   cache/OnlineLyricCacheStore.kt           # Persistent online-lyric cache
   export/LyricExporter.kt                  # Lyric export (LRC/…)

@@ -277,7 +277,7 @@ class MediaMonitorService : NotificationListenerService() {
     }
 
     private fun loadWhitelist() {
-        // Use ParserRuleHelper to get all configured parser rules (replaces old WhitelistHelper)
+        // Use ParserRuleHelper to get all configured parser rules
         val rules = ParserRuleHelper.loadRules(this)
         val set = rules.filter { it.enabled }.map { it.packageName }.toSet()
         allowedPackages.clear()
