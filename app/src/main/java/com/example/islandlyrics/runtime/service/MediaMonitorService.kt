@@ -345,7 +345,7 @@ class MediaMonitorService : NotificationListenerService() {
                                         val meta = primary.metadata
                                         if (meta != null) {
                                             val artHash = (meta.getBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART)
-                                                ?: meta.getBitmap(MediaMetadata.METADATA_KEY_ART))?.hashCode() ?: 0
+                                                ?: meta.getBitmap(MediaMetadata.METADATA_KEY_ART)).hashCode()
                                             val currentHash = java.util.Objects.hash(
                                                 meta.getString(MediaMetadata.METADATA_KEY_TITLE),
                                                 meta.getString(MediaMetadata.METADATA_KEY_ARTIST),
@@ -578,7 +578,7 @@ class MediaMonitorService : NotificationListenerService() {
 
         val artBitmap = metadata.getBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART) 
                         ?: metadata.getBitmap(MediaMetadata.METADATA_KEY_ART)
-        val artHash = artBitmap?.hashCode() ?: 0
+        val artHash = artBitmap.hashCode()
         
         val metadataHash = java.util.Objects.hash(
             rawTitle,
@@ -634,7 +634,7 @@ class MediaMonitorService : NotificationListenerService() {
                                  rawTitle?.contains("伴奏") == true
             // NOTE: We only compare against album, not display title.
             // On many devices (Xiaomi etc.), DISPLAY_TITLE == TITLE, making the check useless.
-            val isLikelyRealTitle = !album.isNullOrEmpty() && rawTitle == album
+            val isLikelyRealTitle = album.isNotEmpty() && rawTitle == album
             val isFalsePositiveLyric = isInstrumental || isLikelyRealTitle
 
             // --- Read Previous State ---
@@ -746,7 +746,7 @@ class MediaMonitorService : NotificationListenerService() {
                         val isAnomalousParse = isRiskySeparator &&
                                                suspectedTitle.contains("/") &&
                                                !suspectedArtist.contains("/")
-                        val signalAlbumMatch   = !album.isNullOrEmpty() && suspectedTitle == album
+                        val signalAlbumMatch   = album.isNotEmpty() && suspectedTitle == album
                         val signalSafeSeparator = !isRiskySeparator
                         val isConfirmedLyric   = signalSafeSeparator || signalAlbumMatch
 
@@ -818,7 +818,7 @@ class MediaMonitorService : NotificationListenerService() {
     ) {
         val trackKey = listOf(pkg, title.orEmpty(), artist.orEmpty(), duration).joinToString("|")
         val liveArt = artBitmap?.takeIf { !it.isRecycled }
-        val artHash = liveArt?.hashCode() ?: 0
+        val artHash = liveArt.hashCode()
 
         // Compare the artwork identity, not just "did this track ever have art".
         // Some players publish the new track's title/artist while METADATA_KEY_ALBUM_ART
@@ -973,13 +973,8 @@ class MediaMonitorService : NotificationListenerService() {
         private val _connectionStateFlow = kotlinx.coroutines.flow.MutableStateFlow(ConnectionState.CONNECTING)
         val connectionStateFlow: kotlinx.coroutines.flow.StateFlow<ConnectionState> get() = _connectionStateFlow
 
-        // 保留布尔状态流给旧调用方，实际状态统一由 connectionStateFlow 驱动。
-        private val _isConnectedFlow = kotlinx.coroutines.flow.MutableStateFlow(false)
-        val isConnectedFlow: kotlinx.coroutines.flow.StateFlow<Boolean> get() = _isConnectedFlow
-
         private fun updateConnectionState(state: ConnectionState) {
             _connectionStateFlow.value = state
-            _isConnectedFlow.value = state == ConnectionState.CONNECTED
         }
 
         // 兼容老调用方：读写代理到 StateFlow，保持单一状态源
