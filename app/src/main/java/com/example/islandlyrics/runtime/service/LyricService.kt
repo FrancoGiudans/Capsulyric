@@ -37,7 +37,6 @@ import androidx.lifecycle.Observer
 import com.example.islandlyrics.BuildConfig
 import com.example.islandlyrics.core.platform.RomUtils
 import com.example.islandlyrics.core.logging.AppLogger
-import com.example.islandlyrics.core.logging.LogManager
 import com.example.islandlyrics.core.network.OfflineModeManager
 import com.example.islandlyrics.core.settings.AppPreferences
 import com.example.islandlyrics.integration.lastfm.LastFmScrobbleManager
@@ -65,7 +64,6 @@ import com.example.islandlyrics.ui.overlay.config.CapsuleRenderMode
 
 class LyricService : Service() {
 
-    private var lastUpdateTime = 0L
     private var lastObservedTrackKey: String? = null
 
     // ── Lyric sources (each handles one acquisition path) ────────────────────
@@ -492,33 +490,6 @@ class LyricService : Service() {
 
     private fun refreshLockScreenVisibility() {
         renderModeCoordinator?.refreshLockScreenVisibility()
-    }
-
-    @Suppress("UNUSED_PARAMETER")
-    private fun updateNotification(_title: String, _text: String, _subText: String) {
-        val now = System.currentTimeMillis()
-        if (now - lastUpdateTime < 500) return // Strict 500ms cap
-        lastUpdateTime = now
-
-        // DISABLED: LyricCapsuleHandler now handles all Capsule notifications
-        // val notification = buildNotification(title, text, subText)
-        // val nm = getSystemService(NotificationManager::class.java)
-        // if (nm != null) {
-        //     nm.notify(NOTIFICATION_ID, notification)
-        //
-        //     // Diagnostics & Channel Health
-        //     checkAndHealChannel(nm)
-        //
-        //     // Inspect & Broadcast (API 36 Dashboard)
-        //     inspectNotification(notification, nm)
-        // }
-        
-        // Log for debugging but don't send notification
-        LogManager.getInstance().d(this, TAG, "LyricService updateNotification called (skipped - using CapsuleHandler)")
-    }
-
-    internal fun inspectNotification(notification: Notification, nm: NotificationManager) {
-        foregroundController.inspectNotification(notification, nm)
     }
 
     private fun updateActiveHandler() {
