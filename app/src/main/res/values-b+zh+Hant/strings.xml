@@ -1111,8 +1111,6 @@
     <string name="online_lyric_debug_snapshot_status">結果來自最近自動獲取 (%1$s) · 可重新比對</string>
     <string name="online_lyric_debug_error_no_song">請先輸入歌曲名稱</string>
     <string name="online_lyric_debug_error_empty_override">覆寫內容不可為空</string>
-    <string name="online_lyric_debug_override_saved">自訂覆寫已儲存</string>
-    <string name="online_lyric_debug_override_cleared">自訂覆寫已清除</string>
     <string name="online_lyric_debug_instrumental_status">純音樂標記狀態</string>
     <string name="online_lyric_debug_instrumental_marked">已標記為純音樂</string>
     <string name="online_lyric_debug_instrumental_cleared">已取消純音樂標記</string>

@@ -1111,8 +1111,6 @@
     <string name="online_lyric_debug_snapshot_status">自動取得結果 (%1$s) · 再検索可能</string>
     <string name="online_lyric_debug_error_no_song">曲名を入力してください</string>
     <string name="online_lyric_debug_error_empty_override">オーバーライド内容を空にすることはできません</string>
-    <string name="online_lyric_debug_override_saved">カスタムオーバーライドを保存しました</string>
-    <string name="online_lyric_debug_override_cleared">カスタムオーバーライドを消去しました</string>
     <string name="online_lyric_debug_instrumental_status">インストゥルメンタルマーク状態</string>
     <string name="online_lyric_debug_instrumental_marked">インストゥルメンタルとしてマークしました</string>
     <string name="online_lyric_debug_instrumental_cleared">インストゥルメンタルマークを解除しました</string>

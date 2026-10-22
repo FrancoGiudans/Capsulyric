@@ -787,35 +787,6 @@ class OnlineLyricCacheStore(context: Context) {
         }
     }
 
-    fun clearMatchOverride(mediaInfo: LyricRepository.MediaInfo) {
-        synchronized(lock) {
-            ensureMigrated()
-            val id = buildEntryId(mediaInfo)
-            val existing = readEntryFile(id) ?: return
-            val cleared = existing.copy(
-                overrideTitle = null,
-                overrideArtist = null,
-                overrideUpdatedAt = null,
-                queryTitle = null,
-                queryArtist = null,
-                api = null,
-                providerId = null,
-                lyrics = null,
-                hasSyllable = false,
-                matchedTitle = null,
-                matchedArtist = null,
-                translationLyrics = null,
-                romanLyrics = null,
-                hasTranslation = false,
-                hasRomanization = false,
-                parsedLines = emptyList(),
-                cachedAt = null,
-                updatedAt = System.currentTimeMillis()
-            )
-            writeEntryFile(cleared)
-        }
-    }
-
     fun getLyricCacheSummaries(): List<LyricCacheEntrySummary> = synchronized(lock) {
         ensureMigrated()
         val index = readIndex()

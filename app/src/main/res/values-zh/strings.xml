@@ -1113,8 +1113,6 @@
     <string name="online_lyric_debug_snapshot_status">结果来自最近自动抓取（%1$s）· 可重新匹配</string>
     <string name="online_lyric_debug_error_no_song">没有可用的歌曲信息</string>
     <string name="online_lyric_debug_error_empty_override">请至少填写歌名或歌手中的一项</string>
-    <string name="online_lyric_debug_override_saved">已保存当前歌曲匹配信息，留空项会自动使用原始播放信息</string>
-    <string name="online_lyric_debug_override_cleared">已清除当前歌曲自定义匹配和关联歌词缓存</string>
     <string name="online_lyric_debug_instrumental_status">当前歌曲已标记为纯音乐，将跳过在线歌词匹配</string>
     <string name="online_lyric_debug_instrumental_marked">已将当前歌曲标记为纯音乐，并采用无歌词处理</string>
     <string name="online_lyric_debug_instrumental_cleared">已取消纯音乐标记</string>
