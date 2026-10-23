@@ -375,38 +375,6 @@ fun MiuixCustomSettingsScreen(
     } else {
         actionStyle
     }
-    val forceDisableScrollingForSuperIslandLyricMode =
-        islandStyleCapsuleEnabled &&
-            superIslandLyricMode == "full"
-
-    fun applySuperIslandScrollForce(force: Boolean, restoreLegacyState: Boolean = false) {
-        val currentDisableScrolling = disableScrolling
-        val forcedKey = "super_island_lyric_mode_forced_disable_scrolling"
-        val legacyForcedKey = "full_super_island_forced_disable_scrolling"
-        val wasForced = prefs.getBoolean(forcedKey, false) || prefs.getBoolean(legacyForcedKey, false)
-        disableScrolling = when {
-            force -> true
-            wasForced -> {
-                val backupKey = "disable_lyric_scrolling_before_super_island_lyric_mode"
-                val legacyBackupKey = "disable_lyric_scrolling_before_full_super_island"
-                if (prefs.contains(backupKey)) {
-                    prefs.getBoolean(backupKey, false)
-                } else {
-                    prefs.getBoolean(legacyBackupKey, false)
-                }
-            }
-            restoreLegacyState && currentDisableScrolling -> false
-            else -> currentDisableScrolling
-        }
-        viewModel.dispatch(
-            CustomSettingsAction.ApplySuperIslandScrollForce(
-                force = force,
-                restoreLegacyState = restoreLegacyState,
-                currentDisableScrolling = currentDisableScrolling
-            )
-        )
-    }
-
     fun setCapsuleRenderMode(mode: CapsuleRenderMode) {
         if (capsuleRenderMode == mode) return
 
@@ -432,9 +400,6 @@ fun MiuixCustomSettingsScreen(
         liveUpdateTextChars = LiveUpdateTextLimitConfig.chars(prefs)
         liveUpdateShowProgressBar = AppPreferences.isLiveUpdateShowProgressBar(prefs)
         superIslandNotificationStyle = LabFeatureManager.sanitizeSuperIslandNotificationStyle(context)
-    }
-    LaunchedEffect(forceDisableScrollingForSuperIslandLyricMode) {
-        applySuperIslandScrollForce(forceDisableScrollingForSuperIslandLyricMode)
     }
     LaunchedEffect(isLiveUpdateSupported) {
         if (!isLiveUpdateSupported) {
@@ -620,8 +585,7 @@ fun MiuixCustomSettingsScreen(
                                     SuperSwitch(
                                         title = stringResource(R.string.settings_disable_scrolling),
                                         summary = stringResource(R.string.settings_disable_scrolling_desc),
-                                        checked = disableScrolling || forceDisableScrollingForSuperIslandLyricMode,
-                                        enabled = !forceDisableScrollingForSuperIslandLyricMode,
+                                        checked = disableScrolling,
                                         modifier = Modifier.miuixSettingHighlight(activeHighlightKey, "key_disable_scrolling"),
                                         onCheckedChange = {
                                             disableScrolling = it
@@ -732,9 +696,6 @@ fun MiuixCustomSettingsScreen(
                                                             onClick = {
                                                                 superIslandLyricMode = modeId
                                                                 viewModel.dispatch(CustomSettingsAction.SetSuperIslandLyricMode(modeId))
-                                                                if (modeId == "standard") {
-                                                                    applySuperIslandScrollForce(force = false, restoreLegacyState = true)
-                                                                }
                                                             }
                                                         )
                                                     }

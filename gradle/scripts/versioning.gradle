@@ -2,16 +2,19 @@ import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 
-static def getGitCommitHash() {
+static def getGitCommitHash(project) {
     try {
-        return 'git rev-parse --short HEAD'.execute().text.trim()
+        return project.providers.exec {
+            workingDir project.rootDir
+            commandLine 'git', 'rev-parse', '--short', 'HEAD'
+        }.standardOutput.asText.get().trim()
     } catch (Exception ignored) {
         return "Dev"
     }
 }
 
-static def getGitCommitCount(project = null) {
-    def overrideValue = project?.findProperty('commitCountOverride')
+static def getGitCommitCount(project) {
+    def overrideValue = project.findProperty('commitCountOverride')
     if (overrideValue == null || overrideValue.toString().trim().isEmpty()) {
         overrideValue = System.getProperty('org.gradle.project.commitCountOverride')
     }
@@ -26,7 +29,10 @@ static def getGitCommitCount(project = null) {
         }
     }
     try {
-        return 'git rev-list --count HEAD'.execute().text.trim().toInteger()
+        return project.providers.exec {
+            workingDir project.rootDir
+            commandLine 'git', 'rev-list', '--count', 'HEAD'
+        }.standardOutput.asText.get().trim().toInteger()
     } catch (Exception ignored) {
         return 1
     }

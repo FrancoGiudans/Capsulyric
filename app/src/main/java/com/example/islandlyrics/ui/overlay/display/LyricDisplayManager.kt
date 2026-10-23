@@ -334,7 +334,7 @@ class LyricDisplayManager(private val context: Context) {
             preferMetadataLayout = true
             scrollState = ScrollState.DONE
             isStatic = true
-        } else if (displayConfig.scrollingDisabled) {
+        } else if (displayConfig.disableScrolling) {
             val currentLine = if (effectiveParsedLyricState.lines != null) effectiveParsedLyricState.currentLine(currentPosition) else null
             if (currentLine != null) {
                 val text = resolvePreferredLineText(currentLine.text, lyricInfo, currentLine)
@@ -368,7 +368,12 @@ class LyricDisplayManager(private val context: Context) {
                         fullText = text,
                         syllables = currentLine.syllables,
                         position = currentPosition,
-                        maxDisplayWeight = maxDisplayWeight
+                        maxDisplayWeight = maxDisplayWeight,
+                        leftColumnWeight = if (displayConfig.isSuperIslandFullLyricMode) {
+                            displayConfig.fullLyricLeftTextWeight(repo.liveAlbumArt.value != null)
+                        } else {
+                            null
+                        }
                     )
                 } else {
                     null
@@ -720,7 +725,10 @@ class LyricDisplayManager(private val context: Context) {
     }
 
     private fun currentMaxDisplayWeight(): Int {
-        return displayConfig.maxDisplayWeight(baseMaxDisplayWeight)
+        return displayConfig.maxDisplayWeight(
+            baseMaxDisplayWeight,
+            hasAlbumArt = LyricRepository.getInstance().liveAlbumArt.value != null
+        )
     }
 
     private fun resolveTimingGapDisplay(

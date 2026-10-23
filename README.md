@@ -229,8 +229,10 @@ For package boundaries and runtime data flow, see [Architecture](docs/ARCHITECTU
 ## Build (构建)
 
 **Prerequisites / 环境要求:**
-- **JDK 26** (e.g., Temurin 26) — required to compile Java 26 bytecode. / 需要 JDK 26（如 Temurin 26）以编译 Java 26 字节码。
+- **JDK 27** (e.g., Temurin 27) — required to compile Java 27 bytecode. / 需要 JDK 27（如 Temurin 27）以编译 Java 27 字节码。
 - **Android SDK Platform 37** (API 37) — install via Android Studio SDK Manager. / 通过 Android Studio SDK Manager 安装 API 37 平台。
+
+Lint uses ASM 9.11.1 through the root build script's `androidLintTool` dependency constraints to support JVM 27 bytecode analysis. / Lint 通过根构建脚本中 `androidLintTool` 的依赖约束使用 ASM 9.11.1，以支持 JVM 27 字节码分析。
 
 ```bash
 git clone https://github.com/FrancoGiudans/Capsulyric.git

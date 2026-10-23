@@ -30,6 +30,7 @@ import com.example.islandlyrics.integration.lastfm.LastFmCredentials
 import com.example.islandlyrics.integration.lastfm.LastFmSecureStore
 import com.example.islandlyrics.lyrics.cache.OnlineLyricCacheStore
 import com.example.islandlyrics.rules.ParserRuleHelper
+import com.example.islandlyrics.ui.overlay.superisland.config.SuperIslandPreferenceMigration
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
@@ -650,7 +651,8 @@ object SettingsBackupManager {
         parserImportMode: ParserImportMode = ParserImportMode.Merge
     ): ImportResult {
         val root = JSONObject(text)
-        val editor = AppPreferences.of(context).edit()
+        val prefs = AppPreferences.of(context)
+        val editor = prefs.edit()
         val schemaVersion = root.optInt("schema_version", 1)
 
         var count = 0
@@ -735,6 +737,8 @@ object SettingsBackupManager {
         }
 
         editor.apply()
+
+        SuperIslandPreferenceMigration.restoreLegacyScrollingPreference(prefs)
 
         val validatedParserJson = validatedParserRulesJson(importedParserJson)
         if (validatedParserJson != null) {
