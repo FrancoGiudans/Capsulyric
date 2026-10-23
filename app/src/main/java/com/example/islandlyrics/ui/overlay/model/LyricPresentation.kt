@@ -36,6 +36,7 @@ data class LyricPresentation(
     val currentLine: DisplayLine? = null,
     val previousLine: DisplayLine? = null,
     val nextLine: DisplayLine? = null,
+    val nextNextLine: DisplayLine? = null,
     val currentLineIndex: Int = -1,
     val timelineCapability: LyricRepository.TimelineCapability = LyricRepository.TimelineCapability.NONE,
     val wordProgress: WordProgress? = null

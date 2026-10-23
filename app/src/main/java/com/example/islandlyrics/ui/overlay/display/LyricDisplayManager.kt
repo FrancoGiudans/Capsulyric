@@ -117,6 +117,7 @@ class LyricDisplayManager(private val context: Context) {
         val currentLine: OnlineLyricFetcher.LyricLine?,
         val previousLine: OnlineLyricFetcher.LyricLine?,
         val nextLine: OnlineLyricFetcher.LyricLine?,
+        val nextNextLine: OnlineLyricFetcher.LyricLine?,
         val timelineCapability: LyricRepository.TimelineCapability
     )
 
@@ -489,6 +490,8 @@ class LyricDisplayManager(private val context: Context) {
             isStatic = isStatic,
             progressMax = 100,
             progressCurrent = progressPercent,
+            playbackPositionMs = currentPosition,
+            playbackDurationMs = duration,
             albumColor = albumArtColorExtractor.currentColor,
             useSyllableScrolling = effectiveParsedLyricState.useSyllableScrolling,
             syllableLines = effectiveParsedLyricState.lines,
@@ -541,6 +544,7 @@ class LyricDisplayManager(private val context: Context) {
             currentLine = parsedState.lines?.getOrNull(currentLineIndex),
             previousLine = parsedState.previousLine(currentLineIndex),
             nextLine = parsedState.nextLine(currentLineIndex),
+            nextNextLine = parsedState.nextLine(currentLineIndex, offset = 2),
             timelineCapability = parsedState.timelineCapability
         )
 
@@ -643,6 +647,13 @@ class LyricDisplayManager(private val context: Context) {
             nextLine = when {
                 parsedCurrentLine != null -> parsedState.nextLine(currentIndex)?.toDisplayLine()
                 isCompleteTimeline -> lines?.getOrNull(afterIndex)?.toDisplayLine()
+                else -> null
+            },
+            nextNextLine = when {
+                parsedCurrentLine != null -> parsedState.nextLine(currentIndex, offset = 2)?.toDisplayLine()
+                isCompleteTimeline -> afterIndex.takeIf { it >= 0 }
+                    ?.plus(1)
+                    ?.let { lines?.getOrNull(it)?.toDisplayLine() }
                 else -> null
             },
             currentLineIndex = currentIndex,

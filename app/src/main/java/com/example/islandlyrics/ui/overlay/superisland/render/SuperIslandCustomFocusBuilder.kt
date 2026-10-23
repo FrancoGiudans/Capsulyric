@@ -149,7 +149,10 @@ internal class SuperIslandCustomFocusBuilder(
                         islandKey = islandKey,
                         showHighlightColor = showHighlightColor,
                         title = state.title,
-                        artist = state.artist
+                        artist = state.artist,
+                        rightProgressRingEnabled = preferences.rightIslandProgressActive,
+                        progressPercent = progressPercent,
+                        progressReachColor = if (showHighlightColor) hexColor else "#757575"
                     )
                 }
 
@@ -170,10 +173,12 @@ internal class SuperIslandCustomFocusBuilder(
                                 pic = islandSmallKey
                             }
                         }
-                        progressInfo {
-                            progress = progressPercent
-                            colorReach = if (showHighlightColor) hexColor else "#757575"
-                            colorUnReach = "#333333"
+                        if (preferences.smallIslandShowProgressBar) {
+                            progressInfo {
+                                progress = progressPercent
+                                colorReach = if (showHighlightColor) hexColor else "#757575"
+                                colorUnReach = "#333333"
+                            }
                         }
                     }
                 }

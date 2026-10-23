@@ -25,11 +25,13 @@ import android.content.Context
 import android.content.SharedPreferences
 import com.example.islandlyrics.core.platform.XmsfBypassMode
 import com.example.islandlyrics.core.settings.AppPreferences
+import com.example.islandlyrics.core.settings.LabFeatureManager
 
 internal class SuperIslandPreferencesCache(
-    context: Context,
+    private val context: Context,
     private val onClickStyleChanged: () -> Unit,
-    private val onXmsfModeChanged: (XmsfBypassMode) -> Unit
+    private val onXmsfModeChanged: (XmsfBypassMode) -> Unit,
+    private val onRenderConfigChanged: () -> Unit
 ) {
     var clickStyle = "default"
         private set
@@ -48,6 +50,18 @@ internal class SuperIslandPreferencesCache(
     var dualLineMode = SuperIslandDualLineMode.TRANSLATION
         private set
     var showProgressBar = true
+        private set
+    var smallIslandShowProgressBar = true
+        private set
+    var rightIslandProgressEnabled = false
+        private set
+    var rightIslandProgressLabEnabled = false
+        private set
+    val rightIslandProgressActive: Boolean
+        get() = rightIslandProgressEnabled && rightIslandProgressLabEnabled
+    var template18TextModes: List<SuperIslandTemplate18TextMode> = SuperIslandTemplate18TextMode.DEFAULT
+        private set
+    var template18ButtonAction = SuperIslandTemplate18ButtonAction.DEFAULT
         private set
     var secondaryTextModes: List<SuperIslandSecondaryTextMode> =
         listOf(SuperIslandSecondaryTextMode.TRANSLATION)
@@ -111,12 +125,24 @@ internal class SuperIslandPreferencesCache(
                 actionStyle = AppPreferences.notificationActionsStyle(p)
             AppPreferences.Keys.SUPER_ISLAND_MEDIA_BUTTON_LAYOUT ->
                 mediaButtonLayout = AppPreferences.superIslandMediaButtonLayout(p)
-            AppPreferences.Keys.SUPER_ISLAND_NOTIFICATION_STYLE ->
-                notificationStyle = AppPreferences.superIslandNotificationStyle(p)
+            AppPreferences.Keys.SUPER_ISLAND_NOTIFICATION_STYLE -> {
+                notificationStyle = LabFeatureManager.sanitizeSuperIslandNotificationStyle(context)
+                mediaButtonLayout = AppPreferences.superIslandMediaButtonLayout(p)
+            }
             AppPreferences.Keys.SUPER_ISLAND_DUAL_LINE_MODE ->
                 dualLineMode = SuperIslandDualLineMode.read(p)
             AppPreferences.Keys.SUPER_ISLAND_SHOW_PROGRESS_BAR ->
                 showProgressBar = AppPreferences.isSuperIslandShowProgressBar(p)
+            AppPreferences.Keys.SUPER_ISLAND_SMALL_ISLAND_SHOW_PROGRESS_BAR ->
+                smallIslandShowProgressBar = AppPreferences.isSuperIslandSmallIslandProgressBarEnabled(p)
+            AppPreferences.Keys.SUPER_ISLAND_TEMPLATE18_TEXT_MODES ->
+                template18TextModes = SuperIslandTemplate18TextMode.read(p)
+            AppPreferences.Keys.SUPER_ISLAND_TEMPLATE18_BUTTON_ACTION ->
+                template18ButtonAction = SuperIslandTemplate18ButtonAction.read(p)
+            AppPreferences.Keys.SUPER_ISLAND_COLLAPSED_RIGHT_PROGRESS_RING ->
+                rightIslandProgressEnabled = AppPreferences.isSuperIslandCollapsedRightProgressRingEnabled(p)
+            LabFeatureManager.KEY_SUPER_ISLAND_RIGHT_ISLAND_PROGRESS_LAB_ENABLED ->
+                rightIslandProgressLabEnabled = LabFeatureManager.isSuperIslandRightIslandProgressLabEnabled(context)
             AppPreferences.Keys.SUPER_ISLAND_SECONDARY_TEXT_MODES ->
                 secondaryTextModes = SuperIslandSecondaryTextMode.read(p)
             AppPreferences.Keys.SUPER_ISLAND_TEMPLATE2_PIC_SOURCE ->
@@ -141,6 +167,7 @@ internal class SuperIslandPreferencesCache(
                 xmsfCustomDurationMs = XmsfBypassMode.readCustomDurationMs(p)
             }
         }
+        if (key in renderPreferenceKeys) onRenderConfigChanged()
     }
 
     fun start() {
@@ -162,11 +189,16 @@ internal class SuperIslandPreferencesCache(
         shareEnabled = AppPreferences.isSuperIslandShareEnabled(prefs)
         shareFormat = AppPreferences.superIslandShareFormat(prefs)
         actionStyle = AppPreferences.notificationActionsStyle(prefs)
+        notificationStyle = LabFeatureManager.sanitizeSuperIslandNotificationStyle(context)
         mediaButtonLayout = AppPreferences.superIslandMediaButtonLayout(prefs)
-        notificationStyle = AppPreferences.superIslandNotificationStyle(prefs)
         dualLineMode = SuperIslandDualLineMode.read(prefs)
         showProgressBar = AppPreferences.isSuperIslandShowProgressBar(prefs)
+        smallIslandShowProgressBar = AppPreferences.isSuperIslandSmallIslandProgressBarEnabled(prefs)
+        rightIslandProgressEnabled = AppPreferences.isSuperIslandCollapsedRightProgressRingEnabled(prefs)
+        rightIslandProgressLabEnabled = LabFeatureManager.isSuperIslandRightIslandProgressLabEnabled(context)
         secondaryTextModes = SuperIslandSecondaryTextMode.read(prefs)
+        template18TextModes = SuperIslandTemplate18TextMode.read(prefs)
+        template18ButtonAction = SuperIslandTemplate18ButtonAction.read(prefs)
         template2PicSource = SuperIslandTemplate2PicSource.read(prefs)
         template2CustomPicUri = SuperIslandTemplate2PicSource.readCustomPicUri(prefs)
         lyricMode = sanitizeLyricMode(AppPreferences.superIslandLyricMode(prefs))
@@ -200,4 +232,17 @@ internal class SuperIslandPreferencesCache(
 
     private fun sanitizeLyricMode(mode: String?): String =
         if (mode == "full") "full" else "standard"
+
+    private val renderPreferenceKeys = setOf(
+        AppPreferences.Keys.SUPER_ISLAND_MEDIA_BUTTON_LAYOUT,
+        AppPreferences.Keys.SUPER_ISLAND_NOTIFICATION_STYLE,
+        AppPreferences.Keys.SUPER_ISLAND_DUAL_LINE_MODE,
+        AppPreferences.Keys.SUPER_ISLAND_SHOW_PROGRESS_BAR,
+        AppPreferences.Keys.SUPER_ISLAND_SMALL_ISLAND_SHOW_PROGRESS_BAR,
+        AppPreferences.Keys.SUPER_ISLAND_COLLAPSED_RIGHT_PROGRESS_RING,
+        AppPreferences.Keys.SUPER_ISLAND_SECONDARY_TEXT_MODES,
+        AppPreferences.Keys.SUPER_ISLAND_TEMPLATE18_TEXT_MODES,
+        AppPreferences.Keys.SUPER_ISLAND_TEMPLATE18_BUTTON_ACTION,
+        LabFeatureManager.KEY_SUPER_ISLAND_RIGHT_ISLAND_PROGRESS_LAB_ENABLED
+    )
 }

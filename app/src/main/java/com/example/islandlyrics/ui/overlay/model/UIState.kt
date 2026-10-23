@@ -42,6 +42,8 @@ data class UIState(
     val isStatic: Boolean = false,
     val progressMax: Int = 0,
     val progressCurrent: Int = 0,
+    val playbackPositionMs: Long = 0L,
+    val playbackDurationMs: Long = 0L,
     val albumColor: Int = OverlayRenderDefaults.COLOR_PRIMARY,
     val useSyllableScrolling: Boolean = false,
     val syllableLines: List<OnlineLyricFetcher.LyricLine>? = null,

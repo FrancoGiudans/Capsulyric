@@ -30,6 +30,9 @@ import com.example.islandlyrics.ui.overlay.config.OverlayRenderDefaults
 import com.example.islandlyrics.ui.overlay.superisland.config.SuperIslandColorSource
 import com.example.islandlyrics.ui.overlay.superisland.config.SuperIslandLyricLayout
 import com.example.islandlyrics.ui.overlay.superisland.config.SuperIslandSecondaryTextMode
+import com.example.islandlyrics.ui.overlay.superisland.config.SuperIslandTemplate18ButtonAction
+import com.example.islandlyrics.ui.overlay.superisland.config.SuperIslandTemplate18TextMode
+import com.example.islandlyrics.ui.overlay.superisland.render.SuperIslandTemplate18PlaybackInfo
 import android.graphics.Color as AndroidColor
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -49,6 +52,7 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -90,11 +94,13 @@ fun CapsulePreview(
     superIslandCustomColor: Color = Color(0xFF3482FF),
     superIslandSmartMinContrast: Float = SuperIslandColorSource.SMART_CONTRAST_DEFAULT,
     superIslandSmartWhiteRatio: Float = SuperIslandColorSource.SMART_WHITE_RATIO_DEFAULT,
+    rightIslandProgressRingEnabled: Boolean = false,
     showBorder: Boolean = false
 ) {
     val repo = remember { LyricRepository.getInstance() }
     val metadata by repo.liveMetadata.observeAsState()
     val lyricInfo by repo.liveLyric.observeAsState()
+    val progressInfo by repo.liveProgress.observeAsState()
     val albumArt by repo.liveAlbumArt.observeAsState()
 
     val title = metadata?.title ?: "Song Title"
@@ -141,6 +147,13 @@ fun CapsulePreview(
         )
     )
     val superIslandColorized = SuperIslandColorSource.isColorized(superIslandColorSource)
+    val duration = progressInfo?.duration ?: 0L
+    val progress = if (duration > 0L) {
+        ((progressInfo?.position ?: 0L).toFloat() / duration).coerceIn(0f, 1f)
+    } else {
+        0.65f
+    }
+    val collapsedProgressColor = if (superIslandColorized) superIslandAccentColor else Color.White
 
     if (superIslandEnabled) {
         val showLeftCover = albumArt != null && when (superIslandLyricMode) {
@@ -207,16 +220,31 @@ fun CapsulePreview(
                     modifier = Modifier.weight(if (showLeftCover) 1.12f else 1.22f)
                 )
                 Spacer(modifier = Modifier.width(14.dp))
-                Text(
-                    text = rightText,
-                    color = if (superIslandColorized) superIslandAccentColor else Color.White,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 14.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    textAlign = TextAlign.End,
-                    modifier = Modifier.weight(1f)
-                )
+                Row(
+                    modifier = Modifier.weight(1f),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = rightText,
+                        color = if (superIslandColorized) superIslandAccentColor else Color.White,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        textAlign = TextAlign.End,
+                        modifier = Modifier.weight(1f)
+                    )
+                    if (rightIslandProgressRingEnabled) {
+                        Spacer(modifier = Modifier.width(6.dp))
+                        CircularProgressIndicator(
+                            progress = { progress },
+                            color = collapsedProgressColor,
+                            trackColor = Color.White.copy(alpha = 0.18f),
+                            strokeWidth = 2.dp,
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
+                }
             }
         }
     } else {
@@ -421,19 +449,53 @@ fun NotificationPreview(
     showProgressBar: Boolean = true,
     template2PicSource: String = "album_art",
     showBorder: Boolean = false,
-    superIslandSecondaryTextModes: List<String> = emptyList()
+    superIslandSecondaryTextModes: List<String> = emptyList(),
+    template18SecondaryTextModes: List<String> = emptyList(),
+    template18ButtonAction: String = "play_pause",
+    previewDarkTheme: Boolean = true
 ) {
     val context = LocalContext.current
     val repo = remember { LyricRepository.getInstance() }
     val metadata by repo.liveMetadata.observeAsState()
     val lyricInfo by repo.liveLyric.observeAsState()
     val progressInfo by repo.liveProgress.observeAsState()
+    val parsedLyrics by repo.liveParsedLyrics.observeAsState()
+    val activeLyricLine by repo.liveCurrentLine.observeAsState()
     val albumArt by repo.liveAlbumArt.observeAsState()
 
     val title = metadata?.title ?: "打上花火"
     val artist = metadata?.artist ?: "DAOKO×米津玄師"
-    val isLiveLyric = lyricInfo != null
-    val currentLyric = lyricInfo?.lyric ?: when {
+    val position = progressInfo?.position ?: 0L
+    val parsedTimeline = if (
+        parsedLyrics?.timelineCapability == LyricRepository.TimelineCapability.MULTI_LINE
+    ) {
+        parsedLyrics?.lines.orEmpty()
+    } else {
+        emptyList()
+    }
+    val activeLineIndex = activeLyricLine?.let { active ->
+        parsedTimeline.indexOfFirst { line ->
+            line.startTime == active.startTime &&
+                line.endTime == active.endTime &&
+                line.text == active.text
+        }
+    }?.takeIf { it >= 0 } ?: parsedTimeline.indexOfFirst { line ->
+        position >= line.startTime && position < line.endTime
+    }
+    val nextLineIndex = if (activeLineIndex >= 0) {
+        activeLineIndex + 1
+    } else {
+        parsedTimeline.indexOfFirst { position < it.startTime }
+    }
+    val currentTimelineLine = activeLyricLine ?: parsedTimeline.getOrNull(activeLineIndex)
+    val nextTimelineLine = parsedTimeline.getOrNull(nextLineIndex.takeIf { it >= 0 } ?: -1)
+    val nextNextTimelineLine = parsedTimeline.getOrNull(
+        nextLineIndex.takeIf { it >= 0 }?.plus(1) ?: -1
+    )
+    val isLiveLyric = currentTimelineLine != null || lyricInfo?.lyric?.isNotBlank() == true
+    val currentLyric = currentTimelineLine?.text?.takeIf(String::isNotBlank)
+        ?: lyricInfo?.lyric?.takeIf(String::isNotBlank)
+        ?: when {
         actionStyle == "template2" -> "ひそかに二人を見ていた"
         superIslandMediaButtonLayout == "three_button" -> "砂の上 刻んだ足跡"
         superIslandMediaButtonLayout == "two_button" -> "あの日見渡した海岸通り"
@@ -449,7 +511,6 @@ fun NotificationPreview(
         else -> currentLyric
     }
     
-    val position = progressInfo?.position ?: 0L
     val duration = progressInfo?.duration ?: 100L
     val progress = if (duration > 0) position.toFloat() / duration.toFloat() else 0.65f
 
@@ -514,6 +575,40 @@ fun NotificationPreview(
     } else {
         Color(0xFFB0B0B0)
     }
+    val template18SecondaryTexts = template18SecondaryTextModes
+        .mapNotNull { SuperIslandTemplate18TextMode.from(it) }
+        .mapNotNull { mode ->
+            val liveCandidate = when (mode) {
+                SuperIslandTemplate18TextMode.TRANSLATION ->
+                    currentTimelineLine?.translation ?: lyricInfo?.translation
+                SuperIslandTemplate18TextMode.ROMANIZATION ->
+                    currentTimelineLine?.roma ?: lyricInfo?.roma
+                SuperIslandTemplate18TextMode.NEXT_LYRIC -> nextTimelineLine?.text
+                SuperIslandTemplate18TextMode.NEXT_NEXT_LYRIC -> nextNextTimelineLine?.text
+                SuperIslandTemplate18TextMode.PLAYING_INFO -> listOf(title, artist)
+                    .filter(String::isNotBlank)
+                    .joinToString(" - ")
+            }
+            val sampleCandidate = when (mode) {
+                SuperIslandTemplate18TextMode.TRANSLATION -> "正偷偷窥探着我们"
+                SuperIslandTemplate18TextMode.ROMANIZATION -> "hisoka ni futari o miteita"
+                SuperIslandTemplate18TextMode.NEXT_LYRIC -> "海岸通り 通り過ぎてゆく"
+                SuperIslandTemplate18TextMode.NEXT_NEXT_LYRIC -> "この夜が続いて欲しかった"
+                SuperIslandTemplate18TextMode.PLAYING_INFO -> "$title - $artist"
+            }
+            (if (isLiveLyric) liveCandidate else sampleCandidate)
+                ?.takeIf(String::isNotBlank)
+        }
+        .take(2)
+    val previewActionStyle = when {
+        actionStyle == "template18" && template18SecondaryTextModes
+            .mapNotNull { SuperIslandTemplate18TextMode.from(it) }
+            .distinct()
+            .size >= SuperIslandTemplate18TextMode.MIN_SELECTED &&
+            template18SecondaryTexts.size >= SuperIslandTemplate18TextMode.MIN_SELECTED -> "template18"
+        actionStyle == "template18" -> "template2"
+        else -> actionStyle
+    }
 
     // App Badge (Playing App Icon)
     val appIcon = remember(metadata?.packageName) {
@@ -525,13 +620,14 @@ fun NotificationPreview(
     }
 
     if (superIslandEnabled) {
-        // Premium Super Island Style Notification Preview
-        Box(
+        Column(modifier = Modifier.fillMaxWidth()) {
+            // Expanded notification preview
+            Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(8.dp)
                 .clip(RoundedCornerShape(28.dp))
-                .background(Color(0xFF0C0C0C)) // Xiaomi Island Dark
+                .background(if (previewActionStyle == "template18" && !previewDarkTheme) Color.White else Color(0xFF0C0C0C))
                 .then(
                     if (showBorder) {
                         Modifier.border(1.dp, Color.White.copy(alpha = 0.22f), RoundedCornerShape(28.dp))
@@ -540,8 +636,142 @@ fun NotificationPreview(
                     }
                 )
                 .padding(16.dp)
-        ) {
-            if (actionStyle == "media_controls") {
+            ) {
+            if (previewActionStyle == "template18") {
+                val cardForeground = if (previewDarkTheme) Color.White else Color(0xFF111111)
+                val cardPrimaryColor = if (superIslandColorized) superIslandAccentColor else cardForeground
+                val cardSecondaryColor = cardForeground.copy(alpha = 0.65f)
+                val duration = progressInfo?.duration ?: metadata?.duration ?: 0L
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier.size(width = 50.dp, height = 64.dp)
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(Color(0xFF2A2A2A)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            if (albumArt != null) {
+                                Image(
+                                    bitmap = albumArt!!.asImageBitmap(),
+                                    contentDescription = null,
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentScale = ContentScale.Fit
+                                )
+                            } else {
+                                Image(
+                                    painter = painterResource(R.drawable.ic_music_note),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(24.dp),
+                                    colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(Color.White)
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Column(
+                            modifier = Modifier.weight(1f),
+                            verticalArrangement = Arrangement.spacedBy(3.dp)
+                        ) {
+                            Text(
+                                text = currentLyric.ifBlank { "♪" },
+                                color = cardPrimaryColor,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 15.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            template18SecondaryTexts.take(2).forEach { row ->
+                                Text(
+                                    text = row,
+                                    color = cardSecondaryColor,
+                                    fontSize = 12.sp,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Box(
+                            modifier = Modifier
+                                .size(22.dp)
+                                .clip(RoundedCornerShape(5.dp))
+                                .background(Color(0xFF3D83F7)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            if (appIcon != null) {
+                                androidx.compose.ui.viewinterop.AndroidView(
+                                    factory = { ctx ->
+                                        android.widget.ImageView(ctx).apply { setImageDrawable(appIcon) }
+                                    },
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                            } else {
+                                Text("ICON", color = Color.White, fontSize = 6.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(10.dp))
+                    HorizontalDivider(color = cardForeground.copy(alpha = 0.12f))
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            modifier = Modifier.weight(1f),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = SuperIslandTemplate18PlaybackInfo.elapsed(position, duration),
+                                color = cardPrimaryColor,
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = SuperIslandTemplate18PlaybackInfo.total(duration),
+                                color = cardSecondaryColor,
+                                fontSize = 12.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                        val selectedTemplate18Action =
+                            SuperIslandTemplate18ButtonAction.from(template18ButtonAction)
+                        val template18ActionIcon = when (selectedTemplate18Action) {
+                            SuperIslandTemplate18ButtonAction.PLAY_PAUSE ->
+                                if (repo.isPlaying.value == true) R.drawable.ic_pause else R.drawable.ic_play_arrow
+                            SuperIslandTemplate18ButtonAction.PREVIOUS -> R.drawable.ic_skip_previous
+                            SuperIslandTemplate18ButtonAction.NEXT -> R.drawable.ic_skip_next
+                            SuperIslandTemplate18ButtonAction.CONTROLS -> R.drawable.ic_miplay
+                        }
+                        Row(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(20.dp))
+                                .background(cardForeground.copy(alpha = if (previewDarkTheme) 0.15f else 0.08f))
+                                .padding(horizontal = 12.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                painter = painterResource(template18ActionIcon),
+                                contentDescription = null,
+                                tint = cardForeground,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(5.dp))
+                            Text(
+                                text = stringResource(selectedTemplate18Action.titleRes),
+                                color = cardForeground,
+                                fontSize = 12.sp,
+                                maxLines = 1
+                            )
+                        }
+                    }
+                }
+            } else if (previewActionStyle == "media_controls") {
                 val showAdvancedStyle = superIslandNotificationStyle == "advanced_beta" || superIslandNotificationStyle == "advanced_lyrics_dual"
                 val showPrevButton = if (showAdvancedStyle) true else superIslandMediaButtonLayout == "three_button"
 
@@ -668,7 +898,7 @@ fun NotificationPreview(
                         )
                     }
                 }
-            } else if (actionStyle == "template2") {
+            } else if (previewActionStyle == "template2") {
                 // 模板2（文本组件2 + 识别图形组件1）：无按钮、无进度条
                 val secondaryText = remember(lyricInfo, metadata, superIslandSecondaryTextModes) {
                     val modes = superIslandSecondaryTextModes.mapNotNull { SuperIslandSecondaryTextMode.from(it) }
@@ -852,6 +1082,7 @@ fun NotificationPreview(
                     }
                 }
             }
+        }
         }
     } else {
         // Standard Android Notification Style Card (Legacy)

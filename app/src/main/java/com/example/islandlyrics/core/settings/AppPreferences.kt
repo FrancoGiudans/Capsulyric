@@ -55,7 +55,11 @@ object AppPreferences {
         const val SUPER_ISLAND_NOTIFICATION_STYLE = "super_island_notification_style"
         const val SUPER_ISLAND_DUAL_LINE_MODE = "super_island_dual_line_mode"
         const val SUPER_ISLAND_SHOW_PROGRESS_BAR = "super_island_show_progress_bar"
+        const val SUPER_ISLAND_SMALL_ISLAND_SHOW_PROGRESS_BAR = "super_island_small_island_show_progress_bar"
+        const val SUPER_ISLAND_COLLAPSED_RIGHT_PROGRESS_RING = "super_island_collapsed_right_progress_ring"
         const val SUPER_ISLAND_SECONDARY_TEXT_MODES = "super_island_secondary_text_modes"
+        const val SUPER_ISLAND_TEMPLATE18_TEXT_MODES = "super_island_template18_text_modes"
+        const val SUPER_ISLAND_TEMPLATE18_BUTTON_ACTION = "super_island_template18_button_action"
         const val SUPER_ISLAND_TEMPLATE2_PIC_SOURCE = "super_island_template2_pic_source"
         const val SUPER_ISLAND_TEMPLATE2_CUSTOM_PIC_URI = "super_island_template2_custom_pic_uri"
         const val SUPER_ISLAND_LYRIC_MODE = "super_island_lyric_mode"
@@ -223,6 +227,26 @@ object AppPreferences {
 
     fun isSuperIslandShowProgressBar(prefs: SharedPreferences): Boolean =
         prefs.getBoolean(Keys.SUPER_ISLAND_SHOW_PROGRESS_BAR, Defaults.SUPER_ISLAND_SHOW_PROGRESS_BAR)
+
+    /**
+     * Standard styles followed the expanded progress preference; advanced styles always
+     * showed the small-island ring. Preserve that appearance once, then keep settings independent.
+     */
+    fun isSuperIslandSmallIslandProgressBarEnabled(prefs: SharedPreferences): Boolean {
+        if (prefs.contains(Keys.SUPER_ISLAND_SMALL_ISLAND_SHOW_PROGRESS_BAR)) {
+            return prefs.getBoolean(Keys.SUPER_ISLAND_SMALL_ISLAND_SHOW_PROGRESS_BAR, true)
+        }
+        val legacyValue = when (superIslandNotificationStyle(prefs)) {
+            LabFeatureManager.SUPER_ISLAND_STYLE_ADVANCED,
+            LabFeatureManager.SUPER_ISLAND_STYLE_ADVANCED_LYRICS_DUAL -> true
+            else -> isSuperIslandShowProgressBar(prefs)
+        }
+        prefs.edit { putBoolean(Keys.SUPER_ISLAND_SMALL_ISLAND_SHOW_PROGRESS_BAR, legacyValue) }
+        return legacyValue
+    }
+
+    fun isSuperIslandCollapsedRightProgressRingEnabled(prefs: SharedPreferences): Boolean =
+        prefs.getBoolean(Keys.SUPER_ISLAND_COLLAPSED_RIGHT_PROGRESS_RING, false)
 
     fun superIslandSecondaryTextModes(prefs: SharedPreferences): String =
         prefs.getString(Keys.SUPER_ISLAND_SECONDARY_TEXT_MODES, Defaults.SUPER_ISLAND_SECONDARY_TEXT_MODES)

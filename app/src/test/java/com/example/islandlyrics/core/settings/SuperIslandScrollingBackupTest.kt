@@ -33,6 +33,77 @@ class SuperIslandScrollingBackupTest {
         }
     }
 
+    @Test
+    fun smallIslandProgress_migratesExpandedPreferenceOnceThenRemainsIndependent() {
+        val values = mutableMapOf<String, Any>(
+            AppPreferences.Keys.SUPER_ISLAND_SHOW_PROGRESS_BAR to false
+        )
+        val prefs = inMemoryPreferences(values)
+
+        assertFalse(AppPreferences.isSuperIslandSmallIslandProgressBarEnabled(prefs))
+        assertFalse(prefs.getBoolean(AppPreferences.Keys.SUPER_ISLAND_SMALL_ISLAND_SHOW_PROGRESS_BAR, true))
+
+        prefs.edit().putBoolean(AppPreferences.Keys.SUPER_ISLAND_SHOW_PROGRESS_BAR, true).apply()
+        assertFalse(AppPreferences.isSuperIslandSmallIslandProgressBarEnabled(prefs))
+    }
+
+    @Test
+    fun smallIslandProgress_advancedMigrationPreservesRingForBothExpandedValues() {
+        for (style in listOf("advanced_beta", "advanced_lyrics_dual")) {
+            for (expanded in listOf(false, true)) {
+                val values = mutableMapOf<String, Any>(
+                    AppPreferences.Keys.SUPER_ISLAND_NOTIFICATION_STYLE to style,
+                    AppPreferences.Keys.SUPER_ISLAND_SHOW_PROGRESS_BAR to expanded
+                )
+                val prefs = inMemoryPreferences(values)
+                assertTrue("$style / expanded=$expanded", AppPreferences.isSuperIslandSmallIslandProgressBarEnabled(prefs))
+                prefs.edit().putBoolean(AppPreferences.Keys.SUPER_ISLAND_SHOW_PROGRESS_BAR, !expanded).apply()
+                assertTrue(AppPreferences.isSuperIslandSmallIslandProgressBarEnabled(prefs))
+            }
+        }
+    }
+
+    @Test
+    fun smallIslandProgress_explicitChoiceWinsOverStyleAndExpandedProgress() {
+        for (style in listOf("standard", "advanced_beta", "advanced_lyrics_dual")) {
+            for (collapsed in listOf(false, true)) {
+                val values = mutableMapOf<String, Any>(
+                    AppPreferences.Keys.SUPER_ISLAND_NOTIFICATION_STYLE to style,
+                    AppPreferences.Keys.SUPER_ISLAND_SHOW_PROGRESS_BAR to !collapsed,
+                    AppPreferences.Keys.SUPER_ISLAND_SMALL_ISLAND_SHOW_PROGRESS_BAR to collapsed
+                )
+                assertEquals(collapsed, AppPreferences.isSuperIslandSmallIslandProgressBarEnabled(inMemoryPreferences(values)))
+            }
+        }
+    }
+
+    @Test
+    fun smallIslandProgress_defaultsAndEnabledStandardMigrationKeepRing() {
+        assertTrue(AppPreferences.isSuperIslandSmallIslandProgressBarEnabled(inMemoryPreferences(mutableMapOf())))
+        val values = mutableMapOf<String, Any>(
+            AppPreferences.Keys.SUPER_ISLAND_NOTIFICATION_STYLE to "standard",
+            AppPreferences.Keys.SUPER_ISLAND_SHOW_PROGRESS_BAR to true
+        )
+        val prefs = inMemoryPreferences(values)
+        assertTrue(AppPreferences.isSuperIslandSmallIslandProgressBarEnabled(prefs))
+        prefs.edit().putBoolean(AppPreferences.Keys.SUPER_ISLAND_SHOW_PROGRESS_BAR, false).apply()
+        assertTrue(AppPreferences.isSuperIslandSmallIslandProgressBarEnabled(prefs))
+    }
+
+    @Test
+    fun capsuleLayoutBackup_includesIndependentCollapsedProgressPreferences() {
+        val keys = setOf(
+            AppPreferences.Keys.SUPER_ISLAND_SMALL_ISLAND_SHOW_PROGRESS_BAR,
+            AppPreferences.Keys.SUPER_ISLAND_COLLAPSED_RIGHT_PROGRESS_RING,
+            AppPreferences.Keys.SUPER_ISLAND_TEMPLATE18_TEXT_MODES,
+            AppPreferences.Keys.SUPER_ISLAND_TEMPLATE18_BUTTON_ACTION
+        )
+
+        val selected = BackupCategories.collectKeysForLeafIds(keys, setOf("capsule_layout"))
+
+        assertTrue(selected.containsAll(keys))
+    }
+
     private fun assertRoundTrip(leaves: Set<String>, originalDisabled: Boolean, legacy: Boolean) {
         val forcedKey = if (legacy) {
             "full_super_island_forced_disable_scrolling"
@@ -87,6 +158,47 @@ class SuperIslandScrollingBackupTest {
         assertFalse(prefs.getBoolean("disable_lyric_scrolling", true))
         assertEquals("full", prefs.getString("super_island_lyric_mode", null))
         assertFalse(prefs.contains("super_island_lyric_mode_forced_disable_scrolling"))
+    }
+
+    @Test
+    fun template18Migration_restoresScrollingAndKeepsSingleButtonForBothMigrationStates() {
+        for (alreadyMigrated in listOf(false, true)) {
+            for (legacy in listOf(false, true)) {
+                for (originalDisabled in listOf(false, true)) {
+                    val forcedKey = if (legacy) {
+                        "full_super_island_forced_disable_scrolling"
+                    } else {
+                        "super_island_lyric_mode_forced_disable_scrolling"
+                    }
+                    val backupKey = if (legacy) {
+                        "disable_lyric_scrolling_before_full_super_island"
+                    } else {
+                        "disable_lyric_scrolling_before_super_island_lyric_mode"
+                    }
+                    val values = mutableMapOf<String, Any>(
+                        "super_island_notification_logic_v2_migrated" to alreadyMigrated,
+                        AppPreferences.Keys.SUPER_ISLAND_NOTIFICATION_STYLE to "template18",
+                        AppPreferences.Keys.SUPER_ISLAND_MEDIA_BUTTON_LAYOUT to "no_button",
+                        AppPreferences.Keys.SUPER_ISLAND_LYRIC_MODE to "full",
+                        AppPreferences.Keys.DISABLE_LYRIC_SCROLLING to true,
+                        forcedKey to true,
+                        backupKey to originalDisabled
+                    )
+                    val prefs = inMemoryPreferences(values)
+
+                    repeat(2) {
+                        SuperIslandPreferenceMigration.migrate(prefs)
+
+                        assertEquals("standard", prefs.getString(AppPreferences.Keys.SUPER_ISLAND_NOTIFICATION_STYLE, null))
+                        assertEquals("single_button", prefs.getString(AppPreferences.Keys.SUPER_ISLAND_MEDIA_BUTTON_LAYOUT, null))
+                        assertEquals("full", prefs.getString(AppPreferences.Keys.SUPER_ISLAND_LYRIC_MODE, null))
+                        assertEquals(originalDisabled, prefs.getBoolean(AppPreferences.Keys.DISABLE_LYRIC_SCROLLING, !originalDisabled))
+                        assertFalse(prefs.contains(forcedKey))
+                        assertFalse(prefs.contains(backupKey))
+                    }
+                }
+            }
+        }
     }
 
     private fun inMemoryPreferences(values: MutableMap<String, Any>): SharedPreferences {

@@ -131,6 +131,11 @@ internal class SuperIslandRenderStateTracker {
             return null
         }
 
+        // Playback icons are stored outside the focus JSON. Identical text/progress must
+        // not suppress a changed play/pause image bundle.
+        if (state.isPlaying != lastSentIsPlaying) {
+            clearFocusSignature()
+        }
         return SuperIslandRenderDecision(colorChanged)
     }
 

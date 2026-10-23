@@ -25,12 +25,16 @@ package com.example.islandlyrics.core.settings
 import android.content.Context
 import android.content.SharedPreferences
 import com.example.islandlyrics.core.update.UpdateChecker
+import com.example.islandlyrics.core.platform.RomUtils
+import com.example.islandlyrics.ui.overlay.superisland.config.SuperIslandPreferenceMigration
 
 object LabFeatureManager {
     private const val KEY_SUPER_ISLAND_ADVANCED_STYLE_ENABLED = "lab_super_island_advanced_style_enabled"
     private const val KEY_SUPER_ISLAND_ADVANCED_STYLE_MIGRATED = "lab_super_island_advanced_style_migrated"
     private const val KEY_SUPER_ISLAND_TEXT_LIMITS_ENABLED = "lab_super_island_text_limits_enabled"
     private const val KEY_SUPER_ISLAND_RELAXED_TEXT_LIMITS_ENABLED = "lab_super_island_relaxed_text_limits_enabled"
+    const val KEY_SUPER_ISLAND_TEMPLATE18_ENABLED = "lab_super_island_template18_enabled"
+    const val KEY_SUPER_ISLAND_RIGHT_ISLAND_PROGRESS_LAB_ENABLED = "lab_super_island_right_island_progress_enabled"
     const val KEY_LIVE_UPDATE_TEXT_LIMITS_ENABLED = "lab_live_update_text_limits_enabled"
     const val KEY_LYRIC_VISUAL_CENTER_ENABLED = "lab_lyric_visual_center_enabled"
     const val KEY_FLOATING_LYRICS_ENABLED = "lab_floating_lyrics_enabled"
@@ -132,9 +136,37 @@ object LabFeatureManager {
         return revertedToStandard
     }
 
+    fun isSuperIslandTemplate18Enabled(context: Context): Boolean =
+        RomUtils.isHyperOsVersionAtLeast(3, 0, 0) &&
+            context.prefs().getBoolean(KEY_SUPER_ISLAND_TEMPLATE18_ENABLED, false)
+
+    fun setSuperIslandTemplate18Enabled(context: Context, enabled: Boolean) {
+        val prefs = context.prefs()
+        val editor = prefs.edit().putBoolean(KEY_SUPER_ISLAND_TEMPLATE18_ENABLED, enabled)
+        if (!enabled && AppPreferences.superIslandMediaButtonLayout(prefs) == "single_button") {
+            editor.putString(AppPreferences.Keys.SUPER_ISLAND_MEDIA_BUTTON_LAYOUT, "two_button")
+        }
+        editor.apply()
+    }
+
+    fun isSuperIslandRightIslandProgressLabEnabled(context: Context): Boolean =
+        context.prefs().getBoolean(KEY_SUPER_ISLAND_RIGHT_ISLAND_PROGRESS_LAB_ENABLED, false)
+
+    fun setSuperIslandRightIslandProgressLabEnabled(context: Context, enabled: Boolean) {
+        context.prefs().edit()
+            .putBoolean(KEY_SUPER_ISLAND_RIGHT_ISLAND_PROGRESS_LAB_ENABLED, enabled)
+            .apply()
+    }
+
     fun sanitizeSuperIslandNotificationStyle(context: Context): String {
         val prefs = context.prefs()
         ensureInitialized(prefs)
+        SuperIslandPreferenceMigration.migrateTemplate18Style(prefs)
+        if (AppPreferences.superIslandMediaButtonLayout(prefs) == "single_button" &&
+            !isSuperIslandTemplate18Enabled(context)
+        ) {
+            prefs.edit().putString(AppPreferences.Keys.SUPER_ISLAND_MEDIA_BUTTON_LAYOUT, "two_button").apply()
+        }
 
         val currentStyle =
             AppPreferences.superIslandNotificationStyle(prefs)
@@ -390,5 +422,6 @@ object LabFeatureManager {
         SUPER_ISLAND_STYLE_ADVANCED_LYRICS_DUAL
     )
 
-    private val allSuperIslandStyles = advancedSuperIslandStyles + SUPER_ISLAND_STYLE_STANDARD
+    private val allSuperIslandStyles =
+        advancedSuperIslandStyles + SUPER_ISLAND_STYLE_STANDARD
 }

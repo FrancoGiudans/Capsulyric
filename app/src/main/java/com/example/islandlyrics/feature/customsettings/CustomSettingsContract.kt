@@ -55,6 +55,8 @@ data class CustomSettingsUiState(
     val superIslandTemplate2PicSource: String = "album_art",
     val superIslandTemplate2CustomPicUri: String? = null,
     val superIslandAdvancedStyleLabEnabled: Boolean = false,
+    val superIslandTemplate18LabEnabled: Boolean = false,
+    val superIslandRightIslandProgressLabEnabled: Boolean = false,
     val superIslandTextLimitsLabEnabled: Boolean = false,
     val superIslandRelaxedTextLimitsLabEnabled: Boolean = false,
     val liveUpdateTextLimitsLabEnabled: Boolean = false,
@@ -70,6 +72,10 @@ data class CustomSettingsUiState(
     val superIslandLyricMode: String = "standard",
     val superIslandFullLyricShowLeftCover: Boolean = true,
     val superIslandStandardShowLeftCover: Boolean = true,
+    val superIslandSmallIslandShowProgressBar: Boolean = true,
+    val superIslandCollapsedRightProgressRing: Boolean = false,
+    val superIslandTemplate18TextModes: List<String> = listOf("translation", "next_lyric", "playing_info"),
+    val superIslandTemplate18ButtonAction: String = "play_pause",
     val superIslandTextColorEnabled: Boolean = false,
     val superIslandColorSource: String = "album_art",
     val superIslandCustomColor: Int = 0xFF3482FF.toInt(),
@@ -118,6 +124,10 @@ sealed interface CustomSettingsAction {
     data class SetSuperIslandDualLineMode(val value: String) : CustomSettingsAction
     data class SetSuperIslandMediaButtonLayout(val value: String) : CustomSettingsAction
     data class SetSuperIslandShowProgressBar(val value: Boolean) : CustomSettingsAction
+    data class SetSuperIslandSmallIslandShowProgressBar(val value: Boolean) : CustomSettingsAction
+    data class SetSuperIslandCollapsedRightProgressRing(val value: Boolean) : CustomSettingsAction
+    data class SetSuperIslandTemplate18TextModes(val value: List<String>) : CustomSettingsAction
+    data class SetSuperIslandTemplate18ButtonAction(val value: String) : CustomSettingsAction
     data class SetLiveUpdateShowProgressBar(val value: Boolean) : CustomSettingsAction
     data class SetSuperIslandSecondaryTextModes(val value: List<String>) : CustomSettingsAction
     data class SetSuperIslandTemplate2PicSource(val value: String) : CustomSettingsAction

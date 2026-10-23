@@ -41,6 +41,8 @@ import com.example.islandlyrics.ui.navigation.PredictiveBackAnimationStyle
 import com.example.islandlyrics.ui.overlay.superisland.config.SuperIslandColorSource
 import com.example.islandlyrics.ui.overlay.superisland.config.SuperIslandDualLineMode
 import com.example.islandlyrics.ui.overlay.superisland.config.SuperIslandSecondaryTextMode
+import com.example.islandlyrics.ui.overlay.superisland.config.SuperIslandTemplate18ButtonAction
+import com.example.islandlyrics.ui.overlay.superisland.config.SuperIslandTemplate18TextMode
 import com.example.islandlyrics.ui.overlay.superisland.config.SuperIslandTemplate2PicSource
 import com.example.islandlyrics.ui.overlay.model.SecondaryTextMode
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -121,6 +123,19 @@ class CustomSettingsViewModel(application: Application) : AndroidViewModel(appli
                 prefs.edit { putString(AppPreferences.Keys.SUPER_ISLAND_MEDIA_BUTTON_LAYOUT, action.value) }
             is CustomSettingsAction.SetSuperIslandShowProgressBar ->
                 prefs.edit { putBoolean(AppPreferences.Keys.SUPER_ISLAND_SHOW_PROGRESS_BAR, action.value) }
+            is CustomSettingsAction.SetSuperIslandSmallIslandShowProgressBar ->
+                prefs.edit { putBoolean(AppPreferences.Keys.SUPER_ISLAND_SMALL_ISLAND_SHOW_PROGRESS_BAR, action.value) }
+            is CustomSettingsAction.SetSuperIslandCollapsedRightProgressRing ->
+                prefs.edit { putBoolean(AppPreferences.Keys.SUPER_ISLAND_COLLAPSED_RIGHT_PROGRESS_RING, action.value) }
+            is CustomSettingsAction.SetSuperIslandTemplate18TextModes -> {
+                val modes = action.value.mapNotNull { SuperIslandTemplate18TextMode.from(it) }
+                SuperIslandTemplate18TextMode.write(prefs, modes)
+            }
+            is CustomSettingsAction.SetSuperIslandTemplate18ButtonAction ->
+                SuperIslandTemplate18ButtonAction.write(
+                    prefs,
+                    SuperIslandTemplate18ButtonAction.from(action.value)
+                )
             is CustomSettingsAction.SetLiveUpdateShowProgressBar ->
                 prefs.edit { putBoolean(AppPreferences.Keys.LIVE_UPDATE_SHOW_PROGRESS_BAR, action.value) }
             is CustomSettingsAction.SetSuperIslandSecondaryTextModes -> {
@@ -185,8 +200,8 @@ class CustomSettingsViewModel(application: Application) : AndroidViewModel(appli
             customThemeColor = ThemeHelper.getMaterialCustomColor(app),
             iconStyle = AppPreferences.dynamicIconStyle(prefs),
             actionStyle = AppPreferences.notificationActionsStyle(prefs),
-            superIslandMediaButtonLayout = AppPreferences.superIslandMediaButtonLayout(prefs),
             superIslandNotificationStyle = LabFeatureManager.sanitizeSuperIslandNotificationStyle(app),
+            superIslandMediaButtonLayout = AppPreferences.superIslandMediaButtonLayout(prefs),
             superIslandDualLineMode = SuperIslandDualLineMode.read(prefs),
             superIslandShowProgressBar = AppPreferences.isSuperIslandShowProgressBar(prefs),
             liveUpdateShowProgressBar = AppPreferences.isLiveUpdateShowProgressBar(prefs),
@@ -194,6 +209,8 @@ class CustomSettingsViewModel(application: Application) : AndroidViewModel(appli
             superIslandTemplate2PicSource = SuperIslandTemplate2PicSource.read(prefs).preferenceValue,
             superIslandTemplate2CustomPicUri = SuperIslandTemplate2PicSource.readCustomPicUri(prefs),
             superIslandAdvancedStyleLabEnabled = LabFeatureManager.isSuperIslandAdvancedStyleEnabled(prefs),
+            superIslandTemplate18LabEnabled = LabFeatureManager.isSuperIslandTemplate18Enabled(app),
+            superIslandRightIslandProgressLabEnabled = LabFeatureManager.isSuperIslandRightIslandProgressLabEnabled(app),
             superIslandTextLimitsLabEnabled = LabFeatureManager.isSuperIslandTextLimitsEnabled(prefs),
             superIslandRelaxedTextLimitsLabEnabled = LabFeatureManager.isSuperIslandRelaxedTextLimitsEnabled(prefs),
             liveUpdateTextLimitsLabEnabled = LabFeatureManager.isLiveUpdateTextLimitsEnabled(prefs),
@@ -209,6 +226,10 @@ class CustomSettingsViewModel(application: Application) : AndroidViewModel(appli
             superIslandLyricMode = AppPreferences.superIslandLyricMode(prefs),
             superIslandFullLyricShowLeftCover = AppPreferences.isSuperIslandFullLyricLeftCoverEnabled(prefs),
             superIslandStandardShowLeftCover = AppPreferences.isSuperIslandStandardShowLeftCoverEnabled(prefs),
+            superIslandSmallIslandShowProgressBar = AppPreferences.isSuperIslandSmallIslandProgressBarEnabled(prefs),
+            superIslandCollapsedRightProgressRing = AppPreferences.isSuperIslandCollapsedRightProgressRingEnabled(prefs),
+            superIslandTemplate18TextModes = SuperIslandTemplate18TextMode.read(prefs).map { it.preferenceValue },
+            superIslandTemplate18ButtonAction = SuperIslandTemplate18ButtonAction.read(prefs).preferenceValue,
             superIslandTextColorEnabled = SuperIslandColorSource.isColorized(superIslandColorSource),
             superIslandColorSource = superIslandColorSource,
             superIslandCustomColor = SuperIslandColorSource.readCustomColor(prefs),

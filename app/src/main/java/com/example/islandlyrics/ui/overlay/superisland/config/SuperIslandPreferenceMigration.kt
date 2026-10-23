@@ -41,7 +41,10 @@ internal object SuperIslandPreferenceMigration {
 
     fun migrate(prefs: SharedPreferences) {
         restoreLegacyScrollingPreference(prefs)
-        if (prefs.getBoolean(KEY_MIGRATED, false)) return
+        if (prefs.getBoolean(KEY_MIGRATED, false)) {
+            migrateTemplate18Style(prefs)
+            return
+        }
 
         val actionStyle = prefs.getString(AppPreferences.Keys.NOTIFICATION_ACTIONS_STYLE, "disabled")
             ?: "disabled"
@@ -65,6 +68,15 @@ internal object SuperIslandPreferenceMigration {
                 )
             }
             putBoolean(KEY_MIGRATED, true)
+        }
+        migrateTemplate18Style(prefs)
+    }
+
+    fun migrateTemplate18Style(prefs: SharedPreferences) {
+        if (AppPreferences.superIslandNotificationStyle(prefs) != "template18") return
+        prefs.edit {
+            putString(AppPreferences.Keys.SUPER_ISLAND_NOTIFICATION_STYLE, "standard")
+            putString(AppPreferences.Keys.SUPER_ISLAND_MEDIA_BUTTON_LAYOUT, "single_button")
         }
     }
 
