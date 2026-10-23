@@ -413,32 +413,6 @@ class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(app
         _attempts.value = emptyList()
     }
 
-    private suspend fun persistAndApplyResult(
-        mediaInfo: LyricRepository.MediaInfo,
-        queryTitle: String,
-        queryArtist: String,
-        result: OnlineLyricFetcher.LyricResult,
-        cacheMessage: String
-    ) {
-        withContext(Dispatchers.IO) {
-            cacheStore.saveLyricResult(
-                mediaInfo = mediaInfo,
-                queryTitle = queryTitle,
-                queryArtist = queryArtist,
-                result = result
-            )
-        }
-        applyResultToRepository(mediaInfo, result)
-        translationDisabledByUser = false
-        romanDisabledByUser = false
-        setSelectionState(
-            mainResult = result,
-            translationResult = result.takeIf { !it.translationLyrics.isNullOrBlank() },
-            romanResult = result.takeIf { !it.romanLyrics.isNullOrBlank() }
-        )
-        _cacheStatus.value = cacheMessage
-    }
-
     private suspend fun persistAndApplySelection(
         mediaInfo: LyricRepository.MediaInfo,
         queryTitle: String,
@@ -681,39 +655,6 @@ class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(app
                 _attempts.value = (listOfNotNull(current) + imported + _attempts.value.orEmpty())
                     .distinctBy { it.result?.let(LyricifyDatabaseImporter::candidateKey) }
             }
-        }
-    }
-
-    fun saveCurrentSongMatchOverride() {
-        val mediaInfo = liveMetadata.value ?: run {
-            _error.value = s(R.string.online_lyric_debug_error_no_song)
-            return
-        }
-        val title = _customMatchTitle.value.orEmpty().trim()
-        val artist = _customMatchArtist.value.orEmpty().trim()
-        if (title.isBlank() && artist.isBlank()) {
-            _error.value = s(R.string.online_lyric_debug_error_empty_override)
-            return
-        }
-        viewModelScope.launch {
-            withContext(Dispatchers.IO) {
-                cacheStore.saveMatchOverride(mediaInfo, title, artist)
-            }
-            _cacheStatus.value = s(R.string.online_lyric_debug_override_saved)
-            syncCurrentSongQuery()
-        }
-    }
-
-    fun clearCurrentSongMatchOverride() {
-        val mediaInfo = liveMetadata.value ?: return
-        viewModelScope.launch {
-            withContext(Dispatchers.IO) {
-                cacheStore.clearMatchOverride(mediaInfo)
-            }
-            _customMatchTitle.value = ""
-            _customMatchArtist.value = ""
-            _cacheStatus.value = s(R.string.online_lyric_debug_override_cleared)
-            syncCurrentSongQuery()
         }
     }
 
@@ -1222,10 +1163,6 @@ class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(app
 
     fun closeDialog() {
         _dialogAttempt.value = null
-    }
-
-    fun selectAttempt(attempt: OnlineLyricFetcher.ProviderAttempt) {
-        selectAttemptForRole(ResultRole.MAIN, attempt)
     }
 
     fun selectAttemptForRole(role: ResultRole, attempt: OnlineLyricFetcher.ProviderAttempt) {

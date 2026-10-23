@@ -65,8 +65,6 @@ data/
 rules/
   ParserRule.kt                            # Parser-rule model
   ParserRuleHelper.kt                      # Rule matching, cache, notification-text extraction
-  WhitelistHelper.kt                       # App whitelist matching
-  WhitelistItem.kt                         # Whitelist item model
 lyrics/
   cache/OnlineLyricCacheStore.kt           # Persistent online-lyric cache
   export/LyricExporter.kt                  # Lyric export (LRC/…)
@@ -128,7 +126,7 @@ ui/
                                            # popup/backdrop), effects, navigation, preference,
                                            # reorderable panel, theme
   navigation/                              # BaseActivity, PredictiveBack*, PageStackHost,
-                                           # OverlaySheetHost, LayeredPagerTransition
+                                           # OverlaySheetHost
   overlay/capsule/                         # Live Update capsule renderer (handler/config/intent/render)
   overlay/config/                          # Shared overlay render config & defaults
   overlay/display/                         # Display manager, text-window calc, album-art color,
@@ -205,7 +203,7 @@ For Miuix, `PageStackHost` delegates PageSpecific navigation to `MiuixNavPageSta
 | Media Control (媒体控制弹窗) | `feature/mediacontrol/MediaControlActivity.kt` (transparent, singleInstance) | — | `feature/mediacontrol/material/MediaControlDialog.kt` | `feature/mediacontrol/miuix/MiuixMediaControlDialog.kt` | Commands via `runtime/media/LyricMediaCommandRouter.kt` |
 | Update Dialog (更新弹窗) | shown from Home/About | — | `feature/update/material/UpdateDialog.kt` | `feature/update/miuix/MiuixUpdateDialog.kt` | Changelog parsing: `feature/update/UpdateParser.kt`, `feature/update/UpdateMarkdown.kt` |
 
-Shared activity plumbing (theme wrappers, predictive back, page-stack host): `ui/navigation/BaseActivity.kt`, `ui/navigation/PredictiveBackActivity.kt`, `ui/navigation/PredictiveBackAnimation.kt`, `ui/navigation/PageStackHost.kt`, `ui/navigation/MiuixNavPageStackHost.kt`, `ui/navigation/OverlaySheetHost.kt`, `ui/navigation/MiuixNavOverlaySheetHost.kt`, `ui/navigation/LayeredPagerTransition.kt`.
+Shared activity plumbing (theme wrappers, predictive back, page-stack host): `ui/navigation/BaseActivity.kt`, `ui/navigation/PredictiveBackActivity.kt`, `ui/navigation/PredictiveBackAnimation.kt`, `ui/navigation/PageStackHost.kt`, `ui/navigation/MiuixNavPageStackHost.kt`, `ui/navigation/OverlaySheetHost.kt`, `ui/navigation/MiuixNavOverlaySheetHost.kt`.
 
 ## Runtime Services & Background Components (运行时服务)
 

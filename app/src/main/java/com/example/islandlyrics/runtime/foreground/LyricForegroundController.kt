@@ -33,7 +33,6 @@ import android.os.SystemClock
 import com.example.islandlyrics.BuildConfig
 import com.example.islandlyrics.R
 import com.example.islandlyrics.core.logging.AppLogger
-import com.example.islandlyrics.core.logging.LogManager
 import com.example.islandlyrics.lyrics.state.LyricRepository
 import com.example.islandlyrics.feature.main.MainActivity
 import com.example.islandlyrics.runtime.service.LyricService
@@ -46,7 +45,6 @@ internal class LyricForegroundController(
     private var lastWarmAttemptAtMs = 0L
     private var lastWarmTrackKey: String? = null
     private var currentChannelId = CHANNEL_ID
-    private var invisibleToggle = false
 
     fun createNotificationChannel() {
         val manager = service.getSystemService(NotificationManager::class.java) ?: return
@@ -118,70 +116,6 @@ internal class LyricForegroundController(
         warmForegroundSlot()
     }
 
-    fun buildNotification(title: String, text: String, subText: String): Notification {
-        return buildModernNotification(title, text, subText)
-    }
-
-    fun inspectNotification(notification: Notification, nm: NotificationManager) {
-        val intent = Intent("com.example.islandlyrics.STATUS_UPDATE")
-        intent.setPackage(service.packageName)
-
-        val modeStatus = "🔵 Modern (API 36)"
-        intent.putExtra("status", modeStatus)
-
-        var hasChar = false
-        var isPromoted = false
-        if (Build.VERSION.SDK_INT >= 36) {
-            hasChar = notification.hasPromotableCharacteristics()
-            intent.putExtra("hasPromotable", hasChar)
-
-            val flagVal = Notification.FLAG_PROMOTED_ONGOING
-            isPromoted = (notification.flags and flagVal) != 0
-            intent.putExtra("isPromoted", isPromoted)
-        }
-
-        service.sendBroadcast(intent)
-
-        LyricRepository.getInstance().mergeDiagnostics { old ->
-            old.copy(
-                hasPromotableChar = hasChar,
-                isCurrentlyPromoted = isPromoted
-            )
-        }
-
-        val canPost = if (Build.VERSION.SDK_INT >= 36) {
-            nm.canPostPromotedNotifications()
-        } else {
-            false
-        }
-
-        var channelStatus = "Unknown"
-        val channel = nm.getNotificationChannel(currentChannelId)
-        if (channel != null) {
-            channelStatus = "Imp: ${channel.importance}"
-        }
-
-        val diagMsg = String.format(
-            "[API] Perm: %b | Promotable: %b | Flag: %b\n[Channel] %s\n[Text] %s",
-            canPost,
-            hasChar,
-            isPromoted,
-            channelStatus,
-            getSmartSnippet(notification.extras.getString(Notification.EXTRA_TITLE) ?: "")
-        )
-        broadcastLog(diagMsg)
-    }
-
-    fun checkAndHealChannel(nm: NotificationManager) {
-        val channel = nm.getNotificationChannel(currentChannelId)
-        if (channel != null && channel.importance < NotificationManager.IMPORTANCE_HIGH) {
-            broadcastLog("⚠️ Channel Demoted (Imp=${channel.importance}). Resurrecting...")
-            nm.deleteNotificationChannel(currentChannelId)
-            currentChannelId = CHANNEL_ID + "_" + System.currentTimeMillis()
-            createNotificationChannel()
-        }
-    }
-
     private fun warmForegroundSlot() {
         try {
             if (BuildConfig.DEBUG) {
@@ -225,40 +159,6 @@ internal class LyricForegroundController(
             .build()
     }
 
-    private fun buildModernNotification(title: String, text: String, subText: String): Notification {
-        LogManager.getInstance().d(service, TAG, "Building Modern Notification (ProgressStyle)")
-
-        val builder = applyImmediateForegroundBehavior(
-            Notification.Builder(service, currentChannelId)
-        )
-            .setSmallIcon(R.drawable.ic_music_note)
-            .setContentTitle(title)
-            .setContentText(text)
-            .setSubText(subText)
-            .setOngoing(true)
-            .setOnlyAlertOnce(true)
-            .setVisibility(LockScreenNotificationPolicy.visibility(service))
-            .setContentIntent(createMainActivityIntent())
-
-        if (Build.VERSION.SDK_INT >= 36) {
-            val style = Notification.ProgressStyle()
-            style.setStyledByProgress(true)
-            val segment = Notification.ProgressStyle.Segment(1)
-            style.setProgressSegments(listOf(segment))
-            builder.style = style
-        }
-
-        val rawText = if (text.isNotEmpty()) text else "Capsulyric"
-        invisibleToggle = !invisibleToggle
-        val chipText = rawText + if (invisibleToggle) "\u200B" else ""
-
-        applyLiveAttributes(builder, chipText)
-
-        val notification = builder.build()
-        applyPromotedFlagFallback(notification)
-        return notification
-    }
-
     private fun createMainActivityIntent(): PendingIntent {
         return PendingIntent.getActivity(
             service,
@@ -273,30 +173,6 @@ internal class LyricForegroundController(
             builder.setForegroundServiceBehavior(Notification.FOREGROUND_SERVICE_IMMEDIATE)
         }
         return builder
-    }
-
-    private fun applyLiveAttributes(builder: Notification.Builder, text: String) {
-        if (Build.VERSION.SDK_INT >= 36) {
-            builder.setShortCriticalText(text)
-        }
-        builder.extras.putBoolean("android.app.extra.REQUEST_PROMOTED_ONGOING", true)
-    }
-
-    private fun applyPromotedFlagFallback(notification: Notification) {
-        if (Build.VERSION.SDK_INT >= 36) {
-            notification.flags = notification.flags or Notification.FLAG_PROMOTED_ONGOING
-        }
-    }
-
-    private fun broadcastLog(msg: String) {
-        val intent = Intent("com.example.islandlyrics.DIAG_UPDATE")
-        intent.putExtra("log_msg", msg)
-        intent.setPackage(service.packageName)
-        service.sendBroadcast(intent)
-    }
-
-    private fun getSmartSnippet(text: String): String {
-        return if (text.length > 20) text.substring(0, 20) + "..." else text
     }
 
     private companion object {

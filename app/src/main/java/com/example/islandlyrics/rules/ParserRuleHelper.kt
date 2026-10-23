@@ -31,7 +31,6 @@ import org.json.JSONObject
 
 /**
  * Helper for managing notification parser rules.
- * Similar to WhitelistHelper but for parser configurations.
  */
 object ParserRuleHelper {
 
