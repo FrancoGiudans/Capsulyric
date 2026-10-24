@@ -53,20 +53,6 @@ internal class LyricSidecarStore(
         trimToMaxSize()
     }
 
-    fun putAll(
-        apiPath: String,
-        sidecars: Map<String, Pair<String?, String?>>
-    ) {
-        sidecars.forEach { (lyric, values) ->
-            put(
-                apiPath = apiPath,
-                lyric = lyric,
-                translation = values.first?.takeIf { it.isNotBlank() },
-                roma = values.second?.takeIf { it.isNotBlank() }
-            )
-        }
-    }
-
     private fun trimToMaxSize() {
         while (entries.size > maxSize) {
             val firstKey = entries.keys.firstOrNull() ?: break

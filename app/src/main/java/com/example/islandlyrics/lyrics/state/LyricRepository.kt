@@ -200,13 +200,6 @@ class LyricRepository private constructor() {
         updateLyricResolveState(if (hasContent) LyricResolveState.FOUND else LyricResolveState.NOT_FOUND)
     }
 
-    fun updateLyricSidecars(
-        apiPath: String,
-        entries: Map<String, Pair<String?, String?>>
-    ) {
-        sidecarStore.putAll(apiPath, entries)
-    }
-
     fun updateSuperLyricDebug(info: SuperLyricDebugInfo) {
         postOrSet(liveSuperLyricDebug, info)
     }
