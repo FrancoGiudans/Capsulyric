@@ -377,7 +377,8 @@ class OnlineLyricCacheStore(context: Context) {
     internal fun importLyricifyTracks(
         tracks: Sequence<Pair<LyricifyTrackIdentity, LyricifyImportSelection>>, mode: LyricifyImportMode,
         inputBytes: Long, checkActive: () -> Unit,
-        onProgress: (LyricifyImportProgress) -> Unit = {}
+        onProgress: (LyricifyImportProgress) -> Unit = {},
+        sourceName: String = "Lyricify"
     ): Pair<Int, Int> {
         check(storeDir.isDirectory || storeDir.mkdirs()) { "Cannot create the lyric cache directory" }
         val preparedDir = Files.createTempDirectory(appContext.cacheDir.toPath(), "lyricify-prepared-").toFile()
@@ -400,7 +401,7 @@ class OnlineLyricCacheStore(context: Context) {
             for ((identity, selection) in tracks) {
                 checkActive()
                 require(++count <= LyricifyDatabaseImporter.MAX_TRACKS) { "Too many songs to import" }
-                val base = CacheEntry(id = "", packageName = "Lyricify", title = identity.title, artist = identity.artist,
+                val base = CacheEntry(id = "", packageName = sourceName, title = identity.title, artist = identity.artist,
                     rawTitle = identity.title, rawArtist = identity.artist, duration = identity.durationMs,
                     queryTitle = identity.title, queryArtist = identity.artist)
                 stage(File(preparedDir, "$count.json"), base.withImportedResult(selection.selected).copy(

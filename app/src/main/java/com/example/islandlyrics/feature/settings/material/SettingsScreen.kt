@@ -43,6 +43,10 @@ import com.example.islandlyrics.feature.faq.FAQActivity
 import com.example.islandlyrics.feature.lastfm.LastFmSettingsActivity
 import com.example.islandlyrics.feature.settings.AboutActivity
 import com.example.islandlyrics.feature.settings.BackupImportCoordinator
+import com.example.islandlyrics.feature.settings.LyrimuseImportController
+import com.example.islandlyrics.feature.settings.LyrimuseImportUiState
+import com.example.islandlyrics.feature.settings.rememberLyrimuseImporter
+import com.example.islandlyrics.lyrics.importer.LyricifyImportMode
 import com.example.islandlyrics.feature.settings.BackupImportOperation
 import com.example.islandlyrics.feature.settings.BackupImportStatus
 import com.example.islandlyrics.feature.settings.visibleStages
@@ -167,6 +171,7 @@ fun SettingsScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
     val backupImportCoordinator = remember(context) { BackupImportCoordinator(context) }
+    val lyrimuseImporter = rememberLyrimuseImporter()
     val backupExportSuccessFormat = stringResource(R.string.settings_backup_export_success)
     val backupExportSuccessWithCacheFormat = stringResource(R.string.settings_backup_export_success_with_cache)
     val backupExportSuccessWithSensitiveFormat = stringResource(R.string.settings_backup_export_success_with_sensitive)
@@ -1017,7 +1022,7 @@ fun SettingsScreen(
                         summary = stringResource(R.string.settings_backup_export_desc),
                         icon = Icons.Filled.Upload,
                         onClick = {
-                            showExportCategoryDialog = true
+                            if (!lyrimuseImporter.state.busy) showExportCategoryDialog = true
                         }
                     )
                     SettingsCardDivider()
@@ -1026,8 +1031,15 @@ fun SettingsScreen(
                         summary = stringResource(R.string.settings_backup_import_desc),
                         icon = Icons.Filled.Download,
                         onClick = {
-                            importSettingsLauncher.launch(arrayOf("application/zip", "application/json", "*/*"))
+                            if (!lyrimuseImporter.state.busy) importSettingsLauncher.launch(arrayOf("application/zip", "application/json", "*/*"))
                         }
+                    )
+                    SettingsCardDivider()
+                    SettingsActionItem(
+                        title = stringResource(R.string.lyrimuse_import_title),
+                        summary = stringResource(R.string.lyrimuse_import_summary),
+                        icon = Icons.Filled.Download,
+                        onClick = { if (!backupImportCoordinator.isBusy) lyrimuseImporter.chooseFiles() }
                     )
                 }
             }
@@ -1435,10 +1447,73 @@ fun SettingsScreen(
             )
         }
 
+        LyrimuseImportDialog(lyrimuseImporter)
         backupImportCoordinator.status?.let { status ->
             BackupImportProgressDialog(status = status)
         }
     }
+}
+
+@Composable
+private fun LyrimuseImportDialog(ui: LyrimuseImportUiState) {
+    val state = ui.state
+    if (state.phase == LyrimuseImportController.Phase.IDLE) return
+    val preview = state.phase == LyrimuseImportController.Phase.PREVIEW
+    MaterialBlurAlertDialog(
+        onDismissRequest = { if (!state.busy) ui.dismiss() },
+        title = { Text(stringResource(R.string.lyrimuse_import_title)) },
+        text = {
+            Column(Modifier.fillMaxWidth().heightIn(max = 420.dp).verticalScroll(rememberScrollState())) {
+                val data = state.prepared
+                if (preview && data != null) {
+                    Text(stringResource(R.string.lyrimuse_import_preview, data.tracks.size, data.skipped, data.failed))
+                    Row(Modifier.fillMaxWidth().clickable(enabled = data.tracks.isNotEmpty()) {
+                        ui.selectLyrics(!state.includeLyrics)
+                    }, verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(state.includeLyrics, ui.selectLyrics, enabled = data.tracks.isNotEmpty())
+                        Text(stringResource(R.string.lyrimuse_import_lyrics))
+                    }
+                    if (data.hasConfig) {
+                        Row(Modifier.fillMaxWidth().clickable(enabled = data.credentials != null) {
+                            ui.selectLastFm(!state.includeLastFm)
+                        }, verticalAlignment = Alignment.CenterVertically) {
+                            Checkbox(state.includeLastFm, ui.selectLastFm, enabled = data.credentials != null)
+                            Text(stringResource(R.string.lyrimuse_import_lastfm))
+                        }
+                        if (data.credentials == null) Text(stringResource(R.string.lyrimuse_import_lastfm_invalid))
+                        else data.credentials.username?.let { Text(it, modifier = Modifier.padding(start = 16.dp)) }
+                    }
+                    if (state.includeLyrics) {
+                        Text(stringResource(R.string.lyrimuse_import_modes_hint), style = MaterialTheme.typography.bodySmall)
+                        for ((mode, label) in listOf(
+                            LyricifyImportMode.MERGE to R.string.lab_lyricify_import_merge_title,
+                            LyricifyImportMode.OVERWRITE to R.string.lab_lyricify_import_overwrite_title,
+                            LyricifyImportMode.SKIP to R.string.lab_lyricify_import_skip_title,
+                        )) {
+                            Row(Modifier.fillMaxWidth().clickable { ui.selectMode(mode) }, verticalAlignment = Alignment.CenterVertically) {
+                                RadioButton(state.mode == mode, onClick = { ui.selectMode(mode) })
+                                Text(stringResource(label))
+                            }
+                        }
+                    }
+                } else {
+                    if (state.busy) { LinearProgressIndicator(Modifier.fillMaxWidth()); Spacer(Modifier.height(12.dp)) }
+                    Text(ui.message)
+                }
+            }
+        },
+        dismissButton = {
+            if (preview || state.busy) TextButton(
+                enabled = !state.busy || state.canCancel,
+                onClick = { if (state.busy) ui.cancel() else ui.dismiss() }
+            ) { Text(stringResource(R.string.backup_dialog_cancel)) }
+        },
+        confirmButton = {
+            if (preview) TextButton(enabled = state.includeLyrics || state.includeLastFm, onClick = ui.startImport) {
+                Text(stringResource(R.string.backup_dialog_confirm))
+            } else if (!state.busy) TextButton(onClick = ui.dismiss) { Text(stringResource(R.string.lab_lyricify_import_done)) }
+        },
+    )
 }
 
 @Composable

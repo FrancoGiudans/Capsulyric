@@ -39,6 +39,10 @@ import com.example.islandlyrics.feature.faq.FAQActivity
 import com.example.islandlyrics.feature.lastfm.LastFmSettingsActivity
 import com.example.islandlyrics.feature.settings.AboutActivity
 import com.example.islandlyrics.feature.settings.BackupImportCoordinator
+import com.example.islandlyrics.feature.settings.LyrimuseImportController
+import com.example.islandlyrics.feature.settings.LyrimuseImportUiState
+import com.example.islandlyrics.feature.settings.rememberLyrimuseImporter
+import com.example.islandlyrics.lyrics.importer.LyricifyImportMode
 import com.example.islandlyrics.feature.settings.BackupImportOperation
 import com.example.islandlyrics.feature.settings.BackupImportStatus
 import com.example.islandlyrics.feature.settings.visibleStages
@@ -86,6 +90,7 @@ import top.yukonga.miuix.kmp.basic.*
 import top.yukonga.miuix.kmp.preference.ArrowPreference as SuperArrow
 import com.example.islandlyrics.ui.miuix.preference.BlurOverlayDropdownPreference as SuperDropdown
 import top.yukonga.miuix.kmp.preference.SwitchPreference as SuperSwitch
+import top.yukonga.miuix.kmp.preference.CheckboxPreference
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Ok
@@ -155,6 +160,7 @@ fun MiuixSettingsScreen(
     val snackbarHostState = remember { MiuixSnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
     val backupImportCoordinator = remember(context) { BackupImportCoordinator(context) }
+    val lyrimuseImporter = rememberLyrimuseImporter()
     val scrollBehavior = MiuixScrollBehavior(rememberTopAppBarState())
     val listState = rememberLazyListState()
     val mainSettingBringIntoViewRequester = remember { BringIntoViewRequester() }
@@ -1012,15 +1018,20 @@ fun MiuixSettingsScreen(
                         title = stringResource(R.string.settings_backup_export),
                         summary = stringResource(R.string.settings_backup_export_desc),
                         onClick = {
-                            showExportCategoryDialog = true
+                            if (!lyrimuseImporter.state.busy) showExportCategoryDialog = true
                         }
                     )
                     SuperArrow(
                         title = stringResource(R.string.settings_backup_import),
                         summary = stringResource(R.string.settings_backup_import_desc),
                         onClick = {
-                            importSettingsLauncher.launch(arrayOf("application/zip", "application/json", "*/*"))
+                            if (!lyrimuseImporter.state.busy) importSettingsLauncher.launch(arrayOf("application/zip", "application/json", "*/*"))
                         }
+                    )
+                    SuperArrow(
+                        title = stringResource(R.string.lyrimuse_import_title),
+                        summary = stringResource(R.string.lyrimuse_import_summary),
+                        onClick = { if (!backupImportCoordinator.isBusy) lyrimuseImporter.chooseFiles() }
                     )
                 }
             }
@@ -1442,8 +1453,74 @@ fun MiuixSettingsScreen(
             }
         }
 
+        MiuixLyrimuseImportDialog(lyrimuseImporter)
         backupImportCoordinator.status?.let { status ->
             MiuixBackupImportProgressDialog(status = status)
+        }
+    }
+}
+
+@Composable
+private fun MiuixLyrimuseImportDialog(ui: LyrimuseImportUiState) {
+    val state = ui.state
+    if (state.phase == LyrimuseImportController.Phase.IDLE) return
+    val preview = state.phase == LyrimuseImportController.Phase.PREVIEW
+    MiuixBlurDialog(
+        show = true,
+        title = stringResource(R.string.lyrimuse_import_title),
+        onDismissRequest = if (state.busy) null else ui.dismiss,
+        renderInRootScaffold = false,
+    ) {
+        Column(Modifier.fillMaxWidth().padding(horizontal = 8.dp)) {
+            Column(Modifier.fillMaxWidth().heightIn(max = 420.dp).verticalScroll(rememberScrollState())) {
+                val data = state.prepared
+                if (preview && data != null) {
+                    Text(stringResource(R.string.lyrimuse_import_preview, data.tracks.size, data.skipped, data.failed))
+                    CheckboxPreference(
+                        title = stringResource(R.string.lyrimuse_import_lyrics),
+                        checked = state.includeLyrics, enabled = data.tracks.isNotEmpty(), onCheckedChange = ui.selectLyrics,
+                    )
+                    if (data.hasConfig) {
+                        CheckboxPreference(
+                            title = stringResource(R.string.lyrimuse_import_lastfm),
+                            checked = state.includeLastFm, enabled = data.credentials != null, onCheckedChange = ui.selectLastFm,
+                        )
+                        if (data.credentials == null) Text(stringResource(R.string.lyrimuse_import_lastfm_invalid))
+                        else data.credentials.username?.let { Text(it, modifier = Modifier.padding(start = 16.dp)) }
+                    }
+                    if (state.includeLyrics) {
+                        val modes = listOf(LyricifyImportMode.MERGE, LyricifyImportMode.OVERWRITE, LyricifyImportMode.SKIP)
+                        SuperDropdown(
+                            items = listOf(stringResource(R.string.lab_lyricify_import_merge_title),
+                                stringResource(R.string.lab_lyricify_import_overwrite_title), stringResource(R.string.lab_lyricify_import_skip_title)),
+                            selectedIndex = modes.indexOf(state.mode),
+                            title = stringResource(R.string.lyrimuse_import_mode),
+                            renderInRootScaffold = false,
+                            onSelectedIndexChange = { ui.selectMode(modes[it]) },
+                        )
+                        Text(stringResource(R.string.lyrimuse_import_modes_hint), color = MiuixTheme.colorScheme.onSurfaceVariantActions)
+                    }
+                } else {
+                    if (state.busy) { LinearProgressIndicator(Modifier.fillMaxWidth()); Spacer(Modifier.height(12.dp)) }
+                    Text(ui.message)
+                }
+            }
+            Spacer(Modifier.height(16.dp))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                if (preview || state.busy) TextButton(
+                    text = stringResource(R.string.backup_dialog_cancel),
+                    modifier = Modifier.weight(1f), enabled = !state.busy || state.canCancel,
+                    onClick = { if (state.busy) ui.cancel() else ui.dismiss() },
+                )
+                if (preview) TextButton(
+                    text = stringResource(R.string.backup_dialog_confirm), modifier = Modifier.weight(1f),
+                    enabled = state.includeLyrics || state.includeLastFm, onClick = ui.startImport,
+                    colors = ButtonDefaults.textButtonColorsPrimary(),
+                ) else if (!state.busy) TextButton(
+                    text = stringResource(R.string.lab_lyricify_import_done), modifier = Modifier.weight(1f),
+                    onClick = ui.dismiss, colors = ButtonDefaults.textButtonColorsPrimary(),
+                )
+            }
         }
     }
 }

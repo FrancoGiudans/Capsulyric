@@ -1337,4 +1337,19 @@
     <string name="online_lyric_track_id_preview_id">ID：%1$s</string>
     <string name="online_lyric_track_id_preview_target">套用至：%1$s · %2$s</string>
     <string name="online_lyric_track_id_no_timing">這份歌詞沒有可用時間軸，僅支援預覽。</string>
+
+    <string name="lyrimuse_import_title">匯入 Lyrimuse 備份</string>
+    <string name="lyrimuse_import_summary">匯入歌詞與 Last.fm 登入資訊</string>
+    <string name="lyrimuse_import_preview">可匯入 %1$d 首歌詞，%2$d 筆記錄不支援，%3$d 筆記錄解析失敗。</string>
+    <string name="lyrimuse_import_lyrics">歌詞資訊</string>
+    <string name="lyrimuse_import_lastfm">Last.fm 登入資訊（取代現有憑證）</string>
+    <string name="lyrimuse_import_lastfm_invalid">Last.fm 憑證缺失或不完整，仍可單獨匯入歌詞。</string>
+    <string name="lyrimuse_import_mode">遇到現有歌詞</string>
+    <string name="lyrimuse_import_modes_hint">合併保留目前歌詞並加入匯入候選；覆寫使用匯入的歌詞；略過保留現有歌曲。</string>
+    <string name="lyrimuse_import_reading">正在讀取 Lyrimuse 備份…</string>
+    <string name="lyrimuse_import_invalid_file">無法讀取這些檔案，請選擇一份 Lyrimuse 歌詞備份及／或一份設定備份。</string>
+    <string name="lyrimuse_import_failed">匯入未完成，請檢查所選檔案與可用儲存空間後重試。</string>
+    <string name="lyrimuse_import_recovery_failed">匯入失敗，原有歌詞未能還原。請先檢查歌詞快取或還原備份。</string>
+    <string name="lyrimuse_import_lastfm_done">Last.fm 登入資訊已匯入。</string>
+    <string name="lyrimuse_import_lastfm_failed">Last.fm 登入資訊儲存失敗，已完成的歌詞匯入仍保留。</string>
 </resources>

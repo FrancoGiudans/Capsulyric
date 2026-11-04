@@ -1372,4 +1372,19 @@
     <string name="lab_lyricify_import_rollback_error">未能恢复原有歌词：%1$s。请进入缓存管理重试恢复。</string>
     <string name="lab_lyricify_import_result">已导入 %1$d 首，跳过 %2$d 首，失败 %3$d 首。</string>
     <string name="lab_lyricify_import_error">导入失败：%1$s</string>
+
+    <string name="lyrimuse_import_title">导入 Lyrimuse 备份</string>
+    <string name="lyrimuse_import_summary">导入歌词和 Last.fm 登录信息</string>
+    <string name="lyrimuse_import_preview">可导入 %1$d 首歌词，%2$d 条记录不支持，%3$d 条记录解析失败。</string>
+    <string name="lyrimuse_import_lyrics">歌词信息</string>
+    <string name="lyrimuse_import_lastfm">Last.fm 登录信息（替换现有凭据）</string>
+    <string name="lyrimuse_import_lastfm_invalid">Last.fm 凭据缺失或不完整，仍可单独导入歌词。</string>
+    <string name="lyrimuse_import_mode">遇到已有歌词</string>
+    <string name="lyrimuse_import_modes_hint">合并保留当前歌词并加入导入候选；覆盖使用导入的歌词；跳过保留已有歌曲。</string>
+    <string name="lyrimuse_import_reading">正在读取 Lyrimuse 备份…</string>
+    <string name="lyrimuse_import_invalid_file">无法读取这些文件，请选择一份 Lyrimuse 歌词备份和／或一份配置备份。</string>
+    <string name="lyrimuse_import_failed">导入未完成，请检查所选文件和可用存储空间后重试。</string>
+    <string name="lyrimuse_import_recovery_failed">导入失败，原有歌词未能恢复。请先检查歌词缓存或还原备份。</string>
+    <string name="lyrimuse_import_lastfm_done">Last.fm 登录信息已导入。</string>
+    <string name="lyrimuse_import_lastfm_failed">Last.fm 登录信息保存失败，已完成的歌词导入仍保留。</string>
 </resources>

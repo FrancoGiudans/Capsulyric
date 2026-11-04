@@ -1359,4 +1359,19 @@ Within the log interface, select the share/export icon. You can specify a timefr
     <string name="lab_lyricify_import_rollback_error">Could not restore the previous lyrics: %1$s. Open Cache management to retry recovery.</string>
     <string name="lab_lyricify_import_result">Imported %1$d songs, skipped %2$d, failed %3$d.</string>
     <string name="lab_lyricify_import_error">Import failed: %1$s</string>
+
+    <string name="lyrimuse_import_title">Import Lyrimuse backup</string>
+    <string name="lyrimuse_import_summary">Import lyrics and Last.fm sign-in information</string>
+    <string name="lyrimuse_import_preview">Ready: %1$d songs. Unsupported: %2$d records. Failed to parse: %3$d records.</string>
+    <string name="lyrimuse_import_lyrics">Lyrics</string>
+    <string name="lyrimuse_import_lastfm">Last.fm sign-in information (replace existing credentials)</string>
+    <string name="lyrimuse_import_lastfm_invalid">Last.fm credentials are missing or incomplete. You can still import lyrics.</string>
+    <string name="lyrimuse_import_mode">Existing lyrics</string>
+    <string name="lyrimuse_import_modes_hint">Merge keeps the current lyrics and adds imported candidates. Overwrite uses the imported lyrics. Skip keeps existing songs.</string>
+    <string name="lyrimuse_import_reading">Reading Lyrimuse backup…</string>
+    <string name="lyrimuse_import_invalid_file">Cannot read these files. Select one Lyrimuse Lyrics file and/or one Config file.</string>
+    <string name="lyrimuse_import_failed">Could not finish importing. Check the selected files and available storage, then try again.</string>
+    <string name="lyrimuse_import_recovery_failed">Import failed and the original lyrics could not be recovered. Check the lyric cache or restore a backup before retrying.</string>
+    <string name="lyrimuse_import_lastfm_done">Last.fm sign-in information imported.</string>
+    <string name="lyrimuse_import_lastfm_failed">Could not save Last.fm sign-in information. Any completed lyric import is kept.</string>
 </resources>
