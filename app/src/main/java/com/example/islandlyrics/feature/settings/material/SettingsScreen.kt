@@ -43,10 +43,10 @@ import com.example.islandlyrics.feature.faq.FAQActivity
 import com.example.islandlyrics.feature.lastfm.LastFmSettingsActivity
 import com.example.islandlyrics.feature.settings.AboutActivity
 import com.example.islandlyrics.feature.settings.BackupImportCoordinator
-import com.example.islandlyrics.feature.settings.LyrimuseImportController
 import com.example.islandlyrics.feature.settings.LyrimuseImportUiState
 import com.example.islandlyrics.feature.settings.rememberLyrimuseImporter
-import com.example.islandlyrics.lyrics.importer.LyricifyImportMode
+import com.example.islandlyrics.feature.lab.material.LyricImportModeDialog
+import com.example.islandlyrics.feature.lab.material.LyricImportProgressDialog
 import com.example.islandlyrics.feature.settings.BackupImportOperation
 import com.example.islandlyrics.feature.settings.BackupImportStatus
 import com.example.islandlyrics.feature.settings.visibleStages
@@ -63,6 +63,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
@@ -78,6 +79,7 @@ import androidx.compose.material3.HorizontalDivider as MaterialHorizontalDivider
 import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
@@ -1022,7 +1024,7 @@ fun SettingsScreen(
                         summary = stringResource(R.string.settings_backup_export_desc),
                         icon = Icons.Filled.Upload,
                         onClick = {
-                            if (!lyrimuseImporter.state.busy) showExportCategoryDialog = true
+                            if (!lyrimuseImporter.importer.importing) showExportCategoryDialog = true
                         }
                     )
                     SettingsCardDivider()
@@ -1031,7 +1033,7 @@ fun SettingsScreen(
                         summary = stringResource(R.string.settings_backup_import_desc),
                         icon = Icons.Filled.Download,
                         onClick = {
-                            if (!lyrimuseImporter.state.busy) importSettingsLauncher.launch(arrayOf("application/zip", "application/json", "*/*"))
+                            if (!lyrimuseImporter.importer.importing) importSettingsLauncher.launch(arrayOf("application/zip", "application/json", "*/*"))
                         }
                     )
                     SettingsCardDivider()
@@ -1039,7 +1041,7 @@ fun SettingsScreen(
                         title = stringResource(R.string.lyrimuse_import_title),
                         summary = stringResource(R.string.lyrimuse_import_summary),
                         icon = Icons.Filled.Download,
-                        onClick = { if (!backupImportCoordinator.isBusy) lyrimuseImporter.chooseFiles() }
+                        onClick = { if (!backupImportCoordinator.isBusy) lyrimuseImporter.openOptions() }
                     )
                 }
             }
@@ -1456,64 +1458,30 @@ fun SettingsScreen(
 
 @Composable
 private fun LyrimuseImportDialog(ui: LyrimuseImportUiState) {
-    val state = ui.state
-    if (state.phase == LyrimuseImportController.Phase.IDLE) return
-    val preview = state.phase == LyrimuseImportController.Phase.PREVIEW
-    MaterialBlurAlertDialog(
-        onDismissRequest = { if (!state.busy) ui.dismiss() },
-        title = { Text(stringResource(R.string.lyrimuse_import_title)) },
-        text = {
-            Column(Modifier.fillMaxWidth().heightIn(max = 420.dp).verticalScroll(rememberScrollState())) {
-                val data = state.prepared
-                if (preview && data != null) {
-                    Text(stringResource(R.string.lyrimuse_import_preview, data.tracks.size, data.skipped, data.failed))
-                    Row(Modifier.fillMaxWidth().clickable(enabled = data.tracks.isNotEmpty()) {
-                        ui.selectLyrics(!state.includeLyrics)
-                    }, verticalAlignment = Alignment.CenterVertically) {
-                        Checkbox(state.includeLyrics, ui.selectLyrics, enabled = data.tracks.isNotEmpty())
-                        Text(stringResource(R.string.lyrimuse_import_lyrics))
-                    }
-                    if (data.hasConfig) {
-                        Row(Modifier.fillMaxWidth().clickable(enabled = data.credentials != null) {
-                            ui.selectLastFm(!state.includeLastFm)
-                        }, verticalAlignment = Alignment.CenterVertically) {
-                            Checkbox(state.includeLastFm, ui.selectLastFm, enabled = data.credentials != null)
-                            Text(stringResource(R.string.lyrimuse_import_lastfm))
-                        }
-                        if (data.credentials == null) Text(stringResource(R.string.lyrimuse_import_lastfm_invalid))
-                        else data.credentials.username?.let { Text(it, modifier = Modifier.padding(start = 16.dp)) }
-                    }
-                    if (state.includeLyrics) {
-                        Text(stringResource(R.string.lyrimuse_import_modes_hint), style = MaterialTheme.typography.bodySmall)
-                        for ((mode, label) in listOf(
-                            LyricifyImportMode.MERGE to R.string.lab_lyricify_import_merge_title,
-                            LyricifyImportMode.OVERWRITE to R.string.lab_lyricify_import_overwrite_title,
-                            LyricifyImportMode.SKIP to R.string.lab_lyricify_import_skip_title,
-                        )) {
-                            Row(Modifier.fillMaxWidth().clickable { ui.selectMode(mode) }, verticalAlignment = Alignment.CenterVertically) {
-                                RadioButton(state.mode == mode, onClick = { ui.selectMode(mode) })
-                                Text(stringResource(label))
-                            }
-                        }
-                    }
-                } else {
-                    if (state.busy) { LinearProgressIndicator(Modifier.fillMaxWidth()); Spacer(Modifier.height(12.dp)) }
-                    Text(ui.message)
-                }
-            }
-        },
-        dismissButton = {
-            if (preview || state.busy) TextButton(
-                enabled = !state.busy || state.canCancel,
-                onClick = { if (state.busy) ui.cancel() else ui.dismiss() }
-            ) { Text(stringResource(R.string.backup_dialog_cancel)) }
-        },
-        confirmButton = {
-            if (preview) TextButton(enabled = state.includeLyrics || state.includeLastFm, onClick = ui.startImport) {
-                Text(stringResource(R.string.backup_dialog_confirm))
-            } else if (!state.busy) TextButton(onClick = ui.dismiss) { Text(stringResource(R.string.lab_lyricify_import_done)) }
-        },
-    )
+    LyricImportModeDialog(
+        show = ui.showOptions,
+        onDismiss = ui.dismissOptions,
+        onChooseMode = ui.importer.chooseFile,
+        titleRes = R.string.lyrimuse_import_title,
+        includeLyrics = ui.includeLyrics,
+        enabled = ui.includeLyrics || ui.includeLastFm,
+    ) {
+        Row(
+            Modifier.fillMaxWidth().heightIn(min = 48.dp).toggleable(value = ui.includeLyrics, role = Role.Checkbox, onValueChange = ui.selectLyrics),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Checkbox(checked = ui.includeLyrics, onCheckedChange = null)
+            Text(stringResource(R.string.lyrimuse_import_lyrics))
+        }
+        Row(
+            Modifier.fillMaxWidth().heightIn(min = 48.dp).toggleable(value = ui.includeLastFm, role = Role.Checkbox, onValueChange = ui.selectLastFm),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Checkbox(checked = ui.includeLastFm, onCheckedChange = null)
+            Text(stringResource(R.string.lyrimuse_import_lastfm))
+        }
+    }
+    LyricImportProgressDialog(ui.importer, titleRes = R.string.lyrimuse_import_title)
 }
 
 @Composable

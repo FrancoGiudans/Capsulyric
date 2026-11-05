@@ -430,81 +430,15 @@ internal fun MiuixLabScreen(
             }
         }
 
-        MiuixBlurDialog(
-            title = stringResource(R.string.lab_lyricify_import_button),
-            show = lyricifyImporter.showDialog,
-            onDismissRequest = {}
-        ) {
-            Column(modifier = Modifier.fillMaxWidth()) {
-                lyricifyImporter.message?.let {
-                    Text(it, style = MiuixTheme.textStyles.body2, color = MiuixTheme.colorScheme.onSurface)
-                }
-                if (lyricifyImporter.importing) {
-                    Spacer(Modifier.height(16.dp))
-                    LinearProgressIndicator(
-                        progress = lyricifyImporter.state.progress.fraction.takeIf { lyricifyImporter.state.canCancel }
-                    )
-                    lyricifyImporter.count?.let {
-                        Spacer(Modifier.height(8.dp))
-                        Text(it, style = MiuixTheme.textStyles.body2, color = MiuixTheme.colorScheme.onSurfaceSecondary)
-                    }
-                }
-                Spacer(Modifier.height(16.dp))
-                TextButton(
-                    text = stringResource(if (lyricifyImporter.importing) android.R.string.cancel else R.string.lab_lyricify_import_done),
-                    onClick = if (lyricifyImporter.importing) lyricifyImporter.cancel else lyricifyImporter.dismiss,
-                    enabled = !lyricifyImporter.importing || lyricifyImporter.state.canCancel,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-        }
-
-        MiuixBlurDialog(
-            title = stringResource(R.string.lab_lyricify_import_mode_title),
-            summary = stringResource(R.string.lab_lyricify_import_mode_desc),
+        MiuixLyricImportProgressDialog(lyricifyImporter)
+        MiuixLyricImportModeDialog(
             show = showLyricifyImportDialog,
-            onDismissRequest = { showLyricifyImportDialog = false }
-        ) {
-            Column(modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState())) {
-                listOf(
-                    Triple(
-                        LyricifyImportMode.OVERWRITE,
-                        R.string.lab_lyricify_import_overwrite_title,
-                        R.string.lab_lyricify_import_overwrite_summary
-                    ),
-                    Triple(
-                        LyricifyImportMode.MERGE,
-                        R.string.lab_lyricify_import_merge_title,
-                        R.string.lab_lyricify_import_merge_summary
-                    ),
-                    Triple(
-                        LyricifyImportMode.SKIP,
-                        R.string.lab_lyricify_import_skip_title,
-                        R.string.lab_lyricify_import_skip_summary
-                    )
-                ).forEach { (mode, title, summary) ->
-                    BasicComponent(
-                        title = stringResource(title),
-                        summary = stringResource(summary),
-                        insideMargin = PaddingValues(vertical = 12.dp),
-                        role = Role.Button,
-                        onClick = {
-                            showLyricifyImportDialog = false
-                            lyricifyImporter.chooseFile(mode)
-                        }
-                    )
-                }
-                Spacer(modifier = Modifier.height(12.dp))
-                TextButton(
-                    text = stringResource(android.R.string.cancel),
-                    onClick = { showLyricifyImportDialog = false },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.textButtonColors(
-                        textColor = MiuixTheme.colorScheme.onSurfaceVariantActions
-                    )
-                )
-            }
-        }
+            onDismiss = { showLyricifyImportDialog = false },
+            onChooseMode = { mode ->
+                showLyricifyImportDialog = false
+                lyricifyImporter.chooseFile(mode)
+            },
+        )
 
         MiuixBlurDialog(
             title = stringResource(R.string.settings_full_offline_mode_dialog_title),
@@ -607,3 +541,90 @@ internal fun MiuixLabScreen(
 }
 
 
+
+@Composable
+internal fun MiuixLyricImportProgressDialog(
+    importer: LyricifyImportUiState,
+    titleRes: Int = R.string.lab_lyricify_import_button,
+) {
+    MiuixBlurDialog(
+        title = stringResource(titleRes),
+        show = importer.showDialog,
+        onDismissRequest = {}
+    ) {
+        Column(modifier = Modifier.fillMaxWidth()) {
+            importer.message?.let {
+                Text(it, style = MiuixTheme.textStyles.body2, color = MiuixTheme.colorScheme.onSurface)
+            }
+            if (importer.importing) {
+                Spacer(Modifier.height(16.dp))
+                LinearProgressIndicator(
+                    progress = importer.state.progress.fraction.takeIf { importer.state.canCancel }
+                )
+                importer.count?.let {
+                    Spacer(Modifier.height(8.dp))
+                    Text(it, style = MiuixTheme.textStyles.body2, color = MiuixTheme.colorScheme.onSurfaceSecondary)
+                }
+            }
+            Spacer(Modifier.height(16.dp))
+            TextButton(
+                text = stringResource(if (importer.importing) android.R.string.cancel else R.string.lab_lyricify_import_done),
+                onClick = if (importer.importing) importer.cancel else importer.dismiss,
+                enabled = !importer.importing || importer.state.canCancel,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+    }
+}
+
+@Composable
+internal fun MiuixLyricImportModeDialog(
+    show: Boolean,
+    onDismiss: () -> Unit,
+    onChooseMode: (LyricifyImportMode) -> Unit,
+    titleRes: Int = R.string.lab_lyricify_import_mode_title,
+    includeLyrics: Boolean = true,
+    enabled: Boolean = true,
+    options: @Composable () -> Unit = {},
+) {
+    MiuixBlurDialog(
+        title = stringResource(titleRes),
+        summary = if (includeLyrics) stringResource(R.string.lab_lyricify_import_mode_desc) else null,
+        show = show,
+        onDismissRequest = onDismiss,
+    ) {
+        Column(modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState())) {
+            options()
+            if (includeLyrics) {
+                listOf(
+                    Triple(LyricifyImportMode.OVERWRITE, R.string.lab_lyricify_import_overwrite_title, R.string.lab_lyricify_import_overwrite_summary),
+                    Triple(LyricifyImportMode.MERGE, R.string.lab_lyricify_import_merge_title, R.string.lab_lyricify_import_merge_summary),
+                    Triple(LyricifyImportMode.SKIP, R.string.lab_lyricify_import_skip_title, R.string.lab_lyricify_import_skip_summary),
+                ).forEach { (mode, title, summary) ->
+                    BasicComponent(
+                        title = stringResource(title),
+                        summary = stringResource(summary),
+                        enabled = enabled,
+                        insideMargin = PaddingValues(vertical = 12.dp),
+                        role = Role.Button,
+                        onClick = { onChooseMode(mode) },
+                    )
+                }
+            } else {
+                TextButton(
+                    text = stringResource(R.string.backup_dialog_confirm),
+                    enabled = enabled,
+                    onClick = { onChooseMode(LyricifyImportMode.MERGE) },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+            Spacer(modifier = Modifier.height(12.dp))
+            TextButton(
+                text = stringResource(android.R.string.cancel),
+                onClick = onDismiss,
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.textButtonColors(textColor = MiuixTheme.colorScheme.onSurfaceVariantActions),
+            )
+        }
+    }
+}

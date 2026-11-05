@@ -24,6 +24,8 @@ package com.example.islandlyrics.feature.lab.material
 
 import android.content.Intent
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -428,68 +430,15 @@ internal fun LabScreen(
         }
     }
 
-    if (lyricifyImporter.showDialog) {
-        MaterialBlurAlertDialog(
-            onDismissRequest = {},
-            properties = DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false),
-            title = { Text(stringResource(R.string.lab_lyricify_import_button)) },
-            text = {
-                Column {
-                    lyricifyImporter.message?.let { Text(it) }
-                    if (lyricifyImporter.importing) {
-                        Spacer(Modifier.height(16.dp))
-                        val progress = lyricifyImporter.state.progress.fraction.takeIf { lyricifyImporter.state.canCancel }
-                        if (progress == null) {
-                            LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-                        } else {
-                            LinearProgressIndicator(progress = { progress }, modifier = Modifier.fillMaxWidth())
-                        }
-                        lyricifyImporter.count?.let {
-                            Spacer(Modifier.height(8.dp))
-                            Text(it, style = MaterialTheme.typography.bodyMedium)
-                        }
-                    }
-                }
-            },
-            confirmButton = {
-                if (lyricifyImporter.importing) {
-                    TextButton(onClick = lyricifyImporter.cancel, enabled = lyricifyImporter.state.canCancel) {
-                        Text(stringResource(android.R.string.cancel))
-                    }
-                } else {
-                    TextButton(onClick = lyricifyImporter.dismiss) {
-                        Text(stringResource(R.string.lab_lyricify_import_done))
-                    }
-                }
-            }
-        )
-    }
-
-    if (showLyricifyImportDialog) {
-        MaterialBlurAlertDialog(
-            onDismissRequest = { showLyricifyImportDialog = false },
-            title = { Text(stringResource(R.string.lab_lyricify_import_mode_title)) },
-            text = {
-                androidx.compose.foundation.layout.Column {
-                    Text(stringResource(R.string.lab_lyricify_import_mode_desc))
-                    listOf(
-                        LyricifyImportMode.OVERWRITE to R.string.lab_lyricify_import_overwrite,
-                        LyricifyImportMode.MERGE to R.string.lab_lyricify_import_merge,
-                        LyricifyImportMode.SKIP to R.string.lab_lyricify_import_skip
-                    ).forEach { (mode, label) ->
-                        TextButton(onClick = {
-                            showLyricifyImportDialog = false
-                            lyricifyImporter.chooseFile(mode)
-                        }, modifier = Modifier.fillMaxWidth()) { Text(stringResource(label)) }
-                    }
-                }
-            },
-            confirmButton = {},
-            dismissButton = {
-                TextButton(onClick = { showLyricifyImportDialog = false }) { Text(stringResource(android.R.string.cancel)) }
-            }
-        )
-    }
+    LyricImportProgressDialog(lyricifyImporter)
+    LyricImportModeDialog(
+        show = showLyricifyImportDialog,
+        onDismiss = { showLyricifyImportDialog = false },
+        onChooseMode = { mode ->
+            showLyricifyImportDialog = false
+            lyricifyImporter.chooseFile(mode)
+        },
+    )
 
     if (showOfflineModeDialog) {
         MaterialBlurAlertDialog(
@@ -564,4 +513,89 @@ internal fun LabScreen(
             }
         )
     }
+}
+
+@Composable
+internal fun LyricImportProgressDialog(
+    importer: LyricifyImportUiState,
+    titleRes: Int = R.string.lab_lyricify_import_button,
+) {
+    if (importer.showDialog) {
+        MaterialBlurAlertDialog(
+            onDismissRequest = {},
+            properties = DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false),
+            title = { Text(stringResource(titleRes)) },
+            text = {
+                Column {
+                    importer.message?.let { Text(it) }
+                    if (importer.importing) {
+                        Spacer(Modifier.height(16.dp))
+                        val progress = importer.state.progress.fraction.takeIf { importer.state.canCancel }
+                        if (progress == null) {
+                            LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                        } else {
+                            LinearProgressIndicator(progress = { progress }, modifier = Modifier.fillMaxWidth())
+                        }
+                        importer.count?.let {
+                            Spacer(Modifier.height(8.dp))
+                            Text(it, style = MaterialTheme.typography.bodyMedium)
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                if (importer.importing) {
+                    TextButton(onClick = importer.cancel, enabled = importer.state.canCancel) {
+                        Text(stringResource(android.R.string.cancel))
+                    }
+                } else {
+                    TextButton(onClick = importer.dismiss) {
+                        Text(stringResource(R.string.lab_lyricify_import_done))
+                    }
+                }
+            }
+        )
+    }
+}
+
+@Composable
+internal fun LyricImportModeDialog(
+    show: Boolean,
+    onDismiss: () -> Unit,
+    onChooseMode: (LyricifyImportMode) -> Unit,
+    titleRes: Int = R.string.lab_lyricify_import_mode_title,
+    includeLyrics: Boolean = true,
+    enabled: Boolean = true,
+    options: @Composable () -> Unit = {},
+) {
+    if (!show) return
+    MaterialBlurAlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(titleRes)) },
+        text = {
+            Column(Modifier.verticalScroll(rememberScrollState())) {
+                options()
+                if (includeLyrics) {
+                    Text(stringResource(R.string.lab_lyricify_import_mode_desc))
+                    listOf(
+                        LyricifyImportMode.OVERWRITE to R.string.lab_lyricify_import_overwrite,
+                        LyricifyImportMode.MERGE to R.string.lab_lyricify_import_merge,
+                        LyricifyImportMode.SKIP to R.string.lab_lyricify_import_skip,
+                    ).forEach { (mode, label) ->
+                        TextButton(onClick = { onChooseMode(mode) }, enabled = enabled, modifier = Modifier.fillMaxWidth()) {
+                            Text(stringResource(label))
+                        }
+                    }
+                } else {
+                    TextButton(onClick = { onChooseMode(LyricifyImportMode.MERGE) }, enabled = enabled, modifier = Modifier.fillMaxWidth()) {
+                        Text(stringResource(R.string.backup_dialog_confirm))
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(android.R.string.cancel)) }
+        },
+    )
 }

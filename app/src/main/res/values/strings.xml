@@ -1331,11 +1331,11 @@ Within the log interface, select the share/export icon. You can specify a timefr
     <string name="lab_lyricify_import_button">Import Lyricify database</string>
     <string name="lab_lyricify_import_mode_title">Handle existing lyric selections</string>
     <string name="lab_lyricify_import_mode_desc">Choose how to handle songs that already have a lyric selection. Songs without a conflict will be imported normally.</string>
-    <string name="lab_lyricify_import_overwrite">Overwrite: use the Lyricify selection</string>
+    <string name="lab_lyricify_import_overwrite">Overwrite: use the imported lyrics</string>
     <string name="lab_lyricify_import_merge">Merge: keep the current selection and add candidates</string>
     <string name="lab_lyricify_import_skip">Skip: leave conflicting songs unchanged</string>
     <string name="lab_lyricify_import_overwrite_title">Overwrite</string>
-    <string name="lab_lyricify_import_overwrite_summary">Use the Lyricify selection</string>
+    <string name="lab_lyricify_import_overwrite_summary">Use the imported lyrics</string>
     <string name="lab_lyricify_import_merge_title">Merge</string>
     <string name="lab_lyricify_import_merge_summary">Keep the current selection and add candidates</string>
     <string name="lab_lyricify_import_skip_title">Skip</string>

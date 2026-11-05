@@ -1344,11 +1344,11 @@
     <string name="lab_lyricify_import_button">导入 Lyricify 数据库</string>
     <string name="lab_lyricify_import_mode_title">处理已有歌词选择</string>
     <string name="lab_lyricify_import_mode_desc">选择同一首歌已有歌词选择时的处理方式。没有冲突的歌曲正常导入。</string>
-    <string name="lab_lyricify_import_overwrite">覆盖：使用 Lyricify 的选择</string>
+    <string name="lab_lyricify_import_overwrite">覆盖：使用导入的歌词</string>
     <string name="lab_lyricify_import_merge">合并：保留当前选择，加入导入候选</string>
     <string name="lab_lyricify_import_skip">跳过：不导入发生冲突的歌曲</string>
     <string name="lab_lyricify_import_overwrite_title">覆盖</string>
-    <string name="lab_lyricify_import_overwrite_summary">使用 Lyricify 的选择</string>
+    <string name="lab_lyricify_import_overwrite_summary">使用导入的歌词</string>
     <string name="lab_lyricify_import_merge_title">合并</string>
     <string name="lab_lyricify_import_merge_summary">保留当前选择，加入导入候选</string>
     <string name="lab_lyricify_import_skip_title">跳过</string>
