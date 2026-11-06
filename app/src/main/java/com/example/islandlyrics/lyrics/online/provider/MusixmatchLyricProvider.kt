@@ -149,7 +149,7 @@ internal class MusixmatchLyricProvider(
                             api = "Musixmatch",
                             lyrics = subtitleBody,
                             parsedLines = parsedLines,
-                            hasSyllable = false,
+                            hasSyllable = parsedLines.any { !it.syllables.isNullOrEmpty() },
                             provider = OnlineLyricProvider.Musixmatch,
                             matchedTitle = matchedTitle,
                             matchedArtist = matchedArtist,

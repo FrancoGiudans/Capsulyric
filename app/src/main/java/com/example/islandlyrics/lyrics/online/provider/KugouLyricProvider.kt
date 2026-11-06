@@ -189,7 +189,7 @@ internal class KugouLyricProvider(
                     "Kugou",
                     lyricContent,
                     parsedLines,
-                    hasSyllable,
+                    parsedLines.any { !it.syllables.isNullOrEmpty() },
                     provider = OnlineLyricProvider.Kugou,
                     matchedTitle = matchedTitle,
                     matchedArtist = matchedArtist,

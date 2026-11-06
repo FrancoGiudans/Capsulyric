@@ -138,7 +138,6 @@ internal class SodaMusicLyricProvider(
                     )
                 }
 
-                val hasSyllable = OnlineLyricParser.isWordLevelLyrics(lyricContent, lyricType)
                 val parsedLines = OnlineLyricParser.parseSodaLyrics(lyricContent, lyricType)
                 val matched = candidate ?: detailJson.optJSONObject("seo_track")?.optJSONObject("track")
                     ?.let(::SodaTrackCandidate)
@@ -146,7 +145,7 @@ internal class SodaMusicLyricProvider(
                     api = "SodaMusic",
                     lyrics = lyricContent,
                     parsedLines = parsedLines,
-                    hasSyllable = hasSyllable,
+                    hasSyllable = parsedLines.any { !it.syllables.isNullOrEmpty() },
                     provider = OnlineLyricProvider.SodaMusic,
                     matchedTitle = matched?.matchedTitle,
                     matchedArtist = matched?.matchedArtist,

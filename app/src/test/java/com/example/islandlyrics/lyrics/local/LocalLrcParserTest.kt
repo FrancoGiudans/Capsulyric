@@ -2,6 +2,7 @@ package com.example.islandlyrics.lyrics.local
 
 import com.example.islandlyrics.lyrics.online.OnlineLyricFetcher.SyllableInfo
 import com.example.islandlyrics.lyrics.state.LyricRepository
+import com.example.islandlyrics.ui.overlay.display.LyricTextWindowCalculator
 import com.example.islandlyrics.ui.overlay.display.ParsedLyricDisplayState
 import com.example.islandlyrics.ui.overlay.model.WordProgressCalculator
 import org.junit.Assert.assertEquals
@@ -59,6 +60,51 @@ class LocalLrcParserTest {
         assertTrue(result.lines.first().syllables.isNullOrEmpty())
         assertEquals(listOf(SyllableInfo(2_000, 2_500, "Word")), result.lines[1].syllables)
         assertTrue(result.lines.last().syllables.isNullOrEmpty())
+    }
+
+    @Test
+    fun mixedEnhancedAndPlainLongLineKeepsLrcWindowProgress() {
+        val result = LocalLrcParser.parseContent(
+            "[00:00.000]<00:00.000>Intro<00:01.000>\n" +
+                "[00:01.000]abcdefghijklmnopqrst\n[00:11.000]Next"
+        )!!
+        val state = ParsedLyricDisplayState.from(LyricRepository.ParsedLyricsInfo(
+            lines = result.lines,
+            hasSyllable = result.hasSyllable,
+            timelineCapability = LyricRepository.TimelineCapability.MULTI_LINE
+        ))
+        assertTrue(state.useSyllableScrolling)
+        val line = state.currentLine(1_000)!!
+        assertTrue(line.syllables.isNullOrEmpty())
+        assertEquals("abcdefgh", LyricTextWindowCalculator.lrcWindow(
+            line.text, line.startTime, line.endTime, 1_000, 8
+        ))
+        assertEquals(line, state.currentLine(10_999))
+        assertEquals("mnopqrst", LyricTextWindowCalculator.lrcWindow(
+            line.text, line.startTime, line.endTime, 10_999, 8
+        ))
+    }
+
+    @Test
+    fun overlappingEnhancedLineDoesNotHideTheNextLine() {
+        val result = LocalLrcParser.parseContent(
+            "[00:01.000]<00:01.000>Hello<00:05.000>\n" +
+                "[00:03.000]<00:03.000>Next<00:04.000>"
+        )!!
+        assertEquals(listOf("Hello", "Next"), result.lines.map { it.text })
+        assertEquals(3_000L, result.lines.first().endTime)
+        assertTrue(result.lines.first().syllables.isNullOrEmpty())
+        assertTrue(result.hasSyllable)
+        val state = ParsedLyricDisplayState.from(LyricRepository.ParsedLyricsInfo(
+            lines = result.lines,
+            hasSyllable = result.hasSyllable,
+            timelineCapability = LyricRepository.TimelineCapability.MULTI_LINE
+        ))
+        assertEquals("Hello", state.currentLine(2_999)!!.text)
+        for (position in listOf(3_000L, 3_500L, 3_999L)) {
+            assertEquals("Next", state.currentLine(position)!!.text)
+        }
+        assertNull(state.currentLine(4_000))
     }
 
     @Test

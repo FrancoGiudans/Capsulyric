@@ -96,6 +96,29 @@ class OnlineLyricParserTest {
     }
 
     @Test
+    fun parseEnhancedLrcOverlappingTailFallsBackAtNextLine() {
+        val lines = OnlineLyricParser.parseLrcLyrics(
+            "[00:01.000]<00:01.000>Hello <00:02.000>world!<00:05.000>\n" +
+                "[00:03.000]<00:03.000>Next<00:04.000>"
+        )
+
+        assertEquals(listOf("Hello world!", "Next"), lines.map { it.text })
+        assertEquals(listOf(3_000L, 4_000L), lines.map { it.endTime })
+        assertTrue(lines.first().syllables.isNullOrEmpty())
+        assertEquals(listOf(SyllableInfo(3_000, 4_000, "Next")), lines.last().syllables)
+    }
+
+    @Test
+    fun parseEnhancedLrcEndingAtNextLineKeepsWordTiming() {
+        val line = OnlineLyricParser.parseLrcLyrics(
+            "[00:01.000]<00:01.000>Hello<00:03.000>\n[00:03.000]Next"
+        ).first()
+
+        assertEquals(3_000L, line.endTime)
+        assertEquals(listOf(SyllableInfo(1_000, 3_000, "Hello")), line.syllables)
+    }
+
+    @Test
     fun parseEnhancedLrcFinalLineKeepsLastWordInsideFallbackBoundary() {
         val line = OnlineLyricParser.parseLrcLyrics("[00:01.000]<00:01.000>Hello <00:08.000>world").single()
 

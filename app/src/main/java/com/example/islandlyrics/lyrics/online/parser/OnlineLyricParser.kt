@@ -204,6 +204,7 @@ internal object OnlineLyricParser {
             nextStartTime ?: (maxOf(startTime, times.last()) + 5000)
         }
         if (times.first() < startTime || endTime <= startTime || endTime < times.last() ||
+            (nextStartTime != null && endTime > nextStartTime) ||
             times.zipWithNext().any { (start, end) -> end < start }
         ) return plainLine
 
