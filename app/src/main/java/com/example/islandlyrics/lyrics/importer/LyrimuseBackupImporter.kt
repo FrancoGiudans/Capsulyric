@@ -250,8 +250,9 @@ internal object LyrimuseBackupImporter {
             translationLyrics = translations.takeIf { it.isNotEmpty() }?.let(::toLrc),
             romanLyrics = roman.takeIf { it.isNotEmpty() }?.let(::toLrc),
         )
-        return LyricifyTrackIdentity(song.title, song.artist, song.album, (durationSecs * 1000).toLong(), aliases) to
-            LyricifyImportSelection(listOf(result), result)
+        val identity = LyricifyTrackIdentity(song.title, song.artist, song.album, (durationSecs * 1000).toLong(), aliases)
+        require(LyricifyDatabaseImporter.hasMatchableIdentity(identity, result)) { "Insufficient track identity" }
+        return identity to LyricifyImportSelection(listOf(result), result)
     }
 
     private fun parse(document: Document, format: String): List<OnlineLyricFetcher.LyricLine> {

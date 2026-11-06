@@ -146,6 +146,48 @@ class LyrimuseBackupImporterTest {
         assertEquals(1, prepared.failed)
     }
 
+    @Test fun weakIdentitiesAreReportedAsFailed() {
+        val text = document("[00:01]Text").replace("[al:Album]", "[al:]")
+        for (entry in listOf(JSONObject(), JSONObject().put("duration_secs", 0.0001),
+            JSONObject().put("player_song_ids", JSONObject().put("com.apple.Music", "invalid")))) {
+            val prepared = LyrimuseBackupImporter.prepareBytes(listOf(archive(mapOf("a.lrc" to text),
+                JSONObject().put("Artist|Title|", entry))))
+            assertTrue(prepared.tracks.isEmpty())
+            assertEquals(1, prepared.failed)
+            assertEquals(0, prepared.skipped)
+        }
+        val noArtist = LyrimuseBackupImporter.prepareBytes(listOf(archive(mapOf("a.lrc" to
+            document("[00:01]Text").replace("[ar:Artist]", "[ar:]")))))
+        assertTrue(noArtist.tracks.isEmpty())
+        assertEquals(1, noArtist.failed)
+    }
+
+    @Test fun albumDurationOrPlatformIdEachProvideEnoughIdentityEvidence() {
+        val cases = listOf("Album" to JSONObject(), "" to JSONObject().put("duration_secs", 180.0),
+            "" to JSONObject().put("player_song_ids", JSONObject().put("com.apple.Music", "123")))
+        for ((album, entry) in cases) {
+            val prepared = LyrimuseBackupImporter.prepareBytes(listOf(archive(mapOf("a.lrc" to
+                document("[00:01]Text").replace("[al:Album]", "[al:$album]")),
+                JSONObject().put("Artist|Title|$album", entry))))
+            assertEquals(1, prepared.tracks.size)
+            assertEquals(0, prepared.failed)
+        }
+    }
+
+    @Test fun weakGroupsDoNotBlockValidLyricsOrCredentials() {
+        for (includeValid in listOf(false, true)) {
+            val files = buildMap {
+                put("weak.lrc", document("[00:01]Weak").replace("[al:Album]", "[al:]"))
+                if (includeValid) put("valid.lrc", document("[00:01]Valid"))
+            }
+            val prepared = LyrimuseBackupImporter.prepareBytes(listOf(archive(files), config()))
+            assertEquals(if (includeValid) 1 else 0, prepared.tracks.size)
+            assertEquals(1, prepared.failed)
+            assertTrue(prepared.hasConfig)
+            assertEquals(LastFmCredentials("a".repeat(32), "secret", "session", "user"), prepared.credentials)
+        }
+    }
+
     @Test fun readsTheWholeCredentialTupleAndIgnoresOtherPreferences() {
         val prepared = LyrimuseBackupImporter.prepareBytes(listOf(config()))
         assertTrue(prepared.hasConfig)

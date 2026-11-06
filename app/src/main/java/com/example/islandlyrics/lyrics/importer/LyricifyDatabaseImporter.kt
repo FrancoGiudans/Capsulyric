@@ -206,8 +206,9 @@ object LyricifyDatabaseImporter {
                 if (selected == null) { onFailed(); continue }
                 candidates.forEach { ids.putAll(it.providerIds) }
                 ids.putAll(selected.providerIds)
-                yield(LyricifyTrackIdentity(tracks.getString(1), tracks.getString(2), tracks.getString(3).orEmpty(), tracks.getLong(4), ids) to
-                    LyricifyImportSelection(candidates.map { it.result }, selected.result))
+                val identity = LyricifyTrackIdentity(tracks.getString(1), tracks.getString(2), tracks.getString(3).orEmpty(), tracks.getLong(4), ids)
+                if (!hasMatchableIdentity(identity, selected.result)) { onFailed(); continue }
+                yield(identity to LyricifyImportSelection(candidates.map { it.result }, selected.result))
             }
         }
     }
@@ -228,6 +229,16 @@ object LyricifyDatabaseImporter {
         "musixmatch" -> OnlineLyricProvider.Musixmatch
         "lrcapi" -> OnlineLyricProvider.LrcApi
         else -> null
+    }
+
+    internal fun hasMatchableIdentity(identity: LyricifyTrackIdentity, selected: OnlineLyricFetcher.LyricResult): Boolean {
+        // Use the same identity fallbacks as the imported cache entry.
+        val effective = identity.copy(
+            album = identity.album.ifBlank { selected.matchedAlbum.orEmpty() },
+            durationMs = identity.durationMs.takeIf { it > 0 } ?: selected.matchedDurationMs ?: 0L,
+            providerIds = identity.providerIds + identityIds(selected.provider, selected.providerTrackId),
+        )
+        return sameTrack(effective, effective)
     }
 
     internal fun sameTrack(first: LyricifyTrackIdentity, second: LyricifyTrackIdentity): Boolean {

@@ -73,6 +73,36 @@ class LyricifyDatabaseImporterTest {
         assertFalse(LyricifyDatabaseImporter.sameTrack(track, track))
     }
 
+    @Test fun importIdentityRequiresEvidenceUsedByTheCache() {
+        val weak = LyricifyTrackIdentity("Title", "Artist")
+        val selected = incoming.copy(providerTrackId = null)
+        for (identity in listOf(weak, weak.copy(artist = "", album = "Album"), weak.copy(title = "", album = "Album"))) {
+            assertFalse(LyricifyDatabaseImporter.hasMatchableIdentity(identity, selected))
+        }
+        assertFalse(LyricifyDatabaseImporter.hasMatchableIdentity(weak, selected.copy(providerTrackId = "invalid")))
+        assertFalse(LyricifyDatabaseImporter.hasMatchableIdentity(weak, selected.copy(matchedAlbum = " ", matchedDurationMs = 0L)))
+    }
+
+    @Test fun importIdentityAcceptsCatalogAndSelectedAssetEvidence() {
+        val weak = LyricifyTrackIdentity("Title", "Artist")
+        val selected = incoming.copy(providerTrackId = null)
+        val cases = listOf(
+            weak.copy(album = "Album") to selected,
+            weak.copy(durationMs = 180_000L) to selected,
+            weak.copy(providerIds = mapOf("netease" to "123")) to selected,
+            weak to selected.copy(matchedAlbum = "Album"),
+            weak to selected.copy(matchedDurationMs = 180_000L),
+            weak to incoming,
+        )
+        for ((identity, result) in cases) assertTrue(LyricifyDatabaseImporter.hasMatchableIdentity(identity, result))
+    }
+
+    @Test fun selectedAssetNamesDoNotSubstituteForCatalogNames() {
+        val selected = incoming.copy(providerTrackId = null, matchedTitle = "Title", matchedArtist = "Artist", matchedAlbum = "Album")
+        assertFalse(LyricifyDatabaseImporter.hasMatchableIdentity(LyricifyTrackIdentity("Title", ""), selected))
+        assertFalse(LyricifyDatabaseImporter.hasMatchableIdentity(LyricifyTrackIdentity("", "Artist"), selected))
+    }
+
     @Test fun contradictoryPlatformIdsAreKeptSeparate() {
         val track = LyricifyTrackIdentity("Title", "Artist", "Album", 180_000, mapOf("netease" to "123"))
         assertFalse(LyricifyDatabaseImporter.sameTrack(track, track.copy(providerIds = mapOf("netease" to "456"))))
