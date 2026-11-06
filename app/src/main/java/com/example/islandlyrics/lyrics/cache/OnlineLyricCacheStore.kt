@@ -484,7 +484,7 @@ class OnlineLyricCacheStore(context: Context) {
                             LyricifyDatabaseImporter.mergeAliases(aliases, entry.importIdentity().providerIds)
                         }
                         val aliases = LyricifyDatabaseImporter.mergeAliases(oldAliases, identity.providerIds)
-                        val base = incomingEntry.copy(id = id, lyricifyCandidates = emptyList())
+                        val base = incomingEntry.copy(id = id, duration = identity.durationMs, lyricifyCandidates = emptyList())
                         val entry = base.withImportedResult(selection.selected).copy(
                             lyricifyImported = true, lyricifyAliases = aliases,
                             matchedAlbum = identity.album.ifBlank { selection.selected.matchedAlbum },
