@@ -579,6 +579,18 @@ object SettingsSearchRegistry {
                 targetItemKey = "key_super_island_collapsed_right_progress_ring"
             )
         ),
+        SettingsSearchItem(
+            id = "pref_super_island_right_calibration",
+            titleRes = R.string.right_calibration_title,
+            summaryRes = R.string.right_calibration_summary,
+            breadcrumbResList = listOf(R.string.settings_capsule_notification, R.string.tab_capsule),
+            keywords = listOf("校准", "右侧歌词", "尾字", "淡出", "字体", "字宽", "calibration", "width"),
+            action = SettingsSearchAction.Navigate(
+                target = SettingsNavigationTarget.CAPSULE_NOTIFICATION,
+                tab = CustomSettingsTab.CAPSULE,
+                targetItemKey = "key_super_island_right_calibration"
+            )
+        ),
 
         // ═════════════════════════════════════════════════════════════════════
         // 二级设置项：状态栏通知 (Notification Tab)

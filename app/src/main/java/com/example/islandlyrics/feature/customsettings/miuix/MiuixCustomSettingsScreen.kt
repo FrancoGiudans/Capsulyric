@@ -55,6 +55,7 @@ import com.example.islandlyrics.runtime.service.LyricService
 import com.example.islandlyrics.feature.main.MainActivity
 import com.example.islandlyrics.ui.overlay.model.SecondaryTextMode
 import com.example.islandlyrics.feature.customsettings.CustomSettingsAction
+import com.example.islandlyrics.feature.customsettings.RightCalibrationSheet
 import com.example.islandlyrics.feature.customsettings.CustomSettingsTab
 import com.example.islandlyrics.feature.customsettings.CustomSettingsViewModel
 import com.example.islandlyrics.ui.miuix.reorderable.MiuixBlurReorderablePanel
@@ -301,6 +302,7 @@ fun MiuixCustomSettingsScreen(
         mutableStateOf(uiState.homeLyricPreviewDisplayModes)
     }
     var showHomeLyricPreviewDialog by remember { mutableStateOf(false) }
+    var showRightCalibration by remember { mutableStateOf(false) }
     var monetEnabled by remember(uiState.monetEnabled) { mutableStateOf(uiState.monetEnabled) }
     var customThemeGlobalTintEnabled by remember(uiState.customThemeGlobalTintEnabled) {
         mutableStateOf(uiState.customThemeGlobalTintEnabled)
@@ -728,6 +730,12 @@ fun MiuixCustomSettingsScreen(
                                                 )
                                             }
 
+                                            SuperArrow(
+                                                title = stringResource(R.string.right_calibration_title),
+                                                summary = stringResource(R.string.right_calibration_summary),
+                                                modifier = Modifier.miuixSettingHighlight(activeHighlightKey, "key_super_island_right_calibration"),
+                                                onClick = { showRightCalibration = true }
+                                            )
                                             if (superIslandTextLimitsLabEnabled) {
                                                 val rightRange = SuperIslandTextLimitConfig.RIGHT_MIN_CHARS..
                                                     SuperIslandTextLimitConfig.rightMaxChars(superIslandRelaxedTextLimitsLabEnabled)
@@ -1786,6 +1794,9 @@ fun MiuixCustomSettingsScreen(
             }
         }
 
+        if (showRightCalibration) {
+            RightCalibrationSheet(miuix = true, onDismiss = { showRightCalibration = false })
+        }
         if (showHomeLyricPreviewDialog) {
             MiuixHomeLyricSecondaryTextModeBottomSheet(
                 selectedModes = homeLyricPreviewDisplayModes,

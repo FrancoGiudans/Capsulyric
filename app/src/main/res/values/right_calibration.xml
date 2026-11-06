@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="right_calibration_advanced">Advanced glyph width settings</string>
+    <string name="right_calibration_title">Right-side lyric calibration</string>
+    <string name="right_calibration_summary">Calibrate on this device for your font, theme and display settings</string>
+    <string name="right_calibration_instructions">Play music with Super Island active, then start a test and inspect the actual island above. First compare the original sample, then turn off “Show original sample” to check the fitted result. One unit is one CJK glyph. Saving applies this profile; closing or leaving this page restores live lyrics. Font, theme and island layout changes may require recalibration.</string>
+    <string name="right_calibration_plain">Profile for the right side without a progress ring</string>
+    <string name="right_calibration_ring">Profile for the right side with a progress ring</string>
+    <string name="right_calibration_environment_changed">This profile was calibrated with different device or display settings and is inactive. Test it again and save to use it here.</string>
+    <string name="right_calibration_profiles">Load a saved profile to use or recalibrate; ✓ marks the selected profile</string>
+    <string name="right_calibration_name">Profile name (for example, font and theme)</string>
+    <string name="right_calibration_capacity">Right-side capacity (CJK units)</string>
+    <string name="right_calibration_margin">Reserved space (CJK units)</string>
+    <string name="right_calibration_letter_mono">Treat letters as equal width</string>
+    <string name="right_calibration_letter_width">Width per letter (CJK units)</string>
+    <string name="right_calibration_letter_scale">Letter width adjustment</string>
+    <string name="right_calibration_digit_mono">Treat digits as equal width</string>
+    <string name="right_calibration_digit_width">Width per digit (CJK units)</string>
+    <string name="right_calibration_digit_scale">Digit width adjustment</string>
+    <string name="right_calibration_space">Space width (CJK units)</string>
+    <string name="right_calibration_full_space">Full-width space width (CJK units)</string>
+    <string name="right_calibration_punctuation">Punctuation and symbol width adjustment</string>
+    <string name="right_calibration_estimate_note">Leave equal-width options off unless the actual island confirms them. Estimated glyph widths may differ from a custom system font; adjust individual glyphs below when needed. Profiles are local to this device. Switching fonts or themes is not detected automatically.</string>
+    <string name="right_calibration_samples">Test samples</string>
+    <string name="right_calibration_custom_sample">Sample text</string>
+    <string name="right_calibration_raw">Show original sample without fitting</string>
+    <string name="right_calibration_start">Start island test</string>
+    <string name="right_calibration_stop">Stop test and restore lyrics</string>
+    <string name="right_calibration_needs_playback">Play music and enable Super Island before starting a test.</string>
+    <string name="right_calibration_saved">Profile saved and applied to this display configuration.</string>
+    <string name="right_calibration_glyph_note">Advanced: override a single glyph, including a letter, digit, punctuation mark or emoji. Tap an existing override to remove it.</string>
+    <string name="right_calibration_glyph">One glyph to adjust</string>
+    <string name="right_calibration_glyph_width">Glyph width (CJK units)</string>
+    <string name="right_calibration_add_glyph">Add or update glyph width</string>
+    <string name="right_calibration_new">New profile / reset draft</string>
+    <string name="right_calibration_disable">Disable calibration and use existing text limit</string>
+</resources>

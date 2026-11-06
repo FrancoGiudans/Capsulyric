@@ -21,13 +21,16 @@
  */
 
 package com.example.islandlyrics.ui.overlay.superisland.config
+import com.example.islandlyrics.ui.overlay.superisland.calibration.RightTextWidthPolicy
 internal data class SuperIslandLyricRenderConfig(
     val lyricMode: String,
     val fullLyricShowLeftCover: Boolean,
     val standardLyricShowLeftCover: Boolean,
     val rightTextWeight: Int,
     val leftWithCoverTextWeight: Int,
-    val leftNoCoverTextWeight: Int
+    val leftNoCoverTextWeight: Int,
+    val rightTextPolicy: RightTextWidthPolicy? = null,
+    val rightPreviewText: String? = null
 )
 
 internal fun SuperIslandPreferencesCache.toLyricRenderConfig(): SuperIslandLyricRenderConfig {
@@ -37,6 +40,8 @@ internal fun SuperIslandPreferencesCache.toLyricRenderConfig(): SuperIslandLyric
         standardLyricShowLeftCover = standardLyricShowLeftCover,
         rightTextWeight = rightTextWeight,
         leftWithCoverTextWeight = leftWithCoverTextWeight,
-        leftNoCoverTextWeight = leftNoCoverTextWeight
+        leftNoCoverTextWeight = leftNoCoverTextWeight,
+        rightTextPolicy = rightTextPolicy,
+        rightPreviewText = rightPreviewText
     )
 }

@@ -65,6 +65,7 @@ import com.example.islandlyrics.feature.settings.material.MaterialOtherSettingLi
 import com.example.islandlyrics.feature.main.MainActivity
 import com.example.islandlyrics.ui.overlay.model.SecondaryTextMode
 import com.example.islandlyrics.feature.customsettings.CustomSettingsAction
+import com.example.islandlyrics.feature.customsettings.RightCalibrationSheet
 import com.example.islandlyrics.feature.customsettings.CustomSettingsTab
 import com.example.islandlyrics.feature.customsettings.CustomSettingsViewModel
 import com.example.islandlyrics.core.settings.search.SettingsSearchAction
@@ -362,6 +363,7 @@ fun CustomSettingsScreen(
     // Dialog State for UI Style
     var showUiStyleDropdown by remember { mutableStateOf(false) }
     var showHomeLyricPreviewDialog by remember { mutableStateOf(false) }
+    var showRightCalibration by remember { mutableStateOf(false) }
     var showPredictiveBackAnimationModeDropdown by remember { mutableStateOf(false) }
     var showPredictiveBackAnimationDropdown by remember { mutableStateOf(false) }
 
@@ -872,6 +874,14 @@ fun CustomSettingsScreen(
                                         )
                                     }
 
+                                    SettingsCardDivider()
+                                    SettingsTextItem(
+                                        title = stringResource(R.string.right_calibration_title),
+                                        subtitle = stringResource(R.string.right_calibration_summary),
+                                        value = "",
+                                        modifier = settingModifier("key_super_island_right_calibration"),
+                                        onClick = { showRightCalibration = true }
+                                    )
                                     if (superIslandTextLimitsLabEnabled) {
                                         val rightRange = SuperIslandTextLimitConfig.RIGHT_MIN_CHARS..
                                             SuperIslandTextLimitConfig.rightMaxChars(superIslandRelaxedTextLimitsLabEnabled)
@@ -2117,6 +2127,9 @@ fun CustomSettingsScreen(
                 )
             }
 
+            if (showRightCalibration) {
+                RightCalibrationSheet(miuix = false, onDismiss = { showRightCalibration = false })
+            }
             if (showHomeLyricPreviewDialog) {
                 MaterialHomeLyricSecondaryTextModeDialog(
                     selectedModes = homeLyricPreviewDisplayModes,

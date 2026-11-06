@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <data-extraction-rules>
     <cloud-backup>
+        <exclude domain="sharedpref" path="SuperIslandRightCalibration.xml" />
         <exclude
             domain="sharedpref"
             path="LastFmSecurePrefs.xml" />
@@ -9,6 +10,7 @@
             path="AppleMusicSecurePrefs.xml" />
     </cloud-backup>
     <device-transfer>
+        <exclude domain="sharedpref" path="SuperIslandRightCalibration.xml" />
         <exclude
             domain="sharedpref"
             path="LastFmSecurePrefs.xml" />
