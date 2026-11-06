@@ -159,7 +159,9 @@ internal object LyrimuseBackupImporter {
     private fun parseLibrary(root: JSONObject, checkActive: () -> Unit): Library {
         val files = root.getJSONObject("files")
         require(files.length() <= LyricifyDatabaseImporter.MAX_TRACKS * 4) { "Too many lyric files" }
-        val meta = root.optString("meta").takeIf { it.isNotEmpty() }?.let {
+        val rawMeta = root.opt("meta")
+        require(rawMeta == null || rawMeta === JSONObject.NULL || rawMeta is String) { "Invalid Lyrimuse metadata type" }
+        val meta = (rawMeta as? String)?.takeIf { it.isNotEmpty() }?.let {
             val bytes = Base64.getDecoder().decode(it)
             require(bytes.size <= MAX_DECODED_BYTES) { "Lyrics metadata is too large" }
             JSONObject(bytes.toString(Charsets.UTF_8))
@@ -228,7 +230,7 @@ internal object LyrimuseBackupImporter {
         val durationSecs = meta.optDouble("duration_secs", 0.0)
         require(durationSecs.isFinite() && durationSecs >= 0 && durationSecs <= Long.MAX_VALUE / 1000.0)
         val aliases = buildMap {
-            val appleId = meta.optJSONObject("player_song_ids")?.optString("com.apple.Music")
+            val appleId = meta.optJSONObject("player_song_ids")?.opt("com.apple.Music") as? String
             putAll(LyricifyDatabaseImporter.identityIds(OnlineLyricProvider.AppleMusic, appleId))
         }
         val provider = when (main.source.lowercase(Locale.ROOT)) {
@@ -246,7 +248,7 @@ internal object LyrimuseBackupImporter {
             hasSyllable = original.any { !it.syllables.isNullOrEmpty() }, provider = provider,
             matchedTitle = song.title, matchedArtist = song.artist, matchedAlbum = song.album,
             matchedDurationMs = (durationSecs * 1000).toLong().takeIf { it > 0 },
-            providerTrackId = aliases[provider.id], isrc = meta.optJSONArray("isrcs")?.optString(0)?.takeIf { it.isNotBlank() },
+            providerTrackId = aliases[provider.id], isrc = (meta.optJSONArray("isrcs")?.opt(0) as? String)?.takeIf { it.isNotBlank() },
             translationLyrics = translations.takeIf { it.isNotEmpty() }?.let(::toLrc),
             romanLyrics = roman.takeIf { it.isNotEmpty() }?.let(::toLrc),
         )

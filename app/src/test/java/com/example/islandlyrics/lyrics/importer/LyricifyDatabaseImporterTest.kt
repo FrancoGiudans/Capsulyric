@@ -21,6 +21,42 @@ class LyricifyDatabaseImporterTest {
         parsedLines = listOf(OnlineLyricFetcher.LyricLine(1_000L, 2_000L, text)), providerTrackId = "123"
     )
 
+    private fun payload(track: String) =
+        """{"version":2,"lyrics":{"format":"Lrc","text":"[00:01]Text"},"providerTrack":$track}"""
+
+    @Test fun optionalIdentityFieldsDoNotCoerceNonStrings() {
+        for (value in listOf("null", "123", "true", "{}", "[]")) {
+            val selected = LyricifyDatabaseImporter.convertPayload(payload(
+                """{"Identifier":$value,"Title":$value,"Album":$value,"Artists":[$value,"Artist"]}"""), "QQMusic")
+            assertNull(selected.providerTrackId)
+            assertNull(selected.matchedTitle)
+            assertNull(selected.matchedAlbum)
+            assertEquals("Artist", selected.matchedArtist)
+            assertFalse(LyricifyDatabaseImporter.hasMatchableIdentity(LyricifyTrackIdentity("Title", "Artist"), selected))
+        }
+    }
+
+    @Test fun invalidPrimaryIdentifierStillAllowsValidSecondaryIdentity() {
+        for (value in listOf("null", "\"null\"", "123", "{}")) {
+            val selected = LyricifyDatabaseImporter.convertPayload(payload(
+                """{"Identifier":$value,"SecondaryIdentifier":"001RaE0n4RrGX9","Title":"Title","Artists":["Artist"],"Album":"Album","DurationMs":180000}"""), "QQMusic")
+            assertEquals("001RaE0n4RrGX9", selected.providerTrackId)
+            assertEquals("Title", selected.matchedTitle)
+            assertEquals("Album", selected.matchedAlbum)
+            assertEquals(180_000L, selected.matchedDurationMs)
+            assertTrue(LyricifyDatabaseImporter.hasMatchableIdentity(LyricifyTrackIdentity("Title", "Artist"), selected))
+        }
+    }
+
+    @Test fun literalNullNamesRemainValidStrings() {
+        val selected = LyricifyDatabaseImporter.convertPayload(payload(
+            """{"Identifier":"123","Title":"null","Artists":["null"],"Album":"null"}"""), "QQMusic")
+        assertEquals("123", selected.providerTrackId)
+        assertEquals("null", selected.matchedTitle)
+        assertEquals("null", selected.matchedArtist)
+        assertEquals("null", selected.matchedAlbum)
+    }
+
     @Test fun mapsForeignProviderNamesToExistingProviders() {
         assertEquals(OnlineLyricProvider.QQMusic, LyricifyDatabaseImporter.providerFor("QQMusic"))
         assertEquals(OnlineLyricProvider.Kugou, LyricifyDatabaseImporter.providerFor("KugouMusic"))

@@ -5,6 +5,8 @@ import com.example.islandlyrics.lyrics.online.provider.OnlineLyricProvider
 import com.example.islandlyrics.lyrics.online.parser.OnlineLyricSidecarMerger
 import com.example.islandlyrics.rules.ParserRule
 import kotlinx.coroutines.CancellationException
+import org.json.JSONArray
+import org.json.JSONException
 import org.json.JSONObject
 import org.junit.Assert.*
 import org.junit.Assume.assumeTrue
@@ -49,6 +51,54 @@ class LyrimuseBackupImporterTest {
         val raw = compress(archive(emptyMap()))
         assertThrows(IllegalArgumentException::class.java) { LyrimuseBackupImporter.decode(raw.copyOf(raw.size - 1)) }
         assertThrows(IllegalArgumentException::class.java) { LyrimuseBackupImporter.decode(raw + byteArrayOf(1)) }
+    }
+
+    @Test fun optionalMetadataAcceptsMissingNullAndEmptyValues() {
+        for (value in listOf(null, JSONObject.NULL, "")) {
+            val input = JSONObject(String(archive(mapOf("a.lrc" to document("[00:01]Text")))))
+            if (value == null) input.remove("meta") else input.put("meta", value)
+            val prepared = LyrimuseBackupImporter.prepareBytes(listOf(input.toString().toByteArray()))
+            assertEquals(1, prepared.tracks.size)
+            assertEquals(0, prepared.failed)
+        }
+    }
+
+    @Test fun invalidMetadataTypesAndMalformedStringsAreStillRejected() {
+        val input = JSONObject(String(archive(mapOf("a.lrc" to document("[00:01]Text")))))
+        for (value in listOf(123, true, JSONObject(), JSONArray(), "!")) {
+            assertThrows(IllegalArgumentException::class.java) {
+                LyrimuseBackupImporter.prepareBytes(listOf(input.put("meta", value).toString().toByteArray()))
+            }
+        }
+        for (value in listOf("null", Base64.getEncoder().encodeToString("[]".toByteArray()))) {
+            assertThrows(JSONException::class.java) {
+                LyrimuseBackupImporter.prepareBytes(listOf(input.put("meta", value).toString().toByteArray()))
+            }
+        }
+    }
+
+    @Test fun optionalIdsAndIsrcOnlyAcceptStrings() {
+        val files = mapOf("a.lrc" to document("[00:01]Text", "applemusic"))
+        for (value in listOf(JSONObject.NULL, 123, true, JSONObject(), JSONArray())) {
+            val entry = JSONObject().put("player_song_ids", JSONObject().put("com.apple.Music", value))
+                .put("isrcs", JSONArray().put(value))
+            val prepared = LyrimuseBackupImporter.prepareBytes(listOf(archive(files, JSONObject().put("Artist|Title|Album", entry))))
+            val (identity, selection) = prepared.tracks.single()
+            assertTrue(identity.providerIds.isEmpty())
+            assertNull(selection.selected.providerTrackId)
+            assertNull(selection.selected.isrc)
+        }
+    }
+
+    @Test fun realOptionalIdsAndIsrcArePreserved() {
+        val entry = JSONObject().put("player_song_ids", JSONObject().put("com.apple.Music", "123"))
+            .put("isrcs", JSONArray().put("USABC1234567"))
+        val prepared = LyrimuseBackupImporter.prepareBytes(listOf(archive(mapOf("a.lrc" to document("[00:01]Text", "applemusic")),
+            JSONObject().put("Artist|Title|Album", entry))))
+        val (identity, selection) = prepared.tracks.single()
+        assertEquals(mapOf("apple_music" to "123"), identity.providerIds)
+        assertEquals("123", selection.selected.providerTrackId)
+        assertEquals("USABC1234567", selection.selected.isrc)
     }
 
     @Test fun limitsDecodedBytesWhileInflating() {

@@ -191,7 +191,7 @@ object LyricifyDatabaseImporter {
                             if (parsedUnits > MAX_PARSE_UNITS) throw LimitExceeded("Too many parsed song elements")
                             Asset(assets.getLong(0), assets.getInt(4) != 0, result,
                                 listOf("Identifier", "SecondaryIdentifier", "TertiaryIdentifier").flatMap { key ->
-                                    identityIds(result.provider, payload.optJSONObject("providerTrack")?.optString(key)).entries.map { it.toPair() }
+                                    identityIds(result.provider, payload.optJSONObject("providerTrack")?.opt(key) as? String).entries.map { it.toPair() }
                                 }.toMap())
                         } catch (error: Exception) {
                             if (error is CancellationException || error is LimitExceeded) throw error
@@ -319,7 +319,7 @@ object LyricifyDatabaseImporter {
         }
         val track = root.optJSONObject("providerTrack")
         val trackId = listOf("Identifier", "SecondaryIdentifier", "TertiaryIdentifier").firstNotNullOfOrNull { key ->
-            track?.optString(key)?.let(provider::normalizeTrackId)
+            (track?.opt(key) as? String)?.let(provider::normalizeTrackId)
         }
         return OnlineLyricFetcher.LyricResult(
             api = "Lyricify · ${providerName ?: localName ?: "Local"}",
@@ -327,11 +327,11 @@ object LyricifyDatabaseImporter {
             parsedLines = lines,
             hasSyllable = lines.any { !it.syllables.isNullOrEmpty() },
             provider = provider,
-            matchedTitle = track?.optString("Title")?.takeIf { it.isNotBlank() },
+            matchedTitle = (track?.opt("Title") as? String)?.takeIf { it.isNotBlank() },
             matchedArtist = track?.optJSONArray("Artists")?.let { array ->
-                (0 until array.length()).map { array.optString(it) }.filter { it.isNotBlank() }.joinToString(" / ")
+                (0 until array.length()).mapNotNull { array.opt(it) as? String }.filter { it.isNotBlank() }.joinToString(" / ")
             },
-            matchedAlbum = track?.optString("Album")?.takeIf { it.isNotBlank() },
+            matchedAlbum = (track?.opt("Album") as? String)?.takeIf { it.isNotBlank() },
             matchedDurationMs = track?.optLong("DurationMs")?.takeIf { it > 0 },
             providerTrackId = trackId,
             translationLyrics = translation
