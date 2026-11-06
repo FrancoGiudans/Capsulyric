@@ -81,13 +81,10 @@ import kotlinx.coroutines.delay
 @Composable
 internal fun MiuixLabScreen(
     onBack: () -> Unit,
-    lyricifyImporter: LyricifyImportUiState,
     targetItemKey: String? = null,
     onOpenCapsuleNotification: (() -> Unit)? = null
 ) {
     val context = LocalContext.current
-    var lyricifyImportEnabled by remember { mutableStateOf(LabFeatureManager.isLyricifyImportEnabled(context)) }
-    var showLyricifyImportDialog by remember { mutableStateOf(false) }
     val scrollBehavior = MiuixScrollBehavior(rememberTopAppBarState())
     val listState = rememberLazyListState()
     var activeTargetKey by remember(targetItemKey) { mutableStateOf(targetItemKey) }
@@ -153,12 +150,11 @@ internal fun MiuixLabScreen(
     val showLiveUpdateTextLimitsDialog = remember { mutableStateOf(false) }
 
     MiuixBackHandler(
-        enabled = showOfflineModeDialog.value || showAdvancedStyleDialog.value || showLiveUpdateTextLimitsDialog.value || showLyricifyImportDialog
+        enabled = showOfflineModeDialog.value || showAdvancedStyleDialog.value || showLiveUpdateTextLimitsDialog.value
     ) {
         showOfflineModeDialog.value = false
         showAdvancedStyleDialog.value = false
         showLiveUpdateTextLimitsDialog.value = false
-        showLyricifyImportDialog = false
     }
 
     MiuixBlurScaffold(
@@ -214,27 +210,6 @@ internal fun MiuixLabScreen(
             }
 
             item { Spacer(modifier = Modifier.height(8.dp)) }
-            item {
-                Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
-                    SuperSwitch(
-                        title = stringResource(R.string.lab_lyricify_import_title),
-                        summary = stringResource(R.string.lab_lyricify_import_desc),
-                        checked = lyricifyImportEnabled,
-                        onCheckedChange = {
-                            lyricifyImportEnabled = it
-                            LabFeatureManager.setLyricifyImportEnabled(context, it)
-                        }
-                    )
-                    if (lyricifyImportEnabled) {
-                        SuperArrow(
-                            title = stringResource(R.string.lab_lyricify_import_button),
-                            onClick = { showLyricifyImportDialog = true },
-                            enabled = !lyricifyImporter.importing
-                        )
-                    }
-                }
-            }
-
             item { SmallTitle(text = stringResource(R.string.diag_lab_category_interface)) }
             item {
                 Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
@@ -429,16 +404,6 @@ internal fun MiuixLabScreen(
                 }
             }
         }
-
-        MiuixLyricImportProgressDialog(lyricifyImporter)
-        MiuixLyricImportModeDialog(
-            show = showLyricifyImportDialog,
-            onDismiss = { showLyricifyImportDialog = false },
-            onChooseMode = { mode ->
-                showLyricifyImportDialog = false
-                lyricifyImporter.chooseFile(mode)
-            },
-        )
 
         MiuixBlurDialog(
             title = stringResource(R.string.settings_full_offline_mode_dialog_title),

@@ -40,6 +40,7 @@ import com.example.islandlyrics.feature.lastfm.LastFmSettingsActivity
 import com.example.islandlyrics.feature.settings.AboutActivity
 import com.example.islandlyrics.feature.settings.BackupImportCoordinator
 import com.example.islandlyrics.feature.settings.LyrimuseImportUiState
+import com.example.islandlyrics.feature.lab.LyricifyImportUiState
 import com.example.islandlyrics.feature.settings.rememberLyrimuseImporter
 import com.example.islandlyrics.feature.lab.miuix.MiuixLyricImportModeDialog
 import com.example.islandlyrics.feature.lab.miuix.MiuixLyricImportProgressDialog
@@ -67,6 +68,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -127,7 +129,8 @@ import java.util.Locale
 @Composable
 @SuppressLint("BatteryLife")
 @Suppress("UNUSED_PARAMETER")
-fun MiuixSettingsScreen(
+internal fun MiuixSettingsScreen(
+    lyricifyImporter: LyricifyImportUiState,
     onCheckUpdate: () -> Unit,
     onShowDiagnostics: () -> Unit,
     updateVersionText: String,
@@ -161,6 +164,11 @@ fun MiuixSettingsScreen(
     val coroutineScope = rememberCoroutineScope()
     val backupImportCoordinator = remember(context) { BackupImportCoordinator(context) }
     val lyrimuseImporter = rememberLyrimuseImporter()
+    var showOtherAppImportDialog by rememberSaveable { mutableStateOf(false) }
+    var showLyricifyImportDialog by rememberSaveable { mutableStateOf(false) }
+    val canChooseImportSource = !backupImportCoordinator.isBusy &&
+        !lyrimuseImporter.importer.showDialog && !lyrimuseImporter.importer.pendingSelection &&
+        !lyricifyImporter.showDialog && !lyricifyImporter.pendingSelection
     val scrollBehavior = MiuixScrollBehavior(rememberTopAppBarState())
     val listState = rememberLazyListState()
     val mainSettingBringIntoViewRequester = remember { BringIntoViewRequester() }
@@ -1018,20 +1026,20 @@ fun MiuixSettingsScreen(
                         title = stringResource(R.string.settings_backup_export),
                         summary = stringResource(R.string.settings_backup_export_desc),
                         onClick = {
-                            if (!lyrimuseImporter.importer.importing) showExportCategoryDialog = true
+                            if (!lyrimuseImporter.importer.importing && !lyricifyImporter.importing) showExportCategoryDialog = true
                         }
                     )
                     SuperArrow(
                         title = stringResource(R.string.settings_backup_import),
                         summary = stringResource(R.string.settings_backup_import_desc),
                         onClick = {
-                            if (!lyrimuseImporter.importer.importing) importSettingsLauncher.launch(arrayOf("application/zip", "application/json", "*/*"))
+                            if (!lyrimuseImporter.importer.importing && !lyricifyImporter.importing) importSettingsLauncher.launch(arrayOf("application/zip", "application/json", "*/*"))
                         }
                     )
                     SuperArrow(
-                        title = stringResource(R.string.lyrimuse_import_title),
-                        summary = stringResource(R.string.lyrimuse_import_summary),
-                        onClick = { if (!backupImportCoordinator.isBusy) lyrimuseImporter.openOptions() }
+                        title = stringResource(R.string.settings_import_other_apps),
+                        summary = stringResource(R.string.settings_import_other_apps_desc),
+                        onClick = { if (canChooseImportSource) showOtherAppImportDialog = true }
                     )
                 }
             }
@@ -1453,6 +1461,47 @@ fun MiuixSettingsScreen(
             }
         }
 
+        MiuixBlurDialog(
+            show = showOtherAppImportDialog,
+            title = stringResource(R.string.settings_import_other_apps),
+            onDismissRequest = { showOtherAppImportDialog = false },
+        ) {
+            Column(Modifier.fillMaxWidth()) {
+                TextButton(
+                    text = stringResource(R.string.lyrimuse_import_title),
+                    onClick = {
+                        showOtherAppImportDialog = false
+                        lyrimuseImporter.chooseFiles()
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Spacer(Modifier.height(8.dp))
+                TextButton(
+                    text = stringResource(R.string.lab_lyricify_import_button),
+                    onClick = {
+                        showOtherAppImportDialog = false
+                        showLyricifyImportDialog = true
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Spacer(Modifier.height(12.dp))
+                TextButton(
+                    text = stringResource(android.R.string.cancel),
+                    onClick = { showOtherAppImportDialog = false },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.textButtonColors(textColor = MiuixTheme.colorScheme.onSurfaceVariantActions),
+                )
+            }
+        }
+        MiuixLyricImportModeDialog(
+            show = showLyricifyImportDialog,
+            onDismiss = { showLyricifyImportDialog = false },
+            onChooseMode = { mode ->
+                showLyricifyImportDialog = false
+                lyricifyImporter.chooseFile(mode)
+            },
+        )
+        MiuixLyricImportProgressDialog(lyricifyImporter)
         MiuixLyrimuseImportDialog(lyrimuseImporter)
         backupImportCoordinator.status?.let { status ->
             MiuixBackupImportProgressDialog(status = status)
@@ -1470,16 +1519,25 @@ private fun MiuixLyrimuseImportDialog(ui: LyrimuseImportUiState) {
         includeLyrics = ui.includeLyrics,
         enabled = ui.includeLyrics || ui.includeLastFm,
     ) {
+        ui.previewMessage?.let {
+            Text(it, style = MiuixTheme.textStyles.body2, color = MiuixTheme.colorScheme.onSurfaceSecondary)
+            Spacer(Modifier.height(8.dp))
+        }
         CheckboxPreference(
             title = stringResource(R.string.lyrimuse_import_lyrics),
             checked = ui.includeLyrics,
+            enabled = ui.hasLyrics,
             onCheckedChange = ui.selectLyrics,
         )
         CheckboxPreference(
             title = stringResource(R.string.lyrimuse_import_lastfm),
             checked = ui.includeLastFm,
+            enabled = ui.hasLastFm,
             onCheckedChange = ui.selectLastFm,
         )
+        if (ui.hasLyrics && !ui.hasLastFm) {
+            Text(stringResource(R.string.lyrimuse_import_lastfm_invalid), style = MiuixTheme.textStyles.body2, color = MiuixTheme.colorScheme.onSurfaceSecondary)
+        }
     }
     MiuixLyricImportProgressDialog(ui.importer, titleRes = R.string.lyrimuse_import_title)
 }

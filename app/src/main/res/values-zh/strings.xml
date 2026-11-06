@@ -1373,9 +1373,12 @@
     <string name="lab_lyricify_import_result">已导入 %1$d 首，跳过 %2$d 首，失败 %3$d 首。</string>
     <string name="lab_lyricify_import_error">导入失败：%1$s</string>
 
+    <string name="settings_import_other_apps">从其他应用导入</string>
+    <string name="settings_import_other_apps_desc">导入受支持软件的备份</string>
     <string name="lyrimuse_import_title">导入 Lyrimuse 备份</string>
     <string name="lyrimuse_import_summary">导入歌词和 Last.fm 登录信息</string>
     <string name="lyrimuse_import_preview">可导入 %1$d 首歌词，%2$d 条记录不支持，%3$d 条记录解析失败。</string>
+    <string name="lyrimuse_import_no_data">所选文件没有可导入的歌词或账号信息。</string>
     <string name="lyrimuse_import_lyrics">歌词信息</string>
     <string name="lyrimuse_import_lastfm">Last.fm 登录信息（替换现有凭据）</string>
     <string name="lyrimuse_import_lastfm_invalid">Last.fm 凭据缺失或不完整，仍可单独导入歌词。</string>

@@ -44,6 +44,7 @@ import com.example.islandlyrics.feature.lastfm.LastFmSettingsActivity
 import com.example.islandlyrics.feature.settings.AboutActivity
 import com.example.islandlyrics.feature.settings.BackupImportCoordinator
 import com.example.islandlyrics.feature.settings.LyrimuseImportUiState
+import com.example.islandlyrics.feature.lab.LyricifyImportUiState
 import com.example.islandlyrics.feature.settings.rememberLyrimuseImporter
 import com.example.islandlyrics.feature.lab.material.LyricImportModeDialog
 import com.example.islandlyrics.feature.lab.material.LyricImportProgressDialog
@@ -77,6 +78,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.material3.HorizontalDivider as MaterialHorizontalDivider
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.semantics.Role
@@ -144,7 +146,8 @@ import java.util.Locale
 @Composable
 @SuppressLint("BatteryLife")
 @Suppress("UNUSED_PARAMETER")
-fun SettingsScreen(
+internal fun SettingsScreen(
+    lyricifyImporter: LyricifyImportUiState,
     onCheckUpdate: () -> Unit,
     onShowDiagnostics: () -> Unit,
     updateVersionText: String,
@@ -174,6 +177,11 @@ fun SettingsScreen(
     val coroutineScope = rememberCoroutineScope()
     val backupImportCoordinator = remember(context) { BackupImportCoordinator(context) }
     val lyrimuseImporter = rememberLyrimuseImporter()
+    var showOtherAppImportDialog by rememberSaveable { mutableStateOf(false) }
+    var showLyricifyImportDialog by rememberSaveable { mutableStateOf(false) }
+    val canChooseImportSource = !backupImportCoordinator.isBusy &&
+        !lyrimuseImporter.importer.showDialog && !lyrimuseImporter.importer.pendingSelection &&
+        !lyricifyImporter.showDialog && !lyricifyImporter.pendingSelection
     val backupExportSuccessFormat = stringResource(R.string.settings_backup_export_success)
     val backupExportSuccessWithCacheFormat = stringResource(R.string.settings_backup_export_success_with_cache)
     val backupExportSuccessWithSensitiveFormat = stringResource(R.string.settings_backup_export_success_with_sensitive)
@@ -1024,7 +1032,7 @@ fun SettingsScreen(
                         summary = stringResource(R.string.settings_backup_export_desc),
                         icon = Icons.Filled.Upload,
                         onClick = {
-                            if (!lyrimuseImporter.importer.importing) showExportCategoryDialog = true
+                            if (!lyrimuseImporter.importer.importing && !lyricifyImporter.importing) showExportCategoryDialog = true
                         }
                     )
                     SettingsCardDivider()
@@ -1033,15 +1041,15 @@ fun SettingsScreen(
                         summary = stringResource(R.string.settings_backup_import_desc),
                         icon = Icons.Filled.Download,
                         onClick = {
-                            if (!lyrimuseImporter.importer.importing) importSettingsLauncher.launch(arrayOf("application/zip", "application/json", "*/*"))
+                            if (!lyrimuseImporter.importer.importing && !lyricifyImporter.importing) importSettingsLauncher.launch(arrayOf("application/zip", "application/json", "*/*"))
                         }
                     )
                     SettingsCardDivider()
                     SettingsActionItem(
-                        title = stringResource(R.string.lyrimuse_import_title),
-                        summary = stringResource(R.string.lyrimuse_import_summary),
+                        title = stringResource(R.string.settings_import_other_apps),
+                        summary = stringResource(R.string.settings_import_other_apps_desc),
                         icon = Icons.Filled.Download,
-                        onClick = { if (!backupImportCoordinator.isBusy) lyrimuseImporter.openOptions() }
+                        onClick = { if (canChooseImportSource) showOtherAppImportDialog = true }
                     )
                 }
             }
@@ -1449,6 +1457,45 @@ fun SettingsScreen(
             )
         }
 
+        if (showOtherAppImportDialog) {
+            MaterialBlurAlertDialog(
+                onDismissRequest = { showOtherAppImportDialog = false },
+                title = { Text(stringResource(R.string.settings_import_other_apps)) },
+                text = {
+                    Column {
+                        TextButton(
+                            onClick = {
+                                showOtherAppImportDialog = false
+                                lyrimuseImporter.chooseFiles()
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) { Text(stringResource(R.string.lyrimuse_import_title)) }
+                        TextButton(
+                            onClick = {
+                                showOtherAppImportDialog = false
+                                showLyricifyImportDialog = true
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) { Text(stringResource(R.string.lab_lyricify_import_button)) }
+                    }
+                },
+                confirmButton = {},
+                dismissButton = {
+                    TextButton(onClick = { showOtherAppImportDialog = false }) {
+                        Text(stringResource(android.R.string.cancel))
+                    }
+                },
+            )
+        }
+        LyricImportModeDialog(
+            show = showLyricifyImportDialog,
+            onDismiss = { showLyricifyImportDialog = false },
+            onChooseMode = { mode ->
+                showLyricifyImportDialog = false
+                lyricifyImporter.chooseFile(mode)
+            },
+        )
+        LyricImportProgressDialog(lyricifyImporter)
         LyrimuseImportDialog(lyrimuseImporter)
         backupImportCoordinator.status?.let { status ->
             BackupImportProgressDialog(status = status)
@@ -1466,19 +1513,26 @@ private fun LyrimuseImportDialog(ui: LyrimuseImportUiState) {
         includeLyrics = ui.includeLyrics,
         enabled = ui.includeLyrics || ui.includeLastFm,
     ) {
-        Row(
-            Modifier.fillMaxWidth().heightIn(min = 48.dp).toggleable(value = ui.includeLyrics, role = Role.Checkbox, onValueChange = ui.selectLyrics),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Checkbox(checked = ui.includeLyrics, onCheckedChange = null)
-            Text(stringResource(R.string.lyrimuse_import_lyrics))
+        ui.previewMessage?.let {
+            Text(it, style = MaterialTheme.typography.bodyMedium)
+            Spacer(Modifier.height(8.dp))
         }
         Row(
-            Modifier.fillMaxWidth().heightIn(min = 48.dp).toggleable(value = ui.includeLastFm, role = Role.Checkbox, onValueChange = ui.selectLastFm),
+            Modifier.fillMaxWidth().heightIn(min = 48.dp).toggleable(value = ui.includeLyrics, enabled = ui.hasLyrics, role = Role.Checkbox, onValueChange = ui.selectLyrics),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Checkbox(checked = ui.includeLastFm, onCheckedChange = null)
-            Text(stringResource(R.string.lyrimuse_import_lastfm))
+            Checkbox(checked = ui.includeLyrics, onCheckedChange = null, enabled = ui.hasLyrics)
+            Text(stringResource(R.string.lyrimuse_import_lyrics), color = MaterialTheme.colorScheme.onSurface.copy(alpha = if (ui.hasLyrics) 1f else 0.38f))
+        }
+        Row(
+            Modifier.fillMaxWidth().heightIn(min = 48.dp).toggleable(value = ui.includeLastFm, enabled = ui.hasLastFm, role = Role.Checkbox, onValueChange = ui.selectLastFm),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Checkbox(checked = ui.includeLastFm, onCheckedChange = null, enabled = ui.hasLastFm)
+            Text(stringResource(R.string.lyrimuse_import_lastfm), color = MaterialTheme.colorScheme.onSurface.copy(alpha = if (ui.hasLastFm) 1f else 0.38f))
+        }
+        if (ui.hasLyrics && !ui.hasLastFm) {
+            Text(stringResource(R.string.lyrimuse_import_lastfm_invalid), style = MaterialTheme.typography.bodySmall)
         }
     }
     LyricImportProgressDialog(ui.importer, titleRes = R.string.lyrimuse_import_title)

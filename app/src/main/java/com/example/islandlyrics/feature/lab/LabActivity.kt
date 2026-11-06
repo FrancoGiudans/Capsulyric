@@ -42,11 +42,11 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.islandlyrics.R
-import com.example.islandlyrics.core.settings.LabFeatureManager
 import com.example.islandlyrics.lyrics.importer.LyricifyDatabaseImporter
 import com.example.islandlyrics.lyrics.importer.LyricifyImportMode
 import com.example.islandlyrics.lyrics.importer.LyricifyImportProgress
 import com.example.islandlyrics.lyrics.importer.LyricifyImportStage
+import com.example.islandlyrics.lyrics.importer.LyrimuseBackupImporter
 import com.example.islandlyrics.feature.lab.material.LabScreen
 import com.example.islandlyrics.feature.lab.miuix.MiuixLabScreen
 import com.example.islandlyrics.ui.navigation.BaseActivity
@@ -76,15 +76,16 @@ internal data class LyricifyImportUiState(
 ) {
     val importing: Boolean get() = state.importing
     val showDialog: Boolean get() = state.showDialog
-    val restoreLab: Boolean get() = showDialog || pendingSelection
+    val restoreSettings: Boolean get() = showDialog || pendingSelection
 }
 
 internal class LyricifyImportViewModel(application: Application) : AndroidViewModel(application) {
-    enum class Status { IDLE, IMPORTING, CANCELLING, FINISHED, FAILED }
+    enum class Status { IDLE, IMPORTING, CANCELLING, READY, FINISHED, FAILED }
 
     data class Result(
         val lyrics: LyricifyDatabaseImporter.Report? = null,
         val extraMessages: List<Int> = emptyList(),
+        val prepared: LyrimuseBackupImporter.Prepared? = null,
     )
 
     data class State(
@@ -94,7 +95,7 @@ internal class LyricifyImportViewModel(application: Application) : AndroidViewMo
         val error: Throwable? = null
     ) {
         val importing: Boolean get() = status == Status.IMPORTING || status == Status.CANCELLING
-        val showDialog: Boolean get() = status != Status.IDLE
+        val showDialog: Boolean get() = status != Status.IDLE && status != Status.READY
         val canCancel: Boolean get() = status == Status.IMPORTING && progress.canCancel
     }
 
@@ -131,7 +132,11 @@ internal class LyricifyImportViewModel(application: Application) : AndroidViewMo
                         { progress -> mutableState.update { it.copy(progress = progress) } },
                     )
                 }
-                mutableState.value = State(status = Status.FINISHED, report = report)
+                mutableState.value = when {
+                    report.prepared != null && cancellationRequested.get() -> State()
+                    report.prepared != null -> State(status = Status.READY, report = report)
+                    else -> State(status = Status.FINISHED, report = report)
+                }
             } catch (cancelled: CancellationException) {
                 if (cancelled.suppressed.isNotEmpty()) {
                     fail(cancelled)
@@ -172,7 +177,7 @@ internal fun rememberLyricifyImporter(): LyricifyImportUiState {
     val importPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         val mode = pendingImportMode?.let { saved -> LyricifyImportMode.entries.firstOrNull { it.name == saved } }
         pendingImportMode = null
-        if (uri != null && !model.state.value.showDialog && LabFeatureManager.isLyricifyImportEnabled(context)) {
+        if (uri != null && !model.state.value.showDialog) {
             if (mode == null) {
                 model.fail(IllegalStateException(context.getString(R.string.lab_lyricify_import_mode_lost)))
                 return@rememberLauncherForActivityResult
@@ -184,7 +189,7 @@ internal fun rememberLyricifyImporter(): LyricifyImportUiState {
     return rememberLyricImportUiState(
         model, pendingImportMode != null,
         chooseFile = { mode ->
-            if (!model.state.value.showDialog && pendingImportMode == null && LabFeatureManager.isLyricifyImportEnabled(context)) {
+            if (!model.state.value.showDialog && pendingImportMode == null) {
                 pendingImportMode = mode.name
                 importPicker.launch(arrayOf("*/*"))
             }
@@ -213,7 +218,7 @@ internal fun rememberLyricImportUiState(
         LyricifyImportStage.ROLLING_BACK -> R.string.lab_lyricify_import_rolling_back
     }
     val message = when (state.status) {
-        LyricifyImportViewModel.Status.IDLE -> null
+        LyricifyImportViewModel.Status.IDLE, LyricifyImportViewModel.Status.READY -> null
         LyricifyImportViewModel.Status.IMPORTING -> context.getString(stageLabel)
         LyricifyImportViewModel.Status.CANCELLING -> context.getString(R.string.lab_lyricify_import_cancelling)
         LyricifyImportViewModel.Status.FINISHED -> state.report?.let { result ->
@@ -252,17 +257,16 @@ class LabActivity : BaseActivity() {
         window.isNavigationBarContrastEnforced = false
 
         setContent {
-            val importer = rememberLyricifyImporter()
             if (isMiuixEnabled(this)) {
                 MiuixAppTheme {
                     PredictiveBackActivity {
-                        MiuixLabScreen(onBack = { finish() }, lyricifyImporter = importer)
+                        MiuixLabScreen(onBack = { finish() })
                     }
                 }
             } else {
                 AppTheme {
                     PredictiveBackActivity {
-                        LabScreen(onBack = { finish() }, lyricifyImporter = importer)
+                        LabScreen(onBack = { finish() })
                     }
                 }
             }

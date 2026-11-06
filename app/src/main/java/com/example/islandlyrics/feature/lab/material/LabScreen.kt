@@ -81,13 +81,10 @@ import kotlinx.coroutines.delay
 @Composable
 internal fun LabScreen(
     onBack: () -> Unit,
-    lyricifyImporter: LyricifyImportUiState,
     targetItemKey: String? = null,
     onOpenCapsuleNotification: (() -> Unit)? = null
 ) {
     val context = LocalContext.current
-    var lyricifyImportEnabled by remember { mutableStateOf(LabFeatureManager.isLyricifyImportEnabled(context)) }
-    var showLyricifyImportDialog by remember { mutableStateOf(false) }
     val listState = rememberLazyListState()
     val targetBringIntoViewRequester = androidx.compose.runtime.remember { BringIntoViewRequester() }
     var activeTargetKey by remember(targetItemKey) { mutableStateOf(targetItemKey) }
@@ -202,26 +199,6 @@ internal fun LabScreen(
                             }
                         }
                     )
-                }
-            }
-
-            item {
-                SettingsCard {
-                    SettingsSwitchItem(
-                        title = stringResource(R.string.lab_lyricify_import_title),
-                        subtitle = stringResource(R.string.lab_lyricify_import_desc),
-                        checked = lyricifyImportEnabled,
-                        onCheckedChange = {
-                            lyricifyImportEnabled = it
-                            LabFeatureManager.setLyricifyImportEnabled(context, it)
-                        }
-                    )
-                    if (lyricifyImportEnabled) {
-                        TextButton(onClick = { showLyricifyImportDialog = true }, enabled = !lyricifyImporter.importing,
-                            modifier = Modifier.fillMaxWidth()) {
-                            Text(stringResource(R.string.lab_lyricify_import_button))
-                        }
-                    }
                 }
             }
 
@@ -429,16 +406,6 @@ internal fun LabScreen(
             }
         }
     }
-
-    LyricImportProgressDialog(lyricifyImporter)
-    LyricImportModeDialog(
-        show = showLyricifyImportDialog,
-        onDismiss = { showLyricifyImportDialog = false },
-        onChooseMode = { mode ->
-            showLyricifyImportDialog = false
-            lyricifyImporter.chooseFile(mode)
-        },
-    )
 
     if (showOfflineModeDialog) {
         MaterialBlurAlertDialog(

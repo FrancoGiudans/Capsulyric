@@ -16,7 +16,6 @@ import com.example.islandlyrics.feature.lab.LyricifyImportUiState
 import com.example.islandlyrics.feature.lab.LyricifyImportViewModel
 import com.example.islandlyrics.feature.lab.rememberLyricImportUiState
 import com.example.islandlyrics.lyrics.importer.LyricifyDatabaseImporter
-import com.example.islandlyrics.lyrics.importer.LyricifyImportMode
 import com.example.islandlyrics.lyrics.importer.LyricifyImportStage
 import com.example.islandlyrics.lyrics.importer.LyrimuseBackupImporter
 
@@ -25,7 +24,10 @@ internal data class LyrimuseImportUiState(
     val showOptions: Boolean,
     val includeLyrics: Boolean,
     val includeLastFm: Boolean,
-    val openOptions: () -> Unit,
+    val hasLyrics: Boolean,
+    val hasLastFm: Boolean,
+    val previewMessage: String?,
+    val chooseFiles: () -> Unit,
     val selectLyrics: (Boolean) -> Unit,
     val selectLastFm: (Boolean) -> Unit,
     val dismissOptions: () -> Unit,
@@ -38,22 +40,24 @@ internal fun rememberLyrimuseImporter(): LyrimuseImportUiState {
     val appContext = context.applicationContext
     val activity = checkNotNull(LocalActivity.current) as ComponentActivity
     val model: LyricifyImportViewModel = viewModel(viewModelStoreOwner = activity, key = "lyrimuse-import")
-    var showOptions by rememberSaveable { mutableStateOf(false) }
     var includeLyrics by rememberSaveable { mutableStateOf(true) }
     var includeLastFm by rememberSaveable { mutableStateOf(false) }
-    var pendingMode by rememberSaveable { mutableStateOf<String?>(null) }
+    var pickingFile by rememberSaveable { mutableStateOf(false) }
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
-        val mode = pendingMode?.let { saved -> LyricifyImportMode.entries.firstOrNull { it.name == saved } }
-        pendingMode = null
+        pickingFile = false
         if (uris.isNotEmpty() && !model.state.value.showDialog) {
-            if (mode == null) {
-                model.fail(IllegalStateException(context.getString(R.string.lab_lyricify_import_mode_lost)))
-                return@rememberLauncherForActivityResult
+            model.runImport(LyricifyImportStage.VALIDATING) { checkActive, _ ->
+                LyricifyImportViewModel.Result(prepared = LyrimuseBackupImporter.prepare(appContext, uris, checkActive))
             }
-            val importLyrics = includeLyrics
-            val importLastFm = includeLastFm
-            model.runImport(LyricifyImportStage.VALIDATING) { checkActive, onProgress ->
-                val prepared = LyrimuseBackupImporter.prepare(appContext, uris, checkActive)
+        }
+    }
+    // The shared mode callback now imports the prepared file instead of opening the picker.
+    val importer = rememberLyricImportUiState(model, pickingFile, chooseFile = { mode ->
+        val prepared = model.state.value.report?.prepared
+        val importLyrics = includeLyrics && prepared?.tracks?.isNotEmpty() == true
+        val importLastFm = includeLastFm && prepared?.credentials != null
+        if (model.state.value.status == LyricifyImportViewModel.Status.READY && prepared != null && (importLyrics || importLastFm)) {
+            model.runImport(if (importLyrics) LyricifyImportStage.READING_CACHE else LyricifyImportStage.COMMITTING) { checkActive, onProgress ->
                 val report = LyrimuseBackupImporter.importPrepared(
                     appContext, prepared, importLyrics, importLastFm, mode, checkActive, onProgress,
                 )
@@ -66,15 +70,12 @@ internal fun rememberLyrimuseImporter(): LyrimuseImportUiState {
                 )
             }
         }
-    }
-    val importer = rememberLyricImportUiState(model, pendingMode != null, chooseFile = { mode ->
-        if (!model.state.value.showDialog && pendingMode == null && (includeLyrics || includeLastFm)) {
-            pendingMode = mode.name
-            showOptions = false
-            picker.launch(arrayOf("*/*"))
-        }
     })
     val state = importer.state
+    val prepared = state.report?.prepared
+    val showOptions = state.status == LyricifyImportViewModel.Status.READY
+    val hasLyrics = prepared?.tracks?.isNotEmpty() == true
+    val hasLastFm = prepared?.credentials != null
     val message = when {
         state.status == LyricifyImportViewModel.Status.IMPORTING && state.progress.stage == LyricifyImportStage.VALIDATING ->
             context.getString(R.string.lyrimuse_import_reading)
@@ -86,19 +87,27 @@ internal fun rememberLyrimuseImporter(): LyrimuseImportUiState {
         else -> importer.message
     }
     return LyrimuseImportUiState(
-        importer = importer.copy(message = message),
+        importer = importer.copy(message = message, pendingSelection = pickingFile || showOptions),
         showOptions = showOptions,
-        includeLyrics = includeLyrics,
-        includeLastFm = includeLastFm,
-        openOptions = {
-            if (!model.state.value.showDialog && pendingMode == null) {
+        includeLyrics = includeLyrics && hasLyrics,
+        includeLastFm = includeLastFm && hasLastFm,
+        hasLyrics = hasLyrics,
+        hasLastFm = hasLastFm,
+        previewMessage = prepared?.let {
+            if (!hasLyrics && !hasLastFm) context.getString(R.string.lyrimuse_import_no_data)
+            else context.getString(R.string.lyrimuse_import_preview, it.tracks.size, it.skipped, it.failed)
+        },
+        chooseFiles = {
+            if (!model.state.value.showDialog && !pickingFile) {
+                model.dismiss()
                 includeLyrics = true
                 includeLastFm = false
-                showOptions = true
+                pickingFile = true
+                picker.launch(arrayOf("*/*"))
             }
         },
         selectLyrics = { includeLyrics = it },
         selectLastFm = { includeLastFm = it },
-        dismissOptions = { showOptions = false },
+        dismissOptions = model::dismiss,
     )
 }

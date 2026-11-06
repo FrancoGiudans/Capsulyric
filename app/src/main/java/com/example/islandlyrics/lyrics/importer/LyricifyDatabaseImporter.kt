@@ -3,7 +3,6 @@ package com.example.islandlyrics.lyrics.importer
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import android.net.Uri
-import com.example.islandlyrics.core.settings.LabFeatureManager
 import com.example.islandlyrics.lyrics.cache.OnlineLyricCacheStore
 import com.example.islandlyrics.lyrics.online.OnlineLyricFetcher
 import com.example.islandlyrics.lyrics.online.parser.OnlineLyricParser
@@ -70,12 +69,10 @@ object LyricifyDatabaseImporter {
         onProgress: (LyricifyImportProgress) -> Unit = {},
         isCancellationRequested: () -> Boolean = { false }
     ): Report {
-        check(LabFeatureManager.isLyricifyImportEnabled(context)) { "Import is disabled" }
         val jobContext = currentCoroutineContext()
         val checkActive = {
             jobContext.ensureActive()
             if (isCancellationRequested()) throw CancellationException("Import cancelled")
-            check(LabFeatureManager.isLyricifyImportEnabled(context)) { "Import is disabled" }
         }
         val copy = File.createTempFile("lyricify-import-", ".db", context.cacheDir)
         try {
