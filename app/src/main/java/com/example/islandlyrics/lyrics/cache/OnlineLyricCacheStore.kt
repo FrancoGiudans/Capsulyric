@@ -1418,6 +1418,8 @@ class OnlineLyricCacheStore(context: Context) {
 
         val translationLyrics = optNullableString("translationLyrics")
         val romanLyrics = optNullableString("romanLyrics")
+        val lyrics = optNullableString("lyrics")
+        val restoredLines = restoreCachedEnhancedLrcLines(lyrics, parsedLines)
 
         return CacheEntry(
             id = optString("id"),
@@ -1436,8 +1438,8 @@ class OnlineLyricCacheStore(context: Context) {
             queryArtist = optNullableString("queryArtist"),
             api = optNullableString("api"),
             providerId = optNullableString("providerId"),
-            lyrics = optNullableString("lyrics"),
-            hasSyllable = optBoolean("hasSyllable", false),
+            lyrics = lyrics,
+            hasSyllable = restoredLines.any { !it.syllables.isNullOrEmpty() },
             matchedTitle = optNullableString("matchedTitle"),
             matchedArtist = optNullableString("matchedArtist"),
             matchedAlbum = optNullableString("matchedAlbum"),
@@ -1448,7 +1450,7 @@ class OnlineLyricCacheStore(context: Context) {
             romanLyrics = romanLyrics,
             hasTranslation = optBoolean("hasTranslation", !translationLyrics.isNullOrBlank()),
             hasRomanization = optBoolean("hasRomanization", !romanLyrics.isNullOrBlank()),
-            parsedLines = parsedLines,
+            parsedLines = restoredLines,
             cachedAt = optNullableLong("cachedAt"),
             updatedAt = optLong("updatedAt", System.currentTimeMillis()),
             lyricifyImported = optBoolean("lyricifyImported", false),
@@ -1508,6 +1510,64 @@ class OnlineLyricCacheStore(context: Context) {
     private fun sha256(value: String): String {
         val digest = MessageDigest.getInstance("SHA-256")
         return digest.digest(value.toByteArray(Charsets.UTF_8)).joinToString("") { "%02x".format(it) }
+    }
+}
+
+private val CACHED_ENHANCED_LRC_TIME_REGEX = Regex("""<\d{1,2}:[0-5]\d\.\d{2,3}>""")
+
+/** Restore legacy parsed data without replacing imported offsets or per-line sidecars. */
+internal fun restoreCachedEnhancedLrcLines(
+    lyrics: String?,
+    cachedLines: List<OnlineLyricFetcher.LyricLine>
+): List<OnlineLyricFetcher.LyricLine> {
+    if (lyrics.isNullOrBlank() || cachedLines.isEmpty() ||
+        !CACHED_ENHANCED_LRC_TIME_REGEX.containsMatchIn(lyrics)
+    ) return cachedLines
+
+    val restored = if (cachedLines.any { CACHED_ENHANCED_LRC_TIME_REGEX.containsMatchIn(it.text) }) {
+        val parsed = try {
+            LyricifyDatabaseImporter.parseDocument("Lrc", lyrics)
+        } catch (_: LyricifyDatabaseImporter.LimitExceeded) {
+            emptyList()
+        }
+        val sameRows = parsed.size == cachedLines.size && parsed.indices.all { index ->
+            parsed[index].text == cachedLines[index].text.replace(CACHED_ENHANCED_LRC_TIME_REGEX, "")
+        }
+        val offset = if (sameRows) {
+            val startIndex = cachedLines.indexOfFirst { it.startTime > 0 }
+            val endIndex = cachedLines.indexOfFirst { it.endTime > 0 }
+            when {
+                startIndex >= 0 -> cachedLines[startIndex].startTime - parsed[startIndex].startTime
+                // Negative import offsets may clamp every line start to zero.
+                endIndex >= 0 -> cachedLines[endIndex].endTime -
+                    (parsed.getOrNull(endIndex + 1)?.startTime ?: (parsed[endIndex].startTime + 5000))
+                else -> null
+            }
+        } else null
+        val matchesLegacyTiming = offset != null && parsed.indices.all { index ->
+            val legacyEnd = parsed.getOrNull(index + 1)?.startTime ?: (parsed[index].startTime + 5000)
+            cachedLines[index].startTime == (parsed[index].startTime + offset).coerceAtLeast(0L) &&
+                cachedLines[index].endTime == (legacyEnd + offset).coerceAtLeast(0L)
+        }
+        if (matchesLegacyTiming) {
+            LyricifyDatabaseImporter.shiftLines(parsed, offset!!).mapIndexed { index, line ->
+                line.copy(translation = cachedLines[index].translation, roma = cachedLines[index].roma)
+            }
+        } else {
+            // Keep edited or otherwise unalignable cache content and its existing clock.
+            cachedLines.map { line ->
+                if (CACHED_ENHANCED_LRC_TIME_REGEX.containsMatchIn(line.text)) {
+                    line.copy(text = line.text.replace(CACHED_ENHANCED_LRC_TIME_REGEX, ""), syllables = null)
+                } else line
+            }
+        }
+    } else cachedLines
+
+    return restored.mapIndexed { index, line ->
+        val nextStart = restored.getOrNull(index + 1)?.startTime
+        if (nextStart != null && line.endTime > nextStart) {
+            line.copy(endTime = nextStart, syllables = null)
+        } else line
     }
 }
 

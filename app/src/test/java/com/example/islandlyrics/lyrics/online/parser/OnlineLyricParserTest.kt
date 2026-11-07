@@ -1,5 +1,6 @@
 package com.example.islandlyrics.lyrics.online.parser
 
+import com.example.islandlyrics.lyrics.online.OnlineLyricFetcher.SyllableInfo
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -59,6 +60,102 @@ class OnlineLyricParserTest {
         assertEquals("第一段", parsed[0].text)
         assertEquals(2000L, parsed[1].startTime)
         assertEquals("第二段", parsed[1].text)
+    }
+
+    @Test
+    fun parseEnhancedLrcUsesTrailingTimestampAsWordAndLineEnd() {
+        val line = OnlineLyricParser.parseLrcLyrics("[00:01.000]<00:01.000>Hello<00:02.000>").single()
+
+        assertEquals("Hello", line.text)
+        assertEquals(1_000L, line.startTime)
+        assertEquals(2_000L, line.endTime)
+        assertEquals(listOf(SyllableInfo(1_000, 2_000, "Hello")), line.syllables)
+    }
+
+    @Test
+    fun parseEnhancedLrcPreservesAbsoluteTimingSpacesAndPrecision() {
+        val line = OnlineLyricParser.parseLrcLyrics(
+            "[00:01.000]<00:01.25>Hello <00:02.345>world!<00:03.50>"
+        ).single()
+
+        assertEquals("Hello world!", line.text)
+        assertEquals(3_500L, line.endTime)
+        assertEquals(listOf(SyllableInfo(1_250, 2_345, "Hello "), SyllableInfo(2_345, 3_500, "world!")), line.syllables)
+    }
+
+    @Test
+    fun parseEnhancedLrcWithoutFinalTimestampUsesNextLineBoundary() {
+        val lines = OnlineLyricParser.parseLrcLyrics(
+            "[00:01.000]<00:01.000>Hello <00:02.000>world\n[00:04.000]Next"
+        )
+
+        assertEquals(listOf("Hello world", "Next"), lines.map { it.text })
+        assertEquals(4_000L, lines.first().endTime)
+        assertEquals(SyllableInfo(2_000, 4_000, "world"), lines.first().syllables!!.last())
+        assertTrue(lines.last().syllables.isNullOrEmpty())
+    }
+
+    @Test
+    fun parseEnhancedLrcOverlappingTailFallsBackAtNextLine() {
+        val lines = OnlineLyricParser.parseLrcLyrics(
+            "[00:01.000]<00:01.000>Hello <00:02.000>world!<00:05.000>\n" +
+                "[00:03.000]<00:03.000>Next<00:04.000>"
+        )
+
+        assertEquals(listOf("Hello world!", "Next"), lines.map { it.text })
+        assertEquals(listOf(3_000L, 4_000L), lines.map { it.endTime })
+        assertTrue(lines.first().syllables.isNullOrEmpty())
+        assertEquals(listOf(SyllableInfo(3_000, 4_000, "Next")), lines.last().syllables)
+    }
+
+    @Test
+    fun parseEnhancedLrcEndingAtNextLineKeepsWordTiming() {
+        val line = OnlineLyricParser.parseLrcLyrics(
+            "[00:01.000]<00:01.000>Hello<00:03.000>\n[00:03.000]Next"
+        ).first()
+
+        assertEquals(3_000L, line.endTime)
+        assertEquals(listOf(SyllableInfo(1_000, 3_000, "Hello")), line.syllables)
+    }
+
+    @Test
+    fun parseEnhancedLrcFinalLineKeepsLastWordInsideFallbackBoundary() {
+        val line = OnlineLyricParser.parseLrcLyrics("[00:01.000]<00:01.000>Hello <00:08.000>world").single()
+
+        assertEquals(13_000L, line.endTime)
+        assertEquals(SyllableInfo(8_000, 13_000, "world"), line.syllables!!.last())
+    }
+
+    @Test
+    fun parseEnhancedLrcPreservesUntimedPrefixAndLiteralAngleBrackets() {
+        val line = OnlineLyricParser.parseLrcLyrics("[00:01.00]Say <00:02.00>I <3 you!<00:03.00>").single()
+
+        assertEquals("Say I <3 you!", line.text)
+        assertEquals(listOf(SyllableInfo(1_000, 2_000, "Say "), SyllableInfo(2_000, 3_000, "I <3 you!")), line.syllables)
+    }
+
+    @Test
+    fun parseEnhancedLrcInvalidTimingFallsBackToCleanLine() {
+        for (content in listOf(
+            "[00:01.000]<00:02.000>Hello<00:01.500>",
+            "[00:02.000]<00:01.000>Hello<00:03.000>",
+            "[00:01.000]<00:01.000>Hello<00:01.000>"
+        )) {
+            val line = OnlineLyricParser.parseLrcLyrics(content).single()
+            assertEquals(content, "Hello", line.text)
+            assertTrue(content, line.syllables.isNullOrEmpty())
+            assertEquals(content, line.startTime + 5_000, line.endTime)
+        }
+    }
+
+    @Test
+    fun parseOrdinaryLrcPreservesRepeatedTimestampsAndNonTimestampAngleText() {
+        val lines = OnlineLyricParser.parseLrcLyrics("[00:01.00][00:03.00]I <3 <chorus> <0,500>")
+
+        assertEquals(listOf(1_000L, 3_000L), lines.map { it.startTime })
+        assertEquals(listOf(3_000L, 8_000L), lines.map { it.endTime })
+        assertEquals(listOf("I <3 <chorus> <0,500>", "I <3 <chorus> <0,500>"), lines.map { it.text })
+        assertTrue(lines.all { it.syllables.isNullOrEmpty() })
     }
 
     @Test

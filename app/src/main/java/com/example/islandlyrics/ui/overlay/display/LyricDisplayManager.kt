@@ -392,8 +392,15 @@ class LyricDisplayManager(private val context: Context) {
                 scrollState = ScrollState.SCROLLING
             } else if (currentLine != null) {
                 val text = resolvePreferredLineText(currentLine.text, lyricInfo, currentLine)
-                displayLyric = LyricTextWindowCalculator.extractByWeight(text, 0, maxDisplayWeight)
+                displayLyric = LyricTextWindowCalculator.lrcWindow(
+                    fullText = text,
+                    startTime = currentLine.startTime,
+                    endTime = currentLine.endTime,
+                    position = currentPosition,
+                    maxDisplayWeight = maxDisplayWeight
+                )
                 fullLyricForDisplay = text
+                scrollState = ScrollState.SCROLLING
             } else {
                 val gapDisplay = resolveTimingGapDisplay(effectiveParsedLyricState, currentPosition, isPlaying, maxDisplayWeight)
                 if (gapDisplay != null) {
@@ -414,24 +421,13 @@ class LyricDisplayManager(private val context: Context) {
             if (foundLine != null) {
                 val preferredLineText = resolvePreferredLineText(foundLine.text, lyricInfo, foundLine)
                 fullLyricForDisplay = preferredLineText
-                val currentLineWeight = LyricTextWindowCalculator.weight(preferredLineText)
-                if (currentLineWeight <= maxDisplayWeight) {
-                    displayLyric = preferredLineText
-                } else {
-                    val lineDuration = foundLine.endTime - foundLine.startTime
-                    val lineProgress = if (lineDuration > 0) {
-                        ((currentPosition - foundLine.startTime).toFloat() / lineDuration.toFloat()).coerceIn(0f, 1f)
-                    } else 0f
-                    val currentProgressWeight = (lineProgress * currentLineWeight).toInt()
-                    val scrollStartThreshold = LyricTextWindowCalculator.scrollStartThreshold(preferredLineText, maxDisplayWeight)
-                    val targetWeightOffset = if (currentProgressWeight < scrollStartThreshold) 0 else currentProgressWeight - scrollStartThreshold
-                    // Keep the scrolling window width aligned with the configured
-                    // Super Island right-side limit instead of shrinking back to
-                    // the old fixed 7-char tail.
-                    val maxAllowedScroll = maxOf(0, currentLineWeight - maxDisplayWeight)
-                    val finalOffset = minOf(targetWeightOffset, maxAllowedScroll)
-                    displayLyric = LyricTextWindowCalculator.extractByWeight(preferredLineText, finalOffset, maxDisplayWeight)
-                }
+                displayLyric = LyricTextWindowCalculator.lrcWindow(
+                    fullText = preferredLineText,
+                    startTime = foundLine.startTime,
+                    endTime = foundLine.endTime,
+                    position = currentPosition,
+                    maxDisplayWeight = maxDisplayWeight
+                )
                 scrollState = ScrollState.SCROLLING
             } else {
                 val gapDisplay = resolveTimingGapDisplay(effectiveParsedLyricState, currentPosition, isPlaying, maxDisplayWeight)

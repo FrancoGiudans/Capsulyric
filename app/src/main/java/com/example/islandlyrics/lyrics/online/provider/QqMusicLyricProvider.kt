@@ -198,24 +198,22 @@ internal class QqMusicLyricProvider(
                     lineSegmentedContent != null -> OnlineLyricParser.parseLrcLyrics(lineSegmentedContent)
                     else -> emptyList()
                 }
-                val (primaryContent, parsedLines, finalHasSyllable) = if (rawParsedLines.isNotEmpty()) {
-                    Triple(
+                val (primaryContent, parsedLines) = if (rawParsedLines.isNotEmpty()) {
+                    Pair(
                         if (hasSyllable) qrcContent else lineSegmentedContent ?: mergedContent,
-                        rawParsedLines,
-                        hasSyllable
+                        rawParsedLines
                     )
                 } else {
-                    Triple(
+                    Pair(
                         mergedContent,
-                        OnlineLyricParser.parseLrcLyrics(mergedContent),
-                        false
+                        OnlineLyricParser.parseLrcLyrics(mergedContent)
                     )
                 }
                 OnlineLyricFetcher.LyricResult(
                     api = "QQMusic",
                     lyrics = primaryContent,
                     parsedLines = parsedLines,
-                    hasSyllable = finalHasSyllable,
+                    hasSyllable = parsedLines.any { !it.syllables.isNullOrEmpty() },
                     provider = OnlineLyricProvider.QQMusic,
                     matchedTitle = matchedTitle,
                     matchedArtist = matchedArtist,
