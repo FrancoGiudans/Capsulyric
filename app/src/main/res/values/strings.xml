@@ -1373,6 +1373,7 @@ Within the log interface, select the share/export icon. You can specify a timefr
     <string name="lyrimuse_import_modes_hint">Merge keeps the current lyrics and adds imported candidates. Overwrite uses the imported lyrics. Skip keeps existing songs.</string>
     <string name="lyrimuse_import_reading">Reading Lyrimuse backup…</string>
     <string name="lyrimuse_import_invalid_file">Cannot read these files. Select one Lyrimuse Lyrics file and/or one Config file.</string>
+    <string name="lyrimuse_import_limit_exceeded">The backup exceeds the import limits. No data was imported.</string>
     <string name="lyrimuse_import_failed">Could not finish importing. Check the selected files and available storage, then try again.</string>
     <string name="lyrimuse_import_recovery_failed">Import failed and the original lyrics could not be recovered. Check the lyric cache or restore a backup before retrying.</string>
     <string name="lyrimuse_import_lastfm_done">Last.fm sign-in information imported.</string>

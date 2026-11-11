@@ -51,8 +51,8 @@ import com.example.islandlyrics.feature.faq.material.FAQScreen
 import com.example.islandlyrics.feature.faq.miuix.MiuixFAQScreen
 import com.example.islandlyrics.feature.lab.material.LabScreen
 import com.example.islandlyrics.feature.lab.miuix.MiuixLabScreen
-import com.example.islandlyrics.feature.lab.LyricifyImportUiState
-import com.example.islandlyrics.feature.lab.rememberLyricifyImporter
+import com.example.islandlyrics.feature.settings.ThirdPartyImportUiState
+import com.example.islandlyrics.feature.settings.rememberThirdPartyImporter
 import com.example.islandlyrics.feature.lastfm.material.LastFmSettingsScreen
 import com.example.islandlyrics.feature.lastfm.miuix.MiuixLastFmSettingsScreen
 import com.example.islandlyrics.feature.locallyrics.material.LocalLyricDirectoryScreen
@@ -196,13 +196,13 @@ class MainActivity : BaseActivity() {
         val useMiuix = isMiuixEnabled(this)
 
         setContent {
-            val lyricifyImporter = rememberLyricifyImporter()
+            val thirdPartyImporter = rememberThirdPartyImporter()
             if (useMiuix) {
                 MiuixAppTheme {
-                    MiuixTopLevelPager(lyricifyImporter)
+                    MiuixTopLevelPager(thirdPartyImporter)
                 }
             } else {
-                MaterialThemeHost(lyricifyImporter)
+                MaterialThemeHost(thirdPartyImporter)
             }
         }
 
@@ -308,7 +308,7 @@ class MainActivity : BaseActivity() {
     }
 
     @Composable
-    private fun MaterialThemeHost(lyricifyImporter: LyricifyImportUiState) {
+    private fun MaterialThemeHost(thirdPartyImporter: ThirdPartyImportUiState) {
         IslandLyricsMaterialTheme {
             val snackbarHostState = remember { SnackbarHostState() }
             val pendingRelease = pendingUpdateSnackbarReleaseInfo
@@ -349,7 +349,7 @@ class MainActivity : BaseActivity() {
             }
 
             Box(modifier = Modifier.fillMaxSize()) {
-                MaterialTopLevelPager(lyricifyImporter)
+                MaterialTopLevelPager(thirdPartyImporter)
                 SnackbarHost(
                     hostState = snackbarHostState,
                     modifier = Modifier
@@ -381,9 +381,9 @@ class MainActivity : BaseActivity() {
     }
 
     @Composable
-    private fun MaterialTopLevelPager(lyricifyImporter: LyricifyImportUiState) {
+    private fun MaterialTopLevelPager(thirdPartyImporter: ThirdPartyImportUiState) {
         val pagerState = rememberPagerState(
-            initialPage = if (lyricifyImporter.restoreSettings) TopLevelDestination.SETTINGS.ordinal else 0,
+            initialPage = if (thirdPartyImporter.restoreSettings) TopLevelDestination.SETTINGS.ordinal else 0,
             pageCount = { TopLevelDestination.entries.size },
         )
         val scope = rememberCoroutineScope()
@@ -449,7 +449,7 @@ class MainActivity : BaseActivity() {
                     )
 
                     TopLevelDestination.SETTINGS -> SettingsScreen(
-                        lyricifyImporter = lyricifyImporter,
+                        thirdPartyImporter = thirdPartyImporter,
                         onCheckUpdate = { performUpdateCheckFromMain() },
                         onShowDiagnostics = { pushPage(AppPage.Diagnostics) },
                         updateVersionText = getVersionNameForUi(),
@@ -506,9 +506,9 @@ class MainActivity : BaseActivity() {
         }
 
     @Composable
-    private fun MiuixTopLevelPager(lyricifyImporter: LyricifyImportUiState) {
+    private fun MiuixTopLevelPager(thirdPartyImporter: ThirdPartyImportUiState) {
         val pagerState = rememberPagerState(
-            initialPage = if (lyricifyImporter.restoreSettings) TopLevelDestination.SETTINGS.ordinal else 0,
+            initialPage = if (thirdPartyImporter.restoreSettings) TopLevelDestination.SETTINGS.ordinal else 0,
             pageCount = { TopLevelDestination.entries.size },
         )
         val scope = rememberCoroutineScope()
@@ -671,7 +671,7 @@ class MainActivity : BaseActivity() {
                                 )
 
                                 TopLevelDestination.SETTINGS -> MiuixSettingsScreen(
-                                    lyricifyImporter = lyricifyImporter,
+                                    thirdPartyImporter = thirdPartyImporter,
                                     onCheckUpdate = { performUpdateCheckFromMain() },
                                     onShowDiagnostics = { pushPage(AppPage.Diagnostics) },
                                     updateVersionText = getVersionNameForUi(),

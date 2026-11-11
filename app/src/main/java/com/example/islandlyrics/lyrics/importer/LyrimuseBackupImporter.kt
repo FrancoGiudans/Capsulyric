@@ -18,6 +18,11 @@ import java.util.zip.Inflater
 internal object LyrimuseBackupImporter {
     internal const val MAX_INPUT_BYTES = 64 * 1024 * 1024
     internal const val MAX_DECODED_BYTES = 32 * 1024 * 1024
+    internal const val MAX_JSON_DEPTH = 64
+    internal const val MAX_INPUT_MARKERS = 500_000L
+    internal const val MAX_PARSED_UNITS = 500_000L
+
+    internal class LimitExceeded(message: String) : IllegalArgumentException(message)
 
     data class Prepared(
         val tracks: List<Pair<LyricifyTrackIdentity, LyricifyImportSelection>>,
@@ -51,7 +56,9 @@ internal object LyrimuseBackupImporter {
         var config: JSONObject? = null
         for (input in inputs) {
             checkActive()
-            val root = JSONObject(decode(input, checkActive))
+            val text = decode(input, checkActive)
+            checkJsonDepth(text, checkActive)
+            val root = JSONObject(text)
             when {
                 root.has("files") -> {
                     require(archive == null && root.optInt("v") == 2 && root.optJSONObject("files") != null) {
@@ -154,7 +161,70 @@ internal object LyrimuseBackupImporter {
         val skipped: Int,
         val failed: Int,
     )
-    private val suffixes = listOf(".tr.lrc", ".roma.lrc", ".lrc", ".yrc")
+    private val suffixes = listOf(".tr.lrc", ".roma.lrc", ".enhanced.lrc", ".lrc", ".yrc")
+
+    /** Bound recursive JSON construction, including Android JSON's strings and comments. */
+    private fun checkJsonDepth(text: String, checkActive: () -> Unit) {
+        var depth = 0
+        var quote: Char? = null
+        var escaped = false
+        var lineComment = false
+        var blockComment = false
+        var literal = false
+        var index = 0
+        while (index < text.length) {
+            if (index % 4096 == 0) checkActive()
+            val char = text[index]
+            val next = text.getOrNull(index + 1)
+            if (literal && char in "{}[]/\\:,=;# \t\u000c\r\n") literal = false
+            when {
+                quote != null -> {
+                    if (escaped) escaped = false
+                    else if (char == '\\') escaped = true
+                    else if (char == quote) quote = null
+                }
+                lineComment -> if (char == '\n' || char == '\r') lineComment = false
+                blockComment -> if (char == '*' && next == '/') { blockComment = false; index++ }
+                // Android also accepts unquoted literals containing quote characters.
+                literal -> Unit
+                char == '"' || char == '\'' -> quote = char
+                char == '#' -> lineComment = true
+                char == '/' && next == '/' -> { lineComment = true; index++ }
+                char == '/' && next == '*' -> { blockComment = true; index++ }
+                char == '{' || char == '[' -> {
+                    if (++depth > MAX_JSON_DEPTH) throw LimitExceeded("Lyrimuse JSON is nested too deeply")
+                }
+                char == '}' || char == ']' -> depth--
+                else -> literal = char !in " \t\r\n\u000c,:;=\\"
+            }
+            index++
+        }
+        checkActive()
+    }
+
+    private class ParseBudget(private val checkActive: () -> Unit) {
+        private var inputMarkers = 0L
+        private var parsedUnits = 0L
+
+        fun checkInput(text: String) {
+            for (index in text.indices) {
+                if (index % 4096 == 0) checkActive()
+                when (text[index]) {
+                    '[', '<', '(', '\n' -> if (++inputMarkers > MAX_INPUT_MARKERS) {
+                        throw LimitExceeded("Too many Lyrimuse lyric timing elements")
+                    }
+                }
+            }
+        }
+
+        fun addParsed(lines: List<OnlineLyricFetcher.LyricLine>) {
+            for ((index, line) in lines.withIndex()) {
+                if (index % 256 == 0) checkActive()
+                parsedUnits += 1L + line.syllables.orEmpty().size
+                if (parsedUnits > MAX_PARSED_UNITS) throw LimitExceeded("Too many parsed Lyrimuse lyric elements")
+            }
+        }
+    }
 
     private fun parseLibrary(root: JSONObject, checkActive: () -> Unit): Library {
         val files = root.getJSONObject("files")
@@ -164,8 +234,12 @@ internal object LyrimuseBackupImporter {
         val meta = (rawMeta as? String)?.takeIf { it.isNotEmpty() }?.let {
             val bytes = Base64.getDecoder().decode(it)
             require(bytes.size <= MAX_DECODED_BYTES) { "Lyrics metadata is too large" }
-            JSONObject(bytes.toString(Charsets.UTF_8))
+            val text = bytes.toString(Charsets.UTF_8)
+            checkJsonDepth(text, checkActive)
+            JSONObject(text)
         } ?: JSONObject()
+        // One budget for all documents actually parsed, including translations and romanization.
+        val budget = ParseBudget(checkActive)
         val groups = linkedMapOf<Song, MutableMap<String, Document>>()
         val unsupported = linkedSetOf<String>()
         val brokenGroups = mutableSetOf<Song>()
@@ -191,8 +265,9 @@ internal object LyrimuseBackupImporter {
             if (song in brokenGroups) { failed++; continue }
             val entry = meta.optJSONObject(song.key) ?: JSONObject()
             try {
-                tracks.add(convert(song, docs, entry))
-            } catch (_: IllegalArgumentException) {
+                tracks.add(convert(song, docs, entry, budget))
+            } catch (error: IllegalArgumentException) {
+                if (error is LimitExceeded) throw error
                 failed++
             }
         }
@@ -204,29 +279,43 @@ internal object LyrimuseBackupImporter {
     }
 
     private fun parseHeader(text: String): Document? {
-        val lines = text.removePrefix("\uFEFF").split('\n')
-        if (lines.size < 4) return null
-        fun tag(index: Int, key: String): String? {
-            val line = lines.getOrNull(index)?.trimEnd('\r') ?: return null
-            return line.takeIf { it.startsWith("[$key:") && it.endsWith(']') }?.substring(key.length + 2, line.length - 1)
+        // Only consume the fixed header; splitting the whole body would allocate before its budget check.
+        var position = if (text.startsWith('\uFEFF')) 1 else 0
+        fun readLine(): String? {
+            if (position > text.length) return null
+            val end = text.indexOf('\n', position)
+            val line = text.substring(position, if (end < 0) text.length else end)
+            position = if (end < 0) text.length + 1 else end + 1
+            return line.trimEnd('\r')
         }
-        val artist = tag(0, "ar") ?: return null
-        val title = tag(1, "ti")?.takeIf { it.isNotBlank() } ?: return null
-        val album = tag(2, "al") ?: return null
-        var index = 3
-        val source = tag(index, "source")?.also { index++ }.orEmpty()
-        if (lines.getOrNull(index)?.trimEnd('\r') == "[manual:1]") index++
-        if (lines.getOrNull(index)?.trimEnd('\r') != "") return null
-        return Document(Song(artist, title, album), source, lines.drop(index + 1).joinToString("\n"))
+        fun tag(line: String?, key: String): String? {
+            return line?.takeIf { it.startsWith("[$key:") && it.endsWith(']') }?.substring(key.length + 2, line.length - 1)
+        }
+        val artist = tag(readLine(), "ar") ?: return null
+        val title = tag(readLine(), "ti")?.takeIf { it.isNotBlank() } ?: return null
+        val album = tag(readLine(), "al") ?: return null
+        var line = readLine()
+        val source = tag(line, "source")?.also { line = readLine() }.orEmpty()
+        if (line == "[manual:1]") line = readLine()
+        if (line != "") return null
+        return Document(Song(artist, title, album), source, text.substring(minOf(position, text.length)))
     }
 
-    private fun convert(song: Song, docs: Map<String, Document>, meta: JSONObject): Pair<LyricifyTrackIdentity, LyricifyImportSelection> {
-        val main = docs[".yrc"]?.takeIf { LyricifyDatabaseImporter.hasDisplayableLyrics(parse(it, "yrc")) }
-            ?: docs[".lrc"] ?: throw IllegalArgumentException("No timed lyrics")
-        val original = parse(main, if (main === docs[".yrc"]) "yrc" else "lrc")
-        require(LyricifyDatabaseImporter.hasDisplayableLyrics(original)) { "No timed lyrics" }
-        val translations = docs[".tr.lrc"]?.let { parse(it, "lrc") }.orEmpty()
-        val roman = docs[".roma.lrc"]?.let { parse(it, "lrc") }.orEmpty()
+    private fun convert(song: Song, docs: Map<String, Document>, meta: JSONObject, budget: ParseBudget): Pair<LyricifyTrackIdentity, LyricifyImportSelection> {
+        fun candidate(suffix: String, format: String): Pair<Document, List<OnlineLyricFetcher.LyricLine>>? {
+            val document = docs[suffix] ?: return null
+            val lines = try {
+                parse(document, format, budget)
+            } catch (error: IllegalArgumentException) {
+                if (error is LimitExceeded) throw error
+                return null
+            }
+            return if (LyricifyDatabaseImporter.hasDisplayableLyrics(lines)) document to lines else null
+        }
+        val (main, original) = candidate(".yrc", "yrc") ?: candidate(".enhanced.lrc", "lrc")
+            ?: candidate(".lrc", "lrc") ?: throw IllegalArgumentException("No timed lyrics")
+        val translations = docs[".tr.lrc"]?.let { parse(it, "lrc", budget) }.orEmpty()
+        val roman = docs[".roma.lrc"]?.let { parse(it, "lrc", budget) }.orEmpty()
         val durationSecs = meta.optDouble("duration_secs", 0.0)
         require(durationSecs.isFinite() && durationSecs >= 0 && durationSecs <= Long.MAX_VALUE / 1000.0)
         val aliases = buildMap {
@@ -257,10 +346,13 @@ internal object LyrimuseBackupImporter {
         return identity to LyricifyImportSelection(listOf(result), result)
     }
 
-    private fun parse(document: Document, format: String): List<OnlineLyricFetcher.LyricLine> {
+    private fun parse(document: Document, format: String, budget: ParseBudget): List<OnlineLyricFetcher.LyricLine> {
+        budget.checkInput(document.body)
         val offset = Regex("(?im)^\\[offset:([+-]?\\d+)][ \\t]*\\r?$").find(document.body)?.groupValues?.get(1)?.toLongOrNull() ?: 0L
         require(offset in -60_000L..60_000L) { "Invalid lyric offset" }
-        return LyricifyDatabaseImporter.shiftLines(LyricifyDatabaseImporter.parseDocument(format, document.body), -offset)
+        val lines = LyricifyDatabaseImporter.parseDocument(format, document.body)
+        budget.addParsed(lines)
+        return LyricifyDatabaseImporter.shiftLines(lines, -offset)
     }
 
     private fun toLrc(lines: List<OnlineLyricFetcher.LyricLine>): String = lines.joinToString("\n") {

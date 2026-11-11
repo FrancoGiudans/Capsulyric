@@ -432,7 +432,13 @@ class OnlineLyricCacheStore(context: Context) {
                         continue
                     }
                     require(id.matches(Regex("[0-9a-f]{64}"))) { "Invalid existing cache key" }
-                    val json = readImportJson(entryFile(id))
+                    val file = entryFile(id)
+                    // An empty cache has no usable selection. Preserve it, but let this import continue.
+                    if (file.isFile && file.length() == 0L) {
+                        onProgress(LyricifyImportProgress(LyricifyImportStage.READING_CACHE, ++read, index.size))
+                        continue
+                    }
+                    val json = readImportJson(file)
                     require(json.getString("id") == id) { "Invalid existing cache identity" }
                     json.remove("parsedLines")
                     json.remove("lyricifyCandidates")

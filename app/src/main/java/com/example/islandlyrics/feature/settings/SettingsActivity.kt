@@ -42,7 +42,7 @@ import com.example.islandlyrics.feature.faq.material.FAQScreen
 import com.example.islandlyrics.feature.faq.miuix.MiuixFAQScreen
 import com.example.islandlyrics.feature.lab.material.LabScreen
 import com.example.islandlyrics.feature.lab.miuix.MiuixLabScreen
-import com.example.islandlyrics.feature.lab.rememberLyricifyImporter
+import com.example.islandlyrics.feature.settings.rememberThirdPartyImporter
 import com.example.islandlyrics.feature.lastfm.material.LastFmSettingsScreen
 import com.example.islandlyrics.feature.lastfm.miuix.MiuixLastFmSettingsScreen
 import com.example.islandlyrics.feature.locallyrics.material.LocalLyricDirectoryScreen
@@ -107,7 +107,7 @@ class SettingsActivity : BaseActivity() {
         }
 
         setContent {
-            val lyricifyImporter = rememberLyricifyImporter()
+            val thirdPartyImporter = rememberThirdPartyImporter()
             if (isMiuixEnabled(this@SettingsActivity)) {
                 MiuixAppTheme {
                     val pageStack = remember {
@@ -140,7 +140,7 @@ class SettingsActivity : BaseActivity() {
                         }
                     }
                     LaunchedEffect(initialOpenPage) {
-                        if (lyricifyImporter.restoreSettings) return@LaunchedEffect
+                        if (thirdPartyImporter.restoreSettings) return@LaunchedEffect
                         when (initialOpenPage) {
                             "local_lyrics" -> pushPage(SettingsPage.LocalLyricDirectories)
                             "cache_management" -> pushPage(SettingsPage.CacheManagement)
@@ -163,7 +163,7 @@ class SettingsActivity : BaseActivity() {
                             useMiuixNavForDefault = true,
                             backgroundContent = {
                                 MiuixSettingsScreen(
-                                    lyricifyImporter = lyricifyImporter,
+                                    thirdPartyImporter = thirdPartyImporter,
                                     onCheckUpdate = { performUpdateCheck() },
                                     onShowDiagnostics = { pushPage(SettingsPage.Diagnostics) },
                                     updateVersionText = version,
@@ -245,7 +245,7 @@ class SettingsActivity : BaseActivity() {
                                 .background(MaterialTheme.colorScheme.background),
                             backgroundContent = {
                                 SettingsScreen(
-                                    lyricifyImporter = lyricifyImporter,
+                                    thirdPartyImporter = thirdPartyImporter,
                                     onCheckUpdate = { performUpdateCheck() },
                                     onShowDiagnostics = { pushPage(SettingsPage.Diagnostics) },
                                     updateVersionText = version,

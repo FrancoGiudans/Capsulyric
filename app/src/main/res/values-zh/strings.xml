@@ -1386,6 +1386,7 @@
     <string name="lyrimuse_import_modes_hint">合并保留当前歌词并加入导入候选；覆盖使用导入的歌词；跳过保留已有歌曲。</string>
     <string name="lyrimuse_import_reading">正在读取 Lyrimuse 备份…</string>
     <string name="lyrimuse_import_invalid_file">无法读取这些文件，请选择一份 Lyrimuse 歌词备份和／或一份配置备份。</string>
+    <string name="lyrimuse_import_limit_exceeded">备份内容超出导入限制，本次未导入任何数据。</string>
     <string name="lyrimuse_import_failed">导入未完成，请检查所选文件和可用存储空间后重试。</string>
     <string name="lyrimuse_import_recovery_failed">导入失败，原有歌词未能恢复。请先检查歌词缓存或还原备份。</string>
     <string name="lyrimuse_import_lastfm_done">Last.fm 登录信息已导入。</string>

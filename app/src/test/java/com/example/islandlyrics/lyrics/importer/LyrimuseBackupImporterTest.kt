@@ -1,8 +1,13 @@
 package com.example.islandlyrics.lyrics.importer
 
+import android.content.Context
+import android.content.ContextWrapper
 import com.example.islandlyrics.integration.lastfm.LastFmCredentials
+import com.example.islandlyrics.lyrics.cache.OnlineLyricCacheStore
+import com.example.islandlyrics.lyrics.online.OnlineLyricFetcher
 import com.example.islandlyrics.lyrics.online.provider.OnlineLyricProvider
 import com.example.islandlyrics.lyrics.online.parser.OnlineLyricSidecarMerger
+import com.example.islandlyrics.lyrics.state.LyricRepository
 import com.example.islandlyrics.rules.ParserRule
 import kotlinx.coroutines.CancellationException
 import org.json.JSONArray
@@ -10,7 +15,9 @@ import org.json.JSONException
 import org.json.JSONObject
 import org.junit.Assert.*
 import org.junit.Assume.assumeTrue
+import org.junit.Rule
 import org.junit.Test
+import org.junit.rules.TemporaryFolder
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.util.Base64
@@ -18,6 +25,8 @@ import java.util.zip.Deflater
 import java.util.zip.DeflaterOutputStream
 
 class LyrimuseBackupImporterTest {
+    @get:Rule val temporaryFolder = TemporaryFolder()
+
     private fun document(body: String, source: String = "netease") =
         "[ar:Artist]\n[ti:Title]\n[al:Album]\n[source:$source]\n\n$body"
 
@@ -139,6 +148,315 @@ class LyrimuseBackupImporterTest {
         val result = prepared.tracks.single().second.selected
         assertFalse(result.hasSyllable)
         assertEquals(1_000L, result.parsedLines!!.single().startTime)
+    }
+
+    @Test fun allMainFormatCombinationsSelectTheConfirmedPriority() {
+        val formats = listOf(
+            ".yrc" to "[1000,1000](1000,1000,0)YRC",
+            ".enhanced.lrc" to "[00:01.000]<00:01.000>Enhanced<00:02.000>",
+            ".lrc" to "[00:01.000]Plain",
+        )
+        for (mask in 1..7) {
+            val included = formats.filterIndexed { index, _ -> mask and (1 shl index) != 0 }
+            val prepared = LyrimuseBackupImporter.prepareBytes(listOf(archive(
+                included.associate { (suffix, body) -> "song$suffix" to document(body, suffix) }
+            )))
+            assertEquals("combination $mask", 1, prepared.tracks.size)
+            assertEquals(0, prepared.failed)
+            assertEquals(0, prepared.skipped)
+            val selected = prepared.tracks.single().second.selected
+            // The branch owns file selection; enhanced text/word parsing is supplied by dev.
+            assertEquals(included.first().second, selected.lyrics)
+            assertEquals("Lyrimuse · ${included.first().first}", selected.api)
+        }
+    }
+
+    @Test fun unusableMainFormatsFallBackButReadableEnhancedLyricsRemainPreferred() {
+        val enhanced = "[00:01.000]<00:00.500>Readable<00:02.000>"
+        for ((yrc, enhancedBody, expected) in listOf(
+            Triple("", enhanced, enhanced),
+            Triple("", "[00:01.000]", "[00:01.000]Plain"),
+            Triple("[offset:60001]\n[1000,1000](1000,1000,0)YRC", enhanced, enhanced),
+            Triple("", "[offset:60001]\n$enhanced", "[00:01.000]Plain"),
+        )) {
+            val prepared = LyrimuseBackupImporter.prepareBytes(listOf(archive(mapOf(
+                "a.yrc" to document(yrc), "a.enhanced.lrc" to document(enhancedBody),
+                "a.lrc" to document("[00:01.000]Plain"),
+            ))))
+            assertEquals(0, prepared.failed)
+            assertEquals(expected, prepared.tracks.single().second.selected.lyrics)
+        }
+    }
+
+    @Test fun enhancedOffsetsAndSidecarsSurviveFileSelection() {
+        val enhanced = "[offset:100]\n[00:01.000]<00:01.000>Enhanced<00:02.000>"
+        val prepared = LyrimuseBackupImporter.prepareBytes(listOf(archive(mapOf(
+            "a.enhanced.lrc" to document(enhanced), "a.lrc" to document("[00:01.000]Plain"),
+            "a.tr.lrc" to document("[offset:100]\n[00:01.000]译文"),
+            "a.roma.lrc" to document("[offset:100]\n[00:01.000]roma"),
+        ))))
+        val selected = prepared.tracks.single().second.selected
+        assertEquals(enhanced, selected.lyrics)
+        assertEquals(900L, selected.parsedLines!!.first().startTime)
+        assertEquals("[00:00.900]译文", selected.translationLyrics)
+        assertEquals("[00:00.900]roma", selected.romanLyrics)
+    }
+
+    @Test fun boundedHeaderReadingPreservesBomCrLfAndOptionalSourceAndManualTags() {
+        val body = "[offset:100]\r\n[00:01.000]Text\r\n"
+        for (withSource in listOf(false, true)) {
+            val header = "\uFEFF[ar:Artist]\r\n[ti:Title]\r\n[al:Album]\r\n" +
+                (if (withSource) "[source:netease]\r\n" else "") + "[manual:1]\r\n\r\n"
+            val prepared = LyrimuseBackupImporter.prepareBytes(listOf(archive(mapOf("a.lrc" to header + body))))
+            val selected = prepared.tracks.single().second.selected
+            assertEquals(body, selected.lyrics)
+            assertEquals(if (withSource) "Lyrimuse · netease" else "Lyrimuse · Local", selected.api)
+            assertEquals(900L, selected.parsedLines!!.single().startTime)
+        }
+    }
+
+    @Test fun contradictoryEnhancedFilesStillFailTheSong() {
+        val prepared = LyrimuseBackupImporter.prepareBytes(listOf(archive(mapOf(
+            "a.enhanced.lrc" to document("[00:01.000]First"),
+            "b.enhanced.lrc" to document("[00:01.000]Second"),
+            "a.yrc" to document("[1000,1000](1000,1000,0)YRC"),
+        ))))
+        assertTrue(prepared.tracks.isEmpty())
+        assertEquals(1, prepared.failed)
+    }
+
+    @Test fun rootAndMetadataNestingAreBoundedBeforeJsonConstruction() {
+        fun nested(depth: Int) = "[".repeat(depth) + "0" + "]".repeat(depth)
+        for (metadata in listOf(false, true)) {
+            fun input(depth: Int): ByteArray {
+                val extra = "{\"extra\":${nested(depth)}}"
+                return if (metadata) JSONObject(String(archive(emptyMap())))
+                    .put("meta", Base64.getEncoder().encodeToString(extra.toByteArray())).toString().toByteArray()
+                else "{\"v\":2,\"files\":{},\"extra\":${nested(depth)}}".toByteArray()
+            }
+            assertTrue(LyrimuseBackupImporter.prepareBytes(listOf(input(LyrimuseBackupImporter.MAX_JSON_DEPTH - 1))).tracks.isEmpty())
+            for (depth in listOf(LyrimuseBackupImporter.MAX_JSON_DEPTH, 20_000)) {
+                assertThrows(LyrimuseBackupImporter.LimitExceeded::class.java) {
+                    LyrimuseBackupImporter.prepareBytes(listOf(input(depth)))
+                }
+            }
+        }
+    }
+
+    @Test fun bracketsAndEscapedQuotesInJsonStringsDoNotCountAsNesting() {
+        val root = JSONObject(String(archive(mapOf("a.lrc" to document("[00:01]Text")))))
+            .put("note", "[".repeat(100) + "\\\"quoted\\\"" + "]".repeat(100))
+        assertEquals(1, LyrimuseBackupImporter.prepareBytes(listOf(root.toString().toByteArray())).tracks.size)
+    }
+
+    @Test fun androidJsonStringsAndCommentsCannotHideDeepNesting() {
+        val deep = "[".repeat(100) + "0" + "]".repeat(100)
+        for (prefix in listOf("'${"]".repeat(100)}'", "0/*${"]".repeat(100)}'*/", "0//${"]".repeat(100)}'\n", "0#${"]".repeat(100)}'\n", "unquoted'quote", "unquoted\"quote")) {
+            val input = "{\"v\":2,\"files\":{},\"note\":$prefix,\"deep\":$deep}"
+            assertThrows(LyrimuseBackupImporter.LimitExceeded::class.java) {
+                LyrimuseBackupImporter.prepareBytes(listOf(input.toByteArray()))
+            }
+        }
+    }
+
+    @Test fun cumulativeInputBudgetAcceptsItsBoundaryAndRejectsTheNextMarker() {
+        for ((extra, exceeds) in listOf(0 to false, 1 to true)) {
+            val input = archive(mapOf("a.lrc" to document("(".repeat(LyrimuseBackupImporter.MAX_INPUT_MARKERS.toInt() + extra))))
+            if (exceeds) assertThrows(LyrimuseBackupImporter.LimitExceeded::class.java) {
+                LyrimuseBackupImporter.prepareBytes(listOf(input))
+            } else assertEquals(1, LyrimuseBackupImporter.prepareBytes(listOf(input)).failed)
+        }
+    }
+
+    @Test fun unusedFallbackVersionsDoNotConsumeTheParseBudget() {
+        val yrc = "[1000,1000](1000,1000,0)YRC"
+        val prepared = LyrimuseBackupImporter.prepareBytes(listOf(archive(mapOf(
+            "a.yrc" to document(yrc),
+            "a.enhanced.lrc" to document("(".repeat(LyrimuseBackupImporter.MAX_INPUT_MARKERS.toInt() + 1)),
+            "a.lrc" to document("[00:01.000]Unused fallback"),
+        ))))
+        assertEquals(yrc, prepared.tracks.single().second.selected.lyrics)
+        assertEquals(0, prepared.failed)
+    }
+
+    @Test fun cumulativeBudgetRejectsIndividuallyValidSongsAndIncludesSidecars() {
+        val body = List(10_000) { "[00:01.000]Text" }.joinToString("\n")
+        // Each document is within the existing single-document limits.
+        assertTrue(LyricifyDatabaseImporter.parseDocument("lrc", body).isNotEmpty())
+        for (sidecars in listOf(false, true)) {
+            val files = buildMap {
+                repeat(if (sidecars) 10 else 26) { song ->
+                    for (suffix in if (sidecars) listOf(".lrc", ".tr.lrc", ".roma.lrc") else listOf(".lrc")) {
+                        put("$song$suffix", document(body).replace("[ti:Title]", "[ti:Title$song]"))
+                    }
+                }
+            }
+            assertThrows(LyrimuseBackupImporter.LimitExceeded::class.java) {
+                LyrimuseBackupImporter.prepareBytes(listOf(archive(files), config()))
+            }
+        }
+    }
+
+    @Test fun cancellationDuringJsonScanningPropagatesAfterWorkHasStarted() {
+        val input = JSONObject(String(archive(emptyMap()))).put("note", "x".repeat(20_000)).toString().toByteArray()
+        var checks = 0
+        assertThrows(CancellationException::class.java) {
+            LyrimuseBackupImporter.prepareBytes(listOf(input)) {
+                if (++checks == 4) throw CancellationException("cancel during scan")
+            }
+        }
+        assertEquals(4, checks)
+    }
+
+    private fun cacheContext(): Context {
+        val directory = temporaryFolder.newFolder()
+        val files = File(directory, "files").also { it.mkdir() }
+        val cache = File(directory, "cache").also { it.mkdir() }
+        return object : ContextWrapper(null) {
+            override fun getApplicationContext(): Context = this
+            override fun getFilesDir(): File = files
+            override fun getCacheDir(): File = cache
+        }
+    }
+
+    private fun snapshot(context: Context): Map<String, List<Byte>> {
+        val directory = File(context.filesDir, "cache_store")
+        return directory.walkTopDown().filter { it.isFile }.associate { it.relativeTo(directory).path to it.readBytes().toList() }
+    }
+
+    private fun cacheFile(context: Context, title: String): File {
+        val entries = JSONObject(File(context.filesDir, "cache_store/index.json").readText()).getJSONObject("entries")
+        val id = entries.keys().asSequence().single { entries.getJSONObject(it).getString("title") == title }
+        return File(context.filesDir, "cache_store/lyrics/${id.take(2)}/$id.json")
+    }
+
+    private fun mediaInfo(album: String = "Album") = LyricRepository.MediaInfo(
+        title = "Title", artist = "Artist", album = album, duration = 180_000L, packageName = "test.player",
+    )
+
+    @Test fun importedLyricsCanBeReadFromDiskAndSkippedWithoutChangingCacheBytes() {
+        val context = cacheContext()
+        val prepared = LyrimuseBackupImporter.prepareBytes(listOf(archive(mapOf(
+            "a.yrc" to document("[1000,1000](1000,500,0)A(1500,500,0)B"),
+            "a.tr.lrc" to document("[00:01.000]译文"), "a.roma.lrc" to document("[00:01.000]roma"),
+        ))))
+        val first = LyrimuseBackupImporter.importPrepared(context, prepared, true, false, LyricifyImportMode.OVERWRITE, {}, {})
+        assertEquals(LyrimuseBackupImporter.Report(1, 0, 0, false, false), first)
+        val store = OnlineLyricCacheStore(context)
+        val hit = store.getCachedLyric(mediaInfo(), "Title", "Artist")!!
+        assertEquals("AB", hit.result.parsedLines!!.single().text)
+        assertEquals(listOf(1_000L, 1_500L), hit.result.parsedLines.single().syllables!!.map { it.startTime })
+        assertEquals("[00:01.000]译文", hit.result.translationLyrics)
+        assertEquals("[00:01.000]roma", hit.result.romanLyrics)
+        // getCachedLyric updates access time; compare bytes only after that read.
+        val before = snapshot(context)
+        val second = LyrimuseBackupImporter.importPrepared(context, prepared, true, false, LyricifyImportMode.SKIP, {}, {})
+        assertEquals(LyrimuseBackupImporter.Report(0, 1, 0, false, false), second)
+        assertEquals(before, snapshot(context))
+        assertEquals(1, OnlineLyricCacheStore(context).getLyricCacheStats().entryCount)
+        assertFalse(File(context.filesDir, "cache_store/lyricify-import-transaction").exists())
+        assertTrue(context.cacheDir.listFiles().orEmpty().isEmpty())
+    }
+
+    @Test fun emptyExistingCacheDoesNotBlockImportOrChangeValidSelections() {
+        for (mode in LyricifyImportMode.entries) {
+            val context = cacheContext()
+            fun prepared(text: String) = LyrimuseBackupImporter.prepareBytes(listOf(archive(mapOf(
+                "a.lrc" to document("[00:01.000]$text"),
+                "b.lrc" to document("[00:01.000]$text broken").replace("[ti:Title]", "[ti:Broken]"),
+            ))))
+            LyrimuseBackupImporter.importPrepared(context, prepared("Old"), true, false, LyricifyImportMode.OVERWRITE, {}, {})
+            val emptyFile = cacheFile(context, "Broken").also { it.writeBytes(byteArrayOf()) }
+            val emptyId = emptyFile.nameWithoutExtension
+            val indexFile = File(context.filesDir, "cache_store/index.json")
+            val emptyHeader = JSONObject(indexFile.readText()).getJSONObject("entries").getJSONObject(emptyId).toString()
+            val validFile = cacheFile(context, "Title")
+            val validBytes = validFile.readBytes().toList()
+
+            val incoming = prepared("New")
+            val report = LyrimuseBackupImporter.importPrepared(context, incoming, true, false, mode, {}, {})
+            assertEquals(if (mode == LyricifyImportMode.SKIP) 1 else 2, report.imported)
+            assertEquals(if (mode == LyricifyImportMode.SKIP) 1 else 0, report.skipped)
+            assertEquals(0, report.failed)
+            assertTrue(emptyFile.isFile)
+            assertEquals(0L, emptyFile.length())
+            assertEquals(emptyHeader, JSONObject(indexFile.readText()).getJSONObject("entries").getJSONObject(emptyId).toString())
+            if (mode == LyricifyImportMode.SKIP) assertEquals(validBytes, validFile.readBytes().toList())
+
+            val store = OnlineLyricCacheStore(context)
+            assertEquals(if (mode == LyricifyImportMode.OVERWRITE) "New" else "Old",
+                store.getCachedLyric(mediaInfo(), "Title", "Artist")!!.result.parsedLines!!.single().text)
+            assertEquals("New broken", store.getCachedLyric(mediaInfo().copy(title = "Broken"), "Broken", "Artist")!!
+                .result.parsedLines!!.single().text)
+            val beforeSkip = snapshot(context)
+            assertEquals(LyrimuseBackupImporter.Report(0, 2, 0, false, false),
+                LyrimuseBackupImporter.importPrepared(context, incoming, true, false, LyricifyImportMode.SKIP, {}, {}))
+            assertEquals(beforeSkip, snapshot(context))
+            assertFalse(File(context.filesDir, "cache_store/lyricify-import-transaction").exists())
+            assertTrue(context.cacheDir.listFiles().orEmpty().isEmpty())
+        }
+    }
+
+    @Test fun nonEmptyInvalidCacheStillStopsImportWithoutChangingExistingFiles() {
+        val context = cacheContext()
+        val prepared = LyrimuseBackupImporter.prepareBytes(listOf(archive(mapOf("a.lrc" to document("[00:01.000]Text")))))
+        LyrimuseBackupImporter.importPrepared(context, prepared, true, false, LyricifyImportMode.OVERWRITE, {}, {})
+        cacheFile(context, "Title").writeText("{broken")
+        val before = snapshot(context)
+        assertThrows(JSONException::class.java) {
+            LyrimuseBackupImporter.importPrepared(context, prepared, true, false, LyricifyImportMode.OVERWRITE, {}, {})
+        }
+        assertEquals(before, snapshot(context))
+        assertFalse(File(context.filesDir, "cache_store/lyricify-import-transaction").exists())
+        assertTrue(context.cacheDir.listFiles().orEmpty().isEmpty())
+    }
+
+    @Test fun mergeRetainsFallbackDurationForPlaybackAndRepeatedSkip() {
+        val context = cacheContext()
+        val store = OnlineLyricCacheStore(context)
+        fun lyric(text: String, duration: Long? = null) = OnlineLyricFetcher.LyricResult(
+            api = "test", lyrics = "[00:01.000]$text", parsedLines = LyricifyDatabaseImporter.parseDocument("lrc", "[00:01.000]$text"),
+            hasSyllable = false, provider = OnlineLyricProvider.LrcApi, matchedDurationMs = duration,
+        )
+        val old = lyric("Old")
+        val incoming = lyric("New", 180_000L)
+        val identity = LyricifyTrackIdentity("Title", "Artist")
+        assertEquals(1 to 0, store.importLyricifyTracks(listOf(identity.copy(durationMs = 180_000L) to LyricifyImportSelection(listOf(old), old)), LyricifyImportMode.OVERWRITE))
+        val tracks = listOf(identity to LyricifyImportSelection(listOf(incoming), incoming))
+        assertEquals(1 to 0, store.importLyricifyTracks(tracks, LyricifyImportMode.MERGE))
+        assertEquals("Old", OnlineLyricCacheStore(context).getCachedLyric(mediaInfo(album = ""), "Title", "Artist")!!.result.parsedLines!!.single().text)
+        val before = snapshot(context)
+        assertEquals(0 to 1, OnlineLyricCacheStore(context).importLyricifyTracks(tracks, LyricifyImportMode.SKIP))
+        assertEquals(before, snapshot(context))
+        assertEquals(1, OnlineLyricCacheStore(context).getLyricCacheStats().entryCount)
+    }
+
+    @Test fun cancellationDuringCacheWritesRestoresThePreviousFiles() {
+        val context = cacheContext()
+        fun prepared(text: String) = LyrimuseBackupImporter.prepareBytes(listOf(archive(mapOf("a.lrc" to document("[00:01.000]$text")))))
+        LyrimuseBackupImporter.importPrepared(context, prepared("Old"), true, false, LyricifyImportMode.OVERWRITE, {}, {})
+        val emptyPrepared = LyrimuseBackupImporter.prepareBytes(listOf(archive(mapOf(
+            "empty.lrc" to document("[00:01.000]Empty").replace("[ti:Title]", "[ti:Empty]"),
+        ))))
+        LyrimuseBackupImporter.importPrepared(context, emptyPrepared, true, false, LyricifyImportMode.OVERWRITE, {}, {})
+        cacheFile(context, "Empty").writeBytes(byteArrayOf())
+        val before = snapshot(context)
+        var cancel = false
+        var rolledBack = false
+        assertThrows(CancellationException::class.java) {
+            LyrimuseBackupImporter.importPrepared(context, prepared("New"), true, false, LyricifyImportMode.OVERWRITE,
+                checkActive = { if (cancel) throw CancellationException("cancel during write") },
+                onProgress = {
+                    if (it.stage == LyricifyImportStage.WRITING && it.processed > 0) cancel = true
+                    if (it.stage == LyricifyImportStage.ROLLING_BACK) rolledBack = true
+                },
+            )
+        }
+        assertTrue(rolledBack)
+        assertEquals(before, snapshot(context))
+        assertEquals("Old", OnlineLyricCacheStore(context).getCachedLyric(mediaInfo(), "Title", "Artist")!!.result.parsedLines!!.single().text)
+        assertFalse(File(context.filesDir, "cache_store/lyricify-import-transaction").exists())
+        assertTrue(context.cacheDir.listFiles().orEmpty().isEmpty())
     }
 
     @Test fun lyricOffsetsShiftOriginalTranslationAndWordTimingEarlier() {
