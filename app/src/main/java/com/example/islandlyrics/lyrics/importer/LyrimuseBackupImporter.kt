@@ -19,6 +19,7 @@ internal object LyrimuseBackupImporter {
     internal const val MAX_INPUT_BYTES = 64 * 1024 * 1024
     internal const val MAX_DECODED_BYTES = 32 * 1024 * 1024
     internal const val MAX_JSON_DEPTH = 64
+    internal const val MAX_JSON_STRUCTURES = 500_000
     internal const val MAX_INPUT_MARKERS = 500_000L
     internal const val MAX_PARSED_UNITS = 500_000L
 
@@ -54,10 +55,11 @@ internal object LyrimuseBackupImporter {
         require(inputs.size in 1..2) { "Select one Lyrics file and/or one Config file" }
         var archive: JSONObject? = null
         var config: JSONObject? = null
+        val jsonBudget = JsonBudget(checkActive)
         for (input in inputs) {
             checkActive()
             val text = decode(input, checkActive)
-            checkJsonDepth(text, checkActive)
+            jsonBudget.check(text)
             val root = JSONObject(text)
             when {
                 root.has("files") -> {
@@ -73,7 +75,7 @@ internal object LyrimuseBackupImporter {
                 else -> error("Not a supported Lyrimuse backup")
             }
         }
-        val library = archive?.let { parseLibrary(it, checkActive) }
+        val library = archive?.let { parseLibrary(it, jsonBudget, checkActive) }
         return Prepared(library?.tracks.orEmpty(), library?.skipped ?: 0, library?.failed ?: 0,
             config != null, config?.let(::parseCredentials))
     }
@@ -163,43 +165,53 @@ internal object LyrimuseBackupImporter {
     )
     private val suffixes = listOf(".tr.lrc", ".roma.lrc", ".enhanced.lrc", ".lrc", ".yrc")
 
-    /** Bound recursive JSON construction, including Android JSON's strings and comments. */
-    private fun checkJsonDepth(text: String, checkActive: () -> Unit) {
-        var depth = 0
-        var quote: Char? = null
-        var escaped = false
-        var lineComment = false
-        var blockComment = false
-        var literal = false
-        var index = 0
-        while (index < text.length) {
-            if (index % 4096 == 0) checkActive()
-            val char = text[index]
-            val next = text.getOrNull(index + 1)
-            if (literal && char in "{}[]/\\:,=;# \t\u000c\r\n") literal = false
-            when {
-                quote != null -> {
-                    if (escaped) escaped = false
-                    else if (char == '\\') escaped = true
-                    else if (char == quote) quote = null
+    /** Containers and separators bound JSON allocation, including unknown fields and Android's lenient syntax. */
+    private class JsonBudget(private val checkActive: () -> Unit) {
+        private var structures = 0
+
+        fun check(text: String) {
+            var depth = 0
+            var quote: Char? = null
+            var escaped = false
+            var lineComment = false
+            var blockComment = false
+            var literal = false
+            var index = 0
+            while (index < text.length) {
+                if (index % 4096 == 0) checkActive()
+                val char = text[index]
+                val next = text.getOrNull(index + 1)
+                if (literal && char in "{}[]/\\:,=;# \t\u000c\r\n") literal = false
+                when {
+                    quote != null -> {
+                        if (escaped) escaped = false
+                        else if (char == '\\') escaped = true
+                        else if (char == quote) quote = null
+                    }
+                    lineComment -> if (char == '\n' || char == '\r') lineComment = false
+                    blockComment -> if (char == '*' && next == '/') { blockComment = false; index++ }
+                    // Android also accepts unquoted literals containing quote characters.
+                    literal -> Unit
+                    char == '"' || char == '\'' -> quote = char
+                    char == '#' -> lineComment = true
+                    char == '/' && next == '/' -> { lineComment = true; index++ }
+                    char == '/' && next == '*' -> { blockComment = true; index++ }
+                    char == '{' || char == '[' -> {
+                        if (++depth > MAX_JSON_DEPTH) throw LimitExceeded("Lyrimuse JSON is nested too deeply")
+                        structures++
+                    }
+                    char == '}' || char == ']' -> depth--
+                    char == ',' || char == ';' || char == ':' || char == '=' -> {
+                        structures++
+                        if ((char == ':' || char == '=') && next == '>') index++
+                    }
+                    else -> literal = char !in " \t\r\n\u000c,:;=\\"
                 }
-                lineComment -> if (char == '\n' || char == '\r') lineComment = false
-                blockComment -> if (char == '*' && next == '/') { blockComment = false; index++ }
-                // Android also accepts unquoted literals containing quote characters.
-                literal -> Unit
-                char == '"' || char == '\'' -> quote = char
-                char == '#' -> lineComment = true
-                char == '/' && next == '/' -> { lineComment = true; index++ }
-                char == '/' && next == '*' -> { blockComment = true; index++ }
-                char == '{' || char == '[' -> {
-                    if (++depth > MAX_JSON_DEPTH) throw LimitExceeded("Lyrimuse JSON is nested too deeply")
-                }
-                char == '}' || char == ']' -> depth--
-                else -> literal = char !in " \t\r\n\u000c,:;=\\"
+                if (structures > MAX_JSON_STRUCTURES) throw LimitExceeded("Too many Lyrimuse JSON structures")
+                index++
             }
-            index++
+            checkActive()
         }
-        checkActive()
     }
 
     private class ParseBudget(private val checkActive: () -> Unit) {
@@ -226,7 +238,7 @@ internal object LyrimuseBackupImporter {
         }
     }
 
-    private fun parseLibrary(root: JSONObject, checkActive: () -> Unit): Library {
+    private fun parseLibrary(root: JSONObject, jsonBudget: JsonBudget, checkActive: () -> Unit): Library {
         val files = root.getJSONObject("files")
         require(files.length() <= LyricifyDatabaseImporter.MAX_TRACKS * 4) { "Too many lyric files" }
         val rawMeta = root.opt("meta")
@@ -235,7 +247,7 @@ internal object LyrimuseBackupImporter {
             val bytes = Base64.getDecoder().decode(it)
             require(bytes.size <= MAX_DECODED_BYTES) { "Lyrics metadata is too large" }
             val text = bytes.toString(Charsets.UTF_8)
-            checkJsonDepth(text, checkActive)
+            jsonBudget.check(text)
             JSONObject(text)
         } ?: JSONObject()
         // One budget for all documents actually parsed, including translations and romanization.

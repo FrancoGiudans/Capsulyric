@@ -245,8 +245,70 @@ class LyrimuseBackupImporterTest {
 
     @Test fun bracketsAndEscapedQuotesInJsonStringsDoNotCountAsNesting() {
         val root = JSONObject(String(archive(mapOf("a.lrc" to document("[00:01]Text")))))
-            .put("note", "[".repeat(100) + "\\\"quoted\\\"" + "]".repeat(100))
+            .put("note", "\\\"quoted\\\"" + "{[,:;=]}".repeat(LyrimuseBackupImporter.MAX_JSON_STRUCTURES / 8 + 1))
         assertEquals(1, LyrimuseBackupImporter.prepareBytes(listOf(root.toString().toByteArray())).tracks.size)
+    }
+
+    @Test fun jsonStructureBudgetAcceptsBoundaryAndRejectsTheNextArrayElement() {
+        for (metadata in listOf(false, true)) {
+            // Count containers and separators in the root and, when present, decoded metadata.
+            val count = LyrimuseBackupImporter.MAX_JSON_STRUCTURES - if (metadata) 9 else 7
+            fun input(elements: Int): ByteArray {
+                val extra = "[" + "0,".repeat(elements - 1) + "0]"
+                return if (metadata) {
+                    val meta = Base64.getEncoder().encodeToString("{\"extra\":$extra}".toByteArray())
+                    "{\"v\":2,\"files\":{},\"meta\":\"$meta\"}".toByteArray()
+                } else "{\"v\":2,\"files\":{},\"extra\":$extra}".toByteArray()
+            }
+            assertTrue(LyrimuseBackupImporter.prepareBytes(listOf(input(count))).tracks.isEmpty())
+            assertThrows(LyrimuseBackupImporter.LimitExceeded::class.java) {
+                LyrimuseBackupImporter.prepareBytes(listOf(input(count + 1)))
+            }
+        }
+    }
+
+    @Test fun shallowContainersAndObjectMembersAreBoundedBeforeJsonConstruction() {
+        val count = LyrimuseBackupImporter.MAX_JSON_STRUCTURES / 2 + 1
+        for (extra in listOf(
+            "[" + "{},".repeat(count - 1) + "{}]",
+            "{" + (0 until count).joinToString(",") { "\"key$it\":0" } + "}",
+        )) {
+            for (metadata in listOf(false, true)) {
+                val input = if (metadata) {
+                    val meta = Base64.getEncoder().encodeToString("{\"extra\":$extra}".toByteArray())
+                    "{\"v\":2,\"files\":{},\"meta\":\"$meta\"}"
+                } else "{\"v\":2,\"files\":{},\"extra\":$extra}"
+                assertThrows(LyrimuseBackupImporter.LimitExceeded::class.java) {
+                    LyrimuseBackupImporter.prepareBytes(listOf(input.toByteArray()))
+                }
+            }
+        }
+    }
+
+    @Test fun jsonStructureBudgetIsSharedByFilesAndDecodedMetadata() {
+        val extra = "[" + "0,".repeat(LyrimuseBackupImporter.MAX_JSON_STRUCTURES / 2 - 1) + "0]"
+        val lyrics = "{\"v\":2,\"files\":{},\"extra\":$extra}".toByteArray()
+        val config = "{\"version\":1,\"config\":{},\"extra\":$extra}".toByteArray()
+        val meta = Base64.getEncoder().encodeToString("{\"extra\":$extra}".toByteArray())
+        val metadataOnly = "{\"v\":2,\"files\":{},\"meta\":\"$meta\"}".toByteArray()
+        for (input in listOf(lyrics, config, metadataOnly)) {
+            assertTrue(LyrimuseBackupImporter.prepareBytes(listOf(input)).tracks.isEmpty())
+        }
+        assertThrows(LyrimuseBackupImporter.LimitExceeded::class.java) {
+            LyrimuseBackupImporter.prepareBytes(listOf(lyrics, config))
+        }
+        assertThrows(LyrimuseBackupImporter.LimitExceeded::class.java) {
+            LyrimuseBackupImporter.prepareBytes(listOf("{\"v\":2,\"files\":{},\"meta\":\"$meta\",\"extra\":$extra}".toByteArray()))
+        }
+    }
+
+    @Test fun androidJsonMissingArrayValuesCannotBypassStructureBudget() {
+        for (separator in listOf(',', ';')) {
+            val extra = "[" + separator.toString().repeat(LyrimuseBackupImporter.MAX_JSON_STRUCTURES) + "]"
+            assertThrows(LyrimuseBackupImporter.LimitExceeded::class.java) {
+                LyrimuseBackupImporter.prepareBytes(listOf("{\"v\":2,\"files\":{},\"extra\":$extra}".toByteArray()))
+            }
+        }
     }
 
     @Test fun androidJsonStringsAndCommentsCannotHideDeepNesting() {
