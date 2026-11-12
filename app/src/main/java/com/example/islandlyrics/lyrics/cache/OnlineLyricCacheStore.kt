@@ -377,7 +377,8 @@ class OnlineLyricCacheStore(context: Context) {
     internal fun importLyricifyTracks(
         tracks: Sequence<Pair<LyricifyTrackIdentity, LyricifyImportSelection>>, mode: LyricifyImportMode,
         inputBytes: Long, checkActive: () -> Unit,
-        onProgress: (LyricifyImportProgress) -> Unit = {}
+        onProgress: (LyricifyImportProgress) -> Unit = {},
+        sourceName: String = "Lyricify"
     ): Pair<Int, Int> {
         check(storeDir.isDirectory || storeDir.mkdirs()) { "Cannot create the lyric cache directory" }
         val preparedDir = Files.createTempDirectory(appContext.cacheDir.toPath(), "lyricify-prepared-").toFile()
@@ -400,7 +401,7 @@ class OnlineLyricCacheStore(context: Context) {
             for ((identity, selection) in tracks) {
                 checkActive()
                 require(++count <= LyricifyDatabaseImporter.MAX_TRACKS) { "Too many songs to import" }
-                val base = CacheEntry(id = "", packageName = "Lyricify", title = identity.title, artist = identity.artist,
+                val base = CacheEntry(id = "", packageName = sourceName, title = identity.title, artist = identity.artist,
                     rawTitle = identity.title, rawArtist = identity.artist, duration = identity.durationMs,
                     queryTitle = identity.title, queryArtist = identity.artist)
                 stage(File(preparedDir, "$count.json"), base.withImportedResult(selection.selected).copy(
@@ -431,7 +432,13 @@ class OnlineLyricCacheStore(context: Context) {
                         continue
                     }
                     require(id.matches(Regex("[0-9a-f]{64}"))) { "Invalid existing cache key" }
-                    val json = readImportJson(entryFile(id))
+                    val file = entryFile(id)
+                    // An empty cache has no usable selection. Preserve it, but let this import continue.
+                    if (file.isFile && file.length() == 0L) {
+                        onProgress(LyricifyImportProgress(LyricifyImportStage.READING_CACHE, ++read, index.size))
+                        continue
+                    }
+                    val json = readImportJson(file)
                     require(json.getString("id") == id) { "Invalid existing cache identity" }
                     json.remove("parsedLines")
                     json.remove("lyricifyCandidates")
@@ -483,7 +490,7 @@ class OnlineLyricCacheStore(context: Context) {
                             LyricifyDatabaseImporter.mergeAliases(aliases, entry.importIdentity().providerIds)
                         }
                         val aliases = LyricifyDatabaseImporter.mergeAliases(oldAliases, identity.providerIds)
-                        val base = incomingEntry.copy(id = id, lyricifyCandidates = emptyList())
+                        val base = incomingEntry.copy(id = id, duration = identity.durationMs, lyricifyCandidates = emptyList())
                         val entry = base.withImportedResult(selection.selected).copy(
                             lyricifyImported = true, lyricifyAliases = aliases,
                             matchedAlbum = identity.album.ifBlank { selection.selected.matchedAlbum },

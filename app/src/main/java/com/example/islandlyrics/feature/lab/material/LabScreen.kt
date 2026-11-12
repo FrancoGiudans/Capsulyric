@@ -53,15 +53,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.DialogProperties
 import kotlin.math.roundToInt
 import com.example.islandlyrics.R
 import com.example.islandlyrics.core.network.OfflineModeManager
 import com.example.islandlyrics.core.platform.RomUtils
 import com.example.islandlyrics.core.settings.AppPreferences
 import com.example.islandlyrics.core.settings.LabFeatureManager
-import com.example.islandlyrics.feature.lab.LyricifyImportUiState
-import com.example.islandlyrics.lyrics.importer.LyricifyImportMode
 import androidx.compose.material3.LinearProgressIndicator
 import com.example.islandlyrics.ui.overlay.superisland.config.SuperIslandColorSource
 import com.example.islandlyrics.feature.customsettings.CustomSettingsActivity
@@ -79,13 +76,10 @@ import kotlinx.coroutines.delay
 @Composable
 internal fun LabScreen(
     onBack: () -> Unit,
-    lyricifyImporter: LyricifyImportUiState,
     targetItemKey: String? = null,
     onOpenCapsuleNotification: (() -> Unit)? = null
 ) {
     val context = LocalContext.current
-    var lyricifyImportEnabled by remember { mutableStateOf(LabFeatureManager.isLyricifyImportEnabled(context)) }
-    var showLyricifyImportDialog by remember { mutableStateOf(false) }
     val listState = rememberLazyListState()
     val targetBringIntoViewRequester = androidx.compose.runtime.remember { BringIntoViewRequester() }
     var activeTargetKey by remember(targetItemKey) { mutableStateOf(targetItemKey) }
@@ -200,26 +194,6 @@ internal fun LabScreen(
                             }
                         }
                     )
-                }
-            }
-
-            item {
-                SettingsCard {
-                    SettingsSwitchItem(
-                        title = stringResource(R.string.lab_lyricify_import_title),
-                        subtitle = stringResource(R.string.lab_lyricify_import_desc),
-                        checked = lyricifyImportEnabled,
-                        onCheckedChange = {
-                            lyricifyImportEnabled = it
-                            LabFeatureManager.setLyricifyImportEnabled(context, it)
-                        }
-                    )
-                    if (lyricifyImportEnabled) {
-                        TextButton(onClick = { showLyricifyImportDialog = true }, enabled = !lyricifyImporter.importing,
-                            modifier = Modifier.fillMaxWidth()) {
-                            Text(stringResource(R.string.lab_lyricify_import_button))
-                        }
-                    }
                 }
             }
 
@@ -426,69 +400,6 @@ internal fun LabScreen(
                 }
             }
         }
-    }
-
-    if (lyricifyImporter.showDialog) {
-        MaterialBlurAlertDialog(
-            onDismissRequest = {},
-            properties = DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false),
-            title = { Text(stringResource(R.string.lab_lyricify_import_button)) },
-            text = {
-                Column {
-                    lyricifyImporter.message?.let { Text(it) }
-                    if (lyricifyImporter.importing) {
-                        Spacer(Modifier.height(16.dp))
-                        val progress = lyricifyImporter.state.progress.fraction.takeIf { lyricifyImporter.state.canCancel }
-                        if (progress == null) {
-                            LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-                        } else {
-                            LinearProgressIndicator(progress = { progress }, modifier = Modifier.fillMaxWidth())
-                        }
-                        lyricifyImporter.count?.let {
-                            Spacer(Modifier.height(8.dp))
-                            Text(it, style = MaterialTheme.typography.bodyMedium)
-                        }
-                    }
-                }
-            },
-            confirmButton = {
-                if (lyricifyImporter.importing) {
-                    TextButton(onClick = lyricifyImporter.cancel, enabled = lyricifyImporter.state.canCancel) {
-                        Text(stringResource(android.R.string.cancel))
-                    }
-                } else {
-                    TextButton(onClick = lyricifyImporter.dismiss) {
-                        Text(stringResource(R.string.lab_lyricify_import_done))
-                    }
-                }
-            }
-        )
-    }
-
-    if (showLyricifyImportDialog) {
-        MaterialBlurAlertDialog(
-            onDismissRequest = { showLyricifyImportDialog = false },
-            title = { Text(stringResource(R.string.lab_lyricify_import_mode_title)) },
-            text = {
-                androidx.compose.foundation.layout.Column {
-                    Text(stringResource(R.string.lab_lyricify_import_mode_desc))
-                    listOf(
-                        LyricifyImportMode.OVERWRITE to R.string.lab_lyricify_import_overwrite,
-                        LyricifyImportMode.MERGE to R.string.lab_lyricify_import_merge,
-                        LyricifyImportMode.SKIP to R.string.lab_lyricify_import_skip
-                    ).forEach { (mode, label) ->
-                        TextButton(onClick = {
-                            showLyricifyImportDialog = false
-                            lyricifyImporter.chooseFile(mode)
-                        }, modifier = Modifier.fillMaxWidth()) { Text(stringResource(label)) }
-                    }
-                }
-            },
-            confirmButton = {},
-            dismissButton = {
-                TextButton(onClick = { showLyricifyImportDialog = false }) { Text(stringResource(android.R.string.cancel)) }
-            }
-        )
     }
 
     if (showOfflineModeDialog) {
