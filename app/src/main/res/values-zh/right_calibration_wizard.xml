@@ -1,17 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="wizard_intro">开始后授权悬浮窗，工具会切到桌面并依次显示测试文字。请观察真实超级岛：文字完整就算通过，允许系统自动缩字。基础流程目标约一分钟，出现问题才增加复测。每次回答后自动保存进度。</string>
+    <string name="wizard_intro">授予悬浮窗权限后，应用将返回桌面并依次展示测试文本。请观察超级岛显示：只要文字未被截断即算通过。常规测试约需 1 分钟。建议仅在显示异常时追加复测。每步操作均会自动保存。</string>
     <string name="wizard_begin">开始校准</string>
-    <string name="wizard_restart">重新开始</string>
+    <string name="wizard_restart">重新校准</string>
     <string name="wizard_resume">继续上次校准</string>
-    <string name="wizard_view_result">查看已完成结果</string>
-    <string name="wizard_more">继续详细补测</string>
-    <string name="wizard_extra_text">新校准额外测试的歌词（选填）</string>
+    <string name="wizard_view_result">查看校准结果</string>
+    <string name="wizard_more">继续补测</string>
+    <string name="wizard_extra_text">自定义测试歌词（选填）</string>
     <string name="wizard_checkpoint">已保存 %1$d 次回答，未完成草稿不会改变生效设置。</string>
-    <string name="wizard_completed_draft">已完成 %1$d 次判断，可查看结果或继续补测。</string>
-    <string name="wizard_saved_profiles">此布局的已保存配置</string>
+    <string name="wizard_completed_title">已完成 %1$d 项测试</string>
+    <string name="wizard_completed_draft">可随时查看当前结果，或继续进行补测。</string>
+    <string name="wizard_saved_profiles">当前布局配置</string>
     <string name="wizard_font_note">更换字体或主题后可能需要重新校准。已有配置请在原字体、主题下使用。</string>
-    <string name="wizard_defaults">恢复默认文字上限</string>
+    <string name="wizard_defaults">恢复默认字数上限</string>
     <string name="wizard_preparing">正在准备悬浮控制窗…</string>
     <string name="wizard_running">正在校准右侧歌词</string>
     <string name="wizard_profile_name">校准 %1$s</string>
@@ -48,10 +49,10 @@
     <string name="wizard_overlay_required">请先允许显示悬浮窗。暂停或结束校准后，控制窗会立即移除。</string>
     <string name="wizard_notifications_required">请先允许通知，再开始校准。</string>
     <string name="wizard_unsupported">当前设备配置不支持超级岛。</string>
-    <string name="wizard_ring_on">歌词旁有进度环</string>
-    <string name="wizard_ring_off">歌词旁无进度环</string>
-    <string name="wizard_ring_scope">两种状态分别保存校准进度和结果。本次测试当前实际生效的状态。</string>
+    <string name="wizard_ring_on">有进度环</string>
+    <string name="wizard_ring_off">无进度环</string>
+    <string name="wizard_ring_scope">有/无进度环的校准结果独立保存，当前将针对此状态进行校准。</string>
     <string name="wizard_other_mode_saved">另一种进度环状态已有配置</string>
     <string name="wizard_other_mode_hint">切换到对应状态时使用，不与本次校准混用。</string>
-    <string name="wizard_extra_hint">选填，展开后添加新校准需要验证的歌词。</string>
+    <string name="wizard_extra_hint">展开后可添加重新校准时需要额外验证的歌词。</string>
 </resources>

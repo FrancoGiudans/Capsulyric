@@ -147,8 +147,10 @@ internal fun RightCalibrationSheet(miuix: Boolean, onDismiss: () -> Unit) {
             if (message.isNotEmpty()) WizardText( message)
             else if (state.message.isNotEmpty()) WizardText( state.message)
             if (draft != null) {
-                WizardText( stringResource(if (completed) R.string.wizard_completed_draft else R.string.wizard_checkpoint,
-                    draft.answers.size))
+                if (completed) {
+                    WizardText(stringResource(R.string.wizard_completed_title, draft.answers.size))
+                    WizardText(stringResource(R.string.wizard_completed_draft))
+                } else WizardText(stringResource(R.string.wizard_checkpoint, draft.answers.size))
                 if (!compatible) WizardText( stringResource(R.string.wizard_environment_changed))
                 WizardButton( stringResource(if (completed) R.string.wizard_view_result else R.string.wizard_resume),
                     !starting && !state.running && compatible) { start(resume = true) }

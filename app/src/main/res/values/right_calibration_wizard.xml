@@ -1,17 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="wizard_intro">Start calibration, allow the floating control, then follow the tests on your home screen. Judge the actual Super Island: complete text passes, including text the system has reduced in size. Basic calibration aims for about a minute; extra checks appear only when needed. Progress is saved after every answer.</string>
+    <string name="wizard_intro">After you allow floating windows, the app will return to the home screen and display test texts in sequence. Check Super Island: text passes if it is not cut off. Standard testing takes about 1 minute. Add further checks only if text displays incorrectly. Each step is saved automatically.</string>
     <string name="wizard_begin">Start calibration</string>
-    <string name="wizard_restart">Start over</string>
+    <string name="wizard_restart">Recalibrate</string>
     <string name="wizard_resume">Continue previous calibration</string>
-    <string name="wizard_view_result">View completed result</string>
-    <string name="wizard_more">Continue detailed checks</string>
-    <string name="wizard_extra_text">Extra lyric to check (optional, for a new run)</string>
+    <string name="wizard_view_result">View calibration results</string>
+    <string name="wizard_more">Continue testing</string>
+    <string name="wizard_extra_text">Custom test lyrics (optional)</string>
     <string name="wizard_checkpoint">Saved progress: %1$d answers. An unfinished draft does not change your active settings.</string>
-    <string name="wizard_completed_draft">Completed: %1$d answers. You can view the result or add detailed checks.</string>
-    <string name="wizard_saved_profiles">Saved settings for this layout</string>
+    <string name="wizard_completed_title">%1$d tests completed</string>
+    <string name="wizard_completed_draft">View the current results at any time or continue testing.</string>
+    <string name="wizard_saved_profiles">Current layout settings</string>
     <string name="wizard_font_note">Changing fonts or themes may require a new calibration. Only use a saved setting with its original font and theme.</string>
-    <string name="wizard_defaults">Use default text limit</string>
+    <string name="wizard_defaults">Restore default character limit</string>
     <string name="wizard_preparing">Preparing the floating control…</string>
     <string name="wizard_running">Right-side lyric calibration in progress</string>
     <string name="wizard_profile_name">Calibration %1$s</string>
@@ -48,10 +49,10 @@
     <string name="wizard_overlay_required">Allow display over other apps before starting calibration. The control is removed when you pause or finish.</string>
     <string name="wizard_notifications_required">Allow notifications before starting calibration.</string>
     <string name="wizard_unsupported">Super Island is not available in the current device configuration.</string>
-    <string name="wizard_ring_on">Lyrics with progress ring</string>
-    <string name="wizard_ring_off">Lyrics without progress ring</string>
-    <string name="wizard_ring_scope">Calibration progress and saved settings are separate for these two layouts. This test uses the currently active layout.</string>
+    <string name="wizard_ring_on">With progress ring</string>
+    <string name="wizard_ring_off">Without progress ring</string>
+    <string name="wizard_ring_scope">Calibration results are saved separately with and without the progress ring. This calibration is for the current state.</string>
     <string name="wizard_other_mode_saved">The other layout has a saved calibration</string>
     <string name="wizard_other_mode_hint">It will apply when that progress ring state is active.</string>
-    <string name="wizard_extra_hint">Optional. Expand to add a lyric to the new calibration.</string>
+    <string name="wizard_extra_hint">Expand to add lyrics to check when recalibrating.</string>
 </resources>

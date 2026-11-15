@@ -50,8 +50,10 @@ internal fun MiuixRightCalibrationContent(
             Text(stringResource(R.string.wizard_intro), style = MiuixTheme.textStyles.footnote1,
                 color = MiuixTheme.colorScheme.onSurfaceVariantSummary)
             if (draftCount != null) Card {
-                BasicComponent(title = stringResource(if (completed) R.string.wizard_view_result else R.string.wizard_resume),
-                    summary = stringResource(if (completed) R.string.wizard_completed_draft else R.string.wizard_checkpoint, draftCount))
+                BasicComponent(title = if (completed) stringResource(R.string.wizard_completed_title, draftCount)
+                    else stringResource(R.string.wizard_resume),
+                    summary = if (completed) stringResource(R.string.wizard_completed_draft)
+                    else stringResource(R.string.wizard_checkpoint, draftCount))
                 if (!compatible) BasicComponent(summary = stringResource(R.string.wizard_environment_changed))
                 if (completed && !detailed) BasicComponent(title = stringResource(R.string.wizard_more),
                     enabled = enabled && compatible, onClick = onMore)
