@@ -53,7 +53,8 @@
     <string name="wizard_ring_off">无进度环</string>
     <string name="wizard_ring_scope">有/无进度环的校准结果独立保存，当前将针对此状态进行校准。</string>
     <string name="wizard_other_mode_saved">另一种进度环状态已有配置</string>
-    <string name="wizard_other_mode_hint">切换到对应状态时使用，不与本次校准混用。</string>
+    <string name="wizard_other_mode_hint">切换到对应状态时使用。</string>
+    <string name="wizard_more_actions">更多操作</string>
     <string name="wizard_extra_hint">展开后可添加重新校准时需要额外验证的歌词。</string>
     <string name="wizard_using_calibration">当前使用校准结果</string>
     <string name="wizard_manual_title">切换为手动设置？</string>

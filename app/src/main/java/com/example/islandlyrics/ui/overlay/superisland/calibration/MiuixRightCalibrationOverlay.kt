@@ -5,21 +5,28 @@ import android.graphics.PixelFormat
 import android.view.Gravity
 import android.view.WindowManager
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.*
 import androidx.savedstate.*
 import com.example.islandlyrics.R
 import com.example.islandlyrics.ui.miuix.theme.MiuixAppTheme
 import top.yukonga.miuix.kmp.basic.*
+import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.extended.Close
+import top.yukonga.miuix.kmp.icon.extended.More
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 /** A compact control surface, hosted by the service rather than a foreground Activity. */
@@ -56,6 +63,7 @@ internal class MiuixRightCalibrationOverlay(
     private var presentation by mutableStateOf<Presentation?>(null)
     private var feedbackEnabled by mutableStateOf(false)
     private var missingMessage by mutableStateOf(false)
+    private var actionsExpanded by mutableStateOf(false)
 
     override fun attach() {
         saved.performAttach()
@@ -83,6 +91,7 @@ internal class MiuixRightCalibrationOverlay(
         ring: Boolean, summary: String?) {
         feedbackEnabled = false
         missingMessage = false
+        actionsExpanded = false
         presentation = Presentation(probe, presentationToken, count, detailed, ring, summary)
     }
 
@@ -92,59 +101,91 @@ internal class MiuixRightCalibrationOverlay(
     @Composable
     private fun Controls() {
         val p = presentation ?: return
-        Card(Modifier.fillMaxWidth(), insideMargin = PaddingValues(horizontal = 20.dp, vertical = 16.dp)) {
-            Column(Modifier.fillMaxWidth().heightIn(max = 520.dp).verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Column(Modifier.fillMaxWidth().pointerInput(Unit) {
-                    detectDragGestures { change, delta ->
-                        change.consume()
-                        val metrics = context.resources.displayMetrics
-                        params.x = (params.x + delta.x).toInt().coerceIn(
-                            -(metrics.widthPixels - params.width) / 2, (metrics.widthPixels - params.width) / 2)
-                        params.y = (params.y - delta.y).toInt().coerceIn(dp(16),
-                            (metrics.heightPixels - root.height - dp(80)).coerceAtLeast(dp(16)))
-                        if (attached) manager.updateViewLayout(root, params)
-                    }
-                }) {
-                    Text(stringResource(RightCalibrationOverlay.stageTitle(p.probe.stage)), style = MiuixTheme.textStyles.subtitle)
-                    Text(stringResource(if (p.ring) R.string.wizard_ring_on else R.string.wizard_ring_off),
-                        style = MiuixTheme.textStyles.footnote1, color = MiuixTheme.colorScheme.primary)
+        val maxHeight = minOf(520, (context.resources.configuration.screenHeightDp * 0.7f).toInt()).dp
+        Card(Modifier.fillMaxWidth(), cornerRadius = 28.dp,
+            insideMargin = PaddingValues(horizontal = 24.dp, vertical = 12.dp)) {
+            Column(Modifier.fillMaxWidth().heightIn(max = maxHeight)) {
+                Box(Modifier.fillMaxWidth().height(20.dp).moveHandle(), contentAlignment = Alignment.Center) {
+                    Box(Modifier.size(32.dp, 4.dp).background(
+                        MiuixTheme.colorScheme.onSurfaceVariantSummary.copy(alpha = 0.3f), RoundedCornerShape(2.dp)))
                 }
-                Text(when {
-                    missingMessage -> stringResource(R.string.wizard_missing_help)
-                    p.summary != null -> p.summary
-                    p.probe.blocked -> stringResource(R.string.wizard_blocked)
-                    p.probe.scrolling -> stringResource(R.string.wizard_scroll_instruction)
-                    else -> stringResource(R.string.wizard_judge_instruction, p.count + 1)
-                }, style = MiuixTheme.textStyles.footnote1)
+                BasicComponent(
+                    title = stringResource(RightCalibrationOverlay.stageTitle(p.probe.stage)),
+                    summary = stringResource(if (p.ring) R.string.wizard_ring_on else R.string.wizard_ring_off),
+                    insideMargin = PaddingValues(vertical = 12.dp),
+                    modifier = Modifier.moveHandle(),
+                    endActions = {
+                        IconButton(onClick = { actionsExpanded = !actionsExpanded }) {
+                            Icon(MiuixIcons.More, stringResource(R.string.wizard_more_actions),
+                                tint = MiuixTheme.colorScheme.onSurfaceVariantActions)
+                        }
+                        IconButton(onClick = pause) {
+                            Icon(MiuixIcons.Close, stringResource(R.string.wizard_pause),
+                                tint = MiuixTheme.colorScheme.onSurfaceVariantActions)
+                        }
+                    }
+                )
+                Column(Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    Text(when {
+                        missingMessage -> stringResource(R.string.wizard_missing_help)
+                        p.summary != null -> p.summary
+                        p.probe.blocked -> stringResource(R.string.wizard_blocked)
+                        p.probe.scrolling -> stringResource(R.string.wizard_scroll_instruction)
+                        else -> stringResource(R.string.wizard_judge_instruction, p.count + 1)
+                    }, style = MiuixTheme.textStyles.body2, color = MiuixTheme.colorScheme.onSurfaceVariantSummary)
+                    if (p.summary == null) Card(Modifier.fillMaxWidth(), insideMargin = PaddingValues(16.dp),
+                        colors = CardDefaults.defaultColors(color = MiuixTheme.colorScheme.secondaryVariant)) {
+                        Text(p.probe.sample, style = MiuixTheme.textStyles.main, maxLines = 3,
+                            overflow = TextOverflow.Ellipsis)
+                        Spacer(Modifier.height(8.dp))
+                        Text(stringResource(R.string.wizard_expected_ending,
+                            Glyphs.parts(p.probe.sample).takeLast(8).joinToString("")),
+                            style = MiuixTheme.textStyles.footnote1, color = MiuixTheme.colorScheme.onSurfaceVariantSummary)
+                    }
+                    if (actionsExpanded) Card(Modifier.fillMaxWidth(), insideMargin = PaddingValues(0.dp),
+                        colors = CardDefaults.defaultColors(color = MiuixTheme.colorScheme.secondaryVariant)) {
+                        if (p.summary == null) {
+                            BasicComponent(title = stringResource(R.string.wizard_replay), onClick = replay)
+                            BasicComponent(title = stringResource(R.string.wizard_back), onClick = back, enabled = p.count > 0)
+                        }
+                        BasicComponent(title = stringResource(R.string.wizard_discard), onClick = discard)
+                    }
+                }
+                Spacer(Modifier.height(24.dp))
                 if (p.summary == null) {
-                    Text(p.probe.sample, style = MiuixTheme.textStyles.main, maxLines = 3)
-                    Text(stringResource(R.string.wizard_expected_ending,
-                        Glyphs.parts(p.probe.sample).takeLast(8).joinToString("")),
-                        style = MiuixTheme.textStyles.footnote1, color = MiuixTheme.colorScheme.onSurfaceVariantSummary)
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Button({ answer(p.token, false) }, Modifier.weight(1f), enabled = feedbackEnabled) {
+                        Button({ answer(p.token, false) }, Modifier.weight(1f), enabled = feedbackEnabled,
+                            minHeight = 48.dp, cornerRadius = 24.dp) {
                             Text(stringResource(R.string.wizard_incomplete))
                         }
                         Button({ answer(p.token, true) }, Modifier.weight(1f), enabled = feedbackEnabled,
+                            minHeight = 48.dp, cornerRadius = 24.dp,
                             colors = ButtonDefaults.buttonColorsPrimary()) { Text(stringResource(R.string.wizard_complete)) }
                     }
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        TextButton(stringResource(R.string.wizard_missing), missing)
-                        TextButton(stringResource(R.string.wizard_replay), replay)
-                        TextButton(stringResource(R.string.wizard_back), back, enabled = p.count > 0)
-                    }
+                    Spacer(Modifier.height(8.dp))
+                    TextButton(stringResource(R.string.wizard_missing), missing, Modifier.fillMaxWidth())
                 } else {
-                    Button(save, Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColorsPrimary()) {
+                    Button(save, Modifier.fillMaxWidth(), minHeight = 48.dp, cornerRadius = 24.dp,
+                        colors = ButtonDefaults.buttonColorsPrimary()) {
                         Text(stringResource(R.string.wizard_save))
                     }
+                    Spacer(Modifier.height(8.dp))
                     if (!p.detailed) TextButton(stringResource(R.string.wizard_more), more, Modifier.fillMaxWidth())
                 }
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    TextButton(stringResource(R.string.wizard_discard), discard)
-                    TextButton(stringResource(R.string.wizard_pause), pause)
-                }
             }
+        }
+    }
+
+    private fun Modifier.moveHandle() = pointerInput(Unit) {
+        detectDragGestures { change, delta ->
+            change.consume()
+            val metrics = context.resources.displayMetrics
+            params.x = (params.x + delta.x).toInt().coerceIn(
+                -(metrics.widthPixels - params.width) / 2, (metrics.widthPixels - params.width) / 2)
+            params.y = (params.y - delta.y).toInt().coerceIn(dp(16),
+                (metrics.heightPixels - root.height - dp(80)).coerceAtLeast(dp(16)))
+            if (attached) manager.updateViewLayout(root, params)
         }
     }
 }

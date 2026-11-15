@@ -54,6 +54,7 @@
     <string name="wizard_ring_scope">Calibration results are saved separately with and without the progress ring. This calibration is for the current state.</string>
     <string name="wizard_other_mode_saved">The other layout has a saved calibration</string>
     <string name="wizard_other_mode_hint">It will apply when that progress ring state is active.</string>
+    <string name="wizard_more_actions">More options</string>
     <string name="wizard_extra_hint">Expand to add lyrics to check when recalibrating.</string>
     <string name="wizard_using_calibration">Using calibration results</string>
     <string name="wizard_manual_title">Switch to manual settings?</string>

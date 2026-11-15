@@ -54,6 +54,7 @@
     <string name="wizard_ring_scope">調整結果は進捗リングの有無ごとに保存されます。現在の状態に合わせて調整します。</string>
     <string name="wizard_other_mode_saved">もう一方の状態に保存済みの設定があります</string>
     <string name="wizard_other_mode_hint">該当するリング状態でのみ適用されます。</string>
+    <string name="wizard_more_actions">その他の操作</string>
     <string name="wizard_extra_hint">展開すると、再調整時に追加で確認する歌詞を入力できます。</string>
     <string name="wizard_using_calibration">調整結果を使用中</string>
     <string name="wizard_manual_title">手動設定に切り替えますか？</string>
