@@ -12,7 +12,7 @@
     <string name="wizard_completed_draft">可隨時檢視目前結果，或繼續進行補測。</string>
     <string name="wizard_saved_profiles">目前版面設定</string>
     <string name="wizard_font_note">變更字型或主題後可能需要重新校準。既有設定請在原字型、主題下使用。</string>
-    <string name="wizard_defaults">恢復預設字數上限</string>
+    <string name="wizard_defaults">使用字數上限設定</string>
     <string name="wizard_preparing">正在準備懸浮控制窗…</string>
     <string name="wizard_running">正在校準右側歌詞</string>
     <string name="wizard_profile_name">校準 %1$s</string>
@@ -55,4 +55,8 @@
     <string name="wizard_other_mode_saved">另一種進度環狀態已有設定</string>
     <string name="wizard_other_mode_hint">切換到對應狀態時使用，不與本次校準混用。</string>
     <string name="wizard_extra_hint">展開後可新增重新校準時需要額外驗證的歌詞。</string>
+    <string name="wizard_using_calibration">目前使用校準結果</string>
+    <string name="wizard_manual_title">切換為手動設定？</string>
+    <string name="wizard_manual_warning">修改字數上限將切換為手動設定，可能導致末字截斷或淡出。校準設定會保留，可隨時重新啟用。</string>
+    <string name="wizard_manual_confirm">繼續修改</string>
 </resources>

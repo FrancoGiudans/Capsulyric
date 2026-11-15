@@ -19,6 +19,8 @@ internal data class RightCalibrationProfile(
     fun matches(environment: String, ring: Boolean) = this.environment == environment && this.ring == ring
 }
 
+internal data class RightManualLimitChange(val profile: RightCalibrationProfile, val value: Float? = null)
+
 /** Separate device-local preferences; the application's export/import never copies these profiles. */
 internal class RightCalibrationStore(private val prefs: SharedPreferences) {
     constructor(context: Context) : this(context.applicationContext.getSharedPreferences(FILE_NAME, Context.MODE_PRIVATE))
@@ -52,6 +54,15 @@ internal class RightCalibrationStore(private val prefs: SharedPreferences) {
     }
 
     fun disable(ring: Boolean) { prefs.edit().remove("selected_$ring").apply() }
+
+    fun active(environment: String, ring: Boolean): RightCalibrationProfile? =
+        selected(ring)?.takeIf { it.matches(environment, ring) }
+
+    fun confirmManualLimit(change: RightManualLimitChange, environment: String, ring: Boolean): Boolean {
+        if (active(environment, ring) != change.profile) return false
+        disable(ring)
+        return true
+    }
 
     fun delete(profile: RightCalibrationProfile) {
         val remaining = profiles().filterNot { it.id == profile.id }

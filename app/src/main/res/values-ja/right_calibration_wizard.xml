@@ -12,7 +12,7 @@
     <string name="wizard_completed_draft">現在の結果はいつでも確認でき、追加テストも行えます。</string>
     <string name="wizard_saved_profiles">現在のレイアウト設定</string>
     <string name="wizard_font_note">フォントやテーマを変更した場合は再調整が必要になることがあります。保存済み設定は元のフォントとテーマで使用してください。</string>
-    <string name="wizard_defaults">標準の文字数制限に戻す</string>
+    <string name="wizard_defaults">文字数制限の設定を使用</string>
     <string name="wizard_preparing">フローティング操作パネルを準備中…</string>
     <string name="wizard_running">右側の歌詞を調整中</string>
     <string name="wizard_profile_name">調整 %1$s</string>
@@ -55,4 +55,8 @@
     <string name="wizard_other_mode_saved">もう一方の状態に保存済みの設定があります</string>
     <string name="wizard_other_mode_hint">該当するリング状態でのみ適用されます。</string>
     <string name="wizard_extra_hint">展開すると、再調整時に追加で確認する歌詞を入力できます。</string>
+    <string name="wizard_using_calibration">調整結果を使用中</string>
+    <string name="wizard_manual_title">手動設定に切り替えますか？</string>
+    <string name="wizard_manual_warning">文字数制限を変更すると手動設定に切り替わり、末尾の文字が途切れたり薄くなったりする場合があります。調整結果は保存され、いつでも再び有効にできます。</string>
+    <string name="wizard_manual_confirm">変更を続ける</string>
 </resources>

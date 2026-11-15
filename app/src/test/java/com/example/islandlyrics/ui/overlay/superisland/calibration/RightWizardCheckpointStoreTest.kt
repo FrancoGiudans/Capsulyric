@@ -136,4 +136,53 @@ class RightWizardCheckpointStoreTest {
         assertNull(profiles.selected(true))
         assertEquals(plain, profiles.selected(false))
     }
+
+    @Test fun confirmingManualModePreservesBothDraftsProfilesAndTheStoredCharacterLimit() {
+        val memory = Memory()
+        val profiles = RightCalibrationStore(memory.prefs)
+        val checkpoints = RightWizardCheckpointStore(memory.prefs)
+        val ring = draft()
+        val plain = ring.copy(profile = ring.profile.copy(id = "plain", ring = false))
+        profiles.save(ring.profile)
+        profiles.save(plain.profile)
+        checkpoints.write(ring)
+        checkpoints.write(plain)
+        memory.values["super_island_text_limit_right_chars"] = 6.5f
+        val request = RightManualLimitChange(ring.profile, 8f)
+        assertTrue(profiles.confirmManualLimit(request, ring.profile.environment, true))
+        assertNull(profiles.active(ring.profile.environment, true))
+        assertEquals(plain.profile, profiles.selected(false))
+        assertEquals(listOf(ring.profile, plain.profile), profiles.profiles())
+        assertEquals(ring, checkpoints.read(true))
+        assertEquals(plain, checkpoints.read(false))
+        assertEquals(6.5f, memory.values["super_island_text_limit_right_chars"])
+    }
+
+    @Test fun staleManualConfirmationCannotChangeAnotherEnvironmentOrRingState() {
+        val memory = Memory()
+        val profiles = RightCalibrationStore(memory.prefs)
+        val ring = draft().profile
+        val plain = ring.copy(id = "plain", ring = false)
+        profiles.save(ring)
+        profiles.save(plain)
+        val request = RightManualLimitChange(ring, 8f)
+        assertFalse(profiles.confirmManualLimit(request, "changed display", true))
+        assertFalse(profiles.confirmManualLimit(request, ring.environment, false))
+        assertEquals(ring, profiles.selected(true))
+        assertEquals(plain, profiles.selected(false))
+    }
+
+    @Test fun staleManualConfirmationCannotDisableANewOrRecalibratedProfile() {
+        val memory = Memory()
+        val profiles = RightCalibrationStore(memory.prefs)
+        val original = draft().profile
+        profiles.save(original)
+        val request = RightManualLimitChange(original)
+        for (replacement in listOf(original.copy(id = "new"),
+                original.copy(calibration = original.calibration.copy(capacity = 5f)))) {
+            profiles.save(replacement)
+            assertFalse(profiles.confirmManualLimit(request, original.environment, true))
+            assertEquals(replacement, profiles.selected(true))
+        }
+    }
 }

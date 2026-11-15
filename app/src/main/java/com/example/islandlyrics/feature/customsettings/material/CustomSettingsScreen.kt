@@ -65,6 +65,7 @@ import com.example.islandlyrics.feature.settings.material.MaterialOtherSettingLi
 import com.example.islandlyrics.feature.main.MainActivity
 import com.example.islandlyrics.ui.overlay.model.SecondaryTextMode
 import com.example.islandlyrics.feature.customsettings.CustomSettingsAction
+import com.example.islandlyrics.feature.customsettings.RightManualLimitSetting
 import com.example.islandlyrics.feature.customsettings.RightCalibrationSheet
 import com.example.islandlyrics.feature.customsettings.CustomSettingsTab
 import com.example.islandlyrics.feature.customsettings.CustomSettingsViewModel
@@ -885,15 +886,19 @@ fun CustomSettingsScreen(
                                     if (superIslandTextLimitsLabEnabled) {
                                         val rightRange = SuperIslandTextLimitConfig.RIGHT_MIN_CHARS..
                                             SuperIslandTextLimitConfig.rightMaxChars(superIslandRelaxedTextLimitsLabEnabled)
-                                        MaterialSuperIslandTextLimitSlider(
-                                            title = stringResource(R.string.settings_super_island_right_text_limit),
-                                            value = superIslandRightTextChars.coerceIn(rightRange),
-                                            valueRange = rightRange,
-                                            onValueChange = { value ->
-                                                superIslandRightTextChars = value
-                                                viewModel.dispatch(CustomSettingsAction.SetSuperIslandTextLimit(SuperIslandTextLimitConfig.KEY_RIGHT_CHARS, value))
-                                            }
-                                        )
+                                        RightManualLimitSetting(miuix = false,
+                                            value = superIslandRightTextChars.coerceIn(rightRange), onValueChange = { value ->
+                                            superIslandRightTextChars = value
+                                            viewModel.dispatch(CustomSettingsAction.SetSuperIslandTextLimit(SuperIslandTextLimitConfig.KEY_RIGHT_CHARS, value))
+                                        }) { onChange, summary ->
+                                            MaterialSuperIslandTextLimitSlider(
+                                                title = stringResource(R.string.settings_super_island_right_text_limit),
+                                                value = superIslandRightTextChars.coerceIn(rightRange),
+                                                valueRange = rightRange,
+                                                summary = summary,
+                                                onValueChange = onChange
+                                            )
+                                        }
 
                                         if (superIslandLyricMode == "full") {
                                             val leftValue = when {
@@ -2585,7 +2590,8 @@ private fun MaterialSuperIslandTextLimitSlider(
     title: String,
     value: Float,
     valueRange: ClosedFloatingPointRange<Float>,
-    onValueChange: (Float) -> Unit
+    onValueChange: (Float) -> Unit,
+    summary: String? = null
 ) {
     val clampedValue = value.coerceIn(valueRange)
     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 10.dp)) {
@@ -2593,6 +2599,7 @@ private fun MaterialSuperIslandTextLimitSlider(
             text = "$title: ${formatSuperIslandTextLimit(clampedValue)}",
             style = MaterialTheme.typography.bodyLarge
         )
+        if (summary != null) Text(summary, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Slider(
             value = clampedValue,
             onValueChange = { raw ->

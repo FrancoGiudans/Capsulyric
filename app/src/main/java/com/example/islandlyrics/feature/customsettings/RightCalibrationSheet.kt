@@ -48,12 +48,15 @@ internal fun RightCalibrationSheet(miuix: Boolean, onDismiss: () -> Unit) {
     var starting by rememberSaveable { mutableStateOf(false) }
     var custom by rememberSaveable { mutableStateOf("") }
     var message by remember { mutableStateOf("") }
+    var pendingManual by remember { mutableStateOf<RightManualLimitChange?>(null) }
     val environment = RightCalibrationStore.environment(context)
     val ring = remember(revision) { RightWizardController.currentRing(context) }
     val draft = remember(revision, ring) { checkpoints.read(ring) }
     val profiles = remember(revision, ring) { store.profiles().filter { it.ring == ring } }
     val compatible = draft?.profile?.matches(environment, ring) == true
     val completed = remember(draft, state.running) { !state.running && draft?.restore()?.completed == true }
+    val active = store.active(environment, ring)
+    LaunchedEffect(active) { if (pendingManual?.profile != active) pendingManual = null }
 
     DisposableEffect(store) {
         val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, _ -> revision++ }
@@ -138,6 +141,13 @@ internal fun RightCalibrationSheet(miuix: Boolean, onDismiss: () -> Unit) {
         onDismiss()
     }
 
+    fun useManual() {
+        val currentRing = RightWizardController.currentRing(context)
+        val profile = store.active(RightCalibrationStore.environment(context), currentRing)
+        if (profile == null) store.disable(currentRing)
+        else pendingManual = RightManualLimitChange(profile)
+    }
+
     val content: @Composable () -> Unit = {
         Column(Modifier.fillMaxWidth().heightIn(max = 600.dp).imePadding()
             .verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -169,7 +179,7 @@ internal fun RightCalibrationSheet(miuix: Boolean, onDismiss: () -> Unit) {
                 }
             }
             WizardText( stringResource(R.string.wizard_font_note))
-            WizardButton( stringResource(R.string.wizard_defaults), !starting && !state.running) { store.disable(ring) }
+            WizardButton( stringResource(R.string.wizard_defaults), !starting && !state.running, ::useManual)
             WizardButton( stringResource(R.string.update_close), onClick = ::dismiss)
         }
     }
@@ -186,9 +196,15 @@ internal fun RightCalibrationSheet(miuix: Boolean, onDismiss: () -> Unit) {
             starting = starting, message = message.ifEmpty { state.message }, custom = custom,
             onCustomChange = { custom = Glyphs.limit(it, 160) }, onStart = { start(false) },
             onResume = { start(true) }, onMore = { start(true, true) }, onSelect = { store.save(it) },
-            onDefaults = { store.disable(ring) })
+            onDefaults = ::useManual)
     }
     else ModalBottomSheet(onDismissRequest = ::dismiss) { content() }
+    if (pendingManual != null) RightManualModeDialog(miuix, onDismiss = { pendingManual = null }, onConfirm = {
+        val change = pendingManual
+        pendingManual = null
+        if (change != null) store.confirmManualLimit(change, RightCalibrationStore.environment(context),
+            RightWizardController.currentRing(context))
+    })
 }
 
 @Composable
