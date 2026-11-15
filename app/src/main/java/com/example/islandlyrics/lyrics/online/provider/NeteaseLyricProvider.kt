@@ -124,7 +124,7 @@ internal class NeteaseLyricProvider(
                     api = "Netease",
                     lyrics = if (hasSyllable) yrcContent else lyricContent,
                     parsedLines = parsedLines,
-                    hasSyllable = hasSyllable,
+                    hasSyllable = parsedLines.any { !it.syllables.isNullOrEmpty() },
                     provider = OnlineLyricProvider.Netease,
                     matchedTitle = matchedTitle,
                     matchedArtist = matchedArtist,

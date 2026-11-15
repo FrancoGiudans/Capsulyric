@@ -216,6 +216,27 @@ class LyricifyDatabaseImporterTest {
         assertEquals(listOf("Hello", "World", "Again"), lines.map { it.text })
     }
 
+    @Test fun importsEnhancedLrcAfterNormalizingLineTimestamps() {
+        val lines = LyricifyDatabaseImporter.parseDocument("Lrc", "[0:01]<00:01.25>Hello <00:02.345>world<00:03.50>")
+        val line = lines.single()
+
+        assertTrue(LyricifyDatabaseImporter.hasDisplayableLyrics(lines))
+        assertEquals("Hello world", line.text)
+        assertEquals(1_000L, line.startTime)
+        assertEquals(3_500L, line.endTime)
+        val syllables = line.syllables!!
+        assertEquals(listOf(1_250L, 2_345L), syllables.map { it.startTime })
+        assertEquals(listOf(2_345L, 3_500L), syllables.map { it.endTime })
+    }
+
+    @Test fun enhancedTimingTagsWithoutTextAreNotDisplayableLyrics() {
+        val lines = LyricifyDatabaseImporter.parseDocument("Lrc", "[0:01]<00:01.000><00:02.000>")
+
+        assertEquals("", lines.single().text)
+        assertTrue(lines.single().syllables.isNullOrEmpty())
+        assertFalse(LyricifyDatabaseImporter.hasDisplayableLyrics(lines))
+    }
+
     @Test fun timestampOnlyAssetsAreRejected() {
         val lines = LyricifyDatabaseImporter.parseDocument("Lrc", "[00:01]\n[00:02]")
         assertEquals(listOf("", ""), lines.map { it.text })

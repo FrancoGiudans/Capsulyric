@@ -72,7 +72,7 @@ internal class LrcApiLyricProvider(
                     api = "LrcApi",
                     lyrics = response,
                     parsedLines = parsedLines,
-                    hasSyllable = hasSyllable,
+                    hasSyllable = parsedLines.any { !it.syllables.isNullOrEmpty() },
                     provider = OnlineLyricProvider.LrcApi
                 )
             } catch (e: Exception) {

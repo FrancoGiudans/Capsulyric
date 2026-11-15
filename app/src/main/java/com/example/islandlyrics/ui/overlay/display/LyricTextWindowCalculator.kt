@@ -91,6 +91,28 @@ internal object LyricTextWindowCalculator {
         return text.substring(startIndex, endIndex).trim()
     }
 
+    fun lrcWindow(
+        fullText: String,
+        startTime: Long,
+        endTime: Long,
+        position: Long,
+        maxDisplayWeight: Int
+    ): String {
+        val fullWeight = weight(fullText)
+        if (fullWeight <= maxDisplayWeight) return fullText
+
+        val lineDuration = endTime - startTime
+        val lineProgress = if (lineDuration > 0) {
+            ((position - startTime).toFloat() / lineDuration.toFloat()).coerceIn(0f, 1f)
+        } else 0f
+        val currentProgressWeight = (lineProgress * fullWeight).toInt()
+        val threshold = scrollStartThreshold(fullText, maxDisplayWeight)
+        val targetOffset = if (currentProgressWeight < threshold) 0 else currentProgressWeight - threshold
+        // Keep the window at the configured width when scrolling to the tail.
+        val maxAllowedScroll = maxOf(0, fullWeight - maxDisplayWeight)
+        return extractByWeight(fullText, minOf(targetOffset, maxAllowedScroll), maxDisplayWeight)
+    }
+
     fun syllableWindow(
         fullText: String,
         sungText: String,

@@ -12,6 +12,29 @@ import java.util.Locale
 
 class LyricTextWindowCalculatorTest {
     @Test
+    fun lrcWindowMovesLongLinesFromStartToTail() {
+        val examples = listOf(
+            Triple("abcdefghijklmnopqrst", "abcdefgh", "mnopqrst"),
+            Triple("一二三四五六七八九十", "一二三四", "七八九十")
+        )
+        for ((text, first, last) in examples) {
+            assertEquals(text, first, LyricTextWindowCalculator.lrcWindow(text, 1_000, 11_000, 1_000, 8))
+            val middle = LyricTextWindowCalculator.lrcWindow(text, 1_000, 11_000, 6_000, 8)
+            assertFalse(text, middle == first)
+            assertEquals(text, last, LyricTextWindowCalculator.lrcWindow(text, 1_000, 11_000, 10_999, 8))
+        }
+    }
+
+    @Test
+    fun lrcWindowKeepsShortLinesWholeAndClampsPlaybackPosition() {
+        assertEquals("短歌词", LyricTextWindowCalculator.lrcWindow("短歌词", 1_000, 2_000, 1_500, 8))
+        val text = "abcdefghijklmnopqrst"
+        assertEquals("abcdefgh", LyricTextWindowCalculator.lrcWindow(text, 1_000, 11_000, 0, 8))
+        assertEquals("mnopqrst", LyricTextWindowCalculator.lrcWindow(text, 1_000, 11_000, 12_000, 8))
+        assertEquals("abcdefgh", LyricTextWindowCalculator.lrcWindow(text, 1_000, 1_000, 1_000, 8))
+    }
+
+    @Test
     fun visualCenterSyllableWindow_keepsShortLyricsWhole() {
         val text = "短歌词"
 

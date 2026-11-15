@@ -47,6 +47,7 @@ internal object OnlineLyricParser {
     private val KRC_SYLLABLE_TOKEN_REGEX = Regex("""<(\d+),(\d+),(\d+)>""")
     private val BRACKET_WORD_REGEX = Regex("""(?m)^\[\d+(?:,\d+)?]\s*(?:<\d+,\d+,\d+>[^<\r\n]*)+""")
     private val QQ_LINE_SEGMENT_REGEX = Regex("""\[\d+,\d+\]""")
+    private val ENHANCED_LRC_TIME_REGEX = Regex("""<(\d{1,2}):([0-5]\d)\.(\d{2,3})>""")
 
     private fun hasKrcSyllableTokens(content: String): Boolean {
         return KRC_SYLLABLE_TOKEN_REGEX.containsMatchIn(content)
@@ -177,15 +178,52 @@ internal object OnlineLyricParser {
         for (i in timedLines.indices) {
             val startTime = timedLines[i].first
             val text = timedLines[i].second
-            val endTime = if (i < timedLines.size - 1) {
-                timedLines[i + 1].first
-            } else {
-                startTime + 5000
-            }
-            lines.add(OnlineLyricFetcher.LyricLine(startTime, endTime, text, null))
+            lines.add(parseLrcLine(startTime, timedLines.getOrNull(i + 1)?.first, text))
         }
 
         return lines
+    }
+
+    /** Enhanced LRC uses absolute word timestamps; ES/KRC comma tokens use separate parsers. */
+    internal fun parseLrcLine(startTime: Long, nextStartTime: Long?, text: String): OnlineLyricFetcher.LyricLine {
+        val line = OnlineLyricFetcher.LyricLine(startTime, nextStartTime ?: (startTime + 5000), text)
+        val matches = ENHANCED_LRC_TIME_REGEX.findAll(text).toList()
+        if (matches.isEmpty()) return line
+
+        val plainLine = line.copy(text = text.replace(ENHANCED_LRC_TIME_REGEX, ""))
+        if (plainLine.text.isBlank()) return plainLine
+
+        val times = matches.map { match ->
+            val fraction = match.groupValues[3]
+            match.groupValues[1].toLong() * 60000 + match.groupValues[2].toLong() * 1000 +
+                fraction.toLong() * if (fraction.length == 2) 10 else 1
+        }
+        val endTime = if (matches.last().range.last == text.lastIndex) {
+            times.last()
+        } else {
+            nextStartTime ?: (maxOf(startTime, times.last()) + 5000)
+        }
+        if (times.first() < startTime || endTime <= startTime || endTime < times.last() ||
+            (nextStartTime != null && endTime > nextStartTime) ||
+            times.zipWithNext().any { (start, end) -> end < start }
+        ) return plainLine
+
+        val syllables = buildList {
+            val prefix = text.substring(0, matches.first().range.first)
+            if (prefix.isNotEmpty()) {
+                add(OnlineLyricFetcher.SyllableInfo(startTime, times.first(), prefix))
+            }
+            matches.forEachIndexed { index, match ->
+                val wordText = text.substring(
+                    match.range.last + 1,
+                    matches.getOrNull(index + 1)?.range?.first ?: text.length
+                )
+                if (wordText.isNotEmpty()) {
+                    add(OnlineLyricFetcher.SyllableInfo(times[index], times.getOrNull(index + 1) ?: endTime, wordText))
+                }
+            }
+        }
+        return plainLine.copy(endTime = endTime, syllables = syllables)
     }
 
     fun parseSodaLyrics(

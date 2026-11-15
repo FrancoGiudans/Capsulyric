@@ -75,7 +75,7 @@ internal class LrclibLyricProvider(
                     api = "LRCLIB",
                     lyrics = lyricContent,
                     parsedLines = parsedLines,
-                    hasSyllable = false,
+                    hasSyllable = parsedLines.any { !it.syllables.isNullOrEmpty() },
                     provider = OnlineLyricProvider.Lrclib,
                     matchedTitle = json.optString("trackName"),
                     matchedArtist = json.optString("artistName"),

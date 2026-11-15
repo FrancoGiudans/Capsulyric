@@ -26,6 +26,7 @@ import android.content.Context
 import android.net.Uri
 import com.example.islandlyrics.core.logging.AppLogger
 import com.example.islandlyrics.lyrics.online.OnlineLyricFetcher
+import com.example.islandlyrics.lyrics.online.parser.OnlineLyricParser
 import java.io.InputStream
 import java.nio.charset.Charset
 
@@ -173,15 +174,11 @@ object LocalLrcParser {
 
         mainLines.sortBy { it.first }
         val parsed = mainLines.mapIndexed { index, (startTime, text) ->
-            val endTime = if (index < mainLines.size - 1) {
-                mainLines[index + 1].first
-            } else {
-                startTime + 5000
-            }
-            OnlineLyricFetcher.LyricLine(startTime, endTime, text, null)
-        }
+            OnlineLyricParser.parseLrcLine(startTime, mainLines.getOrNull(index + 1)?.first, text)
+        }.filter { it.text.isNotBlank() }
+        if (parsed.isEmpty()) return null
 
-        return ParseResult(parsed, false, translationLines, romanLines)
+        return ParseResult(parsed, parsed.any { !it.syllables.isNullOrEmpty() }, translationLines, romanLines)
     }
 
     private fun parseEsLyricLine(lineStartTime: Long, textPart: String): OnlineLyricFetcher.LyricLine? {
