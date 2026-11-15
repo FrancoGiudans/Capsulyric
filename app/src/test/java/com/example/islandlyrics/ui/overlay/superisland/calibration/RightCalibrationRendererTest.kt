@@ -43,6 +43,22 @@ class RightCalibrationRendererTest {
         assertNull(result.textInfo)
     }
 
+    @Test fun ringCalibrationPresentsTheUncutSampleAndVisibleNativeProgress() {
+        val sample = "一二三四五六七八九 W1"
+        val config = base.copy(rightTextPolicy = policy, rightPreviewText = sample)
+        val original = render(base, ring = true)
+        val result = BigIslandArea().apply {
+            applyLyrics(config, preferMetadataLayout = false, isTimingGapPlaceholder = false,
+                fullLyric = "歌词", displayLyric = "歌词", titleWithArtist = "歌名 - 歌手",
+                islandKey = "cover-key", showHighlightColor = false,
+                rightProgressRingEnabled = true, progressPercent = 50)
+        }
+        assertEquals(sample, result.progressTextInfo?.textInfo?.title)
+        assertEquals(50, result.progressTextInfo?.progressInfo?.progress)
+        assertEquals(original.imageTextInfoLeft?.textInfo?.title, result.imageTextInfoLeft?.textInfo?.title)
+        assertNull(result.textInfo)
+    }
+
     @Test fun metadataFallbackIsNotSubjectToLyricCalibration() {
         val original = render(base, metadata = true)
         val calibrated = render(base.copy(rightTextPolicy = policy), metadata = true)

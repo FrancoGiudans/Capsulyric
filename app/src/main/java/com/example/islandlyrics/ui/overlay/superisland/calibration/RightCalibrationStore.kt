@@ -20,8 +20,8 @@ internal data class RightCalibrationProfile(
 }
 
 /** Separate device-local preferences; the application's export/import never copies these profiles. */
-internal class RightCalibrationStore(context: Context) {
-    private val prefs = context.applicationContext.getSharedPreferences(FILE_NAME, Context.MODE_PRIVATE)
+internal class RightCalibrationStore(private val prefs: SharedPreferences) {
+    constructor(context: Context) : this(context.applicationContext.getSharedPreferences(FILE_NAME, Context.MODE_PRIVATE))
     private var cachedJson: String? = null
     private var cachedProfiles = emptyList<RightCalibrationProfile>()
 
@@ -66,6 +66,9 @@ internal class RightCalibrationStore(context: Context) {
     fun unregister(listener: SharedPreferences.OnSharedPreferenceChangeListener) =
         prefs.unregisterOnSharedPreferenceChangeListener(listener)
 
+    internal fun profileJson(profile: RightCalibrationProfile): JSONObject = encode(profile)
+    internal fun readProfile(json: JSONObject): RightCalibrationProfile = decode(json)
+
     private fun encode(p: RightCalibrationProfile) = JSONObject().apply {
         put("version", 1)
         put("id", p.id); put("name", p.name); put("environment", p.environment); put("ring", p.ring)
@@ -101,8 +104,15 @@ internal class RightCalibrationStore(context: Context) {
             val resources = context.applicationContext.resources
             val c = resources.configuration
             val m = resources.displayMetrics
+            val p = com.example.islandlyrics.core.settings.AppPreferences.of(context)
+            val layout = listOf(
+                com.example.islandlyrics.core.settings.AppPreferences.superIslandLyricMode(p),
+                com.example.islandlyrics.core.settings.AppPreferences.superIslandNotificationStyle(p),
+                com.example.islandlyrics.core.settings.AppPreferences.isSuperIslandFullLyricLeftCoverEnabled(p),
+                com.example.islandlyrics.core.settings.AppPreferences.isSuperIslandStandardShowLeftCoverEnabled(p)
+            ).joinToString(":")
             return listOf(Build.FINGERPRINT, m.widthPixels, m.heightPixels, c.densityDpi,
-                c.fontScale, c.orientation, c.locales.toLanguageTags()).joinToString("|")
+                c.fontScale, c.orientation, c.locales.toLanguageTags(), layout).joinToString("|")
         }
     }
 }
@@ -161,6 +171,8 @@ internal object RightCalibrationRuntime {
     )
     var preview: Preview? = null
         private set
+    var previewRevision: Long = 0L
+        private set
     private var rendererOwner: Any? = null
     private var rendererReady: (() -> Boolean)? = null
     private var refresh: (() -> Unit)? = null
@@ -176,6 +188,7 @@ internal object RightCalibrationRuntime {
     fun show(preview: Preview): Boolean {
         if (rendererReady?.invoke() != true) return false
         this.preview = preview
+        previewRevision++
         previewChanged()
         refresh?.invoke()
         return true
@@ -183,6 +196,7 @@ internal object RightCalibrationRuntime {
     fun stop(owner: Any) {
         if (preview?.owner != owner) return
         preview = null
+        previewRevision++
         previewChanged()
         refresh?.invoke()
     }

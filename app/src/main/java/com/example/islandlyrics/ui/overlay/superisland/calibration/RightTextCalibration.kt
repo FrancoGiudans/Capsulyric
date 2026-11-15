@@ -18,7 +18,7 @@ internal data class RightTextCalibration(
     val overrides: Map<String, Float> = emptyMap()
 ) {
     fun sanitized() = copy(
-        capacity = capacity.finiteIn(1f, 30f, 7f),
+        capacity = capacity.finiteIn(1f, 64f, 7f),
         letterWidth = letterWidth.finiteIn(0.05f, 3f, 0.5f),
         letterScale = letterScale.finiteIn(0.1f, 4f, 1f),
         digitWidth = digitWidth.finiteIn(0.05f, 3f, 0.5f),
@@ -26,7 +26,7 @@ internal data class RightTextCalibration(
         spaceWidth = spaceWidth.finiteIn(0.05f, 3f, 0.25f),
         fullSpaceWidth = fullSpaceWidth.finiteIn(0.05f, 3f, 1f),
         punctuationScale = punctuationScale.finiteIn(0.1f, 4f, 1f),
-        margin = margin.finiteIn(0f, capacity.finiteIn(1f, 30f, 7f) - 0.1f, 0f),
+        margin = margin.finiteIn(0f, capacity.finiteIn(1f, 64f, 7f) - 0.1f, 0f),
         overrides = overrides.entries.asSequence().filter {
             it.key.length <= 32 && Glyphs.parts(it.key).size == 1 && it.value.isFinite() && it.value > 0f
         }.take(128).associate { it.key to it.value.coerceIn(0.05f, 10f) }

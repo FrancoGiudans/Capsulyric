@@ -156,9 +156,16 @@ class SuperIslandHandler(
         progressBitmapCache.clear()
         notificationDispatcher.resetState()
         RightCalibrationRuntime.attach(this, { isRunning && lastState != null }) {
-            renderStateTracker.forceNotify("rightCalibration")
+            renderStateTracker.clearFocusSignature()
             refreshVisibility()
         }
+    }
+
+    internal fun prepareCalibration(state: UIState?) {
+        start()
+        val baseline = state ?: UIState(title = "Capsulyric", displayLyric = "♪", fullLyric = "♪")
+        render(if (com.example.islandlyrics.ui.overlay.superisland.calibration.RightWizardController.currentRing(context))
+            baseline.copy(progressCurrent = 50, progressMax = 100) else baseline)
     }
 
     fun refreshVisibility() {
@@ -253,7 +260,7 @@ class SuperIslandHandler(
             renderStateTracker.forceNotify("lockScreenVisibility")
         }
 
-        val extraContentSignature = when {
+        val extraContentSignature = (when {
             dualLineText != null -> dualLineText.signature
             template18Content != null -> listOf(
                 template18Content.currentLyric,
@@ -267,7 +274,7 @@ class SuperIslandHandler(
                 effectiveRenderedActionStyle
             ).joinToString("\u0001")
             else -> secondaryText.orEmpty()
-        }
+        }) + "|rightCalibration=${RightCalibrationRuntime.previewRevision}"
 
         val renderDecision = renderStateTracker.prepare(
             state = state,
