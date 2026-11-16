@@ -21,6 +21,42 @@ class LyricifyDatabaseImporterTest {
         parsedLines = listOf(OnlineLyricFetcher.LyricLine(1_000L, 2_000L, text)), providerTrackId = "123"
     )
 
+    private fun payload(track: String) =
+        """{"version":2,"lyrics":{"format":"Lrc","text":"[00:01]Text"},"providerTrack":$track}"""
+
+    @Test fun optionalIdentityFieldsDoNotCoerceNonStrings() {
+        for (value in listOf("null", "123", "true", "{}", "[]")) {
+            val selected = LyricifyDatabaseImporter.convertPayload(payload(
+                """{"Identifier":$value,"Title":$value,"Album":$value,"Artists":[$value,"Artist"]}"""), "QQMusic")
+            assertNull(selected.providerTrackId)
+            assertNull(selected.matchedTitle)
+            assertNull(selected.matchedAlbum)
+            assertEquals("Artist", selected.matchedArtist)
+            assertFalse(LyricifyDatabaseImporter.hasMatchableIdentity(LyricifyTrackIdentity("Title", "Artist"), selected))
+        }
+    }
+
+    @Test fun invalidPrimaryIdentifierStillAllowsValidSecondaryIdentity() {
+        for (value in listOf("null", "\"null\"", "123", "{}")) {
+            val selected = LyricifyDatabaseImporter.convertPayload(payload(
+                """{"Identifier":$value,"SecondaryIdentifier":"001RaE0n4RrGX9","Title":"Title","Artists":["Artist"],"Album":"Album","DurationMs":180000}"""), "QQMusic")
+            assertEquals("001RaE0n4RrGX9", selected.providerTrackId)
+            assertEquals("Title", selected.matchedTitle)
+            assertEquals("Album", selected.matchedAlbum)
+            assertEquals(180_000L, selected.matchedDurationMs)
+            assertTrue(LyricifyDatabaseImporter.hasMatchableIdentity(LyricifyTrackIdentity("Title", "Artist"), selected))
+        }
+    }
+
+    @Test fun literalNullNamesRemainValidStrings() {
+        val selected = LyricifyDatabaseImporter.convertPayload(payload(
+            """{"Identifier":"123","Title":"null","Artists":["null"],"Album":"null"}"""), "QQMusic")
+        assertEquals("123", selected.providerTrackId)
+        assertEquals("null", selected.matchedTitle)
+        assertEquals("null", selected.matchedArtist)
+        assertEquals("null", selected.matchedAlbum)
+    }
+
     @Test fun mapsForeignProviderNamesToExistingProviders() {
         assertEquals(OnlineLyricProvider.QQMusic, LyricifyDatabaseImporter.providerFor("QQMusic"))
         assertEquals(OnlineLyricProvider.Kugou, LyricifyDatabaseImporter.providerFor("KugouMusic"))
@@ -71,6 +107,36 @@ class LyricifyDatabaseImporterTest {
     @Test fun missingEvidenceDoesNotForceAMerge() {
         val track = LyricifyTrackIdentity("Title", "Artist")
         assertFalse(LyricifyDatabaseImporter.sameTrack(track, track))
+    }
+
+    @Test fun importIdentityRequiresEvidenceUsedByTheCache() {
+        val weak = LyricifyTrackIdentity("Title", "Artist")
+        val selected = incoming.copy(providerTrackId = null)
+        for (identity in listOf(weak, weak.copy(artist = "", album = "Album"), weak.copy(title = "", album = "Album"))) {
+            assertFalse(LyricifyDatabaseImporter.hasMatchableIdentity(identity, selected))
+        }
+        assertFalse(LyricifyDatabaseImporter.hasMatchableIdentity(weak, selected.copy(providerTrackId = "invalid")))
+        assertFalse(LyricifyDatabaseImporter.hasMatchableIdentity(weak, selected.copy(matchedAlbum = " ", matchedDurationMs = 0L)))
+    }
+
+    @Test fun importIdentityAcceptsCatalogAndSelectedAssetEvidence() {
+        val weak = LyricifyTrackIdentity("Title", "Artist")
+        val selected = incoming.copy(providerTrackId = null)
+        val cases = listOf(
+            weak.copy(album = "Album") to selected,
+            weak.copy(durationMs = 180_000L) to selected,
+            weak.copy(providerIds = mapOf("netease" to "123")) to selected,
+            weak to selected.copy(matchedAlbum = "Album"),
+            weak to selected.copy(matchedDurationMs = 180_000L),
+            weak to incoming,
+        )
+        for ((identity, result) in cases) assertTrue(LyricifyDatabaseImporter.hasMatchableIdentity(identity, result))
+    }
+
+    @Test fun selectedAssetNamesDoNotSubstituteForCatalogNames() {
+        val selected = incoming.copy(providerTrackId = null, matchedTitle = "Title", matchedArtist = "Artist", matchedAlbum = "Album")
+        assertFalse(LyricifyDatabaseImporter.hasMatchableIdentity(LyricifyTrackIdentity("Title", ""), selected))
+        assertFalse(LyricifyDatabaseImporter.hasMatchableIdentity(LyricifyTrackIdentity("", "Artist"), selected))
     }
 
     @Test fun contradictoryPlatformIdsAreKeptSeparate() {

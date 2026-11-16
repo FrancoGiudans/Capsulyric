@@ -3,7 +3,6 @@ package com.example.islandlyrics.lyrics.importer
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import android.net.Uri
-import com.example.islandlyrics.core.settings.LabFeatureManager
 import com.example.islandlyrics.lyrics.cache.OnlineLyricCacheStore
 import com.example.islandlyrics.lyrics.online.OnlineLyricFetcher
 import com.example.islandlyrics.lyrics.online.parser.OnlineLyricParser
@@ -70,12 +69,10 @@ object LyricifyDatabaseImporter {
         onProgress: (LyricifyImportProgress) -> Unit = {},
         isCancellationRequested: () -> Boolean = { false }
     ): Report {
-        check(LabFeatureManager.isLyricifyImportEnabled(context)) { "Import is disabled" }
         val jobContext = currentCoroutineContext()
         val checkActive = {
             jobContext.ensureActive()
             if (isCancellationRequested()) throw CancellationException("Import cancelled")
-            check(LabFeatureManager.isLyricifyImportEnabled(context)) { "Import is disabled" }
         }
         val copy = File.createTempFile("lyricify-import-", ".db", context.cacheDir)
         try {
@@ -194,7 +191,7 @@ object LyricifyDatabaseImporter {
                             if (parsedUnits > MAX_PARSE_UNITS) throw LimitExceeded("Too many parsed song elements")
                             Asset(assets.getLong(0), assets.getInt(4) != 0, result,
                                 listOf("Identifier", "SecondaryIdentifier", "TertiaryIdentifier").flatMap { key ->
-                                    identityIds(result.provider, payload.optJSONObject("providerTrack")?.optString(key)).entries.map { it.toPair() }
+                                    identityIds(result.provider, payload.optJSONObject("providerTrack")?.opt(key) as? String).entries.map { it.toPair() }
                                 }.toMap())
                         } catch (error: Exception) {
                             if (error is CancellationException || error is LimitExceeded) throw error
@@ -209,8 +206,9 @@ object LyricifyDatabaseImporter {
                 if (selected == null) { onFailed(); continue }
                 candidates.forEach { ids.putAll(it.providerIds) }
                 ids.putAll(selected.providerIds)
-                yield(LyricifyTrackIdentity(tracks.getString(1), tracks.getString(2), tracks.getString(3).orEmpty(), tracks.getLong(4), ids) to
-                    LyricifyImportSelection(candidates.map { it.result }, selected.result))
+                val identity = LyricifyTrackIdentity(tracks.getString(1), tracks.getString(2), tracks.getString(3).orEmpty(), tracks.getLong(4), ids)
+                if (!hasMatchableIdentity(identity, selected.result)) { onFailed(); continue }
+                yield(identity to LyricifyImportSelection(candidates.map { it.result }, selected.result))
             }
         }
     }
@@ -231,6 +229,16 @@ object LyricifyDatabaseImporter {
         "musixmatch" -> OnlineLyricProvider.Musixmatch
         "lrcapi" -> OnlineLyricProvider.LrcApi
         else -> null
+    }
+
+    internal fun hasMatchableIdentity(identity: LyricifyTrackIdentity, selected: OnlineLyricFetcher.LyricResult): Boolean {
+        // Use the same identity fallbacks as the imported cache entry.
+        val effective = identity.copy(
+            album = identity.album.ifBlank { selected.matchedAlbum.orEmpty() },
+            durationMs = identity.durationMs.takeIf { it > 0 } ?: selected.matchedDurationMs ?: 0L,
+            providerIds = identity.providerIds + identityIds(selected.provider, selected.providerTrackId),
+        )
+        return sameTrack(effective, effective)
     }
 
     internal fun sameTrack(first: LyricifyTrackIdentity, second: LyricifyTrackIdentity): Boolean {
@@ -311,7 +319,7 @@ object LyricifyDatabaseImporter {
         }
         val track = root.optJSONObject("providerTrack")
         val trackId = listOf("Identifier", "SecondaryIdentifier", "TertiaryIdentifier").firstNotNullOfOrNull { key ->
-            track?.optString(key)?.let(provider::normalizeTrackId)
+            (track?.opt(key) as? String)?.let(provider::normalizeTrackId)
         }
         return OnlineLyricFetcher.LyricResult(
             api = "Lyricify · ${providerName ?: localName ?: "Local"}",
@@ -319,11 +327,11 @@ object LyricifyDatabaseImporter {
             parsedLines = lines,
             hasSyllable = lines.any { !it.syllables.isNullOrEmpty() },
             provider = provider,
-            matchedTitle = track?.optString("Title")?.takeIf { it.isNotBlank() },
+            matchedTitle = (track?.opt("Title") as? String)?.takeIf { it.isNotBlank() },
             matchedArtist = track?.optJSONArray("Artists")?.let { array ->
-                (0 until array.length()).map { array.optString(it) }.filter { it.isNotBlank() }.joinToString(" / ")
+                (0 until array.length()).mapNotNull { array.opt(it) as? String }.filter { it.isNotBlank() }.joinToString(" / ")
             },
-            matchedAlbum = track?.optString("Album")?.takeIf { it.isNotBlank() },
+            matchedAlbum = (track?.opt("Album") as? String)?.takeIf { it.isNotBlank() },
             matchedDurationMs = track?.optLong("DurationMs")?.takeIf { it > 0 },
             providerTrackId = trackId,
             translationLyrics = translation

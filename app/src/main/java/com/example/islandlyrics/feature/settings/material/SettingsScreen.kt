@@ -43,6 +43,7 @@ import com.example.islandlyrics.feature.faq.FAQActivity
 import com.example.islandlyrics.feature.lastfm.LastFmSettingsActivity
 import com.example.islandlyrics.feature.settings.AboutActivity
 import com.example.islandlyrics.feature.settings.BackupImportCoordinator
+import com.example.islandlyrics.feature.settings.ThirdPartyImportUiState
 import com.example.islandlyrics.feature.settings.BackupImportOperation
 import com.example.islandlyrics.feature.settings.BackupImportStatus
 import com.example.islandlyrics.feature.settings.visibleStages
@@ -72,6 +73,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.material3.HorizontalDivider as MaterialHorizontalDivider
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -138,7 +140,8 @@ import java.util.Locale
 @Composable
 @SuppressLint("BatteryLife")
 @Suppress("UNUSED_PARAMETER")
-fun SettingsScreen(
+internal fun SettingsScreen(
+    thirdPartyImporter: ThirdPartyImportUiState,
     onCheckUpdate: () -> Unit,
     onShowDiagnostics: () -> Unit,
     updateVersionText: String,
@@ -167,6 +170,7 @@ fun SettingsScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
     val backupImportCoordinator = remember(context) { BackupImportCoordinator(context) }
+    val canChooseImportSource = !backupImportCoordinator.isBusy && !thirdPartyImporter.busy
     val backupExportSuccessFormat = stringResource(R.string.settings_backup_export_success)
     val backupExportSuccessWithCacheFormat = stringResource(R.string.settings_backup_export_success_with_cache)
     val backupExportSuccessWithSensitiveFormat = stringResource(R.string.settings_backup_export_success_with_sensitive)
@@ -1017,7 +1021,7 @@ fun SettingsScreen(
                         summary = stringResource(R.string.settings_backup_export_desc),
                         icon = Icons.Filled.Upload,
                         onClick = {
-                            showExportCategoryDialog = true
+                            if (!thirdPartyImporter.importing) showExportCategoryDialog = true
                         }
                     )
                     SettingsCardDivider()
@@ -1026,8 +1030,15 @@ fun SettingsScreen(
                         summary = stringResource(R.string.settings_backup_import_desc),
                         icon = Icons.Filled.Download,
                         onClick = {
-                            importSettingsLauncher.launch(arrayOf("application/zip", "application/json", "*/*"))
+                            if (!thirdPartyImporter.importing) importSettingsLauncher.launch(arrayOf("application/zip", "application/json", "*/*"))
                         }
+                    )
+                    SettingsCardDivider()
+                    SettingsActionItem(
+                        title = stringResource(R.string.settings_import_other_apps),
+                        summary = stringResource(R.string.settings_import_other_apps_desc),
+                        icon = Icons.Filled.Download,
+                        onClick = { if (canChooseImportSource) thirdPartyImporter.openSources() }
                     )
                 }
             }
@@ -1435,6 +1446,7 @@ fun SettingsScreen(
             )
         }
 
+        ThirdPartyImportDialogs(thirdPartyImporter)
         backupImportCoordinator.status?.let { status ->
             BackupImportProgressDialog(status = status)
         }
