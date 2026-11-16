@@ -13,6 +13,12 @@ class OnlineLyricTrackIdTest {
     }
 
     @Test
+    fun rejectsQqNullPlaceholdersWithoutRejectingMidsContainingNull() {
+        for (value in listOf("null", "NULL", " NuLl ")) assertNull(OnlineLyricProvider.QQMusic.normalizeTrackId(value))
+        assertEquals("001NullA1b2C3D", OnlineLyricProvider.QQMusic.normalizeTrackId("001NullA1b2C3D"))
+    }
+
+    @Test
     fun kugouRequiresACompleteHashInsteadOfANumericSongId() {
         val hash = "0123456789abcdef0123456789ABCDEF"
         assertEquals(hash.uppercase(), OnlineLyricProvider.Kugou.normalizeTrackId(" $hash "))

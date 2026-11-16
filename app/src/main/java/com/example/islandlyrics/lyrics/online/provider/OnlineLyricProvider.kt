@@ -61,7 +61,7 @@ enum class OnlineLyricProvider(
             LrcApi -> null
             Kugou -> value.takeIf { it.matches(Regex("[0-9a-fA-F]{32}")) }?.uppercase()
             QQMusic -> value.takeIf {
-                it.matches(Regex("[0-9A-Za-z]+")) && it.any { char -> char != '0' }
+                !it.equals("null", ignoreCase = true) && it.matches(Regex("[0-9A-Za-z]+")) && it.any { char -> char != '0' }
             }
             Netease -> value.takeIf {
                 it.matches(Regex("[0-9]+")) && (it.toLongOrNull() ?: 0L) > 0L

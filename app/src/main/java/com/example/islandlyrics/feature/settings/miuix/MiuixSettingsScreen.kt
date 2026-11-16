@@ -39,6 +39,7 @@ import com.example.islandlyrics.feature.faq.FAQActivity
 import com.example.islandlyrics.feature.lastfm.LastFmSettingsActivity
 import com.example.islandlyrics.feature.settings.AboutActivity
 import com.example.islandlyrics.feature.settings.BackupImportCoordinator
+import com.example.islandlyrics.feature.settings.ThirdPartyImportUiState
 import com.example.islandlyrics.feature.settings.BackupImportOperation
 import com.example.islandlyrics.feature.settings.BackupImportStatus
 import com.example.islandlyrics.feature.settings.visibleStages
@@ -63,6 +64,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -86,6 +88,7 @@ import top.yukonga.miuix.kmp.basic.*
 import top.yukonga.miuix.kmp.preference.ArrowPreference as SuperArrow
 import com.example.islandlyrics.ui.miuix.preference.BlurOverlayDropdownPreference as SuperDropdown
 import top.yukonga.miuix.kmp.preference.SwitchPreference as SuperSwitch
+import top.yukonga.miuix.kmp.preference.CheckboxPreference
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Ok
@@ -122,7 +125,8 @@ import java.util.Locale
 @Composable
 @SuppressLint("BatteryLife")
 @Suppress("UNUSED_PARAMETER")
-fun MiuixSettingsScreen(
+internal fun MiuixSettingsScreen(
+    thirdPartyImporter: ThirdPartyImportUiState,
     onCheckUpdate: () -> Unit,
     onShowDiagnostics: () -> Unit,
     updateVersionText: String,
@@ -155,6 +159,7 @@ fun MiuixSettingsScreen(
     val snackbarHostState = remember { MiuixSnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
     val backupImportCoordinator = remember(context) { BackupImportCoordinator(context) }
+    val canChooseImportSource = !backupImportCoordinator.isBusy && !thirdPartyImporter.busy
     val scrollBehavior = MiuixScrollBehavior(rememberTopAppBarState())
     val listState = rememberLazyListState()
     val mainSettingBringIntoViewRequester = remember { BringIntoViewRequester() }
@@ -1012,15 +1017,20 @@ fun MiuixSettingsScreen(
                         title = stringResource(R.string.settings_backup_export),
                         summary = stringResource(R.string.settings_backup_export_desc),
                         onClick = {
-                            showExportCategoryDialog = true
+                            if (!thirdPartyImporter.importing) showExportCategoryDialog = true
                         }
                     )
                     SuperArrow(
                         title = stringResource(R.string.settings_backup_import),
                         summary = stringResource(R.string.settings_backup_import_desc),
                         onClick = {
-                            importSettingsLauncher.launch(arrayOf("application/zip", "application/json", "*/*"))
+                            if (!thirdPartyImporter.importing) importSettingsLauncher.launch(arrayOf("application/zip", "application/json", "*/*"))
                         }
+                    )
+                    SuperArrow(
+                        title = stringResource(R.string.settings_import_other_apps),
+                        summary = stringResource(R.string.settings_import_other_apps_desc),
+                        onClick = { if (canChooseImportSource) thirdPartyImporter.openSources() }
                     )
                 }
             }
@@ -1442,6 +1452,7 @@ fun MiuixSettingsScreen(
             }
         }
 
+        MiuixThirdPartyImportDialogs(thirdPartyImporter)
         backupImportCoordinator.status?.let { status ->
             MiuixBackupImportProgressDialog(status = status)
         }
