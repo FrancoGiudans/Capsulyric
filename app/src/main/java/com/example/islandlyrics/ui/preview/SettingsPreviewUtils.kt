@@ -463,8 +463,14 @@ fun NotificationPreview(
     val activeLyricLine by repo.liveCurrentLine.observeAsState()
     val albumArt by repo.liveAlbumArt.observeAsState()
 
-    val title = metadata?.title ?: "打上花火"
-    val artist = metadata?.artist ?: "DAOKO×米津玄師"
+    val title = metadata?.title?.takeIf(String::isNotBlank)
+        ?: stringResource(R.string.media_control_unknown_title)
+    val artist = metadata?.artist?.takeIf(String::isNotBlank)
+        ?: stringResource(R.string.media_control_unknown_artist)
+    val placeholderTranslation = stringResource(R.string.super_island_template18_text_translation)
+    val placeholderRomanization = stringResource(R.string.super_island_template18_text_romanization)
+    val placeholderNextLyric = stringResource(R.string.super_island_template18_text_next_lyric)
+    val placeholderNextNextLyric = stringResource(R.string.super_island_template18_text_next_next_lyric)
     val position = progressInfo?.position ?: 0L
     val parsedTimeline = if (
         parsedLyrics?.timelineCapability == LyricRepository.TimelineCapability.MULTI_LINE
@@ -495,12 +501,7 @@ fun NotificationPreview(
     val isLiveLyric = currentTimelineLine != null || lyricInfo?.lyric?.isNotBlank() == true
     val currentLyric = currentTimelineLine?.text?.takeIf(String::isNotBlank)
         ?: lyricInfo?.lyric?.takeIf(String::isNotBlank)
-        ?: when {
-        actionStyle == "template2" -> "ひそかに二人を見ていた"
-        superIslandMediaButtonLayout == "three_button" -> "砂の上 刻んだ足跡"
-        superIslandMediaButtonLayout == "two_button" -> "あの日見渡した海岸通り"
-        else -> "この夜が続いて欲しかった"
-    }
+        ?: stringResource(R.string.main_waiting_for_lyrics)
     val sourceApp = lyricInfo?.sourceApp ?: "Source App"
     val effectiveButtonLayout = if (superIslandNotificationStyle == "advanced_beta" || superIslandNotificationStyle == "advanced_lyrics_dual") "three_button" else superIslandMediaButtonLayout
     val notificationLyric = when {
@@ -589,14 +590,14 @@ fun NotificationPreview(
                     .filter(String::isNotBlank)
                     .joinToString(" - ")
             }
-            val sampleCandidate = when (mode) {
-                SuperIslandTemplate18TextMode.TRANSLATION -> "正偷偷窥探着我们"
-                SuperIslandTemplate18TextMode.ROMANIZATION -> "hisoka ni futari o miteita"
-                SuperIslandTemplate18TextMode.NEXT_LYRIC -> "海岸通り 通り過ぎてゆく"
-                SuperIslandTemplate18TextMode.NEXT_NEXT_LYRIC -> "この夜が続いて欲しかった"
+            val placeholderCandidate = when (mode) {
+                SuperIslandTemplate18TextMode.TRANSLATION -> placeholderTranslation
+                SuperIslandTemplate18TextMode.ROMANIZATION -> placeholderRomanization
+                SuperIslandTemplate18TextMode.NEXT_LYRIC -> placeholderNextLyric
+                SuperIslandTemplate18TextMode.NEXT_NEXT_LYRIC -> placeholderNextNextLyric
                 SuperIslandTemplate18TextMode.PLAYING_INFO -> "$title - $artist"
             }
-            (if (isLiveLyric) liveCandidate else sampleCandidate)
+            (if (isLiveLyric) liveCandidate else placeholderCandidate)
                 ?.takeIf(String::isNotBlank)
         }
         .take(2)
@@ -900,7 +901,7 @@ fun NotificationPreview(
                 }
             } else if (previewActionStyle == "template2") {
                 // 模板2（文本组件2 + 识别图形组件1）：无按钮、无进度条
-                val secondaryText = remember(lyricInfo, metadata, superIslandSecondaryTextModes) {
+                val secondaryText = run {
                     val modes = superIslandSecondaryTextModes.mapNotNull { SuperIslandSecondaryTextMode.from(it) }
                         .ifEmpty { listOf(SuperIslandSecondaryTextMode.TRANSLATION) }
 
@@ -917,10 +918,10 @@ fun NotificationPreview(
                         foundText ?: if (artist.isNotBlank()) "$title - $artist" else title
                     } else {
                         when (modes.firstOrNull()) {
-                            SuperIslandSecondaryTextMode.ROMANIZATION -> "hisoka ni futari o miteita"
-                            SuperIslandSecondaryTextMode.NEXT_LYRIC -> "海岸通り 通り過ぎてゆく"
-                            SuperIslandSecondaryTextMode.TRANSLATION -> "正偷偷窥探着我们"
-                            else -> "正偷偷窥探着我们"
+                            SuperIslandSecondaryTextMode.ROMANIZATION -> placeholderRomanization
+                            SuperIslandSecondaryTextMode.NEXT_LYRIC -> placeholderNextLyric
+                            SuperIslandSecondaryTextMode.TRANSLATION -> placeholderTranslation
+                            else -> placeholderTranslation
                         }
                     }
                 }
