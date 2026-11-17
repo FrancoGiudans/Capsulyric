@@ -81,6 +81,14 @@ fun DebugCenterScreen(
                 }
             )
 
+            DebugMenuButton(
+                text = "SuperLyric 数据对照",
+                description = "查看 API 原始回调、应用转换结果与处理原因",
+                onClick = {
+                    context.startActivity(Intent(context, com.example.islandlyrics.feature.superlyricdebug.SuperLyricDebugActivity::class.java))
+                }
+            )
+
             // ── Custom Settings Page ──
             DebugMenuButton(
                 text = "Custom Settings Page",

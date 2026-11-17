@@ -124,6 +124,13 @@ fun MiuixDebugCenterScreen(
                         }
                     )
                     SuperArrow(
+                        title = "SuperLyric 数据对照",
+                        summary = "查看 API 原始回调、应用转换结果与处理原因",
+                        onClick = {
+                            context.startActivity(Intent(context, com.example.islandlyrics.feature.superlyricdebug.SuperLyricDebugActivity::class.java))
+                        }
+                    )
+                    SuperArrow(
                         title = "Custom Settings Page",
                         summary = "Open the Personalization (App UI) settings page",
                         onClick = {

@@ -109,9 +109,9 @@ class SuperLyricSource(
                     val observed = currentTrack()
                     mainHandler.post { receive(update, token, observed) }
                 },
-                onStop = { publisher, id, reason ->
+                onStop = { publisher, id, reason, traceId ->
                     val observed = currentTrack()
-                    mainHandler.post { receiveStop(publisher, id, reason, token, observed) }
+                    mainHandler.post { receiveStop(publisher, id, reason, token, observed, traceId) }
                 }
             )
         } catch (error: SecurityException) {
@@ -153,14 +153,20 @@ class SuperLyricSource(
 
     private fun receive(update: SuperLyricUpdate, token: Long, observed: SuperLyricTrack?) {
         val track = currentTrack()
-        if (!registered || !session.accepts(token, observed, track) || track == null) return
+        if (!registered || !session.accepts(token, observed, track) || track == null) {
+            SuperLyricTrace.decision(update.traceId,
+                "忽略：${if (!registered) "连接未注册" else if (track == null || observed == null) "缺少 MediaSession 曲目" else "连接代次或曲目已变化"}; current=$track; observed=$observed")
+            return
+        }
         val rule = ParserRuleHelper.getRuleForPackage(context, track.packageName)
             ?: ParserRuleHelper.createDefaultRule(track.packageName)
         if (!rule.enabled || !rule.useSuperLyricApi) {
+            SuperLyricTrace.decision(update.traceId, "忽略：当前曲目规则未启用 SuperLyric; current=$track")
             publishDebug(update, "disabled by rule")
             return
         }
         if (!SuperLyricMapper.matches(update, track)) {
+            SuperLyricTrace.decision(update.traceId, "忽略：发布者或曲目信息与 MediaSession 不匹配; current=$track")
             publishDebug(update, "mismatch with current session")
             return
         }
@@ -173,13 +179,16 @@ class SuperLyricSource(
         val appName = getAppName(track.packageName)
         val rows = if (update.hasTimeline) update.lines else update.currentLine
             ?.takeIf { !it.syllables.isNullOrEmpty() }?.let(::listOf)
+        var timelineResult = "无可用时间轴"
         if (!rows.isNullOrEmpty()) {
             val timeline = Timeline(
                 track, update.documentId, rows,
                 if (update.hasTimeline) LyricRepository.TimelineCapability.MULTI_LINE
                 else LyricRepository.TimelineCapability.ACTIVE_LINE_ONLY
             )
-            if (timeline != lastTimeline && repo.updateParsedLyrics(
+            if (timeline == lastTimeline) {
+                timelineResult = "时间轴重复，跳过"
+            } else if (repo.updateParsedLyrics(
                     lines = rows,
                     hasSyllable = rows.any { !it.syllables.isNullOrEmpty() },
                     sourceLabel = appName,
@@ -187,6 +196,9 @@ class SuperLyricSource(
                     timelineCapability = timeline.capability
                 )) {
                 lastTimeline = timeline
+                timelineResult = "时间轴已写入仓库 (${timeline.capability})"
+            } else {
+                timelineResult = "时间轴未被仓库接受"
             }
         }
 
@@ -212,19 +224,31 @@ class SuperLyricSource(
             onlineLyricSource.fetchFor(track.title, track.artist, track.packageName)
         }
         publishDebug(update, if (current == null) "no active line" else null)
+        SuperLyricTrace.decision(update.traceId,
+            "处理完成：$timelineResult；${if (current == null) "无当前行" else "当前行已处理（含去重）"}; current=$track")
     }
 
     private fun receiveStop(
-        publisher: String?, id: String?, reason: String, token: Long, observed: SuperLyricTrack?
+        publisher: String?, id: String?, reason: String, token: Long, observed: SuperLyricTrack?, traceId: Long?
     ) {
         val track = currentTrack()
-        if (!registered || !session.accepts(token, observed, track) || track == null) return
-        if (!publisher.isNullOrBlank() && publisher != track.packageName) return
-        if (id != null && lastDocumentId != null && id != lastDocumentId) return
+        if (!registered || !session.accepts(token, observed, track) || track == null) {
+            SuperLyricTrace.decision(traceId, "忽略 STOP：连接代次或 MediaSession 曲目无效; current=$track")
+            return
+        }
+        if (!publisher.isNullOrBlank() && publisher != track.packageName) {
+            SuperLyricTrace.decision(traceId, "忽略 STOP：发布者不匹配; current=$track")
+            return
+        }
+        if (id != null && lastDocumentId != null && id != lastDocumentId) {
+            SuperLyricTrace.decision(traceId, "忽略 STOP：文档不匹配; currentDocument=$lastDocumentId")
+            return
+        }
         lastLineKey = null
         lastTimeline = null
         // Pause/position and source arbitration remain owned by MediaSession/repository.
         publishDebug(null, null, reason)
+        SuperLyricTrace.decision(traceId, "STOP 已处理：$reason; current=$track")
     }
 
     private fun publishDebug(update: SuperLyricUpdate?, skip: String?, stopReason: String? = null) {

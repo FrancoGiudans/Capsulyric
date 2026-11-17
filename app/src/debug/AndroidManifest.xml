@@ -5,6 +5,11 @@
     <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES"
         tools:ignore="QueryAllPackagesPermission" />
     <application>
+        <activity
+            android:name="com.example.islandlyrics.feature.superlyricdebug.SuperLyricDebugActivity"
+            android:exported="false"
+            android:label="SuperLyric 数据对照"
+            android:parentActivityName=".DebugCenterActivity" />
         <activity android:name=".DebugCenterActivity"
                   android:label="Debug Center"
                   android:parentActivityName=".MainActivity" />

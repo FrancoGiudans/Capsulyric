@@ -33,7 +33,7 @@ class SuperLyricProtocolTest {
         val received = mutableListOf<SuperLyricUpdate>()
         val connection = legacyConnection(service)
         try {
-            assertEquals(Receiver.RegisterResult.OK, connection.open(received::add) { _, _, _ -> })
+            assertEquals(Receiver.RegisterResult.OK, connection.open(received::add) { _, _, _, _ -> })
             service.emit34(line, SuperLyricLine("translation"), SuperLyricLine("romanization"))
             val update = received.single()
             assertEquals("legacy-line", update.mode)
@@ -55,7 +55,7 @@ class SuperLyricProtocolTest {
         val received = mutableListOf<SuperLyricUpdate>()
         val connection = legacyConnection(service)
         try {
-            connection.open(received::add) { _, _, _ -> }
+            connection.open(received::add) { _, _, _, _ -> }
             service.emit34(null, SuperLyricLine("translation"), null)
             assertNull(received.single().currentLine)
             assertEquals("translation", received.single().translation)
@@ -67,7 +67,7 @@ class SuperLyricProtocolTest {
         val received = mutableListOf<SuperLyricUpdate>()
         val connection = legacyConnection(service)
         try {
-            connection.open(received::add) { _, _, _ -> }
+            connection.open(received::add) { _, _, _, _ -> }
             service.emit34(line, null, null)
             service.emit34(SuperLyricLine("next song line"), null, null, title = null, artist = null)
             assertEquals("", received.last().title)
@@ -80,7 +80,7 @@ class SuperLyricProtocolTest {
         val service = Version34Service()
         var count = 0
         val connection = legacyConnection(service)
-        connection.open({ count++ }) { _, _, _ -> }
+        connection.open({ count++ }) { _, _, _, _ -> }
         val old = service.callback!!
         connection.close()
         service.emit34(line, null, null, old)
@@ -95,7 +95,7 @@ class SuperLyricProtocolTest {
         val connection = legacyConnection(service)
         var stopCount = 0
         try {
-            connection.open(received::add) { _, _, _ -> stopCount++ }
+            connection.open(received::add) { _, _, _, _ -> stopCount++ }
             service.emitNew(SuperLyricData().setTitle("Song").setArtist("Artist").setLyricId("id")
                 .setAllLyrics(arrayOf(line, SuperLyricLine("second", 3000, 4000)))
                 .setCurrentLyricIndex(0))
@@ -115,7 +115,7 @@ class SuperLyricProtocolTest {
         val received = mutableListOf<SuperLyricUpdate>()
         val connection = legacyConnection(service)
         try {
-            connection.open(received::add) { _, _, _ -> }
+            connection.open(received::add) { _, _, _, _ -> }
             service.emitNew(SuperLyricData().setLyricId("old").setAllLyrics(arrayOf(line)))
             service.emitNew(SuperLyricData().setLyricId("new").setCurrentLyricIndex(0))
             assertNull(received.last().lines)
@@ -135,7 +135,7 @@ class SuperLyricProtocolTest {
         val modern = Binder()
         val received = mutableListOf<SuperLyricUpdate>()
         val connection = SuperLyricConnection({ if (it == SuperLyricConnection.V4_SERVICE) modern else null }, receiver)
-        assertEquals(Receiver.RegisterResult.OK, connection.open(received::add) { _, _, _ -> })
+        assertEquals(Receiver.RegisterResult.OK, connection.open(received::add) { _, _, _, _ -> })
         assertEquals("v4", received.single().mode)
         connection.close()
         assertEquals(listOf(other), receiver.listeners)
@@ -145,7 +145,7 @@ class SuperLyricProtocolTest {
     @Test fun modernRegistrationRejectionIsNotReportedAsSuccess() {
         val receiver = FakeReceiver().apply { result = Receiver.RegisterResult.REJECTED_QUOTA }
         val connection = SuperLyricConnection({ Binder() }, receiver)
-        assertEquals(Receiver.RegisterResult.REJECTED_QUOTA, connection.open({ fail() }) { _, _, _ -> })
+        assertEquals(Receiver.RegisterResult.REJECTED_QUOTA, connection.open({ fail() }) { _, _, _, _ -> })
         connection.close()
         assertTrue(receiver.listeners.isEmpty())
     }
@@ -155,7 +155,7 @@ class SuperLyricProtocolTest {
         var modern: IBinder? = null
         val connection = SuperLyricConnection({ if (it == SuperLyricConnection.V4_SERVICE) modern else service }, FakeReceiver())
         try {
-            connection.open({ }) { _, _, _ -> }
+            connection.open({ }) { _, _, _, _ -> }
             assertTrue(connection.isAlive())
             modern = Binder()
             assertFalse(connection.isAlive())

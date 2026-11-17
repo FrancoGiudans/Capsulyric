@@ -19,7 +19,8 @@ internal data class SuperLyricUpdate(
     val mode: String,
     val position: Long? = null,
     val speed: Float? = null,
-    val playbackState: String? = null
+    val playbackState: String? = null,
+    val traceId: Long? = null
 ) {
     val hasTimeline: Boolean get() = lines.orEmpty().any { it.startTime > 0 || it.endTime > it.startTime }
 }

@@ -32,7 +32,7 @@ internal class SuperLyricConnection(
 
     fun open(
         onLyric: (SuperLyricUpdate) -> Unit,
-        onStop: (publisher: String?, documentId: String?, reason: String) -> Unit
+        onStop: (publisher: String?, documentId: String?, reason: String, traceId: Long?) -> Unit
     ): Receiver.RegisterResult {
         check(binder == null) { "Connection already opened" }
         val modern = findService(V4_SERVICE)?.takeIf { it.isBinderAlive }
@@ -41,10 +41,11 @@ internal class SuperLyricConnection(
             binder = modern
             val listener = object : LyricListener {
                 override fun onLyric(view: LyricView) {
-                    deliver({ mapper.map(view) }, onLyric)
+                    deliver({ SuperLyricTraceFormat.modern(view) }, { mapper.map(view) }, onLyric)
                 }
                 override fun onStop(stop: Stop) {
-                    stopped(stop.publisher, stop.id, stop.reason?.name ?: "UNKNOWN", onStop)
+                    stopped(stop.publisher, stop.id, stop.reason?.name ?: "UNKNOWN",
+                        { SuperLyricTraceFormat.stop(stop.publisher, stop.id, stop.reason?.name) }, onStop)
                 }
             }
             modernListener = listener
@@ -64,11 +65,12 @@ internal class SuperLyricConnection(
         val listener = object : ISuperLyricReceiver.Stub() {
             override fun onLyric(publisher: String?, data: SuperLyricData?) {
                 if (!closed && data != null) {
-                    deliver({ SuperLyricMapper.legacy(publisher, data, latestUpdate) }, onLyric)
+                    deliver({ SuperLyricTraceFormat.legacy(publisher, data) },
+                        { SuperLyricMapper.legacy(publisher, data, latestUpdate) }, onLyric)
                 }
             }
             override fun onStop(publisher: String?, data: SuperLyricData?) {
-                stopped(publisher, data?.lyricId, "STOPPED", onStop)
+                stopped(publisher, data?.lyricId, "STOPPED", { SuperLyricTraceFormat.legacy(publisher, data) }, onStop)
             }
         }
         legacyListener = listener
@@ -77,20 +79,28 @@ internal class SuperLyricConnection(
         return Receiver.RegisterResult.OK
     }
 
-    private fun deliver(build: () -> SuperLyricUpdate, listener: (SuperLyricUpdate) -> Unit) {
+    private fun deliver(raw: () -> String, build: () -> SuperLyricUpdate, listener: (SuperLyricUpdate) -> Unit) {
         synchronized(mapper) {
             if (closed) return
-            val update = build()
+            val trace = SuperLyricTrace.begin(mode, "LYRIC", raw)
+            val update = try { build().copy(traceId = trace) } catch (error: Exception) {
+                SuperLyricTrace.failed(trace, error)
+                throw error
+            }
+            SuperLyricTrace.decoded(trace) { SuperLyricTraceFormat.decoded(update) }
             latestUpdate = update
             listener(update)
         }
     }
 
-    private fun stopped(publisher: String?, id: String?, reason: String, listener: (String?, String?, String) -> Unit) {
+    private fun stopped(publisher: String?, id: String?, reason: String, raw: () -> String,
+                        listener: (String?, String?, String, Long?) -> Unit) {
         synchronized(mapper) {
             if (closed) return
             latestUpdate = null
-            listener(publisher, id, reason)
+            val trace = SuperLyricTrace.begin(mode, "STOP", raw)
+            SuperLyricTrace.decoded(trace) { SuperLyricTraceFormat.stop(publisher, id, reason) }
+            listener(publisher, id, reason, trace)
         }
     }
 
