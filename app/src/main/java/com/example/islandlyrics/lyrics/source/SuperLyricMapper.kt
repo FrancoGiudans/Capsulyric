@@ -132,10 +132,17 @@ internal object SuperLyricMapper {
         )
     }
 
-    fun matches(update: SuperLyricUpdate, track: SuperLyricTrack): Boolean =
-        (update.publisher.isNullOrBlank() || update.publisher == track.packageName) &&
-            (update.title.isBlank() || track.title.isBlank() || update.title.equals(track.title, true)) &&
-            (update.artist.isBlank() || track.artist.isBlank() || update.artist.equals(track.artist, true))
+    fun matchBasis(update: SuperLyricUpdate, track: SuperLyricTrack): String? {
+        if (!update.publisher.isNullOrBlank() && update.publisher != track.packageName) return null
+        // A rule can split a title suffix into the artist; an exact ID from the same player
+        // still identifies the track. Unequal IDs may belong to different namespaces.
+        if (!update.publisher.isNullOrBlank() && update.publisher == track.packageName &&
+            !update.documentId.isNullOrBlank() && update.documentId == track.mediaId) return "mediaId"
+        return if ((update.title.isBlank() || track.title.isBlank() || update.title.equals(track.title, true)) &&
+            (update.artist.isBlank() || track.artist.isBlank() || update.artist.equals(track.artist, true))) "metadata" else null
+    }
+
+    fun matches(update: SuperLyricUpdate, track: SuperLyricTrack): Boolean = matchBasis(update, track) != null
 
     fun lineKey(track: SuperLyricTrack, update: SuperLyricUpdate): List<Any?> = listOf(
         track, update.documentId, update.index, update.currentLine,

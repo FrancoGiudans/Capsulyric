@@ -170,7 +170,8 @@ class SuperLyricSource(
             publishDebug(update, "disabled by rule")
             return
         }
-        if (!SuperLyricMapper.matches(update, track)) {
+        val matchBasis = SuperLyricMapper.matchBasis(update, track)
+        if (matchBasis == null) {
             SuperLyricTrace.decision(update.traceId, "忽略：发布者或曲目信息与 MediaSession 不匹配; current=$track")
             publishDebug(update, "mismatch with current session")
             return
@@ -235,7 +236,7 @@ class SuperLyricSource(
         }
         publishDebug(update, if (current == null) "no active line" else null)
         SuperLyricTrace.decision(update.traceId,
-            "处理完成：$timelineResult；${if (current == null) "无当前行" else "当前行已处理（含去重）"}; 接收翻译=${rule.receiveSuperLyricTranslation}; 接收罗马音=${rule.receiveSuperLyricRomanization}; current=$track")
+            "处理完成：$timelineResult；${if (current == null) "无当前行" else "当前行已处理（含去重）"}; 匹配依据=$matchBasis; 接收翻译=${rule.receiveSuperLyricTranslation}; 接收罗马音=${rule.receiveSuperLyricRomanization}; current=$track")
     }
 
     private fun receiveStop(
