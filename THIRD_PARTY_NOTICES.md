@@ -152,7 +152,7 @@ The following libraries are **directly declared** in `app/build.gradle.kts` (via
 
 | Dependency / 依赖 | Coordinates / 坐标 | Version / 版本 | License / 协议 |
 | --- | --- | --- | --- |
-| SuperLyricApi | `com.github.HChenX:SuperLyricApi` | 3.4 | **LGPL-2.1** |
+| SuperLyricApi | `com.github.HChenX:SuperLyricApi` | 4.0 | Upstream declarations differ; see license notes below / 上游标注不一致，见下文 |
 | Lyric-Getter-Api | `com.github.xiaowine:Lyric-Getter-Api` | 6.0.0 | **LGPL-2.1** |
 | lyricon subscriber | `io.github.proify.lyricon:subscriber` | 0.1.70 | Apache-2.0 |
 | focus-api (HyperNotification) | `com.xzakota.hyper.notification:focus-api` | 1.4 | Apache-2.0 |
@@ -247,11 +247,11 @@ Build toolchain (build-time only, not distributed): Gradle 9.9.1, Android Gradle
 
 - This project is released under [GPL-3.0](LICENSE). Apache-2.0 is compatible with GPL-3.0, so the combined work may remain GPL-3.0; the Apache-2.0 attribution requirements below still apply to the files listed above.
 - 本项目基于 [GPL-3.0](LICENSE) 发布。Apache-2.0 与 GPL-3.0 兼容，合并后的作品仍可按 GPL-3.0 发布；但上述文件仍需满足 Apache-2.0 的署名要求。
-- **LGPL-2.1** (`SuperLyricApi`, `Lyric-Getter-Api`): used as separate libraries linked against the app, which is permitted under LGPL-2.1; full text in [LICENSES/LGPL-2.1.txt](LICENSES/LGPL-2.1.txt). The aboutlibraries overrides in `app/config/` (`libraries/*.json` + `licenses/*.json`) resolve both JitPack artifacts to LGPL-2.1, so the in-app license page shows the correct license name and full text.
-- **LGPL-2.1**（`SuperLyricApi`、`Lyric-Getter-Api`）：以独立库方式链接进应用，符合 LGPL-2.1 使用条件；全文见 [LICENSES/LGPL-2.1.txt](LICENSES/LGPL-2.1.txt)。aboutlibraries 通过 `app/config/` 覆盖配置（`libraries/*.json` + `licenses/*.json`）将这两个 JitPack 构件解析为 LGPL-2.1，应用内许可页面可正确显示协议名称与全文。
+- **LGPL-2.1** (`Lyric-Getter-Api`): the aboutlibraries override retains the upstream notice and full text in [LICENSES/LGPL-2.1.txt](LICENSES/LGPL-2.1.txt). / Lyric-Getter-Api 保留 LGPL-2.1 声明及全文。
+- **SuperLyricApi 4.0**: its [root LICENSE](https://github.com/HChenX/SuperLyricApi/blob/4.0/LICENSE) contains LGPL-2.1, while [new source headers](https://github.com/HChenX/SuperLyricApi/blob/4.0/api/src/main/kotlin/com/hchen/superlyricapi/Receiver.kt) specify LGPL-3.0-or-later. The published POM does not declare a license. The app retains both notices and their texts ([LGPL-2.1](LICENSES/LGPL-2.1.txt), [LGPL-3.0](LICENSES/LGPL-3.0.txt)) pending upstream clarification; this records the discrepancy rather than resolving it. / 4.0 根 LICENSE 与新源码头标注不同，发布 POM 未标注许可证；应用许可页保留两种声明及全文，待上游澄清。
 - **MIT** (`dev.rikka.shizuku:*`): full text in [LICENSES/MIT.txt](LICENSES/MIT.txt). / 全文见 [LICENSES/MIT.txt](LICENSES/MIT.txt)。
 - **BSD-2-Clause** (`commonmark`, transitive via markwon): full text in [LICENSES/BSD-2-Clause.txt](LICENSES/BSD-2-Clause.txt). / 全文见 [LICENSES/BSD-2-Clause.txt](LICENSES/BSD-2-Clause.txt)。
-- **GPL compatibility matrix / GPL 兼容矩阵**: project is GPL-3.0 — compatible with Apache-2.0 (miuix, Lyricify, markwon, okhttp, …), MIT (Shizuku), BSD-2-Clause (commonmark), LGPL-2.1 (SuperLyricApi, Lyric-Getter-Api, used as separate libraries), and GPL-3.0 itself (InstallerX Revived adapted code stays GPL-3.0 as part of the combined work).
+- **GPL compatibility matrix / GPL 兼容矩阵**: project is GPL-3.0 — compatible with Apache-2.0 (miuix, Lyricify, markwon, okhttp, …), MIT (Shizuku), BSD-2-Clause (commonmark), LGPL-2.1 (Lyric-Getter-Api, used as a separate library), and GPL-3.0 itself (InstallerX Revived adapted code stays GPL-3.0 as part of the combined work). SuperLyricApi 4.0 declarations are recorded separately above.
 - The in-app license page (`OpenSourceLicensesActivity`, built with aboutlibraries) lists all Gradle dependencies (direct + transitive) together with their licenses.
 - 应用内「开源许可」页面（`OpenSourceLicensesActivity`，基于 aboutlibraries）列出全部 Gradle 依赖（直接 + 传递）及其协议。
 

@@ -75,16 +75,17 @@ class LyricRepository private constructor() {
         val lyric: String,
         val translation: String?,
         val roma: String?,
-        val hasLyric: Boolean,
-        val hasTranslation: Boolean,
-        val hasSecondary: Boolean,
-        val lyricLineRaw: String?,
-        val translationLineRaw: String?,
-        val secondaryLineRaw: String?,
-        val lyricWordsPreview: String,
-        val translationWordsPreview: String,
-        val secondaryWordsPreview: String,
-        val extraKeys: List<String>,
+        val mode: String,
+        val registrationResult: String,
+        val serverApiVersion: Int?,
+        val documentId: String?,
+        val lineCount: Int,
+        val currentIndex: Int,
+        val wordsPreview: String,
+        val position: Long?,
+        val speed: Float?,
+        val playbackState: String?,
+        val stopReason: String? = null,
         val skipReason: String? = null,
         val timestamp: Long = System.currentTimeMillis()
     )
@@ -274,13 +275,13 @@ class LyricRepository private constructor() {
         sourceLabel: String? = null,
         apiPath: String? = null,
         timelineCapability: TimelineCapability = TimelineCapability.NONE
-    ) {
+    ): Boolean {
         val info = ParsedLyricsInfo(lines, hasSyllable, sourceLabel, apiPath, timelineCapability)
         val acceptedInfo = lyricSourceArbiter.chooseParsedLyrics(
             current = liveParsedLyrics.value,
             candidate = info
-        ) ?: return
-        liveParsedLyrics.postValue(acceptedInfo)
+        ) ?: return false
+        postOrSet(liveParsedLyrics, acceptedInfo)
         if (acceptedInfo.lines.isNotEmpty()) {
             updateLyricResolveState(LyricResolveState.FOUND)
         }
@@ -288,6 +289,7 @@ class LyricRepository private constructor() {
             "Repo",
             "📝 Parsed lyrics updated: ${lines.size} lines, syllable: $hasSyllable, capability=$timelineCapability"
         )
+        return true
     }
     
     fun updateCurrentLine(line: OnlineLyricFetcher.LyricLine?) {

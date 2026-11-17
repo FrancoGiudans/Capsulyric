@@ -203,6 +203,7 @@ class LyricService : Service() {
             progressSyncController.start()
             updateActiveHandler()
         }
+        if (::superLyricSource.isInitialized) superLyricSource.onTrackChanged()
     }
 
     // ── SuperLyric API stub is now in SuperLyricSource ────────────────────────

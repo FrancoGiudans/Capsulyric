@@ -7,7 +7,7 @@ coreKtx = "1.19.1"
 documentFile = "1.1.0"
 media = "1.8.0"
 material = "1.14.0"
-superLyricApi = "3.4"
+superLyricApi = "4.0"
 lyricGetterApi = "6.0.0"
 lyriconSubscriber = "0.1.70"
 activityCompose = "1.13.0"
@@ -26,8 +26,12 @@ navigationEvent = "1.2.0"
 lifecycle = "2.11.0"
 aboutLibraries = "15.3.0"
 backdrop = "2.0.1"
+androidTestRunner = "1.7.0"
+junit = "4.13.2"
 
 [libraries]
+android-test-runner = { module = "androidx.test:runner", version.ref = "androidTestRunner" }
+junit = { module = "junit:junit", version.ref = "junit" }
 annotation = { module = "androidx.annotation:annotation", version.ref = "annotation" }
 core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 documentfile = { module = "androidx.documentfile:documentfile", version.ref = "documentFile" }

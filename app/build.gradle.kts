@@ -76,6 +76,8 @@ dependencies {
     implementation(libs.hiddenapibypass)
 
     debugImplementation(libs.ui.tooling)
-    testImplementation("junit:junit:4.13.2")
+    testImplementation(libs.junit)
     testImplementation("org.json:json:20260814")
+    androidTestImplementation(libs.android.test.runner)
+    androidTestImplementation(libs.junit)
 }

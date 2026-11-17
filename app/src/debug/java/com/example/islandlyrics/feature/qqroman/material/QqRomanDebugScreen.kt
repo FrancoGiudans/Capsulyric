@@ -211,25 +211,15 @@ private fun SuperLyricRawBlock(info: LyricRepository.SuperLyricDebugInfo?) {
 
     Text("publisher: ${info.publisher ?: "(null)"}")
     Text("package: ${info.packageName.ifBlank { "(空)" }}", fontFamily = FontFamily.Monospace, fontSize = 12.sp)
-    Text("hasLyric=${info.hasLyric}, hasTranslation=${info.hasTranslation}, hasSecondary=${info.hasSecondary}")
+    Text("mode: ${info.mode}; registration: ${info.registrationResult}")
+    Text("api: ${info.serverApiVersion ?: "unknown"}; document: ${info.documentId ?: "(null)"}")
+    Text("lines: ${info.lineCount}; index: ${info.currentIndex}")
+    Text("position: ${info.position}; speed: ${info.speed}; state: ${info.playbackState ?: "unknown"}")
+    Text("stop: ${info.stopReason ?: "(null)"}")
     Text("skip: ${info.skipReason ?: "(未跳过)"}")
-    Text("extraKeys: ${info.extraKeys.joinToString().ifBlank { "(空)" }}")
-    Spacer(modifier = Modifier.height(12.dp))
-    Text("raw lyric line")
-    TextBlock(info.lyricLineRaw ?: "(null)")
-    Spacer(modifier = Modifier.height(12.dp))
-    Text("raw translation line")
-    TextBlock(info.translationLineRaw ?: "(null)")
-    Spacer(modifier = Modifier.height(12.dp))
-    Text("raw secondary line")
-    TextBlock(info.secondaryLineRaw ?: "(null)")
     Spacer(modifier = Modifier.height(12.dp))
     Text("words preview")
-    TextBlock(
-        "lyric: ${info.lyricWordsPreview}\n" +
-            "translation: ${info.translationWordsPreview}\n" +
-            "secondary: ${info.secondaryWordsPreview}"
-    )
+    TextBlock(info.wordsPreview.ifBlank { "(空)" })
     Spacer(modifier = Modifier.height(12.dp))
     Text("原始主歌词")
     TextBlock(info.lyric.ifBlank { "(空)" })
