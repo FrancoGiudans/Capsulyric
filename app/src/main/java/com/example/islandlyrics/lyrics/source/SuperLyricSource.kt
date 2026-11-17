@@ -38,6 +38,7 @@ class SuperLyricSource(
 ) {
     private val mainHandler = Handler(Looper.getMainLooper())
     private val session = SuperLyricSession()
+    private val legacyLineState = SuperLyricLegacyLineState()
     private var connection: SuperLyricConnection? = null
     private var retryDelayMs = INITIAL_RETRY_MS
     private var registered = false
@@ -53,7 +54,9 @@ class SuperLyricSource(
         val track: SuperLyricTrack,
         val documentId: String?,
         val lines: List<LyricLine>,
-        val capability: LyricRepository.TimelineCapability
+        val capability: LyricRepository.TimelineCapability,
+        val receiveTranslation: Boolean,
+        val receiveRomanization: Boolean
     )
 
     private val connectionCheck: Runnable = object : Runnable {
@@ -100,6 +103,7 @@ class SuperLyricSource(
     private fun connect() {
         mainHandler.removeCallbacks(connectionCheck)
         closeConnection()
+        legacyLineState.reset()
         val token = session.begin()
         val client = SuperLyricConnection()
         connection = client
@@ -151,7 +155,8 @@ class SuperLyricSource(
         }
     }
 
-    private fun receive(update: SuperLyricUpdate, token: Long, observed: SuperLyricTrack?) {
+    private fun receive(incoming: SuperLyricUpdate, token: Long, observed: SuperLyricTrack?) {
+        var update = incoming
         val track = currentTrack()
         if (!registered || !session.accepts(token, observed, track) || track == null) {
             SuperLyricTrace.decision(update.traceId,
@@ -174,17 +179,23 @@ class SuperLyricSource(
             resetTrack()
             activeTrack = track
         }
+        update = legacyLineState.accept(update).withSidecarPolicy(
+            rule.receiveSuperLyricTranslation, rule.receiveSuperLyricRomanization
+        )
+        if (update != incoming) {
+            SuperLyricTrace.decoded(update.traceId) { SuperLyricTraceFormat.decoded(update) }
+        }
         lastDocumentId = update.documentId
         val repo = LyricRepository.getInstance()
         val appName = getAppName(track.packageName)
-        val rows = if (update.hasTimeline) update.lines else update.currentLine
-            ?.takeIf { !it.syllables.isNullOrEmpty() }?.let(::listOf)
+        val rows = update.timelineLines()
         var timelineResult = "无可用时间轴"
-        if (!rows.isNullOrEmpty()) {
+        if (rows.isNotEmpty()) {
             val timeline = Timeline(
                 track, update.documentId, rows,
-                if (update.hasTimeline) LyricRepository.TimelineCapability.MULTI_LINE
-                else LyricRepository.TimelineCapability.ACTIVE_LINE_ONLY
+                if (update.hasFullTimeline) LyricRepository.TimelineCapability.MULTI_LINE
+                else LyricRepository.TimelineCapability.ACTIVE_LINE_ONLY,
+                rule.receiveSuperLyricTranslation, rule.receiveSuperLyricRomanization
             )
             if (timeline == lastTimeline) {
                 timelineResult = "时间轴重复，跳过"
@@ -193,7 +204,9 @@ class SuperLyricSource(
                     hasSyllable = rows.any { !it.syllables.isNullOrEmpty() },
                     sourceLabel = appName,
                     apiPath = API_PATH,
-                    timelineCapability = timeline.capability
+                    timelineCapability = timeline.capability,
+                    receiveTranslation = timeline.receiveTranslation,
+                    receiveRomanization = timeline.receiveRomanization
                 )) {
                 lastTimeline = timeline
                 timelineResult = "时间轴已写入仓库 (${timeline.capability})"
@@ -205,27 +218,24 @@ class SuperLyricSource(
         val current = update.currentLine
         val text = current?.text.orEmpty()
         if (text.isNotBlank()) {
-            val key = SuperLyricMapper.lineKey(track, update)
+            val key = SuperLyricMapper.lineKey(track, update) +
+                listOf(rule.receiveSuperLyricTranslation, rule.receiveSuperLyricRomanization)
             if (key != lastLineKey) {
-                repo.updateLyric(text, appName, API_PATH, update.translation, update.roma)
+                repo.updateLyric(text, appName, API_PATH, update.translation, update.roma,
+                    receiveTranslation = rule.receiveSuperLyricTranslation,
+                    receiveRomanization = rule.receiveSuperLyricRomanization)
                 lastLineKey = key
-            }
-        } else if (update.mode == "legacy-line" &&
-            (update.translation != null || update.roma != null) && lastLineKey != null) {
-            // 3.4 companion-only callbacks belong to the last accepted line in this track.
-            repo.liveLyric.value?.takeIf { it.apiPath == API_PATH && it.lyric.isNotBlank() }?.let {
-                repo.updateLyric(it.lyric, appName, API_PATH, update.translation, update.roma)
             }
         }
         val instrumental = text.contains("纯音乐") || text.contains("Instrumental", true) ||
             text.contains("No lyrics", true) || text.contains("请欣赏") || text.contains("没有歌词")
-        if (rows.isNullOrEmpty() && !instrumental && rule.useOnlineLyrics && lastOnlineRequest != track) {
+        if (rows.isEmpty() && !instrumental && rule.useOnlineLyrics && lastOnlineRequest != track) {
             lastOnlineRequest = track
             onlineLyricSource.fetchFor(track.title, track.artist, track.packageName)
         }
         publishDebug(update, if (current == null) "no active line" else null)
         SuperLyricTrace.decision(update.traceId,
-            "处理完成：$timelineResult；${if (current == null) "无当前行" else "当前行已处理（含去重）"}; current=$track")
+            "处理完成：$timelineResult；${if (current == null) "无当前行" else "当前行已处理（含去重）"}; 接收翻译=${rule.receiveSuperLyricTranslation}; 接收罗马音=${rule.receiveSuperLyricRomanization}; current=$track")
     }
 
     private fun receiveStop(
@@ -246,6 +256,7 @@ class SuperLyricSource(
         }
         lastLineKey = null
         lastTimeline = null
+        legacyLineState.reset()
         // Pause/position and source arbitration remain owned by MediaSession/repository.
         publishDebug(null, null, reason)
         SuperLyricTrace.decision(traceId, "STOP 已处理：$reason; current=$track")
@@ -276,6 +287,7 @@ class SuperLyricSource(
     }
 
     private fun resetTrack() {
+        legacyLineState.reset()
         activeTrack = null
         lastLineKey = null
         lastTimeline = null

@@ -52,6 +52,8 @@ data class ParserRule(
     val appleMusicStorefrontOverride: String? = null,
     val appleMusicLanguageOverride: String? = null,
     val useSuperLyricApi: Boolean = false,     // Whether to use SuperLyric API callbacks
+    val receiveSuperLyricTranslation: Boolean = false,
+    val receiveSuperLyricRomanization: Boolean = false,
     val useLyricGetterApi: Boolean = false,    // Whether to use Lyric Getter API broadcasts
     val useLyriconApi: Boolean = false,        // Whether to subscribe to Lyricon active-player lyrics
     val receiveLyriconTranslation: Boolean = false,

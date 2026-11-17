@@ -107,7 +107,9 @@ class LyricRepository private constructor() {
         val hasSyllable: Boolean,
         val sourceLabel: String? = null,
         val apiPath: String? = null,
-        val timelineCapability: TimelineCapability = TimelineCapability.NONE
+        val timelineCapability: TimelineCapability = TimelineCapability.NONE,
+        val receiveTranslation: Boolean = true,
+        val receiveRomanization: Boolean = true
     )
     val liveParsedLyrics = MutableLiveData<ParsedLyricsInfo?>()
 
@@ -136,16 +138,18 @@ class LyricRepository private constructor() {
         app: String?,
         apiPath: String = "Unknown",
         translation: String? = null,
-        roma: String? = null
+        roma: String? = null,
+        receiveTranslation: Boolean = true,
+        receiveRomanization: Boolean = true
     ) {
         if (lyric == null || app == null) return
 
-        val normalizedTranslation = translation?.takeIf { it.isNotBlank() }
-        val normalizedRoma = roma?.takeIf { it.isNotBlank() }
+        val normalizedTranslation = translation?.takeIf { receiveTranslation && it.isNotBlank() }
+        val normalizedRoma = roma?.takeIf { receiveRomanization && it.isNotBlank() }
         if (lyric.isNotBlank() && (normalizedTranslation != null || normalizedRoma != null)) {
             sidecarStore.put(apiPath, lyric, normalizedTranslation, normalizedRoma)
         }
-        val sidecar = sidecarStore.find(apiPath, lyric)
+        val sidecar = sidecarStore.find(apiPath, lyric, receiveTranslation, receiveRomanization)
 
         val newInfo = LyricInfo(
             lyric = lyric,
@@ -274,9 +278,11 @@ class LyricRepository private constructor() {
         hasSyllable: Boolean,
         sourceLabel: String? = null,
         apiPath: String? = null,
-        timelineCapability: TimelineCapability = TimelineCapability.NONE
+        timelineCapability: TimelineCapability = TimelineCapability.NONE,
+        receiveTranslation: Boolean = true,
+        receiveRomanization: Boolean = true
     ): Boolean {
-        val info = ParsedLyricsInfo(lines, hasSyllable, sourceLabel, apiPath, timelineCapability)
+        val info = ParsedLyricsInfo(lines, hasSyllable, sourceLabel, apiPath, timelineCapability, receiveTranslation, receiveRomanization)
         val acceptedInfo = lyricSourceArbiter.chooseParsedLyrics(
             current = liveParsedLyrics.value,
             candidate = info

@@ -148,6 +148,12 @@ internal object SuperLyricTraceFormat {
         field("artist", update.artist)
         field("documentId", update.documentId)
         field("hasTimeline", update.hasTimeline)
+        field("hasFullTimeline", update.hasFullTimeline)
+        field("timelineCapability", when {
+            update.hasFullTimeline -> "MULTI_LINE"
+            update.hasTimeline -> "ACTIVE_LINE_ONLY"
+            else -> "NONE"
+        })
         field("index", update.index)
         field("position", update.position)
         field("speed", update.speed)

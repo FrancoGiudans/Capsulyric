@@ -32,9 +32,11 @@ internal class LyricSidecarStore(
 
     private val entries = LinkedHashMap<String, Entry>()
 
-    fun find(apiPath: String, lyric: String): Entry? {
+    fun find(apiPath: String, lyric: String, receiveTranslation: Boolean = true, receiveRomanization: Boolean = true): Entry? {
         if (lyric.isBlank()) return null
-        return entries[key(apiPath, lyric)]
+        return entries[key(apiPath, lyric)]?.let {
+            it.copy(translation = it.translation.takeIf { receiveTranslation }, roma = it.roma.takeIf { receiveRomanization })
+        }
     }
 
     fun put(

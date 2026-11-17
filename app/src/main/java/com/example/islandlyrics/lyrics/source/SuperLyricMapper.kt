@@ -22,8 +22,32 @@ internal data class SuperLyricUpdate(
     val playbackState: String? = null,
     val traceId: Long? = null
 ) {
-    val hasTimeline: Boolean get() = lines.orEmpty().any { it.startTime > 0 || it.endTime > it.startTime }
+    val hasFullTimeline: Boolean get() = lines.orEmpty().any { it.hasTiming() }
+    val hasTimeline: Boolean get() = hasFullTimeline || currentLine?.hasTiming() == true
+
+    fun timelineLines(): List<LyricLine> = when {
+        hasFullTimeline -> lines.orEmpty().sortedBy { it.startTime }
+        currentLine?.hasTiming() == true -> listOf(currentLine)
+        else -> emptyList()
+    }
+
+    fun withSidecarPolicy(translation: Boolean, romanization: Boolean): SuperLyricUpdate {
+        if (translation && romanization) return this
+        fun filter(line: LyricLine) = line.copy(
+            translation = line.translation.takeIf { translation },
+            roma = line.roma.takeIf { romanization }
+        )
+        return copy(
+            translation = this.translation.takeIf { translation },
+            roma = roma.takeIf { romanization },
+            currentLine = currentLine?.let(::filter),
+            lines = lines?.map(::filter)
+        )
+    }
 }
+
+private fun LyricLine.hasTiming(): Boolean = startTime > 0 || endTime > startTime ||
+    syllables.orEmpty().any { it.startTime > 0 || it.endTime > it.startTime }
 
 internal data class SuperLyricTrack(
     val packageName: String,
@@ -56,16 +80,29 @@ internal object SuperLyricMapper {
                 (data.title.isNullOrBlank() || data.title.equals(it.title, true)) &&
                 (data.artist.isNullOrBlank() || data.artist.equals(it.artist, true))
         }
-        val full = data.allLyrics?.filterNotNull()?.map(::legacyLine)?.sortedBy { it.startTime }
+        // Retain document order for currentLyricIndex; sort only when publishing a timeline.
+        var full = data.allLyrics?.filterNotNull()?.map(::legacyLine)
             ?.takeIf { it.isNotEmpty() } ?: compatible?.lines
-        val current = data.lyric?.let(::legacyLine)
-            ?: if (data.hasCurrentLyricIndex()) full?.getOrNull(data.currentLyricIndex) else null
+        val index = if (data.hasCurrentLyricIndex()) data.currentLyricIndex else -1
+        var current = data.lyric?.let(::legacyLine) ?: full?.getOrNull(index)
+        val translation = data.translation?.let(::legacyLine)?.text?.takeIf { it.isNotBlank() }
+            ?: current?.translation
+        val roma = data.secondary?.let(::legacyLine)?.text?.takeIf { it.isNotBlank() }
+            ?: current?.roma
+        current = current?.copy(translation = translation, roma = roma)
+        if (full != null && current != null) {
+            val document = full
+            val activeLine = current
+            val rowIndex = index.takeIf { document.getOrNull(it)?.sameLine(activeLine) == true }
+                ?: document.indexOfFirst { it.sameLine(activeLine) }.takeIf { it >= 0 }
+            if (rowIndex != null && document[rowIndex] != activeLine) {
+                full = document.toMutableList().apply { this[rowIndex] = activeLine }
+            }
+        }
         return SuperLyricUpdate(
             publisher ?: compatible?.publisher, data.title ?: compatible?.title.orEmpty(),
             data.artist ?: compatible?.artist.orEmpty(), data.lyricId ?: compatible?.documentId,
-            full, current, if (data.hasCurrentLyricIndex()) data.currentLyricIndex else -1,
-            data.translation?.let(::legacyLine)?.text ?: current?.translation,
-            data.secondary?.let(::legacyLine)?.text ?: current?.roma,
+            full, current, index, translation, roma,
             if (full == null) "legacy-line" else "legacy-full",
             data.position.takeIf { data.hasPosition() }
         )
@@ -74,8 +111,10 @@ internal object SuperLyricMapper {
     @Suppress("DEPRECATION")
     private fun legacyLine(value: SuperLyricLine): LyricLine {
         val words = value.words?.filterNotNull()?.map { SyllableInfo(it.startTime, it.endTime, it.word) }
-        val start = value.startTime.takeIf { it > 0 } ?: words?.firstOrNull()?.startTime ?: 0L
-        val end = value.endTime.takeIf { it > 0 } ?: words?.lastOrNull()?.endTime ?: start
+            ?.filter { it.startTime >= 0 && it.endTime >= it.startTime }?.sortedBy { it.startTime }
+        val hasLineInterval = value.startTime >= 0 && value.endTime > value.startTime
+        val start = value.startTime.takeIf { it > 0 || hasLineInterval } ?: words?.firstOrNull()?.startTime ?: 0L
+        val end = value.endTime.takeIf { it > 0 && it >= start } ?: words?.lastOrNull()?.endTime?.coerceAtLeast(start) ?: start
         return normalizeLine(value.text, start, end, words, value.translation, value.secondary)
     }
 
@@ -102,6 +141,38 @@ internal object SuperLyricMapper {
         track, update.documentId, update.index, update.currentLine,
         update.translation, update.roma
     )
+}
+
+private fun LyricLine.sameLine(other: LyricLine): Boolean =
+    text == other.text && startTime == other.startTime && endTime == other.endTime
+
+/** Called only after Source validates the current track; reset on track/connection/STOP. */
+internal class SuperLyricLegacyLineState {
+    private var previous: SuperLyricUpdate? = null
+
+    fun reset() { previous = null }
+
+    fun accept(update: SuperLyricUpdate): SuperLyricUpdate {
+        if (update.mode != "legacy-line") { reset(); return update }
+        val cached = previous?.takeIf {
+            (update.publisher.isNullOrBlank() || it.publisher == update.publisher) &&
+                (update.documentId.isNullOrBlank() || it.documentId == update.documentId)
+        }
+        if (cached == null) previous = null
+        val incoming = update.currentLine
+        val oldLine = cached?.currentLine
+        val same = incoming != null && oldLine?.sameLine(incoming) == true
+        val base = incoming ?: oldLine?.takeIf { update.translation != null || update.roma != null }
+        if (base == null) return update
+        val translation = update.translation ?: base.translation ?: oldLine?.translation?.takeIf { same }
+        val roma = update.roma ?: base.roma ?: oldLine?.roma?.takeIf { same }
+        val merged = update.copy(
+            currentLine = base.copy(translation = translation, roma = roma),
+            translation = translation, roma = roma
+        )
+        previous = merged
+        return merged
+    }
 }
 
 /** STATE frames reuse the converted document; a new FULL object refreshes its contents. */
