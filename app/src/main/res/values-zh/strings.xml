@@ -307,8 +307,8 @@
     <string name="parser_receive_romanization">接收拼音歌词</string>
     <string name="parser_online_translation_desc">目前只有 QQ 音乐和网易云在线歌词提供翻译数据。</string>
     <string name="parser_online_romanization_desc">目前只有 QQ 音乐和网易云在线歌词提供拼音歌词数据。</string>
-    <string name="parser_superlyric_translation_desc">接收 SuperLyric 提供的翻译，适用于旧版与 4.x 接口。</string>
-    <string name="parser_superlyric_romanization_desc">接收 SuperLyric 提供的拼音、罗马音或副歌词，适用于旧版与 4.x 接口。</string>
+    <string name="parser_superlyric_translation_desc">接收 SuperLyric 提供的翻译。</string>
+    <string name="parser_superlyric_romanization_desc">接收 SuperLyric 提供的拼音、罗马音或副歌词。</string>
     <string name="parser_lyricon_translation_desc">在当前 Lyricon 提供方上报翻译字段时接收。</string>
     <string name="parser_lyricon_romanization_desc">在当前 Lyricon 提供方上报拼音歌词或 secondary 字段时接收。</string>
     <string name="parser_save">保存</string>

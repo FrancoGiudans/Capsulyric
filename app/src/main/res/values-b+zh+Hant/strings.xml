@@ -307,8 +307,8 @@
     <string name="parser_receive_romanization">接收羅馬音</string>
     <string name="parser_online_translation_desc">目前僅 QQ 音樂與網易雲線上歌詞提供翻譯資料。</string>
     <string name="parser_online_romanization_desc">目前僅 QQ 音樂與網易雲線上歌詞提供羅馬音資料。</string>
-    <string name="parser_superlyric_translation_desc">接收 SuperLyric 提供的翻譯，適用於舊版與 4.x 介面。</string>
-    <string name="parser_superlyric_romanization_desc">接收 SuperLyric 提供的拼音、羅馬音或副歌詞，適用於舊版與 4.x 介面。</string>
+    <string name="parser_superlyric_translation_desc">接收 SuperLyric 提供的翻譯。</string>
+    <string name="parser_superlyric_romanization_desc">接收 SuperLyric 提供的拼音、羅馬音或副歌詞。</string>
     <string name="parser_lyricon_translation_desc">當作用中的 Lyricon 提供者發送翻譯欄位時接收。</string>
     <string name="parser_lyricon_romanization_desc">當作用中的 Lyricon 提供者發送羅馬音或副歌詞欄位時接收。</string>
     <string name="parser_save">儲存</string>

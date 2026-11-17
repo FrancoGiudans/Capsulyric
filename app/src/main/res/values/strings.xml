@@ -350,8 +350,8 @@
     <string name="parser_receive_romanization">Receive romanization</string>
     <string name="parser_online_translation_desc">Only QQ Music and NetEase online lyrics currently expose translation data.</string>
     <string name="parser_online_romanization_desc">Only QQ Music and NetEase online lyrics currently expose romanization data.</string>
-    <string name="parser_superlyric_translation_desc">Receive translation when SuperLyric supplies it, with either the legacy or v4 interface.</string>
-    <string name="parser_superlyric_romanization_desc">Receive romanization or secondary lyrics when SuperLyric supplies them, with either the legacy or v4 interface.</string>
+    <string name="parser_superlyric_translation_desc">Receive translation when SuperLyric supplies it.</string>
+    <string name="parser_superlyric_romanization_desc">Receive romanization or secondary lyrics when SuperLyric supplies them.</string>
     <string name="parser_lyricon_translation_desc">Receive translation fields when the active Lyricon provider sends them.</string>
     <string name="parser_lyricon_romanization_desc">Receive romanization or secondary lyric fields when the active Lyricon provider sends them.</string>
     <string name="parser_save">Save</string>

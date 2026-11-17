@@ -307,8 +307,8 @@
     <string name="parser_receive_romanization">ローマ字/読みを受信</string>
     <string name="parser_online_translation_desc">現在、QQ音楽とNetEaseのオンライン歌詞のみが翻訳データを提供しています。</string>
     <string name="parser_online_romanization_desc">現在、QQ音楽とNetEaseのオンライン歌詞のみがローマ字データを提供しています。</string>
-    <string name="parser_superlyric_translation_desc">旧版および 4.x のインターフェースで、SuperLyric が送信した翻訳を受信します。</string>
-    <string name="parser_superlyric_romanization_desc">旧版および 4.x のインターフェースで、SuperLyric が送信したローマ字・読み・副歌詞を受信します。</string>
+    <string name="parser_superlyric_translation_desc">SuperLyric が送信した翻訳を受信します。</string>
+    <string name="parser_superlyric_romanization_desc">SuperLyric が送信したローマ字・読み・副歌詞を受信します。</string>
     <string name="parser_lyricon_translation_desc">アクティブなLyriconプロバイダーが送信した場合に翻訳を受信します。</string>
     <string name="parser_lyricon_romanization_desc">アクティブなLyriconプロバイダーが送信した場合にローマ字や副歌詞を受信します。</string>
     <string name="parser_save">保存</string>
