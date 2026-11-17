@@ -35,7 +35,7 @@ jobs:
       # Step 1: Checkout
       # ============================================================
       - name: Checkout Code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -285,10 +285,11 @@ jobs:
       # Step 3: Set up JDK 27
       # ============================================================
       - name: Set up JDK 27
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@v6
         with:
           java-version: '27'
           distribution: 'temurin'
+          problem-matcher: true
 
       # ============================================================
       # Step 4: Setup Gradle
@@ -621,7 +622,7 @@ jobs:
       # Step 13: Upload Workflow Artifact
       # ============================================================
       - name: Upload Signed Artifact
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: Capsulyric-${{ steps.meta.outputs.channel }}-Signed
           path: |

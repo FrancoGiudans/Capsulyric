@@ -23,7 +23,7 @@ jobs:
 
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           fetch-depth: 1
 
@@ -34,10 +34,11 @@ jobs:
         run: bash .github/scripts/validate_release_metadata.sh "$PR_BASE_BRANCH"
 
       - name: Set up JDK 27
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@v6
         with:
           java-version: '27'
           distribution: 'temurin'
+          problem-matcher: true
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v6

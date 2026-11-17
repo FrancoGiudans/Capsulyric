@@ -2,7 +2,7 @@ plugins {
     id("com.android.application")
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.aboutlibraries)
-    id("io.github.ben-manes.versions") version "0.61.0"
+    id("io.github.ben-manes.versions") version "0.67.0"
 }
 
 apply(from = rootProject.file("gradle/scripts/versioning.gradle"))
@@ -25,6 +25,7 @@ dependencies {
     implementation(libs.lyricon.subscriber)
     implementation(libs.focus.api)
     implementation(libs.core.ktx)  // Upgraded for Android 16 NotificationCompat support
+    implementation(libs.documentfile)
     implementation(libs.media)
     implementation(libs.material)
     implementation(platform(libs.kotlin.bom))
@@ -57,8 +58,8 @@ dependencies {
     implementation(libs.markwon.ext.strikethrough)
     implementation(libs.markwon.ext.tasklist)
     implementation(libs.markwon.html)
-    implementation(libs.markwon.image.coil)
     implementation(libs.coil)
+    implementation(libs.coil.network.okhttp)
 
     // Miuix UI
     implementation(libs.miuix.ui)
@@ -76,5 +77,5 @@ dependencies {
 
     debugImplementation(libs.ui.tooling)
     testImplementation("junit:junit:4.13.2")
-    testImplementation("org.json:json:20240303")
+    testImplementation("org.json:json:20260814")
 }

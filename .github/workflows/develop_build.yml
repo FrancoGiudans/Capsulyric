@@ -107,7 +107,7 @@ jobs:
 
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -124,10 +124,11 @@ jobs:
           echo "version_prefix=$VERSION_PREFIX" >> $GITHUB_OUTPUT
 
       - name: Set up JDK 27
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@v6
         with:
           java-version: '27'
           distribution: 'temurin'
+          problem-matcher: true
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v6
@@ -169,7 +170,7 @@ jobs:
 
 
       - name: Upload Signed Artifact
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: Capsulyric-${{ needs.resolve_mode.outputs.channel }}-Signed
           path: |
