@@ -123,6 +123,8 @@ object ParserRuleHelper {
                                 }
                             ),
                             useSuperLyricApi = obj.optBoolean("useSuperLyricApi", false),
+                            receiveSuperLyricTranslation = obj.optBoolean("receiveSuperLyricTranslation", false),
+                            receiveSuperLyricRomanization = obj.optBoolean("receiveSuperLyricRomanization", false),
                             useLyricGetterApi = obj.optBoolean("useLyricGetterApi", false),
                             useLyriconApi = obj.optBoolean("useLyriconApi", false),
                             receiveLyriconTranslation = obj.optBoolean("receiveLyriconTranslation", false),
@@ -306,6 +308,8 @@ object ParserRuleHelper {
             put("appleMusicStorefrontOverride", rule.appleMusicStorefrontOverride)
             put("appleMusicLanguageOverride", rule.appleMusicLanguageOverride)
             put("useSuperLyricApi", rule.useSuperLyricApi)
+            put("receiveSuperLyricTranslation", rule.receiveSuperLyricTranslation)
+            put("receiveSuperLyricRomanization", rule.receiveSuperLyricRomanization)
             put("useLyricGetterApi", rule.useLyricGetterApi)
             put("useLyriconApi", rule.useLyriconApi)
             put("receiveLyriconTranslation", rule.receiveLyriconTranslation)
@@ -359,6 +363,8 @@ object ParserRuleHelper {
             appleMusicStorefrontOverride = obj.optString("appleMusicStorefrontOverride", "").ifBlank { null },
             appleMusicLanguageOverride = obj.optString("appleMusicLanguageOverride", "").ifBlank { null },
             useSuperLyricApi = obj.optBoolean("useSuperLyricApi", false),
+            receiveSuperLyricTranslation = obj.optBoolean("receiveSuperLyricTranslation", false),
+            receiveSuperLyricRomanization = obj.optBoolean("receiveSuperLyricRomanization", false),
             useLyricGetterApi = obj.optBoolean("useLyricGetterApi", false),
             useLyriconApi = obj.optBoolean("useLyriconApi", false),
             receiveLyriconTranslation = obj.optBoolean("receiveLyriconTranslation", false),
@@ -383,6 +389,8 @@ object ParserRuleHelper {
             receiveOnlineRomanization = false,
             onlineLyricProviderOrder = OnlineLyricProvider.defaultIdsForPackage(packageName),
             useSuperLyricApi = false,
+            receiveSuperLyricTranslation = false,
+            receiveSuperLyricRomanization = false,
             useLyricGetterApi = false,
             useLyriconApi = false,
             receiveLyriconTranslation = false,
@@ -406,6 +414,8 @@ object ParserRuleHelper {
             onlineLyricProviderOrder = OnlineLyricProvider.normalizeOrder(template.onlineLyricProviderOrder).map { it.id },
             onlineLyricDisabledProviders = OnlineLyricProvider.normalizeDisabledIds(template.onlineLyricDisabledProviders),
             useSuperLyricApi = template.useSuperLyricApi,
+            receiveSuperLyricTranslation = template.receiveSuperLyricTranslation,
+            receiveSuperLyricRomanization = template.receiveSuperLyricRomanization,
             useLyricGetterApi = template.useLyricGetterApi,
             useLyriconApi = template.useLyriconApi,
             receiveLyriconTranslation = template.receiveLyriconTranslation,

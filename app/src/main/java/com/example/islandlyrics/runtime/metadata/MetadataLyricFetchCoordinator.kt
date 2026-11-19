@@ -29,6 +29,15 @@ import com.example.islandlyrics.rules.ParserRuleHelper
 import com.example.islandlyrics.lyrics.source.LocalLyricSource
 import com.example.islandlyrics.lyrics.source.OnlineLyricSource
 
+internal fun hasCurrentSuperLyricTimeline(
+    expected: LyricRepository.MediaInfo,
+    current: LyricRepository.MediaInfo?,
+    parsed: LyricRepository.ParsedLyricsInfo?
+): Boolean = current != null && expected.packageName == current.packageName &&
+    expected.title == current.title && expected.artist == current.artist && expected.mediaId == current.mediaId &&
+    parsed?.apiPath == "SuperLyric" && parsed.timelineCapability == LyricRepository.TimelineCapability.MULTI_LINE &&
+    parsed.lines.any { it.startTime > 0 || it.endTime > it.startTime }
+
 class MetadataLyricFetchCoordinator(
     private val context: Context,
     private val localLyricSource: LocalLyricSource,
@@ -67,14 +76,14 @@ class MetadataLyricFetchCoordinator(
                             repo.updateLyricResolveState(LyricRepository.LyricResolveState.FOUND)
                         } else if (!rule.usesCarProtocol) {
                             AppLogger.getInstance().log(TAG, "[${info.packageName}] Local miss, triggering online fetch...")
-                            onlineLyricSource.fetchFor(info.title, info.artist, info.packageName, onResolve = markResolveFinished)
+                            fetchOnlineUnlessSuperLyricResolved(info, markResolveFinished)
                         } else {
                             repo.reportLyricResolveFailed()
                         }
                     }
                 } else if (!rule.usesCarProtocol) {
                     AppLogger.getInstance().log(TAG, "[${info.packageName}] Non-CarProtocol app, triggering fetch...")
-                    onlineLyricSource.fetchFor(info.title, info.artist, info.packageName, onResolve = markResolveFinished)
+                    fetchOnlineUnlessSuperLyricResolved(info, markResolveFinished)
                 } else {
                     AppLogger.getInstance().log(TAG, "[${info.packageName}] CarProtocol app, waiting for lyric observer trigger...")
                 }
@@ -88,6 +97,20 @@ class MetadataLyricFetchCoordinator(
                 }
             }
         }
+    }
+
+    private fun fetchOnlineUnlessSuperLyricResolved(info: LyricRepository.MediaInfo, onResolve: (Boolean) -> Unit) {
+        val repo = LyricRepository.getInstance()
+        val current = repo.liveMetadata.value ?: return
+        if (current.packageName != info.packageName || current.title != info.title ||
+            current.artist != info.artist || current.mediaId != info.mediaId) return
+        val activeRule = ParserRuleHelper.getRuleForPackage(context, info.packageName)
+            ?: ParserRuleHelper.createDefaultRule(info.packageName)
+        if (activeRule.enabled && activeRule.useSuperLyricApi && hasCurrentSuperLyricTimeline(info, current, repo.liveParsedLyrics.value)) {
+            onResolve(true)
+            return
+        }
+        onlineLyricSource.fetchFor(info.title, info.artist, info.packageName, onResolve = onResolve)
     }
 
     private companion object {

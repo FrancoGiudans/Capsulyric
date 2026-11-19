@@ -168,6 +168,8 @@ fun ParserRuleEditorScreen(
                     appleMusicStorefrontOverride = next.appleMusicStorefrontOverride,
                     appleMusicLanguageOverride = next.appleMusicLanguageOverride,
                     useSuperLyricApi = next.useSuperLyricApi,
+                    receiveSuperLyricTranslation = next.receiveSuperLyricTranslation,
+                    receiveSuperLyricRomanization = next.receiveSuperLyricRomanization,
                     useLyricGetterApi = next.useLyricGetterApi,
                     useLyriconApi = next.useLyriconApi,
                     receiveLyriconTranslation = next.receiveLyriconTranslation,
@@ -437,11 +439,12 @@ private fun MaterialSourceRows(
         },
         onArrowClick = { onNavigate(ParserRuleSourceConfigType.ONLINE) }
     )
-    SwitchRow(
+    SwitchArrowRow(
         title = stringResource(R.string.parser_super_lyric),
         subtitle = stringResource(R.string.parser_super_lyric_desc_short),
         checked = state.useSuperLyricApi,
-        onCheckedChange = { onStateChange(state.copy(useSuperLyricApi = it)) }
+        onCheckedChange = { onStateChange(state.copy(useSuperLyricApi = it)) },
+        onArrowClick = { onNavigate(ParserRuleSourceConfigType.SUPER_LYRIC) }
     )
     SwitchRow(
         title = stringResource(R.string.parser_lgetter_lyric),
@@ -480,6 +483,7 @@ fun ParserRuleSourceConfigScreen(
                         when (configType) {
                             ParserRuleSourceConfigType.NOTIFICATION -> stringResource(R.string.parser_car_protocol)
                             ParserRuleSourceConfigType.ONLINE -> stringResource(R.string.settings_use_online_lyrics)
+                            ParserRuleSourceConfigType.SUPER_LYRIC -> stringResource(R.string.parser_super_lyric)
                             ParserRuleSourceConfigType.LYRICON -> stringResource(R.string.parser_lyricon_lyric)
                         }
                     )
@@ -501,6 +505,7 @@ fun ParserRuleSourceConfigScreen(
         when (configType) {
             ParserRuleSourceConfigType.NOTIFICATION -> MaterialNotificationSourceConfigPage(state, ::updateState, modifier)
             ParserRuleSourceConfigType.ONLINE -> MaterialOnlineSourceConfigPage(state, ::updateState, modifier)
+            ParserRuleSourceConfigType.SUPER_LYRIC -> MaterialSuperLyricSourceConfigPage(state, ::updateState, modifier)
             ParserRuleSourceConfigType.LYRICON -> MaterialLyriconSourceConfigPage(state, ::updateState, modifier)
         }
     }
@@ -591,6 +596,32 @@ fun MaterialOnlineSourceConfigPage(
             )
             OnlineProviderOrderEditor(state, onStateChange)
             AppleMusicOverrideEditor(state, onStateChange)
+        }
+        Spacer(modifier = Modifier.height(24.dp))
+    }
+}
+
+@Composable
+fun MaterialSuperLyricSourceConfigPage(
+    state: ParserRuleEditorState,
+    onStateChange: (ParserRuleEditorState) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier = modifier) {
+        Spacer(modifier = Modifier.height(8.dp))
+        SourceCard {
+            SwitchRow(
+                title = stringResource(R.string.parser_receive_translation),
+                subtitle = stringResource(R.string.parser_superlyric_translation_desc),
+                checked = state.receiveSuperLyricTranslation,
+                onCheckedChange = { onStateChange(state.copy(receiveSuperLyricTranslation = it)) }
+            )
+            SwitchRow(
+                title = stringResource(R.string.parser_receive_romanization),
+                subtitle = stringResource(R.string.parser_superlyric_romanization_desc),
+                checked = state.receiveSuperLyricRomanization,
+                onCheckedChange = { onStateChange(state.copy(receiveSuperLyricRomanization = it)) }
+            )
         }
         Spacer(modifier = Modifier.height(24.dp))
     }

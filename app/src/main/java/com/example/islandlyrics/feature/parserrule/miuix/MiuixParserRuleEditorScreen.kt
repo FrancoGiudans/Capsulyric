@@ -153,6 +153,8 @@ fun MiuixParserRuleEditorScreen(
                     appleMusicStorefrontOverride = next.appleMusicStorefrontOverride,
                     appleMusicLanguageOverride = next.appleMusicLanguageOverride,
                     useSuperLyricApi = next.useSuperLyricApi,
+                    receiveSuperLyricTranslation = next.receiveSuperLyricTranslation,
+                    receiveSuperLyricRomanization = next.receiveSuperLyricRomanization,
                     useLyricGetterApi = next.useLyricGetterApi,
                     useLyriconApi = next.useLyriconApi,
                     receiveLyriconTranslation = next.receiveLyriconTranslation,
@@ -380,6 +382,7 @@ fun MiuixParserRuleEditorScreen(
                 title = when (sourceConfigSheetType) {
                     ParserRuleSourceConfigType.NOTIFICATION -> stringResource(R.string.parser_car_protocol)
                     ParserRuleSourceConfigType.ONLINE -> stringResource(R.string.settings_use_online_lyrics)
+                    ParserRuleSourceConfigType.SUPER_LYRIC -> stringResource(R.string.parser_super_lyric)
                     ParserRuleSourceConfigType.LYRICON -> stringResource(R.string.parser_lyricon_lyric)
                 },
                 onDismissRequest = {
@@ -411,6 +414,8 @@ fun MiuixParserRuleEditorScreen(
                         )
                     ParserRuleSourceConfigType.LYRICON ->
                         MiuixLyriconSourceConfigPage(state, ::updateSourceState)
+                    ParserRuleSourceConfigType.SUPER_LYRIC ->
+                        MiuixSuperLyricSourceConfigPage(state, ::updateSourceState)
                 }
             }
         }
@@ -470,11 +475,12 @@ private fun MiuixSourceRows(
         },
         onArrowClick = { onNavigate(ParserRuleSourceConfigType.ONLINE) }
     )
-    SuperSwitch(
+    MiuixSwitchArrowPreference(
         title = stringResource(R.string.parser_super_lyric),
         summary = stringResource(R.string.parser_super_lyric_desc_short),
         checked = state.useSuperLyricApi,
-        onCheckedChange = { onStateChange(state.copy(useSuperLyricApi = it)) }
+        onCheckedChange = { onStateChange(state.copy(useSuperLyricApi = it)) },
+        onArrowClick = { onNavigate(ParserRuleSourceConfigType.SUPER_LYRIC) }
     )
     SuperSwitch(
         title = stringResource(R.string.parser_lgetter_lyric),
@@ -512,11 +518,13 @@ fun MiuixParserRuleSourceConfigScreen(
                 title = when (configType) {
                     ParserRuleSourceConfigType.NOTIFICATION -> stringResource(R.string.parser_car_protocol)
                     ParserRuleSourceConfigType.ONLINE -> stringResource(R.string.settings_use_online_lyrics)
+                    ParserRuleSourceConfigType.SUPER_LYRIC -> stringResource(R.string.parser_super_lyric)
                     ParserRuleSourceConfigType.LYRICON -> stringResource(R.string.parser_lyricon_lyric)
                 },
                 largeTitle = when (configType) {
                     ParserRuleSourceConfigType.NOTIFICATION -> stringResource(R.string.parser_car_protocol)
                     ParserRuleSourceConfigType.ONLINE -> stringResource(R.string.settings_use_online_lyrics)
+                    ParserRuleSourceConfigType.SUPER_LYRIC -> stringResource(R.string.parser_super_lyric)
                     ParserRuleSourceConfigType.LYRICON -> stringResource(R.string.parser_lyricon_lyric)
                 },
                 scrollBehavior = scrollBehavior,
@@ -550,6 +558,7 @@ fun MiuixParserRuleSourceConfigScreen(
                         onOpenProviderOrder = { showProviderOrderSheet = true }
                     )
                     ParserRuleSourceConfigType.LYRICON -> MiuixLyriconSourceConfigPage(state, ::updateState)
+                    ParserRuleSourceConfigType.SUPER_LYRIC -> MiuixSuperLyricSourceConfigPage(state, ::updateState)
                 }
             }
         }
@@ -735,6 +744,31 @@ private fun MiuixAppleMusicOverrideSection(
                     }
                 )
             }
+        }
+    }
+}
+
+@Composable
+fun MiuixSuperLyricSourceConfigPage(
+    state: ParserRuleEditorState,
+    onStateChange: (ParserRuleEditorState) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier = modifier) {
+        Spacer(modifier = Modifier.height(12.dp))
+        Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
+            SuperSwitch(
+                title = stringResource(R.string.parser_receive_translation),
+                summary = stringResource(R.string.parser_superlyric_translation_desc),
+                checked = state.receiveSuperLyricTranslation,
+                onCheckedChange = { onStateChange(state.copy(receiveSuperLyricTranslation = it)) }
+            )
+            SuperSwitch(
+                title = stringResource(R.string.parser_receive_romanization),
+                summary = stringResource(R.string.parser_superlyric_romanization_desc),
+                checked = state.receiveSuperLyricRomanization,
+                onCheckedChange = { onStateChange(state.copy(receiveSuperLyricRomanization = it)) }
+            )
         }
     }
 }

@@ -296,7 +296,7 @@
     <string name="parser_source_config_title">歌词源设置</string>
     <string name="parser_online_conflict_disable_notify">关闭媒体通知歌词</string>
     <string name="parser_super_lyric">SuperLyric API</string>
-    <string name="parser_super_lyric_desc_short">通过 SuperLyric 广播接收</string>
+    <string name="parser_super_lyric_desc_short">接收 SuperLyric 歌词与时间数据</string>
     <string name="parser_lgetter_lyric">Lyric Getter API</string>
     <string name="parser_lgetter_lyric_desc_short">通过 Lyric Getter 广播接收</string>
     <string name="parser_lyricon_lyric">词幕 (Lyricon) API</string>
@@ -307,6 +307,8 @@
     <string name="parser_receive_romanization">接收拼音歌词</string>
     <string name="parser_online_translation_desc">目前只有 QQ 音乐和网易云在线歌词提供翻译数据。</string>
     <string name="parser_online_romanization_desc">目前只有 QQ 音乐和网易云在线歌词提供拼音歌词数据。</string>
+    <string name="parser_superlyric_translation_desc">接收 SuperLyric 提供的翻译。</string>
+    <string name="parser_superlyric_romanization_desc">接收 SuperLyric 提供的拼音、罗马音或副歌词。</string>
     <string name="parser_lyricon_translation_desc">在当前 Lyricon 提供方上报翻译字段时接收。</string>
     <string name="parser_lyricon_romanization_desc">在当前 Lyricon 提供方上报拼音歌词或 secondary 字段时接收。</string>
     <string name="parser_save">保存</string>
@@ -677,7 +679,7 @@
     <string name="faq_q_hide_launcher_entry">Q：隐藏桌面图标后如何重新打开 Capsulyric？</string>
     <string name="faq_a_hide_launcher_entry">A：隐藏桌面图标后，你可以通过以下方式打开 Capsulyric：\n\n<b>1. 控制中心磁贴</b>\n下拉通知栏，点击 Capsulyric 磁贴即可直接打开应用。\n\n<b>2. URL Scheme</b>\n在任意浏览器地址栏输入 <b>capsulyric://settings</b> 并访问，即可唤醒应用。\n\n<b>3. 管理空间</b>\n前往<b>系统设置 → 应用管理 → Capsulyric → 管理空间</b>进入<b>缓存管理</b>页面。点击页面左上角返回按钮可进入 Capsulyric 的<b>应用设置</b>；使用系统返回键则会回到系统设置。部分设备（如 HyperOS）上，管理空间按钮需要点击“清除数据”后才能看到。</string>
     <string name="faq_q_no_pinyin_translation">Q：为什么我接收不到拼音歌词/歌词翻译？</string>
-    <string name="faq_a_no_pinyin_translation">A：拼音歌词与歌词翻译目前仅支持通过<b>在线歌词</b>与 <b>Lyricon API</b> 获取。\n\n同时你需要在对应应用的解析规则中开启相关选项：\n\n1. 打开<b>解析规则</b>，找到对应音乐应用的规则。\n\n2. 勾选<b>接收翻译</b>和/或<b>接收拼音歌词</b>。\n\n3. 如果使用在线歌词，请确保歌词源支持翻译或拼音字段。</string>
+    <string name="faq_a_no_pinyin_translation">A：歌词翻译与拼音／罗马音可通过<b>在线歌词</b>、<b>SuperLyric API</b>和<b>词幕（Lyricon）API</b>获取。\n\n1. 打开<b>解析规则</b>，选择对应音乐应用。\n\n2. 启用实际使用的歌词源，点击其右侧箭头进入配置页。\n\n3. 为该歌词源开启<b>接收翻译</b>和／或<b>接收拼音歌词</b>。\n\n4. 歌词源需要实际提供这些字段，开启开关不会自动生成缺失内容。SuperLyric 旧版接口同样可以携带翻译、罗马音和逐行／逐字时间数据，时间轴能力按收到的数据启用。</string>
 
     <!-- 通知设置 -->
     <string name="action_miplay">小米妙播</string>

@@ -23,11 +23,11 @@
 package com.example.islandlyrics.core.cache
 
 import android.content.Context
-import coil.ImageLoader
-import coil.annotation.ExperimentalCoilApi
-import coil.disk.DiskCache
-import coil.memory.MemoryCache
+import coil3.ImageLoader
+import coil3.disk.DiskCache
+import coil3.memory.MemoryCache
 import java.io.File
+import okio.Path.Companion.toOkioPath
 
 object AppImageCacheManager {
 
@@ -46,17 +46,16 @@ object AppImageCacheManager {
         return imageLoader ?: synchronized(this) {
             imageLoader ?: ImageLoader.Builder(appContext)
                 .memoryCache {
-                    MemoryCache.Builder(appContext)
-                        .maxSizeBytes(16 * 1024 * 1024)  // 16 MB — sufficient for markdown images
+                    MemoryCache.Builder()
+                        .maxSizeBytes(16L * 1024L * 1024L)  // 16 MB — sufficient for markdown images
                         .build()
                 }
                 .diskCache {
                     DiskCache.Builder()
-                        .directory(cacheDirectory(appContext))
+                        .directory(cacheDirectory(appContext).toOkioPath())
                         .maxSizeBytes(64L * 1024L * 1024L)
                         .build()
                 }
-                .respectCacheHeaders(false)
                 .build()
                 .also { imageLoader = it }
         }
@@ -78,7 +77,6 @@ object AppImageCacheManager {
         return ImageCacheStats(fileCount, totalBytes, lastUpdatedAt?.takeIf { it > 0L })
     }
 
-    @OptIn(ExperimentalCoilApi::class)
     fun clear(context: Context) {
         val appContext = context.applicationContext
         synchronized(this) {

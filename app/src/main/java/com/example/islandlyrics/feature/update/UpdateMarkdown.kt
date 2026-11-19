@@ -25,46 +25,54 @@ package com.example.islandlyrics.feature.update
 import android.content.Context
 import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.Drawable
+import android.text.Spanned
 import android.widget.TextView
-import coil.ImageLoader
-import coil.request.ErrorResult
-import coil.request.ImageRequest
-import coil.request.SuccessResult
+import coil3.Image
+import coil3.ImageLoader
+import coil3.asDrawable
+import coil3.request.Disposable
+import coil3.request.ImageRequest
+import coil3.request.error
+import coil3.request.placeholder
+import coil3.target.Target
 import com.example.islandlyrics.core.cache.AppImageCacheManager
+import io.noties.markwon.AbstractMarkwonPlugin
 import io.noties.markwon.Markwon
+import io.noties.markwon.MarkwonConfiguration
+import io.noties.markwon.MarkwonSpansFactory
 import io.noties.markwon.SoftBreakAddsNewLinePlugin
 import io.noties.markwon.ext.strikethrough.StrikethroughPlugin
 import io.noties.markwon.ext.tables.TablePlugin
 import io.noties.markwon.ext.tasklist.TaskListPlugin
 import io.noties.markwon.html.HtmlPlugin
 import io.noties.markwon.image.AsyncDrawable
-import io.noties.markwon.image.coil.CoilImagesPlugin
+import io.noties.markwon.image.AsyncDrawableLoader
+import io.noties.markwon.image.AsyncDrawableScheduler
+import io.noties.markwon.image.DrawableUtils
+import io.noties.markwon.image.ImageSpanFactory
+import org.commonmark.node.Image as MarkdownImage
 import kotlin.math.roundToInt
 
 object UpdateMarkdown {
     fun create(context: Context): Markwon {
         val imageLoader = AppImageCacheManager.getImageLoader(context)
-        val coilStore = object : CoilImagesPlugin.CoilStore {
-            override fun load(drawable: AsyncDrawable): ImageRequest {
-                val placeholder = createPlaceholder(context, drawable)
-                return ImageRequest.Builder(context)
-                    .data(drawable.destination)
-                    .placeholder(placeholder)
-                    .error(placeholder)
-                    .listener(object : ImageRequest.Listener {
-                        override fun onSuccess(request: ImageRequest, result: SuccessResult) {
-                            requestLayout(drawable)
-                        }
+        val imagesPlugin = object : AbstractMarkwonPlugin() {
+            private val loader = MarkdownImageLoader(context, imageLoader)
 
-                        override fun onError(request: ImageRequest, result: ErrorResult) {
-                            requestLayout(drawable)
-                        }
-                    })
-                    .build()
+            override fun configureSpansFactory(builder: MarkwonSpansFactory.Builder) {
+                builder.setFactory(MarkdownImage::class.java, ImageSpanFactory())
             }
 
-            override fun cancel(disposable: coil.request.Disposable) {
-                disposable.dispose()
+            override fun configureConfiguration(builder: MarkwonConfiguration.Builder) {
+                builder.asyncDrawableLoader(loader)
+            }
+
+            override fun beforeSetText(textView: TextView, markdown: Spanned) {
+                AsyncDrawableScheduler.unschedule(textView)
+            }
+
+            override fun afterSetText(textView: TextView) {
+                AsyncDrawableScheduler.schedule(textView)
             }
         }
 
@@ -74,8 +82,62 @@ object UpdateMarkdown {
             .usePlugin(TablePlugin.create(context))
             .usePlugin(TaskListPlugin.create(context))
             .usePlugin(HtmlPlugin.create())
-            .usePlugin(CoilImagesPlugin.create(coilStore, imageLoader))
+            .usePlugin(imagesPlugin)
             .build()
+    }
+
+    // Coil 3 integration follows Markwon's CoilImagesPlugin (Apache-2.0).
+    // See THIRD_PARTY_NOTICES.md, section 5.1.
+    private class MarkdownImageLoader(
+        private val context: Context,
+        private val imageLoader: ImageLoader
+    ) : AsyncDrawableLoader() {
+        private class PendingRequest(var disposable: Disposable? = null)
+
+        private val requests = mutableMapOf<AsyncDrawable, PendingRequest>()
+
+        override fun load(drawable: AsyncDrawable) {
+            cancel(drawable)
+            val pending = PendingRequest()
+            requests[drawable] = pending
+            val placeholder = createPlaceholder(context, drawable)
+            val request = ImageRequest.Builder(context)
+                .data(drawable.destination)
+                .placeholder(placeholder)
+                .error(placeholder)
+                .target(object : Target {
+                    override fun onStart(placeholder: Image?) = deliver(placeholder, false)
+
+                    override fun onSuccess(result: Image) = deliver(result, true)
+
+                    override fun onError(error: Image?) = deliver(error, true)
+
+                    private fun deliver(image: Image?, complete: Boolean) {
+                        if (requests[drawable] !== pending) return
+                        if (complete) requests.remove(drawable)
+                        if (image != null && drawable.isAttached) {
+                            val result = image.asDrawable(context.resources)
+                            DrawableUtils.applyIntrinsicBoundsIfEmpty(result)
+                            drawable.setResult(result)
+                            requestLayout(drawable)
+                        }
+                    }
+                })
+                .build()
+            val disposable = imageLoader.enqueue(request)
+            // Memory-cache hits can finish before enqueue returns.
+            if (requests[drawable] === pending) {
+                pending.disposable = disposable
+            } else {
+                disposable.dispose()
+            }
+        }
+
+        override fun cancel(drawable: AsyncDrawable) {
+            requests.remove(drawable)?.disposable?.dispose()
+        }
+
+        override fun placeholder(drawable: AsyncDrawable): Drawable? = null
     }
 
     private fun requestLayout(drawable: AsyncDrawable) {

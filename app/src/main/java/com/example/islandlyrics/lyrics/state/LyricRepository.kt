@@ -75,16 +75,17 @@ class LyricRepository private constructor() {
         val lyric: String,
         val translation: String?,
         val roma: String?,
-        val hasLyric: Boolean,
-        val hasTranslation: Boolean,
-        val hasSecondary: Boolean,
-        val lyricLineRaw: String?,
-        val translationLineRaw: String?,
-        val secondaryLineRaw: String?,
-        val lyricWordsPreview: String,
-        val translationWordsPreview: String,
-        val secondaryWordsPreview: String,
-        val extraKeys: List<String>,
+        val mode: String,
+        val registrationResult: String,
+        val serverApiVersion: Int?,
+        val documentId: String?,
+        val lineCount: Int,
+        val currentIndex: Int,
+        val wordsPreview: String,
+        val position: Long?,
+        val speed: Float?,
+        val playbackState: String?,
+        val stopReason: String? = null,
         val skipReason: String? = null,
         val timestamp: Long = System.currentTimeMillis()
     )
@@ -106,7 +107,9 @@ class LyricRepository private constructor() {
         val hasSyllable: Boolean,
         val sourceLabel: String? = null,
         val apiPath: String? = null,
-        val timelineCapability: TimelineCapability = TimelineCapability.NONE
+        val timelineCapability: TimelineCapability = TimelineCapability.NONE,
+        val receiveTranslation: Boolean = true,
+        val receiveRomanization: Boolean = true
     )
     val liveParsedLyrics = MutableLiveData<ParsedLyricsInfo?>()
 
@@ -135,16 +138,18 @@ class LyricRepository private constructor() {
         app: String?,
         apiPath: String = "Unknown",
         translation: String? = null,
-        roma: String? = null
+        roma: String? = null,
+        receiveTranslation: Boolean = true,
+        receiveRomanization: Boolean = true
     ) {
         if (lyric == null || app == null) return
 
-        val normalizedTranslation = translation?.takeIf { it.isNotBlank() }
-        val normalizedRoma = roma?.takeIf { it.isNotBlank() }
+        val normalizedTranslation = translation?.takeIf { receiveTranslation && it.isNotBlank() }
+        val normalizedRoma = roma?.takeIf { receiveRomanization && it.isNotBlank() }
         if (lyric.isNotBlank() && (normalizedTranslation != null || normalizedRoma != null)) {
             sidecarStore.put(apiPath, lyric, normalizedTranslation, normalizedRoma)
         }
-        val sidecar = sidecarStore.find(apiPath, lyric)
+        val sidecar = sidecarStore.find(apiPath, lyric, receiveTranslation, receiveRomanization)
 
         val newInfo = LyricInfo(
             lyric = lyric,
@@ -273,14 +278,16 @@ class LyricRepository private constructor() {
         hasSyllable: Boolean,
         sourceLabel: String? = null,
         apiPath: String? = null,
-        timelineCapability: TimelineCapability = TimelineCapability.NONE
-    ) {
-        val info = ParsedLyricsInfo(lines, hasSyllable, sourceLabel, apiPath, timelineCapability)
+        timelineCapability: TimelineCapability = TimelineCapability.NONE,
+        receiveTranslation: Boolean = true,
+        receiveRomanization: Boolean = true
+    ): Boolean {
+        val info = ParsedLyricsInfo(lines, hasSyllable, sourceLabel, apiPath, timelineCapability, receiveTranslation, receiveRomanization)
         val acceptedInfo = lyricSourceArbiter.chooseParsedLyrics(
             current = liveParsedLyrics.value,
             candidate = info
-        ) ?: return
-        liveParsedLyrics.postValue(acceptedInfo)
+        ) ?: return false
+        postOrSet(liveParsedLyrics, acceptedInfo)
         if (acceptedInfo.lines.isNotEmpty()) {
             updateLyricResolveState(LyricResolveState.FOUND)
         }
@@ -288,6 +295,7 @@ class LyricRepository private constructor() {
             "Repo",
             "📝 Parsed lyrics updated: ${lines.size} lines, syllable: $hasSyllable, capability=$timelineCapability"
         )
+        return true
     }
     
     fun updateCurrentLine(line: OnlineLyricFetcher.LyricLine?) {

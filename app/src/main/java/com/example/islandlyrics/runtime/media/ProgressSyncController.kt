@@ -181,7 +181,9 @@ class ProgressSyncController(
                 app = source,
                 apiPath = apiPath,
                 translation = line.translation,
-                roma = line.roma
+                roma = line.roma,
+                receiveTranslation = parsedInfo?.receiveTranslation ?: true,
+                receiveRomanization = parsedInfo?.receiveRomanization ?: true
             )
             repo.updateCurrentLine(line)
         }

@@ -1,4 +1,5 @@
 {
   "uniqueId": "com.github.HChenX:SuperLyricApi",
-  "licenses": ["2202441805db22411f1bf52c483dc759"]
+  "licenses": ["2202441805db22411f1bf52c483dc759", "LGPL-3.0-or-later"],
+  "description": "SuperLyricApi 4.0: upstream root LICENSE states LGPL-2.1 while new source headers state LGPL-3.0-or-later. Both notices are retained pending upstream clarification."
 }

@@ -98,6 +98,8 @@ class ParserRuleSourceConfigActivity : BaseActivity() {
                 onlineLyricProviderOrder = state.onlineLyricProviderOrder.map { it.id },
                 onlineLyricDisabledProviders = state.onlineLyricDisabledProviders.map { it.id }.toSet(),
                 receiveLyriconTranslation = state.receiveLyriconTranslation,
+                receiveSuperLyricTranslation = state.receiveSuperLyricTranslation,
+                receiveSuperLyricRomanization = state.receiveSuperLyricRomanization,
                 receiveLyriconRomanization = state.receiveLyriconRomanization
             )
         }

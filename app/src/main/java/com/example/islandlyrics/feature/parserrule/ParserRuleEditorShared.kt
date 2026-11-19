@@ -29,6 +29,7 @@ import com.example.islandlyrics.lyrics.online.provider.OnlineLyricProvider
 enum class ParserRuleSourceConfigType {
     NOTIFICATION,
     ONLINE,
+    SUPER_LYRIC,
     LYRICON
 }
 
@@ -49,6 +50,8 @@ data class ParserRuleEditorState(
     val appleMusicStorefrontOverride: String? = null,
     val appleMusicLanguageOverride: String? = null,
     val useSuperLyricApi: Boolean,
+    val receiveSuperLyricTranslation: Boolean,
+    val receiveSuperLyricRomanization: Boolean,
     val useLyricGetterApi: Boolean,
     val useLyriconApi: Boolean,
     val receiveLyriconTranslation: Boolean,
@@ -75,6 +78,8 @@ fun ParserRule.toEditorState(): ParserRuleEditorState = ParserRuleEditorState(
     appleMusicStorefrontOverride = appleMusicStorefrontOverride,
     appleMusicLanguageOverride = appleMusicLanguageOverride,
     useSuperLyricApi = useSuperLyricApi,
+    receiveSuperLyricTranslation = receiveSuperLyricTranslation,
+    receiveSuperLyricRomanization = receiveSuperLyricRomanization,
     useLyricGetterApi = useLyricGetterApi,
     useLyriconApi = useLyriconApi,
     receiveLyriconTranslation = receiveLyriconTranslation,
@@ -97,6 +102,8 @@ fun ParserRuleEditorState.withSourceSettingsFrom(source: ParserRuleEditorState):
     appleMusicStorefrontOverride = source.appleMusicStorefrontOverride,
     appleMusicLanguageOverride = source.appleMusicLanguageOverride,
     useSuperLyricApi = source.useSuperLyricApi,
+    receiveSuperLyricTranslation = source.receiveSuperLyricTranslation,
+    receiveSuperLyricRomanization = source.receiveSuperLyricRomanization,
     useLyricGetterApi = source.useLyricGetterApi,
     useLyriconApi = source.useLyriconApi,
     receiveLyriconTranslation = source.receiveLyriconTranslation,
@@ -122,6 +129,8 @@ fun ParserRuleEditorState.toRule(previousRule: ParserRule?): ParserRule = Parser
     appleMusicStorefrontOverride = appleMusicStorefrontOverride,
     appleMusicLanguageOverride = appleMusicLanguageOverride,
     useSuperLyricApi = useSuperLyricApi,
+    receiveSuperLyricTranslation = receiveSuperLyricTranslation,
+    receiveSuperLyricRomanization = receiveSuperLyricRomanization,
     useLyricGetterApi = useLyricGetterApi,
     useLyriconApi = useLyriconApi,
     receiveLyriconTranslation = receiveLyriconTranslation,

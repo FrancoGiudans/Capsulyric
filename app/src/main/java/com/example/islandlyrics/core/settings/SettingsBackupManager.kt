@@ -1100,7 +1100,7 @@ object SettingsBackupManager {
         }
     }
 
-    private fun parserRulesJsonToBackupArray(json: String): JSONArray {
+    internal fun parserRulesJsonToBackupArray(json: String): JSONArray {
         val source = runCatching { JSONArray(json) }.getOrNull() ?: return JSONArray()
         val result = JSONArray()
         for (i in 0 until source.length()) {
@@ -1128,6 +1128,8 @@ object SettingsBackupManager {
                     .put("lyric_getter", rule.optBoolean("useLyricGetterApi", false))
                     .put("lyricon", rule.optBoolean("useLyriconApi", false)))
                 .put("translations", JSONObject()
+                    .put("super_lyric_translation", rule.optBoolean("receiveSuperLyricTranslation", false))
+                    .put("super_lyric_romanization", rule.optBoolean("receiveSuperLyricRomanization", false))
                     .put("online_translation", rule.optBoolean("receiveOnlineTranslation", false))
                     .put("online_romanization", rule.optBoolean("receiveOnlineRomanization", false))
                     .put("lyricon_translation", rule.optBoolean("receiveLyriconTranslation", false))
@@ -1137,7 +1139,7 @@ object SettingsBackupManager {
         return result
     }
 
-    private fun backupTemplateFromInternalJson(json: String): JSONObject? {
+    internal fun backupTemplateFromInternalJson(json: String): JSONObject? {
         val rule = runCatching { JSONObject(json) }.getOrNull() ?: return null
         return JSONObject()
             .put("car_protocol", rule.optBoolean("usesCarProtocol", true))
@@ -1156,13 +1158,15 @@ object SettingsBackupManager {
                 .put("lyric_getter", rule.optBoolean("useLyricGetterApi", false))
                 .put("lyricon", rule.optBoolean("useLyriconApi", false)))
             .put("translations", JSONObject()
+                .put("super_lyric_translation", rule.optBoolean("receiveSuperLyricTranslation", false))
+                .put("super_lyric_romanization", rule.optBoolean("receiveSuperLyricRomanization", false))
                 .put("online_translation", rule.optBoolean("receiveOnlineTranslation", false))
                 .put("online_romanization", rule.optBoolean("receiveOnlineRomanization", false))
                 .put("lyricon_translation", rule.optBoolean("receiveLyriconTranslation", false))
                 .put("lyricon_romanization", rule.optBoolean("receiveLyriconRomanization", false)))
     }
 
-    private fun backupTemplateToInternalJson(template: JSONObject): String {
+    internal fun backupTemplateToInternalJson(template: JSONObject): String {
         val sources = template.optJSONObject("sources") ?: JSONObject()
         val apis = template.optJSONObject("apis") ?: JSONObject()
         val translations = template.optJSONObject("translations") ?: JSONObject()
@@ -1192,6 +1196,8 @@ object SettingsBackupManager {
             .put("useLyricGetterApi", apis.optBoolean("lyric_getter", template.optBoolean("useLyricGetterApi", false)))
             .put("useLyriconApi", apis.optBoolean("lyricon", template.optBoolean("useLyriconApi", false)))
             .put("receiveLyriconTranslation", translations.optBoolean("lyricon_translation", template.optBoolean("receiveLyriconTranslation", false)))
+            .put("receiveSuperLyricTranslation", translations.optBoolean("super_lyric_translation", template.optBoolean("receiveSuperLyricTranslation", false)))
+            .put("receiveSuperLyricRomanization", translations.optBoolean("super_lyric_romanization", template.optBoolean("receiveSuperLyricRomanization", false)))
             .put("receiveLyriconRomanization", translations.optBoolean("lyricon_romanization", template.optBoolean("receiveLyriconRomanization", false)))
             .put("useLocalLyrics", sources.optBoolean("local_lyrics", template.optBoolean("useLocalLyrics", false)))
             .toString()
@@ -1212,7 +1218,7 @@ object SettingsBackupManager {
         }
     }
 
-    private fun backupParserArrayToParserRulesJson(array: JSONArray): String {
+    internal fun backupParserArrayToParserRulesJson(array: JSONArray): String {
         val result = JSONArray()
         for (i in 0 until array.length()) {
             val obj = array.optJSONObject(i) ?: continue
@@ -1248,6 +1254,8 @@ object SettingsBackupManager {
                 .put("useLyricGetterApi", apis.optBoolean("lyric_getter", obj.optBoolean("useLyricGetterApi", false)))
                 .put("useLyriconApi", apis.optBoolean("lyricon", obj.optBoolean("useLyriconApi", false)))
                 .put("receiveLyriconTranslation", translations.optBoolean("lyricon_translation", obj.optBoolean("receiveLyriconTranslation", false)))
+                .put("receiveSuperLyricTranslation", translations.optBoolean("super_lyric_translation", obj.optBoolean("receiveSuperLyricTranslation", false)))
+                .put("receiveSuperLyricRomanization", translations.optBoolean("super_lyric_romanization", obj.optBoolean("receiveSuperLyricRomanization", false)))
                 .put("receiveLyriconRomanization", translations.optBoolean("lyricon_romanization", obj.optBoolean("receiveLyriconRomanization", false)))
                 .put("useLocalLyrics", sources.optBoolean("local_lyrics", obj.optBoolean("useLocalLyrics", false))))
         }
