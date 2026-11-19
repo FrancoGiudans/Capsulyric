@@ -21,6 +21,7 @@
  */
 
 package com.example.islandlyrics.ui.overlay.superisland.config
+import com.example.islandlyrics.ui.overlay.superisland.calibration.RightCalibrationRuntime
 import android.content.Context
 import android.content.SharedPreferences
 import com.example.islandlyrics.core.platform.XmsfBypassMode
@@ -96,6 +97,9 @@ internal class SuperIslandPreferencesCache(
         private set
 
     private val prefs by lazy { AppPreferences.of(context) }
+    val rightTextPolicy get() = RightCalibrationRuntime.policy(context, rightIslandProgressActive, includePreview = false)
+    val rightPreviewText get() = RightCalibrationRuntime.previewText(context, rightIslandProgressActive)
+    private val calibrationListener: () -> Unit = { onRenderConfigChanged() }
     private var relaxedTextLimitsEnabled = false
 
     private val listener = SharedPreferences.OnSharedPreferenceChangeListener { p, key ->
@@ -172,10 +176,13 @@ internal class SuperIslandPreferencesCache(
 
     fun start() {
         load()
+        RightCalibrationRuntime.initialize(context)
+        RightCalibrationRuntime.addListener(calibrationListener)
         prefs.registerOnSharedPreferenceChangeListener(listener)
     }
 
     fun stop() {
+        RightCalibrationRuntime.removeListener(calibrationListener)
         prefs.unregisterOnSharedPreferenceChangeListener(listener)
     }
 

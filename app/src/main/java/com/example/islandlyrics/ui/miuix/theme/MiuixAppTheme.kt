@@ -156,7 +156,7 @@ fun MiuixAppTheme(
     val view = LocalView.current
     if (!view.isInEditMode) {
         LaunchedEffect(isDark) {
-            val window = (view.context as Activity).window
+            val window = (view.context as? Activity)?.window ?: return@LaunchedEffect
             WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !isDark
         }
     }

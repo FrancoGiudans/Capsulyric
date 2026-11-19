@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="right_calibration_advanced">字幅の詳細設定</string>
+    <string name="right_calibration_title">右側の歌詞を調整</string>
+    <string name="right_calibration_summary">この端末のフォント、テーマ、表示設定に合わせて調整します</string>
+    <string name="right_calibration_instructions">音楽を再生してスーパーアイランドを有効にし、テストを開始して上部の実際の表示を確認してください。まず元のサンプルを比較し、「切り詰め前のサンプルを表示」をオフにして結果を確認します。CJK の本文字形 1 個を 1 単位とします。保存すると適用され、ページを閉じるか離れると通常の歌詞に戻ります。フォント、テーマ、アイランドのレイアウトを変更した場合は再調整してください。</string>
+    <string name="right_calibration_plain">右側の進捗リングなしの設定</string>
+    <string name="right_calibration_ring">右側の進捗リングありの設定</string>
+    <string name="right_calibration_environment_changed">端末または表示設定が異なるため、この設定は無効です。再テストして保存すると現在の環境に適用されます。</string>
+    <string name="right_calibration_profiles">保存済みの設定を読み込んで使用または再調整します。✓ は選択中の設定です</string>
+    <string name="right_calibration_name">設定名（フォントやテーマなど）</string>
+    <string name="right_calibration_capacity">右側の容量（CJK 字幅）</string>
+    <string name="right_calibration_margin">余白（CJK 字幅）</string>
+    <string name="right_calibration_letter_mono">文字を等幅として計算</string>
+    <string name="right_calibration_letter_width">英字 1 文字の幅（CJK 字幅）</string>
+    <string name="right_calibration_letter_scale">英字の幅の補正係数</string>
+    <string name="right_calibration_digit_mono">数字を等幅として計算</string>
+    <string name="right_calibration_digit_width">数字 1 桁の幅（CJK 字幅）</string>
+    <string name="right_calibration_digit_scale">数字の幅の補正係数</string>
+    <string name="right_calibration_space">半角スペースの幅（CJK 字幅）</string>
+    <string name="right_calibration_full_space">全角スペースの幅（CJK 字幅）</string>
+    <string name="right_calibration_punctuation">句読点と記号の幅の補正係数</string>
+    <string name="right_calibration_estimate_note">等幅の設定は実際のアイランドで確認してから有効にしてください。推定した幅は変更後のシステムフォントと異なる場合があります。必要に応じて下部で字形ごとに調整できます。設定はこの端末のみに保存されます。フォントやテーマの変更は自動検出されないため、手動で再調整または設定を切り替えてください。</string>
+    <string name="right_calibration_samples">テストサンプル</string>
+    <string name="right_calibration_custom_sample">サンプルの文字列</string>
+    <string name="right_calibration_raw">切り詰め前のサンプルを表示</string>
+    <string name="right_calibration_start">アイランドでテスト開始</string>
+    <string name="right_calibration_stop">テストを停止して歌詞に戻る</string>
+    <string name="right_calibration_needs_playback">音楽を再生してスーパーアイランドを有効にしてからテストしてください。</string>
+    <string name="right_calibration_saved">保存し、現在の表示環境に適用しました。</string>
+    <string name="right_calibration_glyph_note">詳細設定：英字、数字、句読点、絵文字など 1 つの字形の幅を指定できます。既存の項目をタップすると削除します。</string>
+    <string name="right_calibration_glyph">調整する 1 つの字形</string>
+    <string name="right_calibration_glyph_width">字形の幅（CJK 字幅）</string>
+    <string name="right_calibration_add_glyph">字形の幅を追加・更新</string>
+    <string name="right_calibration_new">新規設定／編集中の設定をリセット</string>
+    <string name="right_calibration_disable">調整を無効にして元の文字数制限に戻す</string>
+</resources>

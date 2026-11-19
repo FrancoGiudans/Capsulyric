@@ -22,6 +22,8 @@
 
 package com.example.islandlyrics.ui.overlay.display
 import com.example.islandlyrics.ui.overlay.superisland.config.SuperIslandTextLimitConfig
+import com.example.islandlyrics.ui.overlay.superisland.calibration.RightCalibrationRuntime
+import com.example.islandlyrics.ui.overlay.superisland.calibration.CalibratedLyricWindowResolver
 import com.example.islandlyrics.ui.overlay.config.LyricTextDisplayMode
 import com.example.islandlyrics.ui.overlay.config.CapsuleRenderMode
 import com.example.islandlyrics.ui.overlay.capsule.config.LiveUpdateTextLimitConfig
@@ -72,6 +74,16 @@ class LyricDisplayManager(private val context: Context) {
     
     // Config / Preferences
     private var displayConfig = OverlayDisplayConfig.from(AppPreferences.of(context))
+    private val calibratedWindow = CalibratedLyricWindowResolver()
+    private var calibrationSignature: Any? = null
+    private val calibrationListener: () -> Unit = {
+        val policy = currentRightCalibration()
+        if (calibrationSignature != policy?.calibration) {
+            calibrationSignature = policy?.calibration
+            calibratedWindow.reset()
+            forceUpdate()
+        }
+    }
     
     // Adaptive scroll metrics
     private var lastLyricChangeTime: Long = 0
@@ -150,6 +162,8 @@ class LyricDisplayManager(private val context: Context) {
             AppPreferences.Keys.SUPER_ISLAND_NOTIFICATION_STYLE,
             AppPreferences.Keys.SUPER_ISLAND_LYRIC_MODE,
             AppPreferences.Keys.SUPER_ISLAND_FULL_LYRIC_SHOW_LEFT_COVER,
+            AppPreferences.Keys.SUPER_ISLAND_COLLAPSED_RIGHT_PROGRESS_RING,
+            LabFeatureManager.KEY_SUPER_ISLAND_RIGHT_ISLAND_PROGRESS_LAB_ENABLED,
             SuperIslandTextLimitConfig.KEY_RIGHT_CHARS,
             SuperIslandTextLimitConfig.KEY_LEFT_WITH_COVER_CHARS,
             SuperIslandTextLimitConfig.KEY_LEFT_NO_COVER_CHARS,
@@ -179,6 +193,9 @@ class LyricDisplayManager(private val context: Context) {
 
     fun start() {
         if (isRunning) return
+        RightCalibrationRuntime.initialize(context)
+        calibrationSignature = currentRightCalibration()?.calibration
+        RightCalibrationRuntime.addListener(calibrationListener)
         isRunning = true
 
         // The output renderers may have been stopped while the same track was
@@ -211,6 +228,7 @@ class LyricDisplayManager(private val context: Context) {
     }
 
     fun stop() {
+        RightCalibrationRuntime.removeListener(calibrationListener)
         if (!isRunning) return
         isRunning = false
 
@@ -265,6 +283,7 @@ class LyricDisplayManager(private val context: Context) {
 
         lastLyricChangeTime = now
         lastLyricLength = newLyric.length
+        calibratedWindow.reset()
 
         calculateAdaptiveDelay(newLyric)
         scrollState = ScrollState.INITIAL_PAUSE
@@ -448,6 +467,32 @@ class LyricDisplayManager(private val context: Context) {
             val totalWeight = LyricTextWindowCalculator.weight(preferredPlainLyric)
             displayLyric = calculateAdaptiveScroll(preferredPlainLyric, totalWeight)
             fullLyricForDisplay = preferredPlainLyric
+        }
+
+        // A local calibration replaces both the source window and the final
+        // right-column fit. Do not repair overflow by silently clipping a
+        // second, narrower window only inside the notification builder.
+        if (displayConfig.capsuleRenderMode == CapsuleRenderMode.XIAOMI_SUPER_ISLAND &&
+            !preferMetadataLayout && !timingGapActive && fullLyricForDisplay.isNotBlank()
+        ) {
+            val policy = currentRightCalibration()
+            if (policy != null) {
+                val result = calibratedWindow.resolve(
+                    text = fullLyricForDisplay, policy = policy,
+                    leftLimit = if (displayConfig.isSuperIslandFullLyricMode) {
+                        displayConfig.fullLyricLeftTextWeight(repo.liveAlbumArt.value != null)
+                    } else null,
+                    disabled = displayConfig.disableScrolling,
+                    line = effectiveParsedLyricState.currentLine(currentPosition),
+                    syllablesEnabled = effectiveParsedLyricState.useSyllableScrolling,
+                    centered = displayConfig.lyricVisualCenterEnabled,
+                    position = currentPosition, now = android.os.SystemClock.elapsedRealtime(),
+                    shiftDelay = adaptiveDelay, initialPause = initialPauseDuration, finalPause = finalPauseDuration
+                )
+                displayLyric = result.text
+                isStatic = result.done
+                scrollState = if (result.done) ScrollState.DONE else ScrollState.SCROLLING
+            }
         }
 
         // Fall back to metadata layout (title | artist) when no lyric text
@@ -725,6 +770,12 @@ class LyricDisplayManager(private val context: Context) {
             baseMaxDisplayWeight,
             hasAlbumArt = LyricRepository.getInstance().liveAlbumArt.value != null
         )
+    }
+
+    private fun currentRightCalibration(): com.example.islandlyrics.ui.overlay.superisland.calibration.RightTextWidthPolicy? {
+        val ring = LabFeatureManager.isSuperIslandRightIslandProgressLabEnabled(context) &&
+            AppPreferences.isSuperIslandCollapsedRightProgressRingEnabled(AppPreferences.of(context))
+        return RightCalibrationRuntime.policy(context, ring, includePreview = false)
     }
 
     private fun resolveTimingGapDisplay(
