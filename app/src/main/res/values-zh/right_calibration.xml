@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="right_calibration_advanced">高级字宽设置</string>
+    <string name="right_calibration_title">右侧歌词校准</string>
+    <string name="right_calibration_summary">根据本机字体、主题与显示设置校准右侧歌词</string>
+    <string name="right_calibration_instructions">播放音乐并启用超级岛后，开始测试，观察上方真实岛的显示。先比较原始样本，再关闭“显示未经截取的样本”检查截取结果。以一个 CJK 正文字形为一单位。保存后应用配置；关闭或离开此页恢复实时歌词。更换字体、主题或岛的布局后可能需要重新校准。</string>
+    <string name="right_calibration_plain">当前校准：右侧无进度环</string>
+    <string name="right_calibration_ring">当前校准：右侧有进度环</string>
+    <string name="right_calibration_environment_changed">此配置的设备或显示设置与当前不同，未生效。请重新测试后保存，应用到当前环境。</string>
+    <string name="right_calibration_profiles">加载已有配置后可使用或重校准；✓ 表示已选配置</string>
+    <string name="right_calibration_name">配置名称（例如字体与主题）</string>
+    <string name="right_calibration_capacity">右侧容量（CJK 字宽）</string>
+    <string name="right_calibration_margin">预留空间（CJK 字宽）</string>
+    <string name="right_calibration_letter_mono">按等宽字母计算</string>
+    <string name="right_calibration_letter_width">每个字母的宽度（CJK 字宽）</string>
+    <string name="right_calibration_letter_scale">字母宽度修正系数</string>
+    <string name="right_calibration_digit_mono">按等宽数字计算</string>
+    <string name="right_calibration_digit_width">每个数字的宽度（CJK 字宽）</string>
+    <string name="right_calibration_digit_scale">数字宽度修正系数</string>
+    <string name="right_calibration_space">普通空格宽度（CJK 字宽）</string>
+    <string name="right_calibration_full_space">全角空格宽度（CJK 字宽）</string>
+    <string name="right_calibration_punctuation">标点与符号宽度修正系数</string>
+    <string name="right_calibration_estimate_note">请通过真实岛确认后再开启等宽选项。估算字宽可能与替换后的系统字体不同，可在下方单独修正字符。配置仅保存在本机；更换字体或主题不会自动识别，请主动重校准或切换配置。</string>
+    <string name="right_calibration_samples">测试样本</string>
+    <string name="right_calibration_custom_sample">样本文字</string>
+    <string name="right_calibration_raw">显示未经截取的样本</string>
+    <string name="right_calibration_start">开始岛上测试</string>
+    <string name="right_calibration_stop">停止测试并恢复歌词</string>
+    <string name="right_calibration_needs_playback">请先播放音乐并启用超级岛，再开始测试。</string>
+    <string name="right_calibration_saved">已保存并应用到当前显示环境。</string>
+    <string name="right_calibration_glyph_note">高级：可单独指定一个字母、数字、标点或 emoji 的宽度。点击已有项目可移除。</string>
+    <string name="right_calibration_glyph">需要修正的单个字形</string>
+    <string name="right_calibration_glyph_width">字形宽度（CJK 字宽）</string>
+    <string name="right_calibration_add_glyph">添加或更新字形宽度</string>
+    <string name="right_calibration_new">新建配置／重置草稿</string>
+    <string name="right_calibration_disable">停用校准，恢复原字数限制</string>
+</resources>

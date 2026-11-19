@@ -55,6 +55,8 @@ import com.example.islandlyrics.runtime.service.LyricService
 import com.example.islandlyrics.feature.main.MainActivity
 import com.example.islandlyrics.ui.overlay.model.SecondaryTextMode
 import com.example.islandlyrics.feature.customsettings.CustomSettingsAction
+import com.example.islandlyrics.feature.customsettings.RightManualLimitSetting
+import com.example.islandlyrics.feature.customsettings.RightCalibrationSheet
 import com.example.islandlyrics.feature.customsettings.CustomSettingsTab
 import com.example.islandlyrics.feature.customsettings.CustomSettingsViewModel
 import com.example.islandlyrics.ui.miuix.reorderable.MiuixBlurReorderablePanel
@@ -301,6 +303,7 @@ fun MiuixCustomSettingsScreen(
         mutableStateOf(uiState.homeLyricPreviewDisplayModes)
     }
     var showHomeLyricPreviewDialog by remember { mutableStateOf(false) }
+    var showRightCalibration by remember { mutableStateOf(false) }
     var monetEnabled by remember(uiState.monetEnabled) { mutableStateOf(uiState.monetEnabled) }
     var customThemeGlobalTintEnabled by remember(uiState.customThemeGlobalTintEnabled) {
         mutableStateOf(uiState.customThemeGlobalTintEnabled)
@@ -728,18 +731,28 @@ fun MiuixCustomSettingsScreen(
                                                 )
                                             }
 
+                                            SuperArrow(
+                                                title = stringResource(R.string.right_calibration_title),
+                                                summary = stringResource(R.string.right_calibration_summary),
+                                                modifier = Modifier.miuixSettingHighlight(activeHighlightKey, "key_super_island_right_calibration"),
+                                                onClick = { showRightCalibration = true }
+                                            )
                                             if (superIslandTextLimitsLabEnabled) {
                                                 val rightRange = SuperIslandTextLimitConfig.RIGHT_MIN_CHARS..
                                                     SuperIslandTextLimitConfig.rightMaxChars(superIslandRelaxedTextLimitsLabEnabled)
-                                                MiuixSuperIslandTextLimitSlider(
-                                                    title = stringResource(R.string.settings_super_island_right_text_limit),
-                                                    value = superIslandRightTextChars.coerceIn(rightRange),
-                                                    valueRange = rightRange,
-                                                    onValueChange = { value ->
-                                                        superIslandRightTextChars = value
-                                                        viewModel.dispatch(CustomSettingsAction.SetSuperIslandTextLimit(SuperIslandTextLimitConfig.KEY_RIGHT_CHARS, value))
-                                                    }
-                                                )
+                                                RightManualLimitSetting(miuix = true,
+                                                    value = superIslandRightTextChars.coerceIn(rightRange), onValueChange = { value ->
+                                                    superIslandRightTextChars = value
+                                                    viewModel.dispatch(CustomSettingsAction.SetSuperIslandTextLimit(SuperIslandTextLimitConfig.KEY_RIGHT_CHARS, value))
+                                                }) { onChange, summary ->
+                                                    MiuixSuperIslandTextLimitSlider(
+                                                        title = stringResource(R.string.settings_super_island_right_text_limit),
+                                                        value = superIslandRightTextChars.coerceIn(rightRange),
+                                                        valueRange = rightRange,
+                                                        summary = summary,
+                                                        onValueChange = onChange
+                                                    )
+                                                }
 
                                                 if (superIslandLyricMode == "full") {
                                                     val leftValue = when {
@@ -1786,6 +1799,9 @@ fun MiuixCustomSettingsScreen(
             }
         }
 
+        if (showRightCalibration) {
+            RightCalibrationSheet(miuix = true, onDismiss = { showRightCalibration = false })
+        }
         if (showHomeLyricPreviewDialog) {
             MiuixHomeLyricSecondaryTextModeBottomSheet(
                 selectedModes = homeLyricPreviewDisplayModes,
@@ -2088,7 +2104,8 @@ private fun MiuixSuperIslandTextLimitSlider(
     title: String,
     value: Float,
     valueRange: ClosedFloatingPointRange<Float>,
-    onValueChange: (Float) -> Unit
+    onValueChange: (Float) -> Unit,
+    summary: String? = null
 ) {
     val clampedValue = value.coerceIn(valueRange)
     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp)) {
@@ -2097,6 +2114,7 @@ private fun MiuixSuperIslandTextLimitSlider(
             color = MiuixTheme.colorScheme.onSurface,
             fontSize = 15.dp.value.sp
         )
+        if (summary != null) Text(summary, style = MiuixTheme.textStyles.footnote1, color = MiuixTheme.colorScheme.onSurfaceVariantSummary)
         Spacer(modifier = Modifier.height(10.dp))
         Slider(
             value = clampedValue,

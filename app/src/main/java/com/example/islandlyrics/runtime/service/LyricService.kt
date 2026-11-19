@@ -21,8 +21,10 @@
  */
 
 package com.example.islandlyrics.runtime.service
+import com.example.islandlyrics.R
 
 import android.app.Notification
+import android.app.PendingIntent
 import android.app.NotificationManager
 import android.app.Service
 import android.content.BroadcastReceiver
@@ -60,6 +62,8 @@ import com.example.islandlyrics.ui.overlay.capsule.LyricCapsuleHandler
 import com.example.islandlyrics.ui.overlay.display.LyricDisplayManager
 import com.example.islandlyrics.ui.overlay.floating.FloatingLyricsRenderer
 import com.example.islandlyrics.ui.overlay.superisland.SuperIslandHandler
+import com.example.islandlyrics.ui.overlay.superisland.calibration.RightWizardController
+import com.example.islandlyrics.ui.overlay.model.UIState
 import com.example.islandlyrics.ui.overlay.config.CapsuleRenderMode
 
 class LyricService : Service() {
@@ -220,6 +224,9 @@ class LyricService : Service() {
     private lateinit var displayManager: LyricDisplayManager
     private var floatingLyricsRenderer: FloatingLyricsRenderer? = null
     private var capsuleRenderMode = CapsuleRenderMode.XIAOMI_SUPER_ISLAND
+    private var calibrationController: RightWizardController? = null
+    private var calibrationStartedService = false
+    private var lastRenderState: UIState? = null
 
     private val refreshReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -237,6 +244,7 @@ class LyricService : Service() {
                 action == Intent.ACTION_SCREEN_ON ||
                 action == Intent.ACTION_USER_PRESENT
             ) {
+                calibrationController?.finish()
                 AppLogger.getInstance().log(TAG, "Lock screen state changed: $action")
                 refreshLockScreenVisibility()
             }
@@ -281,8 +289,11 @@ class LyricService : Service() {
         floatingLyricsRenderer = FloatingLyricsRenderer(this)
         displayManager = LyricDisplayManager(this).apply {
             onStateUpdated = { state ->
-                renderModeCoordinator?.render(state)
-                floatingLyricsRenderer?.render(state)
+                lastRenderState = state
+                if (calibrationController?.active != true) {
+                    renderModeCoordinator?.render(state)
+                    floatingLyricsRenderer?.render(state)
+                }
             }
         }
         renderModeCoordinator = RenderModeCoordinator(
@@ -295,10 +306,20 @@ class LyricService : Service() {
             handler = handler,
             prefsProvider = { AppPreferences.of(this@LyricService) },
             onStop = {
-                progressSyncController.stop()
-                renderModeCoordinator!!.stopForCurrentMode()
-                AppLogger.getInstance().log(TAG, "🛑 Renderer stopped: Playback stopped (Delayed)")
+                if (calibrationController?.active != true) {
+                    progressSyncController.stop()
+                    renderModeCoordinator!!.stopForCurrentMode()
+                    AppLogger.getInstance().log(TAG, "🛑 Renderer stopped: Playback stopped (Delayed)")
+                }
             }
+        )
+        calibrationController = RightWizardController(this,
+            prepareRenderer = {
+                delayedStopController?.cancel()
+                floatingLyricsRenderer?.stop()
+                superIslandHandler.prepareCalibration(lastRenderState)
+            },
+            restoreRenderer = { restoreAfterCalibration() }
         )
 
         // Cache system services once here rather than in every IPC call
@@ -366,6 +387,7 @@ class LyricService : Service() {
     }
 
     private fun syncFloatingLyricsState(prefs: android.content.SharedPreferences) {
+        if (calibrationController?.active == true) { floatingLyricsRenderer?.stop(); return }
         val enabled = prefs.getBoolean(FloatingLyricsRenderer.PREF_KEY, false)
         val shouldRun = enabled && LyricRepository.getInstance().isPlaying.value == true
         if (shouldRun && floatingLyricsRenderer?.isRunning != true) {
@@ -387,6 +409,24 @@ class LyricService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val action = intent?.action ?: "null"
+        if (action == RightWizardController.ACTION_START) {
+            if (calibrationController?.active == true) return START_NOT_STICKY
+            calibrationStartedService = intent?.getBooleanExtra(RightWizardController.EXTRA_STARTED_FOR_CALIBRATION, false) == true
+            val stopIntent = PendingIntent.getService(this, 9011,
+                Intent(this, LyricService::class.java).setAction(RightWizardController.ACTION_STOP),
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+            startForegroundTracked(1001, Notification.Builder(this, "lyric_capsule_channel")
+                .setSmallIcon(R.drawable.ic_music_note).setContentTitle(getString(R.string.wizard_running))
+                .setOngoing(true).setOnlyAlertOnce(true)
+                .addAction(Notification.Action.Builder(null, getString(R.string.wizard_pause), stopIntent).build())
+                .build(), "rightCalibrationStart")
+            if (calibrationController?.start() != true) restoreAfterCalibration()
+            return START_NOT_STICKY
+        }
+        if (action == RightWizardController.ACTION_STOP) {
+            calibrationController?.finish()
+            return START_NOT_STICKY
+        }
         AppLogger.getInstance().log(TAG, "onStartCommand Received Action: $action")
         if (BuildConfig.DEBUG) {
             AppLogger.getInstance().log(
@@ -418,6 +458,7 @@ class LyricService : Service() {
         }
 
         if ("ACTION_STOP" == action) {
+            calibrationController?.finish(restore = false)
             @Suppress("DEPRECATION")
             stopForeground(true)
             foregroundController.clearForegroundSlotPrimed("actionStop")
@@ -437,6 +478,7 @@ class LyricService : Service() {
     override fun onDestroy() {
         super.onDestroy()
         isAlive = false
+        calibrationController?.finish(restore = false)
         foregroundController.clearForegroundSlotPrimed("onDestroy")
         AppLogger.getInstance().log(TAG, "Service Destroyed")
         progressSyncController.stop()
@@ -494,6 +536,7 @@ class LyricService : Service() {
     }
 
     private fun updateActiveHandler() {
+        if (calibrationController?.active == true) return
         val currentLyric = LyricRepository.getInstance().liveLyric.value
         val hasLyric = currentLyric != null && currentLyric.lyric.isNotBlank()
         val hasMetadata = LyricRepository.getInstance().liveMetadata.value != null
@@ -512,6 +555,19 @@ class LyricService : Service() {
             } else if (!shouldRender) {
                 superIslandHandler.stop()
             }
+        }
+    }
+
+    private fun restoreAfterCalibration() {
+        if (!isAlive) return
+        superIslandHandler.stop()
+        updateActiveHandler()
+        syncFloatingLyricsState(AppPreferences.of(this))
+        displayManager.forceUpdate()
+        if (superIslandHandler.isRunning != true && capsuleHandler?.isRunning() != true) {
+            stopForeground(STOP_FOREGROUND_REMOVE)
+            foregroundController.clearForegroundSlotPrimed("rightCalibrationEnd")
+            if (calibrationStartedService) stopSelf()
         }
     }
 

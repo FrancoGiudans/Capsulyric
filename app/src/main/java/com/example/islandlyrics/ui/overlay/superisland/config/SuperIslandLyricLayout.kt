@@ -24,8 +24,10 @@ package com.example.islandlyrics.ui.overlay.superisland.config
 
 import java.text.BreakIterator
 import java.util.Locale
+import com.example.islandlyrics.ui.overlay.superisland.calibration.RightTextWidthPolicy
+import com.example.islandlyrics.ui.overlay.superisland.calibration.Glyphs
 
-object SuperIslandLyricLayout {
+internal object SuperIslandLyricLayout {
     private const val FULL_LYRIC_LEFT_WITH_COVER_WEIGHT = 13
     private const val FULL_LYRIC_LEFT_NO_COVER_WEIGHT = 16
     private const val FULL_LYRIC_RIGHT_WEIGHT = 14
@@ -42,12 +44,14 @@ object SuperIslandLyricLayout {
         text: String,
         showLeftCover: Boolean,
         leftMaxWeight: Int = if (showLeftCover) FULL_LYRIC_LEFT_WITH_COVER_WEIGHT else FULL_LYRIC_LEFT_NO_COVER_WEIGHT,
-        rightMaxWeight: Int = FULL_LYRIC_RIGHT_WEIGHT
+        rightMaxWeight: Int = FULL_LYRIC_RIGHT_WEIGHT,
+        rightPolicy: RightTextWidthPolicy? = null
     ): Split {
         return splitBalancedByWeight(
             text = text,
             leftMaxWeight = leftMaxWeight,
             rightMaxWeight = rightMaxWeight,
+            rightPolicy = rightPolicy,
             leftVisualNumerator = if (showLeftCover) {
                 FULL_LYRIC_LEFT_WITH_COVER_VISUAL_NUMERATOR
             } else {
@@ -71,6 +75,7 @@ object SuperIslandLyricLayout {
         text: String,
         leftMaxWeight: Int,
         rightMaxWeight: Int,
+        rightPolicy: RightTextWidthPolicy?,
         leftVisualNumerator: Int,
         leftVisualDenominator: Int
     ): Split {
@@ -85,6 +90,7 @@ object SuperIslandLyricLayout {
             endIndices = chars.size..chars.size,
             leftMaxWeight = leftMaxWeight,
             rightMaxWeight = rightMaxWeight,
+            rightPolicy = rightPolicy,
             leftVisualNumerator = leftVisualNumerator,
             leftVisualDenominator = leftVisualDenominator
         )
@@ -94,6 +100,7 @@ object SuperIslandLyricLayout {
             endIndices = 2..chars.size,
             leftMaxWeight = leftMaxWeight,
             rightMaxWeight = rightMaxWeight,
+            rightPolicy = rightPolicy,
             leftVisualNumerator = leftVisualNumerator,
             leftVisualDenominator = leftVisualDenominator
         )
@@ -108,16 +115,25 @@ object SuperIslandLyricLayout {
                         (leftVisualNumerator + leftVisualDenominator)
                 )
             )
-            val left = extractTextByWeight(normalized, 0, leftTarget)
-            val right = extractTextByWeight(normalized.drop(left.length).trimStart(), 0, rightMaxWeight)
-            return balanceWithRightPadding(left, right, leftVisualNumerator, leftVisualDenominator)
+            val left = if (rightPolicy == null) extractTextByWeight(normalized, 0, leftTarget) else {
+                val end = Glyphs.boundaries(normalized).lastOrNull {
+                    calculateWeight(normalized.substring(0, it)) <= leftTarget
+                } ?: 0
+                normalized.substring(0, end)
+            }
+            val remainder = normalized.drop(left.length).let { if (rightPolicy == null) it.trimStart() else it }
+            val right = rightPolicy?.prefix(remainder) ?: extractTextByWeight(remainder, 0, rightMaxWeight)
+            return balanceWithRightPadding(left, right, leftVisualNumerator, leftVisualDenominator, rightPolicy)
         }
 
         return balanceWithRightPadding(
             left = chars.subList(0, best.splitIndex).joinToString("").trim(),
-            right = chars.subList(best.splitIndex, best.endIndex).joinToString("").trim(),
+            right = chars.subList(best.splitIndex, best.endIndex).joinToString("").let {
+                if (rightPolicy == null) it.trim() else it
+            },
             leftVisualNumerator = leftVisualNumerator,
-            leftVisualDenominator = leftVisualDenominator
+            leftVisualDenominator = leftVisualDenominator,
+            rightPolicy = rightPolicy
         )
     }
 
@@ -129,21 +145,32 @@ object SuperIslandLyricLayout {
         endIndices: IntRange,
         leftMaxWeight: Int,
         rightMaxWeight: Int,
+        rightPolicy: RightTextWidthPolicy?,
         leftVisualNumerator: Int,
         leftVisualDenominator: Int
     ): Candidate? {
         var best: Candidate? = null
+        val safeBoundaries = if (rightPolicy != null) Glyphs.boundaries(chars.joinToString("")).toHashSet() else null
 
         for (endIndex in endIndices) {
             if (!boundaries.isBoundary(endIndex)) continue
+            if (safeBoundaries != null && endIndex !in safeBoundaries) continue
             for (splitIndex in 0..endIndex) {
                 if (!boundaries.isBoundary(splitIndex)) continue
+                if (safeBoundaries != null && splitIndex !in safeBoundaries) continue
+                // Keep original separating spaces on the right instead of
+                // trimming them off the end of the left column.
+                if (rightPolicy != null && splitIndex > 0 && chars[splitIndex - 1].isWhitespace()) continue
                 val left = chars.subList(0, splitIndex).joinToString("").trim()
-                val right = chars.subList(splitIndex, endIndex).joinToString("").trim()
+                val rawRight = chars.subList(splitIndex, endIndex).joinToString("")
+                val right = if (rightPolicy != null) rawRight else rawRight.trim()
                 val leftWeight = calculateWeight(left)
                 val rightWeight = calculateWeight(right)
 
-                if (leftWeight > leftMaxWeight || rightWeight > rightMaxWeight) continue
+                if (leftWeight > leftMaxWeight) continue
+                if (rightPolicy != null) {
+                    if (!rightPolicy.fits(right)) continue
+                } else if (rightWeight > rightMaxWeight) continue
 
                 val leftVisualWeight = scaleVisualWeight(leftWeight, leftVisualNumerator, leftVisualDenominator)
 
@@ -175,7 +202,8 @@ object SuperIslandLyricLayout {
         left: String,
         right: String,
         leftVisualNumerator: Int,
-        leftVisualDenominator: Int
+        leftVisualDenominator: Int,
+        rightPolicy: RightTextWidthPolicy? = null
     ): Split {
         if (left.isEmpty() || right.isEmpty()) return Split(left, right)
 
@@ -186,7 +214,7 @@ object SuperIslandLyricLayout {
         )
         val rightWeight = calculateWeight(right)
         val paddingSpaces = rightPaddingSpaces(leftVisualWeight, rightWeight)
-        return Split(left, right + " ".repeat(paddingSpaces))
+        return Split(left, rightPolicy?.padded(right, paddingSpaces) ?: (right + " ".repeat(paddingSpaces)))
     }
 
     private fun rightPaddingSpaces(leftVisualWeight: Int, rightWeight: Int): Int {

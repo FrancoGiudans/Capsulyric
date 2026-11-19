@@ -37,12 +37,14 @@ internal object SuperIslandBigAreaRenderer {
             dualLineText.primary,
             config.leftNoCoverTextWeight
         ).ifEmpty { "♪" }
-        val rightText = SuperIslandLyricLayout.takeByWeight(
+        val rightText = config.rightTextPolicy?.prefix(dualLineText.secondary ?: dualLineText.primary)
+            ?: SuperIslandLyricLayout.takeByWeight(
             dualLineText.secondary ?: dualLineText.primary,
             config.rightTextWeight
         ).ifEmpty { "♪" }
 
         applyTwoColumnText(
+            config = config,
             showLeftCover = false,
             islandKey = null,
             leftText = leftText,
@@ -107,12 +109,14 @@ internal object SuperIslandBigAreaRenderer {
             titleWithArtist.ifBlank { "♪" },
             if (showLeftCover) config.leftWithCoverTextWeight else config.leftNoCoverTextWeight
         ).ifEmpty { "♪" }
-        val rightLyric = SuperIslandLyricLayout.takeByWeight(
+        val rightLyric = config.rightTextPolicy?.prefix(displayLyric.ifBlank { "♪" })
+            ?: SuperIslandLyricLayout.takeByWeight(
             displayLyric.ifBlank { "♪" },
             config.rightTextWeight
         ).ifEmpty { "♪" }
 
         applyTwoColumnText(
+            config = config,
             showLeftCover = showLeftCover,
             islandKey = islandKey,
             leftText = leftTitle,
@@ -170,10 +174,12 @@ internal object SuperIslandBigAreaRenderer {
             } else {
                 config.leftNoCoverTextWeight
             },
-            rightMaxWeight = config.rightTextWeight
+            rightMaxWeight = config.rightTextWeight,
+            rightPolicy = config.rightTextPolicy
         )
 
         applyTwoColumnText(
+            config = config,
             showLeftCover = showLeftCover,
             islandKey = islandKey,
             leftText = split.left.ifEmpty { "♪" },
@@ -208,6 +214,8 @@ internal object SuperIslandBigAreaRenderer {
         ).ifEmpty { "♪" }
 
         applyTwoColumnText(
+            config = config,
+            calibrateRight = false,
             showLeftCover = showLeftCover,
             islandKey = islandKey,
             leftText = leftText,
@@ -221,6 +229,7 @@ internal object SuperIslandBigAreaRenderer {
     }
 
     private fun BigIslandArea.applyTwoColumnText(
+        config: SuperIslandLyricRenderConfig,
         showLeftCover: Boolean,
         islandKey: String?,
         leftText: String,
@@ -230,8 +239,12 @@ internal object SuperIslandBigAreaRenderer {
         useMatchingRightColumn: Boolean = false,
         rightProgressRingEnabled: Boolean = false,
         progressPercent: Int = 0,
-        progressReachColor: String = "#757575"
+        progressReachColor: String = "#757575",
+        calibrateRight: Boolean = true
     ) {
+        val visibleRightText = config.rightPreviewText ?: if (calibrateRight) {
+            config.rightTextPolicy?.prefix(rightText)?.ifEmpty { "♪" } ?: rightText
+        } else rightText
         imageTextInfoLeft {
             type = 1
             if (showLeftCover) {
@@ -251,7 +264,7 @@ internal object SuperIslandBigAreaRenderer {
         if (rightProgressRingEnabled) {
             progressTextInfo {
                 textInfo {
-                    title = rightText
+                    title = visibleRightText
                     this.showHighlightColor = showHighlightColor
                     narrowFont = false
                 }
@@ -266,14 +279,14 @@ internal object SuperIslandBigAreaRenderer {
             imageTextInfoRight {
                 type = 2
                 textInfo {
-                    this.title = rightText
+                    this.title = visibleRightText
                     this.showHighlightColor = showHighlightColor
                     narrowFont = false
                 }
             }
         } else {
             this.textInfo = TextInfo().apply {
-                this.title = rightText
+                this.title = visibleRightText
                 this.showHighlightColor = showHighlightColor
                 narrowFont = false
             }

@@ -41,6 +41,8 @@ import com.example.islandlyrics.runtime.foreground.LockScreenNotificationPolicy
 import com.example.islandlyrics.runtime.service.LyricService
 import com.example.islandlyrics.ui.overlay.model.UIState
 import com.example.islandlyrics.ui.overlay.superisland.cache.SuperIslandIconCache
+import com.example.islandlyrics.ui.overlay.superisland.calibration.RightCalibrationRuntime
+import com.example.islandlyrics.ui.overlay.superisland.calibration.RightCalibrationStore
 import com.example.islandlyrics.ui.overlay.superisland.cache.SuperIslandProgressBitmapCache
 import com.example.islandlyrics.ui.overlay.superisland.config.SuperIslandColorSource
 import com.example.islandlyrics.ui.overlay.superisland.config.SuperIslandPreferencesCache
@@ -76,11 +78,15 @@ class SuperIslandHandler(
 
     private var lastState: UIState? = null
     private var nightMode = context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK
+    private var calibrationEnvironment = RightCalibrationStore.environment(context)
     private val themeCallbacks = object : ComponentCallbacks {
         override fun onConfigurationChanged(newConfig: Configuration) {
             val nextMode = newConfig.uiMode and Configuration.UI_MODE_NIGHT_MASK
-            if (nextMode == nightMode) return
+            val nextEnvironment = RightCalibrationStore.environment(context)
+            if (nextMode == nightMode && nextEnvironment == calibrationEnvironment) return
             nightMode = nextMode
+            calibrationEnvironment = nextEnvironment
+            RightCalibrationRuntime.configurationChanged(context)
             renderStateTracker.forceNotify("themeChanged")
             refreshVisibility()
         }
@@ -140,6 +146,7 @@ class SuperIslandHandler(
         if (isRunning) return
         isRunning = true
         nightMode = context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK
+        calibrationEnvironment = RightCalibrationStore.environment(context)
         context.registerComponentCallbacks(themeCallbacks)
         startPreferences()
 
@@ -148,6 +155,17 @@ class SuperIslandHandler(
         iconCache.reset()
         progressBitmapCache.clear()
         notificationDispatcher.resetState()
+        RightCalibrationRuntime.attach(this, { isRunning && lastState != null }) {
+            renderStateTracker.clearFocusSignature()
+            refreshVisibility()
+        }
+    }
+
+    internal fun prepareCalibration(state: UIState?) {
+        start()
+        val baseline = state ?: UIState(title = "Capsulyric", displayLyric = "♪", fullLyric = "♪")
+        render(if (com.example.islandlyrics.ui.overlay.superisland.calibration.RightWizardController.currentRing(context))
+            baseline.copy(progressCurrent = 50, progressMax = 100) else baseline)
     }
 
     fun refreshVisibility() {
@@ -159,6 +177,7 @@ class SuperIslandHandler(
     fun stop() {
         if (!isRunning) return
         isRunning = false
+        RightCalibrationRuntime.detach(this)
         context.unregisterComponentCallbacks(themeCallbacks)
         preferences.stop()
         manager?.cancel(NOTIFICATION_ID)
@@ -241,7 +260,7 @@ class SuperIslandHandler(
             renderStateTracker.forceNotify("lockScreenVisibility")
         }
 
-        val extraContentSignature = when {
+        val extraContentSignature = (when {
             dualLineText != null -> dualLineText.signature
             template18Content != null -> listOf(
                 template18Content.currentLyric,
@@ -255,7 +274,7 @@ class SuperIslandHandler(
                 effectiveRenderedActionStyle
             ).joinToString("\u0001")
             else -> secondaryText.orEmpty()
-        }
+        }) + "|rightCalibration=${RightCalibrationRuntime.previewRevision}"
 
         val renderDecision = renderStateTracker.prepare(
             state = state,

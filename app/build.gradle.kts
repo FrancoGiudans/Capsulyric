@@ -77,6 +77,7 @@ dependencies {
 
     debugImplementation(libs.ui.tooling)
     testImplementation(libs.junit)
+    // Exercise real checkpoint/profile JSON rather than Android's mockable JSON stubs.
     testImplementation("org.json:json:20260814")
     androidTestImplementation(libs.android.test.runner)
     androidTestImplementation(libs.junit)
