@@ -22,20 +22,50 @@
 
 package com.example.islandlyrics.ui.overlay.floating
 import android.content.Context
+import android.content.SharedPreferences
 import android.graphics.Color
+import androidx.annotation.StringRes
 import androidx.core.content.edit
+import androidx.core.graphics.ColorUtils
+import com.example.islandlyrics.R
 import com.example.islandlyrics.core.settings.AppPreferences
+import com.example.islandlyrics.core.theme.ensureColorContrast
+
+internal enum class FloatingLyricsTextWeight(val weight: Int, @param:StringRes val label: Int) {
+    REGULAR(400, R.string.settings_floating_weight_regular),
+    MEDIUM(500, R.string.settings_floating_weight_medium),
+    SEMIBOLD(600, R.string.settings_floating_weight_semibold),
+    BOLD(700, R.string.settings_floating_weight_bold);
+
+    companion object {
+        fun read(prefs: SharedPreferences): FloatingLyricsTextWeight {
+            val weight = prefs.getInt(AppPreferences.Keys.FLOATING_TEXT_WEIGHT, REGULAR.weight)
+            return entries.firstOrNull { it.weight == weight } ?: REGULAR
+        }
+    }
+}
 
 internal data class FloatingLyricsStyle(
     val textSizeSp: Float,
+    val textWeight: FloatingLyricsTextWeight,
     val baseTextColor: Int,
     val followAlbumColor: Boolean,
     val showAlbumArt: Boolean,
     val enableTextStroke: Boolean,
     val enableTextBackground: Boolean
 ) {
-    fun textColor(albumColor: Int): Int =
-        if (followAlbumColor) albumColor else baseTextColor
+    fun textColor(albumColor: Int, background: Int): Int {
+        if (!followAlbumColor) return baseTextColor
+        val opaqueBackground = ColorUtils.setAlphaComponent(background, 255)
+        val contrastColor = if (ColorUtils.calculateContrast(Color.WHITE, opaqueBackground) >
+            ColorUtils.calculateContrast(Color.BLACK, opaqueBackground)
+        ) {
+            Color.WHITE
+        } else {
+            Color.BLACK
+        }
+        return ensureColorContrast(albumColor, opaqueBackground, contrastColor, minimumContrast = 4.5)
+    }
 }
 
 internal class FloatingLyricsStyleStore(
@@ -57,27 +87,21 @@ internal class FloatingLyricsStyleStore(
         return style
     }
 
-    fun cycleColor(): FloatingLyricsStyle {
+    fun adjustTextWeight(delta: Int) {
         val prefs = prefs()
-        val current = prefs.getInt(KEY_TEXT_COLOR, Color.WHITE)
-        val idx = PRESET_COLORS.indexOf(current)
-        val nextIdx = if (idx == -1) 0 else (idx + 1) % PRESET_COLORS.size
-        val newColor = PRESET_COLORS[nextIdx]
-
-        prefs.edit {
-            putInt(KEY_TEXT_COLOR, newColor)
-            if (style.followAlbumColor) {
-                putBoolean(KEY_FOLLOW_ALBUM_COLOR, false)
-            }
-        }
-        style = style.copy(baseTextColor = newColor, followAlbumColor = false)
-        return style
+        val current = FloatingLyricsTextWeight.read(prefs)
+        val weights = FloatingLyricsTextWeight.entries
+        val next = weights[(current.ordinal + delta).coerceIn(weights.indices)]
+        if (next == current) return
+        prefs.edit { putInt(AppPreferences.Keys.FLOATING_TEXT_WEIGHT, next.weight) }
+        style = style.copy(textWeight = next)
     }
 
     private fun load(): FloatingLyricsStyle {
         val prefs = prefs()
         return FloatingLyricsStyle(
             textSizeSp = prefs.getFloat(KEY_TEXT_SIZE, SIZE_DEFAULT),
+            textWeight = FloatingLyricsTextWeight.read(prefs),
             baseTextColor = prefs.getInt(KEY_TEXT_COLOR, Color.WHITE),
             followAlbumColor = prefs.getBoolean(KEY_FOLLOW_ALBUM_COLOR, true),
             showAlbumArt = prefs.getBoolean(KEY_SHOW_ALBUM_ART, true),
@@ -96,14 +120,5 @@ internal class FloatingLyricsStyleStore(
         const val KEY_TEXT_STROKE = AppPreferences.Keys.FLOATING_TEXT_STROKE
         const val KEY_TEXT_BACKGROUND = AppPreferences.Keys.FLOATING_TEXT_BACKGROUND
         const val SIZE_DEFAULT = 15f
-
-        private val PRESET_COLORS = intArrayOf(
-            Color.WHITE,
-            0xFFFFFFCC.toInt(),
-            0xFFCCFFFF.toInt(),
-            0xFFCCFFCC.toInt(),
-            0xFFFFCC99.toInt(),
-            0xFFFF99CC.toInt()
-        )
     }
 }

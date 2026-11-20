@@ -29,7 +29,6 @@ import androidx.core.net.toUri
 import com.example.islandlyrics.R
 import com.example.islandlyrics.core.network.OfflineModeManager
 import com.example.islandlyrics.core.platform.RomUtils
-import com.example.islandlyrics.core.settings.LabFeatureManager
 import com.example.islandlyrics.feature.customsettings.CustomSettingsTab
 import com.example.islandlyrics.feature.parserrule.ParserRuleEditorActivity
 import com.example.islandlyrics.lyrics.state.LyricRepository
@@ -52,10 +51,6 @@ object SettingsSearchRegistry {
             titleRes = R.string.settings_floating_lyrics,
             breadcrumbResList = listOf(R.string.settings_core_header),
             keywords = listOf("桌面歌词", "悬浮歌词", "桌面悬浮窗", "悬浮窗歌词", "zm", "xf"),
-            isVisible = { context ->
-                val prefs = context.getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE)
-                LabFeatureManager.isFloatingLyricsEnabled(prefs)
-            },
             action = SettingsSearchAction.Navigate(SettingsNavigationTarget.DESKTOP_LYRICS)
         ),
         SettingsSearchItem(
@@ -730,10 +725,6 @@ object SettingsSearchRegistry {
             summaryRes = R.string.settings_floating_lyrics_show_desc,
             breadcrumbResList = listOf(R.string.settings_core_header, R.string.settings_floating_lyrics),
             keywords = listOf("显示桌面歌词", "开启桌面歌词", "悬浮歌词开关"),
-            isVisible = { context ->
-                val prefs = context.getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE)
-                LabFeatureManager.isFloatingLyricsEnabled(prefs)
-            },
             action = SettingsSearchAction.Navigate(SettingsNavigationTarget.DESKTOP_LYRICS)
         ),
         SettingsSearchItem(
@@ -742,10 +733,6 @@ object SettingsSearchRegistry {
             summaryRes = R.string.settings_floating_show_album_art_desc,
             breadcrumbResList = listOf(R.string.settings_core_header, R.string.settings_floating_lyrics),
             keywords = listOf("桌面歌词封面", "显示专辑封面"),
-            isVisible = { context ->
-                val prefs = context.getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE)
-                LabFeatureManager.isFloatingLyricsEnabled(prefs)
-            },
             action = SettingsSearchAction.Navigate(SettingsNavigationTarget.DESKTOP_LYRICS)
         ),
         SettingsSearchItem(
@@ -754,10 +741,6 @@ object SettingsSearchRegistry {
             summaryRes = R.string.settings_floating_text_stroke_desc,
             breadcrumbResList = listOf(R.string.settings_core_header, R.string.settings_floating_lyrics),
             keywords = listOf("文字描边", "歌词描边", "阴影描边"),
-            isVisible = { context ->
-                val prefs = context.getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE)
-                LabFeatureManager.isFloatingLyricsEnabled(prefs)
-            },
             action = SettingsSearchAction.Navigate(SettingsNavigationTarget.DESKTOP_LYRICS)
         ),
         SettingsSearchItem(
@@ -766,10 +749,6 @@ object SettingsSearchRegistry {
             summaryRes = R.string.settings_floating_text_background_desc,
             breadcrumbResList = listOf(R.string.settings_core_header, R.string.settings_floating_lyrics),
             keywords = listOf("文字底色", "歌词背景", "悬浮窗背景"),
-            isVisible = { context ->
-                val prefs = context.getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE)
-                LabFeatureManager.isFloatingLyricsEnabled(prefs)
-            },
             action = SettingsSearchAction.Navigate(SettingsNavigationTarget.DESKTOP_LYRICS)
         ),
         SettingsSearchItem(
@@ -778,10 +757,6 @@ object SettingsSearchRegistry {
             summaryRes = R.string.settings_floating_show_second_line_desc,
             breadcrumbResList = listOf(R.string.settings_core_header, R.string.settings_floating_lyrics),
             keywords = listOf("双行歌词", "下一行歌词", "副歌词", "桌面双行"),
-            isVisible = { context ->
-                val prefs = context.getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE)
-                LabFeatureManager.isFloatingLyricsEnabled(prefs)
-            },
             action = SettingsSearchAction.Navigate(SettingsNavigationTarget.DESKTOP_LYRICS)
         ),
         SettingsSearchItem(
@@ -790,10 +765,6 @@ object SettingsSearchRegistry {
             summaryRes = R.string.settings_floating_word_highlight_desc,
             breadcrumbResList = listOf(R.string.settings_core_header, R.string.settings_floating_lyrics),
             keywords = listOf("逐字高亮", "逐字歌词", "卡拉OK", "逐字渲染"),
-            isVisible = { context ->
-                val prefs = context.getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE)
-                LabFeatureManager.isFloatingLyricsEnabled(prefs)
-            },
             action = SettingsSearchAction.Navigate(SettingsNavigationTarget.DESKTOP_LYRICS)
         ),
         SettingsSearchItem(
@@ -802,21 +773,24 @@ object SettingsSearchRegistry {
             summaryRes = R.string.settings_floating_follow_album_color_desc,
             breadcrumbResList = listOf(R.string.settings_core_header, R.string.settings_floating_lyrics),
             keywords = listOf("跟随封面颜色", "桌面歌词取色", "桌面歌词颜色"),
-            isVisible = { context ->
-                val prefs = context.getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE)
-                LabFeatureManager.isFloatingLyricsEnabled(prefs)
-            },
             action = SettingsSearchAction.Navigate(SettingsNavigationTarget.DESKTOP_LYRICS)
         ),
         SettingsSearchItem(
             id = "pref_desktop_lyrics_text_size",
             titleRes = R.string.settings_floating_text_size,
-            breadcrumbResList = listOf(R.string.settings_core_header, R.string.settings_floating_lyrics),
-            keywords = listOf("字号", "字体大小", "桌面歌词大小", "歌词大小"),
-            isVisible = { context ->
-                val prefs = context.getSharedPreferences("IslandLyricsPrefs", Context.MODE_PRIVATE)
-                LabFeatureManager.isFloatingLyricsEnabled(prefs)
-            },
+            breadcrumbResList = listOf(
+                R.string.settings_core_header, R.string.settings_floating_lyrics, R.string.settings_floating_font_settings
+            ),
+            keywords = listOf("字号", "字体大小", "桌面歌词大小", "歌词大小", "字体设置"),
+            action = SettingsSearchAction.Navigate(SettingsNavigationTarget.DESKTOP_LYRICS)
+        ),
+        SettingsSearchItem(
+            id = "pref_desktop_lyrics_text_weight",
+            titleRes = R.string.settings_floating_text_weight,
+            breadcrumbResList = listOf(
+                R.string.settings_core_header, R.string.settings_floating_lyrics, R.string.settings_floating_font_settings
+            ),
+            keywords = listOf("字重", "字体粗细", "加粗", "font weight", "bold"),
             action = SettingsSearchAction.Navigate(SettingsNavigationTarget.DESKTOP_LYRICS)
         ),
 

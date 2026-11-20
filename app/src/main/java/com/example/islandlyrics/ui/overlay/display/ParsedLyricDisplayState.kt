@@ -23,6 +23,7 @@
 package com.example.islandlyrics.ui.overlay.display
 import com.example.islandlyrics.lyrics.online.OnlineLyricFetcher
 import com.example.islandlyrics.lyrics.state.LyricRepository
+import com.example.islandlyrics.ui.overlay.model.LyricPresentation
 
 internal data class ParsedLyricDisplayState(
     val scrollingMode: ScrollingMode = ScrollingMode.NONE,
@@ -106,3 +107,12 @@ internal data class ParsedLyricDisplayState(
         }
     }
 }
+
+internal fun OnlineLyricFetcher.LyricLine.toDisplayLine() = LyricPresentation.DisplayLine(
+    text = text,
+    romanization = roma?.takeIf(String::isNotBlank),
+    translation = translation?.takeIf(String::isNotBlank),
+    startTime = startTime,
+    endTime = endTime,
+    syllables = syllables
+)

@@ -55,13 +55,7 @@ internal class FloatingLyricsDraggableFrameLayout(
             false
         }
         MotionEvent.ACTION_MOVE -> {
-            if (!isDragging && (
-                    abs(ev.rawX - startX) > dragThreshold ||
-                        abs(ev.rawY - startY) > dragThreshold
-                    )
-            ) {
-                isDragging = true
-            }
+            detectDrag(ev)
             isDragging
         }
         else -> false
@@ -71,14 +65,19 @@ internal class FloatingLyricsDraggableFrameLayout(
     override fun onTouchEvent(ev: MotionEvent): Boolean {
         return when (ev.action) {
             MotionEvent.ACTION_DOWN -> {
+                startX = ev.rawX
+                startY = ev.rawY
                 lastX = ev.rawX
                 lastY = ev.rawY
                 true
             }
             MotionEvent.ACTION_MOVE -> {
-                onDrag((ev.rawX - lastX).toInt(), (ev.rawY - lastY).toInt())
-                lastX = ev.rawX
-                lastY = ev.rawY
+                detectDrag(ev)
+                if (isDragging) {
+                    onDrag((ev.rawX - lastX).toInt(), (ev.rawY - lastY).toInt())
+                    lastX = ev.rawX
+                    lastY = ev.rawY
+                }
                 true
             }
             MotionEvent.ACTION_UP -> {
@@ -96,6 +95,12 @@ internal class FloatingLyricsDraggableFrameLayout(
                 true
             }
             else -> super.onTouchEvent(ev)
+        }
+    }
+
+    private fun detectDrag(event: MotionEvent) {
+        if (abs(event.rawX - startX) > dragThreshold || abs(event.rawY - startY) > dragThreshold) {
+            isDragging = true
         }
     }
 }

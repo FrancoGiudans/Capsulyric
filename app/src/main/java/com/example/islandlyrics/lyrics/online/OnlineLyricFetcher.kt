@@ -261,7 +261,7 @@ class OnlineLyricFetcher(
                         mediaUri = mediaUri
                     ).also { resolved ->
                         if (resolved.isNotEmpty()) {
-                            runCatching { onAppleAliasesResolved?.invoke(resolved) }
+                            val _ = runCatching { onAppleAliasesResolved?.invoke(resolved) }
                         }
                     }
                 }.orEmpty()

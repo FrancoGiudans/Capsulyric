@@ -901,7 +901,9 @@ private fun PermissionsStepBody(
                 SuperArrow(
                     title = stringResource(R.string.oobe_perm_autostart_title),
                     summary = stringResource(R.string.oobe_perm_autostart_desc),
-                    onClick = { runCatching { context.startActivity(autostartIntent) } }
+                    onClick = {
+                        val _ = runCatching { context.startActivity(autostartIntent) }
+                    }
                 )
             }
             HorizontalDivider(modifier = Modifier.padding(horizontal = 20.dp))

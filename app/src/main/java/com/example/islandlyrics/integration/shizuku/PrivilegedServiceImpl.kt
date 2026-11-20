@@ -129,17 +129,17 @@ class PrivilegedServiceImpl : IPrivilegedService.Stub() {
     
     private fun logD(message: String) {
         Log.d(TAG, message)
-        logCallback?.let { runCatching { it.log(0, TAG, message) } }
+        val _ = runCatching { logCallback?.log(0, TAG, message) }
     }
 
     private fun logW(message: String) {
         Log.w(TAG, message)
-        logCallback?.let { runCatching { it.log(2, TAG, message) } }
+        val _ = runCatching { logCallback?.log(2, TAG, message) }
     }
 
     private fun logE(message: String) {
         Log.e(TAG, message)
-        logCallback?.let { runCatching { it.log(3, TAG, message) } }
+        val _ = runCatching { logCallback?.log(3, TAG, message) }
     }
 }
 

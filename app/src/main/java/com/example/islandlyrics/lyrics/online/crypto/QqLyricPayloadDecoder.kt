@@ -119,11 +119,11 @@ internal object QqLyricPayloadDecoder {
 
         for (candidate in candidates) {
             runCatching {
-                return InflaterInputStream(candidate.inputStream()).use { it.readBytes() }
-            }
+                InflaterInputStream(candidate.inputStream()).use { it.readBytes() }
+            }.getOrNull()?.let { return it }
             runCatching {
-                return inflateRawDeflate(candidate)
-            }
+                inflateRawDeflate(candidate)
+            }.getOrNull()?.let { return it }
         }
         error("QQ QRC inflate failed")
     }

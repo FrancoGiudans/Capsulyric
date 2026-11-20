@@ -103,6 +103,7 @@ object AppPreferences {
         const val MATERIAL_BLUR_RADIUS_DP = "material_blur_radius_dp"
         const val FLOATING_LYRICS_ENABLED = "floating_lyrics_enabled"
         const val FLOATING_TEXT_SIZE_SP = "floating_text_size_sp"
+        const val FLOATING_TEXT_WEIGHT = "floating_text_weight"
         const val FLOATING_TEXT_COLOR = "floating_text_color"
         const val FLOATING_FOLLOW_ALBUM_COLOR = "floating_follow_album_color"
         const val FLOATING_SHOW_ALBUM_ART = "floating_show_album_art"

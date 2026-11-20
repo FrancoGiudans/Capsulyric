@@ -98,7 +98,6 @@ import com.example.islandlyrics.core.settings.SettingsBackupManager
 import com.example.islandlyrics.core.settings.SettingsBackupManager.ParserConflict
 import com.example.islandlyrics.core.settings.BackupCategories
 import com.example.islandlyrics.core.settings.SettingsBackupManager.PreviewResult
-import com.example.islandlyrics.core.settings.LabFeatureManager
 import com.example.islandlyrics.core.settings.search.SettingsSearchAction
 import com.example.islandlyrics.core.settings.search.MainSettingsDialogType
 import com.example.islandlyrics.core.settings.search.SettingsNavigationTarget
@@ -174,7 +173,6 @@ internal fun MiuixSettingsScreen(
     val backupImportFailedText = stringResource(R.string.settings_backup_import_failed)
     val sensitivePasswordInvalidText = stringResource(R.string.backup_sensitive_password_invalid)
     val devModeEnabled by LyricRepository.getInstance().devModeEnabled.observeAsState(false)
-    var floatingLyricsLabEnabled by remember { mutableStateOf(LabFeatureManager.isFloatingLyricsEnabled(prefs)) }
 
     // 设置页搜索栏状态
     var settingsSearchQuery by remember { mutableStateOf("") }
@@ -505,18 +503,10 @@ internal fun MiuixSettingsScreen(
             if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
                 notificationGranted = checkNotificationPermission()
                 postNotificationGranted = checkPostNotificationPermission()
-                floatingLyricsLabEnabled = LabFeatureManager.isFloatingLyricsEnabled(prefs)
             }
         }
-        val prefListener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
-            if (key == LabFeatureManager.KEY_FLOATING_LYRICS_ENABLED) {
-                floatingLyricsLabEnabled = LabFeatureManager.isFloatingLyricsEnabled(prefs)
-            }
-        }
-        prefs.registerOnSharedPreferenceChangeListener(prefListener)
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose {
-            prefs.unregisterOnSharedPreferenceChangeListener(prefListener)
             lifecycleOwner.lifecycle.removeObserver(observer)
         }
     }
@@ -821,15 +811,13 @@ internal fun MiuixSettingsScreen(
                         title = stringResource(R.string.settings_capsule_notification),
                         onClick = onOpenCapsuleNotification
                     )
-                    if (floatingLyricsLabEnabled) {
-                        SuperArrow(
-                            title = stringResource(R.string.settings_floating_lyrics),
-                            onClick = {
-                                onOpenDesktopLyrics?.invoke()
-                                    ?: onOpenCustomSettings()
-                            }
-                        )
-                    }
+                    SuperArrow(
+                        title = stringResource(R.string.settings_floating_lyrics),
+                        onClick = {
+                            onOpenDesktopLyrics?.invoke()
+                                ?: onOpenCustomSettings()
+                        }
+                    )
                 }
             }
 

@@ -25,8 +25,11 @@ import com.example.islandlyrics.ui.overlay.model.UIState
 import android.app.Dialog
 import android.content.Context
 import android.content.SharedPreferences
+import android.content.res.Configuration
 import android.graphics.Color
 import android.graphics.PixelFormat
+import android.graphics.Point
+import android.graphics.Rect
 import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.GradientDrawable
 import android.os.Handler
@@ -35,23 +38,31 @@ import android.os.SystemClock
 import android.provider.Settings
 import android.util.Log
 import android.view.Gravity
+import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.view.WindowManager
+import android.widget.FrameLayout
 import android.view.Window
+import android.view.WindowInsets
 import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 import androidx.core.content.edit
+import androidx.core.graphics.ColorUtils
 import androidx.core.view.isNotEmpty
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import com.example.islandlyrics.R
 import com.example.islandlyrics.core.settings.AppPreferences
 import com.example.islandlyrics.core.settings.LabFeatureManager
+import com.example.islandlyrics.core.theme.ThemeHelper
+import com.example.islandlyrics.ui.miuix.theme.isMiuixEnabled
 import com.example.islandlyrics.lyrics.state.LyricRepository
 import com.example.islandlyrics.ui.overlay.model.LyricPresentation
-import com.example.islandlyrics.ui.overlay.model.WordProgressCalculator
 import com.example.islandlyrics.ui.overlay.model.SecondaryTextMode
 import java.util.function.Consumer
 
@@ -63,18 +74,20 @@ import java.util.function.Consumer
  * MINIMAL  — transparent background (or dark subtle background if enabled), centered lyrics with optional album art on left.
  * EXPANDED — translucent rounded pill with optional system blur behind it, title/artist header,
  *   lyrics with optional album art on left, one control row:
- *   Row 1: media, prev, play/pause, next, close
+ *   Playback controls, settings, a player shortcut and a hide action.
  *
  * Font size, color, stroke, background style, and album art visibility are driven by SharedPreferences.
- * Clicking empty space in EXPANDED state -> switches back to MINIMAL.
  * Dragging uses [FloatingLyricsDraggableFrameLayout] (threshold-based, non-conflicting with clicks).
  */
-class FloatingLyricsRenderer(private val context: Context) {
+class FloatingLyricsRenderer(
+    private val context: Context,
+    dispatchMediaAction: (String) -> Unit = {}
+) {
 
     companion object {
         private const val TAG = "FloatingLyricsRenderer"
-        const val PREF_KEY             = AppPreferences.Keys.FLOATING_LYRICS_ENABLED
         const val PREF_TEXT_SIZE       = FloatingLyricsStyleStore.KEY_TEXT_SIZE
+        const val PREF_TEXT_WEIGHT     = AppPreferences.Keys.FLOATING_TEXT_WEIGHT
         const val PREF_TEXT_COLOR      = FloatingLyricsStyleStore.KEY_TEXT_COLOR
         const val PREF_FOLLOW_ALBUM_COLOR = FloatingLyricsStyleStore.KEY_FOLLOW_ALBUM_COLOR
         const val PREF_SHOW_ALBUM_ART  = FloatingLyricsStyleStore.KEY_SHOW_ALBUM_ART
@@ -88,11 +101,11 @@ class FloatingLyricsRenderer(private val context: Context) {
         const val PREF_POS_X           = FloatingLyricsWindowPositionStore.KEY_POS_X
         const val PREF_POS_Y           = FloatingLyricsWindowPositionStore.KEY_POS_Y
 
-        private const val EXPANDED_TIMEOUT_MS = 4000L
         private const val POPUP_DISMISS_DEBOUNCE_MS = 250L
+        private const val EXPANDED_TIMEOUT_MS = 4_000L
         private val POPUP_TEXT_COLORS = intArrayOf(
             Color.WHITE,
-            0xFFFFFFCC.toInt(),
+            Color.BLACK,
             0xFFCCFFFF.toInt(),
             0xFFCCFFCC.toInt(),
             0xFFFFCC99.toInt(),
@@ -112,12 +125,20 @@ class FloatingLyricsRenderer(private val context: Context) {
     private enum class DisplayState { MINIMAL, EXPANDED }
 
     private val mainHandler = Handler(Looper.getMainLooper())
+    private val collapseAfterIdle = Runnable { switchToMinimal() }
     private var wm: WindowManager? = null
     private var overlayDialog: Dialog? = null
     private var overlayWindow: Window? = null
     private var rootView: FloatingLyricsDraggableFrameLayout? = null
     private var windowParams: WindowManager.LayoutParams? = null
+    private var pendingLyricAnchor: Point? = null
+    private var compactLyricOffset: Point? = null
     private var settingsPopup: Dialog? = null
+    private var settingsComposeHost: FloatingLyricsComposeHost? = null
+    private var settingsBlur by mutableStateOf(false)
+    private var miuixPanel: FloatingLyricsMiuixPanel? = null
+    private var miuixThemeBackground: Int? = null
+    private var miuixSurfaceColor: Int? = null
     private var settingsPopupScrollView: ScrollView? = null
     private var settingsPopupDismissedAtMs: Long = 0L
     private var settingsPopupRefreshQueued = false
@@ -126,8 +147,11 @@ class FloatingLyricsRenderer(private val context: Context) {
     private val positionStore = FloatingLyricsWindowPositionStore(context)
     private val actionController = FloatingLyricsActionController(
         context = context,
-        onAfterAction = { resetCollapseTimer() },
-        onDisabled = { stop() }
+        onClosed = { stop() },
+        onMediaAction = { action ->
+            restartCollapseTimer()
+            dispatchMediaAction(action)
+        }
     )
 
     // View refs
@@ -147,8 +171,9 @@ class FloatingLyricsRenderer(private val context: Context) {
 
     private var currentState = DisplayState.MINIMAL
     private var lastState: UIState? = null
+    private var boundState: UIState? = null
     private var lastAppliedSnapshot: ViewSnapshot? = null
-    private var displayConfig = FloatingLyricsDisplayConfig.from(prefs())
+    private var displayConfig by mutableStateOf(FloatingLyricsDisplayConfig.from(prefs()))
     private var chrome = FloatingLyricsChrome.from(prefs())
     private var crossWindowBlurEnabled = false
     /** Desired lifecycle state.  Unlike [isRunning], this includes queued work. */
@@ -158,32 +183,38 @@ class FloatingLyricsRenderer(private val context: Context) {
         mainHandler.post {
             if (!isRunning) return@post
             crossWindowBlurEnabled = enabled
-            expandedContainer?.background = buildPillBackground()
             updateWindowBlur()
+            requestLineUpdate()
         }
     }
 
     var isRunning = false
         private set
 
-    private val collapseRunnable = Runnable { switchToMinimal() }
-
     // ── 逐字平滑动画：悬浮窗专属高频刷新队列（30/60 FPS） ────────────────────
     // 与全局 120ms 显示循环解耦：只负责当前句的逐字进度插值渲染。
     private val wordAnimationHandler = Handler(Looper.getMainLooper())
     private var wordAnimationActive = false
-    private var lastBasePosition = -1L
-    private var lastBasePositionAtElapsed = 0L
-    private var completedWordAnimationLine: LyricPresentation.DisplayLine? = null
+    private val wordPlayback = FloatingWordPlayback()
+    private var completedWordLine: LyricPresentation.DisplayLine? = null
+    private var parsedLyrics: LyricRepository.ParsedLyricsInfo? = null
+    private var timeline: FloatingLyricsTimeline? = null
+    private var clock: FloatingLyricsClock? = null
+    private var track: FloatingLyricsTrack? = null
+    private var playing = false
+    private val changeLine = Runnable {
+        if (isRunning && shouldBeRunning) renderLatestState()
+    }
 
     private val wordAnimationRunnable = object : Runnable {
         override fun run() {
             if (!isRunning) return
             if (!shouldRunWordAnimation()) {
-                wordAnimationActive = false
+                stopWordAnimation()
                 return
             }
-            if (computeAndApplyWordProgress()) {
+            val progress = renderWordFrame()
+            if (progress == null || progress.isFullySung()) {
                 stopWordAnimation()
             } else {
                 wordAnimationHandler.postDelayed(this, wordAnimationIntervalMs())
@@ -196,27 +227,32 @@ class FloatingLyricsRenderer(private val context: Context) {
         val title: String,
         val artist: String,
         val isPlaying: Boolean,
-        val textSizeSp: Float,
-        val textColor: Int,
-        val showAlbumArt: Boolean,
+        val style: FloatingLyricsStyle,
+        val albumColor: Int,
+        val compactBackground: Int,
+        val expandedBackground: Int,
         val albumArtHash: Int,
-        val enableTextStroke: Boolean,
-        val enableTextBackground: Boolean,
         val displayConfig: FloatingLyricsDisplayConfig,
-        val presentationHash: Int
+        val presentation: LyricPresentation
     )
 
     private val prefChangeListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
         when (key) {
-            PREF_TEXT_SIZE, PREF_TEXT_COLOR, PREF_FOLLOW_ALBUM_COLOR, 
+            PREF_TEXT_SIZE, PREF_TEXT_WEIGHT, PREF_TEXT_COLOR, PREF_FOLLOW_ALBUM_COLOR,
             PREF_SHOW_ALBUM_ART, PREF_TEXT_STROKE, PREF_TEXT_BACKGROUND,
             PREF_DISPLAY_MODE, PREF_SECONDARY_TEXT_MODES, PREF_SHOW_NEIGHBOR_LINE, PREF_NEIGHBOR_ALIGNMENT,
             PREF_WORD_HIGHLIGHT, LabFeatureManager.KEY_FLOATING_WORD_HIGH_FPS_ENABLED -> {
                 mainHandler.post {
+                    if (!isRunning || !shouldBeRunning) return@post
                     loadPrefs()
-                    lastState?.let { applyState(it) }
+                    renderLatestState()
                 }
             }
+            AppPreferences.Keys.CARD_BLUR_ENABLED -> mainHandler.post { updateWindowBlur() }
+            AppPreferences.Keys.UI_USE_MIUIX -> mainHandler.post { remountForTheme() }
+            AppPreferences.Keys.THEME_FOLLOW_SYSTEM, AppPreferences.Keys.THEME_DARK_MODE,
+            AppPreferences.Keys.MATERIAL_THEME_FOLLOW_SYSTEM, AppPreferences.Keys.MATERIAL_THEME_DARK_MODE ->
+                requestLineUpdate()
             PREF_POS_X, PREF_POS_Y -> {
                 mainHandler.post { moveWindowToStoredPosition() }
             }
@@ -241,7 +277,7 @@ class FloatingLyricsRenderer(private val context: Context) {
                 shouldBeRunning = false
                 return@post
             }
-            switchToExpanded()
+            switchToMinimal()
         }
     }
 
@@ -262,8 +298,52 @@ class FloatingLyricsRenderer(private val context: Context) {
         lastState = state
         if (!isRunning || !shouldBeRunning) return
         mainHandler.post {
-            if (isRunning && shouldBeRunning) applyState(state)
+            if (isRunning && shouldBeRunning && lastState === state) applyState(state)
         }
+    }
+
+    internal fun updatePlayback(session: FloatingLyricsSession) {
+        val now = SystemClock.elapsedRealtime()
+        val nextTrack = session.track
+        val trackChanged = nextTrack != null && track?.let(nextTrack::differsFrom) == true
+        track = nextTrack
+        if (trackChanged) {
+            lastState = null
+            lastAppliedSnapshot = null
+            completedWordLine = null
+            wordPlayback.acceptPosition(null, now)
+            stopWordAnimation()
+        }
+        val isPlaying = session.playback == FloatingLyricsPlayback.PLAYING
+        if (!trackChanged && playing == isPlaying && clock == session.clock) return
+        playing = isPlaying
+        clock = session.clock
+        wordPlayback.setPlaying(isPlaying, now)
+        requestLineUpdate()
+    }
+
+    fun onParsedLyricsChanged(parsed: LyricRepository.ParsedLyricsInfo?) {
+        parsedLyrics = parsed
+        timeline = FloatingLyricsTimeline.from(parsed)
+        requestLineUpdate()
+    }
+
+    fun onLyricChanged() {
+        if (timeline == null) requestLineUpdate()
+    }
+
+    fun onPlaybackPositionChanged() {
+        val position = LyricRepository.getInstance().liveProgress.value?.position
+        if (wordPlayback.acceptPosition(position, SystemClock.elapsedRealtime())) {
+            completedWordLine = null
+        }
+        requestLineUpdate()
+    }
+
+    private fun requestLineUpdate() {
+        if (!isRunning || !shouldBeRunning) return
+        mainHandler.removeCallbacks(changeLine)
+        mainHandler.post(changeLine)
     }
 
     // ── Prefs ─────────────────────────────────────────────────────────────────
@@ -286,8 +366,9 @@ class FloatingLyricsRenderer(private val context: Context) {
         wm = windowManager
         crossWindowBlurEnabled = windowManager.isCrossWindowBlurEnabled
 
-        val screenW = context.resources.displayMetrics.widthPixels
-        val overlayW = (screenW * 0.88f).toInt()
+        val screenW = windowManager.currentWindowMetrics.bounds.width()
+        val useMiuix = isMiuixEnabled(context)
+        val overlayW = overlayWidth(screenW, useMiuix)
 
         val params = WindowManager.LayoutParams(
             overlayW,
@@ -295,6 +376,7 @@ class FloatingLyricsRenderer(private val context: Context) {
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                     WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
+                    WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH or
                     WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
             PixelFormat.TRANSLUCENT
         ).apply {
@@ -315,29 +397,52 @@ class FloatingLyricsRenderer(private val context: Context) {
                 applyWindowAttributes(params)
             },
             onDragEnd = {
-                val clampedPosition = positionStore.clamp(params.x, params.y, params.width)
-                if (params.x != clampedPosition.x || params.y != clampedPosition.y) {
-                    params.x = clampedPosition.x
-                    params.y = clampedPosition.y
-                    applyWindowAttributes(params)
-                }
-                positionStore.save(params.x, params.y)
+                fitWindowInDisplay()
+                val shift = offsetFromCompactPosition()
+                val compactPosition = positionStore.clamp(params.x - shift.x, params.y - shift.y, params.width)
+                positionStore.save(compactPosition.x, compactPosition.y)
             }
         )
         rootView = root
-        val minimal  = buildMinimalView();  minimalContainer  = minimal
-        val expanded = buildExpandedView(); expandedContainer = expanded
+        if (useMiuix) {
+            val minimal = FloatingLyricsContentView(context).also { minimalContentView = it }
+            val expanded = FloatingLyricsContentView(context).also { expandedContentView = it }
+            val panel = FloatingLyricsMiuixPanel(
+                context, minimal, expanded, actionController, ::switchToExpanded, ::switchToMinimal,
+                ::toggleSettingsPopup, ::onMiuixBackgroundColorsChanged
+            )
+            miuixPanel = panel
+            panel.installOwners(root)
+            root.addView(panel.view, contentLayoutParams())
+        } else {
+            root.addView(buildMinimalView().also { minimalContainer = it }, contentLayoutParams())
+            root.addView(buildExpandedView().also { expandedContainer = it }, contentLayoutParams())
+        }
+        root.addOnLayoutChangeListener { _, _, top, _, bottom, _, oldTop, _, oldBottom ->
+            if (pendingLyricAnchor == null && bottom - top != oldBottom - oldTop) fitWindowInDisplay()
+        }
 
-        root.addView(minimal,  ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
-        root.addView(expanded, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
-
-        val dialog = Dialog(context, R.style.Theme_IslandLyrics_Transparent).apply {
+        val dialog = object : Dialog(context, R.style.Theme_IslandLyrics_Transparent) {
+            override fun dispatchTouchEvent(event: MotionEvent): Boolean {
+                if (event.actionMasked == MotionEvent.ACTION_OUTSIDE) {
+                    if (currentState == DisplayState.EXPANDED && settingsPopup == null) switchToMinimal()
+                    return false
+                }
+                if (event.actionMasked == MotionEvent.ACTION_DOWN) mainHandler.removeCallbacks(collapseAfterIdle)
+                val handled = super.dispatchTouchEvent(event)
+                if (event.actionMasked == MotionEvent.ACTION_UP || event.actionMasked == MotionEvent.ACTION_CANCEL) {
+                    restartCollapseTimer()
+                }
+                return handled
+            }
+        }.apply {
             requestWindowFeature(Window.FEATURE_NO_TITLE)
             setContentView(root)
             setCancelable(false)
             setCanceledOnTouchOutside(false)
         }
         val window = dialog.window ?: return false
+        miuixPanel?.installOwners(window.decorView)
         window.setType(WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY)
         window.setGravity(Gravity.TOP or Gravity.CENTER_HORIZONTAL)
         window.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
@@ -348,23 +453,47 @@ class FloatingLyricsRenderer(private val context: Context) {
         overlayDialog = dialog
         overlayWindow = window
 
-        dialog.show()
+        try {
+            dialog.show()
+        } catch (e: WindowManager.BadTokenException) {
+            Log.w(TAG, "Unable to attach desktop lyrics", e)
+            detachWindow()
+            return false
+        } catch (e: SecurityException) {
+            Log.w(TAG, "Overlay permission unavailable", e)
+            detachWindow()
+            return false
+        }
         window.attributes = params
         window.decorView.setPadding(0, 0, 0, 0)
         isRunning = true
+        root.viewTreeObserver.addOnPreDrawListener {
+            val anchor = pendingLyricAnchor ?: return@addOnPreDrawListener true
+            val offset = currentLyricOffset() ?: return@addOnPreDrawListener true
+            pendingLyricAnchor = null
+            // Wait for WindowManager to apply the new position before drawing the new shape.
+            !fitWindowInDisplay(Point(anchor.x - offset.x, anchor.y - offset.y))
+        }
         windowManager.addCrossWindowBlurEnabledListener(crossWindowBlurListener)
         Log.i(TAG, "Floating lyrics overlay attached")
         return true
     }
 
     private fun detachWindow() {
-        mainHandler.removeCallbacks(collapseRunnable)
         stopWordAnimation()
-        settingsPopup?.dismiss()
-        wm?.removeCrossWindowBlurEnabledListener(crossWindowBlurListener)
+        mainHandler.removeCallbacks(changeLine)
+        dismissSettingsPopup()
+        mainHandler.removeCallbacks(collapseAfterIdle)
+        if (isRunning) wm?.removeCrossWindowBlurEnabledListener(crossWindowBlurListener)
         try { overlayDialog?.dismiss() } catch (_: Exception) {}
         overlayDialog = null; overlayWindow = null
+        miuixPanel?.close()
+        miuixPanel = null
+        miuixThemeBackground = null
+        miuixSurfaceColor = null
         rootView = null; wm = null; windowParams = null
+        pendingLyricAnchor = null
+        compactLyricOffset = null
         settingsPopup = null
         settingsPopupScrollView = null
         minimalContentView = null; expandedTitleTv = null; expandedArtistTv = null
@@ -377,29 +506,109 @@ class FloatingLyricsRenderer(private val context: Context) {
         // state between stop and start.
         currentState = DisplayState.MINIMAL
         lastAppliedSnapshot = null
-        completedWordAnimationLine = null
+        boundState = null
+        completedWordLine = null
         crossWindowBlurEnabled = false
         isRunning = false
         Log.i(TAG, "Floating lyrics overlay detached")
     }
 
+    private fun remountForTheme() {
+        if (!shouldBeRunning || !isRunning) return
+        val wasExpanded = currentState == DisplayState.EXPANDED
+        detachWindow()
+        if (attachWindow()) {
+            if (wasExpanded) switchToExpanded() else switchToMinimal()
+        } else {
+            prefs().unregisterOnSharedPreferenceChangeListener(prefChangeListener)
+            shouldBeRunning = false
+        }
+    }
+
+    fun onDisplayConfigurationChanged() {
+        val manager = wm ?: return
+        val params = windowParams ?: return
+        dismissSettingsPopup()
+        params.width = overlayWidth(manager.currentWindowMetrics.bounds.width(), miuixPanel != null)
+        fitWindowInDisplay()
+        applyWindowAttributes(params)
+        requestLineUpdate()
+    }
+
+    private fun overlayWidth(screenWidth: Int, useMiuix: Boolean): Int =
+        if (useMiuix) minOf((screenWidth * 0.90f).toInt(), dpToPx(420)) else (screenWidth * 0.88f).toInt()
+
+    private fun contentLayoutParams() =
+        ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+
+    private fun visibleDisplayBounds(): Rect? {
+        val metrics = wm?.currentWindowMetrics ?: return null
+        val insets = metrics.windowInsets.getInsetsIgnoringVisibility(
+            WindowInsets.Type.systemBars() or WindowInsets.Type.displayCutout()
+        )
+        return Rect(insets.left, insets.top, metrics.bounds.width() - insets.right, metrics.bounds.height() - insets.bottom)
+    }
+
+    private fun fitWindowInDisplay(position: Point? = null): Boolean {
+        if (!isRunning) return false
+        val manager = wm ?: return false
+        val params = windowParams ?: return false
+        val bounds = visibleDisplayBounds() ?: return false
+        val screenWidth = manager.currentWindowMetrics.bounds.width()
+        val centeredLeft = (screenWidth - params.width) / 2
+        val visibleWidth = if (currentState == DisplayState.EXPANDED) params.width else dpToPx(48)
+        val minX = bounds.left - centeredLeft - params.width + visibleWidth
+        val maxX = (bounds.right - centeredLeft - visibleWidth).coerceAtLeast(minX)
+        val height = rootView?.height ?: 0
+        val x = (position?.x ?: params.x).coerceIn(minX, maxX)
+        val y = (position?.y ?: params.y).coerceIn(bounds.top, (bounds.bottom - height).coerceAtLeast(bounds.top))
+        if (x == params.x && y == params.y) return false
+        params.x = x
+        params.y = y
+        applyWindowAttributes(params)
+        return true
+    }
+
     private fun moveWindowToStoredPosition() {
         val params = windowParams ?: return
-        if (overlayWindow == null) return
         val position = positionStore.load(params.width)
-        params.x = position.x
-        params.y = position.y
-        try {
-            applyWindowAttributes(params)
-            if (position.fromPrefs) positionStore.save(params.x, params.y)
-        } catch (e: Exception) {
-            Log.w(TAG, "moveWindowToStoredPosition: ${e.message}")
-        }
+        val shift = offsetFromCompactPosition()
+        pendingLyricAnchor = null
+        fitWindowInDisplay(Point(position.x + shift.x, position.y + shift.y))
+        if (position.fromPrefs) positionStore.save(position.x, position.y)
     }
 
     // ── View builders ─────────────────────────────────────────────────────────
 
-    private fun buildMinimalView(): LinearLayout {
+    internal fun createMaterialPreview(expanded: Boolean): View =
+        if (expanded) {
+            buildExpandedView(interactive = false).apply {
+                visibility = View.VISIBLE
+                background = buildPanelBackground()
+            }
+        } else {
+            buildMinimalView(interactive = false)
+        }
+
+    internal fun materialPreviewTextColor(
+        albumColor: Int,
+        style: FloatingLyricsStyle,
+        expanded: Boolean,
+        themeBackground: Int
+    ): Int = style.textColor(albumColor, materialLyricBackground(expanded, style, themeBackground))
+
+    internal fun bindMaterialPreview(
+        state: UIState,
+        style: FloatingLyricsStyle,
+        display: FloatingLyricsDisplayConfig,
+        textColor: Int
+    ) {
+        val lyrics = expandedContentView ?: minimalContentView
+        lyrics?.render(state, style, display, textColor, state.fullLyric)
+        bindMaterialPanel(state, style, state.isPlaying)
+    }
+
+    private fun buildMinimalView(interactive: Boolean = true): LinearLayout {
         // Horizontal container for optional album art + text
         val contentRow = LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -437,11 +646,14 @@ class FloatingLyricsRenderer(private val context: Context) {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_HORIZONTAL
             addView(contentRow, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
-            setOnClickListener { switchToExpanded() }
+            if (interactive) {
+                contentDescription = context.getString(R.string.floating_settings_expand)
+                setOnClickListener { switchToExpanded() }
+            }
         }
     }
 
-    private fun buildExpandedView(): LinearLayout {
+    private fun buildExpandedView(interactive: Boolean = true): LinearLayout {
         val box = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_HORIZONTAL
@@ -451,11 +663,8 @@ class FloatingLyricsRenderer(private val context: Context) {
                 dpToPx(chrome.expandedHorizontalPaddingDp),
                 dpToPx(chrome.expandedVerticalPaddingDp)
             )
-            background = buildPillBackground()
             visibility = View.GONE
-            
-            // Click empty area to collapse
-            setOnClickListener { switchToMinimal() }
+            if (interactive) setOnClickListener { switchToMinimal() }
         }
 
         val mediaRow = LinearLayout(context).apply {
@@ -498,10 +707,14 @@ class FloatingLyricsRenderer(private val context: Context) {
         expandedArtistTv = artist
         titleColumn.addView(title, matchW())
         titleColumn.addView(artist, matchW())
-        val settingsButton = makeSettingsButton()
+        val settingsButton = makeSettingsButton(interactive)
         mediaRow.addView(expandedAlbumArtIv)
         mediaRow.addView(titleColumn, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
         mediaRow.addView(settingsButton)
+        mediaRow.addView(makeIconButton(R.drawable.ic_music_note, R.string.floating_window_open_player, interactive) {
+            if (actionController.openPlayingApp()) switchToMinimal()
+        })
+        mediaRow.addView(makeIconButton(R.drawable.ic_cancel, R.string.floating_window_close, interactive, actionController::closeFloatingLyrics))
         box.addView(mediaRow, matchW())
 
         val lyricPanel = LinearLayout(context).apply {
@@ -514,56 +727,50 @@ class FloatingLyricsRenderer(private val context: Context) {
         expandedContentView = FloatingLyricsContentView(context)
         lyricPanel.addView(expandedContentView, matchW())
 
-        mediaRow.setOnClickListener { switchToMinimal() }
-        lyricPanel.setOnClickListener { switchToMinimal() }
-        title.setOnClickListener { switchToMinimal() }
-        artist.setOnClickListener { switchToMinimal() }
         
         box.addView(lyricPanel, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
             topMargin = dpToPx(12)
         })
 
-        box.addView(buildControlsRow(), centerRow())
+        box.addView(buildControlsRow(interactive), centerRow())
 
         return box
     }
 
-    private fun buildControlsRow(): LinearLayout {
+    private fun buildControlsRow(interactive: Boolean): LinearLayout {
         val row = LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER
-            setOnClickListener { resetCollapseTimer() }
         }
-        val btnMedia = makeIconButton(R.drawable.ic_music_note) { actionController.openMediaControl() }
-        val btnPrev  = makeIconButton(R.drawable.ic_skip_previous) { actionController.sendMediaAction("ACTION_MEDIA_PREV") }
-        val btnPlay  = makeIconButton(R.drawable.ic_play_arrow) {
-            actionController.sendMediaAction(if (lastState?.isPlaying == true) "ACTION_MEDIA_PAUSE" else "ACTION_MEDIA_PLAY")
+        val btnPrev = makeIconButton(R.drawable.ic_skip_previous, R.string.action_previous, interactive) { actionController.sendMediaAction("ACTION_MEDIA_PREV") }
+        val btnPlay = makeIconButton(R.drawable.ic_play_arrow, R.string.action_play, interactive) {
+            actionController.sendMediaAction(if (playing) "ACTION_MEDIA_PAUSE" else "ACTION_MEDIA_PLAY")
         }
-        val btnNext  = makeIconButton(R.drawable.ic_skip_next) { actionController.sendMediaAction("ACTION_MEDIA_NEXT") }
-        val btnClose = makeIconButton(R.drawable.ic_cancel) { actionController.disableFloatingLyrics() }
+        val btnNext = makeIconButton(R.drawable.ic_skip_next, R.string.action_next, interactive) { actionController.sendMediaAction("ACTION_MEDIA_NEXT") }
         btnPlayPause = btnPlay
-        row.addView(btnMedia); row.addView(hSpace(2))
         row.addView(btnPrev);  row.addView(hSpace(2))
         row.addView(btnPlay);  row.addView(hSpace(2))
-        row.addView(btnNext);  row.addView(hSpace(2))
-        row.addView(btnClose)
+        row.addView(btnNext)
         return row
     }
 
-    private fun makeSettingsButton(): ImageButton {
+    private fun makeSettingsButton(interactive: Boolean): ImageButton {
         return ImageButton(context).apply {
             setImageResource(R.drawable.ic_settings)
             setColorFilter(Color.WHITE)
             background = roundedRect(0x1FFFFFFF, 14)
-            contentDescription = context.getString(R.string.settings_floating_lyrics)
             val p = dpToPx(8)
             setPadding(p, p, p, p)
             layoutParams = LinearLayout.LayoutParams(dpToPx(38), dpToPx(38)).apply {
                 marginStart = dpToPx(10)
             }
-            setOnClickListener {
-                resetCollapseTimer()
-                toggleSettingsPopup(this)
+            isClickable = interactive
+            isFocusable = interactive
+            if (interactive) {
+                contentDescription = context.getString(R.string.settings_floating_lyrics)
+                setOnClickListener { toggleSettingsPopup(this) }
+            } else {
+                importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
             }
         }
     }
@@ -580,49 +787,80 @@ class FloatingLyricsRenderer(private val context: Context) {
     }
 
     private fun showSettingsPopup(anchor: View) {
-        val width = settingsPopupWidth()
-        val content = buildSettingsPopupContent(anchor) as ScrollView
+        val bounds = visibleDisplayBounds() ?: return
+        val panel = rootView ?: return
+        val width = minOf(panel.width, bounds.width())
+        if (width <= 0) return
+        val height = minOf(dpToPx(480), (bounds.height() - dpToPx(16)).coerceAtLeast(1))
+        val composeHost = if (miuixPanel != null) FloatingLyricsComposeHost(context) else null
+        val content = composeHost?.view ?: buildSettingsPopupContent(anchor)
+        composeHost?.setContent {
+            FloatingLyricsMiuixQuickSettings(prefs(), POPUP_TEXT_COLORS, displayConfig, settingsBlur, ::resetWindowPosition)
+        }
         val popup = Dialog(context, R.style.Theme_IslandLyrics_Transparent).apply {
             requestWindowFeature(Window.FEATURE_NO_TITLE)
             setContentView(content)
             setCancelable(true)
             setCanceledOnTouchOutside(true)
             setOnDismissListener {
+                if (settingsPopup !== this) return@setOnDismissListener
+                settingsComposeHost?.close()
+                settingsComposeHost = null
                 settingsPopupRefreshQueued = false
                 settingsPopupDismissedAtMs = SystemClock.uptimeMillis()
                 settingsPopupScrollView = null
-                if (settingsPopup === this) settingsPopup = null
+                settingsPopup = null
+                restartCollapseTimer()
             }
         }
-        val window = popup.window ?: return
+        val window = popup.window ?: run {
+            composeHost?.close()
+            return
+        }
+        composeHost?.installOwners(window.decorView)
         window.setType(WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY)
-        window.setGravity(Gravity.TOP or Gravity.START)
-        window.setBackgroundDrawable(buildSettingsPopupBackground())
-        window.clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
-        window.addFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL)
-        window.setBackgroundBlurRadius(
-            if (crossWindowBlurEnabled) dpToPx(chrome.expandedBlurRadiusDp) else 0
+        window.setGravity(Gravity.TOP or Gravity.LEFT)
+        window.clearFlags(
+            WindowManager.LayoutParams.FLAG_DIM_BEHIND or
+                WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
         )
+        window.addFlags(WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN)
         window.decorView.clipToOutline = true
-        window.decorView.outlineProvider = roundedOutline(16)
+        window.decorView.outlineProvider = roundedOutline(chrome.expandedRadiusDp)
         settingsPopup = popup
-        settingsPopupScrollView = content
-        popup.show()
+        mainHandler.removeCallbacks(collapseAfterIdle)
+        settingsComposeHost = composeHost
+        settingsPopupScrollView = content as? ScrollView
+        updateWindowBlur()
 
         val location = IntArray(2)
-        anchor.getLocationOnScreen(location)
-        window.setLayout(width, ViewGroup.LayoutParams.WRAP_CONTENT)
+        panel.getLocationOnScreen(location)
+        val below = location[1] + panel.height + dpToPx(6)
+        val above = location[1] - height - dpToPx(6)
+        val margin = dpToPx(8)
+        val minY = bounds.top + margin
+        val maxY = (bounds.bottom - height - margin).coerceAtLeast(minY)
+        val desiredY = if (below > maxY && above >= minY) above else below
         window.attributes = window.attributes.apply {
-            gravity = Gravity.TOP or Gravity.START
-            x = (location[0] + anchor.width - width).coerceAtLeast(0)
-            y = location[1] + anchor.height + dpToPx(6)
+            this.width = width
+            this.height = height
+            x = location[0].coerceIn(bounds.left, bounds.right - width)
+            y = desiredY.coerceIn(minY, maxY)
+        }
+        try {
+            popup.show()
+        } catch (e: WindowManager.BadTokenException) {
+            Log.w(TAG, "Unable to attach desktop lyrics settings", e)
+            dismissSettingsPopup()
+        } catch (e: SecurityException) {
+            Log.w(TAG, "Overlay permission unavailable", e)
+            dismissSettingsPopup()
         }
     }
 
     private fun refreshSettingsPopup(anchor: View) {
         val popup = settingsPopup ?: return
         if (!popup.isShowing) return
-        val width = settingsPopupWidth()
         val scrollView = settingsPopupScrollView ?: return
         val list = scrollView.getChildAt(0) as? LinearLayout ?: return
         val previousScrollY = scrollView.scrollY
@@ -632,7 +870,6 @@ class FloatingLyricsRenderer(private val context: Context) {
         scrollView.post {
             scrollView.scrollTo(0, previousScrollY.coerceAtMost(list.height))
         }
-        popup.window?.setLayout(width, ViewGroup.LayoutParams.WRAP_CONTENT)
     }
 
     private fun scheduleSettingsPopupRefresh(anchor: View) {
@@ -645,18 +882,21 @@ class FloatingLyricsRenderer(private val context: Context) {
     }
 
     private fun dismissSettingsPopup() {
-        settingsPopup?.dismiss()
+        val popup = settingsPopup ?: return
         settingsPopup = null
+        settingsComposeHost?.close()
+        settingsComposeHost = null
         settingsPopupScrollView = null
         settingsPopupRefreshQueued = false
         settingsPopupDismissedAtMs = SystemClock.uptimeMillis()
+        popup.dismiss()
+        restartCollapseTimer()
     }
 
     private fun buildSettingsPopupContent(anchor: View): View {
         val list = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(0, dpToPx(6), 0, dpToPx(6))
-            background = buildSettingsPopupBackground()
         }
         populateSettingsPopupList(list, anchor)
         return ScrollView(context).apply {
@@ -680,14 +920,20 @@ class FloatingLyricsRenderer(private val context: Context) {
             onToggle = { value -> prefs().edit { putBoolean(PREF_TEXT_BACKGROUND, value) } },
             anchor = anchor
         ))
-        addSettingsPopupRow(list, buildSecondaryTextModePopupRow(anchor))
         addSettingsPopupRow(list, buildBooleanPopupRow(
             title = context.getString(R.string.settings_floating_show_second_line),
             currentValue = { displayConfig.showSecondLine },
             onToggle = { value -> prefs().edit { putBoolean(PREF_SHOW_NEIGHBOR_LINE, value) } },
             anchor = anchor
         ))
-        addSettingsPopupRow(list, buildNeighborAlignmentPopupRow(anchor))
+        if (displayConfig.showSecondLine) {
+            for (row in listOf(buildSecondaryTextModePopupRow(anchor), buildNeighborAlignmentPopupRow(anchor))) {
+                row.setPaddingRelative(
+                    row.paddingStart + dpToPx(12), row.paddingTop, row.paddingEnd, row.paddingBottom
+                )
+                addSettingsPopupRow(list, row)
+            }
+        }
         addSettingsPopupRow(list, buildBooleanPopupRow(
             title = context.getString(R.string.settings_floating_word_highlight),
             currentValue = { displayConfig.wordHighlight },
@@ -701,6 +947,7 @@ class FloatingLyricsRenderer(private val context: Context) {
             anchor = anchor
         ))
         addSettingsPopupRow(list, buildTextSizePopupRow(anchor))
+        addSettingsPopupRow(list, buildTextWeightPopupRow(anchor))
         addSettingsPopupRow(list, buildResetPositionPopupRow())
     }
 
@@ -715,16 +962,13 @@ class FloatingLyricsRenderer(private val context: Context) {
         val style = styleStore.style
         return LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
-            minimumHeight = dpToPx(70)
             setPadding(dpToPx(16), dpToPx(10), dpToPx(16), dpToPx(10))
-
-            addView(buildSettingsPopupTitle(context.getString(R.string.settings_floating_text_color)), matchW())
 
             val controls = LinearLayout(context).apply {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER_VERTICAL
             }
-            controls.addView(buildPopupChip(
+            addView(buildPopupChip(
                 text = context.getString(R.string.floating_settings_color_album),
                 selected = style.followAlbumColor,
                 onClick = {
@@ -733,9 +977,8 @@ class FloatingLyricsRenderer(private val context: Context) {
                     }
                 }
             ))
-            controls.addView(hSpace(8))
             POPUP_TEXT_COLORS.forEach { color ->
-                controls.addView(buildColorSwatch(
+                val swatch = buildColorSwatch(
                     color = color,
                     selected = !style.followAlbumColor && style.baseTextColor == color,
                     onClick = {
@@ -746,12 +989,13 @@ class FloatingLyricsRenderer(private val context: Context) {
                             }
                         }
                     }
-                ), LinearLayout.LayoutParams(dpToPx(28), dpToPx(28)).apply {
-                    marginEnd = dpToPx(6)
-                })
+                )
+                controls.addView(FrameLayout(context).apply {
+                    addView(swatch, FrameLayout.LayoutParams(dpToPx(28), dpToPx(28), Gravity.CENTER))
+                }, LinearLayout.LayoutParams(0, dpToPx(36), 1f))
             }
             addView(controls, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
-                topMargin = dpToPx(8)
+                topMargin = dpToPx(4)
             })
         }
     }
@@ -797,7 +1041,9 @@ class FloatingLyricsRenderer(private val context: Context) {
             minimumHeight = dpToPx(58)
             setPadding(dpToPx(16), dpToPx(10), dpToPx(16), dpToPx(10))
 
+            val order = displayConfig.secondaryTextModes.joinToString(" → ", transform = ::secondaryTextModeLabel)
             addView(buildSettingsPopupTitle(context.getString(R.string.settings_floating_secondary_text_mode)), matchW())
+            addView(buildSettingsPopupTitle(context.getString(R.string.settings_floating_secondary_text_mode_summary, order)), matchW())
 
             val row = LinearLayout(context).apply {
                 orientation = LinearLayout.HORIZONTAL
@@ -859,7 +1105,37 @@ class FloatingLyricsRenderer(private val context: Context) {
     }
 
     private fun buildTextSizePopupRow(anchor: View): View {
-        val style = styleStore.style
+        val size = styleStore.style.textSizeSp
+        return buildSteppedPopupRow(
+            title = context.getString(R.string.settings_floating_text_size),
+            value = context.getString(R.string.floating_settings_text_size_value, size.toInt()),
+            canDecrease = size > 10f,
+            canIncrease = size < 32f,
+            onDecrease = { applyPopupSetting(anchor) { styleStore.adjustTextSize(-2f) } },
+            onIncrease = { applyPopupSetting(anchor) { styleStore.adjustTextSize(2f) } }
+        )
+    }
+
+    private fun buildTextWeightPopupRow(anchor: View): View {
+        val weight = styleStore.style.textWeight
+        return buildSteppedPopupRow(
+            title = context.getString(R.string.settings_floating_text_weight),
+            value = context.getString(weight.label),
+            canDecrease = weight != FloatingLyricsTextWeight.REGULAR,
+            canIncrease = weight != FloatingLyricsTextWeight.BOLD,
+            onDecrease = { applyPopupSetting(anchor) { styleStore.adjustTextWeight(-1) } },
+            onIncrease = { applyPopupSetting(anchor) { styleStore.adjustTextWeight(1) } }
+        )
+    }
+
+    private fun buildSteppedPopupRow(
+        title: String,
+        value: String,
+        canDecrease: Boolean,
+        canIncrease: Boolean,
+        onDecrease: () -> Unit,
+        onIncrease: () -> Unit
+    ): View {
         return LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
@@ -867,7 +1143,7 @@ class FloatingLyricsRenderer(private val context: Context) {
             setPadding(dpToPx(16), 0, dpToPx(16), 0)
 
             addView(TextView(context).apply {
-                text = context.getString(R.string.settings_floating_text_size)
+                text = title
                 setTextColor(Color.WHITE)
                 textSize = 14f
                 maxLines = 1
@@ -875,18 +1151,15 @@ class FloatingLyricsRenderer(private val context: Context) {
                 gravity = Gravity.CENTER_VERTICAL
             }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f))
 
-            addView(buildPopupStepButton("-", enabled = style.textSizeSp > 10f) {
-                applyPopupSetting(anchor) { styleStore.adjustTextSize(-2f) }
-            })
+            addView(buildPopupStepButton("−", canDecrease, onDecrease))
             addView(TextView(context).apply {
-                text = context.getString(R.string.floating_settings_text_size_value, style.textSizeSp.toInt())
+                text = value
                 setTextColor(Color.WHITE)
                 textSize = 13f
                 gravity = Gravity.CENTER
-            }, LinearLayout.LayoutParams(dpToPx(58), ViewGroup.LayoutParams.MATCH_PARENT))
-            addView(buildPopupStepButton("+", enabled = style.textSizeSp < 32f) {
-                applyPopupSetting(anchor) { styleStore.adjustTextSize(2f) }
-            })
+                minWidth = dpToPx(58)
+            }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.MATCH_PARENT))
+            addView(buildPopupStepButton("+", canIncrease, onIncrease))
         }
     }
 
@@ -897,15 +1170,7 @@ class FloatingLyricsRenderer(private val context: Context) {
             minimumHeight = dpToPx(44)
             setPadding(dpToPx(16), 0, dpToPx(16), 0)
             isClickable = true
-            setOnClickListener {
-                resetPosition(context)
-                moveWindowToStoredPosition()
-                android.widget.Toast
-                    .makeText(context, R.string.settings_floating_position_reset_toast, android.widget.Toast.LENGTH_SHORT)
-                    .show()
-                resetCollapseTimer()
-                dismissSettingsPopup()
-            }
+            setOnClickListener { resetWindowPosition() }
 
             addView(TextView(context).apply {
                 text = context.getString(R.string.settings_floating_position_reset)
@@ -922,17 +1187,20 @@ class FloatingLyricsRenderer(private val context: Context) {
         }
     }
 
-    private fun settingsPopupWidth(): Int {
-        val screenWidth = context.resources.displayMetrics.widthPixels
-        return minOf(dpToPx(320), screenWidth - dpToPx(48))
+    private fun resetWindowPosition() {
+        resetPosition(context)
+        moveWindowToStoredPosition()
+        android.widget.Toast
+            .makeText(context, R.string.settings_floating_position_reset_toast, android.widget.Toast.LENGTH_SHORT)
+            .show()
+        dismissSettingsPopup()
     }
 
     private fun applyPopupSetting(anchor: View, block: () -> Unit) {
         block()
         loadPrefs()
         lastAppliedSnapshot = null
-        lastState?.let { applyState(it) }
-        resetCollapseTimer()
+        renderLatestState()
         scheduleSettingsPopupRefresh(anchor)
     }
 
@@ -1008,15 +1276,6 @@ class FloatingLyricsRenderer(private val context: Context) {
         }
     }
 
-    private fun buildSettingsPopupBackground(): GradientDrawable = roundedRect(
-        if (crossWindowBlurEnabled) {
-            chrome.expandedBackgroundColor
-        } else {
-            chrome.expandedFallbackBackgroundColor
-        },
-        16
-    )
-
     private fun onOffLabel(value: Boolean): String {
         return context.getString(if (value) R.string.floating_settings_on else R.string.floating_settings_off)
     }
@@ -1060,70 +1319,141 @@ class FloatingLyricsRenderer(private val context: Context) {
 
     // ── State switching ───────────────────────────────────────────────────────
 
+    private fun currentLyricOffset(): Point? {
+        val root = rootView ?: return null
+        val lyrics = if (currentState == DisplayState.MINIMAL) minimalContentView else expandedContentView
+        return lyrics?.lyricAnchorIn(root)
+    }
+
+    private fun offsetFromCompactPosition(): Point {
+        val compact = compactLyricOffset ?: return Point()
+        if (currentState == DisplayState.MINIMAL) return Point()
+        val current = currentLyricOffset() ?: return Point()
+        return Point(compact.x - current.x, compact.y - current.y)
+    }
+
+    private fun rememberLyricAnchor() {
+        if (pendingLyricAnchor != null) return
+        val params = windowParams ?: return
+        val offset = currentLyricOffset() ?: return
+        if (currentState == DisplayState.MINIMAL) compactLyricOffset = offset
+        pendingLyricAnchor = Point(params.x + offset.x, params.y + offset.y)
+    }
+
     private fun switchToMinimal() {
+        if (currentState == DisplayState.EXPANDED) rememberLyricAnchor()
         dismissSettingsPopup()
         clearWindowBlur()
         currentState = DisplayState.MINIMAL
+        mainHandler.removeCallbacks(collapseAfterIdle)
         minimalContainer?.visibility  = View.VISIBLE
         expandedContainer?.visibility = View.GONE
-        mainHandler.removeCallbacks(collapseRunnable)
+        miuixPanel?.expanded = false
         updateWindowBlur()
+        renderLatestState()
     }
 
     private fun switchToExpanded() {
+        if (currentState == DisplayState.MINIMAL) rememberLyricAnchor()
         clearWindowBlur()
         currentState = DisplayState.EXPANDED
         minimalContainer?.visibility  = View.GONE
         expandedContainer?.visibility = View.VISIBLE
-        expandedContainer?.background = buildPillBackground()
+        miuixPanel?.expanded = true
+        if (pendingLyricAnchor == null) fitWindowInDisplay()
         updateWindowBlur()
-        lastState?.let { applyState(it) }
-        mainHandler.removeCallbacks(collapseRunnable)
-        mainHandler.postDelayed(collapseRunnable, EXPANDED_TIMEOUT_MS)
+        renderLatestState()
+        restartCollapseTimer()
+    }
+
+    private fun restartCollapseTimer() {
+        mainHandler.removeCallbacks(collapseAfterIdle)
+        if (isRunning && shouldBeRunning && currentState == DisplayState.EXPANDED && settingsPopup == null) {
+            mainHandler.postDelayed(collapseAfterIdle, EXPANDED_TIMEOUT_MS)
+        }
+    }
+
+    private fun renderLatestState() {
+        val repo = LyricRepository.getInstance()
+        val metadata = repo.liveMetadata.value
+        applyState(
+            lastState ?: UIState(
+                title = metadata?.title ?: track?.title.orEmpty(),
+                artist = metadata?.artist ?: track?.artist.orEmpty(),
+                albumArt = repo.liveAlbumArt.value,
+                mediaPackage = metadata?.packageName ?: track?.player.orEmpty()
+            )
+        )
     }
 
     // ── Data binding ──────────────────────────────────────────────────────────
 
-    private fun applyState(state: UIState) {
-        val lyric = resolveFloatingFallbackLyric(state)
+    private fun applyState(baseState: UIState) {
+        val repo = LyricRepository.getInstance()
+        val now = SystemClock.elapsedRealtime()
+        val position = clock?.positionAt(now) ?: repo.liveProgress.value?.position
+        val presentation = timeline?.presentationAt(position) ?: floatingLiveLine(parsedLyrics, repo.liveLyric.value)
+        val state = baseState.copy(lyricPresentation = presentation)
+        mainHandler.removeCallbacks(changeLine)
+        if (playing) {
+            presentation.nextLine?.let { next ->
+                clock?.delayUntil(next.startTime, now)?.let { mainHandler.postDelayed(changeLine, it) }
+            }
+        }
+        boundState = state
+        if (presentation.currentLine != completedWordLine) completedWordLine = null
+        val lyric = presentation.currentLine?.text ?: "♪"
         val style = styleStore.style
-        val actualColor = style.textColor(state.albumColor)
+        val themeBackground = miuixThemeBackground ?: defaultThemeBackground()
+        val surface = miuixSurfaceColor ?: themeBackground
+        val compactBackground = if (miuixPanel == null) {
+            materialLyricBackground(false, style, themeBackground)
+        } else if (style.enableTextBackground) {
+            surface
+        } else {
+            themeBackground
+        }
+        val expandedBackground = if (miuixPanel == null) materialLyricBackground(true, style, themeBackground) else surface
         val snapshot = ViewSnapshot(
             lyric = lyric,
             title = state.title,
             artist = state.artist,
-            isPlaying = state.isPlaying,
-            textSizeSp = style.textSizeSp,
-            textColor = actualColor,
-            showAlbumArt = style.showAlbumArt,
+            isPlaying = playing,
+            style = style,
+            albumColor = state.albumColor,
+            compactBackground = compactBackground,
+            expandedBackground = expandedBackground,
             albumArtHash = state.albumArt?.hashCode() ?: 0,
-            enableTextStroke = style.enableTextStroke,
-            enableTextBackground = style.enableTextBackground,
             displayConfig = displayConfig,
-            // 逐字进度由高频队列独占更新，快照比较时排除，避免全局 120ms 渲染覆盖
-            presentationHash = state.lyricPresentation.copy(wordProgress = null).hashCode()
+            presentation = presentation
         )
         if (snapshot == lastAppliedSnapshot) {
+            syncWordAnimation()
             return
         }
         lastAppliedSnapshot = snapshot
 
-        minimalContentView?.render(state, style, displayConfig, actualColor, lyric)
-        expandedContentView?.render(state, style, displayConfig, actualColor, lyric)
+        val wordProgress = resolveWordProgress(state)
+        val frame = state.copy(lyricPresentation = presentation.copy(wordProgress = wordProgress))
+        minimalContentView?.render(frame, style, displayConfig, style.textColor(state.albumColor, compactBackground), lyric)
+        expandedContentView?.render(frame, style, displayConfig, style.textColor(state.albumColor, expandedBackground), lyric)
+        miuixPanel?.bind(state, style, playing)
+        bindMaterialPanel(state, style, playing)
+        syncWordAnimation()
+    }
 
+    private fun bindMaterialPanel(state: UIState, style: FloatingLyricsStyle, playing: Boolean) {
         expandedTitleTv?.text = state.title.ifBlank { context.getString(R.string.media_control_unknown_title) }
         expandedArtistTv?.text = state.artist.ifBlank { context.getString(R.string.media_control_unknown_artist) }
         
-        // Album art check
-        val hasArt = state.albumArt != null && style.showAlbumArt
-        if (hasArt) {
-            minimalAlbumArtIv?.setImageBitmap(state.albumArt)
-            expandedAlbumArtIv?.setImageBitmap(state.albumArt)
-            minimalAlbumArtIv?.visibility = View.VISIBLE
-            expandedAlbumArtIv?.visibility = View.VISIBLE
-        } else {
-            minimalAlbumArtIv?.visibility = View.GONE
-            expandedAlbumArtIv?.visibility = View.GONE
+        minimalAlbumArtIv?.apply {
+            val art = state.albumArt.takeIf { style.showAlbumArt }
+            setImageBitmap(art)
+            visibility = if (art == null) View.GONE else View.VISIBLE
+        }
+        expandedAlbumArtIv?.apply {
+            setImageBitmap(state.albumArt)
+            visibility = if (state.albumArt == null) View.GONE else View.VISIBLE
         }
         
         // Background for minimal state
@@ -1139,34 +1469,27 @@ class FloatingLyricsRenderer(private val context: Context) {
             )
         }
 
-        val isPlaying = state.isPlaying
-        btnPlayPause?.setImageResource(if (isPlaying) R.drawable.ic_pause else R.drawable.ic_play_arrow)
-        btnPlayPause?.setOnClickListener {
-            actionController.sendMediaAction(if (isPlaying) "ACTION_MEDIA_PAUSE" else "ACTION_MEDIA_PLAY")
+        btnPlayPause?.apply {
+            setImageResource(if (playing) R.drawable.ic_pause else R.drawable.ic_play_arrow)
+            if (isClickable) {
+                contentDescription = context.getString(if (playing) R.string.action_pause else R.string.action_play)
+            }
         }
-
-        syncWordAnimation()
     }
 
     // ── 逐字平滑动画（高频队列） ──────────────────────────────────────────────
 
     private fun syncWordAnimation() {
-        val currentLine = lastState?.lyricPresentation?.currentLine
-        if (currentLine != completedWordAnimationLine) {
-            completedWordAnimationLine = null
-        }
-
-        val shouldRun = shouldRunWordAnimation()
-        if (shouldRun && currentLine != completedWordAnimationLine) {
-            if (!wordAnimationActive) {
-                wordAnimationActive = true
-                lastBasePosition = -1L
-                lastBasePositionAtElapsed = 0L
-                wordAnimationHandler.removeCallbacks(wordAnimationRunnable)
-                wordAnimationHandler.post(wordAnimationRunnable)
-            }
-        } else {
+        if (!shouldRunWordAnimation()) {
             stopWordAnimation()
+            renderWordFrame()
+            return
+        }
+        if (wordAnimationActive) return
+        val progress = renderWordFrame() ?: return
+        if (!progress.isFullySung()) {
+            wordAnimationActive = true
+            wordAnimationHandler.postDelayed(wordAnimationRunnable, wordAnimationIntervalMs())
         }
     }
 
@@ -1175,88 +1498,36 @@ class FloatingLyricsRenderer(private val context: Context) {
         wordAnimationHandler.removeCallbacks(wordAnimationRunnable)
     }
 
-    private fun shouldRunWordAnimation(): Boolean = isRunning &&
-        LyricRepository.getInstance().isPlaying.value == true &&
-        displayConfig.wordHighlight &&
-        lastState?.lyricPresentation?.currentLine?.hasSyllables == true
+    private fun shouldRunWordAnimation(): Boolean = isRunning && shouldBeRunning && playing &&
+        (clock?.speed ?: 1f) > 0f &&
+        displayConfig.wordHighlight && boundState?.lyricPresentation?.currentLine?.hasSyllables == true
 
     private fun wordAnimationIntervalMs(): Long =
         if (LabFeatureManager.isFloatingWordHighFpsEnabled(prefs())) 16L else 33L
 
-    private fun computeAndApplyWordProgress(): Boolean {
-        val state = lastState ?: return false
-        val currentLine = state.lyricPresentation.currentLine ?: return false
-        if (!currentLine.hasSyllables) return false
-
-        val playing = LyricRepository.getInstance().isPlaying.value == true
-        val position = resolveInterpolatedPosition(playing)
-        val wordProgress = WordProgressCalculator.compute(
-            text = currentLine.text,
-            startTime = currentLine.startTime,
-            endTime = currentLine.endTime,
-            syllables = currentLine.syllables,
-            position = position
-        ) ?: return false
-
-        val updatedState = state.copy(
-            lyricPresentation = state.lyricPresentation.copy(wordProgress = wordProgress)
-        )
-        val style = styleStore.style
-        val actualColor = style.textColor(state.albumColor)
-        val lyric = resolveFloatingFallbackLyric(state)
-        minimalContentView?.render(updatedState, style, displayConfig, actualColor, lyric)
-        expandedContentView?.render(updatedState, style, displayConfig, actualColor, lyric)
-        val completed = wordProgress.syllables.isNotEmpty() &&
-            wordProgress.syllables.all { it.progress >= 1f }
-        if (completed) {
-            completedWordAnimationLine = currentLine
-        }
-        return completed
+    private fun renderWordFrame(): LyricPresentation.WordProgress? {
+        val state = boundState ?: return null
+        val progress = resolveWordProgress(state)
+        minimalContentView?.renderWordProgress(progress)
+        expandedContentView?.renderWordProgress(progress)
+        return progress
     }
 
-    /**
-     * 本地外推播放位置：以最近一次派发的进度为基准，按播放速度线性推进，
-     * 使高频队列不依赖 200ms/250ms 粒度阶梯的 liveProgress 派发。
-     * 收到新的派发值（seek/切歌/恢复）时自动重同步基准。
-     */
-    private fun resolveInterpolatedPosition(playing: Boolean): Long {
+    private fun resolveWordProgress(state: UIState): LyricPresentation.WordProgress? {
+        if (!displayConfig.wordHighlight) return null
+        val line = state.lyricPresentation.currentLine ?: return null
+        val syllables = line.syllables?.takeIf { it.isNotEmpty() } ?: return null
         val now = SystemClock.elapsedRealtime()
-        val repoProgress = LyricRepository.getInstance().liveProgress.value
-        if (repoProgress != null) {
-            if (lastBasePosition < 0 || repoProgress.position != lastBasePosition) {
-                lastBasePosition = repoProgress.position
-                lastBasePositionAtElapsed = now
-            }
-        }
-        return if (playing) {
-            if (lastBasePosition < 0) 0L else lastBasePosition + (now - lastBasePositionAtElapsed)
-        } else {
-            // 暂停期间冻结基准时间，恢复播放后不会把暂停时长计入外推
-            lastBasePositionAtElapsed = now
-            lastBasePosition.coerceAtLeast(0L)
-        }
-    }
-
-    private fun resolveFloatingFallbackLyric(state: UIState): String {
-        if (state.timelineCapability == LyricRepository.TimelineCapability.MULTI_LINE &&
-            state.lyricPresentation.currentLine == null &&
-            state.isTimingGapPlaceholder &&
-            state.preferMetadataLayout
-        ) {
-            return "●●●"
-        }
-
-        return state.fullLyric.ifBlank { state.displayLyric.ifBlank { "♪" } }
-    }
-
-    private fun resetCollapseTimer() {
-        mainHandler.removeCallbacks(collapseRunnable)
-        mainHandler.postDelayed(collapseRunnable, EXPANDED_TIMEOUT_MS)
+        clock?.let { return line.wordProgressAt(it.positionAt(now)) }
+        val position = wordPlayback.positionAt(now) ?: return null
+        val end = syllables.maxOf { it.endTime }
+        if (position >= end) completedWordLine = line
+        return line.wordProgressAt(if (completedWordLine == line) end else position)
     }
 
     // ── View helpers ──────────────────────────────────────────────────────────
 
-    private fun makeIconButton(drawableRes: Int, onClick: () -> Unit): ImageButton {
+    private fun makeIconButton(drawableRes: Int, labelRes: Int, interactive: Boolean, onClick: () -> Unit): ImageButton {
         return ImageButton(context).apply {
             setImageResource(drawableRes)
             setColorFilter(Color.WHITE)
@@ -1264,7 +1535,14 @@ class FloatingLyricsRenderer(private val context: Context) {
             val p = dpToPx(chrome.iconButtonPaddingDp)
             setPadding(p, p, p, p)
             layoutParams = LinearLayout.LayoutParams(dpToPx(chrome.iconButtonSizeDp), dpToPx(chrome.iconButtonSizeDp))
-            setOnClickListener { onClick() }
+            isClickable = interactive
+            isFocusable = interactive
+            if (interactive) {
+                contentDescription = context.getString(labelRes)
+                setOnClickListener { onClick() }
+            } else {
+                importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+            }
         }
     }
 
@@ -1299,13 +1577,17 @@ class FloatingLyricsRenderer(private val context: Context) {
 
     private fun updateWindowBlur() {
         val window = overlayWindow ?: return
-        val shouldBlur = currentState == DisplayState.EXPANDED && crossWindowBlurEnabled
+        val supportsBlur = crossWindowBlurEnabled &&
+            (miuixPanel == null || prefs().getBoolean(AppPreferences.Keys.CARD_BLUR_ENABLED, false))
+        val shouldBlur = currentState == DisplayState.EXPANDED && supportsBlur
+        miuixPanel?.blur = shouldBlur
+        settingsBlur = supportsBlur
         val nextRadius = if (shouldBlur) dpToPx(chrome.expandedBlurRadiusDp) else 0
         try {
             window.setBackgroundBlurRadius(nextRadius)
             window.setBackgroundDrawable(
                 if (currentState == DisplayState.EXPANDED) {
-                    buildPillBackground()
+                    buildPanelBackground()
                 } else {
                     ColorDrawable(Color.TRANSPARENT)
                 }
@@ -1314,21 +1596,46 @@ class FloatingLyricsRenderer(private val context: Context) {
             if (shouldBlur) {
                 window.decorView.outlineProvider = roundedOutline(chrome.expandedRadiusDp)
             }
+            settingsPopup?.window?.apply {
+                setBackgroundDrawable(buildPanelBackground())
+                setBackgroundBlurRadius(if (supportsBlur) dpToPx(chrome.expandedBlurRadiusDp) else 0)
+            }
         } catch (e: Exception) {
             Log.w(TAG, "updateWindowBlur: ${e.message}")
         }
     }
 
-    private fun buildPillBackground(): GradientDrawable = GradientDrawable().apply {
-        shape        = GradientDrawable.RECTANGLE
-        cornerRadius = dpToPx(chrome.expandedRadiusDp).toFloat()
-        setColor(
-            if (crossWindowBlurEnabled) {
-                chrome.expandedBackgroundColor
-            } else {
-                chrome.expandedFallbackBackgroundColor
-            }
-        )
+    private fun buildPanelBackground(): GradientDrawable {
+        val color = if (miuixPanel != null) Color.TRANSPARENT else materialPanelColor()
+        return roundedRect(color, chrome.expandedRadiusDp)
+    }
+
+    private fun materialPanelColor(): Int =
+        if (crossWindowBlurEnabled) chrome.expandedBackgroundColor else chrome.expandedFallbackBackgroundColor
+
+    private fun materialLyricBackground(expanded: Boolean, style: FloatingLyricsStyle, themeBackground: Int): Int {
+        val panelColor = when {
+            expanded -> materialPanelColor()
+            style.enableTextBackground -> chrome.minimalBackgroundColor
+            else -> Color.TRANSPARENT
+        }
+        return ColorUtils.compositeColors(panelColor, themeBackground)
+    }
+
+    private fun defaultThemeBackground(): Int {
+        val dark = if (ThemeHelper.getFollowSystem(context)) {
+            (context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+        } else {
+            ThemeHelper.getDarkMode(context)
+        }
+        return if (dark) Color.BLACK else Color.WHITE
+    }
+
+    private fun onMiuixBackgroundColorsChanged(background: Int, surface: Int) {
+        if (miuixThemeBackground == background && miuixSurfaceColor == surface) return
+        miuixThemeBackground = background
+        miuixSurfaceColor = surface
+        requestLineUpdate()
     }
 
     private fun roundedRect(color: Int, radiusDp: Int): GradientDrawable = GradientDrawable().apply {
