@@ -24,27 +24,35 @@ package com.example.islandlyrics.ui.overlay.floating
 
 import android.content.Context
 import android.graphics.Color
+import android.graphics.Point
 import android.text.SpannableString
 import android.text.Spanned
-import android.text.TextUtils
 import android.text.style.ForegroundColorSpan
 import android.view.Gravity
+import android.view.View
 import android.widget.LinearLayout
 import com.example.islandlyrics.ui.overlay.model.LyricPresentation
+import com.example.islandlyrics.ui.overlay.model.SecondaryTextMode
 import com.example.islandlyrics.ui.overlay.model.SecondaryTextResolver
 import com.example.islandlyrics.ui.overlay.model.UIState
 import com.example.islandlyrics.ui.overlay.views.OutlineTextView
 import kotlin.math.max
 
 internal class FloatingLyricsContentView(context: Context) : LinearLayout(context) {
-    private val mainLyricTv = lyricTextView()
-    private val secondaryTv = lyricTextView()
+    private val upperLyric = OutlineTextView(context)
+    private val lowerLyric = OutlineTextView(context)
+    private var activeLyric = upperLyric
+    private var activeGravity = Gravity.CENTER
+    private var alternating = false
+    private var mainText = ""
+    private var mainColor = Color.WHITE
+    private var lastWordProgress: LyricPresentation.WordProgress? = null
 
     init {
         orientation = VERTICAL
         gravity = Gravity.CENTER
-        addView(mainLyricTv, matchWidth())
-        addView(secondaryTv, matchWidth())
+        addView(upperLyric, matchWidth())
+        addView(lowerLyric, matchWidth())
     }
 
     fun render(
@@ -57,60 +65,89 @@ internal class FloatingLyricsContentView(context: Context) : LinearLayout(contex
         val presentation = state.lyricPresentation
         val currentLine = presentation.currentLine
 
-        hideSecondaryViews()
-
-        if (currentLine == null) {
-            applyTextStyle(mainLyricTv, style, textColor, style.textSizeSp, Gravity.CENTER, alpha = 1f)
-            mainLyricTv.text = fallbackText.ifBlank { "♪" }
-            return
-        }
-
-        // 第二行歌词：采用模板2的多选优先级系统，仅显示第一个可用的选中内容
-        val secondaryText = if (displayConfig.showSecondLine) {
-            SecondaryTextResolver.resolve(
+        val secondary = if (displayConfig.showSecondLine) {
+            SecondaryTextResolver.resolveWithMode(
                 modes = displayConfig.secondaryTextModes,
-                translation = currentLine.translation,
-                romanization = currentLine.romanization,
+                translation = currentLine?.translation,
+                romanization = currentLine?.romanization,
                 nextLyric = presentation.nextLine?.text
             )
         } else {
             null
         }
 
-        val splitAlignment =
+        alternating = displayConfig.showSecondLine &&
             displayConfig.neighborAlignment == FloatingLyricsNeighborAlignment.SPLIT_START_END &&
-                secondaryText != null
-        val mainGravity = if (splitAlignment) Gravity.START else Gravity.CENTER
-        val secondaryGravity = if (splitAlignment) Gravity.END else Gravity.CENTER
+            SecondaryTextMode.NEXT_LYRIC in displayConfig.secondaryTextModes
+        val upcomingFirstLine = currentLine == null && secondary?.mode == SecondaryTextMode.NEXT_LYRIC
+        val activeOnEnd = alternating && (upcomingFirstLine || presentation.currentLineIndex % 2 == 1)
+        val maxLines = if (alternating) 1 else 2
+        activeLyric = if (activeOnEnd) lowerLyric else upperLyric
+        val inactiveLyric = if (activeOnEnd) upperLyric else lowerLyric
 
-        applyTextStyle(mainLyricTv, style, textColor, style.textSizeSp, mainGravity, alpha = 1f)
-        mainLyricTv.text = if (displayConfig.wordHighlight && presentation.wordProgress != null) {
-            highlightedText(currentLine.text, presentation.wordProgress, textColor)
-        } else {
-            currentLine.text
+        activeGravity = when {
+            activeOnEnd -> Gravity.END
+            alternating -> Gravity.START
+            else -> Gravity.CENTER
         }
+        activeLyric.setStyle(textColor, style.textSizeSp, style.textWeight.weight, activeGravity, style.enableTextStroke, maxLines)
+        activeLyric.minimumHeight = 0
+        activeLyric.visibility = if (upcomingFirstLine && alternating) INVISIBLE else VISIBLE
+        mainText = currentLine?.text ?: fallbackText.ifBlank { "♪" }
+        mainColor = textColor
+        lastWordProgress = presentation.wordProgress.takeIf { currentLine != null && displayConfig.wordHighlight }
+        updateActiveFill(lastWordProgress)
 
-        if (secondaryText != null) {
-            val sidecarSize = max(10f, style.textSizeSp * 0.72f)
-            applyTextStyle(secondaryTv, style, textColor, sidecarSize, secondaryGravity, alpha = 0.74f)
-            secondaryTv.text = secondaryText
+        if (secondary != null || alternating) {
+            val sameSize = alternating && (secondary == null || secondary.mode == SecondaryTextMode.NEXT_LYRIC)
+            val inactiveSize = if (sameSize) style.textSizeSp else max(10f, style.textSizeSp * 0.72f)
+            val inactiveGravity = when {
+                activeOnEnd -> Gravity.START
+                alternating -> Gravity.END
+                else -> Gravity.CENTER
+            }
+            inactiveLyric.setStyle(
+                withAlpha(textColor, 0.74f), inactiveSize, style.textWeight.weight,
+                inactiveGravity, style.enableTextStroke, maxLines
+            )
+            inactiveLyric.minimumHeight = if (alternating) activeLyric.singleLineHeight else 0
+            inactiveLyric.setLine(secondary?.text.orEmpty())
+        }
+        inactiveLyric.visibility = when {
+            secondary != null -> VISIBLE
+            alternating -> INVISIBLE
+            else -> GONE
         }
     }
 
-    private fun applyTextStyle(
-        target: OutlineTextView,
-        style: FloatingLyricsStyle,
-        textColor: Int,
-        textSize: Float,
-        gravity: Int,
-        alpha: Float
-    ) {
-        target.gravity = gravity
-        target.textAlignment = TEXT_ALIGNMENT_GRAVITY
-        target.textSize = textSize
-        target.setTextColor(withAlpha(textColor, alpha))
-        target.setStroke(style.enableTextStroke)
-        target.visibility = VISIBLE
+    fun renderWordProgress(progress: LyricPresentation.WordProgress?) {
+        if (lastWordProgress == progress) return
+        lastWordProgress = progress
+        updateActiveFill(progress)
+    }
+
+    fun lyricAnchorIn(container: View): Point? {
+        val anchorView = if (alternating) this else activeLyric
+        if (!isShown || !anchorView.isLaidOut || anchorView.width == 0) return null
+        val location = IntArray(2)
+        anchorView.getLocationInWindow(location)
+        val alignment = Gravity.getAbsoluteGravity(
+            if (alternating) Gravity.CENTER else activeGravity,
+            anchorView.layoutDirection
+        )
+        val alignmentOffset = when (alignment and Gravity.HORIZONTAL_GRAVITY_MASK) {
+            Gravity.LEFT -> 0
+            Gravity.RIGHT -> anchorView.width
+            else -> anchorView.width / 2
+        }
+        val anchor = Point(location[0] + alignmentOffset, location[1])
+        container.getLocationInWindow(location)
+        anchor.offset(-location[0], -location[1])
+        return anchor
+    }
+
+    private fun updateActiveFill(progress: LyricPresentation.WordProgress?) {
+        activeLyric.setLine(mainText, progress?.let { highlightedText(mainText, it, mainColor) } ?: mainText)
     }
 
     private fun highlightedText(
@@ -119,17 +156,12 @@ internal class FloatingLyricsContentView(context: Context) : LinearLayout(contex
         textColor: Int
     ): CharSequence {
         val syllableProgresses = progress.syllables
+        if (progress.isFullySung()) return text
         if (syllableProgresses.isEmpty()) {
             // 无逐字数据回退：按已唱字符前缀高亮
             val sungLength = progress.sungText.length.coerceIn(0, text.length)
-            if (sungLength <= 0) return text
+            if (text.isEmpty()) return text
             return SpannableString(text).apply {
-                setSpan(
-                    ForegroundColorSpan(textColor),
-                    0,
-                    sungLength,
-                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
-                )
                 if (sungLength < text.length) {
                     setSpan(
                         ForegroundColorSpan(withAlpha(textColor, 0.42f)),
@@ -147,6 +179,7 @@ internal class FloatingLyricsContentView(context: Context) : LinearLayout(contex
             syllableProgresses.forEach { syllable ->
                 val start = syllable.charStart.coerceIn(0, text.length)
                 val end = syllable.charEnd.coerceIn(start, text.length)
+                if (end <= start) return@forEach
                 val eased = smoothStep(syllable.progress.coerceIn(0f, 1f))
                 val alpha = 0.42f + (eased * 0.58f)
                 setSpan(
@@ -170,20 +203,6 @@ internal class FloatingLyricsContentView(context: Context) : LinearLayout(contex
 
     private fun smoothStep(value: Float): Float = value * value * (3f - 2f * value)
 
-    private fun hideSecondaryViews() {
-        mainLyricTv.visibility = GONE
-        secondaryTv.visibility = GONE
-    }
-
-    private fun lyricTextView(): OutlineTextView {
-        return OutlineTextView(context).apply {
-            gravity = Gravity.CENTER
-            textAlignment = TEXT_ALIGNMENT_GRAVITY
-            includeFontPadding = false
-            maxLines = 2
-            ellipsize = TextUtils.TruncateAt.END
-        }
-    }
 
     private fun matchWidth(): LayoutParams {
         return LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)

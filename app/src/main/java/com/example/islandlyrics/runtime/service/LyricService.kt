@@ -31,7 +31,9 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.res.Configuration
 import android.os.Build
+import android.os.Binder
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
@@ -41,6 +43,7 @@ import com.example.islandlyrics.core.platform.RomUtils
 import com.example.islandlyrics.core.logging.AppLogger
 import com.example.islandlyrics.core.network.OfflineModeManager
 import com.example.islandlyrics.core.settings.AppPreferences
+import com.example.islandlyrics.core.settings.LabFeatureManager
 import com.example.islandlyrics.integration.lastfm.LastFmScrobbleManager
 import com.example.islandlyrics.lyrics.state.LyricRepository
 import com.example.islandlyrics.rules.ParserRuleHelper
@@ -61,10 +64,16 @@ import com.example.islandlyrics.runtime.render.RenderModeCoordinator
 import com.example.islandlyrics.ui.overlay.capsule.LyricCapsuleHandler
 import com.example.islandlyrics.ui.overlay.display.LyricDisplayManager
 import com.example.islandlyrics.ui.overlay.floating.FloatingLyricsRenderer
+import com.example.islandlyrics.ui.overlay.floating.FloatingLyricsPlayback
+import com.example.islandlyrics.ui.overlay.floating.FloatingLyricsVisibility
 import com.example.islandlyrics.ui.overlay.superisland.SuperIslandHandler
 import com.example.islandlyrics.ui.overlay.superisland.calibration.RightWizardController
 import com.example.islandlyrics.ui.overlay.model.UIState
 import com.example.islandlyrics.ui.overlay.config.CapsuleRenderMode
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 
 class LyricService : Service() {
 
@@ -88,6 +97,7 @@ class LyricService : Service() {
     private var delayedStopController: DelayedStopController? = null
 
     private val lyricObserver = Observer<LyricRepository.LyricInfo?> { info ->
+        floatingLyricsRenderer?.onLyricChanged()
         if (info != null && info.lyric.isNotBlank()) {
             val lyric = info.lyric
             val metadata = LyricRepository.getInstance().liveMetadata.value
@@ -172,7 +182,10 @@ class LyricService : Service() {
                 )
             }
 
-            if (trackChanged) {
+            // A bind can recreate this service for a still-paused track with lyrics in the repository.
+            val restoringPausedTrack = previousTrackKey == null &&
+                FloatingLyricsVisibility.session.value.playback == FloatingLyricsPlayback.PAUSED
+            if (trackChanged && !restoringPausedTrack) {
                 resetForTrackChange(info)
             }
             lastFmScrobbleManager.onMetadataChanged(info)
@@ -223,6 +236,8 @@ class LyricService : Service() {
     private lateinit var superIslandHandler: SuperIslandHandler
     private lateinit var displayManager: LyricDisplayManager
     private var floatingLyricsRenderer: FloatingLyricsRenderer? = null
+    private val floatingLyricsScope = CoroutineScope(Dispatchers.Main.immediate)
+    private val pausedWindowBinder = Binder()
     private var capsuleRenderMode = CapsuleRenderMode.XIAOMI_SUPER_ISLAND
     private var calibrationController: RightWizardController? = null
     private var calibrationStartedService = false
@@ -259,9 +274,10 @@ class LyricService : Service() {
             AppLogger.getInstance().log(TAG, "Mode Switched via Settings -> capsuleRenderMode: $capsuleRenderMode")
             renderModeCoordinator?.setMode(capsuleRenderMode)
             updateActiveHandler()
-        } else if (key == FloatingLyricsRenderer.PREF_KEY) {
-            val enabled = p.getBoolean(FloatingLyricsRenderer.PREF_KEY, false)
-            AppLogger.getInstance().log(TAG, "Floating lyrics toggled -> enabled: $enabled")
+        } else if (
+            key == LabFeatureManager.KEY_FLOATING_LYRICS_ENABLED || key == FloatingLyricsVisibility.KEEP_ON_PAUSE ||
+            key == "service_enabled"
+        ) {
             syncFloatingLyricsState(p)
         } else if (key == OfflineModeManager.KEY_FULLY_OFFLINE_MODE && p.getBoolean(key, false)) {
             AppLogger.getInstance().log(TAG, "Offline mode enabled -> cancelling online lyric requests")
@@ -286,7 +302,9 @@ class LyricService : Service() {
             capsuleHandler = LyricCapsuleHandler(this, this)
         }
         superIslandHandler = SuperIslandHandler(this, this)
-        floatingLyricsRenderer = FloatingLyricsRenderer(this)
+        floatingLyricsRenderer = FloatingLyricsRenderer(this) { action ->
+            mediaCommandRouter.handleServiceAction(action)
+        }
         displayManager = LyricDisplayManager(this).apply {
             onStateUpdated = { state ->
                 lastRenderState = state
@@ -379,22 +397,42 @@ class LyricService : Service() {
         repo.liveLyric.observeForever(lyricObserver)
         repo.isPlaying.observeForever(playbackObserver)  // Controls capsule lifecycle + progress tracking
         repo.liveMetadata.observeForever(metadataObserver)
+        repo.liveParsedLyrics.observeForever(parsedLyricsObserver)
         repo.liveProgress.observeForever(progressObserver)
+        floatingLyricsScope.launch {
+            FloatingLyricsVisibility.session.collect {
+                syncFloatingLyricsState(AppPreferences.of(this@LyricService))
+            }
+        }
     }
 
     private val progressObserver = Observer<LyricRepository.PlaybackProgress?> { progress ->
         lastFmScrobbleManager.onProgressChanged(progress)
+        floatingLyricsRenderer?.onPlaybackPositionChanged()
+    }
+
+    private val parsedLyricsObserver = Observer<LyricRepository.ParsedLyricsInfo?> { parsed ->
+        floatingLyricsRenderer?.onParsedLyricsChanged(parsed)
     }
 
     private fun syncFloatingLyricsState(prefs: android.content.SharedPreferences) {
-        if (calibrationController?.active == true) { floatingLyricsRenderer?.stop(); return }
-        val enabled = prefs.getBoolean(FloatingLyricsRenderer.PREF_KEY, false)
-        val shouldRun = enabled && LyricRepository.getInstance().isPlaying.value == true
-        if (shouldRun && floatingLyricsRenderer?.isRunning != true) {
+        val calibrating = calibrationController?.active == true
+        val shouldRun = FloatingLyricsVisibility.shouldShow(this, prefs, calibrating)
+        floatingLyricsRenderer?.updatePlayback(FloatingLyricsVisibility.session.value)
+        if (shouldRun) {
             floatingLyricsRenderer?.start()
-        } else if (!shouldRun && floatingLyricsRenderer?.isRunning == true) {
+        } else {
             floatingLyricsRenderer?.stop()
         }
+    }
+
+    private fun finishPlaybackService() {
+        delayedStopController?.cancel()
+        progressSyncController.stop()
+        renderModeCoordinator?.stopForCurrentMode()
+        stopForeground(STOP_FOREGROUND_REMOVE)
+        foregroundController.clearForegroundSlotPrimed("mediaIdle")
+        stopSelf()
     }
 
     private fun syncPushLyricSources() {
@@ -441,6 +479,16 @@ class LyricService : Service() {
         renderModeCoordinator?.setMode(capsuleRenderMode)
         syncFloatingLyricsState(prefs)
 
+        if (action == ACTION_MEDIA_IDLE) {
+            if (calibrationController?.active == true ||
+                FloatingLyricsVisibility.session.value.playback == FloatingLyricsPlayback.PLAYING
+            ) return START_STICKY
+            // The media listener binds for a visible paused window. End the started service
+            // and its foreground notification; the binding keeps the window alive.
+            finishPlaybackService()
+            return START_NOT_STICKY
+        }
+
         // [Fix Task 1] Immediate Foreground Promotion
         foregroundController.createNotificationChannel()
 
@@ -471,13 +519,17 @@ class LyricService : Service() {
         return START_STICKY
     }
 
-    override fun onBind(intent: Intent): IBinder? {
-        return null // Not a bound service
+    override fun onBind(intent: Intent): IBinder = pausedWindowBinder
+
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        floatingLyricsRenderer?.onDisplayConfigurationChanged()
     }
 
     override fun onDestroy() {
         super.onDestroy()
         isAlive = false
+        floatingLyricsScope.cancel()
         calibrationController?.finish(restore = false)
         foregroundController.clearForegroundSlotPrimed("onDestroy")
         AppLogger.getInstance().log(TAG, "Service Destroyed")
@@ -502,6 +554,7 @@ class LyricService : Service() {
         repo.liveLyric.removeObserver(lyricObserver)
         repo.isPlaying.removeObserver(playbackObserver)
         repo.liveMetadata.removeObserver(metadataObserver)
+        repo.liveParsedLyrics.removeObserver(parsedLyricsObserver)
         repo.liveProgress.removeObserver(progressObserver)
         
         try {
@@ -562,8 +615,15 @@ class LyricService : Service() {
         if (!isAlive) return
         superIslandHandler.stop()
         updateActiveHandler()
-        syncFloatingLyricsState(AppPreferences.of(this))
+        val prefs = AppPreferences.of(this)
+        syncFloatingLyricsState(prefs)
         displayManager.forceUpdate()
+        if (FloatingLyricsVisibility.session.value.playback == FloatingLyricsPlayback.PAUSED &&
+            FloatingLyricsVisibility.shouldShow(this, prefs)
+        ) {
+            finishPlaybackService()
+            return
+        }
         if (superIslandHandler.isRunning != true && capsuleHandler?.isRunning() != true) {
             stopForeground(STOP_FOREGROUND_REMOVE)
             foregroundController.clearForegroundSlotPrimed("rightCalibrationEnd")
@@ -594,6 +654,7 @@ class LyricService : Service() {
     }
 
     companion object {
+        internal const val ACTION_MEDIA_IDLE = "com.example.islandlyrics.ACTION_MEDIA_IDLE"
         private const val TAG = "LyricService"
         @Volatile var isAlive: Boolean = false
     }

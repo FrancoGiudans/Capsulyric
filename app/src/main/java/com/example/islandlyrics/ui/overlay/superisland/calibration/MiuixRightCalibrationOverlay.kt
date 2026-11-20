@@ -80,7 +80,9 @@ internal class MiuixRightCalibrationOverlay(
     }
 
     override fun close() {
-        if (attached) runCatching { manager.removeView(root) }
+        if (attached) {
+            val _ = runCatching { manager.removeView(root) }
+        }
         attached = false
         registry.currentState = Lifecycle.State.DESTROYED
         root.disposeComposition()

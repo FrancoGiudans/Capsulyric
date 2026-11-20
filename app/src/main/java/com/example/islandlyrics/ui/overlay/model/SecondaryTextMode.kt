@@ -67,6 +67,8 @@ enum class SecondaryTextMode(val preferenceValue: String) {
  * 全部不可用时兜底按 翻译→拼音歌词→下一句 的顺序取第一个可用内容。
  */
 internal object SecondaryTextResolver {
+    data class Resolved(val mode: SecondaryTextMode, val text: String)
+
     fun isPlaceholder(text: String?): Boolean =
         text == null || text.isBlank() || text.trim() == "♪"
 
@@ -75,7 +77,22 @@ internal object SecondaryTextResolver {
         translation: String?,
         romanization: String?,
         nextLyric: String?
-    ): String? {
+    ): String? = resolve(modes, translation, romanization, nextLyric) { _, text -> text }
+
+    fun resolveWithMode(
+        modes: List<SecondaryTextMode>,
+        translation: String?,
+        romanization: String?,
+        nextLyric: String?
+    ): Resolved? = resolve(modes, translation, romanization, nextLyric, ::Resolved)
+
+    private inline fun <T> resolve(
+        modes: List<SecondaryTextMode>,
+        translation: String?,
+        romanization: String?,
+        nextLyric: String?,
+        selected: (SecondaryTextMode, String) -> T
+    ): T? {
         val translationText = translation?.takeIf { !isPlaceholder(it) }
         val romanizationText = romanization?.takeIf { !isPlaceholder(it) }
         val nextLyricText = nextLyric?.takeIf { !isPlaceholder(it) }
@@ -86,10 +103,13 @@ internal object SecondaryTextResolver {
                 SecondaryTextMode.ROMANIZATION -> romanizationText
                 SecondaryTextMode.NEXT_LYRIC -> nextLyricText
             }
-            if (value != null) return value
+            if (value != null) return selected(mode, value)
         }
-        return sequenceOf(translationText, romanizationText, nextLyricText)
-            .filterNotNull()
-            .firstOrNull()
+        return when {
+            translationText != null -> selected(SecondaryTextMode.TRANSLATION, translationText)
+            romanizationText != null -> selected(SecondaryTextMode.ROMANIZATION, romanizationText)
+            nextLyricText != null -> selected(SecondaryTextMode.NEXT_LYRIC, nextLyricText)
+            else -> null
+        }
     }
 }

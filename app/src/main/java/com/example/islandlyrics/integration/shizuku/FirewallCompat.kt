@@ -158,10 +158,10 @@ internal object FirewallCompat {
         )
     }
 
-    private fun runAttempts(attempts: List<() -> String>, failures: MutableList<String>): Boolean {
+    private fun runAttempts(attempts: List<() -> Unit>, failures: MutableList<String>): Boolean {
         for (attempt in attempts) {
             try {
-                attempt.invoke()
+                attempt()
                 return true
             } catch (t: Throwable) {
                 failures += t.message ?: t.javaClass.name
@@ -177,7 +177,7 @@ internal object FirewallCompat {
         return serviceFetcher(backend.serviceName, backend.stubClassName, backend.label)
     }
 
-    private fun callMethodResilient(target: Any, methodNames: List<String>, vararg args: Any): String {
+    private fun callMethodResilient(target: Any, methodNames: List<String>, vararg args: Any) {
         val methods = buildList {
             for (methodName in methodNames) {
                 addAll(
@@ -198,7 +198,7 @@ internal object FirewallCompat {
         for (method in methods) {
             try {
                 invokeMethod(target, method, args)
-                return method.name
+                return
             } catch (t: Throwable) {
                 lastError = t
             }

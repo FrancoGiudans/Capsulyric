@@ -124,7 +124,7 @@ import com.example.islandlyrics.ui.theme.material.materialPageContainerColor
 import com.example.islandlyrics.ui.material.blur.MaterialBlurScaffold
 import com.example.islandlyrics.ui.theme.material.MaterialBlurTopAppBar
 import com.google.android.material.progressindicator.LinearProgressIndicator
-import androidx.palette.graphics.Palette
+import com.example.islandlyrics.core.theme.generatePalette
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -569,14 +569,9 @@ private fun MediaSessionCard(
     var cardBackgroundColor by remember { mutableStateOf(Color.Transparent) }
 
     LaunchedEffect(albumArt) {
-        if (albumArt == null) {
-            cardBackgroundColor = Color.Transparent
-        } else {
-            Palette.from(albumArt).generate { palette ->
-                val colorInt = palette?.vibrantSwatch?.rgb ?: palette?.dominantSwatch?.rgb
-                cardBackgroundColor = colorInt?.let { Color(it).copy(alpha = 0.22f) } ?: Color.Transparent
-            }
-        }
+        val palette = albumArt?.generatePalette()
+        val colorInt = palette?.vibrantSwatch?.rgb ?: palette?.dominantSwatch?.rgb
+        cardBackgroundColor = colorInt?.let { Color(it).copy(alpha = 0.22f) } ?: Color.Transparent
     }
 
     Card(

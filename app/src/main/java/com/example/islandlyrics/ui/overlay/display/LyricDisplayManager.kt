@@ -44,6 +44,10 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import androidx.lifecycle.Observer
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 
 /**
  * LyricDisplayManager
@@ -63,6 +67,8 @@ class LyricDisplayManager(private val context: Context) {
     
     // Core state
     private val albumArtColorExtractor = AlbumArtColorExtractor(OverlayRenderDefaults.COLOR_PRIMARY)
+    private val albumArtScope = CoroutineScope(Dispatchers.Main.immediate)
+    private var albumArtJob: Job? = null
     
     // Scroll state machine
     private enum class ScrollState {
@@ -148,8 +154,9 @@ class LyricDisplayManager(private val context: Context) {
     }
     
     private val albumArtObserver = Observer<Bitmap?> { bitmap ->
-        albumArtColorExtractor.extract(bitmap) {
-            LyricRepository.getInstance().liveAlbumArt.value?.hashCode()
+        albumArtJob?.cancel()
+        albumArtJob = albumArtScope.launch {
+            albumArtColorExtractor.extract(bitmap)
         }
     }
 
@@ -238,6 +245,8 @@ class LyricDisplayManager(private val context: Context) {
         
         LyricRepository.getInstance().liveParsedLyrics.removeObserver(parsedLyricsObserver)
         LyricRepository.getInstance().liveAlbumArt.removeObserver(albumArtObserver)
+        albumArtJob?.cancel()
+        albumArtJob = null
         
         mainHandler.removeCallbacks(visualizerLoop)
     }
@@ -706,17 +715,6 @@ class LyricDisplayManager(private val context: Context) {
     private fun buildGapDisplayLine(text: String): LyricPresentation.DisplayLine {
         val normalizedText = text.takeUnless { it.isBlank() || it == "♪" } ?: "●●●"
         return LyricPresentation.DisplayLine(text = normalizedText)
-    }
-
-    private fun OnlineLyricFetcher.LyricLine.toDisplayLine(): LyricPresentation.DisplayLine {
-        return LyricPresentation.DisplayLine(
-            text = text,
-            romanization = roma?.takeIf(String::isNotBlank),
-            translation = translation?.takeIf(String::isNotBlank),
-            startTime = startTime,
-            endTime = endTime,
-            syllables = syllables
-        )
     }
 
     private fun buildWordProgress(

@@ -90,7 +90,9 @@ internal class RightCalibrationOverlay(
 
     override fun attach() { manager.addView(root, params); attached = true }
     override fun close() {
-        if (attached) runCatching { manager.removeView(root) }
+        if (attached) {
+            val _ = runCatching { manager.removeView(root) }
+        }
         attached = false
     }
 
@@ -144,7 +146,9 @@ internal class RightCalibrationOverlay(
                         .coerceIn(-(metrics.widthPixels - params.width) / 2, (metrics.widthPixels - params.width) / 2)
                     params.y = (originY + downY - event.rawY).toInt().coerceIn(dp(16),
                         (metrics.heightPixels - root.height - dp(80)).coerceAtLeast(dp(16)))
-                    if (attached) runCatching { manager.updateViewLayout(root, params) }
+                    if (attached) {
+                        val _ = runCatching { manager.updateViewLayout(root, params) }
+                    }
                 }
                 MotionEvent.ACTION_UP -> view.performClick()
             }

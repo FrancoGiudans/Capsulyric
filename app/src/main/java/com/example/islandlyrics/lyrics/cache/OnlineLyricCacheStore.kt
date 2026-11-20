@@ -1557,7 +1557,7 @@ internal fun restoreCachedEnhancedLrcLines(
                 cachedLines[index].endTime == (legacyEnd + offset).coerceAtLeast(0L)
         }
         if (matchesLegacyTiming) {
-            LyricifyDatabaseImporter.shiftLines(parsed, offset!!).mapIndexed { index, line ->
+            LyricifyDatabaseImporter.shiftLines(parsed, offset).mapIndexed { index, line ->
                 line.copy(translation = cachedLines[index].translation, roma = cachedLines[index].roma)
             }
         } else {

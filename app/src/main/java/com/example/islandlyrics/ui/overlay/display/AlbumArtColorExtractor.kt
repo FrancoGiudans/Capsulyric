@@ -21,8 +21,9 @@
  */
 
 package com.example.islandlyrics.ui.overlay.display
+
 import android.graphics.Bitmap
-import androidx.palette.graphics.Palette
+import com.example.islandlyrics.core.theme.generatePalette
 
 internal class AlbumArtColorExtractor(
     private val defaultColor: Int
@@ -32,15 +33,12 @@ internal class AlbumArtColorExtractor(
 
     private var lastExtractedArtHash = 0
 
-    fun reset() {
+    private fun reset() {
         currentColor = defaultColor
         lastExtractedArtHash = 0
     }
 
-    fun extract(
-        bitmap: Bitmap?,
-        currentBitmapHashProvider: () -> Int?
-    ) {
+    suspend fun extract(bitmap: Bitmap?) {
         if (bitmap == null) {
             reset()
             return
@@ -49,16 +47,12 @@ internal class AlbumArtColorExtractor(
         val artHash = bitmap.hashCode()
         if (artHash == lastExtractedArtHash) return
 
-        Palette.from(bitmap).generate { palette ->
-            if (artHash != currentBitmapHashProvider()) return@generate
-            if (palette != null) {
-                currentColor = palette.getVibrantColor(
-                    palette.getMutedColor(
-                        palette.getDominantColor(defaultColor)
-                    )
-                )
-                lastExtractedArtHash = artHash
-            }
-        }
+        val palette = bitmap.generatePalette() ?: return
+        currentColor = palette.getVibrantColor(
+            palette.getMutedColor(
+                palette.getDominantColor(defaultColor)
+            )
+        )
+        lastExtractedArtHash = artHash
     }
 }

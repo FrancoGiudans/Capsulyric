@@ -15,7 +15,7 @@ import com.example.islandlyrics.feature.oobe.OobeActivity
 import com.example.islandlyrics.feature.main.MainActivity
 import com.example.islandlyrics.feature.logviewer.LogViewerActivity
 import com.example.islandlyrics.feature.customsettings.CustomSettingsActivity
-import com.example.islandlyrics.ui.overlay.floating.FloatingLyricsRenderer
+import com.example.islandlyrics.core.settings.LabFeatureManager
 import android.content.Context
 import android.content.Intent
 import android.widget.Toast
@@ -68,7 +68,7 @@ fun MiuixDebugCenterScreen(
         canDrawOverlays.value = Settings.canDrawOverlays(context)
     }
     var floatingLyricsEnabled by remember {
-        mutableStateOf(prefs.getBoolean(FloatingLyricsRenderer.PREF_KEY, false))
+        mutableStateOf(LabFeatureManager.isFloatingLyricsEnabled(prefs))
     }
 
     // Update dialog states
@@ -284,7 +284,7 @@ fun MiuixDebugCenterScreen(
                             checked = floatingLyricsEnabled,
                             onCheckedChange = { enabled ->
                                 floatingLyricsEnabled = enabled
-                                prefs.edit().putBoolean(FloatingLyricsRenderer.PREF_KEY, enabled).apply()
+                                LabFeatureManager.setFloatingLyricsEnabled(context, enabled)
                             }
                         )
                     }

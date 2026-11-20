@@ -72,21 +72,14 @@ object LabFeatureManager {
         }
 
         if (!prefs.getBoolean(KEY_FLOATING_LYRICS_MIGRATED, false)) {
-            val floatingLyricsEnabled = prefs.getBoolean("floating_lyrics_enabled", false)
+            val floatingLyricsEnabled = prefs.getBoolean(
+                KEY_FLOATING_LYRICS_ENABLED,
+                prefs.getBoolean(AppPreferences.Keys.FLOATING_LYRICS_ENABLED, false)
+            )
             editor.putBoolean(KEY_FLOATING_LYRICS_ENABLED, floatingLyricsEnabled)
             editor.putBoolean(KEY_FLOATING_LYRICS_MIGRATED, true)
             changed = true
         }
-        // 历史数据一致性修复：“显示桌面歌词”必须依赖“开启桌面歌词”。
-        // 旧版本把两个状态合并在 floating_lyrics_enabled 上，升级后若用户曾关闭实验室开关，
-        // 悬浮歌词可能仍在运行，这里统一收敛为关闭状态。
-        if (!prefs.getBoolean(KEY_FLOATING_LYRICS_ENABLED, false) &&
-            prefs.getBoolean(AppPreferences.Keys.FLOATING_LYRICS_ENABLED, false)
-        ) {
-            editor.putBoolean(AppPreferences.Keys.FLOATING_LYRICS_ENABLED, false)
-            changed = true
-        }
-
         if (!prefs.getBoolean(KEY_EXPERIMENT_UPDATES_MIGRATED, false)) {
             val legacyPrereleaseEnabled = prefs.getBoolean("allow_prerelease_updates", false)
             val legacyChannel = prefs.getString("prerelease_channel", "Alpha")
@@ -267,14 +260,10 @@ object LabFeatureManager {
     fun setFloatingLyricsEnabled(context: Context, enabled: Boolean) {
         val prefs = context.prefs()
         ensureInitialized(prefs)
-        val editor = prefs.edit()
+        prefs.edit()
             .putBoolean(KEY_FLOATING_LYRICS_ENABLED, enabled)
             .putBoolean(KEY_FLOATING_LYRICS_MIGRATED, true)
-        // 关闭“开启桌面歌词”时同步关闭“显示桌面歌词”，避免悬浮窗在功能关闭后仍继续运行。
-        if (!enabled) {
-            editor.putBoolean(AppPreferences.Keys.FLOATING_LYRICS_ENABLED, false)
-        }
-        editor.apply()
+            .apply()
     }
 
     fun isFloatingWordHighFpsEnabled(context: Context): Boolean =

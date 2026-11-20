@@ -24,8 +24,8 @@ package com.example.islandlyrics.ui.overlay.superisland.config
 
 import android.content.SharedPreferences
 import android.graphics.Color
-import androidx.core.graphics.ColorUtils
 import com.example.islandlyrics.core.settings.AppPreferences
+import com.example.islandlyrics.core.theme.ensureColorContrast
 
 object SuperIslandColorSource {
     const val PREF_KEY = "super_island_color_source"
@@ -117,10 +117,12 @@ object SuperIslandColorSource {
     ): Int {
         return when (source) {
             ALBUM_ART -> albumColor
-            ALBUM_ART_SMART -> ensureReadable(
+            ALBUM_ART_SMART -> ensureColorContrast(
                 color = albumColor,
+                background = Color.BLACK,
+                contrastColor = Color.WHITE,
                 minimumContrast = smartMinimumContrast.toDouble(),
-                minimumWhiteRatio = smartWhiteRatio
+                minimumBlend = smartWhiteRatio
             )
             CUSTOM -> customColor
             else -> DEFAULT_NEUTRAL_COLOR
@@ -129,27 +131,5 @@ object SuperIslandColorSource {
 
     private fun isLegacyEnabled(prefs: SharedPreferences): Boolean =
         prefs.getBoolean(AppPreferences.Keys.SUPER_ISLAND_TEXT_COLOR_ENABLED, false)
-
-    private fun ensureReadable(
-        color: Int,
-        minimumContrast: Double,
-        minimumWhiteRatio: Float
-    ): Int {
-        val baseColor = ColorUtils.blendARGB(color, Color.WHITE, minimumWhiteRatio)
-        if (ColorUtils.calculateContrast(baseColor, Color.BLACK) >= minimumContrast) return baseColor
-
-        var low = minimumWhiteRatio
-        var high = 1f
-        repeat(20) {
-            val ratio = (low + high) / 2f
-            val candidate = ColorUtils.blendARGB(color, Color.WHITE, ratio)
-            if (ColorUtils.calculateContrast(candidate, Color.BLACK) >= minimumContrast) {
-                high = ratio
-            } else {
-                low = ratio
-            }
-        }
-        return ColorUtils.blendARGB(color, Color.WHITE, high)
-    }
 
 }
