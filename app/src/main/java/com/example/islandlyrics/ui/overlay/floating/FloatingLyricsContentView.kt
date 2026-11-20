@@ -35,6 +35,7 @@ import com.example.islandlyrics.ui.overlay.model.LyricPresentation
 import com.example.islandlyrics.ui.overlay.model.SecondaryTextMode
 import com.example.islandlyrics.ui.overlay.model.SecondaryTextResolver
 import com.example.islandlyrics.ui.overlay.model.UIState
+import com.example.islandlyrics.ui.overlay.model.WordProgressCalculator
 import com.example.islandlyrics.ui.overlay.views.OutlineTextView
 import kotlin.math.max
 
@@ -164,7 +165,7 @@ internal class FloatingLyricsContentView(context: Context) : LinearLayout(contex
             return SpannableString(text).apply {
                 if (sungLength < text.length) {
                     setSpan(
-                        ForegroundColorSpan(withAlpha(textColor, 0.42f)),
+                        ForegroundColorSpan(withAlpha(textColor, WordProgressCalculator.UNSUNG_ALPHA)),
                         sungLength,
                         text.length,
                         Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
@@ -180,8 +181,7 @@ internal class FloatingLyricsContentView(context: Context) : LinearLayout(contex
                 val start = syllable.charStart.coerceIn(0, text.length)
                 val end = syllable.charEnd.coerceIn(start, text.length)
                 if (end <= start) return@forEach
-                val eased = smoothStep(syllable.progress.coerceIn(0f, 1f))
-                val alpha = 0.42f + (eased * 0.58f)
+                val alpha = WordProgressCalculator.highlightAlpha(syllable.progress)
                 setSpan(
                     ForegroundColorSpan(withAlpha(textColor, alpha)),
                     start,
@@ -192,7 +192,7 @@ internal class FloatingLyricsContentView(context: Context) : LinearLayout(contex
             }
             if (lastEnd < text.length) {
                 setSpan(
-                    ForegroundColorSpan(withAlpha(textColor, 0.42f)),
+                    ForegroundColorSpan(withAlpha(textColor, WordProgressCalculator.UNSUNG_ALPHA)),
                     lastEnd,
                     text.length,
                     Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
@@ -200,9 +200,6 @@ internal class FloatingLyricsContentView(context: Context) : LinearLayout(contex
             }
         }
     }
-
-    private fun smoothStep(value: Float): Float = value * value * (3f - 2f * value)
-
 
     private fun matchWidth(): LayoutParams {
         return LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)

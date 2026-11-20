@@ -29,6 +29,14 @@ import com.example.islandlyrics.lyrics.online.OnlineLyricFetcher
  * 全局显示循环与悬浮窗高频动画队列复用同一实现，保证两种刷新路径的进度一致。
  */
 internal object WordProgressCalculator {
+    const val UNSUNG_ALPHA = 0.42f
+
+    fun highlightAlpha(progress: Float): Float {
+        val fraction = progress.coerceIn(0f, 1f)
+        val eased = fraction * fraction * (3f - 2f * fraction)
+        return UNSUNG_ALPHA + eased * (1f - UNSUNG_ALPHA)
+    }
+
     fun compute(
         text: String,
         startTime: Long,

@@ -31,6 +31,7 @@ import com.example.islandlyrics.core.network.OfflineModeManager
 import com.example.islandlyrics.runtime.service.MediaMonitorService
 import com.example.islandlyrics.rules.ParserRuleHelper
 import com.example.islandlyrics.lyrics.cache.OnlineLyricCacheStore
+import com.example.islandlyrics.lyrics.online.OnlineLyricFetcher.LyricLine
 import com.example.islandlyrics.lyrics.state.LyricRepository
 import android.media.MediaMetadata
 import android.media.session.MediaController
@@ -75,6 +76,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.repeatOnLifecycle
 import kotlinx.coroutines.launch
 import android.content.ClipData
 import android.content.ClipboardManager
@@ -87,6 +89,9 @@ import androidx.palette.graphics.Palette
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -102,6 +107,11 @@ import com.example.islandlyrics.feature.main.HomeLyricPreviewDisplay
 import com.example.islandlyrics.feature.main.rememberWhitelistedMediaSessions
 import com.example.islandlyrics.core.update.UpdateChecker
 import com.example.islandlyrics.feature.update.miuix.MiuixUpdateDialog
+import com.example.islandlyrics.ui.overlay.floating.FloatingLyricsClock
+import com.example.islandlyrics.ui.overlay.floating.isFullySung
+import com.example.islandlyrics.ui.overlay.model.LyricPresentation
+import com.example.islandlyrics.ui.overlay.model.SecondaryTextMode
+import com.example.islandlyrics.ui.overlay.model.WordProgressCalculator
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -113,6 +123,7 @@ private val StatusActive = Color(0xFF4CAF50)
 private val StatusInactive = Color(0xFFF44336)
 private const val SeekSyncThresholdMs = 250L
 private const val SeekFallbackTimeoutMs = 4000L
+private const val HomeLyricHighlightIntervalMs = 33L
 
 @Composable
 @Suppress("UNUSED_PARAMETER")
@@ -152,6 +163,9 @@ fun MiuixMainScreen(
     val repoParsedLyrics by repo.liveParsedLyrics.observeAsState()
     val repoCurrentLine by repo.liveCurrentLine.observeAsState()
     val repoLyricResolveState by repo.liveLyricResolveState.observeAsState(LyricRepository.LyricResolveState.PENDING)
+    val previewWordLine = repoCurrentLine ?: repoParsedLyrics
+        ?.takeIf { it.timelineCapability == LyricRepository.TimelineCapability.ACTIVE_LINE_ONLY }
+        ?.lines?.firstOrNull()?.takeIf { it.text == repoLyric?.lyric }
     val repoNextLine = remember(repoParsedLyrics, repoCurrentLine) {
         val lines = repoParsedLyrics?.lines
         if (lines.isNullOrEmpty() || repoCurrentLine == null) {
@@ -431,7 +445,7 @@ fun MiuixMainScreen(
                                 dynamicThemeEnabled = dynamicThemeEnabled,
                                 primaryMetadata = if (isPrimary) repoMetadata else null,
                                 primaryLyric = if (isPrimary) {
-                                    HomeLyricPreviewDisplay.previewText(
+                                    HomeLyricPreviewDisplay.preview(
                                         modes = homeLyricPreviewDisplayModes,
                                         currentLine = repoCurrentLine,
                                         lyricInfo = repoLyric,
@@ -440,6 +454,7 @@ fun MiuixMainScreen(
                                 } else {
                                     null
                                 },
+                                primaryWordLine = previewWordLine.takeIf { isPrimary },
                                 primaryLyricSource = if (isPrimary) {
                                     val activeParsed = repoParsedLyrics?.takeIf { it.lines.isNotEmpty() }
                                     formatPrimaryLyricSource(
@@ -779,7 +794,8 @@ private fun MiuixMediaSessionCard(
     isPrimary: Boolean,
     dynamicThemeEnabled: Boolean,
     primaryMetadata: LyricRepository.MediaInfo?,
-    primaryLyric: String?,
+    primaryLyric: HomeLyricPreviewDisplay.Preview?,
+    primaryWordLine: LyricLine?,
     primaryLyricSource: String?,
     primaryIsInstrumental: Boolean,
     primaryHasTimeline: Boolean,
@@ -1019,7 +1035,7 @@ private fun MiuixMediaSessionCard(
                 modifier = Modifier.height(90.dp).clickable(enabled = lyric != null) {
                     lyric?.let {
                         val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                        cm.setPrimaryClip(ClipData.newPlainText("Lyric", it))
+                        cm.setPrimaryClip(ClipData.newPlainText("Lyric", it.text))
                         Toast.makeText(context, copiedText, Toast.LENGTH_SHORT).show()
                     }
                 }
@@ -1032,10 +1048,13 @@ private fun MiuixMediaSessionCard(
                             color = MiuixTheme.colorScheme.onSurfaceVariantSummary.copy(alpha = 0.5f))
                     }
                     Spacer(modifier = Modifier.height(8.dp))
-                    Text(text = lyric, fontSize = 18.sp, fontWeight = FontWeight.Normal,
-                        minLines = 2, maxLines = 2, overflow = TextOverflow.Ellipsis,
-                        color = animatedAccent,  // palette accent
-                        lineHeight = 24.sp)
+                    MiuixHomeLyricText(
+                        preview = lyric,
+                        wordLine = primaryWordLine,
+                        color = animatedAccent,
+                        playbackState = localPlaybackState,
+                        fallbackPositionMs = primaryProgress?.position,
+                    )
                 } else if (isPrimary) {
                     Text(text = "Lyric:", fontSize = 14.sp, color = MiuixTheme.colorScheme.onSurfaceVariantSummary)
                     Spacer(modifier = Modifier.height(8.dp))
@@ -1172,6 +1191,99 @@ private fun MiuixMediaSessionCard(
                     )
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun MiuixHomeLyricText(
+    preview: HomeLyricPreviewDisplay.Preview,
+    wordLine: LyricLine?,
+    color: Color,
+    playbackState: PlaybackState?,
+    fallbackPositionMs: Long?,
+) {
+    val line = wordLine?.takeIf {
+        !it.syllables.isNullOrEmpty() && preview.primary == it.text
+    }
+    val clock = if (line != null) {
+        remember(playbackState, fallbackPositionMs) {
+            val playing = playbackState?.state == PlaybackState.STATE_PLAYING
+            val speed = playbackState?.playbackSpeed
+                ?.takeIf { playing && it.isFinite() && it > 0f } ?: 0f
+            if (playbackState != null && playbackState.position >= 0L &&
+                (!playing || playbackState.lastPositionUpdateTime > 0L)
+            ) {
+                FloatingLyricsClock(playbackState.position, playbackState.lastPositionUpdateTime, speed)
+            } else {
+                fallbackPositionMs?.let { FloatingLyricsClock(it, SystemClock.elapsedRealtime(), speed) }
+            }
+        }
+    } else {
+        null
+    }
+    val progress = if (line != null && clock != null) {
+        val lifecycle = LocalLifecycleOwner.current.lifecycle
+        val endTime = remember(line) { line.syllables.orEmpty().maxOf { it.endTime } }
+        var position by remember(line, clock) {
+            mutableLongStateOf(clock.positionAt(SystemClock.elapsedRealtime()))
+        }
+        LaunchedEffect(line, clock, lifecycle) {
+            lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                do {
+                    position = clock.positionAt(SystemClock.elapsedRealtime())
+                    if (clock.speed <= 0f || position >= endTime) break
+                    delay(HomeLyricHighlightIntervalMs)
+                } while (true)
+            }
+        }
+        remember(line, position) {
+            WordProgressCalculator.compute(line.text, line.startTime, line.endTime, line.syllables, position)
+        }
+    } else {
+        null
+    }
+
+    Text(
+        text = remember(preview, progress, color) { highlightHomeLyric(preview, progress, color) },
+        fontSize = 18.sp,
+        fontWeight = FontWeight.Normal,
+        minLines = 2,
+        maxLines = 2,
+        overflow = TextOverflow.Ellipsis,
+        color = color,
+        lineHeight = 24.sp,
+    )
+}
+
+private fun highlightHomeLyric(
+    preview: HomeLyricPreviewDisplay.Preview,
+    progress: LyricPresentation.WordProgress?,
+    color: Color,
+): AnnotatedString = buildAnnotatedString {
+    append(preview.primary)
+    val primaryEnd = length
+    val unsungColor = color.copy(alpha = color.alpha * WordProgressCalculator.UNSUNG_ALPHA)
+    if (progress != null && !progress.isFullySung()) {
+        var lastEnd = 0
+        for (syllable in progress.syllables) {
+            val start = syllable.charStart.coerceIn(0, primaryEnd)
+            val end = syllable.charEnd.coerceIn(start, primaryEnd)
+            if (start == end) continue
+            val alpha = WordProgressCalculator.highlightAlpha(syllable.progress)
+            addStyle(SpanStyle(color = color.copy(alpha = color.alpha * alpha)), start, end)
+            lastEnd = end
+        }
+        if (lastEnd < primaryEnd) {
+            addStyle(SpanStyle(color = unsungColor), lastEnd, primaryEnd)
+        }
+    }
+    preview.secondary?.let {
+        append('\n')
+        val start = length
+        append(it.text)
+        if (it.mode == SecondaryTextMode.NEXT_LYRIC) {
+            addStyle(SpanStyle(color = unsungColor), start, length)
         }
     }
 }
