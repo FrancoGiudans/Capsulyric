@@ -73,6 +73,8 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.Lifecycle
@@ -104,10 +106,9 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.MiuixPopupUtils.Companion.MiuixPopupHost
 import com.example.islandlyrics.core.settings.AppPreferences
 import com.example.islandlyrics.feature.main.HomeLyricPreviewDisplay
-import com.example.islandlyrics.feature.main.rememberWhitelistedMediaSessions
+import com.example.islandlyrics.feature.main.rememberHomeMediaCards
 import com.example.islandlyrics.core.update.UpdateChecker
 import com.example.islandlyrics.feature.update.miuix.MiuixUpdateDialog
-import com.example.islandlyrics.ui.overlay.floating.FloatingLyricsClock
 import com.example.islandlyrics.ui.overlay.floating.isFullySung
 import com.example.islandlyrics.ui.overlay.model.LyricPresentation
 import com.example.islandlyrics.ui.overlay.model.SecondaryTextMode
@@ -141,7 +142,8 @@ fun MiuixMainScreen(
     onBottomBarVisibilityChange: (Boolean) -> Unit = {},
     updateReleaseInfo: UpdateChecker.ReleaseInfo? = null,
     onUpdateDismiss: () -> Unit = {},
-    onUpdateIgnore: (String) -> Unit = {}
+    onUpdateIgnore: (String) -> Unit = {},
+    onOpenLyricsPlayback: ((LayoutCoordinates?) -> Unit)? = null,
 ) {
     val repo = remember { LyricRepository.getInstance() }
     val context = LocalContext.current
@@ -250,7 +252,9 @@ fun MiuixMainScreen(
         }
     }
 
-    val whitelistedSessions = rememberWhitelistedMediaSessions()
+    val mediaCards = rememberHomeMediaCards(repoMetadata)
+    val whitelistedSessions = mediaCards.controllers
+    val hasCompleteLyrics = repoParsedLyrics.hasCompleteLyrics()
 
     var listenerEnabled by remember {
         mutableStateOf(
@@ -434,11 +438,12 @@ fun MiuixMainScreen(
 
                         HorizontalPager(
                             state = pagerState,
+                            key = { whitelistedSessions[it].sessionToken },
                             pageSpacing = 16.dp,
                             contentPadding = PaddingValues(horizontal = 12.dp)
                         ) { page ->
                             val controller = whitelistedSessions[page]
-                            val isPrimary = controller.packageName == repoMetadata?.packageName
+                            val isPrimary = controller.sessionToken == mediaCards.primaryToken
                             MiuixMediaSessionCard(
                                 controller = controller,
                                 isPrimary = isPrimary,
@@ -476,7 +481,8 @@ fun MiuixMainScreen(
                                         isOnlineLyricSource(repoLyric?.apiPath) ||
                                         isOnlineLyricSource(repoParsedLyrics?.apiPath) ||
                                         (repoLyric?.lyric.isNullOrBlank() && repoParsedLyrics?.lines.isNullOrEmpty())),
-                                onOpenOnlineLyricRematch = onOpenOnlineLyricRematch
+                                onOpenOnlineLyricRematch = onOpenOnlineLyricRematch,
+                                onOpenLyricsPlayback = onOpenLyricsPlayback.takeIf { isPrimary && hasCompleteLyrics },
                             )
                         }
 
@@ -803,7 +809,8 @@ private fun MiuixMediaSessionCard(
     primaryAlbumArt: Bitmap?,
     primaryProgress: LyricRepository.PlaybackProgress?,
     showOnlineLyricRematch: Boolean,
-    onOpenOnlineLyricRematch: () -> Unit
+    onOpenOnlineLyricRematch: () -> Unit,
+    onOpenLyricsPlayback: ((LayoutCoordinates?) -> Unit)?,
 ) {
     var localMetadata by remember(controller) { mutableStateOf(controller.metadata) }
     var localPlaybackState by remember(controller) { mutableStateOf(controller.playbackState) }
@@ -840,6 +847,12 @@ private fun MiuixMediaSessionCard(
     var pendingSeekPosition by remember(sessionStateKey) { mutableLongStateOf(-1L) }
     var pendingSeekStartedAt by remember(sessionStateKey) { mutableLongStateOf(0L) }
     var seekOriginPosition by remember(sessionStateKey) { mutableLongStateOf(-1L) }
+    var lyricCoordinates by remember(controller) { mutableStateOf<LayoutCoordinates?>(null) }
+    val coverActionLabel = if (onOpenLyricsPlayback != null) {
+        stringResource(R.string.lyrics_playback_open)
+    } else {
+        null
+    }
 
     val context = LocalContext.current
     val appName = remember(controller.packageName) {
@@ -955,7 +968,9 @@ private fun MiuixMediaSessionCard(
                     modifier = Modifier
                         .size(80.dp)
                         .clip(RoundedCornerShape(16.dp))
-                        .clickable(onClick = openApp)
+                        .clickable(onClickLabel = coverActionLabel) {
+                            if (onOpenLyricsPlayback != null) onOpenLyricsPlayback(lyricCoordinates) else openApp()
+                        }
                 ) {
                     if (albumArt != null) {
                         Image(
@@ -1032,7 +1047,9 @@ private fun MiuixMediaSessionCard(
 
             // Lyric — palette accent text
             Column(
-                modifier = Modifier.height(90.dp).clickable(enabled = lyric != null) {
+                modifier = Modifier.fillMaxWidth().height(90.dp).onGloballyPositioned {
+                    lyricCoordinates = it
+                }.clickable(enabled = lyric != null) {
                     lyric?.let {
                         val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                         cm.setPrimaryClip(ClipData.newPlainText("Lyric", it.text))
@@ -1208,16 +1225,7 @@ private fun MiuixHomeLyricText(
     }
     val clock = if (line != null) {
         remember(playbackState, fallbackPositionMs) {
-            val playing = playbackState?.state == PlaybackState.STATE_PLAYING
-            val speed = playbackState?.playbackSpeed
-                ?.takeIf { playing && it.isFinite() && it > 0f } ?: 0f
-            if (playbackState != null && playbackState.position >= 0L &&
-                (!playing || playbackState.lastPositionUpdateTime > 0L)
-            ) {
-                FloatingLyricsClock(playbackState.position, playbackState.lastPositionUpdateTime, speed)
-            } else {
-                fallbackPositionMs?.let { FloatingLyricsClock(it, SystemClock.elapsedRealtime(), speed) }
-            }
+            playbackState.toLyricsClock(fallbackPositionMs)
         }
     } else {
         null
@@ -1261,29 +1269,38 @@ private fun highlightHomeLyric(
     progress: LyricPresentation.WordProgress?,
     color: Color,
 ): AnnotatedString = buildAnnotatedString {
-    append(preview.primary)
-    val primaryEnd = length
+    appendHighlightedLyric(preview.primary, progress, color)
     val unsungColor = color.copy(alpha = color.alpha * WordProgressCalculator.UNSUNG_ALPHA)
-    if (progress != null && !progress.isFullySung()) {
-        var lastEnd = 0
-        for (syllable in progress.syllables) {
-            val start = syllable.charStart.coerceIn(0, primaryEnd)
-            val end = syllable.charEnd.coerceIn(start, primaryEnd)
-            if (start == end) continue
-            val alpha = WordProgressCalculator.highlightAlpha(syllable.progress)
-            addStyle(SpanStyle(color = color.copy(alpha = color.alpha * alpha)), start, end)
-            lastEnd = end
-        }
-        if (lastEnd < primaryEnd) {
-            addStyle(SpanStyle(color = unsungColor), lastEnd, primaryEnd)
-        }
-    }
     preview.secondary?.let {
         append('\n')
         val start = length
         append(it.text)
         if (it.mode == SecondaryTextMode.NEXT_LYRIC) {
             addStyle(SpanStyle(color = unsungColor), start, length)
+        }
+    }
+}
+
+internal fun AnnotatedString.Builder.appendHighlightedLyric(
+    text: String,
+    progress: LyricPresentation.WordProgress?,
+    color: Color,
+) {
+    val offset = length
+    append(text)
+    if (progress != null && !progress.isFullySung()) {
+        var lastEnd = 0
+        for (syllable in progress.syllables) {
+            val start = syllable.charStart.coerceIn(0, text.length)
+            val end = syllable.charEnd.coerceIn(start, text.length)
+            if (start == end) continue
+            val alpha = WordProgressCalculator.highlightAlpha(syllable.progress)
+            addStyle(SpanStyle(color = color.copy(alpha = color.alpha * alpha)), offset + start, offset + end)
+            lastEnd = end
+        }
+        if (lastEnd < text.length) {
+            val unsungColor = color.copy(alpha = color.alpha * WordProgressCalculator.UNSUNG_ALPHA)
+            addStyle(SpanStyle(color = unsungColor), offset + lastEnd, length)
         }
     }
 }
@@ -1312,7 +1329,7 @@ private fun isOnlineLyricSource(apiPath: String?): Boolean {
     return apiPath == "Online API" || apiPath == "Online Cache"
 }
 
-private fun formatPlaybackTime(ms: Long): String {
+internal fun formatPlaybackTime(ms: Long): String {
     val totalSeconds = (ms / 1000L).coerceAtLeast(0L)
     val minutes = totalSeconds / 60
     val seconds = totalSeconds % 60

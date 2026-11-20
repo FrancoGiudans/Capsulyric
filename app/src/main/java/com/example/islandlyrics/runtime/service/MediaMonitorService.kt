@@ -83,7 +83,7 @@ class MediaMonitorService : NotificationListenerService() {
     // Deduplication: Track last metadata hash to avoid processing duplicates
     private var lastMetadataHash: Int = 0
     private var lastComputedIsPlaying: Boolean? = null
-    private var lastAlbumArtTrackKey: String? = null
+    private var lastAlbumArtTrackKey: LyricRepository.AlbumArtKey? = null
     private var lastAlbumArtHash: Int = 0
 
     // Debounce Token
@@ -872,7 +872,7 @@ class MediaMonitorService : NotificationListenerService() {
         }
 
         // Update PUBLIC Metadata (Main UI)
-        LyricRepository.getInstance().updateMediaMetadata(
+        val track = LyricRepository.getInstance().updateMediaMetadata(
             title = finalTitle ?: "Unknown",
             artist = finalArtist ?: "Unknown",
             packageName = pkg,
@@ -899,17 +899,14 @@ class MediaMonitorService : NotificationListenerService() {
         // --- Save state for persistence ---
         saveParserState(pkg, finalTitle, finalArtist, isDynamicLyricMode, duration)
 
-        updateAlbumArtIfTrackChanged(pkg, finalTitle, finalArtist, duration, artBitmap)
+        updateAlbumArtIfTrackChanged(track, artBitmap)
     }
 
     private fun updateAlbumArtIfTrackChanged(
-        pkg: String,
-        title: String?,
-        artist: String?,
-        duration: Long,
+        track: LyricRepository.MediaInfo,
         artBitmap: Bitmap?
     ) {
-        val trackKey = listOf(pkg, title.orEmpty(), artist.orEmpty(), duration).joinToString("|")
+        val trackKey = track.albumArtKey
         val liveArt = artBitmap?.takeIf { !it.isRecycled }
         val artHash = liveArt.hashCode()
 
@@ -922,7 +919,7 @@ class MediaMonitorService : NotificationListenerService() {
         lastAlbumArtTrackKey = trackKey
         lastAlbumArtHash = artHash
         val scaledArt = scaleDownBitmap(liveArt)
-        LyricRepository.getInstance().updateAlbumArt(scaledArt)
+        LyricRepository.getInstance().updateAlbumArt(track, scaledArt)
     }
 
     private fun saveParserState(pkg: String, title: String?, artist: String?, lyricMode: Boolean, duration: Long) {

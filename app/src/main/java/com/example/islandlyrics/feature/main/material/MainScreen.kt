@@ -130,7 +130,7 @@ import kotlin.math.abs
 import kotlin.math.roundToInt
 import com.example.islandlyrics.core.settings.AppPreferences
 import com.example.islandlyrics.feature.main.HomeLyricPreviewDisplay
-import com.example.islandlyrics.feature.main.rememberWhitelistedMediaSessions
+import com.example.islandlyrics.feature.main.rememberHomeMediaCards
 
 private val StatusActive = Color(0xFF2E7D32)
 private val StatusInactive = Color(0xFFC62828)
@@ -218,7 +218,8 @@ fun MainScreen(
         }
     }
 
-    val whitelistedSessions = rememberWhitelistedMediaSessions()
+    val mediaCards = rememberHomeMediaCards(repoMetadata)
+    val whitelistedSessions = mediaCards.controllers
 
     val listenerEnabled = remember(Unit) {
         val listeners = Settings.Secure.getString(context.contentResolver, "enabled_notification_listeners")
@@ -305,9 +306,13 @@ fun MainScreen(
                         if (maxCardHeightPx > 0) maxCardHeightPx.toDp() else 0.dp
                     }
                     Column {
-                        HorizontalPager(state = pagerState, pageSpacing = 14.dp) { page ->
+                        HorizontalPager(
+                            state = pagerState,
+                            pageSpacing = 14.dp,
+                            key = { whitelistedSessions[it].sessionToken },
+                        ) { page ->
                             val controller = whitelistedSessions[page]
-                            val isPrimary = isPrimarySession(controller, repoMetadata)
+                            val isPrimary = controller.sessionToken == mediaCards.primaryToken
                             MediaSessionCard(
                                 controller = controller,
                                 isPrimary = isPrimary,
@@ -1009,20 +1014,6 @@ private fun formatPlaybackTime(ms: Long): String {
     val minutes = totalSeconds / 60
     val seconds = totalSeconds % 60
     return "%02d:%02d".format(minutes, seconds)
-}
-
-private fun isPrimarySession(
-    controller: MediaController,
-    primaryMetadata: LyricRepository.MediaInfo?
-): Boolean {
-    if (primaryMetadata == null) return false
-    if (controller.packageName != primaryMetadata.packageName) return false
-    val controllerTitle = controller.metadata?.getString(MediaMetadata.METADATA_KEY_TITLE)
-    val controllerArtist = controller.metadata?.getString(MediaMetadata.METADATA_KEY_ARTIST)
-    return when {
-        controllerTitle == null && controllerArtist == null -> true
-        else -> controllerTitle == primaryMetadata.rawTitle && controllerArtist == primaryMetadata.rawArtist
-    }
 }
 
 private fun isPlaybackActive(state: PlaybackState?): Boolean {

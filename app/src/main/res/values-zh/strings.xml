@@ -29,6 +29,12 @@
     <string name="main_album_art_cd">专辑封面</string>
     <string name="main_lyric_source_fmt">歌词源: %1$s</string>
     <string name="main_current_lyric_title">当前歌词</string>
+    <string name="lyrics_playback_open">打开完整歌词</string>
+    <string name="lyrics_playback_open_player">打开音乐应用</string>
+    <string name="lyrics_playback_follow">回到当前句</string>
+    <string name="lyrics_playback_interlude">间奏</string>
+    <string name="lyrics_playback_pause">暂停</string>
+    <string name="lyrics_playback_next">下一首</string>
     <string name="main_instrumental_marked">已标记为纯音乐</string>
     <string name="online_lyric_rematch_entry">重新匹配在线歌词</string>
     <string name="online_lyric_rematch_entry_short">重新匹配</string>

@@ -29,6 +29,12 @@
     <string name="main_album_art_cd">Album art</string>
     <string name="main_lyric_source_fmt">Lyric source: %1$s</string>
     <string name="main_current_lyric_title">Current lyric</string>
+    <string name="lyrics_playback_open">Open full lyrics</string>
+    <string name="lyrics_playback_open_player">Open music app</string>
+    <string name="lyrics_playback_follow">Back to current line</string>
+    <string name="lyrics_playback_interlude">Instrumental break</string>
+    <string name="lyrics_playback_pause">Pause</string>
+    <string name="lyrics_playback_next">Next track</string>
     <string name="main_instrumental_marked">Marked as instrumental</string>
     <string name="online_lyric_rematch_entry">Rematch Online Lyrics</string>
     <string name="online_lyric_rematch_entry_short">Rematch Lyrics</string>

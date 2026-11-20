@@ -67,6 +67,7 @@ import com.example.islandlyrics.feature.navigation.MiuixTopLevelLiquidGlassNavig
 import com.example.islandlyrics.feature.navigation.MiuixTopLevelNavigationBar
 import com.example.islandlyrics.feature.navigation.TopLevelDestination
 import com.example.islandlyrics.feature.main.miuix.MiuixMainScreen
+import com.example.islandlyrics.feature.main.miuix.MiuixLyricsPlaybackScreen
 import com.example.islandlyrics.feature.onlinelyricdebug.material.OnlineLyricDebugScreen
 import com.example.islandlyrics.feature.onlinelyricdebug.miuix.MiuixOnlineLyricDebugScreen
 import com.example.islandlyrics.feature.oobe.OobeActivity
@@ -93,6 +94,7 @@ import com.example.islandlyrics.feature.update.material.UpdateDialog
 import com.example.islandlyrics.feature.update.miuix.MiuixUpdateDialog
 import com.example.islandlyrics.feature.main.material.MainScreen
 import com.example.islandlyrics.ui.navigation.PageStackHost
+import com.example.islandlyrics.ui.navigation.PageExpansion
 import com.example.islandlyrics.ui.theme.material.IslandLyricsMaterialTheme
 import android.content.Intent
 import android.content.SharedPreferences
@@ -134,7 +136,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import androidx.lifecycle.lifecycleScope
@@ -618,12 +623,16 @@ class MainActivity : BaseActivity() {
                 val targetBottomBarVisible =
                     (if (navigationBarStyle == MiuixNavigationBarStyle.NORMAL) true else bottomBarVisible) &&
                         pageStack.isEmpty()
+                var navigationBounds by remember { mutableStateOf(Rect.Zero) }
                 PageStackHost(
                     stack = pageStack,
                     onPop = ::popPage,
                     backdropColor = MiuixTheme.colorScheme.surface,
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier.fillMaxSize().onGloballyPositioned {
+                        navigationBounds = it.boundsInWindow()
+                    },
                     useMiuixNavForDefault = true,
+                    pageExpansion = { (it as? AppPage.LyricsPlayback)?.expansion },
                     backgroundContent = {
                     Box(
                         modifier = Modifier
@@ -657,7 +666,12 @@ class MainActivity : BaseActivity() {
                                         Toast.makeText(this@MainActivity, "Requesting Rebind...", Toast.LENGTH_SHORT).show()
                                     },
                                     onOpenOnlineLyricRematch = { pushPage(AppPage.OnlineLyricDebug) },
-                                    onBottomBarVisibilityChange = { bottomBarVisible = it }
+                                    onBottomBarVisibilityChange = { bottomBarVisible = it },
+                                    onOpenLyricsPlayback = { anchor ->
+                                        if (pageStack.isEmpty()) {
+                                            pushPage(AppPage.LyricsPlayback(PageExpansion.fromWindowBounds(anchor, navigationBounds)))
+                                        }
+                                    },
                                 )
 
                                 TopLevelDestination.PARSER_RULES -> MiuixParserRuleScreen(
@@ -916,6 +930,7 @@ class MainActivity : BaseActivity() {
         onPushPage: (AppPage) -> Unit
     ) {
         when (page) {
+            is AppPage.LyricsPlayback -> Unit
             is AppPage.CustomSettings -> AppUiScreen(onBack = onBack)
             is AppPage.CapsuleNotification -> CapsuleNotificationScreen(onBack = onBack)
             is AppPage.DesktopLyrics -> DesktopLyricsScreen(onBack = onBack)
@@ -1015,6 +1030,7 @@ class MainActivity : BaseActivity() {
         onNavigate: (SettingsSearchAction.Navigate) -> Unit
     ) {
         when (page) {
+            is AppPage.LyricsPlayback -> MiuixLyricsPlaybackScreen(onBack = onBack)
             is AppPage.CustomSettings -> MiuixAppUiScreen(
                 onBack = onBack,
                 targetItemKey = page.targetItemKey,
@@ -1124,6 +1140,7 @@ class MainActivity : BaseActivity() {
 }
 
 private sealed class AppPage {
+    data class LyricsPlayback(val expansion: PageExpansion?) : AppPage()
     data class CustomSettings(val targetItemKey: String? = null) : AppPage()
     data class CapsuleNotification(val initialTab: CustomSettingsTab? = null, val targetItemKey: String? = null) : AppPage()
     data class DesktopLyrics(val targetItemKey: String? = null) : AppPage()

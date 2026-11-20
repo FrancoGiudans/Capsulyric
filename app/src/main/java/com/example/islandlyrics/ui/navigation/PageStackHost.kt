@@ -30,6 +30,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -61,6 +62,7 @@ fun <T> PageStackHost(
     modifier: Modifier = Modifier,
     key: (T) -> Any = { it as Any },
     useMiuixNavForDefault: Boolean = false,
+    pageExpansion: (T) -> PageExpansion? = { null },
     backgroundContent: @Composable BoxScope.() -> Unit,
     pageContent: @Composable BoxScope.(T) -> Unit,
 ) {
@@ -88,6 +90,7 @@ fun <T> PageStackHost(
             backdropColor = backdropColor,
             modifier = modifier,
             key = key,
+            pageExpansion = pageExpansion,
             backgroundContent = backgroundContent,
             pageContent = pageContent,
         )
@@ -167,6 +170,7 @@ fun <T> PageStackHost(
         transitionProgress.value
     }.coerceIn(0f, 1f)
     val depth = displayedStack.size
+    val topExpansion = displayedStack.lastOrNull()?.let(pageExpansion)
     val transitionDirection = if (gestureState != null || completingBackPop) latestGestureDirection else 1f
     val pageStackDirection = 1f
 
@@ -180,6 +184,7 @@ fun <T> PageStackHost(
             zIndex = 0f,
             coverProgress = if (depth == 1) topCoverProgress else if (depth > 1) 1f else 0f,
             isUnderlay = depth > 0,
+            keepUnderlayInPlace = depth == 1 && topExpansion != null,
             backdropColor = backdropColor,
             usePredictiveAnimation = useConsistentAnimation,
             animationStyle = animationStyle,
@@ -211,6 +216,8 @@ fun <T> PageStackHost(
                 isTop = isTop,
                 isUnderlay = isImmediateUnderlay,
                 isHiddenBelowUnderlay = index < depth - 2,
+                expansion = topExpansion.takeIf { isTop },
+                keepUnderlayInPlace = isImmediateUnderlay && topExpansion != null,
                 backdropColor = backdropColor,
                 usePredictiveAnimation = useConsistentAnimation,
                 animationStyle = animationStyle,
@@ -236,6 +243,8 @@ private fun PageStackLayer(
     isTop: Boolean = false,
     isUnderlay: Boolean = false,
     isHiddenBelowUnderlay: Boolean = false,
+    expansion: PageExpansion? = null,
+    keepUnderlayInPlace: Boolean = false,
     backdropColor: Color,
     usePredictiveAnimation: Boolean,
     animationStyle: PredictiveBackAnimationStyle,
@@ -245,12 +254,14 @@ private fun PageStackLayer(
     dismissProgress: Float,
     content: @Composable BoxScope.() -> Unit,
 ) {
+    val progress = { coverProgress }
     Box(
         modifier = Modifier
             .fillMaxSize()
             .zIndex(zIndex)
             .graphicsLayer {
                 when {
+                    expansion != null || keepUnderlayInPlace -> Unit
                     isTop -> {
                         if (!usePredictiveAnimation) {
                             val width = size.width
@@ -292,10 +303,14 @@ private fun PageStackLayer(
                     }
                 }
             }
-            .background(backdropColor)
+            .then(if (expansion != null) Modifier.expandFrom(expansion, progress) else Modifier.background(backdropColor))
     ) {
-        content()
-        if (isUnderlay && coverProgress > 0f) {
+        if (expansion != null) {
+            CompositionLocalProvider(LocalPageExpansionProgress provides progress) { content() }
+        } else {
+            content()
+        }
+        if (isUnderlay && !keepUnderlayInPlace && coverProgress > 0f) {
             val scrimAlpha = if (usePredictiveAnimation) {
                 predictiveBackUnderlayScrimAlpha(dismissProgress)
             } else {

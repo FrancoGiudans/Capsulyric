@@ -29,6 +29,12 @@
     <string name="main_album_art_cd">アルバムアート</string>
     <string name="main_lyric_source_fmt">歌詞ソース: %1$s</string>
     <string name="main_current_lyric_title">現在の歌詞</string>
+    <string name="lyrics_playback_open">歌詞全体を開く</string>
+    <string name="lyrics_playback_open_player">音楽アプリを開く</string>
+    <string name="lyrics_playback_follow">現在の行に戻る</string>
+    <string name="lyrics_playback_interlude">間奏</string>
+    <string name="lyrics_playback_pause">一時停止</string>
+    <string name="lyrics_playback_next">次の曲</string>
     <string name="main_instrumental_marked">インストゥルメンタルとしてマーク済み</string>
     <string name="online_lyric_rematch_entry">オンライン歌詞を再検索</string>
     <string name="online_lyric_rematch_entry_short">再検索</string>
