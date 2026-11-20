@@ -705,7 +705,7 @@ private fun CandidateSection(
             preview = "",
             enabled = true,
             selected = false,
-            onClick = onClear!!
+            onClick = onClear
         )
     }
     attempts.forEach { attempt ->

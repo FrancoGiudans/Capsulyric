@@ -119,7 +119,7 @@ internal object AppleMusicStateCache {
             // 已登录：地区从 Apple Music 账号自动解析（/v1/me/storefront），
             // 手动地区仅作匿名模式/解析失败的兜底
             if (mediaUserToken.isNotBlank()) {
-                runCatching {
+                val _ = runCatching {
                     resolveStorefrontFromAccount(httpClient)
                 }
             }

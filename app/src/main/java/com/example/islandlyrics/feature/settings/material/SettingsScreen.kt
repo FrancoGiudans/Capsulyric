@@ -120,7 +120,6 @@ import com.example.islandlyrics.core.settings.SettingsBackupManager
 import com.example.islandlyrics.core.settings.SettingsBackupManager.ParserConflict
 import com.example.islandlyrics.core.settings.BackupCategories
 import com.example.islandlyrics.core.settings.SettingsBackupManager.PreviewResult
-import com.example.islandlyrics.core.settings.LabFeatureManager
 import com.example.islandlyrics.core.settings.search.MainSettingsDialogType
 import com.example.islandlyrics.core.settings.search.SettingsNavigationTarget
 import com.example.islandlyrics.core.settings.search.SettingsSearchAction
@@ -181,7 +180,6 @@ internal fun SettingsScreen(
     val backupImportFailedText = stringResource(R.string.settings_backup_import_failed)
     val sensitivePasswordInvalidText = stringResource(R.string.backup_sensitive_password_invalid)
     val devModeEnabled by LyricRepository.getInstance().devModeEnabled.observeAsState(false)
-    var floatingLyricsLabEnabled by remember { mutableStateOf(LabFeatureManager.isFloatingLyricsEnabled(prefs)) }
     val offlineModeEnabled = OfflineModeManager.isEnabled(context)
     val mainSettingBringIntoViewRequester = remember { BringIntoViewRequester() }
     var mainSettingHighlightKey by remember { mutableStateOf<String?>(null) }
@@ -595,18 +593,10 @@ internal fun SettingsScreen(
             if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
                 notificationGranted = checkNotificationPermission()
                 postNotificationGranted = checkPostNotificationPermission()
-                floatingLyricsLabEnabled = LabFeatureManager.isFloatingLyricsEnabled(prefs)
             }
         }
-        val prefListener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
-            if (key == LabFeatureManager.KEY_FLOATING_LYRICS_ENABLED) {
-                floatingLyricsLabEnabled = LabFeatureManager.isFloatingLyricsEnabled(prefs)
-            }
-        }
-        prefs.registerOnSharedPreferenceChangeListener(prefListener)
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose {
-            prefs.unregisterOnSharedPreferenceChangeListener(prefListener)
             lifecycleOwner.lifecycle.removeObserver(observer)
         }
     }
@@ -803,16 +793,14 @@ internal fun SettingsScreen(
                         icon = Icons.Filled.MusicNote,
                         onClick = onOpenCapsuleNotification
                     )
-                    if (floatingLyricsLabEnabled) {
-                        SettingsCardDivider()
-                        SettingsActionItem(
-                            title = stringResource(R.string.settings_floating_lyrics),
-                            icon = Icons.Filled.MusicNote,
-                            onClick = {
-                                onOpenDesktopLyrics?.invoke() ?: onOpenCustomSettings()
-                            }
-                        )
-                    }
+                    SettingsCardDivider()
+                    SettingsActionItem(
+                        title = stringResource(R.string.settings_floating_lyrics),
+                        icon = Icons.Filled.MusicNote,
+                        onClick = {
+                            onOpenDesktopLyrics?.invoke() ?: onOpenCustomSettings()
+                        }
+                    )
                 }
             }
 

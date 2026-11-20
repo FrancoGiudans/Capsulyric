@@ -31,6 +31,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.ServiceConnection
 import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
@@ -39,14 +40,24 @@ import android.media.session.MediaController
 import android.media.session.MediaSessionManager
 import android.media.session.PlaybackState
 import android.os.Handler
+import android.os.IBinder
 import android.os.Looper
 import android.os.SystemClock
 import android.service.notification.NotificationListenerService
 import androidx.core.content.edit
 import androidx.core.graphics.scale
 import com.example.islandlyrics.core.settings.AppPreferences
+import com.example.islandlyrics.core.settings.LabFeatureManager
 import com.example.islandlyrics.runtime.media.MediaControllerSelection
 import com.example.islandlyrics.runtime.playingapp.NewPlayingAppNotifier
+import com.example.islandlyrics.ui.overlay.floating.FloatingLyricsPlayback
+import com.example.islandlyrics.ui.overlay.floating.FloatingLyricsClock
+import com.example.islandlyrics.ui.overlay.floating.FloatingLyricsTrack
+import com.example.islandlyrics.ui.overlay.floating.FloatingLyricsVisibility
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -89,10 +100,17 @@ class MediaMonitorService : NotificationListenerService() {
     }
 
     private val handler = Handler(Looper.getMainLooper())
+    private val floatingLyricsScope = CoroutineScope(Dispatchers.Main)
+    private var pausedWindowBound = false
+    private val pausedWindowConnection = object : ServiceConnection {
+        override fun onServiceConnected(name: ComponentName, service: IBinder) = Unit
+        override fun onServiceDisconnected(name: ComponentName) = Unit
+    }
     private val stopRunnable = Runnable {
+        if (!LyricService.isAlive) return@Runnable
         AppLogger.getInstance().log(TAG, "Stopping service after debounce.")
         val intent = Intent(this@MediaMonitorService, LyricService::class.java)
-        intent.action = "ACTION_STOP"
+        intent.action = LyricService.ACTION_MEDIA_IDLE
         startService(intent)
     }
     
@@ -131,6 +149,9 @@ class MediaMonitorService : NotificationListenerService() {
             recheckSessions()
         } else if ("service_enabled" == key) {
             recheckSessions()
+            syncPausedWindowBinding()
+        } else if (key == LabFeatureManager.KEY_FLOATING_LYRICS_ENABLED || key == FloatingLyricsVisibility.KEEP_ON_PAUSE) {
+            syncPausedWindowBinding()
         } else if (NewPlayingAppNotifier.PREF_ENABLED == key) {
             if (prefs?.getBoolean(NewPlayingAppNotifier.PREF_ENABLED, false) == true) {
                 recheckSessions()
@@ -157,6 +178,9 @@ class MediaMonitorService : NotificationListenerService() {
         loadWhitelist()
         // Register pref listener
         prefs?.registerOnSharedPreferenceChangeListener(prefListener)
+        floatingLyricsScope.launch {
+            FloatingLyricsVisibility.session.collect { syncPausedWindowBinding() }
+        }
 
         // Register refresh receiver
         val filter = IntentFilter(LyricRepository.ACTION_REFRESH_DIAGNOSTICS)
@@ -245,6 +269,8 @@ class MediaMonitorService : NotificationListenerService() {
             activeControllers.clear()
         }
         resetSessionTracking()
+        FloatingLyricsVisibility.updatePlayback(FloatingLyricsPlayback.INACTIVE)
+        releasePausedWindowBinding()
         LyricRepository.getInstance().updatePlaybackStatus(false)
     }
 
@@ -257,6 +283,9 @@ class MediaMonitorService : NotificationListenerService() {
         handler.removeCallbacks(healthCheckRunnable)
         handler.removeCallbacks(rebindRetryRunnable)
         handler.removeCallbacksAndMessages(updateToken)
+        handler.removeCallbacks(stopRunnable)
+        floatingLyricsScope.cancel()
+        releasePausedWindowBinding()
         prefs?.unregisterOnSharedPreferenceChangeListener(prefListener)
         try {
             unregisterReceiver(refreshReceiver)
@@ -302,6 +331,7 @@ class MediaMonitorService : NotificationListenerService() {
                 activeControllers.clear()
             }
             LyricRepository.getInstance().updatePlaybackStatus(false)
+            FloatingLyricsVisibility.updatePlayback(FloatingLyricsPlayback.INACTIVE)
             return
         }
 
@@ -378,6 +408,7 @@ class MediaMonitorService : NotificationListenerService() {
                             
                             override fun onSessionDestroyed() {
                                 handler.post {
+                                    FloatingLyricsVisibility.endMediaSession(controller.sessionToken)
                                     recheckSessions() // Force full refresh
                                 }
                             }
@@ -458,7 +489,8 @@ class MediaMonitorService : NotificationListenerService() {
         val primary = getPrimaryController()
         // STRICT: Only start service if primary is WHITELISTED
         val isWhitelisted = allowedPackages.contains(primary?.packageName)
-        val state = primary?.playbackState?.state
+        val playbackState = primary?.playbackState
+        val state = playbackState?.state
         val isPlaying = isWhitelisted && (
             state == PlaybackState.STATE_PLAYING ||
             state == PlaybackState.STATE_BUFFERING ||
@@ -467,6 +499,45 @@ class MediaMonitorService : NotificationListenerService() {
             state == PlaybackState.STATE_SKIPPING_TO_PREVIOUS ||
             state == PlaybackState.STATE_FAST_FORWARDING ||
             state == PlaybackState.STATE_REWINDING
+        )
+
+        val floatingPlayback = when {
+            isPlaying -> FloatingLyricsPlayback.PLAYING
+            isWhitelisted && state == PlaybackState.STATE_PAUSED -> FloatingLyricsPlayback.PAUSED
+            else -> FloatingLyricsPlayback.INACTIVE
+        }
+        val track = if (primary != null && floatingPlayback != FloatingLyricsPlayback.INACTIVE) {
+            primary.metadata?.let { metadata ->
+                FloatingLyricsTrack(
+                    player = primary.packageName,
+                    mediaId = metadata.getString(MediaMetadata.METADATA_KEY_MEDIA_ID).orEmpty().trim(),
+                    mediaUri = metadata.getString(MediaMetadata.METADATA_KEY_MEDIA_URI).orEmpty().trim(),
+                    title = metadata.getString(MediaMetadata.METADATA_KEY_TITLE).orEmpty().trim(),
+                    artist = metadata.getString(MediaMetadata.METADATA_KEY_ARTIST).orEmpty().trim()
+                )
+            }
+        } else {
+            null
+        }
+        val floatingPrefs = prefs ?: AppPreferences.of(this)
+        val wasVisible = floatingPlayback == FloatingLyricsPlayback.PAUSED && FloatingLyricsVisibility.shouldShow(this, floatingPrefs)
+        val token = primary?.sessionToken?.takeIf { isWhitelisted }
+        if (token != null && state == PlaybackState.STATE_STOPPED) FloatingLyricsVisibility.endMediaSession(token)
+        FloatingLyricsVisibility.updatePlayback(
+            floatingPlayback, track, token.takeIf { state != PlaybackState.STATE_STOPPED },
+            isActuallyPlaying = state == PlaybackState.STATE_PLAYING,
+            wasVisible = wasVisible,
+            clock = playbackState?.takeIf {
+                floatingPlayback != FloatingLyricsPlayback.INACTIVE && it.position >= 0L &&
+                    (state != PlaybackState.STATE_PLAYING || it.lastPositionUpdateTime > 0L)
+            }
+                ?.let {
+                    FloatingLyricsClock(
+                        positionMs = it.position,
+                        updatedAtMs = it.lastPositionUpdateTime,
+                        speed = if (state == PlaybackState.STATE_PLAYING) it.playbackSpeed.coerceAtLeast(0f) else 0f
+                    )
+                }
         )
 
         val shouldForceStart = isPlaying && !LyricService.isAlive
@@ -512,6 +583,28 @@ class MediaMonitorService : NotificationListenerService() {
             AppLogger.getInstance().log(TAG, "⏸️ Playback stopped/paused. Scheduling Stop in ${finalDelay}ms")
             handler.postDelayed(stopRunnable, finalDelay)
         }
+    }
+
+    private fun syncPausedWindowBinding() {
+        val preferences = prefs ?: return
+        val shouldBind = isConnected &&
+            FloatingLyricsVisibility.session.value.playback == FloatingLyricsPlayback.PAUSED &&
+            FloatingLyricsVisibility.shouldShow(this, preferences)
+        if (!shouldBind) {
+            releasePausedWindowBinding()
+        } else if (!pausedWindowBound) {
+            pausedWindowBound = bindService(
+                Intent(this, LyricService::class.java),
+                pausedWindowConnection,
+                Context.BIND_AUTO_CREATE
+            )
+        }
+    }
+
+    private fun releasePausedWindowBinding() {
+        if (!pausedWindowBound) return
+        unbindService(pausedWindowConnection)
+        pausedWindowBound = false
     }
 
     private fun getPrimaryController(): MediaController? {
@@ -968,6 +1061,11 @@ class MediaMonitorService : NotificationListenerService() {
 
         // Singleton instance — set in onCreate, cleared in onDestroy
         @Volatile private var instance: MediaMonitorService? = null
+
+        internal fun currentLyricsPlayer(): MediaController? {
+            val monitor = instance ?: return null
+            return monitor.getPrimaryController()?.takeIf { it.packageName in monitor.allowedPackages }
+        }
 
         // 初始阶段属于“连接中”，不能把尚未完成首次绑定误报为“已断开”。
         private val _connectionStateFlow = kotlinx.coroutines.flow.MutableStateFlow(ConnectionState.CONNECTING)

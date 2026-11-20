@@ -56,9 +56,10 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.palette.graphics.Palette
+import com.example.islandlyrics.core.theme.generatePalette
 
 @Composable
 fun MetricCard(
@@ -112,23 +113,22 @@ fun CapsulePreview(
     var extractedColor by remember { mutableStateOf<Color?>(null) }
     
     LaunchedEffect(albumArt) {
-        if (albumArt != null) {
-            Palette.from(albumArt!!).generate { palette ->
-                if (palette != null) {
-                    val color = palette.getVibrantColor(
-                        palette.getMutedColor(
-                            palette.getDominantColor(android.graphics.Color.BLACK)
-                        )
-                    )
-                    extractedColor = Color(color)
-                }
-            }
-        } else {
+        val bitmap = albumArt
+        if (bitmap == null) {
             extractedColor = null
+        } else {
+            val palette = bitmap.generatePalette() ?: return@LaunchedEffect
+            val color = palette.getVibrantColor(
+                palette.getMutedColor(
+                    palette.getDominantColor(android.graphics.Color.BLACK)
+                )
+            )
+            extractedColor = Color(color)
         }
     }
     
-    val pillHeight = 56.dp // Standard Island height simulation
+    val pillHeight = 56.dp
+    val previewFrame = Modifier.fillMaxWidth().height(pillHeight + 16.dp).padding(horizontal = 32.dp)
     val previewAlbumColor = extractedColor?.toArgb() ?: Color.Black.toArgb()
     val pillColor = Color(
         OneUiCapsuleColorMode.resolveColor(
@@ -156,7 +156,7 @@ fun CapsulePreview(
     val collapsedProgressColor = if (superIslandColorized) superIslandAccentColor else Color.White
 
     if (superIslandEnabled) {
-        val showLeftCover = albumArt != null && when (superIslandLyricMode) {
+        val showLeftCover = when (superIslandLyricMode) {
             "full" -> superIslandFullLyricShowLeftCover
             else -> superIslandStandardShowLeftCover
         }
@@ -172,21 +172,15 @@ fun CapsulePreview(
             "full" -> split.right.ifEmpty { "♪" }
             else -> SuperIslandLyricLayout.takeByWeight(currentLyric.ifBlank { "♪" }, 14).ifEmpty { "♪" }
         }
-        val leftAlbumArt = if (showLeftCover) albumArt else null
-
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 8.dp)
-                .height(pillHeight + 16.dp)
-                .padding(horizontal = 24.dp),
+            modifier = previewFrame,
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Center
         ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(46.dp)
+                    .height(pillHeight)
                     .clip(CircleShape)
                     .background(Color.Black)
                     .then(
@@ -199,15 +193,8 @@ fun CapsulePreview(
                     .padding(horizontal = 10.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                if (leftAlbumArt != null) {
-                    Image(
-                        bitmap = leftAlbumArt.asImageBitmap(),
-                        contentDescription = null,
-                        modifier = Modifier
-                            .size(32.dp)
-                            .clip(RoundedCornerShape(8.dp)),
-                        contentScale = ContentScale.Crop
-                    )
+                if (showLeftCover) {
+                    CapsulePreviewArtwork(albumArt, 32.dp)
                     Spacer(modifier = Modifier.width(6.dp))
                 }
                 Text(
@@ -249,11 +236,7 @@ fun CapsulePreview(
         }
     } else {
         Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 8.dp)
-                .height(pillHeight + 16.dp)
-                .background(Color.Transparent),
+            modifier = previewFrame,
             contentAlignment = Alignment.Center
         ) {
             Row(
@@ -274,37 +257,19 @@ fun CapsulePreview(
                 horizontalArrangement = Arrangement.Start
             ) {
                 if (dynamicIconEnabled) {
-                    if (albumArt != null) {
-                        Image(
-                            bitmap = albumArt!!.asImageBitmap(),
-                            contentDescription = null,
-                            modifier = Modifier
-                                .size(40.dp)
-                                .clip(RoundedCornerShape(8.dp)),
-                            contentScale = ContentScale.Crop
-                        )
-                    } else {
-                        Box(
-                            modifier = Modifier
-                                .size(40.dp)
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(Color.DarkGray)
-                        )
-                    }
+                    CapsulePreviewArtwork(albumArt, 40.dp)
 
                     Spacer(modifier = Modifier.width(8.dp))
 
-                    Column(
-                        verticalArrangement = Arrangement.Center,
-                        modifier = Modifier.widthIn(max = 120.dp)
-                    ) {
+                    Box(modifier = Modifier.weight(0.85f)) {
                         Text(
                             text = title,
                             color = Color.White,
                             fontWeight = FontWeight.Bold,
                             fontSize = 14.sp,
                             maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.widthIn(max = 120.dp)
                         )
                     }
                 } else {
@@ -316,8 +281,6 @@ fun CapsulePreview(
                     )
                 }
 
-                Spacer(modifier = Modifier.weight(1f))
-
                 Text(
                     text = currentLyric,
                     color = Color.White,
@@ -325,10 +288,26 @@ fun CapsulePreview(
                     fontSize = 14.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(start = 8.dp)
+                    textAlign = TextAlign.End,
+                    modifier = Modifier.weight(1f).padding(start = 8.dp)
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun CapsulePreviewArtwork(bitmap: Bitmap?, size: Dp) {
+    val modifier = Modifier.size(size).clip(RoundedCornerShape(8.dp))
+    if (bitmap == null) {
+        Box(modifier.background(Color.DarkGray))
+    } else {
+        Image(
+            bitmap = remember(bitmap) { bitmap.asImageBitmap() },
+            contentDescription = null,
+            modifier = modifier,
+            contentScale = ContentScale.Crop
+        )
     }
 }
 
@@ -519,21 +498,11 @@ fun NotificationPreview(
     var extractedColor by remember { mutableStateOf<Color?>(null) }
     
     LaunchedEffect(albumArt, metadata) {
-        if (albumArt != null) {
-            Palette.from(albumArt!!).generate { palette ->
-                val vibrant = palette?.vibrantSwatch?.rgb
-                if (vibrant != null) {
-                    extractedColor = Color(vibrant)
-                } else {
-                    val dominant = palette?.dominantSwatch?.rgb
-                    if (dominant != null) extractedColor = Color(dominant)
-                }
-            }
-        } else if (metadata?.packageName != null) {
+        val bitmap = albumArt ?: metadata?.packageName?.let { packageName ->
             // Fallback to app icon color in preview
             try {
-                val icon = context.packageManager.getApplicationIcon(metadata!!.packageName)
-                val bitmap = if (icon is android.graphics.drawable.BitmapDrawable) {
+                val icon = context.packageManager.getApplicationIcon(packageName)
+                if (icon is android.graphics.drawable.BitmapDrawable) {
                     icon.bitmap
                 } else {
                     val b = android.graphics.Bitmap.createBitmap(icon.intrinsicWidth, icon.intrinsicHeight, android.graphics.Bitmap.Config.ARGB_8888)
@@ -542,20 +511,16 @@ fun NotificationPreview(
                     icon.draw(canvas)
                     b
                 }
-                Palette.from(bitmap).generate { palette ->
-                    val vibrant = palette?.vibrantSwatch?.rgb
-                    if (vibrant != null) {
-                        extractedColor = Color(vibrant)
-                    } else {
-                        val dominant = palette?.dominantSwatch?.rgb
-                        if (dominant != null) extractedColor = Color(dominant)
-                    }
-                }
             } catch (e: Exception) {
-                extractedColor = null
+                null
             }
-        } else {
+        }
+        if (bitmap == null) {
             extractedColor = null
+        } else {
+            val palette = bitmap.generatePalette()
+            val color = palette?.vibrantSwatch?.rgb ?: palette?.dominantSwatch?.rgb
+            if (color != null) extractedColor = Color(color)
         }
     }
     

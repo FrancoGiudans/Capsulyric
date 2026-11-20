@@ -24,14 +24,9 @@ package com.example.islandlyrics.feature.customsettings.material
 
 import com.example.islandlyrics.ui.material.blur.MaterialBlurAlertDialog
 
-import android.content.Intent
 import android.content.SharedPreferences
-import android.provider.Settings
 import android.widget.Toast
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.edit
-import androidx.core.net.toUri
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
@@ -59,6 +54,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import com.example.islandlyrics.core.settings.LabFeatureManager
 import com.example.islandlyrics.R
+import com.example.islandlyrics.ui.material.blur.MaterialBlurDropdownMenu
 import com.example.islandlyrics.feature.settings.material.SettingsCard
 import com.example.islandlyrics.feature.settings.material.SettingsCardDivider
 import com.example.islandlyrics.feature.settings.material.SettingsSwitchItem
@@ -66,6 +62,11 @@ import com.example.islandlyrics.feature.settings.material.SettingsTextItem
 import com.example.islandlyrics.ui.overlay.floating.FloatingLyricsDisplayConfig
 import com.example.islandlyrics.ui.overlay.floating.FloatingLyricsNeighborAlignment
 import com.example.islandlyrics.ui.overlay.floating.FloatingLyricsRenderer
+import com.example.islandlyrics.ui.overlay.floating.FloatingLyricsRecovery
+import com.example.islandlyrics.ui.overlay.floating.FloatingLyricsSettingsPreview
+import com.example.islandlyrics.ui.overlay.floating.FloatingLyricsStyle
+import com.example.islandlyrics.ui.overlay.floating.rememberFloatingLyricsPermissionAction
+import com.example.islandlyrics.ui.overlay.floating.FloatingLyricsVisibility
 import com.example.islandlyrics.ui.overlay.model.SecondaryTextMode
 import kotlin.math.roundToInt
 
@@ -75,13 +76,14 @@ fun FloatingLyricsSettingsSubScreen(prefs: SharedPreferences) {
     val context = LocalContext.current
 
     var featureEnabled by remember { mutableStateOf(LabFeatureManager.isFloatingLyricsEnabled(context)) }
-    var showLyrics by remember { mutableStateOf(prefs.getBoolean(FloatingLyricsRenderer.PREF_KEY, false)) }
-    val overlayPermissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.StartActivityForResult()
-    ) {
-        val granted = Settings.canDrawOverlays(context)
-        showLyrics = granted
-        prefs.edit { putBoolean(FloatingLyricsRenderer.PREF_KEY, granted) }
+    var recovery by remember { mutableStateOf(FloatingLyricsVisibility.readRecovery(prefs)) }
+    var keepOnPause by remember { mutableStateOf(prefs.getBoolean(FloatingLyricsVisibility.KEEP_ON_PAUSE, false)) }
+    val floatingSession by FloatingLyricsVisibility.session.collectAsState()
+    val showLyrics = rememberFloatingLyricsPermissionAction {
+        if (LabFeatureManager.isFloatingLyricsEnabled(prefs)) FloatingLyricsVisibility.showNow(context)
+    }
+    val enableLyrics = rememberFloatingLyricsPermissionAction {
+        LabFeatureManager.setFloatingLyricsEnabled(context, true)
     }
     var showAlbumArt by remember { mutableStateOf(prefs.getBoolean(FloatingLyricsRenderer.PREF_SHOW_ALBUM_ART, true)) }
     var followAlbumColor by remember { mutableStateOf(prefs.getBoolean(FloatingLyricsRenderer.PREF_FOLLOW_ALBUM_COLOR, true)) }
@@ -116,40 +118,105 @@ fun FloatingLyricsSettingsSubScreen(prefs: SharedPreferences) {
     var floatingTextColorSnapshot by remember { mutableStateOf(customTextColor) }
     val keepOneText = stringResource(R.string.settings_home_lyric_preview_keep_one)
 
+    DisposableEffect(prefs) {
+        val listener = SharedPreferences.OnSharedPreferenceChangeListener { updated, key ->
+            when (key) {
+                LabFeatureManager.KEY_FLOATING_LYRICS_ENABLED -> featureEnabled = LabFeatureManager.isFloatingLyricsEnabled(updated)
+                FloatingLyricsVisibility.RECOVERY, FloatingLyricsVisibility.RESUME_NEXT_TRACK ->
+                    recovery = FloatingLyricsVisibility.readRecovery(updated)
+                FloatingLyricsVisibility.KEEP_ON_PAUSE -> keepOnPause = updated.getBoolean(key, false)
+                FloatingLyricsRenderer.PREF_SHOW_ALBUM_ART -> showAlbumArt = updated.getBoolean(key, true)
+                FloatingLyricsRenderer.PREF_SHOW_NEIGHBOR_LINE,
+                FloatingLyricsRenderer.PREF_SECONDARY_TEXT_MODES,
+                FloatingLyricsRenderer.PREF_NEIGHBOR_ALIGNMENT,
+                FloatingLyricsRenderer.PREF_DISPLAY_MODE -> {
+                    val display = FloatingLyricsDisplayConfig.from(updated)
+                    showSecondLine = display.showSecondLine
+                    secondaryTextModes = display.secondaryTextModes.map { it.preferenceValue }
+                    neighborAlignment = display.neighborAlignment
+                    if (!display.showSecondLine) {
+                        showSecondaryTextModeDialog.value = false
+                        showNeighborAlignmentDialog.value = false
+                    }
+                }
+            }
+        }
+        prefs.registerOnSharedPreferenceChangeListener(listener)
+        onDispose { prefs.unregisterOnSharedPreferenceChangeListener(listener) }
+    }
+
+    FloatingLyricsSettingsPreview(
+        style = FloatingLyricsStyle(
+            textSizeSp = textSizeSp,
+            baseTextColor = customTextColor.toArgb(),
+            followAlbumColor = followAlbumColor,
+            showAlbumArt = showAlbumArt,
+            enableTextStroke = textStroke,
+            enableTextBackground = textBackground
+        ),
+        display = FloatingLyricsDisplayConfig(
+            secondaryTextModes = secondaryTextModes.mapNotNull(SecondaryTextMode::from),
+            showSecondLine = showSecondLine,
+            neighborAlignment = neighborAlignment,
+            wordHighlight = wordHighlight
+        ),
+        useMiuix = false
+    )
+
     SettingsCard {
         SettingsSwitchItem(
             title = stringResource(R.string.settings_floating_lyrics_enabled),
             subtitle = stringResource(R.string.settings_floating_lyrics_enabled_desc),
             checked = featureEnabled,
             onCheckedChange = { enabled ->
-                featureEnabled = enabled
-                LabFeatureManager.setFloatingLyricsEnabled(context, enabled)
-                if (!enabled) {
-                    showLyrics = false
-                }
+                if (enabled) enableLyrics() else LabFeatureManager.setFloatingLyricsEnabled(context, false)
             }
         )
         SettingsCardDivider()
         SettingsSwitchItem(
             title = stringResource(R.string.settings_floating_lyrics_show),
             subtitle = stringResource(R.string.settings_floating_lyrics_show_desc),
-            checked = showLyrics,
-            onCheckedChange = {
-                showLyrics = it
-                if (it && !Settings.canDrawOverlays(context)) {
-                    overlayPermissionLauncher.launch(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION).apply {
-                        data = "package:${context.packageName}".toUri()
-                    })
-                    showLyrics = false
-                } else {
-                    prefs.edit { putBoolean(FloatingLyricsRenderer.PREF_KEY, it) }
-                }
+            checked = featureEnabled && !floatingSession.isHidden,
+            enabled = featureEnabled,
+            onCheckedChange = { visible ->
+                if (visible) showLyrics() else FloatingLyricsVisibility.hide(prefs)
             }
         )
 
-        if (showLyrics) {
-            SettingsCardDivider()
-            SettingsSwitchItem(
+        SettingsCardDivider()
+        var recoveryMenuExpanded by remember { mutableStateOf(false) }
+        Box {
+            SettingsTextItem(
+                title = stringResource(R.string.settings_floating_recovery),
+                value = stringResource(recovery.label),
+                onClick = { recoveryMenuExpanded = true }
+            )
+            MaterialBlurDropdownMenu(
+                expanded = recoveryMenuExpanded,
+                onDismissRequest = { recoveryMenuExpanded = false }
+            ) {
+                FloatingLyricsRecovery.entries.forEach { option ->
+                    DropdownMenuItem(
+                        text = { Text(stringResource(option.label)) },
+                        onClick = {
+                            prefs.edit { putString(FloatingLyricsVisibility.RECOVERY, option.value) }
+                            recoveryMenuExpanded = false
+                        }
+                    )
+                }
+            }
+        }
+        SettingsCardDivider()
+        SettingsSwitchItem(
+            title = stringResource(R.string.settings_floating_keep_on_pause),
+            subtitle = stringResource(R.string.settings_floating_keep_on_pause_desc),
+            checked = keepOnPause,
+            onCheckedChange = { value ->
+                prefs.edit { putBoolean(FloatingLyricsVisibility.KEEP_ON_PAUSE, value) }
+            }
+        )
+        SettingsCardDivider()
+        SettingsSwitchItem(
                 title = stringResource(R.string.settings_floating_show_album_art),
                 subtitle = stringResource(R.string.settings_floating_show_album_art_desc),
                 checked = showAlbumArt,
@@ -157,10 +224,10 @@ fun FloatingLyricsSettingsSubScreen(prefs: SharedPreferences) {
                     showAlbumArt = it
                     prefs.edit { putBoolean(FloatingLyricsRenderer.PREF_SHOW_ALBUM_ART, it) }
                 }
-            )
+        )
 
-            SettingsCardDivider()
-            SettingsSwitchItem(
+        SettingsCardDivider()
+        SettingsSwitchItem(
                 title = stringResource(R.string.settings_floating_text_stroke),
                 subtitle = stringResource(R.string.settings_floating_text_stroke_desc),
                 checked = textStroke,
@@ -168,10 +235,10 @@ fun FloatingLyricsSettingsSubScreen(prefs: SharedPreferences) {
                     textStroke = it
                     prefs.edit { putBoolean(FloatingLyricsRenderer.PREF_TEXT_STROKE, it) }
                 }
-            )
+        )
 
-            SettingsCardDivider()
-            SettingsSwitchItem(
+        SettingsCardDivider()
+        SettingsSwitchItem(
                 title = stringResource(R.string.settings_floating_text_background),
                 subtitle = stringResource(R.string.settings_floating_text_background_desc),
                 checked = textBackground,
@@ -179,10 +246,10 @@ fun FloatingLyricsSettingsSubScreen(prefs: SharedPreferences) {
                     textBackground = it
                     prefs.edit { putBoolean(FloatingLyricsRenderer.PREF_TEXT_BACKGROUND, it) }
                 }
-            )
+        )
 
-            SettingsCardDivider()
-            SettingsSwitchItem(
+        SettingsCardDivider()
+        SettingsSwitchItem(
                 title = stringResource(R.string.settings_floating_show_second_line),
                 subtitle = stringResource(R.string.settings_floating_show_second_line_desc),
                 checked = showSecondLine,
@@ -190,22 +257,25 @@ fun FloatingLyricsSettingsSubScreen(prefs: SharedPreferences) {
                     showSecondLine = it
                     prefs.edit { putBoolean(FloatingLyricsRenderer.PREF_SHOW_NEIGHBOR_LINE, it) }
                 }
-            )
+        )
 
-            SettingsCardDivider()
-            FloatingSecondaryTextSelector(
-                secondaryTextModes = secondaryTextModes,
-                onClick = { showSecondaryTextModeDialog.value = true }
-            )
+        if (showSecondLine) {
+                Column(Modifier.padding(start = 12.dp)) {
+                    SettingsCardDivider()
+                    FloatingSecondaryTextSelector(
+                        secondaryTextModes = secondaryTextModes,
+                        onClick = { showSecondaryTextModeDialog.value = true }
+                    )
+                    SettingsCardDivider()
+                    FloatingNeighborAlignmentSelector(
+                        selectedAlignment = neighborAlignment,
+                        onClick = { showNeighborAlignmentDialog.value = true }
+                    )
+                }
+        }
 
-            SettingsCardDivider()
-            FloatingNeighborAlignmentSelector(
-                selectedAlignment = neighborAlignment,
-                onClick = { showNeighborAlignmentDialog.value = true }
-            )
-
-            SettingsCardDivider()
-            SettingsSwitchItem(
+        SettingsCardDivider()
+        SettingsSwitchItem(
                 title = stringResource(R.string.settings_floating_word_highlight),
                 subtitle = stringResource(R.string.settings_floating_word_highlight_desc),
                 checked = wordHighlight,
@@ -213,10 +283,10 @@ fun FloatingLyricsSettingsSubScreen(prefs: SharedPreferences) {
                     wordHighlight = it
                     prefs.edit { putBoolean(FloatingLyricsRenderer.PREF_WORD_HIGHLIGHT, it) }
                 }
-            )
+        )
 
-            SettingsCardDivider()
-            SettingsSwitchItem(
+        SettingsCardDivider()
+        SettingsSwitchItem(
                 title = stringResource(R.string.settings_floating_follow_album_color),
                 subtitle = stringResource(R.string.settings_floating_follow_album_color_desc),
                 checked = followAlbumColor,
@@ -228,9 +298,9 @@ fun FloatingLyricsSettingsSubScreen(prefs: SharedPreferences) {
                     followAlbumColor = it
                     prefs.edit { putBoolean(FloatingLyricsRenderer.PREF_FOLLOW_ALBUM_COLOR, it) }
                 }
-            )
+        )
 
-            if (!followAlbumColor) {
+        if (!followAlbumColor) {
                 SettingsCardDivider()
                 MaterialEditableColorSection(
                     title = stringResource(R.string.settings_floating_text_color),
@@ -259,10 +329,10 @@ fun FloatingLyricsSettingsSubScreen(prefs: SharedPreferences) {
                         floatingTextColorEditing = false
                     }
                 )
-            }
+        }
 
-            SettingsCardDivider()
-            Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
+        SettingsCardDivider()
+        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
                 Text(
                     text = stringResource(R.string.settings_floating_text_size) + ": ${textSizeSp.toInt()}sp",
                     style = MaterialTheme.typography.bodyLarge,
@@ -278,10 +348,10 @@ fun FloatingLyricsSettingsSubScreen(prefs: SharedPreferences) {
                     valueRange = 10f..32f,
                     steps = 10
                 )
-            }
+        }
 
-            SettingsCardDivider()
-            TextButton(
+        SettingsCardDivider()
+        TextButton(
                 onClick = {
                     FloatingLyricsRenderer.resetPosition(context)
                     Toast.makeText(
@@ -294,13 +364,12 @@ fun FloatingLyricsSettingsSubScreen(prefs: SharedPreferences) {
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 8.dp)
                     .height(48.dp)
-            ) {
+        ) {
                 Text(stringResource(R.string.settings_floating_position_reset))
-            }
         }
     }
 
-    if (showSecondaryTextModeDialog.value) {
+    if (showSecondLine && showSecondaryTextModeDialog.value) {
         MaterialFloatingSecondaryTextModeDialog(
             selectedModes = secondaryTextModes,
             onDismiss = { showSecondaryTextModeDialog.value = false },
@@ -315,7 +384,7 @@ fun FloatingLyricsSettingsSubScreen(prefs: SharedPreferences) {
         )
     }
 
-    if (showNeighborAlignmentDialog.value) {
+    if (showSecondLine && showNeighborAlignmentDialog.value) {
         MaterialBlurAlertDialog(
             onDismissRequest = { showNeighborAlignmentDialog.value = false },
             title = { Text(stringResource(R.string.settings_floating_neighbor_alignment)) },
@@ -600,7 +669,7 @@ private fun List<String>.labelForFloatingSecondaryText(): String {
     }
     return labels.ifEmpty {
         listOf(stringResource(SecondaryTextMode.NEXT_LYRIC.materialLabelRes()))
-    }.joinToString(" / ")
+    }.joinToString(" → ")
 }
 
 @Composable

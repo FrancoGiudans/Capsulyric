@@ -24,6 +24,7 @@ package com.example.islandlyrics.feature.mediacontrol.miuix
 
 import android.content.Context
 import com.example.islandlyrics.R
+import com.example.islandlyrics.ui.overlay.floating.rememberFloatingLyricsRestoreAction
 import com.example.islandlyrics.core.network.OfflineModeManager
 import com.example.islandlyrics.core.settings.AppPreferences
 import com.example.islandlyrics.core.platform.RomUtils
@@ -214,6 +215,7 @@ fun MiuixMediaControlDialog(
             visibleState = false
         }
     }
+    val restoreDesktopLyrics = rememberFloatingLyricsRestoreAction(triggerDismiss)
 
     if (show || visibleState) {
         androidx.compose.ui.window.Dialog(
@@ -374,6 +376,19 @@ fun MiuixMediaControlDialog(
                             horizontalArrangement = Arrangement.SpaceEvenly,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
+                            if (restoreDesktopLyrics != null) {
+                                IconButton(
+                                    onClick = restoreDesktopLyrics,
+                                    modifier = Modifier.background(MiuixTheme.colorScheme.surfaceVariant, CircleShape)
+                                ) {
+                                    Icon(
+                                        painter = painterResource(R.drawable.ic_desktop_lyrics),
+                                        contentDescription = stringResource(R.string.settings_floating_lyrics_show),
+                                        tint = MiuixTheme.colorScheme.onSurfaceVariantActions,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                }
+                            }
                             IconButton(
                                 onClick = {
                                     val intent = Intent(context, MainActivity::class.java).apply {

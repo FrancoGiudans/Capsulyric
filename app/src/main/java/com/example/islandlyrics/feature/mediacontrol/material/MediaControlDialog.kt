@@ -24,6 +24,7 @@ package com.example.islandlyrics.feature.mediacontrol.material
 
 import android.content.Context
 import com.example.islandlyrics.R
+import com.example.islandlyrics.ui.overlay.floating.rememberFloatingLyricsRestoreAction
 import com.example.islandlyrics.core.network.OfflineModeManager
 import com.example.islandlyrics.core.settings.AppPreferences
 import com.example.islandlyrics.core.platform.RomUtils
@@ -84,7 +85,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.runtime.livedata.observeAsState
-import androidx.palette.graphics.Palette
+import com.example.islandlyrics.core.theme.generatePalette
 import com.google.android.material.progressindicator.LinearProgressIndicator
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -211,6 +212,7 @@ fun MediaControlDialog(onDismiss: () -> Unit) {
     val triggerDismiss = {
         visibleState.targetState = false
     }
+    val restoreDesktopLyrics = rememberFloatingLyricsRestoreAction(triggerDismiss)
 
     // Actual dismiss when animation finishes (i.e. both states are false)
     if (!visibleState.targetState && !visibleState.currentState) {
@@ -293,6 +295,16 @@ fun MediaControlDialog(onDismiss: () -> Unit) {
                             style = MaterialTheme.typography.titleMedium
                         )
                         Spacer(modifier = Modifier.weight(1f))
+
+                        if (restoreDesktopLyrics != null) {
+                            IconButton(onClick = restoreDesktopLyrics) {
+                                Icon(
+                                    painter = painterResource(R.drawable.ic_desktop_lyrics),
+                                    contentDescription = stringResource(R.string.settings_floating_lyrics_show),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
 
                         // Open App Button (Pill Icon)
                         IconButton(onClick = {
@@ -523,14 +535,9 @@ fun MediaSessionCard(
     var cardBackgroundColor by remember { mutableStateOf(Color.Transparent) }
 
     LaunchedEffect(albumArtBitmap) {
-        if (albumArtBitmap == null) {
-            cardBackgroundColor = Color.Transparent
-        } else {
-            Palette.from(albumArtBitmap).generate { palette ->
-                val colorInt = palette?.vibrantSwatch?.rgb ?: palette?.dominantSwatch?.rgb
-                cardBackgroundColor = colorInt?.let { Color(it).copy(alpha = 0.22f) } ?: Color.Transparent
-            }
-        }
+        val palette = albumArtBitmap?.generatePalette()
+        val colorInt = palette?.vibrantSwatch?.rgb ?: palette?.dominantSwatch?.rgb
+        cardBackgroundColor = colorInt?.let { Color(it).copy(alpha = 0.22f) } ?: Color.Transparent
     }
 
     Card(
