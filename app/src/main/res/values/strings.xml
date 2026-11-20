@@ -1294,6 +1294,7 @@ Within the log interface, select the share/export icon. You can specify a timefr
     <string name="settings_floating_follow_album_color">Follow Album Color</string>
     <string name="settings_floating_follow_album_color_desc">Use a color from the album art and adjust it for the background</string>
     <string name="settings_floating_text_color">Lyric Color</string>
+    <string name="settings_floating_font_settings">Font settings</string>
     <string name="settings_floating_text_size">Text Size</string>
     <string name="settings_floating_text_weight">Font weight</string>
     <string name="settings_floating_weight_regular">Regular</string>

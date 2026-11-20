@@ -1304,6 +1304,7 @@
     <string name="settings_floating_follow_album_color">文字颜色跟随专辑图</string>
     <string name="settings_floating_follow_album_color_desc">从专辑封面取色，按背景调整文字对比度</string>
     <string name="settings_floating_text_color">歌词颜色</string>
+    <string name="settings_floating_font_settings">字体设置</string>
     <string name="settings_floating_text_size">字号大小</string>
     <string name="settings_floating_text_weight">字重</string>
     <string name="settings_floating_weight_regular">常规</string>

@@ -1302,6 +1302,7 @@
     <string name="settings_floating_follow_album_color">歌詞文字色をカバーに追従</string>
     <string name="settings_floating_follow_album_color_desc">アルバムアートから色を抽出し、背景に合わせて文字のコントラストを調整します</string>
     <string name="settings_floating_text_color">歌詞の文字色</string>
+    <string name="settings_floating_font_settings">フォント設定</string>
     <string name="settings_floating_text_size">歌詞のフォントサイズ</string>
     <string name="settings_floating_text_weight">文字の太さ</string>
     <string name="settings_floating_weight_regular">レギュラー</string>

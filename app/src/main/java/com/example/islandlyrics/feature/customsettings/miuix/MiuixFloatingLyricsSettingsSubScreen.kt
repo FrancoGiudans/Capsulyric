@@ -26,16 +26,13 @@ import android.content.SharedPreferences
 import android.widget.Toast
 import androidx.core.content.edit
 import androidx.compose.foundation.layout.*
-import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.example.islandlyrics.core.settings.LabFeatureManager
 import com.example.islandlyrics.R
 import com.example.islandlyrics.ui.miuix.blur.MiuixBlurBottomSheet
@@ -55,7 +52,7 @@ import kotlinx.coroutines.CoroutineScope
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.ButtonDefaults
 import top.yukonga.miuix.kmp.basic.TextButton
-import top.yukonga.miuix.kmp.basic.Slider
+import top.yukonga.miuix.kmp.basic.SliderDefaults
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.icon.MiuixIcons
@@ -63,9 +60,9 @@ import top.yukonga.miuix.kmp.icon.extended.Ok
 import top.yukonga.miuix.kmp.icon.extended.Close
 import top.yukonga.miuix.kmp.preference.ArrowPreference as SuperArrow
 import com.example.islandlyrics.ui.miuix.preference.BlurOverlayDropdownPreference as SuperDropdown
+import top.yukonga.miuix.kmp.preference.SliderPreference
 import top.yukonga.miuix.kmp.preference.SwitchPreference as SuperSwitch
 import top.yukonga.miuix.kmp.theme.MiuixTheme
-import kotlin.math.roundToInt
 
 @Composable
 @Suppress("UNUSED_PARAMETER")
@@ -108,6 +105,7 @@ fun MiuixFloatingLyricsSettingsSubScreen(prefs: SharedPreferences, scope: Corout
     
     var textSizeSp by remember { mutableFloatStateOf(prefs.getFloat(FloatingLyricsRenderer.PREF_TEXT_SIZE, 15f)) }
     var textWeight by remember(prefs) { mutableStateOf(FloatingLyricsTextWeight.read(prefs)) }
+    var showFontSettings by remember { mutableStateOf(false) }
     var customTextColor by remember { 
         mutableStateOf(Color(prefs.getInt(FloatingLyricsRenderer.PREF_TEXT_COLOR, android.graphics.Color.WHITE)))
     }
@@ -122,6 +120,7 @@ fun MiuixFloatingLyricsSettingsSubScreen(prefs: SharedPreferences, scope: Corout
                     recovery = FloatingLyricsVisibility.readRecovery(updated)
                 FloatingLyricsVisibility.KEEP_ON_PAUSE -> keepOnPause = updated.getBoolean(key, false)
                 FloatingLyricsRenderer.PREF_SHOW_ALBUM_ART -> showAlbumArt = updated.getBoolean(key, true)
+                FloatingLyricsRenderer.PREF_TEXT_SIZE -> textSizeSp = updated.getFloat(key, 15f)
                 FloatingLyricsRenderer.PREF_TEXT_WEIGHT -> textWeight = FloatingLyricsTextWeight.read(updated)
                 FloatingLyricsRenderer.PREF_SHOW_NEIGHBOR_LINE,
                 FloatingLyricsRenderer.PREF_SECONDARY_TEXT_MODES,
@@ -303,33 +302,10 @@ fun MiuixFloatingLyricsSettingsSubScreen(prefs: SharedPreferences, scope: Corout
             )
         }
 
-        SuperDropdown(
-            title = stringResource(R.string.settings_floating_text_weight),
-            items = FloatingLyricsTextWeight.entries.map { stringResource(it.label) },
-            selectedIndex = textWeight.ordinal,
-            onSelectedIndexChange = { index ->
-                prefs.edit { putInt(FloatingLyricsRenderer.PREF_TEXT_WEIGHT, FloatingLyricsTextWeight.entries[index].weight) }
-            }
+        SuperArrow(
+            title = stringResource(R.string.settings_floating_font_settings),
+            onClick = { showFontSettings = true }
         )
-
-        Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
-            Text(
-                text = "${stringResource(R.string.settings_floating_text_size)}: ${textSizeSp.toInt()}sp",
-                fontSize = 15.sp,
-                fontWeight = FontWeight.Medium,
-                color = MiuixTheme.colorScheme.onSurface
-            )
-            Spacer(modifier = Modifier.height(12.dp))
-            Slider(
-                value = (textSizeSp - 10f) / (32f - 10f),
-                onValueChange = { value -> 
-                    val newSize = 10f + value * (32f - 10f)
-                    val steppedSize = (newSize / 2f).roundToInt() * 2f
-                    textSizeSp = steppedSize
-                    prefs.edit { putFloat(FloatingLyricsRenderer.PREF_TEXT_SIZE, steppedSize) }
-                }
-            )
-        }
 
         TextButton(
             text = stringResource(R.string.settings_floating_position_reset),
@@ -343,6 +319,34 @@ fun MiuixFloatingLyricsSettingsSubScreen(prefs: SharedPreferences, scope: Corout
             },
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
             colors = ButtonDefaults.textButtonColorsPrimary()
+        )
+    }
+
+    MiuixBlurBottomSheet(
+        show = showFontSettings,
+        title = stringResource(R.string.settings_floating_font_settings),
+        onDismissRequest = { showFontSettings = false }
+    ) {
+        SliderPreference(
+            title = stringResource(R.string.settings_floating_text_size),
+            value = textSizeSp,
+            valueText = stringResource(R.string.floating_settings_text_size_value, textSizeSp.toInt()),
+            onValueChange = { size ->
+                textSizeSp = size
+                prefs.edit { putFloat(FloatingLyricsRenderer.PREF_TEXT_SIZE, size) }
+            },
+            valueRange = 10f..32f,
+            steps = 10,
+            hapticEffect = SliderDefaults.SliderHapticEffect.Step
+        )
+        SuperDropdown(
+            title = stringResource(R.string.settings_floating_text_weight),
+            items = FloatingLyricsTextWeight.entries.map { stringResource(it.label) },
+            selectedIndex = textWeight.ordinal,
+            renderInRootScaffold = false,
+            onSelectedIndexChange = { index ->
+                prefs.edit { putInt(FloatingLyricsRenderer.PREF_TEXT_WEIGHT, FloatingLyricsTextWeight.entries[index].weight) }
+            }
         )
     }
 

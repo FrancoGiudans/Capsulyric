@@ -33,8 +33,11 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -112,6 +115,7 @@ fun FloatingLyricsSettingsSubScreen(prefs: SharedPreferences) {
     var wordHighlight by remember { mutableStateOf(prefs.getBoolean(FloatingLyricsRenderer.PREF_WORD_HIGHLIGHT, true)) }
     var textSizeSp by remember { mutableFloatStateOf(prefs.getFloat(FloatingLyricsRenderer.PREF_TEXT_SIZE, 15f)) }
     var textWeight by remember(prefs) { mutableStateOf(FloatingLyricsTextWeight.read(prefs)) }
+    var showFontSettings by remember { mutableStateOf(false) }
 
     var customTextColor by remember { 
         mutableStateOf(Color(prefs.getInt(FloatingLyricsRenderer.PREF_TEXT_COLOR, android.graphics.Color.WHITE)))
@@ -128,6 +132,7 @@ fun FloatingLyricsSettingsSubScreen(prefs: SharedPreferences) {
                     recovery = FloatingLyricsVisibility.readRecovery(updated)
                 FloatingLyricsVisibility.KEEP_ON_PAUSE -> keepOnPause = updated.getBoolean(key, false)
                 FloatingLyricsRenderer.PREF_SHOW_ALBUM_ART -> showAlbumArt = updated.getBoolean(key, true)
+                FloatingLyricsRenderer.PREF_TEXT_SIZE -> textSizeSp = updated.getFloat(key, 15f)
                 FloatingLyricsRenderer.PREF_TEXT_WEIGHT -> textWeight = FloatingLyricsTextWeight.read(updated)
                 FloatingLyricsRenderer.PREF_SHOW_NEIGHBOR_LINE,
                 FloatingLyricsRenderer.PREF_SECONDARY_TEXT_MODES,
@@ -336,46 +341,14 @@ fun FloatingLyricsSettingsSubScreen(prefs: SharedPreferences) {
         }
 
         SettingsCardDivider()
-        var weightMenuExpanded by remember { mutableStateOf(false) }
-        Box {
-            SettingsTextItem(
-                title = stringResource(R.string.settings_floating_text_weight),
-                value = stringResource(textWeight.label),
-                onClick = { weightMenuExpanded = true }
-            )
-            MaterialBlurDropdownMenu(
-                expanded = weightMenuExpanded,
-                onDismissRequest = { weightMenuExpanded = false }
-            ) {
-                FloatingLyricsTextWeight.entries.forEach { option ->
-                    DropdownMenuItem(
-                        text = { Text(stringResource(option.label)) },
-                        onClick = {
-                            prefs.edit { putInt(FloatingLyricsRenderer.PREF_TEXT_WEIGHT, option.weight) }
-                            weightMenuExpanded = false
-                        }
-                    )
-                }
-            }
-        }
-        SettingsCardDivider()
-        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
-                Text(
-                    text = stringResource(R.string.settings_floating_text_size) + ": ${textSizeSp.toInt()}sp",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Slider(
-                    value = textSizeSp,
-                    onValueChange = {
-                        textSizeSp = it
-                        prefs.edit { putFloat(FloatingLyricsRenderer.PREF_TEXT_SIZE, it) }
-                    },
-                    valueRange = 10f..32f,
-                    steps = 10
-                )
-        }
+        ListItem(
+            modifier = Modifier.clickable { showFontSettings = true },
+            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+            headlineContent = {
+                Text(stringResource(R.string.settings_floating_font_settings), style = MaterialTheme.typography.bodyLarge)
+            },
+            trailingContent = { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null) }
+        )
 
         SettingsCardDivider()
         TextButton(
@@ -394,6 +367,21 @@ fun FloatingLyricsSettingsSubScreen(prefs: SharedPreferences) {
         ) {
                 Text(stringResource(R.string.settings_floating_position_reset))
         }
+    }
+
+    if (showFontSettings) {
+        MaterialFloatingFontSettingsSheet(
+            textSizeSp = textSizeSp,
+            textWeight = textWeight,
+            onTextSizeChange = { size ->
+                textSizeSp = size
+                prefs.edit { putFloat(FloatingLyricsRenderer.PREF_TEXT_SIZE, size) }
+            },
+            onTextWeightChange = { weight ->
+                prefs.edit { putInt(FloatingLyricsRenderer.PREF_TEXT_WEIGHT, weight.weight) }
+            },
+            onDismiss = { showFontSettings = false }
+        )
     }
 
     if (showSecondLine && showSecondaryTextModeDialog.value) {
@@ -447,6 +435,68 @@ fun FloatingLyricsSettingsSubScreen(prefs: SharedPreferences) {
                 }
             }
         )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun MaterialFloatingFontSettingsSheet(
+    textSizeSp: Float,
+    textWeight: FloatingLyricsTextWeight,
+    onTextSizeChange: (Float) -> Unit,
+    onTextWeightChange: (FloatingLyricsTextWeight) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var weightMenuExpanded by remember { mutableStateOf(false) }
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(bottom = 12.dp)) {
+            Text(
+                text = stringResource(R.string.settings_floating_font_settings),
+                style = MaterialTheme.typography.headlineSmall,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+            )
+            ListItem(
+                colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                headlineContent = {
+                    Text(stringResource(R.string.settings_floating_text_size), style = MaterialTheme.typography.bodyLarge)
+                },
+                trailingContent = {
+                    Text(
+                        text = stringResource(R.string.floating_settings_text_size_value, textSizeSp.toInt()),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            )
+            Slider(
+                value = textSizeSp,
+                onValueChange = onTextSizeChange,
+                valueRange = 10f..32f,
+                steps = 10,
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
+            )
+            Box {
+                SettingsTextItem(
+                    title = stringResource(R.string.settings_floating_text_weight),
+                    value = stringResource(textWeight.label),
+                    onClick = { weightMenuExpanded = true }
+                )
+                MaterialBlurDropdownMenu(
+                    expanded = weightMenuExpanded,
+                    onDismissRequest = { weightMenuExpanded = false }
+                ) {
+                    FloatingLyricsTextWeight.entries.forEach { option ->
+                        DropdownMenuItem(
+                            text = { Text(stringResource(option.label)) },
+                            onClick = {
+                                onTextWeightChange(option)
+                                weightMenuExpanded = false
+                            }
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 
