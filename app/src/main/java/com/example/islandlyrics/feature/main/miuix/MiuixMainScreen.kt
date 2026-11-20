@@ -34,7 +34,6 @@ import com.example.islandlyrics.lyrics.cache.OnlineLyricCacheStore
 import com.example.islandlyrics.lyrics.state.LyricRepository
 import android.media.MediaMetadata
 import android.media.session.MediaController
-import android.media.session.MediaSessionManager
 import android.media.session.PlaybackState
 import android.os.SystemClock
 import android.provider.Settings
@@ -79,7 +78,6 @@ import androidx.lifecycle.Lifecycle
 import kotlinx.coroutines.launch
 import android.content.ClipData
 import android.content.ClipboardManager
-import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
@@ -101,6 +99,7 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.MiuixPopupUtils.Companion.MiuixPopupHost
 import com.example.islandlyrics.core.settings.AppPreferences
 import com.example.islandlyrics.feature.main.HomeLyricPreviewDisplay
+import com.example.islandlyrics.feature.main.rememberWhitelistedMediaSessions
 import com.example.islandlyrics.core.update.UpdateChecker
 import com.example.islandlyrics.feature.update.miuix.MiuixUpdateDialog
 import kotlinx.coroutines.delay
@@ -164,8 +163,6 @@ fun MiuixMainScreen(
             if (index >= 0 && index + 1 < lines.size) lines[index + 1] else null
         }
     }
-
-    var activeControllers by remember { mutableStateOf<List<MediaController>>(emptyList()) }
 
     DisposableEffect(prefs) {
         val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
@@ -239,30 +236,7 @@ fun MiuixMainScreen(
         }
     }
 
-    DisposableEffect(Unit) {
-        val mediaSessionManager = context.getSystemService(Context.MEDIA_SESSION_SERVICE) as MediaSessionManager
-        val componentName = ComponentName(context, MediaMonitorService::class.java)
-        val listener = MediaSessionManager.OnActiveSessionsChangedListener { controllers ->
-            activeControllers = controllers ?: emptyList()
-        }
-        try {
-            activeControllers = mediaSessionManager.getActiveSessions(componentName)
-            mediaSessionManager.addOnActiveSessionsChangedListener(listener, componentName)
-        } catch (_: Exception) {}
-        onDispose {
-            try { mediaSessionManager.removeOnActiveSessionsChangedListener(listener) } catch (_: Exception) {}
-        }
-    }
-
-    val whitelistedSessions = remember(activeControllers) {
-        val enabledPackages = ParserRuleHelper.getEnabledPackages(context)
-        activeControllers
-            .filter { enabledPackages.contains(it.packageName) }
-            .sortedByDescending {
-                val state = it.playbackState?.state
-                state == PlaybackState.STATE_PLAYING || state == PlaybackState.STATE_BUFFERING
-            }
-    }
+    val whitelistedSessions = rememberWhitelistedMediaSessions()
 
     var listenerEnabled by remember {
         mutableStateOf(
