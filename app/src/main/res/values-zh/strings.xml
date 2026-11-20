@@ -951,6 +951,7 @@
     <string name="diag_lab_super_island_text_limits_desc">开启后，“胶囊与通知”页会显示左右两侧字数上限调节。</string>
     <string name="diag_lab_super_island_relaxed_text_limits_title">超级岛字数上限放宽</string>
     <string name="diag_lab_super_island_relaxed_text_limits_desc">开启后，超级岛字数上限调节可使用更大的范围。适合无中置遮挡设备自行测试。</string>
+    <string name="diag_lab_super_island_smart_settings_title">调整智能取色算法</string>
     <string name="diag_lab_super_island_smart_contrast_title">智能取色目标对比度</string>
     <string name="diag_lab_super_island_smart_contrast_desc">调高会让深色封面提亮得更明显，4.5 是普通文本的推荐值。</string>
     <string name="diag_lab_super_island_smart_white_title">智能取色最低混白比例</string>

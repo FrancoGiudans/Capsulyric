@@ -549,7 +549,7 @@ internal fun MiuixSettingsScreen(
             updateReleaseInfo != null ||
             settingsSearchExpanded
 
-    fun handleSearchAction(action: SettingsSearchAction) {
+    fun handleSettingsAction(action: SettingsSearchAction) {
         when (action) {
             SettingsSearchAction.RequestPostNotificationPermission -> requestPostNotificationPermission()
             is SettingsSearchAction.Navigate -> {
@@ -802,7 +802,7 @@ internal fun MiuixSettingsScreen(
                                             SettingsSearchHistoryStore.addHistory(context, settingsSearchQuery.trim())
                                             searchHistory = SettingsSearchHistoryStore.getHistory(context)
                                             settingsSearchExpanded = false
-                                            handleSearchAction(item.action)
+                                            handleSettingsAction(item.action)
                                         }
                                     )
                                 }
@@ -1004,7 +1004,7 @@ internal fun MiuixSettingsScreen(
                             title = stringResource(R.string.apple_music_settings_title),
                             summary = stringResource(R.string.apple_music_settings_summary),
                             onClick = {
-                                context.startActivity(Intent(context, com.example.islandlyrics.feature.applemusic.AppleMusicSettingsActivity::class.java))
+                                handleSettingsAction(SettingsSearchAction.Navigate(SettingsNavigationTarget.APPLE_MUSIC))
                             }
                         )
                     }

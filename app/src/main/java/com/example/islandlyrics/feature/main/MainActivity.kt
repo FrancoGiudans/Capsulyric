@@ -32,6 +32,8 @@ import com.example.islandlyrics.core.network.OfflineModeManager
 import com.example.islandlyrics.core.settings.AppPreferences
 import com.example.islandlyrics.core.settings.MiuixNavigationBarStyle
 import com.example.islandlyrics.runtime.service.MediaMonitorService
+import com.example.islandlyrics.feature.applemusic.material.AppleMusicSettingsScreen
+import com.example.islandlyrics.feature.applemusic.miuix.MiuixAppleMusicSettingsScreen
 import com.example.islandlyrics.feature.cache.material.CacheManagementScreen
 import com.example.islandlyrics.feature.cache.miuix.MiuixCacheManagementScreen
 import com.example.islandlyrics.feature.customsettings.material.CustomSettingsScreen
@@ -532,13 +534,13 @@ class MainActivity : BaseActivity() {
                 SettingsNavigationTarget.CACHE_MANAGEMENT -> pushPage(AppPage.CacheManagement)
                 SettingsNavigationTarget.ONLINE_LYRIC_REMATCH -> pushPage(AppPage.OnlineLyricDebug)
                 SettingsNavigationTarget.LAST_FM -> pushPage(AppPage.LastFm)
-                SettingsNavigationTarget.APPLE_MUSIC -> startActivity(Intent(this@MainActivity, com.example.islandlyrics.feature.applemusic.AppleMusicSettingsActivity::class.java))
+                SettingsNavigationTarget.APPLE_MUSIC -> pushPage(AppPage.AppleMusic)
                 SettingsNavigationTarget.FAQ -> pushPage(AppPage.Faq)
                 SettingsNavigationTarget.COMMUNITY -> pushPage(AppPage.Community)
                 SettingsNavigationTarget.ABOUT -> pushPage(AppPage.About)
                 SettingsNavigationTarget.DIAGNOSTICS -> pushPage(AppPage.Diagnostics)
                 SettingsNavigationTarget.LAB -> pushPage(AppPage.Lab)
-                SettingsNavigationTarget.PARSER_RULES -> startActivity(Intent(this@MainActivity, com.example.islandlyrics.feature.parserrule.ParserRuleActivity::class.java))
+                SettingsNavigationTarget.PARSER_RULES -> pushPage(AppPage.ParserRules)
             }
         }
         val snackbarHostState = remember { MiuixSnackbarHostState() }
@@ -947,6 +949,8 @@ class MainActivity : BaseActivity() {
             )
             AppPage.OnlineLyricDebug -> OnlineLyricDebugScreen(onBack = onBack)
             AppPage.LastFm -> LastFmSettingsScreen(onBack = onBack)
+            AppPage.AppleMusic -> AppleMusicSettingsScreen(onBack = onBack)
+            AppPage.ParserRules -> ParserRuleScreen(onBack = onBack)
             AppPage.CacheManagement -> CacheManagementScreen(onBack = onBack)
             AppPage.Lab -> LabScreen(onBack = onBack, onOpenCapsuleNotification = { onPushPage(AppPage.CapsuleNotification()) })
             AppPage.LogViewer -> LogViewerScreen(onBack = onBack)
@@ -1057,6 +1061,11 @@ class MainActivity : BaseActivity() {
             )
             AppPage.OnlineLyricDebug -> MiuixOnlineLyricDebugScreen(onBack = onBack)
             AppPage.LastFm -> MiuixLastFmSettingsScreen(onBack = onBack)
+            AppPage.AppleMusic -> MiuixAppleMusicSettingsScreen(onBack = onBack)
+            AppPage.ParserRules -> MiuixParserRuleScreen(
+                onBack = onBack,
+                onOpenFaq = { onPushPage(AppPage.Faq) },
+            )
             AppPage.CacheManagement -> MiuixCacheManagementScreen(onBack = onBack)
             AppPage.Lab -> MiuixLabScreen(onBack = onBack, onOpenCapsuleNotification = { onPushPage(AppPage.CapsuleNotification()) })
             AppPage.LogViewer -> MiuixLogViewerScreen(onBack = onBack)
@@ -1125,6 +1134,8 @@ private sealed class AppPage {
     data object Diagnostics : AppPage()
     data object OnlineLyricDebug : AppPage()
     data object LastFm : AppPage()
+    data object AppleMusic : AppPage()
+    data object ParserRules : AppPage()
     data object CacheManagement : AppPage()
     data object Lab : AppPage()
     data object LogViewer : AppPage()

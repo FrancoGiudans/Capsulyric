@@ -40,7 +40,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import java.util.Locale
 import kotlin.math.roundToInt
 import com.example.islandlyrics.R
 import com.example.islandlyrics.core.network.OfflineModeManager
@@ -51,6 +51,7 @@ import com.example.islandlyrics.ui.overlay.superisland.config.SuperIslandColorSo
 import com.example.islandlyrics.feature.customsettings.CustomSettingsActivity
 import com.example.islandlyrics.ui.miuix.navigation.MiuixBackHandler
 import com.example.islandlyrics.ui.miuix.navigation.MiuixBackIcon
+import com.example.islandlyrics.ui.miuix.blur.MiuixBlurBottomSheet
 import com.example.islandlyrics.ui.miuix.blur.MiuixBlurDialog
 import com.example.islandlyrics.ui.miuix.blur.MiuixBlurScaffold
 import com.example.islandlyrics.ui.miuix.blur.MiuixBlurTopAppBar
@@ -62,12 +63,12 @@ import top.yukonga.miuix.kmp.basic.ButtonDefaults
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.LinearProgressIndicator
-import top.yukonga.miuix.kmp.basic.Slider
 import top.yukonga.miuix.kmp.basic.SliderDefaults
 import top.yukonga.miuix.kmp.basic.SmallTitle
 import top.yukonga.miuix.kmp.basic.TextButton
 import top.yukonga.miuix.kmp.basic.rememberTopAppBarState
 import top.yukonga.miuix.kmp.preference.ArrowPreference as SuperArrow
+import top.yukonga.miuix.kmp.preference.SliderPreference
 import top.yukonga.miuix.kmp.preference.SwitchPreference as SuperSwitch
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.MiuixPopupUtils.Companion.MiuixPopupHost
@@ -80,6 +81,7 @@ internal fun MiuixLabScreen(
     onOpenCapsuleNotification: (() -> Unit)? = null
 ) {
     val context = LocalContext.current
+    val prefs = remember(context) { AppPreferences.of(context) }
     val scrollBehavior = MiuixScrollBehavior(rememberTopAppBarState())
     val listState = rememberLazyListState()
     var activeTargetKey by remember(targetItemKey) { mutableStateOf(targetItemKey) }
@@ -120,10 +122,10 @@ internal fun MiuixLabScreen(
         mutableStateOf(LabFeatureManager.isSuperIslandRelaxedTextLimitsEnabled(context))
     }
     var superIslandSmartMinContrast by remember {
-        mutableStateOf(SuperIslandColorSource.readSmartMinContrast(AppPreferences.of(context)))
+        mutableStateOf(SuperIslandColorSource.readSmartMinContrast(prefs))
     }
     var superIslandSmartWhiteRatio by remember {
-        mutableStateOf(SuperIslandColorSource.readSmartWhiteRatio(AppPreferences.of(context)))
+        mutableStateOf(SuperIslandColorSource.readSmartWhiteRatio(prefs))
     }
     var liveUpdateTextLimitsEnabled by remember {
         mutableStateOf(LabFeatureManager.isLiveUpdateTextLimitsEnabled(context))
@@ -143,6 +145,7 @@ internal fun MiuixLabScreen(
     val showOfflineModeDialog = remember { mutableStateOf(false) }
     val showAdvancedStyleDialog = remember { mutableStateOf(false) }
     val showLiveUpdateTextLimitsDialog = remember { mutableStateOf(false) }
+    var showSmartColorSettings by remember { mutableStateOf(false) }
 
     MiuixBackHandler(
         enabled = showOfflineModeDialog.value || showAdvancedStyleDialog.value || showLiveUpdateTextLimitsDialog.value
@@ -265,74 +268,10 @@ internal fun MiuixLabScreen(
                             }
                         )
 
-                        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp)) {
-                            Text(
-                                text = stringResource(R.string.diag_lab_super_island_smart_contrast_title) +
-                                    ": " + String.format(java.util.Locale.US, "%.1f", superIslandSmartMinContrast),
-                                color = MiuixTheme.colorScheme.onSurface,
-                                fontSize = 15.sp
-                            )
-                            Text(
-                                text = stringResource(R.string.diag_lab_super_island_smart_contrast_desc),
-                                color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-                                fontSize = 13.sp
-                            )
-                            Spacer(modifier = Modifier.height(10.dp))
-                            Slider(
-                                value = superIslandSmartMinContrast,
-                                onValueChange = { raw ->
-                                    val stepped = ((raw * 10f).roundToInt() / 10f)
-                                        .coerceIn(
-                                            SuperIslandColorSource.SMART_CONTRAST_MIN,
-                                            SuperIslandColorSource.SMART_CONTRAST_MAX
-                                        )
-                                    superIslandSmartMinContrast = stepped
-                                    SuperIslandColorSource.writeSmartMinContrast(
-                                        AppPreferences.of(context),
-                                        stepped
-                                    )
-                                },
-                                valueRange = SuperIslandColorSource.SMART_CONTRAST_MIN..SuperIslandColorSource.SMART_CONTRAST_MAX,
-                                steps = ((SuperIslandColorSource.SMART_CONTRAST_MAX - SuperIslandColorSource.SMART_CONTRAST_MIN) / 0.1f).toInt() - 1,
-                                hapticEffect = SliderDefaults.SliderHapticEffect.Step,
-                                showKeyPoints = true
-                            )
-                        }
-
-                        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp)) {
-                            Text(
-                                text = stringResource(R.string.diag_lab_super_island_smart_white_title) +
-                                    ": ${(superIslandSmartWhiteRatio * 100).roundToInt()}%",
-                                color = MiuixTheme.colorScheme.onSurface,
-                                fontSize = 15.sp
-                            )
-                            Text(
-                                text = stringResource(R.string.diag_lab_super_island_smart_white_desc),
-                                color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-                                fontSize = 13.sp
-                            )
-                            Spacer(modifier = Modifier.height(10.dp))
-                            Slider(
-                                value = superIslandSmartWhiteRatio,
-                                onValueChange = { raw ->
-                                    val stepped = ((raw * 20f).roundToInt() / 20f)
-                                        .coerceIn(
-                                            SuperIslandColorSource.SMART_WHITE_RATIO_MIN,
-                                            SuperIslandColorSource.SMART_WHITE_RATIO_MAX
-                                        )
-                                    superIslandSmartWhiteRatio = stepped
-                                    SuperIslandColorSource.writeSmartWhiteRatio(
-                                        AppPreferences.of(context),
-                                        stepped
-                                    )
-                                },
-                                valueRange = SuperIslandColorSource.SMART_WHITE_RATIO_MIN..SuperIslandColorSource.SMART_WHITE_RATIO_MAX,
-                                steps = ((SuperIslandColorSource.SMART_WHITE_RATIO_MAX - SuperIslandColorSource.SMART_WHITE_RATIO_MIN) / 0.05f).toInt() - 1,
-                                hapticEffect = SliderDefaults.SliderHapticEffect.Step,
-                                showKeyPoints = true
-                            )
-                        }
-
+                        SuperArrow(
+                            title = stringResource(R.string.diag_lab_super_island_smart_settings_title),
+                            onClick = { showSmartColorSettings = true }
+                        )
                     }
 
                     SuperSwitch(
@@ -398,6 +337,48 @@ internal fun MiuixLabScreen(
 
                 }
             }
+        }
+
+        MiuixBlurBottomSheet(
+            show = showSmartColorSettings,
+            title = stringResource(R.string.diag_lab_super_island_smart_settings_title),
+            onDismissRequest = { showSmartColorSettings = false }
+        ) {
+            val contrastRange =
+                SuperIslandColorSource.SMART_CONTRAST_MIN..SuperIslandColorSource.SMART_CONTRAST_MAX
+            val whiteRatioRange =
+                SuperIslandColorSource.SMART_WHITE_RATIO_MIN..SuperIslandColorSource.SMART_WHITE_RATIO_MAX
+
+            SliderPreference(
+                title = stringResource(R.string.diag_lab_super_island_smart_contrast_title),
+                summary = stringResource(R.string.diag_lab_super_island_smart_contrast_desc),
+                value = superIslandSmartMinContrast,
+                valueText = String.format(Locale.US, "%.1f", superIslandSmartMinContrast),
+                onValueChange = { value ->
+                    val stepped = (value * 10).roundToInt() / 10f
+                    superIslandSmartMinContrast = stepped
+                    SuperIslandColorSource.writeSmartMinContrast(prefs, stepped)
+                },
+                valueRange = contrastRange,
+                steps = ((contrastRange.endInclusive - contrastRange.start) * 10).roundToInt() - 1,
+                hapticEffect = SliderDefaults.SliderHapticEffect.Step,
+                showKeyPoints = false
+            )
+            SliderPreference(
+                title = stringResource(R.string.diag_lab_super_island_smart_white_title),
+                summary = stringResource(R.string.diag_lab_super_island_smart_white_desc),
+                value = superIslandSmartWhiteRatio,
+                valueText = "${(superIslandSmartWhiteRatio * 100).roundToInt()}%",
+                onValueChange = { value ->
+                    val stepped = (value * 20).roundToInt() / 20f
+                    superIslandSmartWhiteRatio = stepped
+                    SuperIslandColorSource.writeSmartWhiteRatio(prefs, stepped)
+                },
+                valueRange = whiteRatioRange,
+                steps = ((whiteRatioRange.endInclusive - whiteRatioRange.start) * 20).roundToInt() - 1,
+                hapticEffect = SliderDefaults.SliderHapticEffect.Step,
+                showKeyPoints = true
+            )
         }
 
         MiuixBlurDialog(

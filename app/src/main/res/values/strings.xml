@@ -941,6 +941,7 @@ Within the log interface, select the share/export icon. You can specify a timefr
     <string name="diag_lab_super_island_text_limits_desc">Show controls for tuning the left and right Super Island text limits in Capsule &amp; Notification.</string>
     <string name="diag_lab_super_island_relaxed_text_limits_title">Relax Super Island Text Limits</string>
     <string name="diag_lab_super_island_relaxed_text_limits_desc">Allow larger ranges in Super Island text limit controls. Intended for testing on devices without a centered cutout.</string>
+    <string name="diag_lab_super_island_smart_settings_title">Tune Smart Color Algorithm</string>
     <string name="diag_lab_super_island_smart_contrast_title">Smart Color Contrast Target</string>
     <string name="diag_lab_super_island_smart_contrast_desc">Higher values brighten dark album colors more; 4.5 is recommended for regular text.</string>
     <string name="diag_lab_super_island_smart_white_title">Smart Color Minimum White Mix</string>
