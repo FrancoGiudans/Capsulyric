@@ -47,6 +47,7 @@ import com.example.islandlyrics.ui.overlay.floating.FloatingLyricsRenderer
 import com.example.islandlyrics.ui.overlay.floating.FloatingLyricsRecovery
 import com.example.islandlyrics.ui.overlay.floating.FloatingLyricsSettingsPreview
 import com.example.islandlyrics.ui.overlay.floating.FloatingLyricsStyle
+import com.example.islandlyrics.ui.overlay.floating.FloatingLyricsTextWeight
 import com.example.islandlyrics.ui.overlay.floating.rememberFloatingLyricsPermissionAction
 import com.example.islandlyrics.ui.overlay.floating.FloatingLyricsVisibility
 import com.example.islandlyrics.ui.overlay.model.SecondaryTextMode
@@ -106,6 +107,7 @@ fun MiuixFloatingLyricsSettingsSubScreen(prefs: SharedPreferences, scope: Corout
     var wordHighlight by remember { mutableStateOf(prefs.getBoolean(FloatingLyricsRenderer.PREF_WORD_HIGHLIGHT, true)) }
     
     var textSizeSp by remember { mutableFloatStateOf(prefs.getFloat(FloatingLyricsRenderer.PREF_TEXT_SIZE, 15f)) }
+    var textWeight by remember(prefs) { mutableStateOf(FloatingLyricsTextWeight.read(prefs)) }
     var customTextColor by remember { 
         mutableStateOf(Color(prefs.getInt(FloatingLyricsRenderer.PREF_TEXT_COLOR, android.graphics.Color.WHITE)))
     }
@@ -120,6 +122,7 @@ fun MiuixFloatingLyricsSettingsSubScreen(prefs: SharedPreferences, scope: Corout
                     recovery = FloatingLyricsVisibility.readRecovery(updated)
                 FloatingLyricsVisibility.KEEP_ON_PAUSE -> keepOnPause = updated.getBoolean(key, false)
                 FloatingLyricsRenderer.PREF_SHOW_ALBUM_ART -> showAlbumArt = updated.getBoolean(key, true)
+                FloatingLyricsRenderer.PREF_TEXT_WEIGHT -> textWeight = FloatingLyricsTextWeight.read(updated)
                 FloatingLyricsRenderer.PREF_SHOW_NEIGHBOR_LINE,
                 FloatingLyricsRenderer.PREF_SECONDARY_TEXT_MODES,
                 FloatingLyricsRenderer.PREF_NEIGHBOR_ALIGNMENT,
@@ -139,6 +142,7 @@ fun MiuixFloatingLyricsSettingsSubScreen(prefs: SharedPreferences, scope: Corout
     FloatingLyricsSettingsPreview(
         style = FloatingLyricsStyle(
             textSizeSp = textSizeSp,
+            textWeight = textWeight,
             baseTextColor = customTextColor.toArgb(),
             followAlbumColor = followAlbumColor,
             showAlbumArt = showAlbumArt,
@@ -298,6 +302,15 @@ fun MiuixFloatingLyricsSettingsSubScreen(prefs: SharedPreferences, scope: Corout
                 }
             )
         }
+
+        SuperDropdown(
+            title = stringResource(R.string.settings_floating_text_weight),
+            items = FloatingLyricsTextWeight.entries.map { stringResource(it.label) },
+            selectedIndex = textWeight.ordinal,
+            onSelectedIndexChange = { index ->
+                prefs.edit { putInt(FloatingLyricsRenderer.PREF_TEXT_WEIGHT, FloatingLyricsTextWeight.entries[index].weight) }
+            }
+        )
 
         Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
             Text(

@@ -782,6 +782,13 @@ object SettingsSearchRegistry {
             keywords = listOf("字号", "字体大小", "桌面歌词大小", "歌词大小"),
             action = SettingsSearchAction.Navigate(SettingsNavigationTarget.DESKTOP_LYRICS)
         ),
+        SettingsSearchItem(
+            id = "pref_desktop_lyrics_text_weight",
+            titleRes = R.string.settings_floating_text_weight,
+            breadcrumbResList = listOf(R.string.settings_core_header, R.string.settings_floating_lyrics),
+            keywords = listOf("字重", "字体粗细", "加粗", "font weight", "bold"),
+            action = SettingsSearchAction.Navigate(SettingsNavigationTarget.DESKTOP_LYRICS)
+        ),
 
         // ═════════════════════════════════════════════════════════════════════
         // 播放器解析规则 (Player Parser Rules)

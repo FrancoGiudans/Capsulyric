@@ -65,6 +65,7 @@ import com.example.islandlyrics.ui.overlay.floating.FloatingLyricsRenderer
 import com.example.islandlyrics.ui.overlay.floating.FloatingLyricsRecovery
 import com.example.islandlyrics.ui.overlay.floating.FloatingLyricsSettingsPreview
 import com.example.islandlyrics.ui.overlay.floating.FloatingLyricsStyle
+import com.example.islandlyrics.ui.overlay.floating.FloatingLyricsTextWeight
 import com.example.islandlyrics.ui.overlay.floating.rememberFloatingLyricsPermissionAction
 import com.example.islandlyrics.ui.overlay.floating.FloatingLyricsVisibility
 import com.example.islandlyrics.ui.overlay.model.SecondaryTextMode
@@ -110,6 +111,7 @@ fun FloatingLyricsSettingsSubScreen(prefs: SharedPreferences) {
     val showNeighborAlignmentDialog = remember { mutableStateOf(false) }
     var wordHighlight by remember { mutableStateOf(prefs.getBoolean(FloatingLyricsRenderer.PREF_WORD_HIGHLIGHT, true)) }
     var textSizeSp by remember { mutableFloatStateOf(prefs.getFloat(FloatingLyricsRenderer.PREF_TEXT_SIZE, 15f)) }
+    var textWeight by remember(prefs) { mutableStateOf(FloatingLyricsTextWeight.read(prefs)) }
 
     var customTextColor by remember { 
         mutableStateOf(Color(prefs.getInt(FloatingLyricsRenderer.PREF_TEXT_COLOR, android.graphics.Color.WHITE)))
@@ -126,6 +128,7 @@ fun FloatingLyricsSettingsSubScreen(prefs: SharedPreferences) {
                     recovery = FloatingLyricsVisibility.readRecovery(updated)
                 FloatingLyricsVisibility.KEEP_ON_PAUSE -> keepOnPause = updated.getBoolean(key, false)
                 FloatingLyricsRenderer.PREF_SHOW_ALBUM_ART -> showAlbumArt = updated.getBoolean(key, true)
+                FloatingLyricsRenderer.PREF_TEXT_WEIGHT -> textWeight = FloatingLyricsTextWeight.read(updated)
                 FloatingLyricsRenderer.PREF_SHOW_NEIGHBOR_LINE,
                 FloatingLyricsRenderer.PREF_SECONDARY_TEXT_MODES,
                 FloatingLyricsRenderer.PREF_NEIGHBOR_ALIGNMENT,
@@ -148,6 +151,7 @@ fun FloatingLyricsSettingsSubScreen(prefs: SharedPreferences) {
     FloatingLyricsSettingsPreview(
         style = FloatingLyricsStyle(
             textSizeSp = textSizeSp,
+            textWeight = textWeight,
             baseTextColor = customTextColor.toArgb(),
             followAlbumColor = followAlbumColor,
             showAlbumArt = showAlbumArt,
@@ -331,6 +335,29 @@ fun FloatingLyricsSettingsSubScreen(prefs: SharedPreferences) {
                 )
         }
 
+        SettingsCardDivider()
+        var weightMenuExpanded by remember { mutableStateOf(false) }
+        Box {
+            SettingsTextItem(
+                title = stringResource(R.string.settings_floating_text_weight),
+                value = stringResource(textWeight.label),
+                onClick = { weightMenuExpanded = true }
+            )
+            MaterialBlurDropdownMenu(
+                expanded = weightMenuExpanded,
+                onDismissRequest = { weightMenuExpanded = false }
+            ) {
+                FloatingLyricsTextWeight.entries.forEach { option ->
+                    DropdownMenuItem(
+                        text = { Text(stringResource(option.label)) },
+                        onClick = {
+                            prefs.edit { putInt(FloatingLyricsRenderer.PREF_TEXT_WEIGHT, option.weight) }
+                            weightMenuExpanded = false
+                        }
+                    )
+                }
+            }
+        }
         SettingsCardDivider()
         Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
                 Text(

@@ -25,6 +25,7 @@ package com.example.islandlyrics.ui.overlay.views
 import android.content.Context
 import android.content.res.Configuration
 import android.graphics.Paint
+import android.graphics.Typeface
 import android.text.TextUtils
 import android.view.Gravity
 import android.widget.FrameLayout
@@ -42,7 +43,9 @@ internal class OutlineTextView(context: Context) : FrameLayout(context) {
         visibility = GONE
     }
     private val fill = label()
+    private val fontFamily = fill.typeface ?: Typeface.DEFAULT
     private var outlineText: String = ""
+    private var textWeight = 0
     val singleLineHeight: Int
         get() = fill.lineHeight + fill.paddingTop + fill.paddingBottom
 
@@ -52,7 +55,13 @@ internal class OutlineTextView(context: Context) : FrameLayout(context) {
         updateOutlineColor(resources.configuration)
     }
 
-    fun setStyle(color: Int, sizeSp: Float, alignment: Int, stroke: Boolean, maxLines: Int) {
+    fun setStyle(color: Int, sizeSp: Float, weight: Int, alignment: Int, stroke: Boolean, maxLines: Int) {
+        if (textWeight != weight) {
+            val typeface = Typeface.create(fontFamily, weight, false)
+            outline.typeface = typeface
+            fill.typeface = typeface
+            textWeight = weight
+        }
         for (label in listOf(outline, fill)) {
             label.gravity = alignment
             label.textSize = sizeSp

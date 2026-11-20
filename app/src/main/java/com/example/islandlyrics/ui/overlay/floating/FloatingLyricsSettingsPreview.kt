@@ -6,6 +6,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -17,6 +18,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
@@ -30,6 +32,7 @@ import com.example.islandlyrics.ui.overlay.config.OverlayRenderDefaults
 import com.example.islandlyrics.ui.overlay.display.AlbumArtColorExtractor
 import com.example.islandlyrics.ui.overlay.model.UIState
 import kotlinx.coroutines.delay
+import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 @Composable
 internal fun FloatingLyricsSettingsPreview(
@@ -52,11 +55,16 @@ internal fun FloatingLyricsSettingsPreview(
     ) {
         if (useMiuix) {
             val lyrics = remember(context, expanded) { FloatingLyricsContentView(context) }
+            val colors = MiuixTheme.colorScheme
+            val background = if (expanded || style.enableTextBackground) colors.surfaceContainer else colors.background
+            val textColor = remember(style, frame.albumColor, background) {
+                style.textColor(frame.albumColor, background.toArgb())
+            }
             val line: @Composable (Modifier) -> Unit = { modifier ->
                 AndroidView(
                     modifier = modifier,
                     factory = { lyrics },
-                    update = { it.render(frame, style, display, style.textColor(frame.albumColor), frame.fullLyric) }
+                    update = { it.render(frame, style, display, textColor, frame.fullLyric) }
                 )
             }
             if (expanded) {
@@ -78,10 +86,14 @@ internal fun FloatingLyricsSettingsPreview(
         } else {
             key(expanded) {
                 val renderer = remember(context) { FloatingLyricsRenderer(context) }
+                val themeBackground = MaterialTheme.colorScheme.background.toArgb()
+                val textColor = remember(renderer, style, frame.albumColor, themeBackground) {
+                    renderer.materialPreviewTextColor(frame.albumColor, style, expanded, themeBackground)
+                }
                 AndroidView(
                     modifier = Modifier.fillMaxWidth(),
                     factory = { renderer.createMaterialPreview(expanded) },
-                    update = { renderer.bindMaterialPreview(frame, style, display) }
+                    update = { renderer.bindMaterialPreview(frame, style, display, textColor) }
                 )
             }
         }

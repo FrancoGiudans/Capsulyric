@@ -25,6 +25,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -34,6 +35,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.layout.ContentScale
@@ -124,7 +126,8 @@ internal class FloatingLyricsMiuixPanel(
     private val actions: FloatingLyricsActionController,
     private val expand: () -> Unit,
     private val collapse: () -> Unit,
-    private val openSettings: (View) -> Unit
+    private val openSettings: (View) -> Unit,
+    private val onBackgroundColorsChanged: (Int, Int) -> Unit
 ) {
     private val host = FloatingLyricsComposeHost(context)
     val view get() = host.view
@@ -145,6 +148,10 @@ internal class FloatingLyricsMiuixPanel(
         minimalLyrics.setOnClickListener { expand() }
         expandedLyrics.setOnClickListener { collapse() }
         host.setContent {
+            val colors = MiuixTheme.colorScheme
+            SideEffect {
+                onBackgroundColorsChanged(colors.background.toArgb(), colors.surfaceContainer.toArgb())
+            }
             if (expanded) {
                 FloatingLyricsMiuixExpandedPanel(
                     title = title,
@@ -416,6 +423,20 @@ internal fun FloatingLyricsMiuixQuickSettings(
                 endActions = {
                     IconButton(onClick = { styleStore.adjustTextSize(-2f) }, enabled = style.textSizeSp > 10f) { Text("−") }
                     IconButton(onClick = { styleStore.adjustTextSize(2f) }, enabled = style.textSizeSp < 32f) { Text("+") }
+                }
+            )
+            BasicComponent(
+                title = stringResource(R.string.settings_floating_text_weight),
+                summary = stringResource(style.textWeight.label),
+                endActions = {
+                    IconButton(
+                        onClick = { styleStore.adjustTextWeight(-1) },
+                        enabled = style.textWeight != FloatingLyricsTextWeight.REGULAR
+                    ) { Text("−") }
+                    IconButton(
+                        onClick = { styleStore.adjustTextWeight(1) },
+                        enabled = style.textWeight != FloatingLyricsTextWeight.BOLD
+                    ) { Text("+") }
                 }
             )
             ArrowPreference(title = stringResource(R.string.settings_floating_position_reset), onClick = resetPosition)

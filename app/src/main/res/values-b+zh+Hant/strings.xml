@@ -1300,9 +1300,14 @@
     <string name="settings_floating_word_highlight">逐字卡拉OK高亮</string>
     <string name="settings_floating_word_highlight_desc">依音節精確高亮當前唱到的字詞</string>
     <string name="settings_floating_follow_album_color">歌詞文字跟隨封面色彩</string>
-    <string name="settings_floating_follow_album_color_desc">從目前播放歌曲的專輯封面中提取文字色彩</string>
+    <string name="settings_floating_follow_album_color_desc">從專輯封面取色，依背景調整文字對比度</string>
     <string name="settings_floating_text_color">歌詞文字色彩</string>
     <string name="settings_floating_text_size">歌詞文字大小</string>
+    <string name="settings_floating_text_weight">字重</string>
+    <string name="settings_floating_weight_regular">一般</string>
+    <string name="settings_floating_weight_medium">中等</string>
+    <string name="settings_floating_weight_semibold">半粗</string>
+    <string name="settings_floating_weight_bold">粗體</string>
     <string name="floating_settings_expand">展開桌面歌詞視窗</string>
     <string name="floating_window_open_player">開啟目前的播放器</string>
     <string name="floating_window_player_unavailable">無法開啟目前的播放器。</string>

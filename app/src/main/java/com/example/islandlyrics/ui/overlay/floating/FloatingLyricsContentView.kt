@@ -90,7 +90,7 @@ internal class FloatingLyricsContentView(context: Context) : LinearLayout(contex
             alternating -> Gravity.START
             else -> Gravity.CENTER
         }
-        activeLyric.setStyle(textColor, style.textSizeSp, activeGravity, style.enableTextStroke, maxLines)
+        activeLyric.setStyle(textColor, style.textSizeSp, style.textWeight.weight, activeGravity, style.enableTextStroke, maxLines)
         activeLyric.minimumHeight = 0
         activeLyric.visibility = if (upcomingFirstLine && alternating) INVISIBLE else VISIBLE
         mainText = currentLine?.text ?: fallbackText.ifBlank { "♪" }
@@ -106,7 +106,10 @@ internal class FloatingLyricsContentView(context: Context) : LinearLayout(contex
                 alternating -> Gravity.END
                 else -> Gravity.CENTER
             }
-            inactiveLyric.setStyle(withAlpha(textColor, 0.74f), inactiveSize, inactiveGravity, style.enableTextStroke, maxLines)
+            inactiveLyric.setStyle(
+                withAlpha(textColor, 0.74f), inactiveSize, style.textWeight.weight,
+                inactiveGravity, style.enableTextStroke, maxLines
+            )
             inactiveLyric.minimumHeight = if (alternating) activeLyric.singleLineHeight else 0
             inactiveLyric.setLine(secondary?.text.orEmpty())
         }

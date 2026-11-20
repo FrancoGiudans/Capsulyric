@@ -25,6 +25,7 @@ import com.example.islandlyrics.ui.overlay.model.UIState
 import android.app.Dialog
 import android.content.Context
 import android.content.SharedPreferences
+import android.content.res.Configuration
 import android.graphics.Color
 import android.graphics.PixelFormat
 import android.graphics.Point
@@ -50,6 +51,7 @@ import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 import androidx.core.content.edit
+import androidx.core.graphics.ColorUtils
 import androidx.core.view.isNotEmpty
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -57,6 +59,7 @@ import androidx.compose.runtime.setValue
 import com.example.islandlyrics.R
 import com.example.islandlyrics.core.settings.AppPreferences
 import com.example.islandlyrics.core.settings.LabFeatureManager
+import com.example.islandlyrics.core.theme.ThemeHelper
 import com.example.islandlyrics.ui.miuix.theme.isMiuixEnabled
 import com.example.islandlyrics.lyrics.state.LyricRepository
 import com.example.islandlyrics.ui.overlay.model.LyricPresentation
@@ -84,6 +87,7 @@ class FloatingLyricsRenderer(
     companion object {
         private const val TAG = "FloatingLyricsRenderer"
         const val PREF_TEXT_SIZE       = FloatingLyricsStyleStore.KEY_TEXT_SIZE
+        const val PREF_TEXT_WEIGHT     = AppPreferences.Keys.FLOATING_TEXT_WEIGHT
         const val PREF_TEXT_COLOR      = FloatingLyricsStyleStore.KEY_TEXT_COLOR
         const val PREF_FOLLOW_ALBUM_COLOR = FloatingLyricsStyleStore.KEY_FOLLOW_ALBUM_COLOR
         const val PREF_SHOW_ALBUM_ART  = FloatingLyricsStyleStore.KEY_SHOW_ALBUM_ART
@@ -101,7 +105,7 @@ class FloatingLyricsRenderer(
         private const val EXPANDED_TIMEOUT_MS = 4_000L
         private val POPUP_TEXT_COLORS = intArrayOf(
             Color.WHITE,
-            0xFFFFFFCC.toInt(),
+            Color.BLACK,
             0xFFCCFFFF.toInt(),
             0xFFCCFFCC.toInt(),
             0xFFFFCC99.toInt(),
@@ -133,6 +137,8 @@ class FloatingLyricsRenderer(
     private var settingsComposeHost: FloatingLyricsComposeHost? = null
     private var settingsBlur by mutableStateOf(false)
     private var miuixPanel: FloatingLyricsMiuixPanel? = null
+    private var miuixThemeBackground: Int? = null
+    private var miuixSurfaceColor: Int? = null
     private var settingsPopupScrollView: ScrollView? = null
     private var settingsPopupDismissedAtMs: Long = 0L
     private var settingsPopupRefreshQueued = false
@@ -178,6 +184,7 @@ class FloatingLyricsRenderer(
             if (!isRunning) return@post
             crossWindowBlurEnabled = enabled
             updateWindowBlur()
+            requestLineUpdate()
         }
     }
 
@@ -220,19 +227,18 @@ class FloatingLyricsRenderer(
         val title: String,
         val artist: String,
         val isPlaying: Boolean,
-        val textSizeSp: Float,
-        val textColor: Int,
-        val showAlbumArt: Boolean,
+        val style: FloatingLyricsStyle,
+        val albumColor: Int,
+        val compactBackground: Int,
+        val expandedBackground: Int,
         val albumArtHash: Int,
-        val enableTextStroke: Boolean,
-        val enableTextBackground: Boolean,
         val displayConfig: FloatingLyricsDisplayConfig,
         val presentation: LyricPresentation
     )
 
     private val prefChangeListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
         when (key) {
-            PREF_TEXT_SIZE, PREF_TEXT_COLOR, PREF_FOLLOW_ALBUM_COLOR, 
+            PREF_TEXT_SIZE, PREF_TEXT_WEIGHT, PREF_TEXT_COLOR, PREF_FOLLOW_ALBUM_COLOR,
             PREF_SHOW_ALBUM_ART, PREF_TEXT_STROKE, PREF_TEXT_BACKGROUND,
             PREF_DISPLAY_MODE, PREF_SECONDARY_TEXT_MODES, PREF_SHOW_NEIGHBOR_LINE, PREF_NEIGHBOR_ALIGNMENT,
             PREF_WORD_HIGHLIGHT, LabFeatureManager.KEY_FLOATING_WORD_HIGH_FPS_ENABLED -> {
@@ -244,6 +250,9 @@ class FloatingLyricsRenderer(
             }
             AppPreferences.Keys.CARD_BLUR_ENABLED -> mainHandler.post { updateWindowBlur() }
             AppPreferences.Keys.UI_USE_MIUIX -> mainHandler.post { remountForTheme() }
+            AppPreferences.Keys.THEME_FOLLOW_SYSTEM, AppPreferences.Keys.THEME_DARK_MODE,
+            AppPreferences.Keys.MATERIAL_THEME_FOLLOW_SYSTEM, AppPreferences.Keys.MATERIAL_THEME_DARK_MODE ->
+                requestLineUpdate()
             PREF_POS_X, PREF_POS_Y -> {
                 mainHandler.post { moveWindowToStoredPosition() }
             }
@@ -400,7 +409,7 @@ class FloatingLyricsRenderer(
             val expanded = FloatingLyricsContentView(context).also { expandedContentView = it }
             val panel = FloatingLyricsMiuixPanel(
                 context, minimal, expanded, actionController, ::switchToExpanded, ::switchToMinimal,
-                ::toggleSettingsPopup
+                ::toggleSettingsPopup, ::onMiuixBackgroundColorsChanged
             )
             miuixPanel = panel
             panel.installOwners(root)
@@ -480,6 +489,8 @@ class FloatingLyricsRenderer(
         overlayDialog = null; overlayWindow = null
         miuixPanel?.close()
         miuixPanel = null
+        miuixThemeBackground = null
+        miuixSurfaceColor = null
         rootView = null; wm = null; windowParams = null
         pendingLyricAnchor = null
         compactLyricOffset = null
@@ -521,6 +532,7 @@ class FloatingLyricsRenderer(
         params.width = overlayWidth(manager.currentWindowMetrics.bounds.width(), miuixPanel != null)
         fitWindowInDisplay()
         applyWindowAttributes(params)
+        requestLineUpdate()
     }
 
     private fun overlayWidth(screenWidth: Int, useMiuix: Boolean): Int =
@@ -578,9 +590,21 @@ class FloatingLyricsRenderer(
             buildMinimalView(interactive = false)
         }
 
-    internal fun bindMaterialPreview(state: UIState, style: FloatingLyricsStyle, display: FloatingLyricsDisplayConfig) {
+    internal fun materialPreviewTextColor(
+        albumColor: Int,
+        style: FloatingLyricsStyle,
+        expanded: Boolean,
+        themeBackground: Int
+    ): Int = style.textColor(albumColor, materialLyricBackground(expanded, style, themeBackground))
+
+    internal fun bindMaterialPreview(
+        state: UIState,
+        style: FloatingLyricsStyle,
+        display: FloatingLyricsDisplayConfig,
+        textColor: Int
+    ) {
         val lyrics = expandedContentView ?: minimalContentView
-        lyrics?.render(state, style, display, style.textColor(state.albumColor), state.fullLyric)
+        lyrics?.render(state, style, display, textColor, state.fullLyric)
         bindMaterialPanel(state, style, state.isPlaying)
     }
 
@@ -923,6 +947,7 @@ class FloatingLyricsRenderer(
             anchor = anchor
         ))
         addSettingsPopupRow(list, buildTextSizePopupRow(anchor))
+        addSettingsPopupRow(list, buildTextWeightPopupRow(anchor))
         addSettingsPopupRow(list, buildResetPositionPopupRow())
     }
 
@@ -1080,7 +1105,37 @@ class FloatingLyricsRenderer(
     }
 
     private fun buildTextSizePopupRow(anchor: View): View {
-        val style = styleStore.style
+        val size = styleStore.style.textSizeSp
+        return buildSteppedPopupRow(
+            title = context.getString(R.string.settings_floating_text_size),
+            value = context.getString(R.string.floating_settings_text_size_value, size.toInt()),
+            canDecrease = size > 10f,
+            canIncrease = size < 32f,
+            onDecrease = { applyPopupSetting(anchor) { styleStore.adjustTextSize(-2f) } },
+            onIncrease = { applyPopupSetting(anchor) { styleStore.adjustTextSize(2f) } }
+        )
+    }
+
+    private fun buildTextWeightPopupRow(anchor: View): View {
+        val weight = styleStore.style.textWeight
+        return buildSteppedPopupRow(
+            title = context.getString(R.string.settings_floating_text_weight),
+            value = context.getString(weight.label),
+            canDecrease = weight != FloatingLyricsTextWeight.REGULAR,
+            canIncrease = weight != FloatingLyricsTextWeight.BOLD,
+            onDecrease = { applyPopupSetting(anchor) { styleStore.adjustTextWeight(-1) } },
+            onIncrease = { applyPopupSetting(anchor) { styleStore.adjustTextWeight(1) } }
+        )
+    }
+
+    private fun buildSteppedPopupRow(
+        title: String,
+        value: String,
+        canDecrease: Boolean,
+        canIncrease: Boolean,
+        onDecrease: () -> Unit,
+        onIncrease: () -> Unit
+    ): View {
         return LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
@@ -1088,7 +1143,7 @@ class FloatingLyricsRenderer(
             setPadding(dpToPx(16), 0, dpToPx(16), 0)
 
             addView(TextView(context).apply {
-                text = context.getString(R.string.settings_floating_text_size)
+                text = title
                 setTextColor(Color.WHITE)
                 textSize = 14f
                 maxLines = 1
@@ -1096,18 +1151,15 @@ class FloatingLyricsRenderer(
                 gravity = Gravity.CENTER_VERTICAL
             }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f))
 
-            addView(buildPopupStepButton("-", enabled = style.textSizeSp > 10f) {
-                applyPopupSetting(anchor) { styleStore.adjustTextSize(-2f) }
-            })
+            addView(buildPopupStepButton("−", canDecrease, onDecrease))
             addView(TextView(context).apply {
-                text = context.getString(R.string.floating_settings_text_size_value, style.textSizeSp.toInt())
+                text = value
                 setTextColor(Color.WHITE)
                 textSize = 13f
                 gravity = Gravity.CENTER
-            }, LinearLayout.LayoutParams(dpToPx(58), ViewGroup.LayoutParams.MATCH_PARENT))
-            addView(buildPopupStepButton("+", enabled = style.textSizeSp < 32f) {
-                applyPopupSetting(anchor) { styleStore.adjustTextSize(2f) }
-            })
+                minWidth = dpToPx(58)
+            }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.MATCH_PARENT))
+            addView(buildPopupStepButton("+", canIncrease, onIncrease))
         }
     }
 
@@ -1352,18 +1404,26 @@ class FloatingLyricsRenderer(
         if (presentation.currentLine != completedWordLine) completedWordLine = null
         val lyric = presentation.currentLine?.text ?: "♪"
         val style = styleStore.style
-        val actualColor = style.textColor(state.albumColor)
+        val themeBackground = miuixThemeBackground ?: defaultThemeBackground()
+        val surface = miuixSurfaceColor ?: themeBackground
+        val compactBackground = if (miuixPanel == null) {
+            materialLyricBackground(false, style, themeBackground)
+        } else if (style.enableTextBackground) {
+            surface
+        } else {
+            themeBackground
+        }
+        val expandedBackground = if (miuixPanel == null) materialLyricBackground(true, style, themeBackground) else surface
         val snapshot = ViewSnapshot(
             lyric = lyric,
             title = state.title,
             artist = state.artist,
             isPlaying = playing,
-            textSizeSp = style.textSizeSp,
-            textColor = actualColor,
-            showAlbumArt = style.showAlbumArt,
+            style = style,
+            albumColor = state.albumColor,
+            compactBackground = compactBackground,
+            expandedBackground = expandedBackground,
             albumArtHash = state.albumArt?.hashCode() ?: 0,
-            enableTextStroke = style.enableTextStroke,
-            enableTextBackground = style.enableTextBackground,
             displayConfig = displayConfig,
             presentation = presentation
         )
@@ -1375,8 +1435,8 @@ class FloatingLyricsRenderer(
 
         val wordProgress = resolveWordProgress(state)
         val frame = state.copy(lyricPresentation = presentation.copy(wordProgress = wordProgress))
-        minimalContentView?.render(frame, style, displayConfig, actualColor, lyric)
-        expandedContentView?.render(frame, style, displayConfig, actualColor, lyric)
+        minimalContentView?.render(frame, style, displayConfig, style.textColor(state.albumColor, compactBackground), lyric)
+        expandedContentView?.render(frame, style, displayConfig, style.textColor(state.albumColor, expandedBackground), lyric)
         miuixPanel?.bind(state, style, playing)
         bindMaterialPanel(state, style, playing)
         syncWordAnimation()
@@ -1546,12 +1606,36 @@ class FloatingLyricsRenderer(
     }
 
     private fun buildPanelBackground(): GradientDrawable {
-        val color = when {
-            miuixPanel != null -> Color.TRANSPARENT
-            crossWindowBlurEnabled -> chrome.expandedBackgroundColor
-            else -> chrome.expandedFallbackBackgroundColor
-        }
+        val color = if (miuixPanel != null) Color.TRANSPARENT else materialPanelColor()
         return roundedRect(color, chrome.expandedRadiusDp)
+    }
+
+    private fun materialPanelColor(): Int =
+        if (crossWindowBlurEnabled) chrome.expandedBackgroundColor else chrome.expandedFallbackBackgroundColor
+
+    private fun materialLyricBackground(expanded: Boolean, style: FloatingLyricsStyle, themeBackground: Int): Int {
+        val panelColor = when {
+            expanded -> materialPanelColor()
+            style.enableTextBackground -> chrome.minimalBackgroundColor
+            else -> Color.TRANSPARENT
+        }
+        return ColorUtils.compositeColors(panelColor, themeBackground)
+    }
+
+    private fun defaultThemeBackground(): Int {
+        val dark = if (ThemeHelper.getFollowSystem(context)) {
+            (context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+        } else {
+            ThemeHelper.getDarkMode(context)
+        }
+        return if (dark) Color.BLACK else Color.WHITE
+    }
+
+    private fun onMiuixBackgroundColorsChanged(background: Int, surface: Int) {
+        if (miuixThemeBackground == background && miuixSurfaceColor == surface) return
+        miuixThemeBackground = background
+        miuixSurfaceColor = surface
+        requestLineUpdate()
     }
 
     private fun roundedRect(color: Int, radiusDp: Int): GradientDrawable = GradientDrawable().apply {

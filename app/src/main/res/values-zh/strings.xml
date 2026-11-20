@@ -1302,9 +1302,14 @@
     <string name="settings_floating_word_highlight">逐字高亮</string>
     <string name="settings_floating_word_highlight_desc">歌词源提供逐字时间轴时，按播放进度高亮已唱部分</string>
     <string name="settings_floating_follow_album_color">文字颜色跟随专辑图</string>
-    <string name="settings_floating_follow_album_color_desc">自动从提取的专辑图调色板中获取最佳文字颜色</string>
+    <string name="settings_floating_follow_album_color_desc">从专辑封面取色，按背景调整文字对比度</string>
     <string name="settings_floating_text_color">歌词颜色</string>
     <string name="settings_floating_text_size">字号大小</string>
+    <string name="settings_floating_text_weight">字重</string>
+    <string name="settings_floating_weight_regular">常规</string>
+    <string name="settings_floating_weight_medium">中等</string>
+    <string name="settings_floating_weight_semibold">半粗</string>
+    <string name="settings_floating_weight_bold">粗体</string>
     <string name="floating_settings_expand">展开桌面歌词窗口</string>
     <string name="floating_window_open_player">打开当前播放器</string>
     <string name="floating_window_player_unavailable">无法打开当前播放器。</string>
