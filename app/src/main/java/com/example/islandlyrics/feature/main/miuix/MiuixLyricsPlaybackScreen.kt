@@ -290,8 +290,8 @@ private fun LyricsPlaybackContent(start: LyricsPlaybackStart, onBack: () -> Unit
     val tintLyrics = LyricsPlaybackPreference.AlbumText.observe(prefs)
     val keepScreenOn = LyricsPlaybackPreference.KeepScreenOn.observe(prefs)
     val autoHideControls = LyricsPlaybackPreference.AutoHideControls.observe(prefs)
-    val coverColors by rememberPlaybackCoverColors(cover)
-    val albumAccent = remember(coverColors) { playbackAlbumAccent(coverColors) }
+    val coverAppearance by rememberPlaybackCoverAppearance(cover)
+    val albumAccent = remember(coverAppearance) { playbackAlbumAccent(coverAppearance?.colors) }
     val lyricColor = if (tintLyrics) albumAccent else MiuixTheme.colorScheme.onSurface
     val expansionProgress = LocalPageExpansionProgress.current
     val title = stringResource(R.string.main_now_playing_title)
@@ -452,7 +452,7 @@ private fun LyricsPlaybackContent(start: LyricsPlaybackStart, onBack: () -> Unit
                 lines.any { playbackSecondaryText(it.roma, it.translation, showRomanization, showTranslation).isNotEmpty() }
             }
             Box(Modifier.fillMaxSize()) {
-                LyricsPlaybackBackground(coverColors)
+                LyricsPlaybackBackground(coverAppearance, playing)
                 LandscapeLyricsPlaybackLayout(
                     title = track?.title ?: title,
                     artist = track?.artist.orEmpty(),
@@ -493,7 +493,7 @@ private fun LyricsPlaybackContent(start: LyricsPlaybackStart, onBack: () -> Unit
             }
 
             Box(Modifier.fillMaxSize()) {
-                LyricsPlaybackBackground(coverColors)
+                LyricsPlaybackBackground(coverAppearance, playing)
                 val topFade = (headerHeight - 16.dp).coerceAtLeast(headerInset)
                 val fading = lyricModifier.fadeLyricsAroundBars(topFade, bottomFade, fadeDistance)
                 val lyricLayer = if (lines.isNotEmpty() && useBlur && !following && isRuntimeShaderSupported()) {

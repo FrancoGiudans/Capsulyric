@@ -6,6 +6,10 @@
 package com.example.islandlyrics.feature.main.miuix
 
 import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Paint
+import android.graphics.Rect
+import android.os.Build
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Box
@@ -30,16 +34,23 @@ import kotlinx.coroutines.withContext
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import kotlin.math.min
 
-private const val CoverSampleSize = 32
+internal const val PlaybackCoverSampleSize = 64
+private const val CoverBlurRadius = 6
 private const val CoverHueGroups = 12
 private const val BackgroundContrast = 8.0
 
+internal data class PlaybackCoverAppearance(
+    val colors: List<Int?>,
+    val flowTexture: Bitmap?,
+    val scrimAlpha: Float,
+)
+
 @Composable
-internal fun rememberPlaybackCoverColors(cover: Bitmap?): State<List<Int?>?> =
-    produceState<List<Int?>?>(null, cover) {
+internal fun rememberPlaybackCoverAppearance(cover: Bitmap?): State<PlaybackCoverAppearance?> =
+    produceState<PlaybackCoverAppearance?>(null, cover) {
         value = if (cover == null) null else withContext(Dispatchers.Default) {
             try {
-                sampleCoverColors(cover)
+                preparePlaybackCover(cover)
             } catch (_: IllegalArgumentException) {
                 null
             } catch (_: IllegalStateException) {
@@ -60,7 +71,7 @@ internal fun playbackAlbumAccent(colors: List<Int?>?): Color {
 }
 
 @Composable
-internal fun LyricsPlaybackBackground(colors: List<Int?>?, modifier: Modifier = Modifier) {
+internal fun StaticPlaybackBackground(colors: List<Int?>?, modifier: Modifier = Modifier) {
     val surface = MiuixTheme.colorScheme.surface
     val textColor = Color.White
     val palette = remember(colors, surface, textColor) {
@@ -92,26 +103,46 @@ internal fun LyricsPlaybackBackground(colors: List<Int?>?, modifier: Modifier = 
     }
 }
 
-private fun sampleCoverColors(bitmap: Bitmap): List<Int?>? {
+private fun preparePlaybackCover(bitmap: Bitmap): PlaybackCoverAppearance? {
     val software = if (bitmap.config == Bitmap.Config.HARDWARE) {
         bitmap.copy(Bitmap.Config.ARGB_8888, false) ?: return null
     } else {
         bitmap
     }
-    val side = min(software.width, software.height)
-    val crop = Bitmap.createBitmap(software, (software.width - side) / 2, (software.height - side) / 2, side, side)
-    val sample = Bitmap.createScaledBitmap(crop, CoverSampleSize, CoverSampleSize, true)
-    val pixels = IntArray(CoverSampleSize * CoverSampleSize)
+    val size = PlaybackCoverSampleSize
+    val sample = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+    val pixels = IntArray(size * size)
     try {
-        sample.getPixels(pixels, 0, CoverSampleSize, 0, 0, CoverSampleSize, CoverSampleSize)
+        val side = min(software.width, software.height)
+        val left = (software.width - side) / 2
+        val top = (software.height - side) / 2
+        Canvas(sample).drawBitmap(
+            software,
+            Rect(left, top, left + side, top + side),
+            Rect(0, 0, size, size),
+            Paint(Paint.FILTER_BITMAP_FLAG),
+        )
+        sample.getPixels(pixels, 0, size, 0, 0, size, size)
     } finally {
-        if (sample !== crop) sample.recycle()
-        if (crop !== software) crop.recycle()
+        sample.recycle()
         if (software !== bitmap) software.recycle()
     }
+    val colors = sampleCoverColors(pixels)
+    if (colors.all { it == null }) return null
+    val texture = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        val blurred = blurPlaybackCover(pixels, size)
+        Bitmap.createBitmap(blurred, size, size, Bitmap.Config.ARGB_8888)
+    } else {
+        null
+    }
+    val meanLuminance = colors.filterNotNull().map(ColorUtils::calculateLuminance).average()
+    val scrimAlpha = 0.28f + ((meanLuminance - 0.35) / 0.5).coerceIn(0.0, 1.0).toFloat() * 0.10f
+    return PlaybackCoverAppearance(colors, texture, scrimAlpha)
+}
 
-    return List(4) { quadrant ->
-        val half = CoverSampleSize / 2
+private fun sampleCoverColors(pixels: IntArray): List<Int?> =
+    List(4) { quadrant ->
+        val half = PlaybackCoverSampleSize / 2
         val xStart = (quadrant % 2) * half
         val yStart = (quadrant / 2) * half
         val average = CoverColorGroup()
@@ -119,7 +150,7 @@ private fun sampleCoverColors(bitmap: Bitmap): List<Int?>? {
         val hsl = FloatArray(3)
         for (y in yStart until yStart + half) {
             for (x in xStart until xStart + half) {
-                val pixel = pixels[y * CoverSampleSize + x]
+                val pixel = pixels[y * PlaybackCoverSampleSize + x]
                 val alpha = android.graphics.Color.alpha(pixel).toFloat()
                 if (alpha == 0f) continue
                 average.add(pixel, alpha)
@@ -142,6 +173,42 @@ private fun sampleCoverColors(bitmap: Bitmap): List<Int?>? {
             average.color()
         }
     }
+
+internal fun blurPlaybackCover(pixels: IntArray, size: Int): IntArray {
+    val horizontal = IntArray(pixels.size)
+    val blurred = IntArray(pixels.size)
+    val taps = 2 * CoverBlurRadius + 1
+    for (y in 0 until size) {
+        for (x in 0 until size) {
+            var red = 0
+            var green = 0
+            var blue = 0
+            for (tap in -CoverBlurRadius..CoverBlurRadius) {
+                val pixel = pixels[y * size + (x + tap).coerceIn(0, size - 1)]
+                val alpha = pixel ushr 24
+                red += (pixel shr 16 and 255) * alpha
+                green += (pixel shr 8 and 255) * alpha
+                blue += (pixel and 255) * alpha
+            }
+            val divisor = taps * 255
+            horizontal[y * size + x] = (red / divisor shl 16) or (green / divisor shl 8) or (blue / divisor)
+        }
+    }
+    for (y in 0 until size) {
+        for (x in 0 until size) {
+            var red = 0
+            var green = 0
+            var blue = 0
+            for (tap in -CoverBlurRadius..CoverBlurRadius) {
+                val pixel = horizontal[(y + tap).coerceIn(0, size - 1) * size + x]
+                red += pixel shr 16 and 255
+                green += pixel shr 8 and 255
+                blue += pixel and 255
+            }
+            blurred[y * size + x] = (255 shl 24) or (red / taps shl 16) or (green / taps shl 8) or (blue / taps)
+        }
+    }
+    return blurred
 }
 
 private class CoverColorGroup {
