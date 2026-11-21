@@ -11,6 +11,7 @@ import android.media.MediaMetadata
 import android.media.session.MediaController
 import android.media.session.PlaybackState
 import android.os.SystemClock
+import androidx.activity.compose.LocalActivity
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import androidx.compose.animation.core.animateFloatAsState
@@ -28,18 +29,28 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
+import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
@@ -49,15 +60,16 @@ import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.BlurredEdgeTreatment
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
@@ -66,72 +78,104 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.layout
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.setProgress
-import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.constrainHeight
 import androidx.compose.ui.unit.dp
+import androidx.core.view.WindowCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
 import com.example.islandlyrics.R
 import com.example.islandlyrics.core.settings.AppPreferences
-import com.example.islandlyrics.feature.main.HomeLyricPreviewDisplay
 import com.example.islandlyrics.feature.main.belongsTo
 import com.example.islandlyrics.feature.main.rememberWhitelistedMediaSessions
 import com.example.islandlyrics.feature.main.selectHomePlaybackController
 import com.example.islandlyrics.lyrics.online.OnlineLyricFetcher.LyricLine
 import com.example.islandlyrics.lyrics.state.LyricRepository
-import com.example.islandlyrics.ui.miuix.blur.LocalMiuixBlurEnabled
-import com.example.islandlyrics.ui.miuix.blur.MiuixBlurScaffold
 import com.example.islandlyrics.ui.miuix.navigation.MiuixBackIcon
 import com.example.islandlyrics.ui.navigation.LocalPageExpansionProgress
 import com.example.islandlyrics.ui.overlay.floating.FloatingLyricsClock
 import com.example.islandlyrics.ui.overlay.floating.FloatingLyricsVisibility
-import com.example.islandlyrics.ui.overlay.model.SecondaryTextMode
 import com.example.islandlyrics.ui.overlay.model.SecondaryTextResolver
 import com.example.islandlyrics.ui.overlay.model.WordProgressCalculator
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withTimeoutOrNull
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
+import top.yukonga.miuix.kmp.basic.ListPopupColumn
+import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.Slider
+import top.yukonga.miuix.kmp.basic.SliderDefaults
+import top.yukonga.miuix.kmp.basic.Switch
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TextButton
 import top.yukonga.miuix.kmp.anim.folmeSpring
+import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.extended.Translate
+import top.yukonga.miuix.kmp.window.WindowListPopup
 import top.yukonga.miuix.kmp.shader.isRenderEffectSupported
+import top.yukonga.miuix.kmp.shader.isRuntimeShaderSupported
 import top.yukonga.miuix.kmp.theme.MiuixTheme
+import top.yukonga.miuix.kmp.theme.darkColorScheme
 import kotlin.math.abs
 import kotlin.math.roundToInt
 import kotlin.math.roundToLong
 import kotlin.math.sin
 
 private const val CurrentLineScale = 1.08f
-private const val PlaybackFrameInterval = 33L
 private const val SeekAcknowledgementTimeout = 4_000L
 private const val SeekPositionTolerance = 1_000L
 
 @Composable
-internal fun MiuixLyricsPlaybackScreen(onBack: () -> Unit) {
+internal fun MiuixLyricsPlaybackScreen(start: LyricsPlaybackStart, onBack: () -> Unit) {
+    val window = LocalActivity.current?.window
+    val view = LocalView.current
+    if (window != null) {
+        DisposableEffect(window, view) {
+            val controller = WindowCompat.getInsetsController(window, view)
+            val lightStatusBars = controller.isAppearanceLightStatusBars
+            val lightNavigationBars = controller.isAppearanceLightNavigationBars
+            controller.isAppearanceLightStatusBars = false
+            controller.isAppearanceLightNavigationBars = false
+            onDispose {
+                controller.isAppearanceLightStatusBars = lightStatusBars
+                controller.isAppearanceLightNavigationBars = lightNavigationBars
+            }
+        }
+    }
+    MiuixTheme(colors = remember { darkColorScheme() }) {
+        LyricsPlaybackContent(start, onBack)
+    }
+}
+
+@Composable
+private fun LyricsPlaybackContent(start: LyricsPlaybackStart, onBack: () -> Unit) {
     val context = LocalContext.current
     val repo = remember { LyricRepository.getInstance() }
-    val track by repo.liveMetadata.observeAsState()
+    val track by repo.liveMetadata.observeAsState(start.track)
     val parsed by repo.liveParsedLyrics.observeAsState()
     val lyric by repo.liveLyric.observeAsState()
+    val currentLine by repo.liveCurrentLine.observeAsState()
     val albumArt by repo.liveTrackAlbumArt.observeAsState()
-    val repoProgress by repo.liveProgress.observeAsState()
+    val repoProgress = repo.liveProgress.observeAsState()
     val resolveState by repo.liveLyricResolveState.observeAsState(LyricRepository.LyricResolveState.PENDING)
-    val session by FloatingLyricsVisibility.session.collectAsState()
+    val primaryTokens = remember { FloatingLyricsVisibility.session.map { it.mediaSession }.distinctUntilChanged() }
+    val primaryToken by primaryTokens.collectAsState(FloatingLyricsVisibility.session.value.mediaSession)
     val controllers = rememberWhitelistedMediaSessions()
-    val primaryToken = session.mediaSession
     val controller = remember(controllers, track, primaryToken) {
         selectHomePlaybackController(controllers, track, primaryToken)
     }
@@ -165,14 +209,24 @@ internal fun MiuixLyricsPlaybackScreen(onBack: () -> Unit) {
     val duration = track?.duration?.takeIf { it > 0L }
         ?: media?.getLong(MediaMetadata.METADATA_KEY_DURATION)?.takeIf { matchedTrack != null && it > 0L }
         ?: 0L
-    val fallbackPosition = repoProgress?.position?.takeIf { track != null }
-    val clock = remember(playback, fallbackPosition, matchedTrack) {
-        playback.takeIf { matchedTrack != null }.toLyricsClock(fallbackPosition)
+    val matchedPlayback = playback.takeIf { matchedTrack != null }
+    val sessionClock = remember(matchedPlayback) { matchedPlayback.toLyricsClock(null) }
+    val hasTrack = track != null
+    val clock = remember(sessionClock, matchedPlayback, hasTrack, repoProgress) {
+        derivedStateOf {
+            sessionClock ?: matchedPlayback.toLyricsClock(repoProgress.value?.position?.takeIf { hasTrack })
+        }
     }
-    val lines = remember(parsed, track != null) { parsed.takeIf { track != null }.playbackLines() }
-    val secondaryModes = remember(context) {
-        HomeLyricPreviewDisplay.read(AppPreferences.of(context)).filter { it != SecondaryTextMode.NEXT_LYRIC }
-    }
+    val liveLines = remember(parsed) { parsed.playbackLines() }
+    val prefs = remember(context) { AppPreferences.of(context) }
+    val showTranslation = LyricsPlaybackPreference.Translation.observe(prefs)
+    val showRomanization = LyricsPlaybackPreference.Romanization.observe(prefs)
+    val blurLyrics = LyricsPlaybackPreference.LyricBlur.observe(prefs)
+    val tintProgress = LyricsPlaybackPreference.AlbumProgress.observe(prefs)
+    val tintLyrics = LyricsPlaybackPreference.AlbumText.observe(prefs)
+    val coverColors by rememberPlaybackCoverColors(cover)
+    val albumAccent = remember(coverColors) { playbackAlbumAccent(coverColors) }
+    val lyricColor = if (tintLyrics) albumAccent else MiuixTheme.colorScheme.onSurface
     val expansionProgress = LocalPageExpansionProgress.current
     val title = stringResource(R.string.main_now_playing_title)
     val playerPackage = track?.packageName
@@ -180,125 +234,238 @@ internal fun MiuixLyricsPlaybackScreen(onBack: () -> Unit) {
         playerPackage?.let(context.packageManager::getLaunchIntentForPackage)
     }
 
-    key(track?.packageName, track?.mediaId, track?.mediaUri, track?.rawTitle, track?.rawArtist) {
-        val position = rememberLyricsPlaybackPosition(clock, duration)
-        var following by remember { mutableStateOf(true) }
-        var pendingSeek by remember { mutableStateOf<Long?>(null) }
-        val supportsSeek = controller != null && duration > 0L && actions and PlaybackState.ACTION_SEEK_TO != 0L
-        val seek: (Long) -> Unit = { requested ->
-            if (supportsSeek && controller.metadata.belongsTo(matchedTrack)) {
-                val target = requested.coerceIn(0L, duration)
-                if (runCatching { controller.transportControls.seekTo(target) }.isSuccess) pendingSeek = target
-            }
+    val trackIdentity = remember(track) { track?.albumArtKey?.copy(duration = 0L) }
+    var retainedLines by remember(start, trackIdentity) {
+        mutableStateOf(start.lines.takeIf { start.matches(track) }.orEmpty())
+    }
+    val lines = when {
+        track == null -> emptyList()
+        liveLines.isNotEmpty() -> liveLines
+        resolveState == LyricRepository.LyricResolveState.NOT_FOUND -> emptyList()
+        else -> retainedLines
+    }
+    SideEffect { retainedLines = lines }
+    val position = key(track?.packageName, track?.title, track?.artist) {
+        rememberLyricsPlaybackPosition(clock, duration)
+    }
+    var following by remember(trackIdentity) { mutableStateOf(true) }
+    var pendingSeek by remember(trackIdentity, controller) { mutableStateOf<Long?>(null) }
+    val canSeek = controller != null && duration > 0L && actions and PlaybackState.ACTION_SEEK_TO != 0L
+    val seek = if (canSeek) { requested: Long ->
+        if (controller.metadata.belongsTo(matchedTrack)) {
+            val target = requested.coerceIn(0L, duration)
+            if (runCatching { controller.transportControls.seekTo(target) }.isSuccess) pendingSeek = target
         }
+    } else {
+        null
+    }
 
-        LaunchedEffect(pendingSeek) {
-            val target = pendingSeek ?: return@LaunchedEffect
-            val confirmed = withTimeoutOrNull(SeekAcknowledgementTimeout) {
-                snapshotFlow { position.value }.first { it != null && abs(it - target) <= SeekPositionTolerance }
-            }
-            if (confirmed != null) following = true
-            pendingSeek = null
+    LaunchedEffect(pendingSeek, trackIdentity, controller) {
+        val target = pendingSeek ?: return@LaunchedEffect
+        val confirmed = withTimeoutOrNull(SeekAcknowledgementTimeout) {
+            snapshotFlow { position.value }.first { it != null && abs(it - target) <= SeekPositionTolerance }
         }
+        if (confirmed != null) following = true
+        pendingSeek = null
+    }
 
-        MiuixBlurScaffold(
-            containerColor = androidx.compose.ui.graphics.Color.Transparent,
-        ) { insets ->
+    Scaffold(containerColor = Color.Transparent) { insets ->
+        val density = LocalDensity.current
+        val layoutDirection = LocalLayoutDirection.current
+        val statusBarInsets = WindowInsets.statusBars.union(WindowInsets.displayCutout).asPaddingValues()
+        val navigationBarInsets = WindowInsets.navigationBars.asPaddingValues()
+        val headerInset = maxOf(insets.calculateTopPadding(), statusBarInsets.calculateTopPadding())
+        val footerInset = maxOf(insets.calculateBottomPadding(), navigationBarInsets.calculateBottomPadding())
+        val sidePadding = PaddingValues(
+            start = insets.calculateStartPadding(layoutDirection) + 20.dp,
+            end = insets.calculateEndPadding(layoutDirection) + 20.dp,
+        )
+        val useBlur = blurLyrics && isRenderEffectSupported() && isRuntimeShaderSupported()
+        var headerHeight by remember { mutableStateOf(0.dp) }
+        var footerHeight by remember { mutableStateOf(0.dp) }
+
+        BoxWithConstraints(Modifier.fillMaxSize()) {
+            val availableForLyrics = (maxHeight - headerHeight - footerHeight).coerceAtLeast(0.dp)
+            val fadeDistance = (availableForLyrics / 7f).coerceAtMost(32.dp)
+            val blurDistance = (availableForLyrics / 3f).coerceAtMost(112.dp)
+            val anchor = headerHeight + availableForLyrics / 3f
+            val trailingSpace = (maxHeight - anchor - 32.dp).coerceAtLeast(0.dp)
+
             Box(Modifier.fillMaxSize()) {
-                LyricsPlaybackBackground(cover)
-                Column(Modifier.fillMaxSize().padding(insets).padding(horizontal = 20.dp)) {
-                    LyricsPlaybackHeader(
-                        title = track?.title ?: title,
-                        artist = track?.artist.orEmpty(),
-                        cover = cover,
-                        onBack = onBack,
-                        onOpenPlayer = playerIntent?.let { intent ->
-                            {
-                                try {
-                                    context.startActivity(intent)
-                                } catch (_: ActivityNotFoundException) {
-                                    // The player can be removed while the page is open.
-                                }
-                            }
-                        },
-                        modifier = Modifier.revealPlaybackChrome(expansionProgress),
-                    )
-                    Box(
-                        Modifier.weight(1f).fillMaxWidth().graphicsLayer {
-                            alpha = ((expansionProgress() - 0.1f) / 0.65f).coerceIn(0f, 1f)
-                        }
-                    ) {
-                        if (lines.isNotEmpty()) {
-                            LyricsPlaybackList(
-                                lines = lines,
-                                secondaryModes = secondaryModes,
-                                position = position,
-                                following = following,
-                                onFollowingChange = { following = it },
-                                onSeek = seek.takeIf { supportsSeek },
-                            )
-                        } else {
-                            val currentText = lyric?.lyric.takeIf {
-                                track != null && !SecondaryTextResolver.isPlaceholder(it)
-                            }
-                            Text(
-                                text = currentText ?: stringResource(
-                                    when {
-                                        track == null -> R.string.main_now_playing_subtitle_idle
-                                        resolveState == LyricRepository.LyricResolveState.NOT_FOUND ->
-                                            R.string.main_lyrics_not_found
-                                        resolveState == LyricRepository.LyricResolveState.FOUND ->
-                                            R.string.main_no_lyrics
-                                        else -> R.string.main_waiting_for_lyrics
-                                    }
-                                ),
-                                modifier = Modifier.align(Alignment.CenterStart),
-                                style = if (currentText != null) {
-                                    MiuixTheme.textStyles.title2
-                                } else {
-                                    MiuixTheme.textStyles.body1
-                                },
-                                color = MiuixTheme.colorScheme.onSurface,
-                            )
-                        }
+                LyricsPlaybackBackground(coverColors)
+                val lyricModifier = Modifier.fillMaxSize().graphicsLayer {
+                    alpha = ((expansionProgress() - 0.1f) / 0.65f).coerceIn(0f, 1f)
+                }
+                if (lines.isNotEmpty()) {
+                    val topFade = (headerHeight - 16.dp).coerceAtLeast(headerInset)
+                    val bottomFade = (footerHeight - 8.dp).coerceAtLeast(footerInset)
+                    val fading = lyricModifier.fadeLyricsAroundBars(topFade, bottomFade, fadeDistance)
+                    val lyricLayer = if (useBlur) fading.blurLyricsAroundBars(topFade, bottomFade, blurDistance) else fading
+                    key(trackIdentity) {
+                        LyricsPlaybackList(
+                            lines = lines,
+                            showTranslation = showTranslation,
+                            showRomanization = showRomanization,
+                            color = lyricColor,
+                            position = position,
+                            following = following,
+                            onFollowingChange = { following = it },
+                            onSeek = seek,
+                            contentPadding = PaddingValues(top = anchor, bottom = trailingSpace),
+                            modifier = lyricLayer.padding(sidePadding),
+                        )
                     }
-                    LyricsPlaybackControls(
-                        controller = controller.takeIf { matchedTrack != null },
+                } else {
+                    PlaybackLyricFallback(
+                        hasTrack = hasTrack,
+                        currentLine = currentLine?.takeUnless { SecondaryTextResolver.isPlaceholder(it.text) } ?: parsed?.takeIf {
+                            it.timelineCapability == LyricRepository.TimelineCapability.ACTIVE_LINE_ONLY
+                        }?.lines?.firstOrNull(),
+                        lyric = lyric,
+                        resolveState = resolveState,
                         position = position,
-                        duration = duration,
-                        pendingSeek = pendingSeek,
-                        actions = actions,
-                        isPlaying = playing,
-                        onSeek = seek.takeIf { supportsSeek },
-                        modifier = Modifier.revealPlaybackChrome(expansionProgress),
+                        lyricColor = lyricColor,
+                        showTranslation = showTranslation,
+                        showRomanization = showRomanization,
+                        modifier = lyricModifier.padding(sidePadding).padding(top = headerHeight, bottom = footerHeight),
                     )
                 }
+            }
+
+            LyricsPlaybackHeader(
+                title = track?.title ?: title,
+                artist = track?.artist.orEmpty(),
+                cover = cover,
+                onBack = onBack,
+                onOpenPlayer = playerIntent?.let { intent ->
+                    {
+                        try {
+                            context.startActivity(intent)
+                        } catch (_: ActivityNotFoundException) {
+                            // The player can be removed while the page is open.
+                        }
+                    }
+                },
+                modifier = Modifier.align(Alignment.TopCenter)
+                    .onSizeChanged { headerHeight = with(density) { it.height.toDp() } }
+                    .padding(sidePadding).padding(top = headerInset)
+                    .revealPlaybackChrome(expansionProgress),
+            )
+
+            Column(
+                Modifier.align(Alignment.BottomCenter).fillMaxWidth()
+                    .onSizeChanged { footerHeight = with(density) { it.height.toDp() } }
+                    .padding(sidePadding).padding(bottom = footerInset + 24.dp)
+                    .revealPlaybackChrome(expansionProgress),
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    PlaybackLanguageMenu(
+                        showTranslation = showTranslation,
+                        showRomanization = showRomanization,
+                        onTranslationChange = { LyricsPlaybackPreference.Translation.set(prefs, it) },
+                        onRomanizationChange = { LyricsPlaybackPreference.Romanization.set(prefs, it) },
+                    )
+                    if (lines.isNotEmpty() && !following) {
+                        TextButton(
+                            text = stringResource(R.string.lyrics_playback_follow),
+                            onClick = { following = true },
+                        )
+                    }
+                }
+                LyricsPlaybackControls(
+                    controller = controller.takeIf { matchedTrack != null },
+                    position = position,
+                    duration = duration,
+                    pendingSeek = pendingSeek,
+                    actions = actions,
+                    isPlaying = playing,
+                    onSeek = seek,
+                    progressColor = if (tintProgress) albumAccent else Color.White,
+                )
             }
         }
     }
 }
 
 @Composable
-private fun rememberLyricsPlaybackPosition(clock: FloatingLyricsClock?, duration: Long): State<Long?> {
+private fun rememberLyricsPlaybackPosition(clock: State<FloatingLyricsClock?>, duration: Long): State<Long?> {
     val lifecycle = LocalLifecycleOwner.current.lifecycle
-    return produceState<Long?>(null, clock, duration, lifecycle) {
-        if (clock == null) {
-            value = null
-            return@produceState
-        }
+    val latestClock = rememberUpdatedState(clock)
+    return produceState<Long?>(null, duration, lifecycle) {
         lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
-            do {
-                val position = clock.positionAt(SystemClock.elapsedRealtime()).coerceAtLeast(0L)
-                value = if (duration > 0) position.coerceAtMost(duration) else position
-                if (clock.speed <= 0f || (duration > 0L && position >= duration)) break
-                delay(PlaybackFrameInterval)
-            } while (true)
+            snapshotFlow { latestClock.value.value }.collectLatest { anchor ->
+                if (anchor == null) return@collectLatest
+                while (true) {
+                    val position = anchor.positionAt(SystemClock.elapsedRealtime()).coerceAtLeast(0L)
+                    value = if (duration > 0L) position.coerceAtMost(duration) else position
+                    if (anchor.speed <= 0f || (duration > 0L && position >= duration)) break
+                    withFrameNanos { }
+                }
+            }
         }
     }
 }
 
 private fun Modifier.revealPlaybackChrome(progress: () -> Float): Modifier = graphicsLayer {
     alpha = ((progress() - 0.42f) / 0.58f).coerceIn(0f, 1f)
+}
+
+private fun playbackSecondaryText(
+    romanization: String?,
+    translation: String?,
+    showRomanization: Boolean,
+    showTranslation: Boolean,
+): List<String> = listOfNotNull(
+    romanization.takeIf { showRomanization },
+    translation.takeIf { showTranslation },
+).filterNot(SecondaryTextResolver::isPlaceholder).distinct()
+
+@Composable
+private fun PlaybackLyricFallback(
+    hasTrack: Boolean,
+    currentLine: LyricLine?,
+    lyric: LyricRepository.LyricInfo?,
+    resolveState: LyricRepository.LyricResolveState,
+    position: State<Long?>,
+    lyricColor: Color,
+    showTranslation: Boolean,
+    showRomanization: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    val line = currentLine?.takeIf { hasTrack && !SecondaryTextResolver.isPlaceholder(it.text) }
+    val text = lyric?.takeIf { hasTrack && !SecondaryTextResolver.isPlaceholder(it.lyric) }
+    Box(modifier, contentAlignment = Alignment.CenterStart) {
+        Column {
+            when {
+                line != null -> PlaybackLyricText(line, current = true, position = position, color = lyricColor)
+                text != null -> Text(text.lyric, style = MiuixTheme.textStyles.title2, color = lyricColor)
+                else -> Text(
+                    text = stringResource(
+                        when {
+                            !hasTrack -> R.string.main_now_playing_subtitle_idle
+                            resolveState == LyricRepository.LyricResolveState.NOT_FOUND -> R.string.main_lyrics_not_found
+                            resolveState == LyricRepository.LyricResolveState.FOUND -> R.string.main_no_lyrics
+                            else -> R.string.main_waiting_for_lyrics
+                        }
+                    ),
+                    style = MiuixTheme.textStyles.body1,
+                    color = lyricColor,
+                )
+            }
+            playbackSecondaryText(
+                if (line != null) line.roma else text?.roma,
+                if (line != null) line.translation else text?.translation,
+                showRomanization,
+                showTranslation,
+            ).forEach {
+                Text(it, style = MiuixTheme.textStyles.body2, color = lyricColor)
+            }
+        }
+    }
 }
 
 @Composable
@@ -351,11 +518,15 @@ private fun LyricsPlaybackHeader(
 @Composable
 private fun LyricsPlaybackList(
     lines: List<LyricLine>,
-    secondaryModes: List<SecondaryTextMode>,
+    showTranslation: Boolean,
+    showRomanization: Boolean,
+    color: Color,
     position: State<Long?>,
     following: Boolean,
     onFollowingChange: (Boolean) -> Unit,
     onSeek: ((Long) -> Unit)?,
+    contentPadding: PaddingValues,
+    modifier: Modifier = Modifier,
 ) {
     val listState = rememberLazyListState()
     val timeline = remember(lines) { lines.withInterludes() }
@@ -370,8 +541,7 @@ private fun LyricsPlaybackList(
             }
         }
     }
-    val blurEnabled = LocalMiuixBlurEnabled.current && isRenderEffectSupported()
-    LaunchedEffect(currentIndex, timeline, following) {
+    LaunchedEffect(currentIndex, timeline, following, contentPadding, showTranslation, showRomanization) {
         if (following) {
             val index = currentIndex.coerceAtLeast(0)
             val item = listState.layoutInfo.visibleItemsInfo.firstOrNull { it.index == index }
@@ -386,44 +556,32 @@ private fun LyricsPlaybackList(
         }
     }
 
-    BoxWithConstraints(Modifier.fillMaxSize().clipToBounds()) {
-        val anchor = maxHeight / 3f
-        LazyColumn(
-            modifier = Modifier.fillMaxSize().nestedScroll(scrollConnection),
-            state = listState,
-            contentPadding = PaddingValues(top = anchor, bottom = maxHeight - anchor),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            items(timeline.size) { index ->
-                val current = index == currentIndex
-                when (val row = timeline[index]) {
-                    is PlaybackTimelineItem.Verse -> {
-                        val line = row.line
-                        val secondary = remember(line, secondaryModes) {
-                            SecondaryTextResolver.resolve(secondaryModes, line.translation, line.roma, nextLyric = null)
-                        }
-                        PlaybackLyricRow(
-                            line = line,
-                            secondary = secondary,
-                            current = current,
-                            index = index,
-                            listState = listState,
-                            following = following,
-                            blurEnabled = blurEnabled,
-                            position = position,
-                            onSeek = onSeek,
-                        )
+    LazyColumn(
+        modifier = modifier.clipToBounds().nestedScroll(scrollConnection),
+        state = listState,
+        contentPadding = contentPadding,
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        items(timeline.size) { index ->
+            val current = index == currentIndex
+            when (val row = timeline[index]) {
+                is PlaybackTimelineItem.Verse -> {
+                    val line = row.line
+                    val secondary = remember(line, showTranslation, showRomanization) {
+                        playbackSecondaryText(line.roma, line.translation, showRomanization, showTranslation)
                     }
-                    is PlaybackTimelineItem.Interlude -> PlaybackInterlude(row, current, position)
+                    PlaybackLyricRow(
+                        line = line,
+                        secondary = secondary,
+                        current = current,
+                        following = following,
+                        color = color,
+                        position = position,
+                        onSeek = onSeek,
+                    )
                 }
+                is PlaybackTimelineItem.Interlude -> PlaybackInterlude(row, current, position, color)
             }
-        }
-        if (!following) {
-            TextButton(
-                text = stringResource(R.string.lyrics_playback_follow),
-                onClick = { onFollowingChange(true) },
-                modifier = Modifier.align(Alignment.BottomEnd).padding(bottom = 6.dp),
-            )
         }
     }
 }
@@ -433,8 +591,8 @@ private fun PlaybackInterlude(
     interlude: PlaybackTimelineItem.Interlude,
     current: Boolean,
     position: State<Long?>,
+    color: Color,
 ) {
-    val color = MiuixTheme.colorScheme.onSurface
     val description = stringResource(R.string.lyrics_playback_interlude)
     val intensity by animateFloatAsState(
         if (current) 1f else 0.55f,
@@ -463,12 +621,10 @@ private fun PlaybackInterlude(
 @Composable
 private fun PlaybackLyricRow(
     line: LyricLine,
-    secondary: String?,
+    secondary: List<String>,
     current: Boolean,
-    index: Int,
-    listState: LazyListState,
     following: Boolean,
-    blurEnabled: Boolean,
+    color: Color,
     position: State<Long?>,
     onSeek: ((Long) -> Unit)?,
 ) {
@@ -487,28 +643,6 @@ private fun PlaybackLyricRow(
         tween(if (current) 155 else 280, easing = LinearOutSlowInEasing),
         label = "lyric brightness",
     )
-    val edgeLevel by remember(listState, index) {
-        derivedStateOf {
-            val layout = listState.layoutInfo
-            val row = layout.visibleItemsInfo.firstOrNull { it.index == index } ?: return@derivedStateOf 0
-            val band = (layout.viewportSize.height * 0.14f).coerceAtLeast(1f)
-            val edgeDistance = minOf(
-                row.offset + row.size / 2f - layout.viewportStartOffset,
-                layout.viewportEndOffset - row.offset - row.size / 2f,
-            )
-            ((1f - edgeDistance / band).coerceIn(0f, 1f) * 4f).roundToInt()
-        }
-    }
-    val edge = if (current) 0f else edgeLevel / 4f * if (following) 1f else 0.4f
-    val coverColor = MiuixTheme.colorScheme.onSurface
-    val progress = if (current && !line.syllables.isNullOrEmpty()) {
-        position.value?.let { WordProgressCalculator.compute(line.text, line.startTime, line.endTime, line.syllables, it) }
-    } else {
-        null
-    }
-    val styledText = remember(line.text, progress, coverColor) {
-        buildAnnotatedString { appendHighlightedLyric(line.text, progress, coverColor) }
-    }
     BoxWithConstraints(
         modifier = Modifier.fillMaxWidth()
             .then(if (onSeek != null) Modifier.clickable(role = Role.Button) { onSeek(line.startTime) } else Modifier)
@@ -526,14 +660,13 @@ private fun PlaybackLyricRow(
                     scaleY = scale
                     translationY = lift.toPx()
                     transformOrigin = TransformOrigin(0f, 0f)
-                    alpha = brightness * (1f - edge * 0.55f)
-                }
-                .then(if (blurEnabled && edge > 0f) Modifier.blur((6f * edge).dp, BlurredEdgeTreatment.Unbounded) else Modifier),
+                    alpha = brightness
+                },
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            Text(styledText, style = MiuixTheme.textStyles.title2, fontWeight = FontWeight.SemiBold, color = coverColor)
-            if (secondary != null) {
-                Text(secondary, style = MiuixTheme.textStyles.body2, color = coverColor)
+            PlaybackLyricText(line, current, position, color)
+            secondary.forEach { text ->
+                Text(text, style = MiuixTheme.textStyles.body2, color = color)
             }
         }
     }
@@ -548,44 +681,17 @@ private fun LyricsPlaybackControls(
     actions: Long,
     isPlaying: Boolean,
     onSeek: ((Long) -> Unit)?,
+    progressColor: Color,
     modifier: Modifier = Modifier,
 ) {
-    var draggedProgress by remember(controller, duration) { mutableStateOf<Float?>(null) }
-    val displayed = draggedProgress?.let { (it * duration).roundToLong() }
-        ?: pendingSeek ?: position.value ?: 0L
-    val fraction = if (duration > 0L) (displayed.toFloat() / duration).coerceIn(0f, 1f) else 0f
     val playAction = if (isPlaying) PlaybackState.ACTION_PAUSE else PlaybackState.ACTION_PLAY
     val canToggle = actions and (playAction or PlaybackState.ACTION_PLAY_PAUSE) != 0L
     val controls = controller?.transportControls
-    val color = MiuixTheme.colorScheme.onSurface
     Column(
-        modifier = modifier.fillMaxWidth().padding(top = 8.dp, bottom = 8.dp),
+        modifier = modifier.fillMaxWidth().padding(top = 10.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        Slider(
-            value = fraction,
-            onValueChange = { if (onSeek != null) draggedProgress = it },
-            onValueChangeFinished = {
-                draggedProgress?.let { onSeek?.invoke((it * duration).roundToLong()) }
-                draggedProgress = null
-            },
-            enabled = onSeek != null,
-            height = 12.dp,
-            modifier = Modifier.fillMaxWidth().semantics {
-                setProgress { target ->
-                    if (onSeek == null) {
-                        false
-                    } else {
-                        onSeek((target.coerceIn(0f, 1f) * duration).roundToLong())
-                        true
-                    }
-                }
-            },
-        )
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text(formatPlaybackTime(displayed), style = MiuixTheme.textStyles.body2, color = color)
-            Text(formatPlaybackTime(duration), style = MiuixTheme.textStyles.body2, color = color)
-        }
+        LyricsPlaybackProgress(position, duration, pendingSeek, progressColor, onSeek)
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceEvenly,
@@ -606,6 +712,118 @@ private fun LyricsPlaybackControls(
                 controls.dispatch { skipToNext() }
             }
         }
+    }
+}
+
+@Composable
+private fun LyricsPlaybackProgress(
+    position: State<Long?>,
+    duration: Long,
+    pendingSeek: Long?,
+    color: Color,
+    onSeek: ((Long) -> Unit)?,
+) {
+    var draggedProgress by remember(duration, onSeek != null) { mutableStateOf<Float?>(null) }
+    val latestPendingSeek by rememberUpdatedState(pendingSeek)
+    val displayed = remember(position, duration, onSeek != null) {
+        derivedStateOf {
+            draggedProgress?.let { (it * duration).roundToLong() }
+                ?: latestPendingSeek ?: position.value ?: 0L
+        }
+    }
+    val elapsedSecond by remember(displayed) { derivedStateOf { displayed.value / 1_000L } }
+    val fraction by remember(displayed, duration) {
+        derivedStateOf {
+            if (duration > 0L) (displayed.value.toFloat() / duration).coerceIn(0f, 1f) else 0f
+        }
+    }
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Slider(
+            value = fraction,
+            onValueChange = { draggedProgress = it },
+            onValueChangeFinished = {
+                draggedProgress?.let { onSeek?.invoke((it * duration).roundToLong()) }
+                draggedProgress = null
+            },
+            enabled = onSeek != null,
+            height = 10.dp,
+            colors = SliderDefaults.sliderColors(
+                foregroundColor = color,
+                disabledForegroundColor = color.copy(alpha = 0.55f),
+                backgroundColor = Color.White.copy(alpha = 0.24f),
+                disabledBackgroundColor = Color.White.copy(alpha = 0.18f),
+                thumbColor = Color.White,
+                disabledThumbColor = Color.White.copy(alpha = 0.55f),
+            ),
+            modifier = Modifier.fillMaxWidth().semantics {
+                if (onSeek != null) {
+                    setProgress { target ->
+                        onSeek((target.coerceIn(0f, 1f) * duration).roundToLong())
+                        true
+                    }
+                }
+            },
+        )
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text(formatPlaybackTime(elapsedSecond * 1_000L), style = MiuixTheme.textStyles.body2)
+            Text(formatPlaybackTime(duration), style = MiuixTheme.textStyles.body2)
+        }
+    }
+}
+
+@Composable
+private fun PlaybackLanguageMenu(
+    showTranslation: Boolean,
+    showRomanization: Boolean,
+    onTranslationChange: (Boolean) -> Unit,
+    onRomanizationChange: (Boolean) -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    Box {
+        IconButton(
+            onClick = { expanded = !expanded },
+            holdDownState = expanded,
+            minWidth = 48.dp,
+            minHeight = 48.dp,
+        ) {
+            Icon(
+                imageVector = MiuixIcons.Translate,
+                contentDescription = stringResource(R.string.lyric_text_display_mode_translation),
+                tint = MiuixTheme.colorScheme.onSurface.copy(alpha = if (showTranslation || showRomanization) 1f else 0.65f),
+            )
+        }
+        WindowListPopup(
+            show = expanded,
+            enableWindowDim = false,
+            onDismissRequest = { expanded = false },
+        ) {
+            ListPopupColumn {
+                PlaybackLanguageOption(
+                    label = stringResource(R.string.lyric_text_display_mode_translation),
+                    checked = showTranslation,
+                    onCheckedChange = onTranslationChange,
+                )
+                PlaybackLanguageOption(
+                    label = stringResource(R.string.lyrics_playback_romanization),
+                    checked = showRomanization,
+                    onCheckedChange = onRomanizationChange,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun PlaybackLanguageOption(label: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)
+            .toggleable(checked, role = Role.Switch, onValueChange = onCheckedChange)
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(label, modifier = Modifier.weight(1f), style = MiuixTheme.textStyles.body1)
+        Switch(checked = checked, onCheckedChange = null)
     }
 }
 

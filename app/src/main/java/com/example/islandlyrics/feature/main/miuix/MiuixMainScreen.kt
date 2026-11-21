@@ -128,7 +128,7 @@ private const val HomeLyricHighlightIntervalMs = 33L
 
 @Composable
 @Suppress("UNUSED_PARAMETER")
-fun MiuixMainScreen(
+internal fun MiuixMainScreen(
     versionText: String,
     isDebugBuild: Boolean,
     onOpenSettings: () -> Unit,
@@ -143,7 +143,7 @@ fun MiuixMainScreen(
     updateReleaseInfo: UpdateChecker.ReleaseInfo? = null,
     onUpdateDismiss: () -> Unit = {},
     onUpdateIgnore: (String) -> Unit = {},
-    onOpenLyricsPlayback: ((LayoutCoordinates?) -> Unit)? = null,
+    onOpenLyricsPlayback: ((LayoutCoordinates?, LyricsPlaybackStart) -> Unit)? = null,
 ) {
     val repo = remember { LyricRepository.getInstance() }
     val context = LocalContext.current
@@ -254,7 +254,11 @@ fun MiuixMainScreen(
 
     val mediaCards = rememberHomeMediaCards(repoMetadata)
     val whitelistedSessions = mediaCards.controllers
-    val hasCompleteLyrics = repoParsedLyrics.hasCompleteLyrics()
+    val playbackStart = remember(repoMetadata, repoParsedLyrics) {
+        val track = repoMetadata
+        val lines = repoParsedLyrics.playbackLines()
+        if (track != null && lines.isNotEmpty()) LyricsPlaybackStart(track, lines) else null
+    }
 
     var listenerEnabled by remember {
         mutableStateOf(
@@ -482,7 +486,11 @@ fun MiuixMainScreen(
                                         isOnlineLyricSource(repoParsedLyrics?.apiPath) ||
                                         (repoLyric?.lyric.isNullOrBlank() && repoParsedLyrics?.lines.isNullOrEmpty())),
                                 onOpenOnlineLyricRematch = onOpenOnlineLyricRematch,
-                                onOpenLyricsPlayback = onOpenLyricsPlayback.takeIf { isPrimary && hasCompleteLyrics },
+                                onOpenLyricsPlayback = if (isPrimary && onOpenLyricsPlayback != null && playbackStart != null) {
+                                    { anchor -> onOpenLyricsPlayback(anchor, playbackStart) }
+                                } else {
+                                    null
+                                },
                             )
                         }
 

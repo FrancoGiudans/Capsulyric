@@ -417,6 +417,19 @@ object SettingsSearchRegistry {
             )
         ),
 
+        SettingsSearchItem(
+            id = "pref_fullscreen_playback",
+            titleRes = R.string.settings_fullscreen_playback,
+            breadcrumbResList = listOf(R.string.page_title_personalization, R.string.tab_app_ui),
+            keywords = listOf("全屏歌词", "进度条颜色", "歌词模糊", "歌词文本颜色", "专辑取色"),
+            supportedVariants = setOf(SettingsUiVariant.MIUIX),
+            action = SettingsSearchAction.Navigate(
+                target = SettingsNavigationTarget.APP_UI,
+                tab = CustomSettingsTab.APP_UI,
+                targetItemKey = "key_fullscreen_playback"
+            )
+        ),
+
         // Material-only laboratory settings
         SettingsSearchItem(
             id = "pref_material_page_blur",

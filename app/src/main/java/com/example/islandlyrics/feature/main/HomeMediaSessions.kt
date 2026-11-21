@@ -83,17 +83,36 @@ internal fun rememberHomeMediaCards(track: LyricRepository.MediaInfo?): HomeMedi
     val duplicateCandidates = remember(controllers) {
         controllers.groupBy { it.packageName }.values.filter { it.size > 1 }.flatten()
     }
-    var metadataRevision by remember { mutableIntStateOf(0) }
+    var sessionRevision by remember { mutableIntStateOf(0) }
     DisposableEffect(duplicateCandidates) {
-        val callback = object : MediaController.Callback() {
-            override fun onMetadataChanged(metadata: MediaMetadata?) { metadataRevision++ }
+        val callbacks = duplicateCandidates.associateWith { controller ->
+            object : MediaController.Callback() {
+                private var hasPlaybackState = controller.playbackState != null
+
+                override fun onMetadataChanged(metadata: MediaMetadata?) { sessionRevision++ }
+
+                override fun onPlaybackStateChanged(state: PlaybackState?) {
+                    val hasState = state != null
+                    if (hasPlaybackState != hasState) {
+                        hasPlaybackState = hasState
+                        sessionRevision++
+                    }
+                }
+            }
         }
-        duplicateCandidates.forEach { it.registerCallback(callback) }
-        onDispose { duplicateCandidates.forEach { it.unregisterCallback(callback) } }
+        callbacks.forEach { (controller, callback) -> controller.registerCallback(callback) }
+        onDispose { callbacks.forEach { (controller, callback) -> controller.unregisterCallback(callback) } }
     }
-    return remember(controllers, track, primaryToken, metadataRevision) {
-        val primary = selectHomePlaybackController(controllers, track, primaryToken)
-        val ordered = if (primary == null) controllers else listOf(primary) + controllers.filter {
+    return remember(controllers, track, primaryToken, sessionRevision) {
+        val sessionsWithState = duplicateCandidates.filter { it.playbackState != null }
+        val packagesWithState = sessionsWithState.mapTo(hashSetOf()) { it.packageName }
+        val tokensWithState = sessionsWithState.mapTo(hashSetOf()) { it.sessionToken }
+        // Some players expose an active metadata-only SDK session alongside their playback session.
+        val eligible = controllers.filter {
+            it.packageName !in packagesWithState || it.sessionToken in tokensWithState || it.flags != 0L
+        }
+        val primary = selectHomePlaybackController(eligible, track, primaryToken)
+        val ordered = if (primary == null) eligible else listOf(primary) + eligible.filter {
             it.sessionToken != primary.sessionToken
         }
         val visible = mutableListOf<MediaController>()

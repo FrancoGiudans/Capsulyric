@@ -37,6 +37,7 @@ import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.media.MediaMetadata
 import android.media.session.MediaController
+import android.media.session.MediaSession
 import android.media.session.MediaSessionManager
 import android.media.session.PlaybackState
 import android.os.Handler
@@ -82,9 +83,9 @@ class MediaMonitorService : NotificationListenerService() {
     
     // Deduplication: Track last metadata hash to avoid processing duplicates
     private var lastMetadataHash: Int = 0
+    private var lastMetadataSession: MediaSession.Token? = null
+    private var lastPlaybackMetadataCheckAt = 0L
     private var lastComputedIsPlaying: Boolean? = null
-    private var lastAlbumArtTrackKey: LyricRepository.AlbumArtKey? = null
-    private var lastAlbumArtHash: Int = 0
 
     // Debounce Token
     private val updateToken = Any()
@@ -368,26 +369,16 @@ class MediaMonitorService : NotificationListenerService() {
                                     checkServiceState() // Priority might have changed
 
                                     val primary = getPrimaryController()
-                                    if (primary != null && primary.packageName == controller.packageName) {
-                                        // Buggy apps don't always fire onMetadataChanged (e.g., Xiaomi Music with SuperLyric module).
-                                        // We manually compute the un-parsed hash here.
-                                        // If it differs from lastMetadataHash, they covertly changed the song.
-                                        val meta = primary.metadata
-                                        if (meta != null) {
-                                            val artHash = (meta.getBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART)
-                                                ?: meta.getBitmap(MediaMetadata.METADATA_KEY_ART)).hashCode()
-                                            val currentHash = java.util.Objects.hash(
-                                                meta.getString(MediaMetadata.METADATA_KEY_TITLE),
-                                                meta.getString(MediaMetadata.METADATA_KEY_ARTIST),
-                                                primary.packageName,
-                                                meta.getLong(MediaMetadata.METADATA_KEY_DURATION),
-                                                artHash
+                                    val now = SystemClock.elapsedRealtime()
+                                    if (primary != null && (
+                                            primary.sessionToken != lastMetadataSession ||
+                                                (primary.sessionToken == controller.sessionToken &&
+                                                    now - lastPlaybackMetadataCheckAt >= PLAYBACK_METADATA_POLL_MS)
                                             )
-                                            if (currentHash != lastMetadataHash) {
-                                                AppLogger.getInstance().d(TAG, "Caught unannounced metadata change via playback state!")
-                                                updateMetadataIfPrimary(primary)
-                                            }
-                                        }
+                                    ) {
+                                        // Some players skip onMetadataChanged. Poll the primary session as a fallback.
+                                        lastPlaybackMetadataCheckAt = now
+                                        updateMetadataIfPrimary(primary)
                                     }
 
                                     val suggestion = getSuggestionController()
@@ -476,9 +467,9 @@ class MediaMonitorService : NotificationListenerService() {
 
     private fun resetSessionTracking() {
         lastMetadataHash = 0
+        lastMetadataSession = null
+        lastPlaybackMetadataCheckAt = 0L
         lastComputedIsPlaying = null
-        lastAlbumArtTrackKey = null
-        lastAlbumArtHash = 0
         lastControllerSignatures = ""
     }
 
@@ -641,6 +632,9 @@ class MediaMonitorService : NotificationListenerService() {
     }
 
     private fun updateMetadataIfPrimary(controller: MediaController) {
+        val primary = getPrimaryController() ?: return
+        if (controller.sessionToken != primary.sessionToken) return
+
         val metadata = controller.metadata ?: return
         val playbackState = controller.playbackState
         val pkg = controller.packageName
@@ -654,13 +648,6 @@ class MediaMonitorService : NotificationListenerService() {
         val trackNumber = metadata.getLong(MediaMetadata.METADATA_KEY_TRACK_NUMBER).toInt()
         val duration = metadata.getLong(MediaMetadata.METADATA_KEY_DURATION)
 
-        // (Suggestion logic moved to updateMetadataForSuggestion)
-
-        val primary = getPrimaryController() ?: return
-
-        // Only process if this IS the primary controller
-        if (controller.packageName != primary.packageName) return
-        
         // 2. CHECK WHITELIST - Strict blocking for Main UI
         if (!allowedPackages.contains(pkg)) {
             AppLogger.getInstance().log("Meta", "⛔ Ignored non-whitelisted: $pkg (Sent to suggestion only)")
@@ -671,8 +658,6 @@ class MediaMonitorService : NotificationListenerService() {
 
         val artBitmap = metadata.getBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART) 
                         ?: metadata.getBitmap(MediaMetadata.METADATA_KEY_ART)
-        val artHash = artBitmap.hashCode()
-        
         val metadataHash = java.util.Objects.hash(
             rawTitle,
             rawArtist,
@@ -682,27 +667,22 @@ class MediaMonitorService : NotificationListenerService() {
             mediaUri,
             trackNumber,
             pkg,
-            duration,
-            artHash
+            duration
         )
+        val repo = LyricRepository.getInstance()
+        if (controller.sessionToken == lastMetadataSession && metadataHash == lastMetadataHash) {
+            repo.liveMetadata.value?.takeIf { it.packageName == pkg }?.let { track ->
+                publishAlbumArtIfChanged(track, artBitmap)
+            }
+            return
+        }
         if (BuildConfig.DEBUG) {
             AppLogger.getInstance().log(
                 TAG,
-                "[NotifyTrace] updateMetadataIfPrimary pkg=$pkg rawTitle=$rawTitle rawArtist=$rawArtist duration=$duration artHash=$artHash metadataHash=$metadataHash lastMetadataHash=$lastMetadataHash state=${playbackState?.state}"
+                "[NotifyTrace] updateMetadataIfPrimary pkg=$pkg rawTitle=$rawTitle rawArtist=$rawArtist duration=$duration hasArt=${artBitmap != null} metadataHash=$metadataHash lastMetadataHash=$lastMetadataHash state=${playbackState?.state}"
             )
         }
-        // SKIP DUPLICATE CHECK if this is a forced update (from whitelist change)
-        // We detect this via a transient flag or simply by checking if the LAST hash was from a DIFFERENT package?
-        // Simpler: We just rely on the fact that if we switched primary, the hash is likely different.
-        // BUT, if we re-enabled the SAME app, the hash might be identical to what we had before we disabled it?
-        // Actually, `activeControllers` mechanism in `updateControllers` handles the "switch", 
-        // but `updateMetadataIfPrimary` is called explicitly. 
-        // To be safe, we can relax this check OR ensure `lastMetadataHash` is reset in `recheckSessions`.
-        // For now, let's keep the check but ensure `recheckSessions` clears the last hash.
-        
-        if (metadataHash == lastMetadataHash) {
-            return
-        }
+        lastMetadataSession = controller.sessionToken
         lastMetadataHash = metadataHash
 
         AppLogger.getInstance().log("Meta", "✅ Processing Whitelisted: $pkg - $rawTitle")
@@ -872,7 +852,7 @@ class MediaMonitorService : NotificationListenerService() {
         }
 
         // Update PUBLIC Metadata (Main UI)
-        val track = LyricRepository.getInstance().updateMediaMetadata(
+        val track = repo.updateMediaMetadata(
             title = finalTitle ?: "Unknown",
             artist = finalArtist ?: "Unknown",
             packageName = pkg,
@@ -899,27 +879,29 @@ class MediaMonitorService : NotificationListenerService() {
         // --- Save state for persistence ---
         saveParserState(pkg, finalTitle, finalArtist, isDynamicLyricMode, duration)
 
-        updateAlbumArtIfTrackChanged(track, artBitmap)
+        publishAlbumArtIfChanged(track, artBitmap)
     }
 
-    private fun updateAlbumArtIfTrackChanged(
+    private fun publishAlbumArtIfChanged(
         track: LyricRepository.MediaInfo,
         artBitmap: Bitmap?
     ) {
-        val trackKey = track.albumArtKey
-        val liveArt = artBitmap?.takeIf { !it.isRecycled }
-        val artHash = liveArt.hashCode()
-
-        // Compare the artwork identity, not just "did this track ever have art".
-        // Some players publish the new track's title/artist while METADATA_KEY_ALBUM_ART
-        // still holds the PREVIOUS track's bitmap, then send the correct art in a later
-        // callback. Keying on a boolean latched that stale image in for the whole track.
-        if (trackKey == lastAlbumArtTrackKey && artHash == lastAlbumArtHash) return
-
-        lastAlbumArtTrackKey = trackKey
-        lastAlbumArtHash = artHash
-        val scaledArt = scaleDownBitmap(liveArt)
-        LyricRepository.getInstance().updateAlbumArt(track, scaledArt)
+        val repo = LyricRepository.getInstance()
+        val previous = repo.liveTrackAlbumArt.value
+        val scaledArt = scaleDownBitmap(artBitmap)
+        if (previous?.trackKey == track.albumArtKey) {
+            val published = previous.bitmap
+            if (scaledArt == null || published === scaledArt) return
+            // A MediaSession IPC can return a fresh bitmap object for unchanged artwork.
+            if (published != null && !published.isRecycled && published.sameAs(scaledArt)) {
+                scaledArt.recycle()
+                return
+            }
+        }
+        repo.updateAlbumArt(track, scaledArt)
+        if (BuildConfig.DEBUG) {
+            AppLogger.getInstance().d(TAG, "[NotifyTrace] albumArtPublished pkg=${track.packageName} hasArt=${scaledArt != null}")
+        }
     }
 
     private fun saveParserState(pkg: String, title: String?, artist: String?, lyricMode: Boolean, duration: Long) {
@@ -1018,14 +1000,16 @@ class MediaMonitorService : NotificationListenerService() {
         if (src.isRecycled) return null
         val w = src.width
         val h = src.height
-        val config = src.config ?: Bitmap.Config.ARGB_8888
+        val config = src.config?.takeUnless { it == Bitmap.Config.HARDWARE } ?: Bitmap.Config.ARGB_8888
         if (w <= MAX_ALBUM_ART_SIZE && h <= MAX_ALBUM_ART_SIZE) {
             return src.copy(config, false)
         }
         val scale = MAX_ALBUM_ART_SIZE.toFloat() / maxOf(w, h)
         val newW = (w * scale).toInt().coerceAtLeast(1)
         val newH = (h * scale).toInt().coerceAtLeast(1)
-        return src.scale(newW, newH)
+        val scaled = src.scale(newW, newH)
+        if (scaled.config != Bitmap.Config.HARDWARE) return scaled
+        return scaled.copy(config, false).also { scaled.recycle() }
     }
 
     companion object {
@@ -1045,6 +1029,7 @@ class MediaMonitorService : NotificationListenerService() {
         private const val REBIND_RETRY_INTERVAL_MS = 5_000L
         /** Max dimension for stored album art; notification renderers downscale further. */
         private const val MAX_ALBUM_ART_SIZE = 320
+        private const val PLAYBACK_METADATA_POLL_MS = 250L
         
         // --- Dynamic Lyric State Tracking Maps ---
         private val packageLyricMode    = HashMap<String, Boolean>()

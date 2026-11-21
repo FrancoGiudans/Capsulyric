@@ -35,6 +35,11 @@
     <string name="lyrics_playback_interlude">間奏</string>
     <string name="lyrics_playback_pause">暫停</string>
     <string name="lyrics_playback_next">下一首</string>
+    <string name="lyrics_playback_romanization">羅馬音</string>
+    <string name="settings_fullscreen_playback">全螢幕播放頁</string>
+    <string name="settings_fullscreen_playback_album_progress">進度條顏色跟隨專輯</string>
+    <string name="settings_fullscreen_playback_lyric_blur">歌詞區域邊緣模糊</string>
+    <string name="settings_fullscreen_playback_album_text">歌詞文字顏色跟隨專輯</string>
     <string name="main_instrumental_marked">已標記為純音樂</string>
     <string name="online_lyric_rematch_entry">重新比對線上歌詞</string>
     <string name="online_lyric_rematch_entry_short">重新比對</string>

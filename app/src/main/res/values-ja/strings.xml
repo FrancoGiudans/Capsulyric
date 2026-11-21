@@ -35,6 +35,11 @@
     <string name="lyrics_playback_interlude">間奏</string>
     <string name="lyrics_playback_pause">一時停止</string>
     <string name="lyrics_playback_next">次の曲</string>
+    <string name="lyrics_playback_romanization">ローマ字</string>
+    <string name="settings_fullscreen_playback">全画面再生</string>
+    <string name="settings_fullscreen_playback_album_progress">進捗バーをアルバムの色に合わせる</string>
+    <string name="settings_fullscreen_playback_lyric_blur">歌詞領域の上下をぼかす</string>
+    <string name="settings_fullscreen_playback_album_text">歌詞の色をアルバムに合わせる</string>
     <string name="main_instrumental_marked">インストゥルメンタルとしてマーク済み</string>
     <string name="online_lyric_rematch_entry">オンライン歌詞を再検索</string>
     <string name="online_lyric_rematch_entry_short">再検索</string>

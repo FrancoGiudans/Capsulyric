@@ -8,10 +8,10 @@ package com.example.islandlyrics.feature.main.miuix
 import android.graphics.Bitmap
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
@@ -21,32 +21,22 @@ import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
-import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
 import androidx.core.graphics.ColorUtils
 import com.example.islandlyrics.core.theme.ensureColorContrast
-import com.example.islandlyrics.ui.miuix.blur.LocalMiuixBlurEnabled
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import top.yukonga.miuix.kmp.blur.BlendColorEntry
-import top.yukonga.miuix.kmp.blur.BlurBlendMode
-import top.yukonga.miuix.kmp.blur.BlurColors
-import top.yukonga.miuix.kmp.blur.layerBackdrop
-import top.yukonga.miuix.kmp.blur.rememberLayerBackdrop
-import top.yukonga.miuix.kmp.blur.textureBlur
-import top.yukonga.miuix.kmp.shader.isRenderEffectSupported
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import kotlin.math.min
 
 private const val CoverSampleSize = 32
 private const val CoverHueGroups = 12
+private const val BackgroundContrast = 8.0
 
 @Composable
-internal fun LyricsPlaybackBackground(cover: Bitmap?, modifier: Modifier = Modifier) {
-    val surface = MiuixTheme.colorScheme.surface
-    val textColor = MiuixTheme.colorScheme.onSurface
-    val colors by produceState<List<Int?>?>(null, cover) {
+internal fun rememberPlaybackCoverColors(cover: Bitmap?): State<List<Int?>?> =
+    produceState<List<Int?>?>(null, cover) {
         value = if (cover == null) null else withContext(Dispatchers.Default) {
             try {
                 sampleCoverColors(cover)
@@ -57,54 +47,48 @@ internal fun LyricsPlaybackBackground(cover: Bitmap?, modifier: Modifier = Modif
             }
         }
     }
+
+internal fun playbackAlbumAccent(colors: List<Int?>?): Color {
+    val hsl = FloatArray(3)
+    val sample = colors?.filterNotNull()?.maxByOrNull {
+        ColorUtils.colorToHSL(it, hsl)
+        hsl[1]
+    } ?: return Color.White
+    // Match the brightest background that the palette can produce against white.
+    val brightestBackground = 0xFF515151.toInt()
+    return Color(ensureColorContrast(sample, brightestBackground, Color.White.toArgb(), 4.5, 0.24f))
+}
+
+@Composable
+internal fun LyricsPlaybackBackground(colors: List<Int?>?, modifier: Modifier = Modifier) {
+    val surface = MiuixTheme.colorScheme.surface
+    val textColor = Color.White
     val palette = remember(colors, surface, textColor) {
         List(4) { index ->
             val sampled = colors?.get(index) ?: return@List surface
-            Color(ensureColorContrast(sampled, textColor.toArgb(), surface.toArgb(), 4.5, 0.06f))
+            Color(ensureColorContrast(sampled, textColor.toArgb(), surface.toArgb(), BackgroundContrast, 0.06f))
         }
     }
     val topLeft by animateColorAsState(palette[0], tween(450), label = "cover top left")
     val topRight by animateColorAsState(palette[1], tween(450), label = "cover top right")
     val bottomLeft by animateColorAsState(palette[2], tween(450), label = "cover bottom left")
     val bottomRight by animateColorAsState(palette[3], tween(450), label = "cover bottom right")
-    val blurEnabled = LocalMiuixBlurEnabled.current && isRenderEffectSupported()
-    val backdrop = rememberLayerBackdrop()
-    val mix = remember(surface) {
-        BlurColors(blendColors = listOf(BlendColorEntry(surface.copy(alpha = 0.045f), BlurBlendMode.SrcOver)))
-    }
-
-    Box(modifier.fillMaxSize()) {
+    Box(modifier.fillMaxSize().drawWithCache {
+        val gradient = Brush.horizontalGradient(listOf(bottomLeft, bottomRight))
+        onDrawBehind { drawRect(gradient) }
+    }) {
         Box(
-            Modifier.fillMaxSize()
-                .then(if (blurEnabled) Modifier.layerBackdrop(backdrop) else Modifier)
+            Modifier.matchParentSize()
+                .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
                 .drawWithCache {
-                    val gradient = Brush.horizontalGradient(listOf(bottomLeft, bottomRight))
-                    onDrawBehind { drawRect(gradient) }
-                }
-        ) {
-            Box(
-                Modifier.matchParentSize()
-                    .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
-                    .drawWithCache {
-                        val gradient = Brush.horizontalGradient(listOf(topLeft, topRight))
-                        val mask = Brush.verticalGradient(listOf(Color.Black, Color.Transparent))
-                        onDrawBehind {
-                            drawRect(gradient)
-                            drawRect(mask, blendMode = BlendMode.DstIn)
-                        }
+                    val gradient = Brush.horizontalGradient(listOf(topLeft, topRight))
+                    val mask = Brush.verticalGradient(listOf(Color.Black, Color.Transparent))
+                    onDrawBehind {
+                        drawRect(gradient)
+                        drawRect(mask, blendMode = BlendMode.DstIn)
                     }
-            )
-        }
-        if (blurEnabled) {
-            Box(
-                Modifier.matchParentSize().textureBlur(
-                    backdrop = backdrop,
-                    shape = RectangleShape,
-                    blurRadius = 32f,
-                    colors = mix,
-                )
-            )
-        }
+                },
+        )
     }
 }
 

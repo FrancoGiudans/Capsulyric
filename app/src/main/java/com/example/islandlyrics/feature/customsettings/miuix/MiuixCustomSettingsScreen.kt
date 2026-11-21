@@ -53,6 +53,7 @@ import com.example.islandlyrics.core.theme.ThemeHelper
 import com.example.islandlyrics.core.platform.RomUtils
 import com.example.islandlyrics.runtime.service.LyricService
 import com.example.islandlyrics.feature.main.MainActivity
+import com.example.islandlyrics.feature.main.miuix.LyricsPlaybackPreference
 import com.example.islandlyrics.ui.overlay.model.SecondaryTextMode
 import com.example.islandlyrics.feature.customsettings.CustomSettingsAction
 import com.example.islandlyrics.feature.customsettings.RightManualLimitSetting
@@ -501,6 +502,7 @@ fun MiuixCustomSettingsScreen(
                                 "key_predictive_back", "key_predictive_back_animation_mode",
                                 "key_predictive_back_animation", "key_edge_scroll_haptic" -> 4
                                 "key_home_lyric_preview" -> 6
+                                "key_fullscreen_playback" -> 7
                                 else -> 0
                             }
                             CustomSettingsTab.CAPSULE -> 2
@@ -1731,6 +1733,26 @@ fun MiuixCustomSettingsScreen(
                                         modifier = Modifier.miuixSettingHighlight(activeHighlightKey, "key_home_lyric_preview"),
                                         onClick = { showHomeLyricPreviewDialog = true }
                                     )
+                                }
+                            }
+                            item { SmallTitle(text = stringResource(R.string.settings_fullscreen_playback)) }
+                            item {
+                                Card(
+                                    modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)
+                                        .miuixSettingHighlight(activeHighlightKey, "key_fullscreen_playback"),
+                                ) {
+                                    val settings = listOf(
+                                        LyricsPlaybackPreference.AlbumProgress to R.string.settings_fullscreen_playback_album_progress,
+                                        LyricsPlaybackPreference.LyricBlur to R.string.settings_fullscreen_playback_lyric_blur,
+                                        LyricsPlaybackPreference.AlbumText to R.string.settings_fullscreen_playback_album_text,
+                                    )
+                                    settings.forEach { (preference, label) ->
+                                        SuperSwitch(
+                                            title = stringResource(label),
+                                            checked = preference.observe(prefs),
+                                            onCheckedChange = { preference.set(prefs, it) },
+                                        )
+                                    }
                                 }
                             }
                             item {

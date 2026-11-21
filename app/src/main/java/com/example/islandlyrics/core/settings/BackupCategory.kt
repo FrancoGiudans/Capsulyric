@@ -138,6 +138,7 @@ object BackupCategories {
             "theme_*", "card_blur_enabled", "ui_use_miuix",
             AppPreferences.Keys.MIUIX_NAVIGATION_BAR_STYLE,
             "home_lyric_preview_display_modes", "home_lyric_preview_secondary_modes",
+            "fullscreen_playback_*",
             AppPreferences.Keys.MIUIX_THEME_COLOR_SOURCE, "material_theme_*",
             AppPreferences.Keys.MATERIAL_BLUR_RADIUS_DP
         ),
@@ -154,7 +155,8 @@ object BackupCategories {
                 "ui_use_miuix",
                 AppPreferences.Keys.MIUIX_NAVIGATION_BAR_STYLE,
                 "home_lyric_preview_display_modes",
-                "home_lyric_preview_secondary_modes"
+                "home_lyric_preview_secondary_modes",
+                "fullscreen_playback_*"
             ))
         )
     )

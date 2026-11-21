@@ -13,9 +13,20 @@ import com.example.islandlyrics.ui.overlay.display.TimingGapDisplayResolver
 import com.example.islandlyrics.ui.overlay.floating.FloatingLyricsClock
 import com.example.islandlyrics.ui.overlay.model.SecondaryTextResolver
 
-internal fun LyricRepository.ParsedLyricsInfo?.hasCompleteLyrics(): Boolean =
-    this?.timelineCapability == LyricRepository.TimelineCapability.MULTI_LINE &&
-        lines.any { it.isTimedLyric() }
+internal data class LyricsPlaybackStart(
+    val track: LyricRepository.MediaInfo,
+    val lines: List<LyricLine>,
+) {
+    fun matches(candidate: LyricRepository.MediaInfo?): Boolean {
+        if (candidate == null || candidate.packageName != track.packageName ||
+            candidate.title != track.title || candidate.artist != track.artist
+        ) return false
+        if (candidate.mediaId.isNotBlank() && track.mediaId.isNotBlank()) {
+            return candidate.mediaId == track.mediaId
+        }
+        return candidate.mediaUri.isBlank() || track.mediaUri.isBlank() || candidate.mediaUri == track.mediaUri
+    }
+}
 
 internal fun LyricRepository.ParsedLyricsInfo?.playbackLines(): List<LyricLine> =
     if (this?.timelineCapability == LyricRepository.TimelineCapability.MULTI_LINE) {
@@ -46,7 +57,7 @@ internal sealed interface PlaybackTimelineItem {
 }
 
 internal fun List<LyricLine>.withInterludes(): List<PlaybackTimelineItem> = buildList {
-    val first = firstOrNull() ?: return@buildList
+    val first = this@withInterludes.firstOrNull() ?: return@buildList
     if (TimingGapDisplayResolver.supportsIntroCountdown(first.startTime)) {
         add(PlaybackTimelineItem.Interlude(0L, first.startTime))
     }

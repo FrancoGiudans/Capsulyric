@@ -35,6 +35,11 @@
     <string name="lyrics_playback_interlude">间奏</string>
     <string name="lyrics_playback_pause">暂停</string>
     <string name="lyrics_playback_next">下一首</string>
+    <string name="lyrics_playback_romanization">罗马音</string>
+    <string name="settings_fullscreen_playback">全屏播放页</string>
+    <string name="settings_fullscreen_playback_album_progress">进度条颜色跟随专辑</string>
+    <string name="settings_fullscreen_playback_lyric_blur">歌词区域边缘模糊</string>
+    <string name="settings_fullscreen_playback_album_text">歌词文本颜色跟随专辑</string>
     <string name="main_instrumental_marked">已标记为纯音乐</string>
     <string name="online_lyric_rematch_entry">重新匹配在线歌词</string>
     <string name="online_lyric_rematch_entry_short">重新匹配</string>

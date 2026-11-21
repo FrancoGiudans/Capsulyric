@@ -68,6 +68,7 @@ import com.example.islandlyrics.feature.navigation.MiuixTopLevelNavigationBar
 import com.example.islandlyrics.feature.navigation.TopLevelDestination
 import com.example.islandlyrics.feature.main.miuix.MiuixMainScreen
 import com.example.islandlyrics.feature.main.miuix.MiuixLyricsPlaybackScreen
+import com.example.islandlyrics.feature.main.miuix.LyricsPlaybackStart
 import com.example.islandlyrics.feature.onlinelyricdebug.material.OnlineLyricDebugScreen
 import com.example.islandlyrics.feature.onlinelyricdebug.miuix.MiuixOnlineLyricDebugScreen
 import com.example.islandlyrics.feature.oobe.OobeActivity
@@ -667,9 +668,9 @@ class MainActivity : BaseActivity() {
                                     },
                                     onOpenOnlineLyricRematch = { pushPage(AppPage.OnlineLyricDebug) },
                                     onBottomBarVisibilityChange = { bottomBarVisible = it },
-                                    onOpenLyricsPlayback = { anchor ->
+                                    onOpenLyricsPlayback = { anchor, start ->
                                         if (pageStack.isEmpty()) {
-                                            pushPage(AppPage.LyricsPlayback(PageExpansion.fromWindowBounds(anchor, navigationBounds)))
+                                            pushPage(AppPage.LyricsPlayback(PageExpansion.fromWindowBounds(anchor, navigationBounds), start))
                                         }
                                     },
                                 )
@@ -1030,7 +1031,7 @@ class MainActivity : BaseActivity() {
         onNavigate: (SettingsSearchAction.Navigate) -> Unit
     ) {
         when (page) {
-            is AppPage.LyricsPlayback -> MiuixLyricsPlaybackScreen(onBack = onBack)
+            is AppPage.LyricsPlayback -> MiuixLyricsPlaybackScreen(start = page.start, onBack = onBack)
             is AppPage.CustomSettings -> MiuixAppUiScreen(
                 onBack = onBack,
                 targetItemKey = page.targetItemKey,
@@ -1140,7 +1141,7 @@ class MainActivity : BaseActivity() {
 }
 
 private sealed class AppPage {
-    data class LyricsPlayback(val expansion: PageExpansion?) : AppPage()
+    data class LyricsPlayback(val expansion: PageExpansion?, val start: LyricsPlaybackStart) : AppPage()
     data class CustomSettings(val targetItemKey: String? = null) : AppPage()
     data class CapsuleNotification(val initialTab: CustomSettingsTab? = null, val targetItemKey: String? = null) : AppPage()
     data class DesktopLyrics(val targetItemKey: String? = null) : AppPage()

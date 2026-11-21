@@ -35,6 +35,11 @@
     <string name="lyrics_playback_interlude">Instrumental break</string>
     <string name="lyrics_playback_pause">Pause</string>
     <string name="lyrics_playback_next">Next track</string>
+    <string name="lyrics_playback_romanization">Romanization</string>
+    <string name="settings_fullscreen_playback">Full-screen playback</string>
+    <string name="settings_fullscreen_playback_album_progress">Use album colors for the progress bar</string>
+    <string name="settings_fullscreen_playback_lyric_blur">Blur the top and bottom of the lyrics</string>
+    <string name="settings_fullscreen_playback_album_text">Use album colors for lyric text</string>
     <string name="main_instrumental_marked">Marked as instrumental</string>
     <string name="online_lyric_rematch_entry">Rematch Online Lyrics</string>
     <string name="online_lyric_rematch_entry_short">Rematch Lyrics</string>
