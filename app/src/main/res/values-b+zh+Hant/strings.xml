@@ -41,6 +41,7 @@
     <string name="settings_fullscreen_playback_lyric_blur">歌詞區域邊緣模糊</string>
     <string name="settings_fullscreen_playback_album_text">歌詞文字顏色跟隨專輯</string>
     <string name="settings_fullscreen_playback_keep_screen_on">全螢幕播放時保持螢幕開啟</string>
+    <string name="settings_fullscreen_playback_hide_system_bars">隱藏狀態列和導覽列</string>
     <string name="settings_fullscreen_playback_auto_hide_controls">自動隱藏底部控制項</string>
     <string name="settings_fullscreen_playback_auto_hide_controls_summary">輕點歌詞區底部即可重新顯示控制項。</string>
     <string name="lyrics_playback_show_controls">顯示播放控制項</string>

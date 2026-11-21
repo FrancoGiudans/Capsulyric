@@ -108,6 +108,7 @@ import android.os.Looper
 import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.compose.setContent
+import androidx.activity.viewModels
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -144,6 +145,7 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.ViewModel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import top.yukonga.miuix.kmp.basic.Scaffold as MiuixScaffold
@@ -162,6 +164,7 @@ import com.kyant.backdrop.backdrops.rememberLayerBackdrop as rememberLiquidLayer
 class MainActivity : BaseActivity() {
 
     private val handler = Handler(Looper.getMainLooper())
+    private val lyricsPlaybackNavigation by viewModels<LyricsPlaybackNavigationState>()
 
     // Compose state for API dashboard
     private var versionText by mutableStateOf("...")
@@ -522,13 +525,16 @@ class MainActivity : BaseActivity() {
         val scope = rememberCoroutineScope()
         var bottomBarVisible by androidx.compose.runtime.remember { mutableStateOf(true) }
         val pageStack = remember {
-            androidx.compose.runtime.mutableStateListOf<AppPage>()
+            androidx.compose.runtime.mutableStateListOf<AppPage>().apply {
+                lyricsPlaybackNavigation.start?.let { add(AppPage.LyricsPlayback(expansion = null, start = it)) }
+            }
         }
         fun pushPage(page: AppPage) {
             pageStack.add(page)
+            if (page is AppPage.LyricsPlayback) lyricsPlaybackNavigation.start = page.start
         }
         fun popPage() {
-            if (pageStack.isNotEmpty()) pageStack.removeAt(pageStack.lastIndex)
+            if (pageStack.removeLastOrNull() is AppPage.LyricsPlayback) lyricsPlaybackNavigation.start = null
         }
         fun handleNavigate(action: SettingsSearchAction.Navigate) {
             when (action.target) {
@@ -1138,6 +1144,10 @@ class MainActivity : BaseActivity() {
             }
         }
     }
+}
+
+internal class LyricsPlaybackNavigationState : ViewModel() {
+    var start: LyricsPlaybackStart? = null
 }
 
 private sealed class AppPage {

@@ -41,6 +41,7 @@
     <string name="settings_fullscreen_playback_lyric_blur">Blur the top and bottom of the lyrics</string>
     <string name="settings_fullscreen_playback_album_text">Use album colors for lyric text</string>
     <string name="settings_fullscreen_playback_keep_screen_on">Keep screen on during playback</string>
+    <string name="settings_fullscreen_playback_hide_system_bars">Hide status and navigation bars</string>
     <string name="settings_fullscreen_playback_auto_hide_controls">Automatically hide playback controls</string>
     <string name="settings_fullscreen_playback_auto_hide_controls_summary">Tap the bottom of the lyrics to show the controls again.</string>
     <string name="lyrics_playback_show_controls">Show playback controls</string>

@@ -6,6 +6,7 @@
 package com.example.islandlyrics.feature.main.miuix
 
 import android.content.ActivityNotFoundException
+import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.media.MediaMetadata
 import android.media.session.MediaController
@@ -33,11 +34,13 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.displayCutout
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -90,6 +93,7 @@ import androidx.compose.ui.keepScreenOn
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -103,6 +107,7 @@ import androidx.compose.ui.semantics.setProgress
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.constrainHeight
@@ -110,6 +115,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.util.lerp
 import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
@@ -169,29 +176,45 @@ private val LyricTransitionSpec = tween<Float>(LyricTransitionMillis, easing = F
 
 @Composable
 internal fun MiuixLyricsPlaybackScreen(start: LyricsPlaybackStart, onBack: () -> Unit) {
-    val window = LocalActivity.current?.window
-    val view = LocalView.current
-    if (window != null) {
-        DisposableEffect(window, view) {
-            val controller = WindowCompat.getInsetsController(window, view)
-            val lightStatusBars = controller.isAppearanceLightStatusBars
-            val lightNavigationBars = controller.isAppearanceLightNavigationBars
-            controller.isAppearanceLightStatusBars = false
-            controller.isAppearanceLightNavigationBars = false
-            onDispose {
-                controller.isAppearanceLightStatusBars = lightStatusBars
-                controller.isAppearanceLightNavigationBars = lightNavigationBars
-            }
-        }
-    }
     MiuixTheme(colors = remember { darkColorScheme() }) {
         LyricsPlaybackContent(start, onBack)
     }
 }
 
 @Composable
+private fun PlaybackSystemBars(hideBars: Boolean) {
+    val window = LocalActivity.current?.window ?: return
+    val view = LocalView.current
+    DisposableEffect(window, view) {
+        val controller = WindowCompat.getInsetsController(window, view)
+        val lightStatusBars = controller.isAppearanceLightStatusBars
+        val lightNavigationBars = controller.isAppearanceLightNavigationBars
+        controller.isAppearanceLightStatusBars = false
+        controller.isAppearanceLightNavigationBars = false
+        onDispose {
+            controller.isAppearanceLightStatusBars = lightStatusBars
+            controller.isAppearanceLightNavigationBars = lightNavigationBars
+        }
+    }
+    if (hideBars) {
+        DisposableEffect(window, view) {
+            val controller = WindowCompat.getInsetsController(window, view)
+            val bars = WindowInsetsCompat.Type.statusBars() or WindowInsetsCompat.Type.navigationBars()
+            val previousBehavior = controller.systemBarsBehavior
+            controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            controller.hide(bars)
+            onDispose {
+                controller.show(bars)
+                controller.systemBarsBehavior = previousBehavior
+            }
+        }
+    }
+}
+
+@Composable
 private fun LyricsPlaybackContent(start: LyricsPlaybackStart, onBack: () -> Unit) {
     val context = LocalContext.current
+    val landscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
     val repo = remember { LyricRepository.getInstance() }
     val track by repo.liveMetadata.observeAsState(start.track)
     val parsed by repo.liveParsedLyrics.observeAsState()
@@ -246,6 +269,7 @@ private fun LyricsPlaybackContent(start: LyricsPlaybackStart, onBack: () -> Unit
     }
     val liveLines = remember(parsed) { parsed.playbackLines() }
     val prefs = remember(context) { AppPreferences.of(context) }
+    PlaybackSystemBars(LyricsPlaybackPreference.HideSystemBars.observe(prefs))
     val showTranslation = LyricsPlaybackPreference.Translation.observe(prefs)
     val showRomanization = LyricsPlaybackPreference.Romanization.observe(prefs)
     val blurLyrics = LyricsPlaybackPreference.LyricBlur.observe(prefs)
@@ -291,8 +315,8 @@ private fun LyricsPlaybackContent(start: LyricsPlaybackStart, onBack: () -> Unit
     var controlsVisible by remember { mutableStateOf(true) }
     var controlsTouched by remember { mutableStateOf(false) }
     var controlsInteraction by remember { mutableIntStateOf(0) }
-    var languageMenuOpen by remember { mutableStateOf(false) }
-    val canHideControls = autoHideControls && playing && lines.isNotEmpty() && following &&
+    var languageMenuOpen by remember(landscape) { mutableStateOf(false) }
+    val canHideControls = !landscape && autoHideControls && playing && lines.isNotEmpty() && following &&
         !controlsTouched && !languageMenuOpen && pendingSeek == null
     val showControls = controlsVisible || !canHideControls
     LaunchedEffect(canHideControls, controlsVisible, controlsInteraction) {
@@ -322,6 +346,86 @@ private fun LyricsPlaybackContent(start: LyricsPlaybackStart, onBack: () -> Unit
         pendingSeek = null
     }
 
+    val openPlayer: (() -> Unit)? = playerIntent?.let { intent ->
+        {
+            try {
+                context.startActivity(intent)
+            } catch (_: ActivityNotFoundException) {
+                // The player can be removed while the page is open.
+            }
+        }
+    }
+    val lyricsContent: @Composable (Modifier, Modifier, PaddingValues, Boolean) -> Unit =
+        { listModifier, fallbackModifier, contentPadding, blurDepth ->
+            if (lines.isNotEmpty()) {
+                key(trackIdentity) {
+                    LyricsPlaybackList(
+                        lines = lines,
+                        showTranslation = showTranslation,
+                        showRomanization = showRomanization,
+                        color = lyricColor,
+                        mainStyle = mainLyricStyle,
+                        secondaryStyle = secondaryLyricStyle,
+                        position = position,
+                        following = following,
+                        blurDepth = blurDepth,
+                        onFollowingChange = { following = it },
+                        onSeek = seek,
+                        contentPadding = contentPadding,
+                        modifier = listModifier,
+                    )
+                }
+            } else {
+                PlaybackLyricFallback(
+                    hasTrack = hasTrack,
+                    currentLine = currentLine?.takeUnless { SecondaryTextResolver.isPlaceholder(it.text) } ?: parsed?.takeIf {
+                        it.timelineCapability == LyricRepository.TimelineCapability.ACTIVE_LINE_ONLY
+                    }?.lines?.firstOrNull(),
+                    lyric = lyric,
+                    resolveState = resolveState,
+                    position = position,
+                    lyricColor = lyricColor,
+                    mainStyle = mainLyricStyle,
+                    secondaryStyle = secondaryLyricStyle,
+                    showTranslation = showTranslation,
+                    showRomanization = showRomanization,
+                    modifier = fallbackModifier,
+                )
+            }
+        }
+    val controls: @Composable () -> Unit = {
+        LyricsPlaybackControls(
+            controller = controller.takeIf { matchedTrack != null },
+            position = position,
+            duration = duration,
+            pendingSeek = pendingSeek,
+            actions = actions,
+            isPlaying = playing,
+            onSeek = seek,
+            progressColor = if (tintProgress) albumAccent else Color.White,
+            compact = landscape,
+        )
+    }
+    val languageMenu: @Composable () -> Unit = {
+        PlaybackLanguageMenu(
+            showTranslation = showTranslation,
+            showRomanization = showRomanization,
+            onTranslationChange = { LyricsPlaybackPreference.Translation.set(prefs, it) },
+            onRomanizationChange = { LyricsPlaybackPreference.Romanization.set(prefs, it) },
+            onExpandedChange = { languageMenuOpen = it },
+            buttonSize = if (landscape) 44.dp else 56.dp,
+        )
+    }
+    val showFollowButton = lines.isNotEmpty() && !following
+    val followButton: @Composable () -> Unit = {
+        TextButton(
+            text = stringResource(R.string.lyrics_playback_follow),
+            onClick = { following = true },
+        )
+    }
+    val lyricModifier = Modifier.fillMaxSize().graphicsLayer {
+        alpha = ((expansionProgress() - 0.1f) / 0.65f).coerceIn(0f, 1f)
+    }
     Scaffold(
         modifier = if (keepScreenOn && playing) Modifier.keepScreenOn() else Modifier,
         containerColor = Color.Transparent,
@@ -336,6 +440,27 @@ private fun LyricsPlaybackContent(start: LyricsPlaybackStart, onBack: () -> Unit
             start = insets.calculateStartPadding(layoutDirection) + 20.dp,
             end = insets.calculateEndPadding(layoutDirection) + 20.dp,
         )
+        if (landscape) {
+            Box(Modifier.fillMaxSize()) {
+                LyricsPlaybackBackground(coverColors)
+                LandscapeLyricsPlaybackLayout(
+                    title = track?.title ?: title,
+                    artist = track?.artist.orEmpty(),
+                    cover = cover,
+                    onBack = onBack,
+                    onOpenPlayer = openPlayer,
+                    languageMenu = languageMenu,
+                    followButton = followButton.takeIf { showFollowButton },
+                    controls = controls,
+                    lyrics = { listModifier, padding ->
+                        lyricsContent(lyricModifier.then(listModifier), lyricModifier, padding, false)
+                    },
+                    modifier = Modifier.fillMaxSize().padding(sidePadding)
+                        .padding(top = headerInset + 4.dp, bottom = footerInset + 8.dp),
+                )
+            }
+            return@Scaffold
+        }
         val useBlur = blurLyrics && isRenderEffectSupported()
         var headerHeight by remember { mutableStateOf(0.dp) }
         var footerHeight by remember { mutableStateOf(0.dp) }
@@ -359,56 +484,24 @@ private fun LyricsPlaybackContent(start: LyricsPlaybackStart, onBack: () -> Unit
 
             Box(Modifier.fillMaxSize()) {
                 LyricsPlaybackBackground(coverColors)
-                val lyricModifier = Modifier.fillMaxSize().graphicsLayer {
-                    alpha = ((expansionProgress() - 0.1f) / 0.65f).coerceIn(0f, 1f)
-                }
-                if (lines.isNotEmpty()) {
-                    val topFade = (headerHeight - 16.dp).coerceAtLeast(headerInset)
-                    val fading = lyricModifier.fadeLyricsAroundBars(topFade, bottomFade, fadeDistance)
-                    val lyricLayer = if (useBlur && !following && isRuntimeShaderSupported()) {
-                        fading.blurLyricsAroundBars(
-                            top = topFade,
-                            bottomFade = bottomFade,
-                            bottomWithControls = visibleBottomFade,
-                            reach = blurDistance,
-                        )
-                    } else {
-                        fading
-                    }
-                    key(trackIdentity) {
-                        LyricsPlaybackList(
-                            lines = lines,
-                            showTranslation = showTranslation,
-                            showRomanization = showRomanization,
-                            color = lyricColor,
-                            mainStyle = mainLyricStyle,
-                            secondaryStyle = secondaryLyricStyle,
-                            position = position,
-                            following = following,
-                            blurDepth = useBlur && following,
-                            onFollowingChange = { following = it },
-                            onSeek = seek,
-                            contentPadding = PaddingValues(top = anchor, bottom = trailingSpace),
-                            modifier = lyricLayer.padding(sidePadding),
-                        )
-                    }
-                } else {
-                    PlaybackLyricFallback(
-                        hasTrack = hasTrack,
-                        currentLine = currentLine?.takeUnless { SecondaryTextResolver.isPlaceholder(it.text) } ?: parsed?.takeIf {
-                            it.timelineCapability == LyricRepository.TimelineCapability.ACTIVE_LINE_ONLY
-                        }?.lines?.firstOrNull(),
-                        lyric = lyric,
-                        resolveState = resolveState,
-                        position = position,
-                        lyricColor = lyricColor,
-                        mainStyle = mainLyricStyle,
-                        secondaryStyle = secondaryLyricStyle,
-                        showTranslation = showTranslation,
-                        showRomanization = showRomanization,
-                        modifier = lyricModifier.padding(sidePadding).padding(top = headerHeight, bottom = footerHeight),
+                val topFade = (headerHeight - 16.dp).coerceAtLeast(headerInset)
+                val fading = lyricModifier.fadeLyricsAroundBars(topFade, bottomFade, fadeDistance)
+                val lyricLayer = if (lines.isNotEmpty() && useBlur && !following && isRuntimeShaderSupported()) {
+                    fading.blurLyricsAroundBars(
+                        top = topFade,
+                        bottomFade = bottomFade,
+                        bottomWithControls = visibleBottomFade,
+                        reach = blurDistance,
                     )
+                } else {
+                    fading
                 }
+                lyricsContent(
+                    lyricLayer.padding(sidePadding),
+                    lyricModifier.padding(sidePadding).padding(top = headerHeight, bottom = footerHeight),
+                    PaddingValues(top = anchor, bottom = trailingSpace),
+                    useBlur && following,
+                )
             }
 
             LyricsPlaybackHeader(
@@ -416,15 +509,7 @@ private fun LyricsPlaybackContent(start: LyricsPlaybackStart, onBack: () -> Unit
                 artist = track?.artist.orEmpty(),
                 cover = cover,
                 onBack = onBack,
-                onOpenPlayer = playerIntent?.let { intent ->
-                    {
-                        try {
-                            context.startActivity(intent)
-                        } catch (_: ActivityNotFoundException) {
-                            // The player can be removed while the page is open.
-                        }
-                    }
-                },
+                onOpenPlayer = openPlayer,
                 modifier = Modifier.align(Alignment.TopCenter)
                     .onSizeChanged { headerHeight = with(density) { it.height.toDp() } }
                     .padding(sidePadding).padding(top = headerInset)
@@ -475,30 +560,10 @@ private fun LyricsPlaybackContent(start: LyricsPlaybackStart, onBack: () -> Unit
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        PlaybackLanguageMenu(
-                            showTranslation = showTranslation,
-                            showRomanization = showRomanization,
-                            onTranslationChange = { LyricsPlaybackPreference.Translation.set(prefs, it) },
-                            onRomanizationChange = { LyricsPlaybackPreference.Romanization.set(prefs, it) },
-                            onExpandedChange = { languageMenuOpen = it },
-                        )
-                        if (lines.isNotEmpty() && !following) {
-                            TextButton(
-                                text = stringResource(R.string.lyrics_playback_follow),
-                                onClick = { following = true },
-                            )
-                        }
+                        languageMenu()
+                        if (showFollowButton) followButton()
                     }
-                    LyricsPlaybackControls(
-                        controller = controller.takeIf { matchedTrack != null },
-                        position = position,
-                        duration = duration,
-                        pendingSeek = pendingSeek,
-                        actions = actions,
-                        isPlaying = playing,
-                        onSeek = seek,
-                        progressColor = if (tintProgress) albumAccent else Color.White,
-                    )
+                    controls()
                 }
             }
         }
@@ -585,6 +650,64 @@ private fun PlaybackLyricFallback(
 }
 
 @Composable
+private fun LandscapeLyricsPlaybackLayout(
+    title: String,
+    artist: String,
+    cover: Bitmap?,
+    onBack: () -> Unit,
+    onOpenPlayer: (() -> Unit)?,
+    languageMenu: @Composable () -> Unit,
+    followButton: (@Composable () -> Unit)?,
+    controls: @Composable () -> Unit,
+    lyrics: @Composable (Modifier, PaddingValues) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val expansionProgress = LocalPageExpansionProgress.current
+    Row(modifier, horizontalArrangement = Arrangement.spacedBy(24.dp)) {
+        Column(
+            modifier = Modifier.weight(0.40f).fillMaxHeight().revealPlaybackChrome(expansionProgress),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = onBack) {
+                    MiuixBackIcon(contentDescription = stringResource(R.string.online_lyric_debug_back))
+                }
+                Spacer(Modifier.weight(1f))
+                languageMenu()
+            }
+            BoxWithConstraints(
+                modifier = Modifier.weight(1f).fillMaxWidth(),
+                contentAlignment = Alignment.Center,
+            ) {
+                val coverSize = minOf(maxWidth, maxHeight, 224.dp)
+                LyricsPlaybackCover(cover, onOpenPlayer, Modifier.size(coverSize), cornerRadius = 16.dp)
+            }
+            LyricsPlaybackTrackInfo(
+                title = title,
+                artist = artist,
+                modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
+                textAlign = TextAlign.Center,
+            )
+            controls()
+        }
+        BoxWithConstraints(Modifier.weight(0.60f).fillMaxHeight()) {
+            val anchor = maxHeight / 3f
+            val trailingSpace = (maxHeight - anchor - 32.dp).coerceAtLeast(0.dp)
+            val fadeDistance = (maxHeight / 6f).coerceAtMost(28.dp)
+            lyrics(
+                Modifier.fadeLyricsAroundBars(0.dp, rememberUpdatedState(0.dp), fadeDistance),
+                PaddingValues(top = anchor, bottom = trailingSpace),
+            )
+            if (followButton != null) {
+                Box(Modifier.align(Alignment.TopEnd).revealPlaybackChrome(expansionProgress)) {
+                    followButton()
+                }
+            }
+        }
+    }
+}
+
+@Composable
 private fun LyricsPlaybackHeader(
     title: String,
     artist: String,
@@ -593,7 +716,6 @@ private fun LyricsPlaybackHeader(
     onOpenPlayer: (() -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
-    val colors = MiuixTheme.colorScheme
     Row(
         modifier = modifier.fillMaxWidth().padding(top = 10.dp, bottom = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -602,31 +724,56 @@ private fun LyricsPlaybackHeader(
         IconButton(onClick = onBack) {
             MiuixBackIcon(contentDescription = stringResource(R.string.online_lyric_debug_back))
         }
-        val openPlayerLabel = stringResource(R.string.lyrics_playback_open_player)
-        Box(
-            modifier = Modifier.size(52.dp).clip(RoundedCornerShape(12.dp)).background(colors.surface)
-                .then(if (onOpenPlayer != null) Modifier.clickable(onClickLabel = openPlayerLabel, onClick = onOpenPlayer) else Modifier),
-            contentAlignment = Alignment.Center,
-        ) {
-            if (cover != null) {
-                Image(
-                    bitmap = cover.asImageBitmap(),
-                    contentDescription = stringResource(R.string.main_album_art_cd),
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize(),
-                )
-            } else {
-                Icon(painterResource(R.drawable.ic_music_note), contentDescription = null, tint = colors.onSurface)
-            }
+        LyricsPlaybackCover(cover, onOpenPlayer, Modifier.size(52.dp), cornerRadius = 12.dp)
+        LyricsPlaybackTrackInfo(title, artist, Modifier.weight(1f))
+    }
+}
+
+@Composable
+private fun LyricsPlaybackCover(
+    cover: Bitmap?,
+    onOpenPlayer: (() -> Unit)?,
+    modifier: Modifier,
+    cornerRadius: Dp,
+) {
+    val colors = MiuixTheme.colorScheme
+    val openPlayerLabel = stringResource(R.string.lyrics_playback_open_player)
+    Box(
+        modifier = modifier.clip(RoundedCornerShape(cornerRadius)).background(colors.surface)
+            .then(if (onOpenPlayer != null) Modifier.clickable(onClickLabel = openPlayerLabel, onClick = onOpenPlayer) else Modifier),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (cover != null) {
+            Image(
+                bitmap = cover.asImageBitmap(),
+                contentDescription = stringResource(R.string.main_album_art_cd),
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize(),
+            )
+        } else {
+            Icon(painterResource(R.drawable.ic_music_note), contentDescription = null, tint = colors.onSurface)
         }
-        Column(
-            Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(2.dp),
-        ) {
-            Text(title, color = colors.onSurface, style = MiuixTheme.textStyles.title4, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            if (artist.isNotBlank()) {
-                Text(artist, color = colors.onSurface, style = MiuixTheme.textStyles.body2, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            }
+    }
+}
+
+@Composable
+private fun LyricsPlaybackTrackInfo(
+    title: String,
+    artist: String,
+    modifier: Modifier,
+    textAlign: TextAlign = TextAlign.Start,
+) {
+    val color = MiuixTheme.colorScheme.onSurface
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Text(
+            title, Modifier.fillMaxWidth(), color = color, style = MiuixTheme.textStyles.title4,
+            textAlign = textAlign, maxLines = 1, overflow = TextOverflow.Ellipsis,
+        )
+        if (artist.isNotBlank()) {
+            Text(
+                artist, Modifier.fillMaxWidth(), color = color, style = MiuixTheme.textStyles.body2,
+                textAlign = textAlign, maxLines = 1, overflow = TextOverflow.Ellipsis,
+            )
         }
     }
 }
@@ -983,6 +1130,7 @@ private fun LyricsPlaybackControls(
     isPlaying: Boolean,
     onSeek: ((Long) -> Unit)?,
     progressColor: Color,
+    compact: Boolean,
     modifier: Modifier = Modifier,
 ) {
     val playAction = if (isPlaying) PlaybackState.ACTION_PAUSE else PlaybackState.ACTION_PLAY
@@ -998,19 +1146,33 @@ private fun LyricsPlaybackControls(
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            PlaybackControl(R.drawable.ic_skip_previous, R.string.action_previous, actions and PlaybackState.ACTION_SKIP_TO_PREVIOUS != 0L) {
+            val skipButtonSize = if (compact) 44.dp else 56.dp
+            val skipIconSize = if (compact) 30.dp else 34.dp
+            PlaybackControl(
+                R.drawable.ic_skip_previous,
+                R.string.action_previous,
+                actions and PlaybackState.ACTION_SKIP_TO_PREVIOUS != 0L,
+                buttonSize = skipButtonSize,
+                iconSize = skipIconSize,
+            ) {
                 controls.dispatch { skipToPrevious() }
             }
             PlaybackControl(
                 if (isPlaying) R.drawable.ic_pause else R.drawable.ic_play_arrow,
                 if (isPlaying) R.string.lyrics_playback_pause else R.string.action_play,
                 canToggle,
-                buttonSize = 64.dp,
-                iconSize = 40.dp,
+                buttonSize = if (compact) 52.dp else 64.dp,
+                iconSize = if (compact) 34.dp else 40.dp,
             ) {
                 controls.dispatch { if (isPlaying) pause() else play() }
             }
-            PlaybackControl(R.drawable.ic_skip_next, R.string.lyrics_playback_next, actions and PlaybackState.ACTION_SKIP_TO_NEXT != 0L) {
+            PlaybackControl(
+                R.drawable.ic_skip_next,
+                R.string.lyrics_playback_next,
+                actions and PlaybackState.ACTION_SKIP_TO_NEXT != 0L,
+                buttonSize = skipButtonSize,
+                iconSize = skipIconSize,
+            ) {
                 controls.dispatch { skipToNext() }
             }
         }
@@ -1080,6 +1242,7 @@ private fun PlaybackLanguageMenu(
     onTranslationChange: (Boolean) -> Unit,
     onRomanizationChange: (Boolean) -> Unit,
     onExpandedChange: (Boolean) -> Unit,
+    buttonSize: Dp,
 ) {
     var expanded by remember { mutableStateOf(false) }
     Box {
@@ -1089,8 +1252,8 @@ private fun PlaybackLanguageMenu(
                 onExpandedChange(expanded)
             },
             holdDownState = expanded,
-            minWidth = 56.dp,
-            minHeight = 56.dp,
+            minWidth = buttonSize,
+            minHeight = buttonSize,
         ) {
             Icon(
                 imageVector = MiuixIcons.Translate,

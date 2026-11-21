@@ -1749,6 +1749,7 @@ fun MiuixCustomSettingsScreen(
                                         LyricsPlaybackPreference.LyricBlur to R.string.settings_fullscreen_playback_lyric_blur,
                                         LyricsPlaybackPreference.AlbumText to R.string.settings_fullscreen_playback_album_text,
                                         LyricsPlaybackPreference.KeepScreenOn to R.string.settings_fullscreen_playback_keep_screen_on,
+                                        LyricsPlaybackPreference.HideSystemBars to R.string.settings_fullscreen_playback_hide_system_bars,
                                         LyricsPlaybackPreference.AutoHideControls to R.string.settings_fullscreen_playback_auto_hide_controls,
                                     )
                                     settings.forEach { (preference, label) ->
