@@ -25,3 +25,4 @@ workthrough/
 autobuild_cli.sh
 autobuild.bat
 TODO*.md
+tmp/
