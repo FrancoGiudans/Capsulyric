@@ -421,7 +421,7 @@ object SettingsSearchRegistry {
             id = "pref_fullscreen_playback",
             titleRes = R.string.settings_fullscreen_playback,
             breadcrumbResList = listOf(R.string.page_title_personalization, R.string.tab_app_ui),
-            keywords = listOf("全屏歌词", "进度条颜色", "歌词模糊", "歌词文本颜色", "专辑取色"),
+            keywords = listOf("全屏歌词", "进度条颜色", "歌词模糊", "歌词文本颜色", "专辑取色", "保持亮屏", "禁止休眠", "自动隐藏底栏"),
             supportedVariants = setOf(SettingsUiVariant.MIUIX),
             action = SettingsSearchAction.Navigate(
                 target = SettingsNavigationTarget.APP_UI,

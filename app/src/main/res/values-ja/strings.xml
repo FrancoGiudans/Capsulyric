@@ -40,6 +40,10 @@
     <string name="settings_fullscreen_playback_album_progress">進捗バーをアルバムの色に合わせる</string>
     <string name="settings_fullscreen_playback_lyric_blur">歌詞領域の上下をぼかす</string>
     <string name="settings_fullscreen_playback_album_text">歌詞の色をアルバムに合わせる</string>
+    <string name="settings_fullscreen_playback_keep_screen_on">再生中は画面をオンに保つ</string>
+    <string name="settings_fullscreen_playback_auto_hide_controls">再生コントロールを自動的に隠す</string>
+    <string name="settings_fullscreen_playback_auto_hide_controls_summary">歌詞の下部をタップするとコントロールが再表示されます。</string>
+    <string name="lyrics_playback_show_controls">再生コントロールを表示</string>
     <string name="main_instrumental_marked">インストゥルメンタルとしてマーク済み</string>
     <string name="online_lyric_rematch_entry">オンライン歌詞を再検索</string>
     <string name="online_lyric_rematch_entry_short">再検索</string>

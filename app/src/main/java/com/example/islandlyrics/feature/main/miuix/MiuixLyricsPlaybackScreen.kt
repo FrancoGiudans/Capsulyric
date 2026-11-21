@@ -18,6 +18,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.EnterExitState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.keyframes
@@ -31,6 +32,8 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.animateScrollBy
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -44,6 +47,7 @@ import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
@@ -85,6 +89,9 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.keepScreenOn
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onSizeChanged
@@ -157,6 +164,8 @@ private const val InterludeExitMillis = InterludeExitGrowMillis + InterludeColla
 private const val InterludeBreathPeriodMillis = 1_250L
 private const val SeekAcknowledgementTimeout = 4_000L
 private const val SeekPositionTolerance = 1_000L
+private const val ControlsHideDelayMillis = 4_500L
+private const val ControlsVisibilityMillis = 220
 private val LyricActivationSpec = tween<Float>(LyricActivationMillis, easing = FastOutSlowInEasing)
 
 @Composable
@@ -243,6 +252,8 @@ private fun LyricsPlaybackContent(start: LyricsPlaybackStart, onBack: () -> Unit
     val blurLyrics = LyricsPlaybackPreference.LyricBlur.observe(prefs)
     val tintProgress = LyricsPlaybackPreference.AlbumProgress.observe(prefs)
     val tintLyrics = LyricsPlaybackPreference.AlbumText.observe(prefs)
+    val keepScreenOn = LyricsPlaybackPreference.KeepScreenOn.observe(prefs)
+    val autoHideControls = LyricsPlaybackPreference.AutoHideControls.observe(prefs)
     val coverColors by rememberPlaybackCoverColors(cover)
     val albumAccent = remember(coverColors) { playbackAlbumAccent(coverColors) }
     val lyricColor = if (tintLyrics) albumAccent else MiuixTheme.colorScheme.onSurface
@@ -269,6 +280,21 @@ private fun LyricsPlaybackContent(start: LyricsPlaybackStart, onBack: () -> Unit
     }
     var following by remember(trackIdentity) { mutableStateOf(true) }
     var pendingSeek by remember(trackIdentity, controller) { mutableStateOf<Long?>(null) }
+    var controlsVisible by remember { mutableStateOf(true) }
+    var controlsTouched by remember { mutableStateOf(false) }
+    var controlsInteraction by remember { mutableIntStateOf(0) }
+    var languageMenuOpen by remember { mutableStateOf(false) }
+    val canHideControls = autoHideControls && playing && lines.isNotEmpty() && following &&
+        !controlsTouched && !languageMenuOpen && pendingSeek == null
+    val showControls = controlsVisible || !canHideControls
+    LaunchedEffect(canHideControls, controlsVisible, controlsInteraction) {
+        if (!canHideControls) {
+            controlsVisible = true
+        } else if (controlsVisible) {
+            delay(ControlsHideDelayMillis)
+            controlsVisible = false
+        }
+    }
     val canSeek = controller != null && duration > 0L && actions and PlaybackState.ACTION_SEEK_TO != 0L
     val seek = if (canSeek) { requested: Long ->
         if (controller.metadata.belongsTo(matchedTrack)) {
@@ -288,7 +314,10 @@ private fun LyricsPlaybackContent(start: LyricsPlaybackStart, onBack: () -> Unit
         pendingSeek = null
     }
 
-    Scaffold(containerColor = Color.Transparent) { insets ->
+    Scaffold(
+        modifier = if (keepScreenOn && playing) Modifier.keepScreenOn() else Modifier,
+        containerColor = Color.Transparent,
+    ) { insets ->
         val density = LocalDensity.current
         val layoutDirection = LocalLayoutDirection.current
         val statusBarInsets = WindowInsets.statusBars.union(WindowInsets.displayCutout).asPaddingValues()
@@ -309,6 +338,16 @@ private fun LyricsPlaybackContent(start: LyricsPlaybackStart, onBack: () -> Unit
             val blurDistance = (availableForLyrics / 3f).coerceAtMost(112.dp)
             val anchor = headerHeight + availableForLyrics / 3f
             val trailingSpace = (maxHeight - anchor - 32.dp).coerceAtLeast(0.dp)
+            val visibleBottomFade = (footerHeight - 8.dp).coerceAtLeast(footerInset)
+            val bottomFade = if (autoHideControls) {
+                animateDpAsState(
+                    targetValue = if (showControls) visibleBottomFade else footerInset,
+                    animationSpec = tween(ControlsVisibilityMillis),
+                    label = "lyric bottom fade position",
+                )
+            } else {
+                rememberUpdatedState(visibleBottomFade)
+            }
 
             Box(Modifier.fillMaxSize()) {
                 LyricsPlaybackBackground(coverColors)
@@ -317,9 +356,17 @@ private fun LyricsPlaybackContent(start: LyricsPlaybackStart, onBack: () -> Unit
                 }
                 if (lines.isNotEmpty()) {
                     val topFade = (headerHeight - 16.dp).coerceAtLeast(headerInset)
-                    val bottomFade = (footerHeight - 8.dp).coerceAtLeast(footerInset)
                     val fading = lyricModifier.fadeLyricsAroundBars(topFade, bottomFade, fadeDistance)
-                    val lyricLayer = if (useBlur) fading.blurLyricsAroundBars(topFade, bottomFade, blurDistance) else fading
+                    val lyricLayer = if (useBlur) {
+                        fading.blurLyricsAroundBars(
+                            top = topFade,
+                            bottomFade = bottomFade,
+                            bottomWithControls = visibleBottomFade,
+                            reach = blurDistance,
+                        )
+                    } else {
+                        fading
+                    }
                     key(trackIdentity) {
                         LyricsPlaybackList(
                             lines = lines,
@@ -371,40 +418,75 @@ private fun LyricsPlaybackContent(start: LyricsPlaybackStart, onBack: () -> Unit
                     .revealPlaybackChrome(expansionProgress),
             )
 
-            Column(
-                Modifier.align(Alignment.BottomCenter).fillMaxWidth()
-                    .onSizeChanged { footerHeight = with(density) { it.height.toDp() } }
-                    .padding(sidePadding).padding(bottom = footerInset + 24.dp)
-                    .revealPlaybackChrome(expansionProgress),
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    PlaybackLanguageMenu(
-                        showTranslation = showTranslation,
-                        showRomanization = showRomanization,
-                        onTranslationChange = { LyricsPlaybackPreference.Translation.set(prefs, it) },
-                        onRomanizationChange = { LyricsPlaybackPreference.Romanization.set(prefs, it) },
-                    )
-                    if (lines.isNotEmpty() && !following) {
-                        TextButton(
-                            text = stringResource(R.string.lyrics_playback_follow),
-                            onClick = { following = true },
-                        )
-                    }
-                }
-                LyricsPlaybackControls(
-                    controller = controller.takeIf { matchedTrack != null },
-                    position = position,
-                    duration = duration,
-                    pendingSeek = pendingSeek,
-                    actions = actions,
-                    isPlaying = playing,
-                    onSeek = seek,
-                    progressColor = if (tintProgress) albumAccent else Color.White,
+            if (!showControls) {
+                val revealLabel = stringResource(R.string.lyrics_playback_show_controls)
+                Box(
+                    Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(footerInset + 52.dp)
+                        .semantics { contentDescription = revealLabel }
+                        .clickable(role = Role.Button) { controlsVisible = true },
                 )
+            }
+            AnimatedVisibility(
+                visible = showControls,
+                modifier = Modifier.align(Alignment.BottomCenter),
+                enter = fadeIn(tween(ControlsVisibilityMillis)),
+                exit = fadeOut(tween(ControlsVisibilityMillis)),
+            ) {
+                val interactionModifier = if (autoHideControls) {
+                    Modifier.pointerInput(Unit) {
+                        awaitEachGesture {
+                            awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                            controlsTouched = true
+                            controlsInteraction++
+                            try {
+                                do {
+                                    val event = awaitPointerEvent(PointerEventPass.Final)
+                                } while (event.changes.any { it.pressed })
+                            } finally {
+                                controlsTouched = false
+                            }
+                        }
+                    }
+                } else {
+                    Modifier
+                }
+                Column(
+                    Modifier.fillMaxWidth()
+                        .onSizeChanged { footerHeight = with(density) { it.height.toDp() } }
+                        .padding(sidePadding).padding(bottom = footerInset + 24.dp)
+                        .revealPlaybackChrome(expansionProgress)
+                        .then(interactionModifier),
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        PlaybackLanguageMenu(
+                            showTranslation = showTranslation,
+                            showRomanization = showRomanization,
+                            onTranslationChange = { LyricsPlaybackPreference.Translation.set(prefs, it) },
+                            onRomanizationChange = { LyricsPlaybackPreference.Romanization.set(prefs, it) },
+                            onExpandedChange = { languageMenuOpen = it },
+                        )
+                        if (lines.isNotEmpty() && !following) {
+                            TextButton(
+                                text = stringResource(R.string.lyrics_playback_follow),
+                                onClick = { following = true },
+                            )
+                        }
+                    }
+                    LyricsPlaybackControls(
+                        controller = controller.takeIf { matchedTrack != null },
+                        position = position,
+                        duration = duration,
+                        pendingSeek = pendingSeek,
+                        actions = actions,
+                        isPlaying = playing,
+                        onSeek = seek,
+                        progressColor = if (tintProgress) albumAccent else Color.White,
+                    )
+                }
             }
         }
     }
@@ -855,11 +937,15 @@ private fun PlaybackLanguageMenu(
     showRomanization: Boolean,
     onTranslationChange: (Boolean) -> Unit,
     onRomanizationChange: (Boolean) -> Unit,
+    onExpandedChange: (Boolean) -> Unit,
 ) {
     var expanded by remember { mutableStateOf(false) }
     Box {
         IconButton(
-            onClick = { expanded = !expanded },
+            onClick = {
+                expanded = !expanded
+                onExpandedChange(expanded)
+            },
             holdDownState = expanded,
             minWidth = 56.dp,
             minHeight = 56.dp,
@@ -874,7 +960,10 @@ private fun PlaybackLanguageMenu(
         WindowListPopup(
             show = expanded,
             enableWindowDim = false,
-            onDismissRequest = { expanded = false },
+            onDismissRequest = {
+                expanded = false
+                onExpandedChange(false)
+            },
         ) {
             ListPopupColumn {
                 PlaybackLanguageOption(

@@ -33,6 +33,7 @@ import com.example.islandlyrics.rules.ParserRuleHelper
 import com.example.islandlyrics.lyrics.cache.OnlineLyricCacheStore
 import com.example.islandlyrics.lyrics.state.LyricRepository
 import com.example.islandlyrics.feature.main.HomeLyricPreviewDisplay
+import com.example.islandlyrics.feature.main.rememberMediaSessionCards
 import com.example.islandlyrics.feature.main.MainActivity
 import com.example.islandlyrics.feature.onlinelyricdebug.OnlineLyricDebugActivity
 import android.content.Intent
@@ -132,13 +133,15 @@ fun MiuixMediaControlDialog(
         }
     }
 
-    val whitelistedControllers = remember(activeControllers) {
+    val enabledControllers = remember(activeControllers) {
         val enabledPackages = ParserRuleHelper.getEnabledPackages(context)
         activeControllers.filter { enabledPackages.contains(it.packageName) }
     }
     
     val repo = remember { LyricRepository.getInstance() }
     val repoMetadata by repo.liveMetadata.observeAsState()
+    val mediaCards = rememberMediaSessionCards(enabledControllers, repoMetadata)
+    val whitelistedControllers = mediaCards.controllers
     val repoLyric by repo.liveLyric.observeAsState()
     val repoProgress by repo.liveProgress.observeAsState()
     val repoParsedLyrics by repo.liveParsedLyrics.observeAsState()
@@ -314,32 +317,31 @@ fun MiuixMediaControlDialog(
                             androidx.compose.foundation.pager.HorizontalPager(
                                 state = pagerState,
                                 contentPadding = PaddingValues(horizontal = 0.dp),
-                                pageSpacing = 16.dp
+                                pageSpacing = 16.dp,
+                                key = { page -> whitelistedControllers[page].sessionToken },
                             ) { page ->
-                                key(whitelistedControllers[page].packageName) {
-                                    val controller = whitelistedControllers[page]
-                                    val isPrimary = controller.packageName == repoMetadata?.packageName
+                                val controller = whitelistedControllers[page]
+                                val isPrimary = controller.sessionToken == mediaCards.primaryToken
 
-                                    MiuixMediaSessionLayout(
-                                        controller = controller,
-                                        context = context,
-                                        isPrimary = isPrimary,
-                                        primaryLyric = if (isPrimary) homeLyricPreview else null,
-                                        primaryHasTimeline = isPrimary && repoParsedLyrics?.lines?.isNotEmpty() == true,
-                                        primaryLyricResolveState = repoLyricResolveState,
-                                        primaryProgress = if (isPrimary) repoProgress else null,
-                                        primaryLyricSource = if (isPrimary) primaryLyricSource else null,
-                                        primaryIsInstrumental = isPrimary && isCurrentTrackInstrumental,
-                                        showOnlineLyricRematch = isPrimary && showOnlineLyricRematch,
-                                        onOpenOnlineLyricRematch = {
-                                            context.startActivity(Intent(context, OnlineLyricDebugActivity::class.java))
-                                            triggerDismiss()
-                                        },
-                                        onOpenApp = {
-                                            triggerDismiss()
-                                        }
-                                    )
-                                }
+                                MiuixMediaSessionLayout(
+                                    controller = controller,
+                                    context = context,
+                                    isPrimary = isPrimary,
+                                    primaryLyric = if (isPrimary) homeLyricPreview else null,
+                                    primaryHasTimeline = isPrimary && repoParsedLyrics?.lines?.isNotEmpty() == true,
+                                    primaryLyricResolveState = repoLyricResolveState,
+                                    primaryProgress = if (isPrimary) repoProgress else null,
+                                    primaryLyricSource = if (isPrimary) primaryLyricSource else null,
+                                    primaryIsInstrumental = isPrimary && isCurrentTrackInstrumental,
+                                    showOnlineLyricRematch = isPrimary && showOnlineLyricRematch,
+                                    onOpenOnlineLyricRematch = {
+                                        context.startActivity(Intent(context, OnlineLyricDebugActivity::class.java))
+                                        triggerDismiss()
+                                    },
+                                    onOpenApp = {
+                                        triggerDismiss()
+                                    }
+                                )
                             }
 
                             if (whitelistedControllers.size > 1) {
@@ -436,7 +438,7 @@ fun MiuixMediaControlDialog(
 
                             IconButton(
                                 onClick = {
-                                    Toast.makeText(context, "$statusMessage (Whitelisted: ${whitelistedControllers.size})", Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(context, "$statusMessage (Whitelisted: ${enabledControllers.size})", Toast.LENGTH_SHORT).show()
                                 },
                                 modifier = Modifier.background(MiuixTheme.colorScheme.surfaceVariant, CircleShape)
                             ) {

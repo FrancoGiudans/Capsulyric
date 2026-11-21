@@ -9,6 +9,7 @@ import android.graphics.RenderEffect
 import android.graphics.RuntimeShader
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -41,28 +42,37 @@ import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 @Composable
-internal fun Modifier.blurLyricsAroundBars(top: Dp, bottom: Dp, reach: Dp): Modifier {
+internal fun Modifier.blurLyricsAroundBars(
+    top: Dp,
+    bottomFade: State<Dp>,
+    bottomWithControls: Dp,
+    reach: Dp,
+): Modifier {
     var height by remember { mutableIntStateOf(0) }
     val density = LocalDensity.current
     val horizontal = remember { RuntimeShader(PlaybackGaussianShader) }
     val vertical = remember { RuntimeShader(PlaybackGaussianShader) }
-    val effect = remember(height, top, bottom, reach, density) {
-        with(density) {
-            if (height <= 0 || reach <= 0.dp) return@with null
-            val firstVisibleY = top.toPx()
-            val lastVisibleY = (height - bottom.toPx()).coerceAtLeast(firstVisibleY)
-            // Use the same blur ramp in both passes and normalize the weights for premultiplied text.
-            for (shader in listOf(horizontal, vertical)) {
-                shader.setFloatUniform("visibleBand", firstVisibleY, lastVisibleY)
-                shader.setFloatUniform("reach", reach.toPx())
-                shader.setFloatUniform("maxSigma", 6.dp.toPx().coerceAtMost(16f))
+    val effect by remember(height, top, bottomFade, bottomWithControls, reach, density) {
+        derivedStateOf {
+            with(density) {
+                if (height <= 0 || reach <= 0.dp) return@with null
+                val firstVisibleY = top.toPx()
+                val lastVisibleY = (height - bottomFade.value.toPx()).coerceAtLeast(firstVisibleY)
+                val bottomBlurEdgeY = (height - bottomWithControls.toPx()).coerceAtLeast(firstVisibleY)
+                // Use the same blur ramp in both passes and normalize the weights for premultiplied text.
+                for (shader in listOf(horizontal, vertical)) {
+                    shader.setFloatUniform("visibleBand", firstVisibleY, lastVisibleY)
+                    shader.setFloatUniform("bottomBlurEdgeY", bottomBlurEdgeY)
+                    shader.setFloatUniform("reach", reach.toPx())
+                    shader.setFloatUniform("maxSigma", 6.dp.toPx().coerceAtMost(16f))
+                }
+                horizontal.setFloatUniform("axis", 1f, 0f)
+                vertical.setFloatUniform("axis", 0f, 1f)
+                RenderEffect.createChainEffect(
+                    RenderEffect.createRuntimeShaderEffect(vertical, "lyrics"),
+                    RenderEffect.createRuntimeShaderEffect(horizontal, "lyrics"),
+                ).asComposeRenderEffect()
             }
-            horizontal.setFloatUniform("axis", 1f, 0f)
-            vertical.setFloatUniform("axis", 0f, 1f)
-            RenderEffect.createChainEffect(
-                RenderEffect.createRuntimeShaderEffect(vertical, "lyrics"),
-                RenderEffect.createRuntimeShaderEffect(horizontal, "lyrics"),
-            ).asComposeRenderEffect()
         }
     }
     return onSizeChanged { height = it.height }.graphicsLayer { renderEffect = effect }
@@ -72,13 +82,15 @@ private const val PlaybackGaussianShader = """
     uniform shader lyrics;
     uniform float2 visibleBand;
     uniform float2 axis;
+    uniform float bottomBlurEdgeY;
     uniform float reach;
     uniform float maxSigma;
 
     half4 main(float2 position) {
         float distance = min(position.y - visibleBand.x, visibleBand.y - position.y);
         if (distance < -3.0 * maxSigma || (axis.y != 0.0 && distance <= 0.0)) return half4(0.0);
-        float sigma = maxSigma * (1.0 - smoothstep(0.0, reach, distance));
+        float blurDistance = min(position.y - visibleBand.x, bottomBlurEdgeY - position.y);
+        float sigma = maxSigma * (1.0 - smoothstep(0.0, reach, blurDistance));
         if (sigma < 0.2) return lyrics.eval(position);
 
         float cutoff = ceil(3.0 * sigma);
@@ -105,12 +117,12 @@ private const val PlaybackGaussianShader = """
     }
 """
 
-internal fun Modifier.fadeLyricsAroundBars(top: Dp, bottom: Dp, feather: Dp): Modifier =
+internal fun Modifier.fadeLyricsAroundBars(top: Dp, bottom: State<Dp>, feather: Dp): Modifier =
     graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
         .drawWithCache {
             if (size.height <= 0f) return@drawWithCache onDrawWithContent { drawContent() }
             val upperBar = (top.toPx() / size.height).coerceIn(0f, 1f)
-            val lowerBar = (1f - bottom.toPx() / size.height).coerceIn(upperBar, 1f)
+            val lowerBar = (1f - bottom.value.toPx() / size.height).coerceIn(upperBar, 1f)
             val edge = (feather.toPx() / size.height).coerceIn(0f, (lowerBar - upperBar) / 2f)
             val mask = Brush.verticalGradient(
                 upperBar to Color.Transparent,

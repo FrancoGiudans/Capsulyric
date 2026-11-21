@@ -73,11 +73,17 @@ internal fun rememberWhitelistedMediaSessions(): List<MediaController> {
     }
 }
 
-internal data class HomeMediaCards(val controllers: List<MediaController>, val primaryToken: MediaSession.Token?)
+internal data class MediaSessionCards(val controllers: List<MediaController>, val primaryToken: MediaSession.Token?)
 
 @Composable
-internal fun rememberHomeMediaCards(track: LyricRepository.MediaInfo?): HomeMediaCards {
-    val controllers = rememberWhitelistedMediaSessions()
+internal fun rememberHomeMediaCards(track: LyricRepository.MediaInfo?): MediaSessionCards =
+    rememberMediaSessionCards(rememberWhitelistedMediaSessions(), track)
+
+@Composable
+internal fun rememberMediaSessionCards(
+    controllers: List<MediaController>,
+    track: LyricRepository.MediaInfo?,
+): MediaSessionCards {
     val session by FloatingLyricsVisibility.session.collectAsState()
     val primaryToken = session.mediaSession
     val duplicateCandidates = remember(controllers) {
@@ -123,15 +129,15 @@ internal fun rememberHomeMediaCards(track: LyricRepository.MediaInfo?): HomeMedi
             val duplicate = visible.any { earlier ->
                 earlier.sessionToken == controller.sessionToken ||
                     (earlier.packageName == controller.packageName &&
-                        sameHomeTrack(metadataFor(earlier), metadataFor(controller)))
+                        sameMediaTrack(metadataFor(earlier), metadataFor(controller)))
             }
             if (!duplicate) visible.add(controller)
         }
-        HomeMediaCards(visible, primary?.sessionToken)
+        MediaSessionCards(visible, primary?.sessionToken)
     }
 }
 
-private fun sameHomeTrack(first: MediaMetadata?, second: MediaMetadata?): Boolean {
+private fun sameMediaTrack(first: MediaMetadata?, second: MediaMetadata?): Boolean {
     fun matchesId(key: String): Boolean {
         val id = first?.getString(key)?.takeIf { it.isNotBlank() } ?: return false
         return id == second?.getString(key)

@@ -89,6 +89,8 @@ object AppPreferences {
         const val FULLSCREEN_PLAYBACK_ALBUM_PROGRESS = "fullscreen_playback_album_progress"
         const val FULLSCREEN_PLAYBACK_LYRIC_BLUR = "fullscreen_playback_lyric_blur"
         const val FULLSCREEN_PLAYBACK_ALBUM_TEXT = "fullscreen_playback_album_text"
+        const val FULLSCREEN_PLAYBACK_KEEP_SCREEN_ON = "fullscreen_playback_keep_screen_on"
+        const val FULLSCREEN_PLAYBACK_AUTO_HIDE_CONTROLS = "fullscreen_playback_auto_hide_controls"
         const val FULLSCREEN_PLAYBACK_TRANSLATION = "fullscreen_playback_translation"
         const val FULLSCREEN_PLAYBACK_ROMANIZATION = "fullscreen_playback_romanization"
         const val THEME_FOLLOW_SYSTEM = "theme_follow_system"
