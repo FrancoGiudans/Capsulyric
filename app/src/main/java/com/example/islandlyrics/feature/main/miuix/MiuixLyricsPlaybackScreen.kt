@@ -102,6 +102,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.setProgress
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.constrainHeight
@@ -158,8 +159,6 @@ private const val LyricTransitionMillis = 330
 private val LyricRowSpacing = 10.dp
 private val InterludeDotDiameter = 11.dp
 private val InterludeDotSpacing = 11.dp
-private val InterludeDotVerticalPadding = 17.dp
-private val InterludeDotHeight = InterludeDotDiameter + InterludeDotVerticalPadding * 2
 private val InterludeDotWidth = 60.dp
 private const val InterludeBreathPeriodMillis = 1_250L
 private const val SeekAcknowledgementTimeout = 4_000L
@@ -651,7 +650,8 @@ private fun LyricsPlaybackList(
     val listState = rememberLazyListState()
     val density = LocalDensity.current
     val spacing = with(density) { LyricRowSpacing.roundToPx() }
-    val interludeHeight = with(density) { InterludeDotHeight.roundToPx().toFloat() }
+    val textMeasurer = rememberTextMeasurer()
+    val interludeHeight = textMeasurer.measure("•••", style = mainStyle, maxLines = 1).size.height
     val interludes = remember(lines) { lines.playbackInterludes() }
     val target by remember(lines, position) {
         derivedStateOf {
@@ -674,7 +674,9 @@ private fun LyricsPlaybackList(
             }
         }
     }
-    LaunchedEffect(target, lines, following, contentPadding, showTranslation, showRomanization) {
+    LaunchedEffect(
+        target, lines, following, contentPadding, mainStyle, secondaryStyle, interludeHeight, showTranslation, showRomanization,
+    ) {
         val layout = snapshotFlow { listState.layoutInfo }.first { it.totalItemsCount == lines.size }
         val targetIndex = target.lineIndex.coerceAtLeast(0)
         val from = frame.value
@@ -694,16 +696,12 @@ private fun LyricsPlaybackList(
                 } else {
                     item
                 }
-                val startOffset = anchorItem?.offset ?: 0
+                val startOffset = -(anchorItem?.offset ?: 0).toFloat()
                 val startHeight = if (continuing) from.gapHeight else 0f
-                val height = if (intro) {
-                    interludeHeight
-                } else {
-                    ((anchorItem?.size?.toFloat() ?: (startHeight + interludeHeight)) - startHeight)
-                        .coerceAtLeast(interludeHeight)
-                }
+                val height = interludeHeight.toFloat()
+                val targetOffset = if (intro) 0f else anchorItem?.let { it.size - startHeight } ?: height
                 if (continuing && startHeight == height && from.dotAlpha == 1f && from.dotScale == 1f) {
-                    if (following) listState.scrollToItem(targetIndex, if (intro) 0 else height.roundToInt())
+                    if (following) listState.scrollToItem(targetIndex, targetOffset.roundToInt())
                     return@LaunchedEffect
                 }
                 animate(0f, 1f, animationSpec = LyricTransitionSpec) { progress, _ ->
@@ -719,9 +717,8 @@ private fun LyricsPlaybackList(
                         dotScale = lerp(if (continuing) from.dotScale else 0.75f, 1f, enterDots),
                     )
                     if (following) {
-                        // Offset the expanding slot by its own height so the next line stays put.
-                        val start = -startOffset - if (intro) 0f else startHeight
-                        val offset = lerp(start, 0f, progress) + if (intro) 0f else gapHeight
+                        // Move past the outgoing row as the single-line slot opens.
+                        val offset = lerp(startOffset, targetOffset, progress)
                         listState.requestScrollToItem(targetIndex, offset.roundToInt())
                     }
                 }
@@ -805,7 +802,7 @@ private fun LyricsPlaybackList(
             }
             Column {
                 if (index == 0 && interludes.containsKey(0)) {
-                    PlaybackInterludeSpace(0, frame, position, color)
+                    PlaybackInterludeSpace(0, interludeHeight, frame, position, color)
                 }
                 PlaybackLyricRow(
                     line = line,
@@ -821,7 +818,7 @@ private fun LyricsPlaybackList(
                     onSeek = onSeek,
                 )
                 if (interludes.containsKey(index + 1)) {
-                    PlaybackInterludeSpace(index + 1, frame, position, color)
+                    PlaybackInterludeSpace(index + 1, interludeHeight, frame, position, color)
                 }
             }
         }
@@ -863,6 +860,7 @@ private data class PlaybackLyricFrame(
 @Composable
 private fun PlaybackInterludeSpace(
     beforeIndex: Int,
+    lineHeight: Int,
     frame: State<PlaybackLyricFrame>,
     position: State<Long?>,
     color: Color,
@@ -872,16 +870,15 @@ private fun PlaybackInterludeSpace(
     }.value ?: return
     val description = stringResource(R.string.lyrics_playback_interlude)
     Box(
+        propagateMinConstraints = true,
         modifier = Modifier.layout { measurable, constraints ->
-            val placeable = measurable.measure(constraints.copy(minHeight = 0, maxHeight = InterludeDotHeight.roundToPx()))
+            val placeable = measurable.measure(constraints.copy(minHeight = lineHeight, maxHeight = lineHeight))
             val height = constraints.constrainHeight(frame.value.gapHeight.roundToInt())
-            layout(placeable.width, height) {
-                placeable.placeRelative(0, (height - placeable.height).coerceAtLeast(0) / 2)
-            }
+            layout(placeable.width, height) { placeable.placeRelative(0, 0) }
         },
     ) {
         Canvas(
-            modifier = Modifier.size(width = InterludeDotWidth, height = InterludeDotHeight)
+            modifier = Modifier.width(InterludeDotWidth)
                 .semantics { contentDescription = description },
         ) {
             val motion = frame.value
