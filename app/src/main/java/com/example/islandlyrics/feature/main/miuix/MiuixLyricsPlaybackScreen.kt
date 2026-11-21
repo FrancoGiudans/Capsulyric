@@ -452,7 +452,7 @@ private fun LyricsPlaybackContent(start: LyricsPlaybackStart, onBack: () -> Unit
                     lyrics = { listModifier, padding, rowSpacing ->
                         lyricsContent(lyricModifier.then(listModifier), lyricModifier, padding, useBlur && following, rowSpacing)
                     },
-                    modifier = Modifier.fillMaxSize().padding(sidePadding)
+                    modifier = Modifier.fillMaxSize()
                         .padding(top = headerInset + 4.dp, bottom = footerInset + 8.dp),
                 )
             }
@@ -659,12 +659,18 @@ private fun LandscapeLyricsPlaybackLayout(
     modifier: Modifier = Modifier,
 ) {
     val expansionProgress = LocalPageExpansionProgress.current
-    Row(modifier, horizontalArrangement = Arrangement.spacedBy(24.dp)) {
+    val direction = LocalLayoutDirection.current
+    val cutout = WindowInsets.displayCutout.asPaddingValues()
+    Row(modifier) {
         LandscapePlaybackPanel(
             title, artist, cover, onBack, languageMenu, controls,
+            cutoutStart = cutout.calculateStartPadding(direction),
             modifier = Modifier.weight(0.44f).fillMaxHeight().revealPlaybackChrome(expansionProgress),
         )
-        BoxWithConstraints(Modifier.weight(0.56f).fillMaxHeight()) {
+        BoxWithConstraints(
+            Modifier.weight(0.56f).fillMaxHeight()
+                .padding(start = 24.dp, end = 20.dp + cutout.calculateEndPadding(direction)),
+        ) {
             val anchor = maxHeight * LandscapeLyricFocusFraction
             val trailingSpace = maxHeight - anchor
             val topFade = (maxHeight * 0.09f).coerceAtMost(28.dp)
@@ -694,6 +700,7 @@ private fun LandscapePlaybackPanel(
     onBack: () -> Unit,
     languageMenu: @Composable () -> Unit,
     controls: @Composable () -> Unit,
+    cutoutStart: Dp,
     modifier: Modifier = Modifier,
 ) {
     BoxWithConstraints(modifier) {
@@ -714,24 +721,33 @@ private fun LandscapePlaybackPanel(
         ) { (back, language, artwork, metadata, transport), constraints ->
             val width = constraints.maxWidth
             val height = constraints.maxHeight
+            val safeStart = cutoutStart.roundToPx().coerceIn(0, width)
+            val safeWidth = width - safeStart
+            val backStart = (safeStart + 20.dp.roundToPx()).coerceAtMost(width)
             val toolbarConstraints = constraints.copy(minWidth = 0, minHeight = 0)
-            val backPlaceable = back.single().measure(toolbarConstraints)
-            val languagePlaceable = language.single().measure(toolbarConstraints.copy(maxWidth = width - backPlaceable.width))
+            val backPlaceable = back.single().measure(toolbarConstraints.copy(maxWidth = width - backStart))
+            val backEnd = backStart + backPlaceable.width
+            val languagePlaceable = language.single().measure(toolbarConstraints.copy(maxWidth = width - backEnd))
             val toolbarHeight = maxOf(backPlaceable.height, languagePlaceable.height)
             val groupHeightLimit = height - toolbarHeight
             val controls = transport.single()
             val controlsHeight = controls.maxIntrinsicHeight(width).coerceAtMost(groupHeightLimit)
             val metadataHeightLimit = groupHeightLimit - controlsHeight
-            val trackPlaceable = metadata.single().measure(
-                Constraints.fixedWidth(width).copy(maxHeight = metadataHeightLimit),
-            )
-            val available = metadataHeightLimit - trackPlaceable.height
+            val track = metadata.single()
+            val trackHeight = track.maxIntrinsicHeight(width).coerceAtMost(metadataHeightLimit)
+            val available = metadataHeightLimit - trackHeight
             val gap = minOf(16.dp.roundToPx(), available / 4)
-            val coverSize = minOf(coverLimit.roundToPx(), available - 2 * gap)
-            val coverStart = (width - coverSize) / 2
+            val coverSize = minOf(coverLimit.roundToPx(), available - 2 * gap, safeWidth)
+            val controlsWidth = minOf(maxOf(coverSize, 250.dp.roundToPx()), (width * 0.85f).toInt(), safeWidth)
+            val centeredControlsStart = (width - controlsWidth) / 2
+            // Only shift the group if the centered controls would overlap the cutout.
+            val controlsStart = maxOf(centeredControlsStart, safeStart)
+            val groupShift = controlsStart - centeredControlsStart
+            val coverStart = (width - coverSize) / 2 + groupShift
+            val trackWidth = (width - 2 * groupShift).coerceAtLeast(0)
+            val trackStart = width - trackWidth
             val coverPlaceable = artwork.single().measure(Constraints.fixed(coverSize, coverSize))
-            val controlsWidth = maxOf(coverSize, 250.dp.roundToPx()).coerceAtMost((width * 0.85f).toInt())
-            val controlsStart = (width - controlsWidth) / 2
+            val trackPlaceable = track.measure(Constraints.fixedWidth(trackWidth).copy(maxHeight = trackHeight))
             val controlsPlaceable = controls.measure(
                 Constraints.fixedWidth(controlsWidth).copy(
                     maxHeight = groupHeightLimit - coverSize - 2 * gap - trackPlaceable.height,
@@ -739,15 +755,15 @@ private fun LandscapePlaybackPanel(
             )
             val groupHeight = coverSize + 2 * gap + trackPlaceable.height + controlsPlaceable.height
             layout(width, height) {
-                backPlaceable.placeRelative(0, (toolbarHeight - backPlaceable.height) / 2)
+                backPlaceable.placeRelative(backStart, (toolbarHeight - backPlaceable.height) / 2)
                 languagePlaceable.placeRelative(
-                    (controlsStart + controlsWidth - languagePlaceable.width).coerceAtLeast(backPlaceable.width),
+                    (controlsStart + controlsWidth - languagePlaceable.width).coerceAtLeast(backEnd),
                     (toolbarHeight - languagePlaceable.height) / 2,
                 )
                 val groupTop = toolbarHeight + (groupHeightLimit - groupHeight) / 2
                 coverPlaceable.placeRelative(coverStart, groupTop)
                 val trackTop = groupTop + coverSize + gap
-                trackPlaceable.placeRelative(0, trackTop)
+                trackPlaceable.placeRelative(trackStart, trackTop)
                 controlsPlaceable.placeRelative(
                     controlsStart,
                     trackTop + trackPlaceable.height + gap,
