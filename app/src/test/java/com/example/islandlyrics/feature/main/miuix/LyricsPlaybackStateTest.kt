@@ -68,7 +68,7 @@ class LyricsPlaybackStateTest {
     @Test
     fun lyricDepthUsesTheConfiguredStepsAndCapsDistantRows() {
         val stops = listOf(
-            PlaybackLyricDepth(0f, 0f, 1f, 0.55f),
+            PlaybackLyricDepth(0f, 0f, 1f, 0.68f),
             PlaybackLyricDepth(1.2f, 0.8f, 0.50f, 0.28f),
             PlaybackLyricDepth(2.2f, 1.4f, 0.42f, 0.22f),
             PlaybackLyricDepth(3f, 1.8f, 0.35f, 0.18f),
@@ -102,7 +102,7 @@ class LyricsPlaybackStateTest {
 
     @Test
     fun landscapeDepthKeepsTheAnchorSharpAndCapsTheTwoBlurRadiiSeparately() {
-        assertEquals(PlaybackLyricDepth(0f, 0f, 1f, 0.55f), playbackLyricDepth(0f, landscape = true))
+        assertEquals(PlaybackLyricDepth(0f, 0f, 1f, 0.68f), playbackLyricDepth(0f, landscape = true))
         assertEquals(PlaybackLyricDepth(1.1f, 0.7f, 0.50f, 0.28f), playbackLyricDepth(1f, landscape = true))
         assertEquals(PlaybackLyricDepth(1.9f, 1.2f, 0.42f, 0.22f), playbackLyricDepth(2f, landscape = true))
         assertEquals(PlaybackLyricDepth(2.5f, 1.5f, 0.35f, 0.18f), playbackLyricDepth(4f, landscape = true))

@@ -11,8 +11,11 @@ import android.graphics.RuntimeShader
 import android.graphics.Shader
 import android.os.Build
 import androidx.annotation.RequiresApi
-import androidx.compose.animation.Crossfade
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
@@ -63,7 +66,15 @@ internal fun LyricsPlaybackBackground(
             }
         }
     }
-    Crossfade(appearance, modifier.fillMaxSize(), tween(450), label = "playback cover flow") { target ->
+    AnimatedContent(
+        targetState = appearance,
+        modifier = modifier.fillMaxSize(),
+        transitionSpec = {
+            // Keep an opaque background behind the incoming cover until it has fully faded in.
+            (fadeIn(tween(450)) togetherWith ExitTransition.KeepUntilTransitionsFinished).using(null)
+        },
+        label = "playback cover flow",
+    ) { target ->
         if (target?.flowTexture != null) {
             FlowPlaybackBackground(target, flowTime)
         } else {
@@ -83,7 +94,7 @@ private fun FlowPlaybackBackground(appearance: PlaybackCoverAppearance, time: Lo
                 bitmapShader.setFilterMode(BitmapShader.FILTER_MODE_LINEAR)
                 setInputShader("cover", bitmapShader)
                 setFloatUniform("textureSide", PlaybackCoverSampleSize.toFloat())
-                setFloatUniform("scrim", appearance.scrimAlpha)
+                setFloatUniform("tone", appearance.tone.scrimAlpha, appearance.tone.brightnessBias)
             }
         } catch (_: IllegalArgumentException) {
             null
@@ -120,8 +131,8 @@ private fun RuntimeShader.setFlowLayer(
         name,
         (cos(angle) / zoom).toFloat(),
         (sin(angle) / zoom).toFloat(),
-        (0.21 * cos(phase + initialAngle)).toFloat(),
-        (0.17 * sin(phase + initialAngle)).toFloat(),
+        (0.34 * cos(phase + initialAngle)).toFloat(),
+        (0.29 * sin(phase + initialAngle)).toFloat(),
     )
 }
 
@@ -132,7 +143,7 @@ private const val PlaybackFlowShader = """
     uniform float4 layerA;
     uniform float4 layerB;
     uniform float4 layerC;
-    uniform float scrim;
+    uniform float2 tone;
 
     float3 sampleCover(float2 position, float4 transform) {
         float2 rotated = float2(
@@ -144,21 +155,23 @@ private const val PlaybackFlowShader = """
 
     half4 main(float2 position) {
         float2 uv = (position - viewport.xy) * viewport.z;
-        float3 rgb = sampleCover(uv, layerA) * 0.45
-                   + sampleCover(uv, layerB) * 0.33
-                   + sampleCover(uv, layerC) * 0.22;
+        float lowerWeight = mix(0.12, 0.30, smoothstep(-0.45, 0.45, uv.y));
+        float leftWeight = (1.0 - lowerWeight) * mix(0.78, 0.22, smoothstep(-0.65, 0.65, uv.x));
+        float3 rgb = sampleCover(uv, layerA) * leftWeight
+                   + sampleCover(uv, layerB) * (1.0 - lowerWeight - leftWeight)
+                   + sampleCover(uv, layerC) * lowerWeight;
         const float3 lumaWeights = float3(0.2126, 0.7152, 0.0722);
         float3 linearRgb = toLinearSrgb(rgb);
-        linearRgb = clamp(mix(float3(dot(linearRgb, lumaWeights)), linearRgb, 1.35), 0.0, 1.0);
-        linearRgb *= 1.0 - scrim;
+        linearRgb = clamp(mix(float3(dot(linearRgb, lumaWeights)), linearRgb, 1.68), 0.0, 1.0);
 
         // Compress bright colors without desaturating them against the lyric text.
         float luma = dot(linearRgb, lumaWeights);
-        float highlights = max(0.0, luma - 0.025);
-        float limited = min(luma, 0.025) + 0.021 * highlights / (0.021 + highlights);
+        float highlights = max(0.0, luma - 0.035);
+        float limited = min(luma, 0.035) + 0.045 * highlights / (0.045 + highlights);
         linearRgb *= limited / max(luma, 0.0001);
 
         float noise = fract(52.9829189 * fract(dot(floor(position), float2(0.06711056, 0.00583715)))) - 0.5;
-        return half4(clamp(fromLinearSrgb(linearRgb) + noise / 255.0, 0.0, 1.0), 1.0);
+        float3 outputRgb = (fromLinearSrgb(linearRgb) + tone.y) * (1.0 - tone.x);
+        return half4(clamp(outputRgb + noise / 255.0, 0.0, 1.0), 1.0);
     }
 """

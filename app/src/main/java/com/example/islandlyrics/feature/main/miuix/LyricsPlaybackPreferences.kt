@@ -47,8 +47,8 @@ internal enum class LyricsPlaybackPreference(private val key: String, private va
 internal data class LyricsPlaybackTypography(val size: Int, val weight: FloatingLyricsTextWeight) {
     companion object {
         val sizeRange = 16..36
-        private const val DefaultSize = 24
-        private val DefaultWeight = FloatingLyricsTextWeight.SEMIBOLD
+        private const val DefaultSize = 28
+        private val DefaultWeight = FloatingLyricsTextWeight.BOLD
         private const val SizeKey = AppPreferences.Keys.FULLSCREEN_PLAYBACK_TEXT_SIZE
         private const val WeightKey = AppPreferences.Keys.FULLSCREEN_PLAYBACK_TEXT_WEIGHT
 

@@ -27,6 +27,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.util.lerp
 import androidx.core.graphics.ColorUtils
 import com.example.islandlyrics.core.theme.ensureColorContrast
 import kotlinx.coroutines.Dispatchers
@@ -42,7 +43,12 @@ private const val BackgroundContrast = 8.0
 internal data class PlaybackCoverAppearance(
     val colors: List<Int?>,
     val flowTexture: Bitmap?,
+    val tone: PlaybackCoverTone,
+)
+
+internal data class PlaybackCoverTone(
     val scrimAlpha: Float,
+    val brightnessBias: Float,
 )
 
 @Composable
@@ -135,9 +141,28 @@ private fun preparePlaybackCover(bitmap: Bitmap): PlaybackCoverAppearance? {
     } else {
         null
     }
-    val meanLuminance = colors.filterNotNull().map(ColorUtils::calculateLuminance).average()
-    val scrimAlpha = 0.28f + ((meanLuminance - 0.35) / 0.5).coerceIn(0.0, 1.0).toFloat() * 0.10f
-    return PlaybackCoverAppearance(colors, texture, scrimAlpha)
+    return PlaybackCoverAppearance(colors, texture, playbackCoverTone(pixels))
+}
+
+internal fun playbackCoverTone(pixels: IntArray): PlaybackCoverTone {
+    // Use the full downsampled image and composite transparency over black, like the flow texture.
+    var brightnessSum = 0.0
+    for (pixel in pixels) {
+        val red = pixel shr 16 and 255
+        val green = pixel shr 8 and 255
+        val blue = pixel and 255
+        val opacity = (pixel ushr 24) / 255.0
+        brightnessSum += (0.299 * red + 0.587 * green + 0.114 * blue) * opacity
+    }
+    val brightness = (brightnessSum / (pixels.size.coerceAtLeast(1) * 255.0)).toFloat()
+    return when {
+        brightness > 0.70f -> PlaybackCoverTone(lerp(0.26f, 0.30f, (brightness - 0.70f) / 0.30f), 0f)
+        brightness >= 0.35f -> PlaybackCoverTone(lerp(0.12f, 0.16f, (brightness - 0.35f) / 0.35f), 0f)
+        else -> {
+            val fraction = brightness / 0.35f
+            PlaybackCoverTone(lerp(0.04f, 0.08f, fraction), lerp(12f, 8f, fraction) / 255f)
+        }
+    }
 }
 
 private fun sampleCoverColors(pixels: IntArray): List<Int?> =

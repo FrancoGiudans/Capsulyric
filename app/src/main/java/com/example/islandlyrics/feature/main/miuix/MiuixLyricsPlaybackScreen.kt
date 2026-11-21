@@ -421,7 +421,7 @@ private fun LyricsPlaybackContent(start: LyricsPlaybackStart, onBack: () -> Unit
     }
     Scaffold(
         modifier = if (keepScreenOn && playing) Modifier.keepScreenOn() else Modifier,
-        containerColor = Color.Transparent,
+        containerColor = MiuixTheme.colorScheme.surface.copy(alpha = 1f),
     ) { insets ->
         val density = LocalDensity.current
         val layoutDirection = LocalLayoutDirection.current
@@ -618,8 +618,8 @@ private fun PlaybackLyricFallback(
     Box(modifier, contentAlignment = Alignment.CenterStart) {
         Column {
             when {
-                line != null -> PlaybackLyricText(line, current = true, position = position, color = lyricColor, style = mainStyle)
-                text != null -> Text(text.lyric, style = mainStyle, color = lyricColor)
+                line != null -> PlaybackLyricText(line, current = true, position = position, color = Color.White, style = mainStyle)
+                text != null -> Text(text.lyric, style = mainStyle, color = Color.White)
                 else -> Text(
                     text = stringResource(
                         when {
@@ -639,7 +639,7 @@ private fun PlaybackLyricFallback(
                 showRomanization,
                 showTranslation,
             ).forEach {
-                Text(it, style = secondaryStyle, color = lyricColor.copy(alpha = playbackLyricDepth(0f).secondaryAlpha))
+                Text(it, style = secondaryStyle, color = lyricColor.copy(alpha = PlaybackFocusedSecondaryAlpha))
             }
         }
     }
@@ -1204,7 +1204,8 @@ private fun PlaybackLyricRow(
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             val mainModifier = Modifier.graphicsLayer {
-                alpha = if (following) depth.value.mainAlpha else lerp(0.78f, 1f, frame.value.activation(index))
+                val activation = frame.value.activation(index)
+                alpha = if (following) maxOf(depth.value.mainAlpha, activation) else lerp(0.78f, 1f, activation)
                 val radius = if (blurDepth) depth.value.mainBlur.dp.toPx() else 0f
                 renderEffect = if (radius > 0f) BlurEffect(radius, radius, TileMode.Decal) else null
             }
@@ -1213,11 +1214,18 @@ private fun PlaybackLyricRow(
             } else {
                 mainModifier
             }
-            PlaybackLyricText(line, sweeping, position, color, mainStyle, measuredMainModifier) { frame.value.activation(index) }
+            PlaybackLyricText(
+                line, sweeping, position, if (sweeping) Color.White else color, mainStyle, measuredMainModifier,
+            ) { frame.value.activation(index) }
             if (secondary.isNotEmpty()) {
                 Column(
                     modifier = Modifier.graphicsLayer {
-                        alpha = if (following) depth.value.secondaryAlpha else lerp(0.42f, 0.55f, frame.value.activation(index))
+                        val activation = frame.value.activation(index)
+                        alpha = if (following) {
+                            maxOf(depth.value.secondaryAlpha, PlaybackFocusedSecondaryAlpha * activation)
+                        } else {
+                            lerp(0.42f, PlaybackFocusedSecondaryAlpha, activation)
+                        }
                         val radius = if (blurDepth) depth.value.secondaryBlur.dp.toPx() else 0f
                         renderEffect = if (radius > 0f) BlurEffect(radius, radius, TileMode.Decal) else null
                     },

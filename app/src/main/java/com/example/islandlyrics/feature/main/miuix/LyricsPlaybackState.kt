@@ -82,15 +82,18 @@ internal data class PlaybackLyricDepth(
     val secondaryAlpha: Float,
 )
 
+internal const val PlaybackFocusedSecondaryAlpha = 0.68f
+private val FocusedLyricDepth = PlaybackLyricDepth(0f, 0f, 1f, PlaybackFocusedSecondaryAlpha)
+
 private val PlaybackLyricDepthStops = listOf(
-    PlaybackLyricDepth(0f, 0f, 1f, 0.55f),
+    FocusedLyricDepth,
     PlaybackLyricDepth(1.2f, 0.8f, 0.50f, 0.28f),
     PlaybackLyricDepth(2.2f, 1.4f, 0.42f, 0.22f),
     PlaybackLyricDepth(3f, 1.8f, 0.35f, 0.18f),
 )
 
 private val LandscapeLyricDepthStops = listOf(
-    PlaybackLyricDepth(0f, 0f, 1f, 0.55f),
+    FocusedLyricDepth,
     PlaybackLyricDepth(1.1f, 0.7f, 0.50f, 0.28f),
     PlaybackLyricDepth(1.9f, 1.2f, 0.42f, 0.22f),
     PlaybackLyricDepth(2.5f, 1.5f, 0.35f, 0.18f),

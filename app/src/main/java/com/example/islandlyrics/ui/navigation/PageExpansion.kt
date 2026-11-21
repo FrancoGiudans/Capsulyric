@@ -49,7 +49,7 @@ internal fun Modifier.expandFrom(
     progress: () -> Float,
 ): Modifier = graphicsLayer {
     val fraction = progress().coerceIn(0f, 1f)
-    alpha = (fraction * 3f).coerceAtMost(1f)
+    alpha = (fraction * 8f).coerceAtMost(1f)
     if (fraction < 1f) {
         // Clip the composited layer, including any nested backdrop render effects.
         shape = ExpansionShape(expansion.origin, fraction)
