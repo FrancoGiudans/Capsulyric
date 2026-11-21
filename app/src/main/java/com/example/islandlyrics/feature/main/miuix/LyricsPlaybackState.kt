@@ -5,13 +5,10 @@
 
 package com.example.islandlyrics.feature.main.miuix
 
-import android.media.session.PlaybackState
-import android.os.SystemClock
 import androidx.compose.ui.util.lerp
 import com.example.islandlyrics.lyrics.online.OnlineLyricFetcher.LyricLine
 import com.example.islandlyrics.lyrics.state.LyricRepository
 import com.example.islandlyrics.ui.overlay.display.TimingGapDisplayResolver
-import com.example.islandlyrics.ui.overlay.floating.FloatingLyricsClock
 import com.example.islandlyrics.ui.overlay.model.SecondaryTextResolver
 
 internal data class LyricsPlaybackStart(
@@ -37,15 +34,6 @@ internal fun LyricRepository.ParsedLyricsInfo?.playbackLines(): List<LyricLine> 
     }
 
 private fun LyricLine.isTimedLyric() = startTime >= 0 && !SecondaryTextResolver.isPlaceholder(text)
-
-internal fun PlaybackState?.toLyricsClock(fallbackPosition: Long?): FloatingLyricsClock? {
-    val playing = this?.state == PlaybackState.STATE_PLAYING
-    val speed = this?.playbackSpeed?.takeIf { playing && it.isFinite() && it > 0f } ?: 0f
-    if (this != null && position >= 0L && (!playing || lastPositionUpdateTime > 0L)) {
-        return FloatingLyricsClock(position, lastPositionUpdateTime, speed)
-    }
-    return fallbackPosition?.let { FloatingLyricsClock(it, SystemClock.elapsedRealtime(), speed) }
-}
 
 private const val PlaybackInterludeChargeMillis = 250L
 private const val PlaybackInterludeExitMillis = 400L

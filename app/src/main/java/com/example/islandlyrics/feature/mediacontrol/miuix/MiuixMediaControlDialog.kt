@@ -33,6 +33,8 @@ import com.example.islandlyrics.rules.ParserRuleHelper
 import com.example.islandlyrics.lyrics.cache.OnlineLyricCacheStore
 import com.example.islandlyrics.lyrics.state.LyricRepository
 import com.example.islandlyrics.feature.main.HomeLyricPreviewDisplay
+import com.example.islandlyrics.feature.main.rememberHighlightedLyricPreview
+import com.example.islandlyrics.lyrics.online.OnlineLyricFetcher.LyricLine
 import com.example.islandlyrics.feature.main.rememberMediaSessionCards
 import com.example.islandlyrics.feature.main.MainActivity
 import com.example.islandlyrics.feature.onlinelyricdebug.OnlineLyricDebugActivity
@@ -63,6 +65,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -146,6 +149,7 @@ fun MiuixMediaControlDialog(
     val repoProgress by repo.liveProgress.observeAsState()
     val repoParsedLyrics by repo.liveParsedLyrics.observeAsState()
     val repoCurrentLine by repo.liveCurrentLine.observeAsState()
+    val previewWordLine = HomeLyricPreviewDisplay.wordLine(repoCurrentLine, repoParsedLyrics, repoLyric)
     val repoLyricResolveState by repo.liveLyricResolveState.observeAsState(LyricRepository.LyricResolveState.PENDING)
     val homeLyricPreviewModes = remember { HomeLyricPreviewDisplay.read(AppPreferences.of(context)) }
     val repoNextLine = remember(repoParsedLyrics, repoCurrentLine) {
@@ -159,7 +163,7 @@ fun MiuixMediaControlDialog(
             if (index >= 0 && index + 1 < lines.size) lines[index + 1] else null
         }
     }
-    val homeLyricPreview = HomeLyricPreviewDisplay.previewText(
+    val homeLyricPreview = HomeLyricPreviewDisplay.preview(
         modes = homeLyricPreviewModes,
         currentLine = repoCurrentLine,
         lyricInfo = repoLyric,
@@ -327,7 +331,8 @@ fun MiuixMediaControlDialog(
                                     controller = controller,
                                     context = context,
                                     isPrimary = isPrimary,
-                                    primaryLyric = if (isPrimary) homeLyricPreview else null,
+                                    primaryLyric = homeLyricPreview.takeIf { isPrimary },
+                                    primaryWordLine = previewWordLine.takeIf { isPrimary },
                                     primaryHasTimeline = isPrimary && repoParsedLyrics?.lines?.isNotEmpty() == true,
                                     primaryLyricResolveState = repoLyricResolveState,
                                     primaryProgress = if (isPrimary) repoProgress else null,
@@ -458,11 +463,12 @@ fun MiuixMediaControlDialog(
 }
 
 @Composable
-fun MiuixMediaSessionLayout(
+private fun MiuixMediaSessionLayout(
     controller: MediaController, 
     context: Context,
     isPrimary: Boolean,
-    primaryLyric: String?,
+    primaryLyric: HomeLyricPreviewDisplay.Preview?,
+    primaryWordLine: LyricLine?,
     primaryHasTimeline: Boolean,
     primaryLyricResolveState: LyricRepository.LyricResolveState,
     primaryProgress: LyricRepository.PlaybackProgress?,
@@ -737,9 +743,9 @@ fun MiuixMediaSessionLayout(
 
             Spacer(modifier = Modifier.height(20.dp))
 
+            val effectiveLyric = primaryLyric?.text ?: parsedLyricFromTitle
             Column(
-                modifier = Modifier.height(90.dp).clickable(enabled = primaryLyric != null || parsedLyricFromTitle != null) {
-                    val effectiveLyric = if (isPrimary && !primaryLyric.isNullOrBlank()) primaryLyric else parsedLyricFromTitle
+                modifier = Modifier.height(90.dp).clickable(enabled = effectiveLyric != null) {
                     effectiveLyric?.let {
                         val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
                         cm.setPrimaryClip(android.content.ClipData.newPlainText("Lyric", it))
@@ -747,7 +753,6 @@ fun MiuixMediaSessionLayout(
                     }
                 }
             ) {
-                val effectiveLyric = if (isPrimary && !primaryLyric.isNullOrBlank()) primaryLyric else parsedLyricFromTitle
                 if (effectiveLyric != null) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(text = "Lyric:", fontSize = 14.sp, color = MiuixTheme.colorScheme.onSurfaceVariantSummary)
@@ -760,7 +765,17 @@ fun MiuixMediaSessionLayout(
                     }
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = effectiveLyric,
+                        text = if (primaryLyric != null) {
+                            rememberHighlightedLyricPreview(
+                                preview = primaryLyric,
+                                wordLine = primaryWordLine,
+                                color = animatedAccent,
+                                playbackState = playbackState,
+                                fallbackPositionMs = primaryProgress?.position,
+                            )
+                        } else {
+                            AnnotatedString(effectiveLyric)
+                        },
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Normal,
                         minLines = 2,

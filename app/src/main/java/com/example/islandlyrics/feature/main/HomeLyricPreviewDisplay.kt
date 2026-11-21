@@ -99,6 +99,15 @@ object HomeLyricPreviewDisplay {
             get() = secondary?.let { "$primary\n${it.text}" } ?: primary
     }
 
+    internal fun wordLine(
+        currentLine: OnlineLyricFetcher.LyricLine?,
+        parsedLyrics: LyricRepository.ParsedLyricsInfo?,
+        lyricInfo: LyricRepository.LyricInfo?,
+    ): OnlineLyricFetcher.LyricLine? =
+        currentLine ?: parsedLyrics
+            ?.takeIf { it.timelineCapability == LyricRepository.TimelineCapability.ACTIVE_LINE_ONLY }
+            ?.lines?.firstOrNull()?.takeIf { it.text == lyricInfo?.lyric }
+
     internal fun preview(
         modes: List<SecondaryTextMode>,
         currentLine: OnlineLyricFetcher.LyricLine?,

@@ -123,6 +123,7 @@ import com.example.islandlyrics.ui.miuix.navigation.MiuixBackIcon
 import com.example.islandlyrics.ui.navigation.LocalPageExpansionProgress
 import com.example.islandlyrics.ui.overlay.floating.FloatingLyricsClock
 import com.example.islandlyrics.ui.overlay.floating.FloatingLyricsVisibility
+import com.example.islandlyrics.ui.overlay.floating.toLyricsClock
 import com.example.islandlyrics.ui.overlay.model.SecondaryTextResolver
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
