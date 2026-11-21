@@ -1,5 +1,7 @@
 package com.example.islandlyrics.ui.overlay.floating
 
+import android.media.session.PlaybackState
+import android.os.SystemClock
 import com.example.islandlyrics.lyrics.state.LyricRepository
 import com.example.islandlyrics.ui.overlay.display.toDisplayLine
 import com.example.islandlyrics.ui.overlay.model.LyricPresentation
@@ -19,6 +21,15 @@ internal data class FloatingLyricsClock(val positionMs: Long, val updatedAtMs: L
         } else {
             null
         }
+}
+
+internal fun PlaybackState?.toLyricsClock(fallbackPosition: Long?): FloatingLyricsClock? {
+    val playing = this?.state == PlaybackState.STATE_PLAYING
+    val speed = this?.playbackSpeed?.takeIf { playing && it.isFinite() && it > 0f } ?: 0f
+    if (this != null && position >= 0L && (!playing || lastPositionUpdateTime > 0L)) {
+        return FloatingLyricsClock(position, lastPositionUpdateTime, speed)
+    }
+    return fallbackPosition?.let { FloatingLyricsClock(it, SystemClock.elapsedRealtime(), speed) }
 }
 
 internal class FloatingLyricsTimeline private constructor(private val lines: List<LyricPresentation.DisplayLine>) {

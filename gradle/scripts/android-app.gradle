@@ -24,8 +24,6 @@ android {
         buildConfigField "String", "VERSION_CODENAME", "\"${appVersioning.escapeForBuildConfig(appCodename)}\""
         buildConfigField "String", "COMMUNITY_FEED_BASE_URL", "\"${appVersioning.escapeForBuildConfig(communityFeedBaseUrl)}\""
         buildConfigField "boolean", "LIVE_UPDATE_ENABLED", "true"
-
-        resConfigs "zh", "en", "ja", "zh-rTW", "zh-rHK", "b+zh+Hant"
     }
 
     buildTypes {
@@ -62,6 +60,7 @@ android {
 
     androidResources {
         generateLocaleConfig = true
+        localeFilters += ['zh', 'en', 'ja', 'zh-rTW', 'zh-rHK', 'b+zh+Hant']
     }
 
     packaging {

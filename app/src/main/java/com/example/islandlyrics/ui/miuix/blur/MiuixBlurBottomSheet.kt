@@ -84,6 +84,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
@@ -125,6 +126,7 @@ import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.anim.folmeSpring
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.blur.Backdrop
+import top.yukonga.miuix.kmp.shader.isRenderEffectSupported
 import top.yukonga.miuix.kmp.theme.Colors
 import top.yukonga.miuix.kmp.theme.LocalDismissState
 import top.yukonga.miuix.kmp.theme.MiuixTheme
@@ -208,11 +210,18 @@ fun MiuixBlurBottomSheet(
     } else {
         colorScheme
     }
+    val edgeHighlightEnabled = shouldUseBlur &&
+        LocalMiuixBlurEdgeHighlightEnabled.current && isRenderEffectSupported()
+    val borderAlpha = when {
+        !edgeHighlightEnabled -> MiuixBlurStyleDefaults.BottomSheetBorderAlpha
+        isLightPanel -> MiuixBlurStyleDefaults.BottomSheetLightEdgeAlpha
+        else -> MiuixBlurStyleDefaults.BottomSheetDarkEdgeAlpha
+    }
     val borderColor = if (isLightPanel) {
-        Color.White
+        colorScheme.onPrimary
     } else {
-        MiuixTheme.colorScheme.onSurface
-    }.copy(alpha = MiuixBlurStyleDefaults.BottomSheetBorderAlpha)
+        colorScheme.onSurface
+    }.copy(alpha = borderAlpha)
 
     MiuixBlurBottomSheetContent(
         show = show,
@@ -716,6 +725,11 @@ private fun BlurBottomSheetPanel(
             bottomStart = 0.dp,
         )
     }
+    val edgeBrush = remember(borderColor) {
+        // BloomStroke switches corner radii halfway down this shape. A fading outline
+        // keeps the side highlights continuous and leaves the bottom edge clear.
+        Brush.verticalGradient(0f to borderColor, 0.9f to Color.Transparent)
+    }
     val imeInsets = WindowInsets.ime
 
     Box(
@@ -761,9 +775,10 @@ private fun BlurBottomSheetPanel(
                             fallbackColor = panelColor,
                             blurRadius = MiuixBlurStyleDefaults.BottomSheetBlurRadius,
                             noiseCoefficient = MiuixBlurStyleDefaults.BottomSheetNoiseCoefficient,
-                            colors = miuixDialogBlurColors(surfaceColor = panelColor)
+                            colors = miuixDialogBlurColors(surfaceColor = panelColor),
+                            showEdgeHighlight = false,
                         )
-                        .border(1.dp, borderColor, sheetShape)
+                        .border(1.dp, edgeBrush, sheetShape)
                         .padding(horizontal = insideMargin.width)
                         .padding(bottom = insideMargin.height),
                 ) {

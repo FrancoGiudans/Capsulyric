@@ -245,7 +245,7 @@ internal fun FloatingLyricsMiuixExpandedPanel(
     val colors = MiuixTheme.colorScheme
     Card(
         modifier = modifier.fillMaxWidth(),
-        cornerRadius = 22.dp,
+        cornerRadius = FloatingLyricsChrome.ExpandedPanelRadiusDp.dp,
         insideMargin = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
         colors = CardDefaults.defaultColors(
             color = floatingPanelColor(blur)

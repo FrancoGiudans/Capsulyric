@@ -34,7 +34,6 @@ internal data class TimingGapDisplay(
 )
 
 internal object TimingGapDisplayResolver {
-    private const val HOLD_THRESHOLD_MS = 2_000L
     private const val TRANSITION_HOLD_MS = 1_200L
     private const val METADATA_THRESHOLD_MS = 4_500L
     private const val ANIMATION_LEAD_MS = 800L
@@ -42,6 +41,15 @@ internal object TimingGapDisplayResolver {
     private const val ANIMATION_TOTAL_MS = DOT_FRAME_MS * 3
     private const val FULL_SEQUENCE_MS = ANIMATION_LEAD_MS + ANIMATION_TOTAL_MS
     private const val PLACEHOLDER = "♪"
+
+    fun supportsIntroCountdown(firstLineStart: Long): Boolean = firstLineStart >= FULL_SEQUENCE_MS
+
+    fun interludeStart(previousLineEnd: Long, nextLineStart: Long): Long? =
+        if (nextLineStart - previousLineEnd >= METADATA_THRESHOLD_MS) {
+            previousLineEnd + TRANSITION_HOLD_MS
+        } else {
+            null
+        }
 
     fun resolve(
         lines: List<OnlineLyricFetcher.LyricLine>?,
@@ -59,7 +67,7 @@ internal object TimingGapDisplayResolver {
         if (position < firstLine.startTime) {
             val remainingUntilFirst = firstLine.startTime - position
             val shouldPreferMetadataLayout = remainingUntilFirst > FULL_SEQUENCE_MS
-            return if (firstLine.startTime >= FULL_SEQUENCE_MS &&
+            return if (supportsIntroCountdown(firstLine.startTime) &&
                 remainingUntilFirst <= ANIMATION_TOTAL_MS) {
                 buildCountdownGapDisplay(remainingUntilFirst)
             } else {
@@ -71,7 +79,7 @@ internal object TimingGapDisplayResolver {
                     isAnimated = false,
                     nextDelayMs = computeGapPlaceholderDelay(
                         remainingMs = remainingUntilFirst,
-                        supportsCountdown = firstLine.startTime >= FULL_SEQUENCE_MS
+                        supportsCountdown = supportsIntroCountdown(firstLine.startTime)
                     )
                 )
             }
@@ -92,22 +100,17 @@ internal object TimingGapDisplayResolver {
             if (position < current.endTime || position >= next.startTime) continue
 
             val remainingUntilNext = next.startTime - position
-            val gapDuration = next.startTime - current.endTime
-            if (gapDuration < HOLD_THRESHOLD_MS) {
+            val interludeStart = interludeStart(current.endTime, next.startTime)
+            if (interludeStart == null) {
                 return stableGapFallback(current, remainingUntilNext, lastStableDisplayLyric, lastStableFullLyric, maxDisplayWeight)
             }
 
-            if (gapDuration < METADATA_THRESHOLD_MS) {
-                return stableGapFallback(current, remainingUntilNext, lastStableDisplayLyric, lastStableFullLyric, maxDisplayWeight)
-            }
-
-            val elapsedInGap = (gapDuration - remainingUntilNext).coerceAtLeast(0L)
-            if (elapsedInGap < TRANSITION_HOLD_MS) {
+            if (position < interludeStart) {
                 return stableGapFallback(
                     previousLine = current,
                     remainingUntilNext = minOf(
                         remainingUntilNext,
-                        (TRANSITION_HOLD_MS - elapsedInGap).coerceAtLeast(1L)
+                        (interludeStart - position).coerceAtLeast(1L)
                     ),
                     lastStableDisplayLyric = lastStableDisplayLyric,
                     lastStableFullLyric = lastStableFullLyric,
