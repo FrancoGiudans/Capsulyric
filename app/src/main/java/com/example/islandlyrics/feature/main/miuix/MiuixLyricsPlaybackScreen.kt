@@ -14,10 +14,18 @@ import android.os.SystemClock
 import androidx.activity.compose.LocalActivity
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.EnterExitState
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.LinearOutSlowInEasing
+import androidx.compose.animation.core.keyframes
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -57,6 +65,7 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.livedata.observeAsState
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
@@ -110,6 +119,7 @@ import com.example.islandlyrics.ui.overlay.floating.FloatingLyricsClock
 import com.example.islandlyrics.ui.overlay.floating.FloatingLyricsVisibility
 import com.example.islandlyrics.ui.overlay.model.SecondaryTextResolver
 import com.example.islandlyrics.ui.overlay.model.WordProgressCalculator
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
@@ -124,7 +134,6 @@ import top.yukonga.miuix.kmp.basic.SliderDefaults
 import top.yukonga.miuix.kmp.basic.Switch
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TextButton
-import top.yukonga.miuix.kmp.anim.folmeSpring
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Translate
 import top.yukonga.miuix.kmp.window.WindowListPopup
@@ -133,13 +142,22 @@ import top.yukonga.miuix.kmp.shader.isRuntimeShaderSupported
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.theme.darkColorScheme
 import kotlin.math.abs
+import kotlin.math.cos
 import kotlin.math.roundToInt
 import kotlin.math.roundToLong
-import kotlin.math.sin
 
-private const val CurrentLineScale = 1.08f
+private const val CurrentLineScale = 1.11f
+private const val LyricRowScaleLimit = 1.13f
+private const val LyricActivationMillis = 220
+private const val LyricFollowDelayMillis = 55
+private const val LyricLiftDp = 12f
+private const val InterludeExitGrowMillis = 100
+private const val InterludeCollapseMillis = 220
+private const val InterludeExitMillis = InterludeExitGrowMillis + InterludeCollapseMillis
+private const val InterludeBreathPeriodMillis = 1_250L
 private const val SeekAcknowledgementTimeout = 4_000L
 private const val SeekPositionTolerance = 1_000L
+private val LyricActivationSpec = tween<Float>(LyricActivationMillis, easing = FastOutSlowInEasing)
 
 @Composable
 internal fun MiuixLyricsPlaybackScreen(start: LyricsPlaybackStart, onBack: () -> Unit) {
@@ -537,11 +555,9 @@ private fun LyricsPlaybackList(
     val interlude by remember(lines, interludes, position) {
         derivedStateOf { position.value?.let { interludes.activeInterlude(currentLineIndex, it) } }
     }
-    val interludeIndex = interlude?.beforeLineIndex
-    val interludeKey = interludeIndex?.let { "interlude:$it" }
-    val itemCount = lines.size + if (interludeIndex == null) 0 else 1
-    val focusedIndex = interludeIndex ?: currentLineIndex.coerceAtLeast(0)
-    val focusedKey = interludeKey ?: focusedIndex
+    val focusedIndex = currentLineIndex.coerceAtLeast(0)
+    var previousFocusedIndex by remember(lines) { mutableIntStateOf(focusedIndex) }
+    var previousInterlude by remember(lines) { mutableStateOf<PlaybackInterlude?>(null) }
     val scrollConnection = remember(onFollowingChange) {
         object : NestedScrollConnection {
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
@@ -550,17 +566,34 @@ private fun LyricsPlaybackList(
             }
         }
     }
-    LaunchedEffect(focusedKey, lines, following, contentPadding, showTranslation, showRomanization) {
+    LaunchedEffect(focusedIndex, interlude, lines, following, contentPadding, showTranslation, showRomanization) {
+        val movingToNextLine = interlude == null && focusedIndex == previousFocusedIndex + 1
+        val collapsingBeforeFocus = interlude == null && previousInterlude?.beforeLineIndex == focusedIndex
+        previousFocusedIndex = focusedIndex
+        previousInterlude = interlude
         if (following) {
-            val layout = snapshotFlow { listState.layoutInfo }.first { it.totalItemsCount == itemCount }
-            val item = layout.visibleItemsInfo.firstOrNull { it.key == focusedKey }
-            if (item != null) {
+            val followDelay = when {
+                collapsingBeforeFocus -> InterludeExitMillis
+                movingToNextLine -> LyricFollowDelayMillis
+                else -> 0
+            }
+            if (followDelay > 0) {
+                delay(followDelay.toLong())
+                withFrameNanos { }
+            }
+            val layout = snapshotFlow { listState.layoutInfo }.first { it.totalItemsCount == lines.size }
+            val item = layout.visibleItemsInfo.firstOrNull { it.index == focusedIndex }
+            if (item == null) {
+                if (movingToNextLine) {
+                    listState.animateScrollToItem(focusedIndex)
+                } else {
+                    listState.scrollToItem(focusedIndex)
+                }
+            } else if (item.offset != 0) {
                 listState.animateScrollBy(
                     item.offset.toFloat(),
-                    animationSpec = folmeSpring(damping = 0.86f, response = 0.38f),
+                    animationSpec = tween(420, easing = FastOutSlowInEasing),
                 )
-            } else {
-                listState.scrollToItem(focusedIndex)
             }
         }
     }
@@ -571,69 +604,84 @@ private fun LyricsPlaybackList(
         contentPadding = contentPadding,
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        items(
-            count = itemCount,
-            key = { index ->
-                when {
-                    index == interludeIndex -> "interlude:$index"
-                    interludeIndex != null && index > interludeIndex -> index - 1
-                    else -> index
-                }
-            },
-            contentType = { index -> index == interludeIndex },
-        ) { index ->
-            val activeInterlude = interlude
-            if (activeInterlude != null && index == activeInterlude.beforeLineIndex) {
-                PlaybackInterludeDots(
-                    interlude = activeInterlude,
-                    position = position,
-                    color = color,
-                    modifier = Modifier.animateItem(fadeInSpec = tween(180), fadeOutSpec = tween(160)),
-                )
-            } else {
-                val lineIndex = if (interludeIndex != null && index > interludeIndex) index - 1 else index
-                val line = lines[lineIndex]
-                val secondary = remember(line, showTranslation, showRomanization) {
-                    playbackSecondaryText(line.roma, line.translation, showRomanization, showTranslation)
+        items(count = lines.size, key = { it }) { index ->
+            val line = lines[index]
+            val secondary = remember(line, showTranslation, showRomanization) {
+                playbackSecondaryText(line.roma, line.translation, showRomanization, showTranslation)
+            }
+            Column {
+                if (index == 0) {
+                    interludes[0]?.let { intro ->
+                        PlaybackInterludeSpace(intro, interlude == intro, position, color)
+                    }
                 }
                 PlaybackLyricRow(
                     line = line,
                     secondary = secondary,
-                    current = interludeIndex == null && lineIndex == currentLineIndex,
+                    current = interlude == null && index == currentLineIndex,
+                    reached = index <= currentLineIndex,
                     following = following,
                     color = color,
                     position = position,
                     onSeek = onSeek,
-                    modifier = Modifier.animateItem(fadeInSpec = null, fadeOutSpec = null),
                 )
+                interludes[index + 1]?.let { gap ->
+                    PlaybackInterludeSpace(gap, interlude == gap, position, color)
+                }
             }
         }
     }
 }
 
 @Composable
-private fun PlaybackInterludeDots(
+private fun PlaybackInterludeSpace(
     interlude: PlaybackInterlude,
+    visible: Boolean,
     position: State<Long?>,
     color: Color,
-    modifier: Modifier = Modifier,
 ) {
-    val description = stringResource(R.string.lyrics_playback_interlude)
-    Canvas(
-        modifier = modifier.size(width = 58.dp, height = 38.dp)
-            .semantics { contentDescription = description },
+    AnimatedVisibility(
+        visible = visible,
+        enter = expandVertically(expandFrom = Alignment.Top, animationSpec = tween(260)) + fadeIn(tween(190)),
+        exit = shrinkVertically(
+            shrinkTowards = Alignment.CenterVertically,
+            animationSpec = tween(InterludeCollapseMillis, delayMillis = InterludeExitGrowMillis),
+            clip = false,
+        ) + fadeOut(tween(InterludeCollapseMillis, delayMillis = InterludeExitGrowMillis)),
     ) {
-        val elapsed = (position.value ?: interlude.startTime) - interlude.startTime
-        val progress = (elapsed.toFloat() / (interlude.endTime - interlude.startTime)).coerceIn(0f, 1f)
-        val radius = 3.8.dp.toPx()
-        repeat(3) { index ->
-            val dotProgress = (progress * 3f - index).coerceIn(0f, 1f)
-            val pulse = sin(dotProgress * Math.PI).toFloat()
-            drawCircle(
-                color = color.copy(alpha = WordProgressCalculator.highlightAlpha(dotProgress)),
-                radius = radius + pulse * 0.9.dp.toPx(),
-                center = Offset(radius + index * 16.dp.toPx(), size.height / 2f),
-            )
+        val groupScale by transition.animateFloat(
+            transitionSpec = {
+                if (targetState == EnterExitState.PostExit) {
+                    keyframes {
+                        durationMillis = InterludeExitMillis
+                        1.25f at InterludeExitGrowMillis using FastOutSlowInEasing
+                    }
+                } else {
+                    tween(180)
+                }
+            },
+            label = "interlude group scale",
+        ) { phase -> if (phase == EnterExitState.PostExit) 0f else 1f }
+        val description = stringResource(R.string.lyrics_playback_interlude)
+        Canvas(
+            modifier = Modifier.size(width = 56.dp, height = 38.dp)
+                .semantics { contentDescription = description },
+        ) {
+            val duration = interlude.endTime - interlude.startTime
+            val elapsed = ((position.value ?: interlude.startTime) - interlude.startTime).coerceIn(0L, duration)
+            val progress = elapsed.toFloat() / duration
+            val cycle = (elapsed % InterludeBreathPeriodMillis).toFloat() / InterludeBreathPeriodMillis
+            val scale = groupScale
+            repeat(3) { index ->
+                val phase = cycle + 0.22f - index * 0.14f
+                val breath = (1f - cos(phase * 2.0 * Math.PI).toFloat()) / 2f
+                val countdown = WordProgressCalculator.highlightAlpha(progress * 3f - index)
+                drawCircle(
+                    color = color.copy(alpha = countdown * (0.68f + breath * 0.32f)),
+                    radius = (3.6f + breath * 1.8f).dp.toPx() * scale,
+                    center = Offset(size.width / 2f + ((index - 1) * 16).dp.toPx() * scale, size.height / 2f),
+                )
+            }
         }
     }
 }
@@ -643,49 +691,57 @@ private fun PlaybackLyricRow(
     line: LyricLine,
     secondary: List<String>,
     current: Boolean,
+    reached: Boolean,
     following: Boolean,
     color: Color,
     position: State<Long?>,
     onSeek: ((Long) -> Unit)?,
-    modifier: Modifier = Modifier,
 ) {
     val scale by animateFloatAsState(
         if (current) CurrentLineScale else 1f,
-        folmeSpring(damping = 0.78f, response = 0.34f),
+        LyricActivationSpec,
         label = "lyric scale",
     )
-    val lift by animateDpAsState(
-        if (current && following) (-3).dp else 0.dp,
-        folmeSpring(damping = 0.82f, response = 0.36f),
-        label = "lyric lift",
-    )
+    val targetLift = if (reached) -LyricLiftDp else 0f
+    val jump = remember { Animatable(targetLift) }
+    LaunchedEffect(targetLift) {
+        if (jump.value == targetLift) return@LaunchedEffect
+        if (reached && current) {
+            jump.animateTo(targetLift, LyricActivationSpec)
+        } else {
+            jump.snapTo(targetLift)
+        }
+    }
+    val inactiveBrightness = if (following) 0.58f else 0.78f
     val brightness by animateFloatAsState(
-        if (current) 1f else if (following) 0.58f else 0.78f,
-        tween(if (current) 155 else 280, easing = LinearOutSlowInEasing),
+        if (current) 1f else inactiveBrightness,
+        LyricActivationSpec,
         label = "lyric brightness",
     )
     BoxWithConstraints(
-        modifier = modifier.fillMaxWidth()
+        modifier = Modifier.fillMaxWidth()
             .then(if (onSeek != null) Modifier.clickable(role = Role.Button) { onSeek(line.startTime) } else Modifier)
             .padding(vertical = 6.dp),
     ) {
         Column(
-            modifier = Modifier.width(maxWidth / CurrentLineScale)
+            modifier = Modifier.width(maxWidth / LyricRowScaleLimit)
                 .layout { measurable, constraints ->
                     val child = measurable.measure(constraints)
-                    val height = constraints.constrainHeight((child.height * CurrentLineScale).roundToInt())
+                    val height = constraints.constrainHeight((child.height * LyricRowScaleLimit).roundToInt())
                     layout(child.width, height) { child.placeRelative(0, 0) }
                 }
                 .graphicsLayer {
                     scaleX = scale
                     scaleY = scale
-                    translationY = lift.toPx()
+                    translationY = jump.value.dp.toPx()
                     transformOrigin = TransformOrigin(0f, 0f)
                     alpha = brightness
                 },
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            PlaybackLyricText(line, current, position, color)
+            PlaybackLyricText(line, current, position, color) {
+                ((brightness - inactiveBrightness) / (1f - inactiveBrightness)).coerceIn(0f, 1f)
+            }
             secondary.forEach { text ->
                 Text(text, style = MiuixTheme.textStyles.body2, color = color)
             }

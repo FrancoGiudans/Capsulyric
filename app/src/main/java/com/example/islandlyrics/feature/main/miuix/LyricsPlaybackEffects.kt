@@ -13,6 +13,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithCache
@@ -124,19 +125,32 @@ internal fun Modifier.fadeLyricsAroundBars(top: Dp, bottom: Dp, feather: Dp): Mo
         }
 
 @Composable
-internal fun PlaybackLyricText(line: LyricLine, current: Boolean, position: State<Long?>, color: Color) {
-    val sweepEnabled = current && !line.syllables.isNullOrEmpty()
-    var textLayout by remember(line.text) { mutableStateOf<TextLayoutResult?>(null) }
+internal fun PlaybackLyricText(
+    line: LyricLine,
+    current: Boolean,
+    position: State<Long?>,
+    color: Color,
+    sweepStrength: () -> Float = { 1f },
+) {
+    val timed = !line.syllables.isNullOrEmpty()
+    val needsSweep = rememberUpdatedState(current)
+    val textLayout = remember(line.text) { mutableStateOf<TextLayoutResult?>(null) }
+    val onTextLayout = remember(textLayout) { { layout: TextLayoutResult -> textLayout.value = layout } }
     Text(
         text = line.text,
-        modifier = if (sweepEnabled) {
-            Modifier.graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+        modifier = if (timed) {
+            Modifier.graphicsLayer {
+                compositingStrategy = if (needsSweep.value) CompositingStrategy.Offscreen else CompositingStrategy.Auto
+            }
                 .drawWithCache {
-                    val layout = textLayout
+                    val layout = textLayout.value
                     val maskPaint = Paint().apply { blendMode = BlendMode.DstIn }
                     val feather = 7.dp.toPx()
                     onDrawWithContent {
                         drawContent()
+                        if (!needsSweep.value) return@onDrawWithContent
+                        val strength = sweepStrength()
+                        if (strength == 0f) return@onDrawWithContent
                         val playbackMs = position.value ?: return@onDrawWithContent
                         val progress = WordProgressCalculator.compute(
                             line.text, line.startTime, line.endTime, line.syllables, playbackMs,
@@ -147,7 +161,8 @@ internal fun PlaybackLyricText(line: LyricLine, current: Boolean, position: Stat
 
                         // Punch the sweep into the shaped glyphs so both passes share the same text layout.
                         drawIntoCanvas { it.saveLayer(Rect(Offset.Zero, size), maskPaint) }
-                        drawRect(Color.White.copy(alpha = WordProgressCalculator.UNSUNG_ALPHA))
+                        val unsungAlpha = 1f - (1f - WordProgressCalculator.UNSUNG_ALPHA) * strength
+                        drawRect(Color.White.copy(alpha = unsungAlpha))
                         var sungEnd = 0
                         for (syllable in progress.syllables) {
                             if (syllable.progress < 1f) break
@@ -170,7 +185,7 @@ internal fun PlaybackLyricText(line: LyricLine, current: Boolean, position: Stat
         style = MiuixTheme.textStyles.title2,
         fontWeight = FontWeight.SemiBold,
         color = color,
-        onTextLayout = if (sweepEnabled) { layout -> textLayout = layout } else null,
+        onTextLayout = onTextLayout.takeIf { timed },
     )
 }
 
