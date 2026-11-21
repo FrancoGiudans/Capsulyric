@@ -10,6 +10,7 @@ import com.example.islandlyrics.lyrics.online.OnlineLyricFetcher.LyricLine
 import com.example.islandlyrics.lyrics.state.LyricRepository
 import com.example.islandlyrics.ui.overlay.display.TimingGapDisplayResolver
 import com.example.islandlyrics.ui.overlay.model.SecondaryTextResolver
+import kotlin.math.abs
 
 internal data class LyricsPlaybackStart(
     val track: LyricRepository.MediaInfo,
@@ -88,13 +89,31 @@ private val PlaybackLyricDepthStops = listOf(
     PlaybackLyricDepth(3f, 1.8f, 0.35f, 0.18f),
 )
 
-internal fun playbackLyricDepth(distance: Float): PlaybackLyricDepth {
-    val step = distance.coerceIn(0f, PlaybackLyricDepthStops.lastIndex.toFloat())
+private val LandscapeLyricDepthStops = listOf(
+    PlaybackLyricDepth(0f, 0f, 1f, 0.55f),
+    PlaybackLyricDepth(1.1f, 0.7f, 0.50f, 0.28f),
+    PlaybackLyricDepth(1.9f, 1.2f, 0.42f, 0.22f),
+    PlaybackLyricDepth(2.5f, 1.5f, 0.35f, 0.18f),
+)
+
+internal const val LandscapeLyricFocusFraction = 0.39f
+
+internal fun landscapeLyricDistance(center: Float, viewportStart: Int, viewportEnd: Int): Float {
+    val height = (viewportEnd - viewportStart).coerceAtLeast(1)
+    val anchor = viewportStart + height * LandscapeLyricFocusFraction
+    val offset = abs(center - anchor)
+    // Scroll offsets are rounded to whole pixels and may leave a subpixel residual at rest.
+    return if (offset <= 1f) 0f else offset / (height * 0.22f)
+}
+
+internal fun playbackLyricDepth(distance: Float, landscape: Boolean = false): PlaybackLyricDepth {
+    val stops = if (landscape) LandscapeLyricDepthStops else PlaybackLyricDepthStops
+    val step = distance.coerceIn(0f, stops.lastIndex.toFloat())
     val lower = step.toInt()
-    val from = PlaybackLyricDepthStops[lower]
+    val from = stops[lower]
     if (step == lower.toFloat()) return from
 
-    val to = PlaybackLyricDepthStops[lower + 1]
+    val to = stops[lower + 1]
     val fraction = step - lower
     val progress = fraction * fraction * (3f - 2f * fraction)
     return PlaybackLyricDepth(

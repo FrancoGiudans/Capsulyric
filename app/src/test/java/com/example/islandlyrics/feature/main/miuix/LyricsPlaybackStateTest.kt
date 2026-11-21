@@ -88,4 +88,23 @@ class LyricsPlaybackStateTest {
         assertEquals(0.50f + (0.42f - 0.50f) * progress, depth.mainAlpha, 0.0001f)
         assertEquals(0.28f + (0.22f - 0.28f) * progress, depth.secondaryAlpha, 0.0001f)
     }
+
+    @Test
+    fun landscapeDistanceFollowsTheViewportAcrossPaddingAndHeightChanges() {
+        // These viewports have 39% leading padding, so their focus is at item offset zero.
+        assertEquals(0f, landscapeLyricDistance(0f, -117, 183), 0.0001f)
+        assertEquals(0f, landscapeLyricDistance(0.5f, -117, 183), 0.0001f)
+        assertEquals(1f, landscapeLyricDistance(-66f, -117, 183), 0.0001f)
+        assertEquals(1f, landscapeLyricDistance(66f, -117, 183), 0.0001f)
+        assertEquals(1f, landscapeLyricDistance(132f, -234, 366), 0.0001f)
+        assertEquals(1f, landscapeLyricDistance(101f, -82, 218), 0.0001f)
+    }
+
+    @Test
+    fun landscapeDepthKeepsTheAnchorSharpAndCapsTheTwoBlurRadiiSeparately() {
+        assertEquals(PlaybackLyricDepth(0f, 0f, 1f, 0.55f), playbackLyricDepth(0f, landscape = true))
+        assertEquals(PlaybackLyricDepth(1.1f, 0.7f, 0.50f, 0.28f), playbackLyricDepth(1f, landscape = true))
+        assertEquals(PlaybackLyricDepth(1.9f, 1.2f, 0.42f, 0.22f), playbackLyricDepth(2f, landscape = true))
+        assertEquals(PlaybackLyricDepth(2.5f, 1.5f, 0.35f, 0.18f), playbackLyricDepth(4f, landscape = true))
+    }
 }

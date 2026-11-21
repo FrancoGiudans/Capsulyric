@@ -118,26 +118,28 @@ private const val PlaybackGaussianShader = """
     }
 """
 
-internal fun Modifier.fadeLyricsAroundBars(top: Dp, bottom: State<Dp>, feather: Dp): Modifier =
+internal fun Modifier.fadeLyricsAroundBars(top: Dp, bottom: State<Dp>, feather: Dp, bottomFeather: Dp = feather): Modifier =
     graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
         .drawWithCache {
             if (size.height <= 0f) return@drawWithCache onDrawWithContent { drawContent() }
             val upperBar = (top.toPx() / size.height).coerceIn(0f, 1f)
             val lowerBar = (1f - bottom.value.toPx() / size.height).coerceIn(upperBar, 1f)
-            val edge = (feather.toPx() / size.height).coerceIn(0f, (lowerBar - upperBar) / 2f)
+            val featherLimit = (lowerBar - upperBar) / 2f
+            val upperEdge = (feather.toPx() / size.height).coerceIn(0f, featherLimit)
+            val lowerEdge = (bottomFeather.toPx() / size.height).coerceIn(0f, featherLimit)
             val shallow = Color.Black.copy(alpha = 0.16f)
             val middle = Color.Black.copy(alpha = 0.5f)
             val deep = Color.Black.copy(alpha = 0.84f)
             val mask = Brush.verticalGradient(
                 upperBar to Color.Transparent,
-                upperBar + edge * 0.25f to shallow,
-                upperBar + edge * 0.5f to middle,
-                upperBar + edge * 0.75f to deep,
-                upperBar + edge to Color.Black,
-                lowerBar - edge to Color.Black,
-                lowerBar - edge * 0.75f to deep,
-                lowerBar - edge * 0.5f to middle,
-                lowerBar - edge * 0.25f to shallow,
+                upperBar + upperEdge * 0.25f to shallow,
+                upperBar + upperEdge * 0.5f to middle,
+                upperBar + upperEdge * 0.75f to deep,
+                upperBar + upperEdge to Color.Black,
+                lowerBar - lowerEdge to Color.Black,
+                lowerBar - lowerEdge * 0.75f to deep,
+                lowerBar - lowerEdge * 0.5f to middle,
+                lowerBar - lowerEdge * 0.25f to shallow,
                 lowerBar to Color.Transparent,
             )
             onDrawWithContent {
