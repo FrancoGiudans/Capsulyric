@@ -44,6 +44,8 @@ internal data class FloatingLyricsChrome(
     val iconButtonPaddingDp: Int
 ) {
     companion object {
+        const val ExpandedPanelRadiusDp = 22
+
         @Suppress("UNUSED_PARAMETER")
         fun from(prefs: SharedPreferences): FloatingLyricsChrome {
             return FloatingLyricsChrome(
@@ -53,7 +55,7 @@ internal data class FloatingLyricsChrome(
                 minimalBackgroundColor = 0x99000000.toInt(),
                 expandedHorizontalPaddingDp = 14,
                 expandedVerticalPaddingDp = 10,
-                expandedRadiusDp = 22,
+                expandedRadiusDp = ExpandedPanelRadiusDp,
                 expandedBackgroundColor = 0x991A1A1C.toInt(),
                 expandedFallbackBackgroundColor = 0xE61A1A1C.toInt(),
                 expandedBlurRadiusDp = 24,
