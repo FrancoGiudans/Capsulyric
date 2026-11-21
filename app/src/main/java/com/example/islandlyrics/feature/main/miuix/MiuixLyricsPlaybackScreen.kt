@@ -529,10 +529,18 @@ private fun LyricsPlaybackList(
     modifier: Modifier = Modifier,
 ) {
     val listState = rememberLazyListState()
-    val timeline = remember(lines) { lines.withInterludes() }
-    val currentIndex by remember(timeline, position) {
-        derivedStateOf { position.value?.let(timeline::currentPlaybackLine) ?: -1 }
+    val interludes = remember(lines) { lines.playbackInterludes() }
+    val currentLineIndex by remember(lines, position) {
+        derivedStateOf { position.value?.let(lines::currentPlaybackLine) ?: -1 }
     }
+    val interlude by remember(lines, interludes, position) {
+        derivedStateOf { position.value?.let { interludes.activeInterlude(currentLineIndex, it) } }
+    }
+    val interludeIndex = interlude?.beforeLineIndex
+    val interludeKey = interludeIndex?.let { "interlude:$it" }
+    val itemCount = lines.size + if (interludeIndex == null) 0 else 1
+    val focusedIndex = interludeIndex ?: currentLineIndex.coerceAtLeast(0)
+    val focusedKey = interludeKey ?: focusedIndex
     val scrollConnection = remember(onFollowingChange) {
         object : NestedScrollConnection {
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
@@ -541,17 +549,17 @@ private fun LyricsPlaybackList(
             }
         }
     }
-    LaunchedEffect(currentIndex, timeline, following, contentPadding, showTranslation, showRomanization) {
+    LaunchedEffect(focusedKey, lines, following, contentPadding, showTranslation, showRomanization) {
         if (following) {
-            val index = currentIndex.coerceAtLeast(0)
-            val item = listState.layoutInfo.visibleItemsInfo.firstOrNull { it.index == index }
+            val layout = snapshotFlow { listState.layoutInfo }.first { it.totalItemsCount == itemCount }
+            val item = layout.visibleItemsInfo.firstOrNull { it.key == focusedKey }
             if (item != null) {
                 listState.animateScrollBy(
                     item.offset.toFloat(),
                     animationSpec = folmeSpring(damping = 0.86f, response = 0.38f),
                 )
             } else {
-                listState.scrollToItem(index)
+                listState.scrollToItem(focusedIndex)
             }
         }
     }
@@ -562,55 +570,66 @@ private fun LyricsPlaybackList(
         contentPadding = contentPadding,
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        items(timeline.size) { index ->
-            val current = index == currentIndex
-            when (val row = timeline[index]) {
-                is PlaybackTimelineItem.Verse -> {
-                    val line = row.line
-                    val secondary = remember(line, showTranslation, showRomanization) {
-                        playbackSecondaryText(line.roma, line.translation, showRomanization, showTranslation)
-                    }
-                    PlaybackLyricRow(
-                        line = line,
-                        secondary = secondary,
-                        current = current,
-                        following = following,
-                        color = color,
-                        position = position,
-                        onSeek = onSeek,
-                    )
+        items(
+            count = itemCount,
+            key = { index ->
+                when {
+                    index == interludeIndex -> "interlude:$index"
+                    interludeIndex != null && index > interludeIndex -> index - 1
+                    else -> index
                 }
-                is PlaybackTimelineItem.Interlude -> PlaybackInterlude(row, current, position, color)
+            },
+            contentType = { index -> index == interludeIndex },
+        ) { index ->
+            val activeInterlude = interlude
+            if (activeInterlude != null && index == activeInterlude.beforeLineIndex) {
+                PlaybackInterludeDots(
+                    interlude = activeInterlude,
+                    position = position,
+                    color = color,
+                    modifier = Modifier.animateItem(fadeInSpec = tween(180), fadeOutSpec = tween(160)),
+                )
+            } else {
+                val lineIndex = if (interludeIndex != null && index > interludeIndex) index - 1 else index
+                val line = lines[lineIndex]
+                val secondary = remember(line, showTranslation, showRomanization) {
+                    playbackSecondaryText(line.roma, line.translation, showRomanization, showTranslation)
+                }
+                PlaybackLyricRow(
+                    line = line,
+                    secondary = secondary,
+                    current = interludeIndex == null && lineIndex == currentLineIndex,
+                    following = following,
+                    color = color,
+                    position = position,
+                    onSeek = onSeek,
+                    modifier = Modifier.animateItem(fadeInSpec = null, fadeOutSpec = null),
+                )
             }
         }
     }
 }
 
 @Composable
-private fun PlaybackInterlude(
-    interlude: PlaybackTimelineItem.Interlude,
-    current: Boolean,
+private fun PlaybackInterludeDots(
+    interlude: PlaybackInterlude,
     position: State<Long?>,
     color: Color,
+    modifier: Modifier = Modifier,
 ) {
     val description = stringResource(R.string.lyrics_playback_interlude)
-    val intensity by animateFloatAsState(
-        if (current) 1f else 0.55f,
-        animationSpec = tween(220),
-        label = "interlude intensity",
-    )
     Canvas(
-        modifier = Modifier.size(width = 58.dp, height = 38.dp)
+        modifier = modifier.size(width = 58.dp, height = 38.dp)
             .semantics { contentDescription = description },
     ) {
-        val elapsed = if (current) (position.value ?: interlude.startTime) - interlude.startTime else 0L
+        val elapsed = (position.value ?: interlude.startTime) - interlude.startTime
         val progress = (elapsed.toFloat() / (interlude.endTime - interlude.startTime)).coerceIn(0f, 1f)
         val radius = 3.8.dp.toPx()
         repeat(3) { index ->
             val dotProgress = (progress * 3f - index).coerceIn(0f, 1f)
             val pulse = sin(dotProgress * Math.PI).toFloat()
             drawCircle(
-                color = color.copy(alpha = intensity * WordProgressCalculator.highlightAlpha(dotProgress)),
+                color = color.copy(alpha = WordProgressCalculator.highlightAlpha(dotProgress)),
                 radius = radius + pulse * 0.9.dp.toPx(),
                 center = Offset(radius + index * 16.dp.toPx(), size.height / 2f),
             )
@@ -627,6 +646,7 @@ private fun PlaybackLyricRow(
     color: Color,
     position: State<Long?>,
     onSeek: ((Long) -> Unit)?,
+    modifier: Modifier = Modifier,
 ) {
     val scale by animateFloatAsState(
         if (current) CurrentLineScale else 1f,
@@ -644,7 +664,7 @@ private fun PlaybackLyricRow(
         label = "lyric brightness",
     )
     BoxWithConstraints(
-        modifier = Modifier.fillMaxWidth()
+        modifier = modifier.fillMaxWidth()
             .then(if (onSeek != null) Modifier.clickable(role = Role.Button) { onSeek(line.startTime) } else Modifier)
             .padding(vertical = 6.dp),
     ) {

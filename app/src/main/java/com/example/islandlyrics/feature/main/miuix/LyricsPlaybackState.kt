@@ -46,32 +46,28 @@ internal fun PlaybackState?.toLyricsClock(fallbackPosition: Long?): FloatingLyri
     return fallbackPosition?.let { FloatingLyricsClock(it, SystemClock.elapsedRealtime(), speed) }
 }
 
-internal sealed interface PlaybackTimelineItem {
-    val startTime: Long
+internal data class PlaybackInterlude(val beforeLineIndex: Int, val startTime: Long, val endTime: Long)
 
-    data class Verse(val line: LyricLine) : PlaybackTimelineItem {
-        override val startTime: Long get() = line.startTime
-    }
-
-    data class Interlude(override val startTime: Long, val endTime: Long) : PlaybackTimelineItem
-}
-
-internal fun List<LyricLine>.withInterludes(): List<PlaybackTimelineItem> = buildList {
-    val first = this@withInterludes.firstOrNull() ?: return@buildList
-    if (TimingGapDisplayResolver.supportsIntroCountdown(first.startTime)) {
-        add(PlaybackTimelineItem.Interlude(0L, first.startTime))
-    }
-    var coveredUntil = first.startTime
-    for (line in this@withInterludes) {
-        TimingGapDisplayResolver.interludeStart(coveredUntil, line.startTime)?.let { start ->
-            add(PlaybackTimelineItem.Interlude(start, line.startTime))
+internal fun List<LyricLine>.playbackInterludes(): Map<Int, PlaybackInterlude> {
+    val first = firstOrNull() ?: return emptyMap()
+    return buildMap {
+        if (TimingGapDisplayResolver.supportsIntroCountdown(first.startTime)) {
+            put(0, PlaybackInterlude(0, 0L, first.startTime))
         }
-        add(PlaybackTimelineItem.Verse(line))
-        coveredUntil = maxOf(coveredUntil, line.startTime, line.endTime)
+        var coveredUntil = first.startTime
+        this@playbackInterludes.forEachIndexed { index, line ->
+            TimingGapDisplayResolver.interludeStart(coveredUntil, line.startTime)?.let { start ->
+                put(index, PlaybackInterlude(index, start, line.startTime))
+            }
+            coveredUntil = maxOf(coveredUntil, line.startTime, line.endTime)
+        }
     }
 }
 
-internal fun List<PlaybackTimelineItem>.currentPlaybackLine(position: Long): Int {
+internal fun Map<Int, PlaybackInterlude>.activeInterlude(currentLineIndex: Int, position: Long): PlaybackInterlude? =
+    get(currentLineIndex + 1)?.takeIf { position >= it.startTime && position < it.endTime }
+
+internal fun List<LyricLine>.currentPlaybackLine(position: Long): Int {
     var start = 0
     var end = size
     while (start < end) {
