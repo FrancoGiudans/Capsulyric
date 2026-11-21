@@ -97,6 +97,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import top.yukonga.miuix.kmp.basic.*
 import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.extended.ExpandMore
 import top.yukonga.miuix.kmp.icon.extended.Refresh
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.MiuixPopupUtils.Companion.MiuixPopupHost
@@ -846,11 +847,6 @@ private fun MiuixMediaSessionCard(
     var pendingSeekStartedAt by remember(sessionStateKey) { mutableLongStateOf(0L) }
     var seekOriginPosition by remember(sessionStateKey) { mutableLongStateOf(-1L) }
     var lyricCoordinates by remember(controller) { mutableStateOf<LayoutCoordinates?>(null) }
-    val coverActionLabel = if (onOpenLyricsPlayback != null) {
-        stringResource(R.string.lyrics_playback_open)
-    } else {
-        null
-    }
 
     val context = LocalContext.current
     val appName = remember(controller.packageName) {
@@ -966,9 +962,10 @@ private fun MiuixMediaSessionCard(
                     modifier = Modifier
                         .size(80.dp)
                         .clip(RoundedCornerShape(16.dp))
-                        .clickable(onClickLabel = coverActionLabel) {
-                            if (onOpenLyricsPlayback != null) onOpenLyricsPlayback(lyricCoordinates) else openApp()
-                        }
+                        .clickable(
+                            onClickLabel = stringResource(R.string.lyrics_playback_open_player),
+                            onClick = openApp,
+                        )
                 ) {
                     if (albumArt != null) {
                         Image(
@@ -1204,6 +1201,17 @@ private fun MiuixMediaSessionCard(
                         painter = painterResource(R.drawable.ic_skip_next), contentDescription = "Next",
                         tint = MiuixTheme.colorScheme.onSurface, modifier = Modifier.size(32.dp)
                     )
+                }
+                if (onOpenLyricsPlayback != null) {
+                    IconButton(onClick = { onOpenLyricsPlayback(lyricCoordinates) }) {
+                        Icon(
+                            imageVector = MiuixIcons.ExpandMore,
+                            contentDescription = stringResource(R.string.lyrics_playback_open),
+                            tint = MiuixTheme.colorScheme.onSurface,
+                            // Match the 16 dp path inside the 32 dp skip icon.
+                            modifier = Modifier.size(19.2.dp),
+                        )
+                    }
                 }
             }
         }
