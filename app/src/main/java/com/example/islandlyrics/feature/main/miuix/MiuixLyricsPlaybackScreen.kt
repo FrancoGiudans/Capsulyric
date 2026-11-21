@@ -90,6 +90,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.setProgress
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.constrainHeight
 import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
@@ -724,7 +725,8 @@ private fun LyricsPlaybackControls(
                 if (isPlaying) R.drawable.ic_pause else R.drawable.ic_play_arrow,
                 if (isPlaying) R.string.lyrics_playback_pause else R.string.action_play,
                 canToggle,
-                modifier = Modifier.size(56.dp),
+                buttonSize = 64.dp,
+                iconSize = 40.dp,
             ) {
                 controls.dispatch { if (isPlaying) pause() else play() }
             }
@@ -772,8 +774,8 @@ private fun LyricsPlaybackProgress(
                 disabledForegroundColor = color.copy(alpha = 0.55f),
                 backgroundColor = Color.White.copy(alpha = 0.24f),
                 disabledBackgroundColor = Color.White.copy(alpha = 0.18f),
-                thumbColor = Color.White,
-                disabledThumbColor = Color.White.copy(alpha = 0.55f),
+                thumbColor = Color.Transparent,
+                disabledThumbColor = Color.Transparent,
             ),
             modifier = Modifier.fillMaxWidth().semantics {
                 if (onSeek != null) {
@@ -803,12 +805,13 @@ private fun PlaybackLanguageMenu(
         IconButton(
             onClick = { expanded = !expanded },
             holdDownState = expanded,
-            minWidth = 48.dp,
-            minHeight = 48.dp,
+            minWidth = 56.dp,
+            minHeight = 56.dp,
         ) {
             Icon(
                 imageVector = MiuixIcons.Translate,
                 contentDescription = stringResource(R.string.lyric_text_display_mode_translation),
+                modifier = Modifier.size(30.dp),
                 tint = MiuixTheme.colorScheme.onSurface.copy(alpha = if (showTranslation || showRomanization) 1f else 0.65f),
             )
         }
@@ -861,15 +864,16 @@ private fun PlaybackControl(
     @DrawableRes icon: Int,
     @StringRes description: Int,
     enabled: Boolean,
-    modifier: Modifier = Modifier,
+    buttonSize: Dp = 56.dp,
+    iconSize: Dp = 34.dp,
     onClick: () -> Unit,
 ) {
     val color = MiuixTheme.colorScheme.onSurface
-    IconButton(onClick = onClick, modifier = modifier, enabled = enabled) {
+    IconButton(onClick = onClick, enabled = enabled, minWidth = buttonSize, minHeight = buttonSize) {
         Icon(
             painterResource(icon),
             contentDescription = stringResource(description),
-            modifier = Modifier.size(28.dp),
+            modifier = Modifier.size(iconSize),
             tint = color.copy(alpha = if (enabled) 1f else 0.38f),
         )
     }
