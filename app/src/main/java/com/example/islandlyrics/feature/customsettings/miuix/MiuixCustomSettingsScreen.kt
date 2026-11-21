@@ -1751,14 +1751,17 @@ fun MiuixCustomSettingsScreen(
                                         LyricsPlaybackPreference.KeepScreenOn to R.string.settings_fullscreen_playback_keep_screen_on,
                                         LyricsPlaybackPreference.HideSystemBars to R.string.settings_fullscreen_playback_hide_system_bars,
                                         LyricsPlaybackPreference.AutoHideControls to R.string.settings_fullscreen_playback_auto_hide_controls,
+                                        LyricsPlaybackPreference.AutoFollow to R.string.settings_fullscreen_playback_auto_follow,
                                     )
                                     settings.forEach { (preference, label) ->
                                         SuperSwitch(
                                             title = stringResource(label),
-                                            summary = if (preference == LyricsPlaybackPreference.AutoHideControls) {
-                                                stringResource(R.string.settings_fullscreen_playback_auto_hide_controls_summary)
-                                            } else {
-                                                null
+                                            summary = when (preference) {
+                                                LyricsPlaybackPreference.AutoHideControls ->
+                                                    stringResource(R.string.settings_fullscreen_playback_auto_hide_controls_summary)
+                                                LyricsPlaybackPreference.AutoFollow ->
+                                                    stringResource(R.string.settings_fullscreen_playback_auto_follow_summary)
+                                                else -> null
                                             },
                                             checked = preference.observe(prefs),
                                             onCheckedChange = { preference.set(prefs, it) },

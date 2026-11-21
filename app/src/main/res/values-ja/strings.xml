@@ -44,6 +44,8 @@
     <string name="settings_fullscreen_playback_hide_system_bars">ステータスバーとナビゲーションバーを隠す</string>
     <string name="settings_fullscreen_playback_auto_hide_controls">再生コントロールを自動的に隠す</string>
     <string name="settings_fullscreen_playback_auto_hide_controls_summary">歌詞の下部をタップするとコントロールが再表示されます。</string>
+    <string name="settings_fullscreen_playback_auto_follow">再生中の行に自動で戻る</string>
+    <string name="settings_fullscreen_playback_auto_follow_summary">再生中に歌詞のスクロールを止めると、5 秒後に追従を再開します。</string>
     <string name="lyrics_playback_show_controls">再生コントロールを表示</string>
     <string name="main_instrumental_marked">インストゥルメンタルとしてマーク済み</string>
     <string name="online_lyric_rematch_entry">オンライン歌詞を再検索</string>

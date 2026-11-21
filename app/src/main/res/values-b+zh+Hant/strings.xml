@@ -44,6 +44,8 @@
     <string name="settings_fullscreen_playback_hide_system_bars">隱藏狀態列和導覽列</string>
     <string name="settings_fullscreen_playback_auto_hide_controls">自動隱藏底部控制項</string>
     <string name="settings_fullscreen_playback_auto_hide_controls_summary">輕點歌詞區底部即可重新顯示控制項。</string>
+    <string name="settings_fullscreen_playback_auto_follow">自動回到目前歌詞行</string>
+    <string name="settings_fullscreen_playback_auto_follow_summary">播放時停止捲動歌詞 5 秒後，自動恢復跟隨。</string>
     <string name="lyrics_playback_show_controls">顯示播放控制項</string>
     <string name="main_instrumental_marked">已標記為純音樂</string>
     <string name="online_lyric_rematch_entry">重新比對線上歌詞</string>

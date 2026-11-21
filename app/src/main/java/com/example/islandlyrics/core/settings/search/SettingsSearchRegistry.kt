@@ -425,6 +425,7 @@ object SettingsSearchRegistry {
                 "全屏歌词", "进度条颜色", "歌词模糊", "歌词文本颜色", "专辑取色", "保持亮屏", "禁止休眠", "自动隐藏底栏",
                 "字号", "字体大小", "字重", "font size", "font weight",
                 "隐藏状态栏", "隐藏导航栏", "hide status bar", "hide navigation bar",
+                "自动回到当前句", "歌词跟随", "auto-follow lyrics",
             ),
             supportedVariants = setOf(SettingsUiVariant.MIUIX),
             action = SettingsSearchAction.Navigate(
