@@ -7,6 +7,7 @@ package com.example.islandlyrics.feature.main.miuix
 
 import android.media.session.PlaybackState
 import android.os.SystemClock
+import androidx.compose.ui.util.lerp
 import com.example.islandlyrics.lyrics.online.OnlineLyricFetcher.LyricLine
 import com.example.islandlyrics.lyrics.state.LyricRepository
 import com.example.islandlyrics.ui.overlay.display.TimingGapDisplayResolver
@@ -46,7 +47,25 @@ internal fun PlaybackState?.toLyricsClock(fallbackPosition: Long?): FloatingLyri
     return fallbackPosition?.let { FloatingLyricsClock(it, SystemClock.elapsedRealtime(), speed) }
 }
 
-internal data class PlaybackInterlude(val beforeLineIndex: Int, val startTime: Long, val endTime: Long)
+private const val PlaybackInterludeChargeMillis = 250L
+private const val PlaybackInterludeExitMillis = 400L
+
+internal data class PlaybackInterlude(val beforeLineIndex: Int, val startTime: Long, val endTime: Long) {
+    val exitStartTime: Long get() = endTime - PlaybackInterludeExitMillis
+    val chargeStartTime: Long get() = exitStartTime - PlaybackInterludeChargeMillis
+
+    fun dotProgress(index: Int, position: Long): Float {
+        val countdownDuration = (chargeStartTime - startTime).coerceAtLeast(1L)
+        val progress = ((position - startTime).toFloat() / countdownDuration * 3f - index).coerceIn(0f, 1f)
+        return progress * progress * (3f - 2f * progress)
+    }
+
+    fun chargeProgress(position: Long): Float =
+        ((position - chargeStartTime).toFloat() / PlaybackInterludeChargeMillis).coerceIn(0f, 1f)
+
+    fun exitProgress(position: Long): Float =
+        ((position - exitStartTime).toFloat() / PlaybackInterludeExitMillis).coerceIn(0f, 1f)
+}
 
 internal fun List<LyricLine>.playbackInterludes(): Map<Int, PlaybackInterlude> {
     val first = firstOrNull() ?: return emptyMap()
@@ -56,8 +75,8 @@ internal fun List<LyricLine>.playbackInterludes(): Map<Int, PlaybackInterlude> {
         }
         var coveredUntil = first.startTime
         this@playbackInterludes.forEachIndexed { index, line ->
-            TimingGapDisplayResolver.interludeStart(coveredUntil, line.startTime)?.let { start ->
-                put(index, PlaybackInterlude(index, start, line.startTime))
+            if (TimingGapDisplayResolver.interludeStart(coveredUntil, line.startTime) != null) {
+                put(index, PlaybackInterlude(index, coveredUntil, line.startTime))
             }
             coveredUntil = maxOf(coveredUntil, line.startTime, line.endTime)
         }
@@ -66,6 +85,37 @@ internal fun List<LyricLine>.playbackInterludes(): Map<Int, PlaybackInterlude> {
 
 internal fun Map<Int, PlaybackInterlude>.activeInterlude(currentLineIndex: Int, position: Long): PlaybackInterlude? =
     get(currentLineIndex + 1)?.takeIf { position >= it.startTime && position < it.endTime }
+
+internal data class PlaybackLyricDepth(
+    val mainBlur: Float,
+    val secondaryBlur: Float,
+    val mainAlpha: Float,
+    val secondaryAlpha: Float,
+)
+
+private val PlaybackLyricDepthStops = listOf(
+    PlaybackLyricDepth(0f, 0f, 1f, 0.55f),
+    PlaybackLyricDepth(1.2f, 0.8f, 0.50f, 0.28f),
+    PlaybackLyricDepth(2.2f, 1.4f, 0.42f, 0.22f),
+    PlaybackLyricDepth(3f, 1.8f, 0.35f, 0.18f),
+)
+
+internal fun playbackLyricDepth(distance: Float): PlaybackLyricDepth {
+    val step = distance.coerceIn(0f, PlaybackLyricDepthStops.lastIndex.toFloat())
+    val lower = step.toInt()
+    val from = PlaybackLyricDepthStops[lower]
+    if (step == lower.toFloat()) return from
+
+    val to = PlaybackLyricDepthStops[lower + 1]
+    val fraction = step - lower
+    val progress = fraction * fraction * (3f - 2f * fraction)
+    return PlaybackLyricDepth(
+        mainBlur = lerp(from.mainBlur, to.mainBlur, progress),
+        secondaryBlur = lerp(from.secondaryBlur, to.secondaryBlur, progress),
+        mainAlpha = lerp(from.mainAlpha, to.mainAlpha, progress),
+        secondaryAlpha = lerp(from.secondaryAlpha, to.secondaryAlpha, progress),
+    )
+}
 
 internal fun List<LyricLine>.currentPlaybackLine(position: Long): Int {
     var start = 0

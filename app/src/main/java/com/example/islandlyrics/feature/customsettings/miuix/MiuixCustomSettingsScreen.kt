@@ -54,6 +54,8 @@ import com.example.islandlyrics.core.platform.RomUtils
 import com.example.islandlyrics.runtime.service.LyricService
 import com.example.islandlyrics.feature.main.MainActivity
 import com.example.islandlyrics.feature.main.miuix.LyricsPlaybackPreference
+import com.example.islandlyrics.feature.main.miuix.LyricsPlaybackTypography
+import com.example.islandlyrics.ui.overlay.floating.FloatingLyricsTextWeight
 import com.example.islandlyrics.ui.overlay.model.SecondaryTextMode
 import com.example.islandlyrics.feature.customsettings.CustomSettingsAction
 import com.example.islandlyrics.feature.customsettings.RightManualLimitSetting
@@ -97,6 +99,7 @@ import top.yukonga.miuix.kmp.icon.extended.Ok
 import top.yukonga.miuix.kmp.icon.extended.Close
 import top.yukonga.miuix.kmp.preference.ArrowPreference as SuperArrow
 import com.example.islandlyrics.ui.miuix.preference.BlurOverlayDropdownPreference as SuperDropdown
+import top.yukonga.miuix.kmp.preference.SliderPreference
 import top.yukonga.miuix.kmp.preference.SwitchPreference as SuperSwitch
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import kotlin.math.roundToInt
@@ -1760,6 +1763,26 @@ fun MiuixCustomSettingsScreen(
                                             onCheckedChange = { preference.set(prefs, it) },
                                         )
                                     }
+                                    val typography = LyricsPlaybackTypography.observe(prefs)
+                                    val sizeRange = LyricsPlaybackTypography.sizeRange
+                                    SliderPreference(
+                                        title = stringResource(R.string.settings_floating_text_size),
+                                        value = typography.size.toFloat(),
+                                        valueText = stringResource(R.string.floating_settings_text_size_value, typography.size),
+                                        valueRange = sizeRange.first.toFloat()..sizeRange.last.toFloat(),
+                                        steps = sizeRange.last - sizeRange.first - 1,
+                                        showKeyPoints = false,
+                                        hapticEffect = SliderDefaults.SliderHapticEffect.Step,
+                                        onValueChange = { LyricsPlaybackTypography.setSize(prefs, it.roundToInt()) },
+                                    )
+                                    SuperDropdown(
+                                        title = stringResource(R.string.settings_floating_text_weight),
+                                        items = FloatingLyricsTextWeight.entries.map { stringResource(it.label) },
+                                        selectedIndex = typography.weight.ordinal,
+                                        onSelectedIndexChange = { index ->
+                                            LyricsPlaybackTypography.setWeight(prefs, FloatingLyricsTextWeight.entries[index])
+                                        },
+                                    )
                                 }
                             }
                             item {

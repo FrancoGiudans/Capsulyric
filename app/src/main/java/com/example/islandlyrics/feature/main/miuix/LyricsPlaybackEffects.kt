@@ -25,6 +25,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.Paint
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.asComposeRenderEffect
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
@@ -32,14 +33,14 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextLayoutResult
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.ResolvedTextDirection
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.util.lerp
 import com.example.islandlyrics.lyrics.online.OnlineLyricFetcher.LyricLine
 import com.example.islandlyrics.ui.overlay.model.WordProgressCalculator
 import top.yukonga.miuix.kmp.basic.Text
-import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 @Composable
 internal fun Modifier.blurLyricsAroundBars(
@@ -64,7 +65,7 @@ internal fun Modifier.blurLyricsAroundBars(
                     shader.setFloatUniform("visibleBand", firstVisibleY, lastVisibleY)
                     shader.setFloatUniform("bottomBlurEdgeY", bottomBlurEdgeY)
                     shader.setFloatUniform("reach", reach.toPx())
-                    shader.setFloatUniform("maxSigma", 6.dp.toPx().coerceAtMost(16f))
+                    shader.setFloatUniform("maxSigma", 3.dp.toPx().coerceAtMost(16f))
                 }
                 horizontal.setFloatUniform("axis", 1f, 0f)
                 vertical.setFloatUniform("axis", 0f, 1f)
@@ -124,10 +125,19 @@ internal fun Modifier.fadeLyricsAroundBars(top: Dp, bottom: State<Dp>, feather: 
             val upperBar = (top.toPx() / size.height).coerceIn(0f, 1f)
             val lowerBar = (1f - bottom.value.toPx() / size.height).coerceIn(upperBar, 1f)
             val edge = (feather.toPx() / size.height).coerceIn(0f, (lowerBar - upperBar) / 2f)
+            val shallow = Color.Black.copy(alpha = 0.16f)
+            val middle = Color.Black.copy(alpha = 0.5f)
+            val deep = Color.Black.copy(alpha = 0.84f)
             val mask = Brush.verticalGradient(
                 upperBar to Color.Transparent,
+                upperBar + edge * 0.25f to shallow,
+                upperBar + edge * 0.5f to middle,
+                upperBar + edge * 0.75f to deep,
                 upperBar + edge to Color.Black,
                 lowerBar - edge to Color.Black,
+                lowerBar - edge * 0.75f to deep,
+                lowerBar - edge * 0.5f to middle,
+                lowerBar - edge * 0.25f to shallow,
                 lowerBar to Color.Transparent,
             )
             onDrawWithContent {
@@ -142,6 +152,8 @@ internal fun PlaybackLyricText(
     current: Boolean,
     position: State<Long?>,
     color: Color,
+    style: TextStyle,
+    modifier: Modifier = Modifier,
     sweepStrength: () -> Float = { 1f },
 ) {
     val timed = !line.syllables.isNullOrEmpty()
@@ -150,14 +162,17 @@ internal fun PlaybackLyricText(
     val onTextLayout = remember(textLayout) { { layout: TextLayoutResult -> textLayout.value = layout } }
     Text(
         text = line.text,
-        modifier = if (timed) {
+        modifier = modifier.then(if (timed) {
             Modifier.graphicsLayer {
                 compositingStrategy = if (needsSweep.value) CompositingStrategy.Offscreen else CompositingStrategy.Auto
             }
                 .drawWithCache {
                     val layout = textLayout.value
                     val maskPaint = Paint().apply { blendMode = BlendMode.DstIn }
-                    val feather = 7.dp.toPx()
+                    val runs = layout?.sweepRuns().orEmpty()
+                    val width = runs.lastOrNull()?.let { it.distance + it.bounds.width } ?: 0f
+                    val glyphCount = Character.codePointCount(line.text, 0, line.text.length).coerceAtLeast(1)
+                    val feather = width / glyphCount * 1.25f
                     onDrawWithContent {
                         drawContent()
                         if (!needsSweep.value) return@onDrawWithContent
@@ -167,71 +182,87 @@ internal fun PlaybackLyricText(
                         val progress = WordProgressCalculator.compute(
                             line.text, line.startTime, line.endTime, line.syllables, playbackMs,
                         ) ?: return@onDrawWithContent
-                        if (layout == null || playbackMs >= line.endTime || progress.syllables.all { it.progress >= 1f }) {
+                        if (layout == null || width <= 0f || playbackMs >= line.endTime ||
+                            progress.syllables.all { it.progress >= 1f }
+                        ) {
                             return@onDrawWithContent
                         }
 
-                        // Punch the sweep into the shaped glyphs so both passes share the same text layout.
+                        // Keep one front across shaped runs, including across syllable boundaries.
+                        val syllable = progress.syllables.lastOrNull { it.progress > 0f }
+                        val front = if (syllable == null) {
+                            0f
+                        } else {
+                            val start = runs.sweepDistance(layout, syllable.charStart, width)
+                            val end = runs.sweepDistance(layout, syllable.charEnd, width)
+                            lerp(start, end, syllable.progress)
+                        }
+                        val swept = front / width * (width + feather)
                         drawIntoCanvas { it.saveLayer(Rect(Offset.Zero, size), maskPaint) }
                         val unsungAlpha = 1f - (1f - WordProgressCalculator.UNSUNG_ALPHA) * strength
                         drawRect(Color.White.copy(alpha = unsungAlpha))
-                        var sungEnd = 0
-                        for (syllable in progress.syllables) {
-                            if (syllable.progress < 1f) break
-                            sungEnd = syllable.charEnd.coerceAtMost(line.text.length)
-                        }
-                        if (sungEnd > 0) drawPath(layout.getPathForRange(0, sungEnd), Color.White)
-                        for (syllable in progress.syllables) {
-                            val start = syllable.charStart.coerceIn(sungEnd, line.text.length)
-                            val end = syllable.charEnd.coerceIn(start, line.text.length)
-                            if (end > start && syllable.progress > 0f) {
-                                drawSyllableSweep(layout, start, end, syllable.progress, feather)
-                            }
-                        }
+                        for (run in runs) drawSweepRun(run, swept - run.distance, feather)
                         drawIntoCanvas { it.restore() }
                     }
                 }
         } else {
             Modifier
-        },
-        style = MiuixTheme.textStyles.title2,
-        fontWeight = FontWeight.SemiBold,
+        }),
+        style = style,
         color = color,
         onTextLayout = onTextLayout.takeIf { timed },
     )
 }
 
-private fun DrawScope.drawSyllableSweep(layout: TextLayoutResult, start: Int, end: Int, fraction: Float, feather: Float) {
-    if (fraction >= 1f) {
-        drawPath(layout.getPathForRange(start, end), Color.White)
+private data class PlaybackSweepRun(
+    val start: Int,
+    val end: Int,
+    val path: Path,
+    val bounds: Rect,
+    val rtl: Boolean,
+    val distance: Float,
+)
+
+private fun TextLayoutResult.sweepRuns(): List<PlaybackSweepRun> = buildList {
+    var distance = 0f
+    for (line in 0 until lineCount) {
+        var start = getLineStart(line)
+        val lineEnd = getLineEnd(line, visibleEnd = true)
+        while (start < lineEnd) {
+            val direction = getBidiRunDirection(start)
+            var end = start + 1
+            while (end < lineEnd && getBidiRunDirection(end) == direction) end++
+            val path = getPathForRange(start, end)
+            val bounds = path.getBounds()
+            add(PlaybackSweepRun(start, end, path, bounds, direction == ResolvedTextDirection.Rtl, distance))
+            distance += bounds.width
+            start = end
+        }
+    }
+}
+
+private fun List<PlaybackSweepRun>.sweepDistance(layout: TextLayoutResult, offset: Int, width: Float): Float {
+    val run = firstOrNull { offset < it.end } ?: return width
+    if (offset <= run.start) return run.distance
+    val glyph = layout.getBoundingBox(offset)
+    val advance = if (run.rtl) run.bounds.right - glyph.right else glyph.left - run.bounds.left
+    return run.distance + advance.coerceIn(0f, run.bounds.width)
+}
+
+private fun DrawScope.drawSweepRun(run: PlaybackSweepRun, swept: Float, feather: Float) {
+    if (swept <= 0f || run.bounds.width <= 0f) return
+    if (swept >= run.bounds.width + feather) {
+        drawPath(run.path, Color.White)
         return
     }
-
-    val firstLine = layout.getLineForOffset(start)
-    val lastLine = layout.getLineForOffset(end - 1)
-    val segments = (firstLine..lastLine).mapNotNull { line ->
-        val from = maxOf(start, layout.getLineStart(line))
-        val to = minOf(end, layout.getLineEnd(line, visibleEnd = true))
-        if (to <= from) return@mapNotNull null
-        val path = layout.getPathForRange(from, to)
-        path to (layout.getBidiRunDirection(from) == ResolvedTextDirection.Rtl)
-    }
-    val width = segments.sumOf { (path, _) -> path.getBounds().width.toDouble() }.toFloat()
-    var swept = (width + feather) * fraction
-    for ((path, rtl) in segments) {
-        val bounds = path.getBounds()
-        val startX = if (rtl) bounds.right else bounds.left
-        val direction = if (rtl) -1f else 1f
-        if (bounds.width > 0f && swept > 0f) {
-            drawPath(
-                path,
-                Brush.horizontalGradient(
-                    colors = listOf(Color.White, Color.Transparent),
-                    startX = startX + direction * (swept - feather),
-                    endX = startX + direction * swept,
-                ),
-            )
-        }
-        swept -= bounds.width
-    }
+    val startX = if (run.rtl) run.bounds.right else run.bounds.left
+    val direction = if (run.rtl) -1f else 1f
+    drawPath(
+        run.path,
+        Brush.horizontalGradient(
+            colors = listOf(Color.White, Color.Transparent),
+            startX = startX + direction * (swept - feather),
+            endX = startX + direction * swept,
+        ),
+    )
 }

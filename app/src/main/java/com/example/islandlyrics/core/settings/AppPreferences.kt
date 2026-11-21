@@ -93,6 +93,8 @@ object AppPreferences {
         const val FULLSCREEN_PLAYBACK_AUTO_HIDE_CONTROLS = "fullscreen_playback_auto_hide_controls"
         const val FULLSCREEN_PLAYBACK_TRANSLATION = "fullscreen_playback_translation"
         const val FULLSCREEN_PLAYBACK_ROMANIZATION = "fullscreen_playback_romanization"
+        const val FULLSCREEN_PLAYBACK_TEXT_SIZE = "fullscreen_playback_text_size"
+        const val FULLSCREEN_PLAYBACK_TEXT_WEIGHT = "fullscreen_playback_text_weight"
         const val THEME_FOLLOW_SYSTEM = "theme_follow_system"
         const val THEME_DARK_MODE = "theme_dark_mode"
         const val THEME_PURE_BLACK = "theme_pure_black"

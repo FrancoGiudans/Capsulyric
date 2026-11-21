@@ -15,23 +15,16 @@ import androidx.activity.compose.LocalActivity
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.EnterExitState
-import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.keyframes
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
@@ -82,7 +75,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.BlurEffect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TileMode
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
@@ -105,10 +100,14 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.setProgress
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.constrainHeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.util.lerp
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -125,7 +124,6 @@ import com.example.islandlyrics.ui.navigation.LocalPageExpansionProgress
 import com.example.islandlyrics.ui.overlay.floating.FloatingLyricsClock
 import com.example.islandlyrics.ui.overlay.floating.FloatingLyricsVisibility
 import com.example.islandlyrics.ui.overlay.model.SecondaryTextResolver
-import com.example.islandlyrics.ui.overlay.model.WordProgressCalculator
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -155,18 +153,19 @@ import kotlin.math.roundToLong
 
 private const val CurrentLineScale = 1.11f
 private const val LyricRowScaleLimit = 1.13f
-private const val LyricActivationMillis = 220
-private const val LyricFollowDelayMillis = 55
-private const val LyricLiftDp = 12f
-private const val InterludeExitGrowMillis = 100
-private const val InterludeCollapseMillis = 220
-private const val InterludeExitMillis = InterludeExitGrowMillis + InterludeCollapseMillis
+private const val LyricTransitionMillis = 330
+private val LyricRowSpacing = 10.dp
+private val InterludeDotDiameter = 11.dp
+private val InterludeDotSpacing = 11.dp
+private val InterludeDotVerticalPadding = 17.dp
+private val InterludeDotHeight = InterludeDotDiameter + InterludeDotVerticalPadding * 2
+private val InterludeDotWidth = 60.dp
 private const val InterludeBreathPeriodMillis = 1_250L
 private const val SeekAcknowledgementTimeout = 4_000L
 private const val SeekPositionTolerance = 1_000L
 private const val ControlsHideDelayMillis = 4_500L
 private const val ControlsVisibilityMillis = 220
-private val LyricActivationSpec = tween<Float>(LyricActivationMillis, easing = FastOutSlowInEasing)
+private val LyricTransitionSpec = tween<Float>(LyricTransitionMillis, easing = FastOutSlowInEasing)
 
 @Composable
 internal fun MiuixLyricsPlaybackScreen(start: LyricsPlaybackStart, onBack: () -> Unit) {
@@ -250,6 +249,15 @@ private fun LyricsPlaybackContent(start: LyricsPlaybackStart, onBack: () -> Unit
     val showTranslation = LyricsPlaybackPreference.Translation.observe(prefs)
     val showRomanization = LyricsPlaybackPreference.Romanization.observe(prefs)
     val blurLyrics = LyricsPlaybackPreference.LyricBlur.observe(prefs)
+    val typography = LyricsPlaybackTypography.observe(prefs)
+    val mainLyricStyle = MiuixTheme.textStyles.title2.copy(
+        fontSize = typography.size.sp,
+        fontWeight = FontWeight(typography.weight.weight),
+    )
+    val secondaryLyricStyle = MiuixTheme.textStyles.body2.copy(
+        fontSize = (typography.size * (14f / 24f)).coerceAtLeast(12f).sp,
+        fontWeight = FontWeight((typography.weight.weight - 200).coerceAtLeast(FontWeight.Normal.weight)),
+    )
     val tintProgress = LyricsPlaybackPreference.AlbumProgress.observe(prefs)
     val tintLyrics = LyricsPlaybackPreference.AlbumText.observe(prefs)
     val keepScreenOn = LyricsPlaybackPreference.KeepScreenOn.observe(prefs)
@@ -328,13 +336,13 @@ private fun LyricsPlaybackContent(start: LyricsPlaybackStart, onBack: () -> Unit
             start = insets.calculateStartPadding(layoutDirection) + 20.dp,
             end = insets.calculateEndPadding(layoutDirection) + 20.dp,
         )
-        val useBlur = blurLyrics && isRenderEffectSupported() && isRuntimeShaderSupported()
+        val useBlur = blurLyrics && isRenderEffectSupported()
         var headerHeight by remember { mutableStateOf(0.dp) }
         var footerHeight by remember { mutableStateOf(0.dp) }
 
         BoxWithConstraints(Modifier.fillMaxSize()) {
             val availableForLyrics = (maxHeight - headerHeight - footerHeight).coerceAtLeast(0.dp)
-            val fadeDistance = (availableForLyrics / 7f).coerceAtMost(32.dp)
+            val fadeDistance = (availableForLyrics / 5f).coerceAtMost(56.dp)
             val blurDistance = (availableForLyrics / 3f).coerceAtMost(112.dp)
             val anchor = headerHeight + availableForLyrics / 3f
             val trailingSpace = (maxHeight - anchor - 32.dp).coerceAtLeast(0.dp)
@@ -357,7 +365,7 @@ private fun LyricsPlaybackContent(start: LyricsPlaybackStart, onBack: () -> Unit
                 if (lines.isNotEmpty()) {
                     val topFade = (headerHeight - 16.dp).coerceAtLeast(headerInset)
                     val fading = lyricModifier.fadeLyricsAroundBars(topFade, bottomFade, fadeDistance)
-                    val lyricLayer = if (useBlur) {
+                    val lyricLayer = if (useBlur && !following && isRuntimeShaderSupported()) {
                         fading.blurLyricsAroundBars(
                             top = topFade,
                             bottomFade = bottomFade,
@@ -373,8 +381,11 @@ private fun LyricsPlaybackContent(start: LyricsPlaybackStart, onBack: () -> Unit
                             showTranslation = showTranslation,
                             showRomanization = showRomanization,
                             color = lyricColor,
+                            mainStyle = mainLyricStyle,
+                            secondaryStyle = secondaryLyricStyle,
                             position = position,
                             following = following,
+                            blurDepth = useBlur && following,
                             onFollowingChange = { following = it },
                             onSeek = seek,
                             contentPadding = PaddingValues(top = anchor, bottom = trailingSpace),
@@ -391,6 +402,8 @@ private fun LyricsPlaybackContent(start: LyricsPlaybackStart, onBack: () -> Unit
                         resolveState = resolveState,
                         position = position,
                         lyricColor = lyricColor,
+                        mainStyle = mainLyricStyle,
+                        secondaryStyle = secondaryLyricStyle,
                         showTranslation = showTranslation,
                         showRomanization = showRomanization,
                         modifier = lyricModifier.padding(sidePadding).padding(top = headerHeight, bottom = footerHeight),
@@ -533,6 +546,8 @@ private fun PlaybackLyricFallback(
     resolveState: LyricRepository.LyricResolveState,
     position: State<Long?>,
     lyricColor: Color,
+    mainStyle: TextStyle,
+    secondaryStyle: TextStyle,
     showTranslation: Boolean,
     showRomanization: Boolean,
     modifier: Modifier = Modifier,
@@ -542,8 +557,8 @@ private fun PlaybackLyricFallback(
     Box(modifier, contentAlignment = Alignment.CenterStart) {
         Column {
             when {
-                line != null -> PlaybackLyricText(line, current = true, position = position, color = lyricColor)
-                text != null -> Text(text.lyric, style = MiuixTheme.textStyles.title2, color = lyricColor)
+                line != null -> PlaybackLyricText(line, current = true, position = position, color = lyricColor, style = mainStyle)
+                text != null -> Text(text.lyric, style = mainStyle, color = lyricColor)
                 else -> Text(
                     text = stringResource(
                         when {
@@ -563,7 +578,7 @@ private fun PlaybackLyricFallback(
                 showRomanization,
                 showTranslation,
             ).forEach {
-                Text(it, style = MiuixTheme.textStyles.body2, color = lyricColor)
+                Text(it, style = secondaryStyle, color = lyricColor.copy(alpha = playbackLyricDepth(0f).secondaryAlpha))
             }
         }
     }
@@ -622,24 +637,34 @@ private fun LyricsPlaybackList(
     showTranslation: Boolean,
     showRomanization: Boolean,
     color: Color,
+    mainStyle: TextStyle,
+    secondaryStyle: TextStyle,
     position: State<Long?>,
     following: Boolean,
+    blurDepth: Boolean,
     onFollowingChange: (Boolean) -> Unit,
     onSeek: ((Long) -> Unit)?,
     contentPadding: PaddingValues,
     modifier: Modifier = Modifier,
 ) {
     val listState = rememberLazyListState()
+    val density = LocalDensity.current
+    val spacing = with(density) { LyricRowSpacing.roundToPx() }
+    val interludeHeight = with(density) { InterludeDotHeight.roundToPx().toFloat() }
     val interludes = remember(lines) { lines.playbackInterludes() }
-    val currentLineIndex by remember(lines, position) {
-        derivedStateOf { position.value?.let(lines::currentPlaybackLine) ?: -1 }
+    val target by remember(lines, position) {
+        derivedStateOf {
+            val playbackMs = position.value
+            val current = playbackMs?.let(lines::currentPlaybackLine) ?: -1
+            val interlude = playbackMs?.let { interludes.activeInterlude(current, it) }
+            if (interlude != null && playbackMs >= interlude.exitStartTime) {
+                PlaybackFocus(interlude.beforeLineIndex, null)
+            } else {
+                PlaybackFocus(current, interlude)
+            }
+        }
     }
-    val interlude by remember(lines, interludes, position) {
-        derivedStateOf { position.value?.let { interludes.activeInterlude(currentLineIndex, it) } }
-    }
-    val focusedIndex = currentLineIndex.coerceAtLeast(0)
-    var previousFocusedIndex by remember(lines) { mutableIntStateOf(focusedIndex) }
-    var previousInterlude by remember(lines) { mutableStateOf<PlaybackInterlude?>(null) }
+    val frame = remember(lines) { mutableStateOf(PlaybackLyricFrame(target.highlightedLine)) }
     val scrollConnection = remember(onFollowingChange) {
         object : NestedScrollConnection {
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
@@ -648,34 +673,120 @@ private fun LyricsPlaybackList(
             }
         }
     }
-    LaunchedEffect(focusedIndex, interlude, lines, following, contentPadding, showTranslation, showRomanization) {
-        val movingToNextLine = interlude == null && focusedIndex == previousFocusedIndex + 1
-        val collapsingBeforeFocus = interlude == null && previousInterlude?.beforeLineIndex == focusedIndex
-        previousFocusedIndex = focusedIndex
-        previousInterlude = interlude
-        if (following) {
-            val followDelay = when {
-                collapsingBeforeFocus -> InterludeExitMillis
-                movingToNextLine -> LyricFollowDelayMillis
-                else -> 0
-            }
-            if (followDelay > 0) {
-                delay(followDelay.toLong())
-                withFrameNanos { }
-            }
-            val layout = snapshotFlow { listState.layoutInfo }.first { it.totalItemsCount == lines.size }
-            val item = layout.visibleItemsInfo.firstOrNull { it.index == focusedIndex }
-            if (item == null) {
-                if (movingToNextLine) {
-                    listState.animateScrollToItem(focusedIndex)
-                } else {
-                    listState.scrollToItem(focusedIndex)
+    LaunchedEffect(target, lines, following, contentPadding, showTranslation, showRomanization) {
+        val layout = snapshotFlow { listState.layoutInfo }.first { it.totalItemsCount == lines.size }
+        val targetIndex = target.lineIndex.coerceAtLeast(0)
+        val from = frame.value
+        val targetGap = target.interlude
+        val previousGap = from.interlude
+        when {
+            targetGap != null -> {
+                val intro = targetGap.beforeLineIndex == 0
+                val continuing = previousGap == targetGap
+                if (!continuing && previousGap != null) {
+                    frame.value = PlaybackLyricFrame(target.highlightedLine)
                 }
-            } else if (item.offset != 0) {
-                listState.animateScrollBy(
-                    item.offset.toFloat(),
-                    animationSpec = tween(420, easing = FastOutSlowInEasing),
-                )
+                val item = layout.visibleItemsInfo.firstOrNull { it.index == targetIndex }
+                val anchorItem = if (following && (item == null || !continuing && previousGap != null)) {
+                    listState.scrollToItem(targetIndex)
+                    listState.layoutInfo.visibleItemsInfo.firstOrNull { it.index == targetIndex }
+                } else {
+                    item
+                }
+                val startOffset = anchorItem?.offset ?: 0
+                val startHeight = if (continuing) from.gapHeight else 0f
+                val height = if (intro) {
+                    interludeHeight
+                } else {
+                    ((anchorItem?.size?.toFloat() ?: (startHeight + interludeHeight)) - startHeight)
+                        .coerceAtLeast(interludeHeight)
+                }
+                if (continuing && startHeight == height && from.dotAlpha == 1f && from.dotScale == 1f) {
+                    if (following) listState.scrollToItem(targetIndex, if (intro) 0 else height.roundToInt())
+                    return@LaunchedEffect
+                }
+                animate(0f, 1f, animationSpec = LyricTransitionSpec) { progress, _ ->
+                    val gapHeight = lerp(startHeight, height, progress)
+                    val enterDots = if (continuing) progress else ((progress - 0.35f) / 0.65f).coerceAtLeast(0f)
+                    frame.value = PlaybackLyricFrame(
+                        focusedLine = -1,
+                        previousLine = from.focusedLine,
+                        progress = progress,
+                        interlude = targetGap,
+                        gapHeight = gapHeight,
+                        dotAlpha = lerp(if (continuing) from.dotAlpha else 0f, 1f, enterDots),
+                        dotScale = lerp(if (continuing) from.dotScale else 0.75f, 1f, enterDots),
+                    )
+                    if (following) {
+                        // Offset the expanding slot by its own height so the next line stays put.
+                        val start = -startOffset - if (intro) 0f else startHeight
+                        val offset = lerp(start, 0f, progress) + if (intro) 0f else gapHeight
+                        listState.requestScrollToItem(targetIndex, offset.roundToInt())
+                    }
+                }
+            }
+            previousGap != null && previousGap.beforeLineIndex == target.lineIndex -> {
+                val intro = targetIndex == 0
+                val anchorIndex = if (intro) 0 else targetIndex - 1
+                val anchorItem = layout.visibleItemsInfo.firstOrNull { it.index == anchorIndex }
+                val startHeight = from.gapHeight
+                val endOffset = if (intro) 0f else {
+                    (anchorItem?.let { it.size - startHeight } ?: startHeight) + spacing
+                }
+                val startOffset = anchorItem?.let { -it.offset.toFloat() } ?: endOffset
+                val startProgress = if (from.focusedLine == target.highlightedLine && from.progress < 1f) {
+                    from.progress
+                } else {
+                    0f
+                }
+                snapshotFlow { position.value ?: previousGap.endTime }.first { playbackMs ->
+                    val progress = FastOutSlowInEasing.transform(previousGap.exitProgress(playbackMs))
+                    val remainingProgress = ((progress - startProgress) / (1f - startProgress)).coerceIn(0f, 1f)
+                    frame.value = PlaybackLyricFrame(
+                        focusedLine = target.highlightedLine,
+                        previousLine = -1,
+                        progress = progress,
+                        interlude = previousGap.takeIf { progress < 1f },
+                        gapHeight = startHeight * (1f - remainingProgress),
+                        dotAlpha = from.dotAlpha,
+                        dotScale = from.dotScale,
+                    )
+                    if (following) {
+                        if (progress == 1f) {
+                            listState.requestScrollToItem(targetIndex)
+                        } else {
+                            listState.requestScrollToItem(
+                                anchorIndex,
+                                lerp(startOffset, endOffset, remainingProgress).roundToInt(),
+                            )
+                        }
+                    }
+                    progress == 1f
+                }
+            }
+            else -> {
+                val item = layout.visibleItemsInfo.firstOrNull { it.index == targetIndex }
+                val adjacent = target.lineIndex == from.focusedLine + 1
+                val jumpToTarget = item == null || !adjacent && target.highlightedLine != from.focusedLine
+                when {
+                    previousGap != null || following && jumpToTarget -> {
+                        frame.value = PlaybackLyricFrame(target.highlightedLine)
+                        if (following) listState.scrollToItem(targetIndex)
+                    }
+                    following && item != null && item.offset != 0 -> {
+                        listState.scroll {
+                            var scrolled = 0f
+                            val distance = item.offset.toFloat()
+                            animate(0f, 1f, animationSpec = LyricTransitionSpec) { progress, _ ->
+                                scrolled += scrollBy(distance * progress - scrolled)
+                                frame.value = PlaybackLyricFrame(target.highlightedLine, from.focusedLine, progress)
+                            }
+                        }
+                    }
+                    else -> animate(0f, 1f, animationSpec = LyricTransitionSpec) { progress, _ ->
+                        frame.value = PlaybackLyricFrame(target.highlightedLine, from.focusedLine, progress)
+                    }
+                }
             }
         }
     }
@@ -684,7 +795,7 @@ private fun LyricsPlaybackList(
         modifier = modifier.clipToBounds().nestedScroll(scrollConnection),
         state = listState,
         contentPadding = contentPadding,
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+        verticalArrangement = Arrangement.spacedBy(LyricRowSpacing),
     ) {
         items(count = lines.size, key = { it }) { index ->
             val line = lines[index]
@@ -692,76 +803,106 @@ private fun LyricsPlaybackList(
                 playbackSecondaryText(line.roma, line.translation, showRomanization, showTranslation)
             }
             Column {
-                if (index == 0) {
-                    interludes[0]?.let { intro ->
-                        PlaybackInterludeSpace(intro, interlude == intro, position, color)
-                    }
+                if (index == 0 && interludes.containsKey(0)) {
+                    PlaybackInterludeSpace(0, frame, position, color)
                 }
                 PlaybackLyricRow(
                     line = line,
                     secondary = secondary,
-                    current = interlude == null && index == currentLineIndex,
-                    reached = index <= currentLineIndex,
+                    index = index,
+                    frame = frame,
                     following = following,
+                    blurDepth = blurDepth,
                     color = color,
+                    mainStyle = mainStyle,
+                    secondaryStyle = secondaryStyle,
                     position = position,
                     onSeek = onSeek,
                 )
-                interludes[index + 1]?.let { gap ->
-                    PlaybackInterludeSpace(gap, interlude == gap, position, color)
+                if (interludes.containsKey(index + 1)) {
+                    PlaybackInterludeSpace(index + 1, frame, position, color)
                 }
             }
         }
     }
 }
 
+private data class PlaybackFocus(val lineIndex: Int, val interlude: PlaybackInterlude?) {
+    val highlightedLine: Int get() = if (interlude == null) lineIndex else -1
+}
+
+private data class PlaybackLyricFrame(
+    val focusedLine: Int,
+    val previousLine: Int = focusedLine,
+    val progress: Float = 1f,
+    val interlude: PlaybackInterlude? = null,
+    val gapHeight: Float = 0f,
+    val dotAlpha: Float = 0f,
+    val dotScale: Float = 1f,
+) {
+    fun activation(index: Int): Float = lerp(
+        if (index == previousLine) 1f else 0f,
+        if (index == focusedLine) 1f else 0f,
+        progress,
+    )
+
+    fun distance(index: Int): Float {
+        val gapIndex = interlude?.beforeLineIndex
+        fun distanceTo(line: Int): Float =
+            when {
+                line >= 0 -> abs(index - line).toFloat()
+                gapIndex == null -> index + 1f
+                index < gapIndex -> (gapIndex - index).toFloat()
+                else -> index - gapIndex + 1f
+            }
+        return lerp(distanceTo(previousLine), distanceTo(focusedLine), progress)
+    }
+}
+
 @Composable
 private fun PlaybackInterludeSpace(
-    interlude: PlaybackInterlude,
-    visible: Boolean,
+    beforeIndex: Int,
+    frame: State<PlaybackLyricFrame>,
     position: State<Long?>,
     color: Color,
 ) {
-    AnimatedVisibility(
-        visible = visible,
-        enter = expandVertically(expandFrom = Alignment.Top, animationSpec = tween(260)) + fadeIn(tween(190)),
-        exit = shrinkVertically(
-            shrinkTowards = Alignment.CenterVertically,
-            animationSpec = tween(InterludeCollapseMillis, delayMillis = InterludeExitGrowMillis),
-            clip = false,
-        ) + fadeOut(tween(InterludeCollapseMillis, delayMillis = InterludeExitGrowMillis)),
+    val interlude = remember(beforeIndex, frame) {
+        derivedStateOf { frame.value.interlude?.takeIf { it.beforeLineIndex == beforeIndex } }
+    }.value ?: return
+    val description = stringResource(R.string.lyrics_playback_interlude)
+    Box(
+        modifier = Modifier.layout { measurable, constraints ->
+            val placeable = measurable.measure(constraints.copy(minHeight = 0, maxHeight = InterludeDotHeight.roundToPx()))
+            val height = constraints.constrainHeight(frame.value.gapHeight.roundToInt())
+            layout(placeable.width, height) {
+                placeable.placeRelative(0, (height - placeable.height).coerceAtLeast(0) / 2)
+            }
+        },
     ) {
-        val groupScale by transition.animateFloat(
-            transitionSpec = {
-                if (targetState == EnterExitState.PostExit) {
-                    keyframes {
-                        durationMillis = InterludeExitMillis
-                        1.25f at InterludeExitGrowMillis using FastOutSlowInEasing
-                    }
-                } else {
-                    tween(180)
-                }
-            },
-            label = "interlude group scale",
-        ) { phase -> if (phase == EnterExitState.PostExit) 0f else 1f }
-        val description = stringResource(R.string.lyrics_playback_interlude)
         Canvas(
-            modifier = Modifier.size(width = 56.dp, height = 38.dp)
+            modifier = Modifier.size(width = InterludeDotWidth, height = InterludeDotHeight)
                 .semantics { contentDescription = description },
         ) {
-            val duration = interlude.endTime - interlude.startTime
-            val elapsed = ((position.value ?: interlude.startTime) - interlude.startTime).coerceIn(0L, duration)
-            val progress = elapsed.toFloat() / duration
+            val motion = frame.value
+            val playbackMs = position.value ?: interlude.startTime
+            val elapsed = (playbackMs - interlude.startTime).coerceAtLeast(0L)
             val cycle = (elapsed % InterludeBreathPeriodMillis).toFloat() / InterludeBreathPeriodMillis
-            val scale = groupScale
+            val charge = FastOutSlowInEasing.transform(interlude.chargeProgress(playbackMs))
+            val exit = if (motion.focusedLine == interlude.beforeLineIndex) motion.progress else 0f
+            val groupScale = lerp(1f, 1.08f, charge) * (1f - exit) * motion.dotScale
+            val baseRadius = InterludeDotDiameter.toPx() / 2f
+            val pitch = (InterludeDotDiameter + InterludeDotSpacing).toPx()
             repeat(3) { index ->
                 val phase = cycle + 0.22f - index * 0.14f
                 val breath = (1f - cos(phase * 2.0 * Math.PI).toFloat()) / 2f
-                val countdown = WordProgressCalculator.highlightAlpha(progress * 3f - index)
+                val light = interlude.dotProgress(index, playbackMs)
+                val breathScale = 1f + 0.04f * breath * light * (1f - charge)
+                val dotScale = lerp(0.85f, 1f, light) * breathScale * groupScale
+                val centerX = (baseRadius + index * pitch) * groupScale
                 drawCircle(
-                    color = color.copy(alpha = countdown * (0.68f + breath * 0.32f)),
-                    radius = (3.6f + breath * 1.8f).dp.toPx() * scale,
-                    center = Offset(size.width / 2f + ((index - 1) * 16).dp.toPx() * scale, size.height / 2f),
+                    color = color.copy(alpha = motion.dotAlpha * (1f - exit) * lerp(0.28f, 0.95f, light)),
+                    radius = baseRadius * dotScale,
+                    center = Offset(centerX, size.height / 2f),
                 )
             }
         }
@@ -772,34 +913,22 @@ private fun PlaybackInterludeSpace(
 private fun PlaybackLyricRow(
     line: LyricLine,
     secondary: List<String>,
-    current: Boolean,
-    reached: Boolean,
+    index: Int,
+    frame: State<PlaybackLyricFrame>,
     following: Boolean,
+    blurDepth: Boolean,
     color: Color,
+    mainStyle: TextStyle,
+    secondaryStyle: TextStyle,
     position: State<Long?>,
     onSeek: ((Long) -> Unit)?,
 ) {
-    val scale by animateFloatAsState(
-        if (current) CurrentLineScale else 1f,
-        LyricActivationSpec,
-        label = "lyric scale",
-    )
-    val targetLift = if (reached) -LyricLiftDp else 0f
-    val jump = remember { Animatable(targetLift) }
-    LaunchedEffect(targetLift) {
-        if (jump.value == targetLift) return@LaunchedEffect
-        if (reached && current) {
-            jump.animateTo(targetLift, LyricActivationSpec)
-        } else {
-            jump.snapTo(targetLift)
-        }
+    val sweeping by remember(frame, index) {
+        derivedStateOf { frame.value.focusedLine == index }
     }
-    val inactiveBrightness = if (following) 0.58f else 0.78f
-    val brightness by animateFloatAsState(
-        if (current) 1f else inactiveBrightness,
-        LyricActivationSpec,
-        label = "lyric brightness",
-    )
+    val depth = remember(frame, index) {
+        derivedStateOf { playbackLyricDepth(frame.value.distance(index)) }
+    }
     BoxWithConstraints(
         modifier = Modifier.fillMaxWidth()
             .then(if (onSeek != null) Modifier.clickable(role = Role.Button) { onSeek(line.startTime) } else Modifier)
@@ -813,19 +942,34 @@ private fun PlaybackLyricRow(
                     layout(child.width, height) { child.placeRelative(0, 0) }
                 }
                 .graphicsLayer {
+                    val motion = frame.value
+                    val activation = motion.activation(index)
+                    val scale = lerp(1f, CurrentLineScale, activation)
                     scaleX = scale
                     scaleY = scale
-                    translationY = jump.value.dp.toPx()
                     transformOrigin = TransformOrigin(0f, 0f)
-                    alpha = brightness
                 },
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            PlaybackLyricText(line, current, position, color) {
-                ((brightness - inactiveBrightness) / (1f - inactiveBrightness)).coerceIn(0f, 1f)
+            val mainModifier = Modifier.graphicsLayer {
+                alpha = if (following) depth.value.mainAlpha else lerp(0.78f, 1f, frame.value.activation(index))
+                val radius = if (blurDepth) depth.value.mainBlur.dp.toPx() else 0f
+                renderEffect = if (radius > 0f) BlurEffect(radius, radius, TileMode.Decal) else null
             }
-            secondary.forEach { text ->
-                Text(text, style = MiuixTheme.textStyles.body2, color = color)
+            PlaybackLyricText(line, sweeping, position, color, mainStyle, mainModifier) { frame.value.activation(index) }
+            if (secondary.isNotEmpty()) {
+                Column(
+                    modifier = Modifier.graphicsLayer {
+                        alpha = if (following) depth.value.secondaryAlpha else lerp(0.42f, 0.55f, frame.value.activation(index))
+                        val radius = if (blurDepth) depth.value.secondaryBlur.dp.toPx() else 0f
+                        renderEffect = if (radius > 0f) BlurEffect(radius, radius, TileMode.Decal) else null
+                    },
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    secondary.forEach { text ->
+                        Text(text, style = secondaryStyle, color = color)
+                    }
+                }
             }
         }
     }
