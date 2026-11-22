@@ -343,6 +343,7 @@ private fun LyricsPlaybackContent(
     var sheet by remember { mutableStateOf<PlaybackSheet?>(null) }
     var lyricSelection by remember(trackIdentity) { mutableStateOf<LyricSelection?>(null) }
     var selectionPhase by remember(trackIdentity) { mutableStateOf(LyricSelectionPhase.Preview) }
+    var controlsVisibleBeforeSelection by remember(trackIdentity) { mutableStateOf(true) }
     var loopRange by remember(trackIdentity, controller?.sessionToken) { mutableStateOf<LyricLoopRange?>(null) }
     val selectionActive = lyricSelection != null
     val previewIndex = lyricSelection?.initialIndex?.takeIf { selectionPhase == LyricSelectionPhase.Preview }
@@ -361,8 +362,9 @@ private fun LyricsPlaybackContent(
     val overlayOpen = sheet != null || languageMenuOpen || selectionActive
     val canHideControls = !landscape && autoHideControls && playing && lines.isNotEmpty() && following &&
         !controlsTouched && !overlayOpen && pendingSeek == null && loopRange == null
-    val showControls = controlsVisible || !canHideControls
-    LaunchedEffect(canHideControls, controlsVisible, controlsInteraction) {
+    val showControls = if (selectionActive) controlsVisibleBeforeSelection else controlsVisible || !canHideControls
+    LaunchedEffect(canHideControls, controlsVisible, controlsInteraction, selectionActive) {
+        if (selectionActive) return@LaunchedEffect
         if (!canHideControls) {
             controlsVisible = true
         } else if (controlsVisible) {
@@ -438,6 +440,7 @@ private fun LyricsPlaybackContent(
                         onSeek = seek.takeUnless { selectionActive },
                         onSelect = { index ->
                             if (!overlayOpen) {
+                                controlsVisibleBeforeSelection = controlsVisible || !canHideControls
                                 selectionPhase = LyricSelectionPhase.Preview
                                 lyricSelection = LyricSelection.start(lines, index)
                             }
@@ -636,7 +639,7 @@ private fun LyricsPlaybackContent(
                     .revealPlaybackChrome(expansionProgress),
             )
 
-            if (!showControls) {
+            if (!showControls && !selectionActive) {
                 val revealLabel = stringResource(R.string.lyrics_playback_show_controls)
                 Box(
                     Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(footerInset + 52.dp)
