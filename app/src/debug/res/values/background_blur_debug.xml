@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="debug_background_blur_title">Background blur lab</string>
+    <string name="debug_background_blur_summary">Preview blur on a test pattern or a local image</string>
+    <string name="debug_background_blur_mode">Preview mode</string>
+    <string name="debug_background_blur_orbit">6×6 orbital flow</string>
+    <string name="debug_background_blur_oklab">OKLab halos</string>
+    <string name="debug_background_blur_gaussian">Gaussian blur</string>
+    <string name="debug_background_blur_original">Original</string>
+    <string name="debug_background_blur_follow_cover">Follow current album art</string>
+    <string name="debug_background_blur_shader_unavailable">AGSL preview unavailable</string>
+    <string name="debug_background_blur_radius">Blur radius</string>
+    <string name="debug_background_blur_radius_value">%1$d dp</string>
+    <string name="debug_background_blur_choose_image">Choose image</string>
+    <string name="debug_background_blur_test_image">Use test pattern</string>
+    <string name="debug_background_blur_image_error">Could not open image</string>
+</resources>

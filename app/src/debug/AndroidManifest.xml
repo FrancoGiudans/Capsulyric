@@ -17,6 +17,11 @@
                   android:label="Debug Lyric API"
                   android:parentActivityName=".DebugCenterActivity" />
         <activity
+            android:name=".feature.debug.BackgroundBlurDebugActivity"
+            android:exported="false"
+            android:label="@string/debug_background_blur_title"
+            android:parentActivityName=".DebugCenterActivity" />
+        <activity
             android:name="com.example.islandlyrics.feature.qqroman.QqRomanDebugActivity"
             android:label="罗马音/翻译调试"
             android:parentActivityName="com.example.islandlyrics.feature.diagnostics.DiagnosticsActivity" />

@@ -107,11 +107,15 @@ private fun FlowPlaybackBackground(appearance: PlaybackCoverAppearance, time: Lo
     val brush = remember(shader) { ShaderBrush(shader) }
     Canvas(Modifier.fillMaxSize()) {
         val seconds = time.longValue / 1_000_000_000.0
-        val inverseShortSide = 1f / minOf(size.width, size.height).coerceAtLeast(1f)
-        shader.setFloatUniform("viewport", size.width / 2f, size.height / 2f, inverseShortSide)
-        shader.setFlowLayer("layerA", seconds, period = 18.0, zoom = 1.6, direction = 1, initialAngle = 0.0)
-        shader.setFlowLayer("layerB", seconds, period = 27.0, zoom = 1.9, direction = -1, initialAngle = 1.1)
-        shader.setFlowLayer("layerC", seconds, period = 38.0, zoom = 2.2, direction = 1, initialAngle = 2.4)
+        val shortSide = minOf(size.width, size.height)
+        val longSide = maxOf(size.width, size.height)
+        val inverseScale = 1f / (shortSide * 0.35f + longSide * 0.65f).coerceAtLeast(1f)
+        shader.setFloatUniform("viewport", size.width / 2f, size.height / 2f, inverseScale)
+        shader.setFloatUniform("wavePhase", ((seconds % 24.0) / 24.0 * 2.0 * PI).toFloat())
+        // 宽模糊核已消除锐利边缘，zoom 回调至 1.55~1.95 获取更自然的色域过渡
+        shader.setFlowLayer("layerA", seconds, period = 20.0, zoom = 1.55, direction = 1, initialAngle = 0.0)
+        shader.setFlowLayer("layerB", seconds, period = 29.0, zoom = 1.75, direction = -1, initialAngle = 1.3)
+        shader.setFlowLayer("layerC", seconds, period = 41.0, zoom = 1.95, direction = 1, initialAngle = 2.6)
         drawRect(brush)
     }
 }
@@ -126,13 +130,13 @@ private fun RuntimeShader.setFlowLayer(
     initialAngle: Double,
 ) {
     val phase = seconds % period / period * 2.0 * PI
-    val angle = initialAngle + direction * (phase + 0.22 * sin(phase))
+    val angle = initialAngle + direction * (phase + 0.18 * sin(phase))
     setFloatUniform(
         name,
         (cos(angle) / zoom).toFloat(),
         (sin(angle) / zoom).toFloat(),
-        (0.34 * cos(phase + initialAngle)).toFloat(),
-        (0.29 * sin(phase + initialAngle)).toFloat(),
+        (0.09 * cos(phase + initialAngle)).toFloat(),
+        (0.08 * sin(phase + initialAngle)).toFloat(),
     )
 }
 
@@ -140,38 +144,78 @@ private const val PlaybackFlowShader = """
     uniform shader cover;
     uniform float textureSide;
     uniform float3 viewport;
+    uniform float wavePhase;
     uniform float4 layerA;
     uniform float4 layerB;
     uniform float4 layerC;
     uniform float2 tone;
 
-    float3 sampleCover(float2 position, float4 transform) {
+    // 12-Tap 黄金角沃格尔圆盘高斯采样：连续覆盖宽半径且无网格/方向性，彻底化开高反差边缘
+    float3 sampleCoverLinear(float2 position, float4 transform) {
         float2 rotated = float2(
             position.x * transform.x - position.y * transform.y,
             position.x * transform.y + position.y * transform.x
         );
-        return float3(cover.eval((rotated + transform.zw + 0.5) * textureSide).rgb);
+        float2 center = rotated + transform.zw + 0.5;
+
+        float3 sum = float3(0.0);
+        float weightSum = 0.0;
+        for (int i = 0; i < 12; i++) {
+            float fi = float(i) + 0.5;
+            float r = 0.18 * sqrt(fi / 12.0);
+            float theta = float(i) * 2.39996323;
+            float2 offset = float2(cos(theta), sin(theta)) * r;
+            float w = exp(-2.2 * (fi / 12.0));
+            sum += toLinearSrgb(float3(cover.eval((center + offset) * textureSide).rgb)) * w;
+            weightSum += w;
+        }
+        return sum / weightSum;
     }
 
     half4 main(float2 position) {
-        float2 uv = (position - viewport.xy) * viewport.z;
-        float lowerWeight = mix(0.12, 0.30, smoothstep(-0.45, 0.45, uv.y));
-        float leftWeight = (1.0 - lowerWeight) * mix(0.78, 0.22, smoothstep(-0.65, 0.65, uv.x));
-        float3 rgb = sampleCover(uv, layerA) * leftWeight
-                   + sampleCover(uv, layerB) * (1.0 - lowerWeight - leftWeight)
-                   + sampleCover(uv, layerC) * lowerWeight;
+        float2 rawUv = (position - viewport.xy) * viewport.z;
+        float2 screenUv = clamp(position / max(viewport.xy * 2.0, float2(1.0)), 0.0, 1.0);
+
+        float2 warp = float2(
+            sin(rawUv.y * 1.6 + wavePhase) + 0.4 * cos(rawUv.x * 1.3 - wavePhase),
+            cos(rawUv.x * 1.6 - wavePhase) + 0.4 * sin(rawUv.y * 1.3 + wavePhase)
+        ) * 0.045;
+        float2 uv = rawUv + warp;
+
+        float3 colA = sampleCoverLinear(uv, layerA);
+        float3 colB = sampleCoverLinear(uv, layerB);
+        float3 colC = sampleCoverLinear(uv, layerC);
+
+        // 全屏余弦平滑过渡（C∞ 连续），消除 smoothstep 边界处的二阶导数折带
+        float diag = clamp(screenUv.x * 0.58 + screenUv.y * 0.42, 0.0, 1.0);
+        float splitWeight = 0.5 - 0.5 * cos(diag * 3.14159265);
+        float3 linearRgb = mix(colA, colB, splitWeight);
+
+        float glowCurve = 0.5 - 0.5 * cos(screenUv.y * 3.14159265);
+        float glowMask = mix(0.18, 0.36, glowCurve);
+        float3 glow = colC * glowMask;
+        linearRgb = 1.0 - (1.0 - linearRgb) * (1.0 - glow);
+
         const float3 lumaWeights = float3(0.2126, 0.7152, 0.0722);
-        float3 linearRgb = toLinearSrgb(rgb);
-        linearRgb = clamp(mix(float3(dot(linearRgb, lumaWeights)), linearRgb, 1.68), 0.0, 1.0);
+        float rawLuma = dot(linearRgb, lumaWeights);
+        linearRgb = clamp(mix(float3(rawLuma), linearRgb, 1.55), 0.0, 1.0);
 
-        // Compress bright colors without desaturating them against the lyric text.
         float luma = dot(linearRgb, lumaWeights);
-        float highlights = max(0.0, luma - 0.035);
-        float limited = min(luma, 0.035) + 0.045 * highlights / (0.045 + highlights);
-        linearRgb *= limited / max(luma, 0.0001);
+        float maxCh = max(linearRgb.r, max(linearRgb.g, linearRgb.b));
+        float metric = mix(luma, maxCh, 0.35);
+        const float knee = 0.09;
+        const float headroom = 0.16;
+        float highlights = max(0.0, metric - knee);
+        float limited = min(metric, knee) + headroom * highlights / (headroom + highlights);
+        linearRgb *= limited / max(metric, 0.0001);
 
-        float noise = fract(52.9829189 * fract(dot(floor(position), float2(0.06711056, 0.00583715)))) - 0.5;
+        // 正交双路 IGN 三角分布抖动（TPDF, ±1.5 LSB），消除平行条纹并抹平暗部 8-bit 色阶断层
+        float2 pixel = floor(position);
+        float ign1 = fract(52.9829189 * fract(dot(pixel, float2(0.06711056, 0.00583715))));
+        float ign2 = fract(52.9829189 * fract(dot(pixel, float2(0.00583715, 0.06711056))));
+        float dither = (ign1 - ign2) * (1.5 / 255.0);
+
         float3 outputRgb = (fromLinearSrgb(linearRgb) + tone.y) * (1.0 - tone.x);
-        return half4(clamp(outputRgb + noise / 255.0, 0.0, 1.0), 1.0);
+        return half4(clamp(outputRgb + dither, 0.0, 1.0), 1.0);
     }
 """

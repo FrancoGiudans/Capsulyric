@@ -13,6 +13,7 @@ import com.example.islandlyrics.feature.oobe.OobeActivity
 import com.example.islandlyrics.feature.main.MainActivity
 import com.example.islandlyrics.feature.logviewer.LogViewerActivity
 import com.example.islandlyrics.feature.customsettings.CustomSettingsActivity
+import com.example.islandlyrics.feature.debug.BackgroundBlurDebugActivity
 import com.example.islandlyrics.ui.overlay.floating.FloatingLyricsRenderer
 import android.content.Intent
 import androidx.compose.foundation.layout.*
@@ -25,6 +26,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import android.media.MediaMetadata
@@ -87,6 +89,12 @@ fun DebugCenterScreen(
                 onClick = {
                     context.startActivity(Intent(context, com.example.islandlyrics.feature.superlyricdebug.SuperLyricDebugActivity::class.java))
                 }
+            )
+
+            DebugMenuButton(
+                text = stringResource(R.string.debug_background_blur_title),
+                description = stringResource(R.string.debug_background_blur_summary),
+                onClick = { context.startActivity(Intent(context, BackgroundBlurDebugActivity::class.java)) },
             )
 
             // ── Custom Settings Page ──
