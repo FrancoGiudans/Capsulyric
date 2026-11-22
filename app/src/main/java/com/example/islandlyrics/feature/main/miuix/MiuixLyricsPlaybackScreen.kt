@@ -81,10 +81,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.draw.BlurredEdgeTreatment
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.BlurEffect
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.TileMode
+import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
@@ -166,7 +167,6 @@ import top.yukonga.miuix.kmp.icon.extended.Translate
 import top.yukonga.miuix.kmp.icon.extended.VolumeUp
 import top.yukonga.miuix.kmp.overlay.OverlayListPopup
 import top.yukonga.miuix.kmp.shader.isRenderEffectSupported
-import top.yukonga.miuix.kmp.shader.isRuntimeShaderSupported
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.theme.darkColorScheme
 import kotlin.math.abs
@@ -417,7 +417,7 @@ private fun LyricsPlaybackContent(
     }
 
     val lyricsContent: @Composable (Modifier, Modifier, PaddingValues, Boolean, Dp) -> Unit =
-        { listModifier, fallbackModifier, contentPadding, blurDepth, rowSpacing ->
+        { listModifier, fallbackModifier, contentPadding, blurEnabled, rowSpacing ->
             if (lines.isNotEmpty()) {
                 key(trackIdentity) {
                     LyricsPlaybackList(
@@ -432,7 +432,7 @@ private fun LyricsPlaybackContent(
                         autoFollow = autoFollow && playing && !overlayOpen && pendingSeek == null,
                         suspendScroll = selectionActive,
                         previewIndex = previewIndex,
-                        blurDepth = blurDepth,
+                        blurEnabled = blurEnabled,
                         landscape = landscape,
                         onFollowingChange = { following = it },
                         onSeek = seek.takeUnless { selectionActive },
@@ -586,7 +586,7 @@ private fun LyricsPlaybackContent(
                     followButton = followButton.takeIf { showFollowButton },
                     controls = controls,
                     lyrics = { listModifier, padding, rowSpacing ->
-                        lyricsContent(lyricModifier.then(listModifier), lyricModifier, padding, useBlur && following, rowSpacing)
+                        lyricsContent(lyricModifier.then(listModifier), lyricModifier, padding, useBlur, rowSpacing)
                     },
                     modifier = Modifier.fillMaxSize()
                         .padding(top = headerInset + 4.dp, bottom = footerInset + 8.dp),
@@ -600,7 +600,6 @@ private fun LyricsPlaybackContent(
         BoxWithConstraints(Modifier.fillMaxSize().then(selectionBackdropModifier)) {
             val availableForLyrics = (maxHeight - headerHeight - footerHeight).coerceAtLeast(0.dp)
             val fadeDistance = (availableForLyrics / 5f).coerceAtMost(56.dp)
-            val blurDistance = (availableForLyrics / 3f).coerceAtMost(112.dp)
             val anchor = headerHeight + availableForLyrics / 3f
             val trailingSpace = (maxHeight - anchor - 32.dp).coerceAtLeast(0.dp)
             val visibleBottomFade = (footerHeight - 8.dp).coerceAtLeast(footerInset)
@@ -617,22 +616,11 @@ private fun LyricsPlaybackContent(
             Box(Modifier.fillMaxSize()) {
                 LyricsPlaybackBackground(coverAppearance, playing)
                 val topFade = (headerHeight - 16.dp).coerceAtLeast(headerInset)
-                val fading = lyricModifier.fadeLyricsAroundBars(topFade, bottomFade, fadeDistance)
-                val lyricLayer = if (lines.isNotEmpty() && useBlur && isRuntimeShaderSupported()) {
-                    fading.blurLyricsAroundBars(
-                        top = topFade,
-                        bottomFade = bottomFade,
-                        bottomWithControls = visibleBottomFade,
-                        reach = blurDistance,
-                    )
-                } else {
-                    fading
-                }
                 lyricsContent(
-                    lyricLayer.padding(sidePadding),
+                    lyricModifier.fadeLyricsAroundBars(topFade, bottomFade, fadeDistance).padding(sidePadding),
                     lyricModifier.padding(sidePadding).padding(top = headerHeight, bottom = footerHeight),
                     PaddingValues(top = anchor, bottom = trailingSpace),
-                    useBlur && following,
+                    useBlur,
                     LyricRowSpacing,
                 )
             }
@@ -989,7 +977,7 @@ private fun LyricsPlaybackList(
     autoFollow: Boolean,
     suspendScroll: Boolean,
     previewIndex: Int?,
-    blurDepth: Boolean,
+    blurEnabled: Boolean,
     landscape: Boolean,
     onFollowingChange: (Boolean) -> Unit,
     onSeek: ((Long) -> Unit)?,
@@ -999,6 +987,11 @@ private fun LyricsPlaybackList(
     modifier: Modifier = Modifier,
 ) {
     val listState = rememberLazyListState()
+    val manualScroll = if (blurEnabled && !following) {
+        remember(listState) { derivedStateOf { listState.isScrollInProgress } }.value
+    } else {
+        false
+    }
     val updateFollowing by rememberUpdatedState(onFollowingChange)
     LaunchedEffect(autoFollow, following) {
         if (autoFollow && !following) {
@@ -1189,8 +1182,9 @@ private fun LyricsPlaybackList(
                     frame = frame,
                     following = following,
                     selectionPreview = index == previewIndex,
-                    blurDepth = blurDepth,
-                    landscapeListState = listState.takeIf { landscape },
+                    blurEnabled = blurEnabled && !manualScroll,
+                    listState = listState,
+                    landscape = landscape,
                     color = color,
                     mainStyle = mainStyle,
                     secondaryStyle = secondaryStyle,
@@ -1296,8 +1290,9 @@ private fun PlaybackLyricRow(
     frame: State<PlaybackLyricFrame>,
     following: Boolean,
     selectionPreview: Boolean,
-    blurDepth: Boolean,
-    landscapeListState: LazyListState?,
+    blurEnabled: Boolean,
+    listState: LazyListState,
+    landscape: Boolean,
     color: Color,
     mainStyle: TextStyle,
     secondaryStyle: TextStyle,
@@ -1323,10 +1318,10 @@ private fun PlaybackLyricRow(
     }
     val mainTextHeight = remember { mutableIntStateOf(0) }
     val linePadding = with(LocalDensity.current) { LyricVerticalPadding.roundToPx() }
-    val depth = remember(frame, index, landscapeListState, linePadding) {
+    val depth = remember(frame, index, listState, landscape, linePadding) {
         derivedStateOf {
             val motion = frame.value
-            val layout = landscapeListState?.layoutInfo
+            val layout = if (landscape) listState.layoutInfo else null
             val item = layout?.visibleItemsInfo?.firstOrNull { it.index == index }
             val distance = if (layout != null && item != null && mainTextHeight.intValue > 0) {
                 val introHeight = if (index == 0 && motion.interlude?.beforeLineIndex == 0) motion.gapHeight else 0f
@@ -1336,8 +1331,26 @@ private fun PlaybackLyricRow(
             } else {
                 motion.distance(index)
             }
-            playbackLyricDepth(distance, landscape = landscapeListState != null)
+            playbackLyricDepth(distance, landscape)
         }
+    }
+    val blurRadius = if (blurEnabled) {
+        remember(frame, index, listState, landscape) {
+            derivedStateOf {
+                val motion = frame.value
+                val anchor = motion.focusedLine.takeIf { it >= 0 } ?: motion.interlude?.beforeLineIndex ?: -1
+                if (anchor < 0 || index == anchor) return@derivedStateOf 0.dp
+                val layout = listState.layoutInfo
+                val item = layout.visibleItemsInfo.firstOrNull { it.index == index }
+                    ?: return@derivedStateOf 0.dp
+                if (item.offset >= layout.viewportEndOffset || item.offset + item.size <= layout.viewportStartOffset) {
+                    return@derivedStateOf 0.dp
+                }
+                playbackLyricBlurRadius(abs(index - anchor), landscape).dp
+            }
+        }.value
+    } else {
+        0.dp
     }
     BoxWithConstraints(
         modifier = Modifier.fillMaxWidth()
@@ -1376,16 +1389,19 @@ private fun PlaybackLyricRow(
                     scaleX = scale
                     scaleY = scale
                     transformOrigin = TransformOrigin(0f, 0f)
-                },
+                }
+                .then(
+                    if (blurEnabled && blurRadius > 0.dp) Modifier.blur(blurRadius, BlurredEdgeTreatment.Unbounded)
+                    else Modifier,
+                ),
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             val mainModifier = Modifier.graphicsLayer {
+                compositingStrategy = CompositingStrategy.ModulateAlpha
                 val activation = frame.value.activation(index)
                 alpha = if (following) maxOf(depth.value.mainAlpha, activation) else lerp(0.78f, 1f, activation)
-                val radius = if (blurDepth) depth.value.mainBlur.dp.toPx() else 0f
-                renderEffect = if (radius > 0f) BlurEffect(radius, radius, TileMode.Decal) else null
             }
-            val measuredMainModifier = if (landscapeListState != null) {
+            val measuredMainModifier = if (landscape) {
                 mainModifier.onSizeChanged { mainTextHeight.intValue = it.height }
             } else {
                 mainModifier
@@ -1396,14 +1412,13 @@ private fun PlaybackLyricRow(
             if (secondary.isNotEmpty()) {
                 Column(
                     modifier = Modifier.graphicsLayer {
+                        compositingStrategy = CompositingStrategy.ModulateAlpha
                         val activation = frame.value.activation(index)
                         alpha = if (following) {
                             maxOf(depth.value.secondaryAlpha, PlaybackFocusedSecondaryAlpha * activation)
                         } else {
                             lerp(0.42f, PlaybackFocusedSecondaryAlpha, activation)
                         }
-                        val radius = if (blurDepth) depth.value.secondaryBlur.dp.toPx() else 0f
-                        renderEffect = if (radius > 0f) BlurEffect(radius, radius, TileMode.Decal) else null
                     },
                     verticalArrangement = Arrangement.spacedBy(4.dp),
                 ) {

@@ -101,6 +101,9 @@ private val LandscapeLyricDepthStops = listOf(
 
 internal const val LandscapeLyricFocusFraction = 0.39f
 
+internal fun playbackLyricBlurRadius(distance: Int, landscape: Boolean = false, strength: Float = 1f): Float =
+    playbackLyricDepth(distance.toFloat(), landscape).mainBlur * strength
+
 internal fun landscapeLyricDistance(center: Float, viewportStart: Int, viewportEnd: Int): Float {
     val height = (viewportEnd - viewportStart).coerceAtLeast(1)
     val anchor = viewportStart + height * LandscapeLyricFocusFraction

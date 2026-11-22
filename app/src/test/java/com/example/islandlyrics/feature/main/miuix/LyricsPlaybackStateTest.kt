@@ -7,6 +7,31 @@ import org.junit.Test
 
 class LyricsPlaybackStateTest {
     @Test
+    fun lyricBlurKeepsTheMaximumRadiusBeyondTheThirdLine() {
+        assertEquals(0f, playbackLyricBlurRadius(0), 0f)
+        assertEquals(1.2f, playbackLyricBlurRadius(1), 0f)
+        assertEquals(2.2f, playbackLyricBlurRadius(2), 0f)
+        assertEquals(3f, playbackLyricBlurRadius(3), 0f)
+        assertEquals(3f, playbackLyricBlurRadius(4), 0f)
+        assertEquals(3f, playbackLyricBlurRadius(20), 0f)
+
+        assertEquals(0f, playbackLyricBlurRadius(0, landscape = true), 0f)
+        assertEquals(1.1f, playbackLyricBlurRadius(1, landscape = true), 0f)
+        assertEquals(1.9f, playbackLyricBlurRadius(2, landscape = true), 0f)
+        assertEquals(2.5f, playbackLyricBlurRadius(3, landscape = true), 0f)
+        assertEquals(2.5f, playbackLyricBlurRadius(4, landscape = true), 0f)
+    }
+
+    @Test
+    fun changingTheBlurStrengthScalesEveryNonFocusDistance() {
+        assertEquals(0f, playbackLyricBlurRadius(0, strength = 0.5f), 0f)
+        assertEquals(0.6f, playbackLyricBlurRadius(1, strength = 0.5f), 0f)
+        assertEquals(1.1f, playbackLyricBlurRadius(2, strength = 0.5f), 0f)
+        assertEquals(1.5f, playbackLyricBlurRadius(4, strength = 0.5f), 0f)
+        assertEquals(1.25f, playbackLyricBlurRadius(4, landscape = true, strength = 0.5f), 0f)
+    }
+
+    @Test
     fun interludeAppearsOnlyWithinItsWaitInterval() {
         val lines = listOf(
             LyricLine(3_000L, 5_000L, "First line"),

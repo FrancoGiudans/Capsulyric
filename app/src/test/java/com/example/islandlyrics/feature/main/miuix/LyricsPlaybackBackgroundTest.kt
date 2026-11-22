@@ -40,7 +40,7 @@ class LyricsPlaybackBackgroundTest {
 
     @Test
     fun coverPreblurSoftensColorBoundariesWithoutLeakingHiddenRgb() {
-        val size = 16
+        val size = 64
         val input = IntArray(size * size) { index ->
             when {
                 index % size < size / 2 && index / size < size / 2 -> 0xFFFF0000.toInt()
@@ -51,7 +51,18 @@ class LyricsPlaybackBackgroundTest {
 
         assertEquals(0xFFFF0000.toInt(), texture.first())
         assertEquals(0xFF000000.toInt(), texture.last())
-        assertTrue(texture[size * 8 + 8] shr 16 and 255 in 1..254)
+        val center = size / 2
+        assertTrue(texture[size * center + center] shr 16 and 255 in 1..254)
         assertTrue(texture.all { (it and 0xFFFF) == 0 && (it ushr 24) == 255 })
+    }
+
+    @Test
+    fun threeSlidingPassesSpreadAnImpulseAcrossThreePixels() {
+        val input = IntArray(9) { index ->
+            if (index == 4) 0xFFFF0000.toInt() else 0xFF000000.toInt()
+        }
+        val red = blurPlaybackCover(input, width = 9, height = 1, radius = 1)
+            .map { it shr 16 and 255 }
+        assertEquals(listOf(0, 9, 28, 57, 66, 57, 28, 9, 0), red)
     }
 }
