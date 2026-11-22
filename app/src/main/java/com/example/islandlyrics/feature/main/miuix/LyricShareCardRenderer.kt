@@ -50,7 +50,7 @@ internal object LyricShareCardRenderer {
 
     // Call from a worker thread. The caller owns the returned bitmap.
     fun render(card: LyricShareCard): Bitmap {
-        require(card.lines.isNotEmpty() && card.lines.all { it.original.isNotBlank() } &&
+        require(card.lines.size in 1..LyricShareLineLimit && card.lines.all { it.original.isNotBlank() } &&
             card.lines.sumOf(LyricShareLine::characterCount) <= LyricShareCharacterLimit)
         var scale = 1f
         var lyrics = layoutLyrics(card.lines, scale)

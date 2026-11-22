@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="lyrics_share_select">歌詞を選択</string>
-    <string name="lyrics_share_selected">%1$d 行選択</string>
+    <string name="lyrics_share_selected">%1$d / %2$d 行選択</string>
     <string name="lyrics_share_count">%1$d / %2$d</string>
     <string name="lyrics_share_limit">%1$d 文字まで選択できます</string>
+    <string name="lyrics_share_line_limit">%1$d 行まで選択できます</string>
     <string name="lyrics_share_image">画像を共有</string>
     <string name="lyrics_share_save">画像を保存</string>
     <string name="lyrics_share_copy">歌詞をコピー</string>

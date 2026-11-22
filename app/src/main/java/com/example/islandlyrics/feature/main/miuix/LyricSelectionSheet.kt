@@ -85,7 +85,8 @@ internal fun LyricSelectionSheet(
     val appName = stringResource(R.string.app_name)
     val exportError = stringResource(R.string.lyrics_share_failed)
     val savedMessage = stringResource(R.string.lyrics_share_saved)
-    val limitMessage = stringResource(R.string.lyrics_share_limit, LyricShareCharacterLimit)
+    val characterLimitMessage = stringResource(R.string.lyrics_share_limit, LyricShareCharacterLimit)
+    val lineLimitMessage = stringResource(R.string.lyrics_share_line_limit, LyricShareLineLimit)
     var exporting by remember { mutableStateOf(false) }
     fun export(saveToGallery: Boolean) {
         if (exporting || !selection.canExport) return
@@ -133,11 +134,15 @@ internal fun LyricSelectionSheet(
                 appearance = appearance,
                 enabled = !exporting,
                 onToggle = { index ->
-                    val updated = selection.toggle(index)
-                    if (updated === selection) {
-                        Toast.makeText(context, limitMessage, Toast.LENGTH_SHORT).show()
+                    val limit = if (index in selection.indices) null else selection.limitWhenAdding(index)
+                    if (limit == null) {
+                        onSelectionChange(selection.toggle(index))
                     } else {
-                        onSelectionChange(updated)
+                        val message = when (limit) {
+                            LyricSelectionLimit.Lines -> lineLimitMessage
+                            LyricSelectionLimit.Characters -> characterLimitMessage
+                        }
+                        Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
                     }
                 },
                 modifier = Modifier.weight(1f).fillMaxWidth(),
@@ -183,7 +188,7 @@ private fun LyricSelectionHeader(title: String, artist: String, cover: Bitmap?, 
             }
         }
         Column(horizontalAlignment = Alignment.End) {
-            Text(stringResource(R.string.lyrics_share_selected, selection.indices.size),
+            Text(stringResource(R.string.lyrics_share_selected, selection.indices.size, LyricShareLineLimit),
                 style = MiuixTheme.textStyles.body2, fontWeight = FontWeight.Bold, textAlign = TextAlign.End)
             Text(stringResource(R.string.lyrics_share_count, selection.characterCount, LyricShareCharacterLimit),
                 style = MiuixTheme.textStyles.body2,
@@ -234,7 +239,7 @@ private fun LyricSelectionCards(
             items(selection.cards.size) { index ->
                 val card = selection.cards[index]
                 val selected = index in selection.indices
-                val blocked = !selected && !selection.canAdd(index)
+                val blocked = !selected && selection.limitWhenAdding(index) != null
                 val text = when {
                     selected -> selectedText
                     blocked -> colors.onSurfaceVariantSummary

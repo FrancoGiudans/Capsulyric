@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="lyrics_share_select">Select lyric</string>
-    <string name="lyrics_share_selected">%1$d selected</string>
+    <string name="lyrics_share_selected">%1$d / %2$d lines</string>
     <string name="lyrics_share_count">%1$d / %2$d</string>
     <string name="lyrics_share_limit">Select up to %1$d characters</string>
+    <string name="lyrics_share_line_limit">Select up to %1$d lines</string>
     <string name="lyrics_share_image">Share image</string>
     <string name="lyrics_share_save">Save image</string>
     <string name="lyrics_share_copy">Copy lyrics</string>

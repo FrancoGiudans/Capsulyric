@@ -32,7 +32,7 @@ class LyricSelectionTest {
     @Test
     fun limitCountsUnicodeCodePointsAndBothTextLayers() {
         val lines = listOf(
-            LyricLine(0, 1_000, "🎵".repeat(198), translation = "译"),
+            LyricLine(0, 1_000, "🎵".repeat(LyricShareCharacterLimit - 2), translation = "译"),
             LyricLine(1_000, 2_000, "好"),
             LyricLine(2_000, 3_000, "另"),
         )
@@ -40,15 +40,30 @@ class LyricSelectionTest {
 
         assertEquals(LyricShareCharacterLimit, full.characterCount)
         assertTrue(full.canExport)
-        assertFalse(full.canAdd(2))
+        assertEquals(LyricSelectionLimit.Characters, full.limitWhenAdding(2))
         assertSame(full, full.toggle(2))
         assertEquals(0, full.toggle(1).toggle(0).characterCount)
         assertFalse(full.toggle(1).toggle(0).canExport)
     }
 
     @Test
+    fun lineLimitBlocksTheSeventhLineEvenWithACharacterBudgetRemaining() {
+        val lines = List(LyricShareLineLimit + 1) { index -> LyricLine(index * 1_000L, (index + 1) * 1_000L, "字") }
+        val lastIndex = lines.lastIndex
+        val full = (1 until lastIndex).fold(LyricSelection.start(lines, 0)) { selection, index ->
+            selection.toggle(index)
+        }
+
+        assertEquals(LyricShareLineLimit, full.indices.size)
+        assertTrue(full.canExport)
+        assertEquals(LyricSelectionLimit.Lines, full.limitWhenAdding(lastIndex))
+        assertSame(full, full.toggle(lastIndex))
+        assertTrue(lastIndex in full.toggle(0).toggle(lastIndex).indices)
+    }
+
+    @Test
     fun rejectsExportWhenInitialLineAloneExceedsLimit() {
-        val selection = LyricSelection.start(listOf(LyricLine(0, 1_000, "a".repeat(201))), 0)
+        val selection = LyricSelection.start(listOf(LyricLine(0, 1_000, "a".repeat(LyricShareCharacterLimit + 1))), 0)
         assertEquals(setOf(0), selection.indices)
         assertFalse(selection.canExport)
         assertTrue(selection.toggle(0).indices.isEmpty())

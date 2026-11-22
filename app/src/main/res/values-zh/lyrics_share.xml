@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="lyrics_share_select">选取歌词</string>
-    <string name="lyrics_share_selected">已选 %1$d 句</string>
+    <string name="lyrics_share_selected">已选 %1$d / %2$d 句</string>
     <string name="lyrics_share_count">%1$d / %2$d</string>
     <string name="lyrics_share_limit">最多选择 %1$d 字</string>
+    <string name="lyrics_share_line_limit">最多选择 %1$d 句</string>
     <string name="lyrics_share_image">分享长图</string>
     <string name="lyrics_share_save">保存图片</string>
     <string name="lyrics_share_copy">复制歌词</string>
