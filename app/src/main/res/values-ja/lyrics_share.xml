@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="lyrics_share_select">歌詞を選択</string>
+    <string name="lyrics_share_selected">%1$d 行選択</string>
+    <string name="lyrics_share_count">%1$d / %2$d</string>
+    <string name="lyrics_share_limit">%1$d 文字まで選択できます</string>
+    <string name="lyrics_share_image">画像を共有</string>
+    <string name="lyrics_share_save">画像を保存</string>
+    <string name="lyrics_share_copy">歌詞をコピー</string>
+    <string name="lyrics_share_loop">1 行をリピート</string>
+    <string name="lyrics_share_loop_active">1 行リピート中 · タップで解除</string>
+    <string name="lyrics_share_rendering">画像を作成中…</string>
+    <string name="lyrics_share_saved">Pictures/Capsulyric に保存しました</string>
+    <string name="lyrics_share_failed">歌詞画像をエクスポートできませんでした</string>
+    <string name="lyrics_share_loop_failed">このプレーヤーでは選択した行をリピートできませんでした</string>
+</resources>

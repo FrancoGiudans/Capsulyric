@@ -66,25 +66,25 @@ internal fun rememberPlaybackCoverAppearance(cover: Bitmap?): State<PlaybackCove
     }
 
 internal fun playbackAlbumAccent(colors: List<Int?>?): Color {
-    val hsl = FloatArray(3)
-    val sample = colors?.filterNotNull()?.maxByOrNull {
-        ColorUtils.colorToHSL(it, hsl)
-        hsl[1]
-    } ?: return Color.White
+    val sample = mostSaturatedPlaybackColor(colors) ?: return Color.White
     // Match the brightest background that the palette can produce against white.
     val brightestBackground = 0xFF515151.toInt()
     return Color(ensureColorContrast(sample, brightestBackground, Color.White.toArgb(), 4.5, 0.24f))
 }
 
+internal fun mostSaturatedPlaybackColor(colors: List<Int?>?): Int? {
+    val hsl = FloatArray(3)
+    return colors?.filterNotNull()?.maxByOrNull {
+        ColorUtils.colorToHSL(it, hsl)
+        hsl[1]
+    }
+}
+
 @Composable
 internal fun StaticPlaybackBackground(colors: List<Int?>?, modifier: Modifier = Modifier) {
     val surface = MiuixTheme.colorScheme.surface
-    val textColor = Color.White
-    val palette = remember(colors, surface, textColor) {
-        List(4) { index ->
-            val sampled = colors?.get(index) ?: return@List surface
-            Color(ensureColorContrast(sampled, textColor.toArgb(), surface.toArgb(), BackgroundContrast, 0.06f))
-        }
+    val palette = remember(colors, surface) {
+        playbackBackgroundPalette(colors, surface.toArgb()).map { Color(it) }
     }
     val topLeft by animateColorAsState(palette[0], tween(450), label = "cover top left")
     val topRight by animateColorAsState(palette[1], tween(450), label = "cover top right")
@@ -108,6 +108,12 @@ internal fun StaticPlaybackBackground(colors: List<Int?>?, modifier: Modifier = 
         )
     }
 }
+
+internal fun playbackBackgroundPalette(colors: List<Int?>?, surface: Int): List<Int> =
+    List(4) { index ->
+        val sampled = colors?.getOrNull(index) ?: return@List surface
+        ensureColorContrast(sampled, android.graphics.Color.WHITE, surface, BackgroundContrast, 0.06f)
+    }
 
 private fun preparePlaybackCover(bitmap: Bitmap): PlaybackCoverAppearance? {
     val software = if (bitmap.config == Bitmap.Config.HARDWARE) {

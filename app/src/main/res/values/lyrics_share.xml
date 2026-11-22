@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="lyrics_share_select">Select lyric</string>
+    <string name="lyrics_share_selected">%1$d selected</string>
+    <string name="lyrics_share_count">%1$d / %2$d</string>
+    <string name="lyrics_share_limit">Select up to %1$d characters</string>
+    <string name="lyrics_share_image">Share image</string>
+    <string name="lyrics_share_save">Save image</string>
+    <string name="lyrics_share_copy">Copy lyrics</string>
+    <string name="lyrics_share_loop">Loop line</string>
+    <string name="lyrics_share_loop_active">Line loop on · Tap to stop</string>
+    <string name="lyrics_share_rendering">Rendering…</string>
+    <string name="lyrics_share_saved">Saved to Pictures/Capsulyric</string>
+    <string name="lyrics_share_failed">Couldn’t export the lyric image</string>
+    <string name="lyrics_share_loop_failed">This player couldn’t loop the selected line</string>
+</resources>

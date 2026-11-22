@@ -86,38 +86,44 @@ internal fun LyricsPlaybackBackground(
 @RequiresApi(Build.VERSION_CODES.TIRAMISU)
 @Composable
 private fun FlowPlaybackBackground(appearance: PlaybackCoverAppearance, time: LongState) {
-    val shader = remember(appearance) {
-        val texture = appearance.flowTexture ?: return@remember null
-        try {
-            RuntimeShader(PlaybackFlowShader).apply {
-                val bitmapShader = BitmapShader(texture, Shader.TileMode.MIRROR, Shader.TileMode.MIRROR)
-                bitmapShader.setFilterMode(BitmapShader.FILTER_MODE_LINEAR)
-                setInputShader("cover", bitmapShader)
-                setFloatUniform("textureSide", PlaybackCoverSampleSize.toFloat())
-                setFloatUniform("tone", appearance.tone.scrimAlpha, appearance.tone.brightnessBias)
-            }
-        } catch (_: IllegalArgumentException) {
-            null
-        }
-    }
+    val shader = remember(appearance) { createPlaybackFlowShader(appearance) }
     if (shader == null) {
         StaticPlaybackBackground(appearance.colors)
         return
     }
     val brush = remember(shader) { ShaderBrush(shader) }
     Canvas(Modifier.fillMaxSize()) {
-        val seconds = time.longValue / 1_000_000_000.0
-        val shortSide = minOf(size.width, size.height)
-        val longSide = maxOf(size.width, size.height)
-        val inverseScale = 1f / (shortSide * 0.35f + longSide * 0.65f).coerceAtLeast(1f)
-        shader.setFloatUniform("viewport", size.width / 2f, size.height / 2f, inverseScale)
-        shader.setFloatUniform("wavePhase", ((seconds % 24.0) / 24.0 * 2.0 * PI).toFloat())
-        // 宽模糊核已消除锐利边缘，zoom 回调至 1.55~1.95 获取更自然的色域过渡
-        shader.setFlowLayer("layerA", seconds, period = 20.0, zoom = 1.55, direction = 1, initialAngle = 0.0)
-        shader.setFlowLayer("layerB", seconds, period = 29.0, zoom = 1.75, direction = -1, initialAngle = 1.3)
-        shader.setFlowLayer("layerC", seconds, period = 41.0, zoom = 1.95, direction = 1, initialAngle = 2.6)
+        shader.setPlaybackFlowFrame(size.width, size.height, time.longValue / 1_000_000_000.0)
         drawRect(brush)
     }
+}
+
+@RequiresApi(Build.VERSION_CODES.TIRAMISU)
+internal fun createPlaybackFlowShader(appearance: PlaybackCoverAppearance): RuntimeShader? {
+    val texture = appearance.flowTexture?.takeUnless { it.isRecycled } ?: return null
+    return try {
+        RuntimeShader(PlaybackFlowShader).apply {
+            val bitmapShader = BitmapShader(texture, Shader.TileMode.MIRROR, Shader.TileMode.MIRROR)
+            bitmapShader.setFilterMode(BitmapShader.FILTER_MODE_LINEAR)
+            setInputShader("cover", bitmapShader)
+            setFloatUniform("textureSide", PlaybackCoverSampleSize.toFloat())
+            setFloatUniform("tone", appearance.tone.scrimAlpha, appearance.tone.brightnessBias)
+        }
+    } catch (_: IllegalArgumentException) {
+        null
+    }
+}
+
+@RequiresApi(Build.VERSION_CODES.TIRAMISU)
+internal fun RuntimeShader.setPlaybackFlowFrame(width: Float, height: Float, seconds: Double) {
+    val shortSide = minOf(width, height)
+    val longSide = maxOf(width, height)
+    val inverseScale = 1f / (shortSide * 0.35f + longSide * 0.65f).coerceAtLeast(1f)
+    setFloatUniform("viewport", width / 2f, height / 2f, inverseScale)
+    setFloatUniform("wavePhase", ((seconds % 24.0) / 24.0 * 2.0 * PI).toFloat())
+    setFlowLayer("layerA", seconds, period = 20.0, zoom = 1.55, direction = 1, initialAngle = 0.0)
+    setFlowLayer("layerB", seconds, period = 29.0, zoom = 1.75, direction = -1, initialAngle = 1.3)
+    setFlowLayer("layerC", seconds, period = 41.0, zoom = 1.95, direction = 1, initialAngle = 2.6)
 }
 
 @RequiresApi(Build.VERSION_CODES.TIRAMISU)

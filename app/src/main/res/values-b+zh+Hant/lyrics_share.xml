@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="lyrics_share_select">選取歌詞</string>
+    <string name="lyrics_share_selected">已選 %1$d 句</string>
+    <string name="lyrics_share_count">%1$d / %2$d</string>
+    <string name="lyrics_share_limit">最多選擇 %1$d 字</string>
+    <string name="lyrics_share_image">分享長圖</string>
+    <string name="lyrics_share_save">儲存圖片</string>
+    <string name="lyrics_share_copy">複製歌詞</string>
+    <string name="lyrics_share_loop">單句循環</string>
+    <string name="lyrics_share_loop_active">單句循環中 · 點擊退出</string>
+    <string name="lyrics_share_rendering">正在產生…</string>
+    <string name="lyrics_share_saved">已儲存到 Pictures/Capsulyric</string>
+    <string name="lyrics_share_failed">無法匯出歌詞圖片</string>
+    <string name="lyrics_share_loop_failed">目前的播放器無法循環這句歌詞</string>
+</resources>
