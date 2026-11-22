@@ -189,20 +189,31 @@ internal class CalibratedTextWindow(
         return fromIndex(start)
     }
 
-    fun atFocus(focusIndex: Int, centered: Boolean): String {
+    fun atFocus(focus: IntRange, centered: Boolean): String {
         if (fits(text)) return text
+        if (focus.isEmpty()) return prefix()
         val tail = tailStart()
-        if (focusIndex >= (boundaries.getOrNull(boundaries.lastIndex - 1) ?: 0)) return suffix()
         val totalLimit = right.limit + (leftLimit ?: 0) / 2f
-        val target = (right.width(text.substring(0, focusIndex.coerceIn(0, text.length))) -
-            totalLimit * if (centered) 0.5f else 1f).coerceAtLeast(0f)
+        val focusStart = boundaries.last { it <= focus.first }
+        val focusEnd = nextIndex(focus.last)
+        val focusWidth = if (centered) {
+            right.width(text.substring(focusStart, focusEnd))
+        } else {
+            0f
+        }
+        val anchor = prefixWidths.getValue(focusStart) + focusWidth / 2f
+        val target = (anchor - totalLimit * if (centered) 0.5f else 1f).coerceAtLeast(0f)
         var start = boundaries.takeWhile { it <= tail }.minByOrNull {
             kotlin.math.abs(prefixWidths.getValue(it) - target)
         } ?: 0
+        val lastStart = minOf(focusStart, tail)
+        val keepWholeSyllable = centered && lastStart + fromIndex(lastStart).length >= focusEnd
+        if (keepWholeSyllable) start = minOf(start, lastStart)
+        val requiredEnd = if (keepWholeSyllable) focusEnd else nextIndex(focusStart)
         var result = fromIndex(start)
         // A wide grapheme may only fit in the left column. Move the window
         // forward until the focused grapheme is included instead of dropping it.
-        while (start < focusIndex && start + result.length <= focusIndex) {
+        while (start < lastStart && start + result.length < requiredEnd) {
             start = nextIndex(start)
             result = fromIndex(start)
         }

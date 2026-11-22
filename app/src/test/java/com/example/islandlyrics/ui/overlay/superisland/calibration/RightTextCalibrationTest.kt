@@ -55,7 +55,7 @@ class RightTextCalibrationTest {
         assertEquals("一二三", w.prefix())
         assertEquals("八九十", w.suffix())
         assertEquals(w.suffix(), w.atProgress(1f))
-        assertEquals(w.suffix(), w.atFocus(text.lastIndex, true))
+        assertEquals(w.suffix(), w.atFocus(text.lastIndex..text.lastIndex, true))
         for (i in 0..20) assertTrue(p.fits(w.atProgress(i / 20f)))
     }
 
@@ -79,7 +79,8 @@ class RightTextCalibrationTest {
         val p = policy(RightTextCalibration(capacity = 1f, overrides = mapOf("😀" to 2f)))
         val text = "一二😀三四五"
         val w = CalibratedTextWindow(text, p, 4, SuperIslandLyricLayout::calculateWeight)
-        assertTrue(w.atFocus(text.indexOf("😀"), true).contains("😀"))
+        val focus = text.indexOf("😀")
+        assertTrue(w.atFocus(focus until focus + "😀".length, true).contains("😀"))
     }
 
     @Test fun fullModeKeepsInternalSpacesIncludingThoseAtColumnBoundary() {

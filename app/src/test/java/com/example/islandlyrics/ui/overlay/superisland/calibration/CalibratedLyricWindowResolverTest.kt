@@ -10,9 +10,9 @@ class CalibratedLyricWindowResolverTest {
 
     private fun resolve(resolver: CalibratedLyricWindowResolver, now: Long, text: String = this.text,
         line: OnlineLyricFetcher.LyricLine? = null, position: Long = 0L, disabled: Boolean = false,
-        syllables: Boolean = false, left: Int? = null) = resolver.resolve(
+        syllables: Boolean = false, left: Int? = null, centered: Boolean = true) = resolver.resolve(
         text = text, policy = policy, leftLimit = left, disabled = disabled, line = line,
-        syllablesEnabled = syllables, centered = true, position = position, now = now,
+        syllablesEnabled = syllables, centered = centered, position = position, now = now,
         shiftDelay = 100L, initialPause = 400L, finalPause = 300L
     )
 
@@ -60,6 +60,19 @@ class CalibratedLyricWindowResolverTest {
         val line = OnlineLyricFetcher.LyricLine(0, 1_000, text)
         val last = resolve(resolver, 1_000, text, line, 1_000, left = 4)
         assertEquals("六七八九十", last.text)
+    }
+
+    @Test fun centersAWholeMultiCharacterSyllableUsingTheCalibratedCapacity() {
+        val line = OnlineLyricFetcher.LyricLine(0, 1_000, text, listOf(
+            OnlineLyricFetcher.SyllableInfo(0, 300, "一二三四"),
+            OnlineLyricFetcher.SyllableInfo(300, 600, "五六七"),
+            OnlineLyricFetcher.SyllableInfo(600, 1_000, "八九十")
+        ))
+        val resolver = CalibratedLyricWindowResolver()
+
+        assertEquals("五六七", resolve(resolver, 300, line = line, position = 300, syllables = true).text)
+        assertEquals("三四五", resolve(resolver, 300, line = line, position = 300, syllables = true, centered = false).text)
+        assertEquals("四五六七八", resolve(resolver, 300, line = line, position = 300, syllables = true, left = 4).text)
     }
 
     @Test fun finalLrcWindowAppearsBeforeLineEndRatherThanAtAnUnreachableEndpoint() {
