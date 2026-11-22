@@ -487,6 +487,8 @@
     <string name="dialog_feedback_title">フィードバック方法を選択</string>
     <string name="dialog_feedback_github">GitHub Issues</string>
     <string name="dialog_feedback_github_desc">推奨。最も迅速に対応されます。</string>
+    <string name="dialog_feedback_gitee">Gitee Issues</string>
+    <string name="dialog_feedback_gitee_desc">国内向け。迅速に対応されます。</string>
     <string name="dialog_feedback_wps">WPS フォーム</string>
     <string name="dialog_feedback_wps_desc">代替手段。ログインが必要な場合があります。</string>
     <string name="dialog_feedback_wjx">WJX アンケート</string>
