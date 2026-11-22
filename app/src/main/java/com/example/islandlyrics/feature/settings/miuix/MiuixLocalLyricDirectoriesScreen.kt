@@ -34,6 +34,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.example.islandlyrics.R
+import com.example.islandlyrics.core.settings.search.SettingsNavigationTarget
+import com.example.islandlyrics.core.settings.search.SettingsSearchAction
 import com.example.islandlyrics.feature.cache.CacheManagementActivity
 import com.example.islandlyrics.feature.locallyrics.LocalLyricDirectoryActivity
 import com.example.islandlyrics.feature.parserrule.ParserRuleActivity
@@ -94,12 +96,14 @@ fun MiuixLocalLyricDirectoriesScreen(
                     links = listOf(
                         OtherSettingLink(
                             titleRes = R.string.settings_link_parser_rules,
+                            action = SettingsSearchAction.Navigate(SettingsNavigationTarget.PARSER_RULES),
                             onClick = {
                                 context.startActivity(Intent(context, ParserRuleActivity::class.java))
                             }
                         ),
                         OtherSettingLink(
                             titleRes = R.string.title_cache_management,
+                            action = SettingsSearchAction.Navigate(SettingsNavigationTarget.CACHE_MANAGEMENT),
                             onClick = {
                                 context.startActivity(Intent(context, CacheManagementActivity::class.java))
                             }

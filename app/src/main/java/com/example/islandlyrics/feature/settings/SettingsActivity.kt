@@ -25,6 +25,8 @@ package com.example.islandlyrics.feature.settings
 import com.example.islandlyrics.ui.navigation.BaseActivity
 import com.example.islandlyrics.ui.navigation.PageStackHost
 import com.example.islandlyrics.ui.navigation.PredictiveBackActivity
+import android.content.Context
+import android.content.Intent
 import android.os.Bundle
 import com.example.islandlyrics.ui.miuix.theme.isMiuixEnabled
 import com.example.islandlyrics.BuildConfig
@@ -85,6 +87,18 @@ import kotlinx.coroutines.launch
 
 class SettingsActivity : BaseActivity() {
 
+    companion object {
+        private const val EXTRA_NAVIGATION_TARGET = "settings_navigation_target"
+        private const val EXTRA_NAVIGATION_TAB = "settings_navigation_tab"
+        private const val EXTRA_NAVIGATION_ITEM = "settings_navigation_item"
+
+        internal fun navigationIntent(context: Context, action: SettingsSearchAction.Navigate): Intent =
+            Intent(context, SettingsActivity::class.java)
+                .putExtra(EXTRA_NAVIGATION_TARGET, action.target.name)
+                .putExtra(EXTRA_NAVIGATION_TAB, action.tab?.name)
+                .putExtra(EXTRA_NAVIGATION_ITEM, action.targetItemKey)
+    }
+
     private var updateReleaseInfo by mutableStateOf<UpdateChecker.ReleaseInfo?>(null)
     private var aboutReleaseDialogState by mutableStateOf<ReleaseDialogState?>(null)
     private var aboutReleaseLookupMessage by mutableStateOf<String?>(null)
@@ -106,6 +120,7 @@ class SettingsActivity : BaseActivity() {
             e.printStackTrace()
         }
 
+        val initialNavigation = initialNavigation(intent)
         setContent {
             val thirdPartyImporter = rememberThirdPartyImporter()
             if (isMiuixEnabled(this@SettingsActivity)) {
@@ -113,7 +128,6 @@ class SettingsActivity : BaseActivity() {
                     val pageStack = remember {
                         mutableStateListOf<SettingsPage>()
                     }
-                    val initialOpenPage = remember { intent.getStringExtra("open_page") }
                     fun pushPage(page: SettingsPage) {
                         pageStack.add(page)
                     }
@@ -139,18 +153,8 @@ class SettingsActivity : BaseActivity() {
                             SettingsNavigationTarget.PARSER_RULES -> startActivity(android.content.Intent(this@SettingsActivity, com.example.islandlyrics.feature.parserrule.ParserRuleActivity::class.java))
                         }
                     }
-                    LaunchedEffect(initialOpenPage) {
-                        if (thirdPartyImporter.restoreSettings) return@LaunchedEffect
-                        when (initialOpenPage) {
-                            "local_lyrics" -> pushPage(SettingsPage.LocalLyricDirectories)
-                            "cache_management" -> pushPage(SettingsPage.CacheManagement)
-                            "online_rematch" -> pushPage(SettingsPage.OnlineLyricDebug)
-                            "last_fm" -> pushPage(SettingsPage.LastFm)
-                            "capsule" -> pushPage(SettingsPage.CapsuleNotification(initialTab = CustomSettingsTab.CAPSULE))
-                            "notification" -> pushPage(SettingsPage.CapsuleNotification(initialTab = CustomSettingsTab.NOTIFICATION))
-                            "app_ui" -> pushPage(SettingsPage.CustomSettings())
-                            "desktop_lyrics" -> pushPage(SettingsPage.DesktopLyrics())
-                        }
+                    LaunchedEffect(initialNavigation) {
+                        if (!thirdPartyImporter.restoreSettings) initialNavigation?.let(::handleNavigate)
                     }
                     PredictiveBackActivity(enabled = pageStack.isEmpty()) {
                         PageStackHost(
@@ -235,6 +239,9 @@ class SettingsActivity : BaseActivity() {
                             SettingsNavigationTarget.PARSER_RULES -> startActivity(android.content.Intent(this@SettingsActivity, com.example.islandlyrics.feature.parserrule.ParserRuleActivity::class.java))
                         }
                     }
+                    LaunchedEffect(initialNavigation) {
+                        if (!thirdPartyImporter.restoreSettings) initialNavigation?.let(::handleNavigate)
+                    }
                     PredictiveBackActivity(enabled = pageStack.isEmpty()) {
                         PageStackHost(
                             stack = pageStack,
@@ -293,6 +300,29 @@ class SettingsActivity : BaseActivity() {
                     }
                 }
             }
+        }
+    }
+
+    private fun initialNavigation(intent: Intent): SettingsSearchAction.Navigate? {
+        val targetName = intent.getStringExtra(EXTRA_NAVIGATION_TARGET)
+        SettingsNavigationTarget.entries.firstOrNull { it.name == targetName }?.let { target ->
+            val tabName = intent.getStringExtra(EXTRA_NAVIGATION_TAB)
+            return SettingsSearchAction.Navigate(
+                target = target,
+                tab = CustomSettingsTab.entries.firstOrNull { it.name == tabName },
+                targetItemKey = intent.getStringExtra(EXTRA_NAVIGATION_ITEM)
+            )
+        }
+        return when (intent.getStringExtra("open_page")) {
+            "local_lyrics" -> SettingsSearchAction.Navigate(SettingsNavigationTarget.LOCAL_LYRIC_DIRECTORIES)
+            "cache_management" -> SettingsSearchAction.Navigate(SettingsNavigationTarget.CACHE_MANAGEMENT)
+            "online_rematch" -> SettingsSearchAction.Navigate(SettingsNavigationTarget.ONLINE_LYRIC_REMATCH)
+            "last_fm" -> SettingsSearchAction.Navigate(SettingsNavigationTarget.LAST_FM)
+            "capsule" -> SettingsSearchAction.Navigate(SettingsNavigationTarget.CAPSULE_NOTIFICATION, CustomSettingsTab.CAPSULE)
+            "notification" -> SettingsSearchAction.Navigate(SettingsNavigationTarget.CAPSULE_NOTIFICATION, CustomSettingsTab.NOTIFICATION)
+            "app_ui" -> SettingsSearchAction.Navigate(SettingsNavigationTarget.APP_UI)
+            "desktop_lyrics" -> SettingsSearchAction.Navigate(SettingsNavigationTarget.DESKTOP_LYRICS)
+            else -> null
         }
     }
 

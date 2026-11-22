@@ -60,6 +60,8 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.launch
 import com.example.islandlyrics.R
+import com.example.islandlyrics.core.settings.search.SettingsNavigationTarget
+import com.example.islandlyrics.core.settings.search.SettingsSearchAction
 import com.example.islandlyrics.core.cache.AppImageCacheManager
 import com.example.islandlyrics.lyrics.local.LocalLyricDirectoryManager
 import com.example.islandlyrics.lyrics.cache.OnlineLyricCacheStore
@@ -416,12 +418,14 @@ fun MiuixCacheManagementScreen(
                     links = listOf(
                         OtherSettingLink(
                             titleRes = R.string.online_lyric_rematch_title,
+                            action = SettingsSearchAction.Navigate(SettingsNavigationTarget.ONLINE_LYRIC_REMATCH),
                             onClick = {
                                 context.startActivity(Intent(context, OnlineLyricDebugActivity::class.java))
                             }
                         ),
                         OtherSettingLink(
                             titleRes = R.string.settings_local_lyrics_title,
+                            action = SettingsSearchAction.Navigate(SettingsNavigationTarget.LOCAL_LYRIC_DIRECTORIES),
                             onClick = {
                                 context.startActivity(Intent(context, SettingsActivity::class.java).apply {
                                     putExtra("open_page", "local_lyrics")

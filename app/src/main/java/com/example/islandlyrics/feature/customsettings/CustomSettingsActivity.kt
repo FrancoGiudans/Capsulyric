@@ -22,6 +22,9 @@
 
 package com.example.islandlyrics.feature.customsettings
 
+import com.example.islandlyrics.core.settings.search.SettingsSearchAction
+import com.example.islandlyrics.feature.settings.SettingsActivity
+
 import com.example.islandlyrics.ui.navigation.BaseActivity
 import com.example.islandlyrics.ui.navigation.PredictiveBackActivity
 import android.os.Bundle
@@ -42,6 +45,9 @@ class CustomSettingsActivity : BaseActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         window.isNavigationBarContrastEnforced = false
+        val navigate: (SettingsSearchAction.Navigate) -> Unit = { action ->
+            startActivity(SettingsActivity.navigationIntent(this, action))
+        }
         setContent {
             if (isMiuixEnabled(this@CustomSettingsActivity)) {
                 MiuixAppTheme {
@@ -53,7 +59,8 @@ class CustomSettingsActivity : BaseActivity() {
                             updateVersionText = "",
                             updateBuildText = "",
                             title = getString(R.string.page_title_personalization),
-                            tabs = setOf(CustomSettingsTab.APP_UI)
+                            tabs = setOf(CustomSettingsTab.APP_UI),
+                            onNavigate = navigate
                         )
                     }
                 }
@@ -67,7 +74,8 @@ class CustomSettingsActivity : BaseActivity() {
                             updateVersionText = "", // Not used in this screen
                             updateBuildText = "", // Not used in this screen
                             title = getString(R.string.page_title_personalization),
-                            tabs = setOf(CustomSettingsTab.APP_UI)
+                            tabs = setOf(CustomSettingsTab.APP_UI),
+                            onNavigate = navigate
                         )
                     }
                 }

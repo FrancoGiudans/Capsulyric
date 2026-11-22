@@ -47,6 +47,8 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.core.content.edit
 import com.example.islandlyrics.R
+import com.example.islandlyrics.core.settings.search.SettingsNavigationTarget
+import com.example.islandlyrics.core.settings.search.SettingsSearchAction
 import com.example.islandlyrics.core.network.OfflineModeManager
 import com.example.islandlyrics.core.settings.AppPreferences
 import com.example.islandlyrics.feature.parserrule.ParserRuleActivity
@@ -356,6 +358,7 @@ fun MiuixLastFmSettingsScreen(onBack: () -> Unit) {
                     links = listOf(
                         OtherSettingLink(
                             titleRes = R.string.settings_link_parser_rules_scrobble,
+                            action = SettingsSearchAction.Navigate(SettingsNavigationTarget.PARSER_RULES),
                             onClick = {
                                 context.startActivity(Intent(context, ParserRuleActivity::class.java))
                             }
