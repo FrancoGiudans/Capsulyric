@@ -47,6 +47,7 @@
     <string name="settings_fullscreen_playback_auto_follow">Automatically return to the current line</string>
     <string name="settings_fullscreen_playback_auto_follow_summary">While playing, resume following lyrics 5 seconds after you stop scrolling.</string>
     <string name="lyrics_playback_show_controls">Show playback controls</string>
+    <string name="lyrics_playback_volume">Media volume</string>
     <string name="main_instrumental_marked">Marked as instrumental</string>
     <string name="online_lyric_rematch_entry">Rematch Online Lyrics</string>
     <string name="online_lyric_rematch_entry_short">Rematch Lyrics</string>

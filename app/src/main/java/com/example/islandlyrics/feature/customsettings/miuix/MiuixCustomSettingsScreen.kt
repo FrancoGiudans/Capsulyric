@@ -53,9 +53,7 @@ import com.example.islandlyrics.core.theme.ThemeHelper
 import com.example.islandlyrics.core.platform.RomUtils
 import com.example.islandlyrics.runtime.service.LyricService
 import com.example.islandlyrics.feature.main.MainActivity
-import com.example.islandlyrics.feature.main.miuix.LyricsPlaybackPreference
-import com.example.islandlyrics.feature.main.miuix.LyricsPlaybackTypography
-import com.example.islandlyrics.ui.overlay.floating.FloatingLyricsTextWeight
+import com.example.islandlyrics.feature.main.miuix.LyricsPlaybackSettings
 import com.example.islandlyrics.ui.overlay.model.SecondaryTextMode
 import com.example.islandlyrics.feature.customsettings.CustomSettingsAction
 import com.example.islandlyrics.feature.customsettings.RightManualLimitSetting
@@ -99,7 +97,6 @@ import top.yukonga.miuix.kmp.icon.extended.Ok
 import top.yukonga.miuix.kmp.icon.extended.Close
 import top.yukonga.miuix.kmp.preference.ArrowPreference as SuperArrow
 import com.example.islandlyrics.ui.miuix.preference.BlurOverlayDropdownPreference as SuperDropdown
-import top.yukonga.miuix.kmp.preference.SliderPreference
 import top.yukonga.miuix.kmp.preference.SwitchPreference as SuperSwitch
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import kotlin.math.roundToInt
@@ -1744,49 +1741,7 @@ fun MiuixCustomSettingsScreen(
                                     modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)
                                         .miuixSettingHighlight(activeHighlightKey, "key_fullscreen_playback"),
                                 ) {
-                                    val settings = listOf(
-                                        LyricsPlaybackPreference.AlbumProgress to R.string.settings_fullscreen_playback_album_progress,
-                                        LyricsPlaybackPreference.LyricBlur to R.string.settings_fullscreen_playback_lyric_blur,
-                                        LyricsPlaybackPreference.AlbumText to R.string.settings_fullscreen_playback_album_text,
-                                        LyricsPlaybackPreference.KeepScreenOn to R.string.settings_fullscreen_playback_keep_screen_on,
-                                        LyricsPlaybackPreference.HideSystemBars to R.string.settings_fullscreen_playback_hide_system_bars,
-                                        LyricsPlaybackPreference.AutoHideControls to R.string.settings_fullscreen_playback_auto_hide_controls,
-                                        LyricsPlaybackPreference.AutoFollow to R.string.settings_fullscreen_playback_auto_follow,
-                                    )
-                                    settings.forEach { (preference, label) ->
-                                        SuperSwitch(
-                                            title = stringResource(label),
-                                            summary = when (preference) {
-                                                LyricsPlaybackPreference.AutoHideControls ->
-                                                    stringResource(R.string.settings_fullscreen_playback_auto_hide_controls_summary)
-                                                LyricsPlaybackPreference.AutoFollow ->
-                                                    stringResource(R.string.settings_fullscreen_playback_auto_follow_summary)
-                                                else -> null
-                                            },
-                                            checked = preference.observe(prefs),
-                                            onCheckedChange = { preference.set(prefs, it) },
-                                        )
-                                    }
-                                    val typography = LyricsPlaybackTypography.observe(prefs)
-                                    val sizeRange = LyricsPlaybackTypography.sizeRange
-                                    SliderPreference(
-                                        title = stringResource(R.string.settings_floating_text_size),
-                                        value = typography.size.toFloat(),
-                                        valueText = stringResource(R.string.floating_settings_text_size_value, typography.size),
-                                        valueRange = sizeRange.first.toFloat()..sizeRange.last.toFloat(),
-                                        steps = sizeRange.last - sizeRange.first - 1,
-                                        showKeyPoints = false,
-                                        hapticEffect = SliderDefaults.SliderHapticEffect.Step,
-                                        onValueChange = { LyricsPlaybackTypography.setSize(prefs, it.roundToInt()) },
-                                    )
-                                    SuperDropdown(
-                                        title = stringResource(R.string.settings_floating_text_weight),
-                                        items = FloatingLyricsTextWeight.entries.map { stringResource(it.label) },
-                                        selectedIndex = typography.weight.ordinal,
-                                        onSelectedIndexChange = { index ->
-                                            LyricsPlaybackTypography.setWeight(prefs, FloatingLyricsTextWeight.entries[index])
-                                        },
-                                    )
+                                    LyricsPlaybackSettings(prefs)
                                 }
                             }
                             item {

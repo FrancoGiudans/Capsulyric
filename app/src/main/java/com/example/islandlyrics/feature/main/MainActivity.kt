@@ -1037,7 +1037,11 @@ class MainActivity : BaseActivity() {
         onNavigate: (SettingsSearchAction.Navigate) -> Unit
     ) {
         when (page) {
-            is AppPage.LyricsPlayback -> MiuixLyricsPlaybackScreen(start = page.start, onBack = onBack)
+            is AppPage.LyricsPlayback -> MiuixLyricsPlaybackScreen(
+                start = page.start,
+                onBack = onBack,
+                onOpenOnlineLyricRematch = { onPushPage(AppPage.OnlineLyricDebug) },
+            )
             is AppPage.CustomSettings -> MiuixAppUiScreen(
                 onBack = onBack,
                 targetItemKey = page.targetItemKey,

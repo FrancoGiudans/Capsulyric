@@ -1258,7 +1258,7 @@ private fun formatPrimaryLyricSource(
     }
 }
 
-private fun isOnlineLyricSource(apiPath: String?): Boolean {
+internal fun isOnlineLyricSource(apiPath: String?): Boolean {
     return apiPath == "Online API" || apiPath == "Online Cache"
 }
 

@@ -150,7 +150,9 @@ import top.yukonga.miuix.kmp.basic.Switch
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TextButton
 import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.extended.MoreCircle
 import top.yukonga.miuix.kmp.icon.extended.Translate
+import top.yukonga.miuix.kmp.icon.extended.VolumeUp
 import top.yukonga.miuix.kmp.overlay.OverlayListPopup
 import top.yukonga.miuix.kmp.shader.isRenderEffectSupported
 import top.yukonga.miuix.kmp.shader.isRuntimeShaderSupported
@@ -177,10 +179,16 @@ private const val ControlsVisibilityMillis = 220
 private const val AutoFollowDelayMillis = 5_000L
 private val LyricTransitionSpec = tween<Float>(LyricTransitionMillis, easing = FastOutSlowInEasing)
 
+private enum class PlaybackSheet { Settings, Volume }
+
 @Composable
-internal fun MiuixLyricsPlaybackScreen(start: LyricsPlaybackStart, onBack: () -> Unit) {
+internal fun MiuixLyricsPlaybackScreen(
+    start: LyricsPlaybackStart,
+    onBack: () -> Unit,
+    onOpenOnlineLyricRematch: () -> Unit,
+) {
     MiuixTheme(colors = remember { darkColorScheme() }) {
-        LyricsPlaybackContent(start, onBack)
+        LyricsPlaybackContent(start, onBack, onOpenOnlineLyricRematch)
     }
 }
 
@@ -215,7 +223,11 @@ private fun PlaybackSystemBars(hideBars: Boolean) {
 }
 
 @Composable
-private fun LyricsPlaybackContent(start: LyricsPlaybackStart, onBack: () -> Unit) {
+private fun LyricsPlaybackContent(
+    start: LyricsPlaybackStart,
+    onBack: () -> Unit,
+    onOpenOnlineLyricRematch: () -> Unit,
+) {
     val context = LocalContext.current
     val landscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
     val repo = remember { LyricRepository.getInstance() }
@@ -315,8 +327,10 @@ private fun LyricsPlaybackContent(start: LyricsPlaybackStart, onBack: () -> Unit
     var controlsTouched by remember { mutableStateOf(false) }
     var controlsInteraction by remember { mutableIntStateOf(0) }
     var languageMenuOpen by remember(landscape) { mutableStateOf(false) }
+    var sheet by remember { mutableStateOf<PlaybackSheet?>(null) }
+    val overlayOpen = sheet != null || languageMenuOpen
     val canHideControls = !landscape && autoHideControls && playing && lines.isNotEmpty() && following &&
-        !controlsTouched && !languageMenuOpen && pendingSeek == null
+        !controlsTouched && !overlayOpen && pendingSeek == null
     val showControls = controlsVisible || !canHideControls
     LaunchedEffect(canHideControls, controlsVisible, controlsInteraction) {
         if (!canHideControls) {
@@ -358,7 +372,7 @@ private fun LyricsPlaybackContent(start: LyricsPlaybackStart, onBack: () -> Unit
                         secondaryStyle = secondaryLyricStyle,
                         position = position,
                         following = following,
-                        autoFollow = autoFollow && playing && !languageMenuOpen && pendingSeek == null,
+                        autoFollow = autoFollow && playing && !overlayOpen && pendingSeek == null,
                         blurDepth = blurDepth,
                         landscape = landscape,
                         onFollowingChange = { following = it },
@@ -399,13 +413,15 @@ private fun LyricsPlaybackContent(start: LyricsPlaybackStart, onBack: () -> Unit
             compact = landscape,
         )
     }
-    val languageMenu: @Composable () -> Unit = {
-        PlaybackLanguageMenu(
+    val playbackActions: @Composable () -> Unit = {
+        PlaybackActions(
             showTranslation = showTranslation,
             showRomanization = showRomanization,
+            onOpenSettings = { sheet = PlaybackSheet.Settings },
+            onOpenVolume = { sheet = PlaybackSheet.Volume },
             onTranslationChange = { LyricsPlaybackPreference.Translation.set(prefs, it) },
             onRomanizationChange = { LyricsPlaybackPreference.Romanization.set(prefs, it) },
-            onExpandedChange = { languageMenuOpen = it },
+            onLanguageMenuExpandedChange = { languageMenuOpen = it },
             buttonSize = if (landscape) 44.dp else 56.dp,
         )
     }
@@ -423,6 +439,27 @@ private fun LyricsPlaybackContent(start: LyricsPlaybackStart, onBack: () -> Unit
         modifier = if (keepScreenOn && playing) Modifier.keepScreenOn() else Modifier,
         containerColor = MiuixTheme.colorScheme.surface.copy(alpha = 1f),
     ) { insets ->
+        val canRematch = hasTrack && !AppPreferences.isOfflineModeEnabled(prefs) &&
+            isOnlineLyricSource(parsed?.apiPath ?: lyric?.apiPath)
+        LyricsPlaybackSettingsSheet(
+            show = sheet == PlaybackSheet.Settings,
+            prefs = prefs,
+            onDismiss = { sheet = null },
+            onOpenOnlineLyricRematch = if (canRematch) {
+                {
+                    if (sheet == PlaybackSheet.Settings) {
+                        sheet = null
+                        onOpenOnlineLyricRematch()
+                    }
+                }
+            } else {
+                null
+            },
+        )
+        LyricsPlaybackVolumeSheet(
+            show = sheet == PlaybackSheet.Volume,
+            onDismiss = { sheet = null },
+        )
         val density = LocalDensity.current
         val layoutDirection = LocalLayoutDirection.current
         val statusBarInsets = WindowInsets.statusBars.union(WindowInsets.displayCutout).asPaddingValues()
@@ -446,7 +483,7 @@ private fun LyricsPlaybackContent(start: LyricsPlaybackStart, onBack: () -> Unit
                     cover = cover,
                     onBack = onBack,
                     hasSubLyrics = hasSubLyrics,
-                    languageMenu = languageMenu,
+                    playbackActions = playbackActions,
                     followButton = followButton.takeIf { showFollowButton },
                     controls = controls,
                     lyrics = { listModifier, padding, rowSpacing ->
@@ -556,7 +593,7 @@ private fun LyricsPlaybackContent(start: LyricsPlaybackStart, onBack: () -> Unit
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        languageMenu()
+                        playbackActions()
                         if (showFollowButton) followButton()
                     }
                     controls()
@@ -652,7 +689,7 @@ private fun LandscapeLyricsPlaybackLayout(
     cover: Bitmap?,
     onBack: () -> Unit,
     hasSubLyrics: Boolean,
-    languageMenu: @Composable () -> Unit,
+    playbackActions: @Composable () -> Unit,
     followButton: (@Composable () -> Unit)?,
     controls: @Composable () -> Unit,
     lyrics: @Composable (Modifier, PaddingValues, Dp) -> Unit,
@@ -663,7 +700,7 @@ private fun LandscapeLyricsPlaybackLayout(
     val cutout = WindowInsets.displayCutout.asPaddingValues()
     Row(modifier) {
         LandscapePlaybackPanel(
-            title, artist, cover, onBack, languageMenu, controls,
+            title, artist, cover, onBack, playbackActions, controls,
             cutoutStart = cutout.calculateStartPadding(direction),
             modifier = Modifier.weight(0.44f).fillMaxHeight().revealPlaybackChrome(expansionProgress),
         )
@@ -698,7 +735,7 @@ private fun LandscapePlaybackPanel(
     artist: String,
     cover: Bitmap?,
     onBack: () -> Unit,
-    languageMenu: @Composable () -> Unit,
+    playbackActions: @Composable () -> Unit,
     controls: @Composable () -> Unit,
     cutoutStart: Dp,
     modifier: Modifier = Modifier,
@@ -713,12 +750,12 @@ private fun LandscapePlaybackPanel(
                         MiuixBackIcon(contentDescription = stringResource(R.string.online_lyric_debug_back))
                     }
                 },
-                languageMenu,
+                playbackActions,
                 { LyricsPlaybackCover(cover, Modifier, cornerRadius = 16.dp) },
                 { LyricsPlaybackTrackInfo(title, artist, Modifier.fillMaxWidth(), textAlign = TextAlign.Center) },
                 controls,
             ),
-        ) { (back, language, artwork, metadata, transport), constraints ->
+        ) { (back, actions, artwork, metadata, transport), constraints ->
             val width = constraints.maxWidth
             val height = constraints.maxHeight
             val safeStart = cutoutStart.roundToPx().coerceIn(0, width)
@@ -727,8 +764,8 @@ private fun LandscapePlaybackPanel(
             val toolbarConstraints = constraints.copy(minWidth = 0, minHeight = 0)
             val backPlaceable = back.single().measure(toolbarConstraints.copy(maxWidth = width - backStart))
             val backEnd = backStart + backPlaceable.width
-            val languagePlaceable = language.single().measure(toolbarConstraints.copy(maxWidth = width - backEnd))
-            val toolbarHeight = maxOf(backPlaceable.height, languagePlaceable.height)
+            val actionsPlaceable = actions.single().measure(toolbarConstraints.copy(maxWidth = width - backEnd))
+            val toolbarHeight = maxOf(backPlaceable.height, actionsPlaceable.height)
             val groupHeightLimit = height - toolbarHeight
             val controls = transport.single()
             val controlsHeight = controls.maxIntrinsicHeight(width).coerceAtMost(groupHeightLimit)
@@ -756,9 +793,9 @@ private fun LandscapePlaybackPanel(
             val groupHeight = coverSize + 2 * gap + trackPlaceable.height + controlsPlaceable.height
             layout(width, height) {
                 backPlaceable.placeRelative(backStart, (toolbarHeight - backPlaceable.height) / 2)
-                languagePlaceable.placeRelative(
-                    (controlsStart + controlsWidth - languagePlaceable.width).coerceAtLeast(backEnd),
-                    (toolbarHeight - languagePlaceable.height) / 2,
+                actionsPlaceable.placeRelative(
+                    (controlsStart + controlsWidth - actionsPlaceable.width).coerceAtLeast(backEnd),
+                    (toolbarHeight - actionsPlaceable.height) / 2,
                 )
                 val groupTop = toolbarHeight + (groupHeightLimit - groupHeight) / 2
                 coverPlaceable.placeRelative(coverStart, groupTop)
@@ -1363,6 +1400,44 @@ private fun LyricsPlaybackProgress(
 }
 
 @Composable
+private fun PlaybackActions(
+    showTranslation: Boolean,
+    showRomanization: Boolean,
+    onOpenSettings: () -> Unit,
+    onOpenVolume: () -> Unit,
+    onTranslationChange: (Boolean) -> Unit,
+    onRomanizationChange: (Boolean) -> Unit,
+    onLanguageMenuExpandedChange: (Boolean) -> Unit,
+    buttonSize: Dp,
+) {
+    Row(Modifier.width(buttonSize * 3)) {
+        IconButton(onClick = onOpenVolume, modifier = Modifier.weight(1f), minHeight = buttonSize) {
+            Icon(
+                MiuixIcons.VolumeUp,
+                contentDescription = stringResource(R.string.lyrics_playback_volume),
+                modifier = Modifier.size(30.dp),
+            )
+        }
+        IconButton(onClick = onOpenSettings, modifier = Modifier.weight(1f), minHeight = buttonSize) {
+            Icon(
+                MiuixIcons.MoreCircle,
+                contentDescription = stringResource(R.string.settings_fullscreen_playback),
+                modifier = Modifier.size(30.dp),
+            )
+        }
+        PlaybackLanguageMenu(
+            showTranslation = showTranslation,
+            showRomanization = showRomanization,
+            onTranslationChange = onTranslationChange,
+            onRomanizationChange = onRomanizationChange,
+            onExpandedChange = onLanguageMenuExpandedChange,
+            buttonSize = buttonSize,
+            modifier = Modifier.weight(1f),
+        )
+    }
+}
+
+@Composable
 private fun PlaybackLanguageMenu(
     showTranslation: Boolean,
     showRomanization: Boolean,
@@ -1370,9 +1445,10 @@ private fun PlaybackLanguageMenu(
     onRomanizationChange: (Boolean) -> Unit,
     onExpandedChange: (Boolean) -> Unit,
     buttonSize: Dp,
+    modifier: Modifier = Modifier,
 ) {
     var expanded by remember { mutableStateOf(false) }
-    Box {
+    Box(modifier) {
         IconButton(
             onClick = {
                 expanded = !expanded

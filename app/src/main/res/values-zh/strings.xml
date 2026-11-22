@@ -47,6 +47,7 @@
     <string name="settings_fullscreen_playback_auto_follow">自动回到当前句</string>
     <string name="settings_fullscreen_playback_auto_follow_summary">播放中停止滚动歌词 5 秒后，自动恢复跟随。</string>
     <string name="lyrics_playback_show_controls">显示播放控件</string>
+    <string name="lyrics_playback_volume">媒体音量</string>
     <string name="main_instrumental_marked">已标记为纯音乐</string>
     <string name="online_lyric_rematch_entry">重新匹配在线歌词</string>
     <string name="online_lyric_rematch_entry_short">重新匹配</string>
