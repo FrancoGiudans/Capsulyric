@@ -519,7 +519,7 @@ private fun LyricsPlaybackContent(
                 LyricsPlaybackBackground(coverAppearance, playing)
                 val topFade = (headerHeight - 16.dp).coerceAtLeast(headerInset)
                 val fading = lyricModifier.fadeLyricsAroundBars(topFade, bottomFade, fadeDistance)
-                val lyricLayer = if (lines.isNotEmpty() && useBlur && !following && isRuntimeShaderSupported()) {
+                val lyricLayer = if (lines.isNotEmpty() && useBlur && isRuntimeShaderSupported()) {
                     fading.blurLyricsAroundBars(
                         top = topFade,
                         bottomFade = bottomFade,
