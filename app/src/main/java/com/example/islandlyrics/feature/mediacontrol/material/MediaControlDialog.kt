@@ -24,6 +24,7 @@ package com.example.islandlyrics.feature.mediacontrol.material
 
 import android.content.Context
 import com.example.islandlyrics.R
+import com.example.islandlyrics.runtime.media.openMediaApp
 import com.example.islandlyrics.ui.overlay.floating.rememberFloatingLyricsRestoreAction
 import com.example.islandlyrics.core.network.OfflineModeManager
 import com.example.islandlyrics.core.settings.AppPreferences
@@ -556,26 +557,7 @@ private fun MediaSessionCard(
     ) {
         Box(modifier = Modifier.fillMaxWidth().background(cardBackgroundColor)) {
             Column(modifier = Modifier.padding(20.dp)) {
-                val openApp = {
-                    try {
-                        val launchIntent = context.packageManager.getLaunchIntentForPackage(pkg)
-                        if (launchIntent != null) {
-                            context.startActivity(launchIntent)
-                        } else {
-                            Toast.makeText(
-                                context,
-                                context.getString(R.string.media_control_cannot_open, pkg),
-                                Toast.LENGTH_SHORT
-                            ).show()
-                        }
-                    } catch (e: Exception) {
-                        Toast.makeText(
-                            context,
-                            context.getString(R.string.media_control_error_prefix, e.message),
-                            Toast.LENGTH_SHORT
-                        ).show()
-                    }
-                }
+                val openApp = { openMediaApp(context, controller, appName) }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(
                         modifier = Modifier

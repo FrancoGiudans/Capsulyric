@@ -114,6 +114,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.example.islandlyrics.R
+import com.example.islandlyrics.runtime.media.openMediaApp
 import com.example.islandlyrics.lyrics.cache.OnlineLyricCacheStore
 import com.example.islandlyrics.lyrics.state.LyricRepository
 import com.example.islandlyrics.rules.ParserRuleHelper
@@ -565,8 +566,6 @@ private fun MediaSessionCard(
         ) {
         Column(modifier = Modifier.padding(20.dp)) {
             val context = LocalContext.current
-            val cannotOpenText = stringResource(R.string.media_control_cannot_open, controller.packageName)
-            val mediaControlErrorPrefix = stringResource(R.string.media_control_error_prefix, "")
             val appName = remember(controller.packageName) {
                 ParserRuleHelper.getAppNameForPackage(context, controller.packageName)
             }
@@ -585,26 +584,7 @@ private fun MediaSessionCard(
                     null
                 }
             }
-            val openApp = {
-                try {
-                    val launchIntent = context.packageManager.getLaunchIntentForPackage(controller.packageName)
-                    if (launchIntent != null) {
-                        context.startActivity(launchIntent)
-                    } else {
-                        Toast.makeText(
-                            context,
-                            cannotOpenText,
-                            Toast.LENGTH_SHORT
-                        ).show()
-                    }
-                } catch (e: Exception) {
-                    Toast.makeText(
-                        context,
-                        mediaControlErrorPrefix + e.message.orEmpty(),
-                        Toast.LENGTH_SHORT
-                    ).show()
-                }
-            }
+            val openApp = { openMediaApp(context, controller, appName) }
 
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(

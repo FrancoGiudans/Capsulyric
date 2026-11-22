@@ -24,6 +24,7 @@ package com.example.islandlyrics.feature.mediacontrol.miuix
 
 import android.content.Context
 import com.example.islandlyrics.R
+import com.example.islandlyrics.runtime.media.openMediaApp
 import com.example.islandlyrics.ui.overlay.floating.rememberFloatingLyricsRestoreAction
 import com.example.islandlyrics.core.network.OfflineModeManager
 import com.example.islandlyrics.core.settings.AppPreferences
@@ -568,69 +569,7 @@ private fun MiuixMediaSessionLayout(
         label = "accent"
     )
 
-    val openApp = {
-        val displayName = appName.ifBlank { pkg }
-        val launchIntent = context.packageManager
-            .getLaunchIntentForPackage(pkg)
-            ?.apply {
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
-            }
-        val sessionActivity = controller.sessionActivity
-
-        when {
-            sessionActivity != null -> {
-                val sessionLaunchResult = runCatching { sessionActivity.send() }
-                if (sessionLaunchResult.isFailure) {
-                    if (launchIntent != null) {
-                        val fallbackResult = runCatching { context.startActivity(launchIntent) }
-                        if (fallbackResult.isSuccess) {
-                            Toast.makeText(
-                                context,
-                                context.getString(R.string.media_control_cannot_open_session_failed_fallback, displayName),
-                                Toast.LENGTH_SHORT
-                            ).show()
-                        } else {
-                            val reason = fallbackResult.exceptionOrNull()?.localizedMessage
-                                ?: sessionLaunchResult.exceptionOrNull()?.localizedMessage
-                                ?: "unknown"
-                            Toast.makeText(
-                                context,
-                                context.getString(R.string.media_control_cannot_open_launch_failed, displayName, reason),
-                                Toast.LENGTH_SHORT
-                            ).show()
-                        }
-                    } else {
-                        val reason = sessionLaunchResult.exceptionOrNull()?.localizedMessage ?: "unknown"
-                        Toast.makeText(
-                            context,
-                            context.getString(R.string.media_control_cannot_open_launch_failed, displayName, reason),
-                            Toast.LENGTH_SHORT
-                        ).show()
-                    }
-                }
-            }
-            launchIntent != null -> {
-                val launchResult = runCatching { context.startActivity(launchIntent) }
-                if (launchResult.isFailure) {
-                    val reason = launchResult.exceptionOrNull()?.localizedMessage ?: "unknown"
-                    Toast.makeText(
-                        context,
-                        context.getString(R.string.media_control_cannot_open_launch_failed, displayName, reason),
-                        Toast.LENGTH_SHORT
-                    ).show()
-                }
-            }
-            else -> {
-                Toast.makeText(
-                    context,
-                    context.getString(R.string.media_control_cannot_open_no_entry, displayName),
-                    Toast.LENGTH_SHORT
-                ).show()
-            }
-        }
-        onOpenApp?.invoke()
-        Unit
-    }
+    val openApp = { openMediaApp(context, controller, appName, onOpened = onOpenApp) }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
