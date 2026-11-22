@@ -31,10 +31,10 @@ import com.example.islandlyrics.core.network.OfflineModeManager
 import com.example.islandlyrics.runtime.service.MediaMonitorService
 import com.example.islandlyrics.rules.ParserRuleHelper
 import com.example.islandlyrics.lyrics.cache.OnlineLyricCacheStore
+import com.example.islandlyrics.lyrics.online.OnlineLyricFetcher.LyricLine
 import com.example.islandlyrics.lyrics.state.LyricRepository
 import android.media.MediaMetadata
 import android.media.session.MediaController
-import android.media.session.MediaSessionManager
 import android.media.session.PlaybackState
 import android.os.SystemClock
 import android.provider.Settings
@@ -73,13 +73,14 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.Lifecycle
 import kotlinx.coroutines.launch
 import android.content.ClipData
 import android.content.ClipboardManager
-import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
@@ -96,11 +97,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import top.yukonga.miuix.kmp.basic.*
 import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.extended.ExpandMore
 import top.yukonga.miuix.kmp.icon.extended.Refresh
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.MiuixPopupUtils.Companion.MiuixPopupHost
 import com.example.islandlyrics.core.settings.AppPreferences
 import com.example.islandlyrics.feature.main.HomeLyricPreviewDisplay
+import com.example.islandlyrics.feature.main.rememberHighlightedLyricPreview
+import com.example.islandlyrics.feature.main.rememberHomeMediaCards
 import com.example.islandlyrics.core.update.UpdateChecker
 import com.example.islandlyrics.feature.update.miuix.MiuixUpdateDialog
 import kotlinx.coroutines.delay
@@ -117,7 +121,7 @@ private const val SeekFallbackTimeoutMs = 4000L
 
 @Composable
 @Suppress("UNUSED_PARAMETER")
-fun MiuixMainScreen(
+internal fun MiuixMainScreen(
     versionText: String,
     isDebugBuild: Boolean,
     onOpenSettings: () -> Unit,
@@ -131,7 +135,8 @@ fun MiuixMainScreen(
     onBottomBarVisibilityChange: (Boolean) -> Unit = {},
     updateReleaseInfo: UpdateChecker.ReleaseInfo? = null,
     onUpdateDismiss: () -> Unit = {},
-    onUpdateIgnore: (String) -> Unit = {}
+    onUpdateIgnore: (String) -> Unit = {},
+    onOpenLyricsPlayback: ((LayoutCoordinates?, LyricsPlaybackStart) -> Unit)? = null,
 ) {
     val repo = remember { LyricRepository.getInstance() }
     val context = LocalContext.current
@@ -153,6 +158,7 @@ fun MiuixMainScreen(
     val repoParsedLyrics by repo.liveParsedLyrics.observeAsState()
     val repoCurrentLine by repo.liveCurrentLine.observeAsState()
     val repoLyricResolveState by repo.liveLyricResolveState.observeAsState(LyricRepository.LyricResolveState.PENDING)
+    val previewWordLine = HomeLyricPreviewDisplay.wordLine(repoCurrentLine, repoParsedLyrics, repoLyric)
     val repoNextLine = remember(repoParsedLyrics, repoCurrentLine) {
         val lines = repoParsedLyrics?.lines
         if (lines.isNullOrEmpty() || repoCurrentLine == null) {
@@ -164,8 +170,6 @@ fun MiuixMainScreen(
             if (index >= 0 && index + 1 < lines.size) lines[index + 1] else null
         }
     }
-
-    var activeControllers by remember { mutableStateOf<List<MediaController>>(emptyList()) }
 
     DisposableEffect(prefs) {
         val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
@@ -239,29 +243,12 @@ fun MiuixMainScreen(
         }
     }
 
-    DisposableEffect(Unit) {
-        val mediaSessionManager = context.getSystemService(Context.MEDIA_SESSION_SERVICE) as MediaSessionManager
-        val componentName = ComponentName(context, MediaMonitorService::class.java)
-        val listener = MediaSessionManager.OnActiveSessionsChangedListener { controllers ->
-            activeControllers = controllers ?: emptyList()
-        }
-        try {
-            activeControllers = mediaSessionManager.getActiveSessions(componentName)
-            mediaSessionManager.addOnActiveSessionsChangedListener(listener, componentName)
-        } catch (_: Exception) {}
-        onDispose {
-            try { mediaSessionManager.removeOnActiveSessionsChangedListener(listener) } catch (_: Exception) {}
-        }
-    }
-
-    val whitelistedSessions = remember(activeControllers) {
-        val enabledPackages = ParserRuleHelper.getEnabledPackages(context)
-        activeControllers
-            .filter { enabledPackages.contains(it.packageName) }
-            .sortedByDescending {
-                val state = it.playbackState?.state
-                state == PlaybackState.STATE_PLAYING || state == PlaybackState.STATE_BUFFERING
-            }
+    val mediaCards = rememberHomeMediaCards(repoMetadata)
+    val whitelistedSessions = mediaCards.controllers
+    val playbackStart = remember(repoMetadata, repoParsedLyrics) {
+        val track = repoMetadata
+        val lines = repoParsedLyrics.playbackLines()
+        if (track != null && lines.isNotEmpty()) LyricsPlaybackStart(track, lines) else null
     }
 
     var listenerEnabled by remember {
@@ -446,18 +433,19 @@ fun MiuixMainScreen(
 
                         HorizontalPager(
                             state = pagerState,
+                            key = { whitelistedSessions[it].sessionToken },
                             pageSpacing = 16.dp,
                             contentPadding = PaddingValues(horizontal = 12.dp)
                         ) { page ->
                             val controller = whitelistedSessions[page]
-                            val isPrimary = controller.packageName == repoMetadata?.packageName
+                            val isPrimary = controller.sessionToken == mediaCards.primaryToken
                             MiuixMediaSessionCard(
                                 controller = controller,
                                 isPrimary = isPrimary,
                                 dynamicThemeEnabled = dynamicThemeEnabled,
                                 primaryMetadata = if (isPrimary) repoMetadata else null,
                                 primaryLyric = if (isPrimary) {
-                                    HomeLyricPreviewDisplay.previewText(
+                                    HomeLyricPreviewDisplay.preview(
                                         modes = homeLyricPreviewDisplayModes,
                                         currentLine = repoCurrentLine,
                                         lyricInfo = repoLyric,
@@ -466,6 +454,7 @@ fun MiuixMainScreen(
                                 } else {
                                     null
                                 },
+                                primaryWordLine = previewWordLine.takeIf { isPrimary },
                                 primaryLyricSource = if (isPrimary) {
                                     val activeParsed = repoParsedLyrics?.takeIf { it.lines.isNotEmpty() }
                                     formatPrimaryLyricSource(
@@ -487,7 +476,12 @@ fun MiuixMainScreen(
                                         isOnlineLyricSource(repoLyric?.apiPath) ||
                                         isOnlineLyricSource(repoParsedLyrics?.apiPath) ||
                                         (repoLyric?.lyric.isNullOrBlank() && repoParsedLyrics?.lines.isNullOrEmpty())),
-                                onOpenOnlineLyricRematch = onOpenOnlineLyricRematch
+                                onOpenOnlineLyricRematch = onOpenOnlineLyricRematch,
+                                onOpenLyricsPlayback = if (isPrimary && onOpenLyricsPlayback != null && playbackStart != null) {
+                                    { anchor -> onOpenLyricsPlayback(anchor, playbackStart) }
+                                } else {
+                                    null
+                                },
                             )
                         }
 
@@ -805,7 +799,8 @@ private fun MiuixMediaSessionCard(
     isPrimary: Boolean,
     dynamicThemeEnabled: Boolean,
     primaryMetadata: LyricRepository.MediaInfo?,
-    primaryLyric: String?,
+    primaryLyric: HomeLyricPreviewDisplay.Preview?,
+    primaryWordLine: LyricLine?,
     primaryLyricSource: String?,
     primaryIsInstrumental: Boolean,
     primaryHasTimeline: Boolean,
@@ -813,7 +808,8 @@ private fun MiuixMediaSessionCard(
     primaryAlbumArt: Bitmap?,
     primaryProgress: LyricRepository.PlaybackProgress?,
     showOnlineLyricRematch: Boolean,
-    onOpenOnlineLyricRematch: () -> Unit
+    onOpenOnlineLyricRematch: () -> Unit,
+    onOpenLyricsPlayback: ((LayoutCoordinates?) -> Unit)?,
 ) {
     var localMetadata by remember(controller) { mutableStateOf(controller.metadata) }
     var localPlaybackState by remember(controller) { mutableStateOf(controller.playbackState) }
@@ -850,6 +846,7 @@ private fun MiuixMediaSessionCard(
     var pendingSeekPosition by remember(sessionStateKey) { mutableLongStateOf(-1L) }
     var pendingSeekStartedAt by remember(sessionStateKey) { mutableLongStateOf(0L) }
     var seekOriginPosition by remember(sessionStateKey) { mutableLongStateOf(-1L) }
+    var lyricCoordinates by remember(controller) { mutableStateOf<LayoutCoordinates?>(null) }
 
     val context = LocalContext.current
     val appName = remember(controller.packageName) {
@@ -965,7 +962,10 @@ private fun MiuixMediaSessionCard(
                     modifier = Modifier
                         .size(80.dp)
                         .clip(RoundedCornerShape(16.dp))
-                        .clickable(onClick = openApp)
+                        .clickable(
+                            onClickLabel = stringResource(R.string.lyrics_playback_open_player),
+                            onClick = openApp,
+                        )
                 ) {
                     if (albumArt != null) {
                         Image(
@@ -1042,10 +1042,12 @@ private fun MiuixMediaSessionCard(
 
             // Lyric — palette accent text
             Column(
-                modifier = Modifier.height(90.dp).clickable(enabled = lyric != null) {
+                modifier = Modifier.fillMaxWidth().height(90.dp).onGloballyPositioned {
+                    lyricCoordinates = it
+                }.clickable(enabled = lyric != null) {
                     lyric?.let {
                         val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                        cm.setPrimaryClip(ClipData.newPlainText("Lyric", it))
+                        cm.setPrimaryClip(ClipData.newPlainText("Lyric", it.text))
                         Toast.makeText(context, copiedText, Toast.LENGTH_SHORT).show()
                     }
                 }
@@ -1058,10 +1060,13 @@ private fun MiuixMediaSessionCard(
                             color = MiuixTheme.colorScheme.onSurfaceVariantSummary.copy(alpha = 0.5f))
                     }
                     Spacer(modifier = Modifier.height(8.dp))
-                    Text(text = lyric, fontSize = 18.sp, fontWeight = FontWeight.Normal,
-                        minLines = 2, maxLines = 2, overflow = TextOverflow.Ellipsis,
-                        color = animatedAccent,  // palette accent
-                        lineHeight = 24.sp)
+                    MiuixHomeLyricText(
+                        preview = lyric,
+                        wordLine = primaryWordLine,
+                        color = animatedAccent,
+                        playbackState = localPlaybackState,
+                        fallbackPositionMs = primaryProgress?.position,
+                    )
                 } else if (isPrimary) {
                     Text(text = "Lyric:", fontSize = 14.sp, color = MiuixTheme.colorScheme.onSurfaceVariantSummary)
                     Spacer(modifier = Modifier.height(8.dp))
@@ -1197,9 +1202,40 @@ private fun MiuixMediaSessionCard(
                         tint = MiuixTheme.colorScheme.onSurface, modifier = Modifier.size(32.dp)
                     )
                 }
+                if (onOpenLyricsPlayback != null) {
+                    IconButton(onClick = { onOpenLyricsPlayback(lyricCoordinates) }) {
+                        Icon(
+                            imageVector = MiuixIcons.ExpandMore,
+                            contentDescription = stringResource(R.string.lyrics_playback_open),
+                            tint = MiuixTheme.colorScheme.onSurface,
+                            // Match the 16 dp path inside the 32 dp skip icon.
+                            modifier = Modifier.size(19.2.dp),
+                        )
+                    }
+                }
             }
         }
     }
+}
+
+@Composable
+private fun MiuixHomeLyricText(
+    preview: HomeLyricPreviewDisplay.Preview,
+    wordLine: LyricLine?,
+    color: Color,
+    playbackState: PlaybackState?,
+    fallbackPositionMs: Long?,
+) {
+    Text(
+        text = rememberHighlightedLyricPreview(preview, wordLine, color, playbackState, fallbackPositionMs),
+        fontSize = 18.sp,
+        fontWeight = FontWeight.Normal,
+        minLines = 2,
+        maxLines = 2,
+        overflow = TextOverflow.Ellipsis,
+        color = color,
+        lineHeight = 24.sp,
+    )
 }
 
 private fun formatPrimaryLyricSource(
@@ -1222,11 +1258,11 @@ private fun formatPrimaryLyricSource(
     }
 }
 
-private fun isOnlineLyricSource(apiPath: String?): Boolean {
+internal fun isOnlineLyricSource(apiPath: String?): Boolean {
     return apiPath == "Online API" || apiPath == "Online Cache"
 }
 
-private fun formatPlaybackTime(ms: Long): String {
+internal fun formatPlaybackTime(ms: Long): String {
     val totalSeconds = (ms / 1000L).coerceAtLeast(0L)
     val minutes = totalSeconds / 60
     val seconds = totalSeconds % 60

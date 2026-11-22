@@ -23,6 +23,7 @@
 package com.example.islandlyrics.ui.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -35,11 +36,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import top.yukonga.miuix.kmp.nav.core.NavDisplay
+import top.yukonga.miuix.kmp.nav.core.LocalNavTransitionScope
 import top.yukonga.miuix.kmp.nav.core.NavDisplayEffects
 import top.yukonga.miuix.kmp.nav.core.NavKey
 import top.yukonga.miuix.kmp.nav.core.navBackStackOf
 import top.yukonga.miuix.kmp.nav.core.rememberNavSystemCornerRadius
 import top.yukonga.miuix.kmp.nav.transition.NavTransitions
+import top.yukonga.miuix.kmp.nav.transition.navGraphicsTransition
 import java.util.concurrent.atomic.AtomicLong
 
 private data class MiuixPageRoute(
@@ -49,6 +52,16 @@ private data class MiuixPageRoute(
     val isRoot: Boolean = false,
 ) : NavKey
 
+private data class MiuixExpandedPageRoute(
+    val route: MiuixPageRoute,
+    val expansion: PageExpansion,
+) : NavKey
+
+private val expandedPageTransition = navGraphicsTransition(opaqueDepth = 2f, scrim = { 0f }) {}
+
+private fun NavKey.pageRoute(): MiuixPageRoute =
+    if (this is MiuixExpandedPageRoute) route else this as MiuixPageRoute
+
 @Composable
 internal fun <T> MiuixNavPageStackHost(
     stack: List<T>,
@@ -56,20 +69,19 @@ internal fun <T> MiuixNavPageStackHost(
     backdropColor: Color,
     modifier: Modifier = Modifier,
     key: (T) -> Any,
+    pageExpansion: (T) -> PageExpansion?,
     backgroundContent: @Composable BoxScope.() -> Unit,
     pageContent: @Composable BoxScope.(T) -> Unit,
 ) {
     val idGenerator = remember { AtomicLong() }
+    fun createRoute(entryId: Long, page: T): NavKey {
+        val route = MiuixPageRoute(entryId, key(page), page)
+        return pageExpansion(page)?.let { MiuixExpandedPageRoute(route, it) } ?: route
+    }
     val backStack = remember {
         navBackStackOf(MiuixPageRoute(entryId = 0L, isRoot = true)).apply {
             stack.forEach { page ->
-                add(
-                    MiuixPageRoute(
-                        entryId = idGenerator.incrementAndGet(),
-                        pageKey = key(page),
-                        page = page,
-                    )
-                )
+                add(createRoute(idGenerator.incrementAndGet(), page))
             }
         }
     }
@@ -81,11 +93,11 @@ internal fun <T> MiuixNavPageStackHost(
         val commonPageCount = minOf(backStack.size - 1, stack.size)
         while (matchingPrefixSize <= commonPageCount) {
             val stackIndex = matchingPrefixSize - 1
-            val route = backStack[matchingPrefixSize] as MiuixPageRoute
+            val route = backStack[matchingPrefixSize].pageRoute()
             if (route.isRoot || route.pageKey != targetKeys[stackIndex]) break
             val page = stack[stackIndex]
             if (route.page !== page) {
-                backStack[matchingPrefixSize] = route.copy(page = page)
+                backStack[matchingPrefixSize] = createRoute(route.entryId, page)
             }
             matchingPrefixSize++
         }
@@ -96,13 +108,7 @@ internal fun <T> MiuixNavPageStackHost(
         while (matchingPrefixSize - 1 < stack.size) {
             val stackIndex = matchingPrefixSize - 1
             val page = stack[stackIndex]
-            backStack.add(
-                MiuixPageRoute(
-                    entryId = idGenerator.incrementAndGet(),
-                    pageKey = targetKeys[stackIndex],
-                    page = page,
-                )
-            )
+            backStack.add(createRoute(idGenerator.incrementAndGet(), page))
             matchingPrefixSize++
         }
     }
@@ -127,6 +133,19 @@ internal fun <T> MiuixNavPageStackHost(
                 } else {
                     @Suppress("UNCHECKED_CAST")
                     pageContent(route.page as T)
+                }
+            }
+        }
+        entry<MiuixExpandedPageRoute>(
+            contentKey = { it.route.entryId },
+            transition = expandedPageTransition,
+        ) { entry ->
+            val scope = LocalNavTransitionScope.current
+            val progress = remember(scope) { { (1f + scope.relativeDepth).coerceIn(0f, 1f) } }
+            Box(Modifier.fillMaxSize().expandFrom(entry.expansion, progress)) {
+                CompositionLocalProvider(LocalPageExpansionProgress provides progress) {
+                    @Suppress("UNCHECKED_CAST")
+                    pageContent(entry.route.page as T)
                 }
             }
         }

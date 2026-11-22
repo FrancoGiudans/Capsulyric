@@ -74,6 +74,8 @@ internal object MiuixBlurStyleDefaults {
     const val BottomSheetBlurRadius = 72f
     const val BottomSheetNoiseCoefficient = 0.0045f
     const val BottomSheetBorderAlpha = 0.06f
+    const val BottomSheetLightEdgeAlpha = 0.45f
+    const val BottomSheetDarkEdgeAlpha = 0.18f
 
     const val SnackbarBlurRadius = 72f
     const val SnackbarNoiseCoefficient = 0.0045f
@@ -163,6 +165,7 @@ internal fun Modifier.miuixSurfaceBlur(
         surfaceColor = fallbackColor,
         surfaceVariantColor = surfaceVariantColor
     ),
+    showEdgeHighlight: Boolean = true,
 ): Modifier {
     return if (enabled && backdrop != null && isRenderEffectSupported()) {
         textureBlur(
@@ -171,7 +174,7 @@ internal fun Modifier.miuixSurfaceBlur(
             blurRadius = blurRadius,
             noiseCoefficient = noiseCoefficient,
             colors = colors,
-            highlight = miuixBlurHighlight(fallbackColor)
+            highlight = if (showEdgeHighlight) miuixBlurHighlight(fallbackColor) else null
         )
     } else {
         background(fallbackColor, shape)

@@ -15,6 +15,7 @@ import com.example.islandlyrics.feature.oobe.OobeActivity
 import com.example.islandlyrics.feature.main.MainActivity
 import com.example.islandlyrics.feature.logviewer.LogViewerActivity
 import com.example.islandlyrics.feature.customsettings.CustomSettingsActivity
+import com.example.islandlyrics.feature.debug.BackgroundBlurDebugActivity
 import com.example.islandlyrics.core.settings.LabFeatureManager
 import android.content.Context
 import android.content.Intent
@@ -26,6 +27,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.lifecycleScope
@@ -129,6 +131,11 @@ fun MiuixDebugCenterScreen(
                         onClick = {
                             context.startActivity(Intent(context, com.example.islandlyrics.feature.superlyricdebug.SuperLyricDebugActivity::class.java))
                         }
+                    )
+                    SuperArrow(
+                        title = stringResource(R.string.debug_background_blur_title),
+                        summary = stringResource(R.string.debug_background_blur_summary),
+                        onClick = { context.startActivity(Intent(context, BackgroundBlurDebugActivity::class.java)) },
                     )
                     SuperArrow(
                         title = "Custom Settings Page",

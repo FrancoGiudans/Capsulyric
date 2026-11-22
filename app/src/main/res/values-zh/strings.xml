@@ -29,6 +29,25 @@
     <string name="main_album_art_cd">专辑封面</string>
     <string name="main_lyric_source_fmt">歌词源: %1$s</string>
     <string name="main_current_lyric_title">当前歌词</string>
+    <string name="lyrics_playback_open">打开完整歌词</string>
+    <string name="lyrics_playback_open_player">打开音乐应用</string>
+    <string name="lyrics_playback_follow">回到当前句</string>
+    <string name="lyrics_playback_interlude">间奏</string>
+    <string name="lyrics_playback_pause">暂停</string>
+    <string name="lyrics_playback_next">下一首</string>
+    <string name="lyrics_playback_romanization">拼音歌词</string>
+    <string name="settings_fullscreen_playback">全屏播放页</string>
+    <string name="settings_fullscreen_playback_album_progress">进度条颜色跟随专辑</string>
+    <string name="settings_fullscreen_playback_lyric_blur">歌词区域边缘模糊</string>
+    <string name="settings_fullscreen_playback_album_text">歌词文本颜色跟随专辑</string>
+    <string name="settings_fullscreen_playback_keep_screen_on">全屏播放时保持亮屏</string>
+    <string name="settings_fullscreen_playback_hide_system_bars">隐藏状态栏和导航栏</string>
+    <string name="settings_fullscreen_playback_auto_hide_controls">自动隐藏底部控件</string>
+    <string name="settings_fullscreen_playback_auto_hide_controls_summary">轻点歌词区底部可重新显示控件。</string>
+    <string name="settings_fullscreen_playback_auto_follow">自动回到当前句</string>
+    <string name="settings_fullscreen_playback_auto_follow_summary">播放中停止滚动歌词 5 秒后，自动恢复跟随。</string>
+    <string name="lyrics_playback_show_controls">显示播放控件</string>
+    <string name="lyrics_playback_volume">媒体音量</string>
     <string name="main_instrumental_marked">已标记为纯音乐</string>
     <string name="online_lyric_rematch_entry">重新匹配在线歌词</string>
     <string name="online_lyric_rematch_entry_short">重新匹配</string>
@@ -308,7 +327,7 @@
     <string name="parser_online_translation_desc">目前只有 QQ 音乐和网易云在线歌词提供翻译数据。</string>
     <string name="parser_online_romanization_desc">目前只有 QQ 音乐和网易云在线歌词提供拼音歌词数据。</string>
     <string name="parser_superlyric_translation_desc">接收 SuperLyric 提供的翻译。</string>
-    <string name="parser_superlyric_romanization_desc">接收 SuperLyric 提供的拼音、罗马音或副歌词。</string>
+    <string name="parser_superlyric_romanization_desc">接收 SuperLyric 提供的拼音、拼音歌词或副歌词。</string>
     <string name="parser_lyricon_translation_desc">在当前 Lyricon 提供方上报翻译字段时接收。</string>
     <string name="parser_lyricon_romanization_desc">在当前 Lyricon 提供方上报拼音歌词或 secondary 字段时接收。</string>
     <string name="parser_save">保存</string>
@@ -679,7 +698,7 @@
     <string name="faq_q_hide_launcher_entry">Q：隐藏桌面图标后如何重新打开 Capsulyric？</string>
     <string name="faq_a_hide_launcher_entry">A：隐藏桌面图标后，你可以通过以下方式打开 Capsulyric：\n\n<b>1. 控制中心磁贴</b>\n下拉通知栏，点击 Capsulyric 磁贴即可直接打开应用。\n\n<b>2. URL Scheme</b>\n在任意浏览器地址栏输入 <b>capsulyric://settings</b> 并访问，即可唤醒应用。\n\n<b>3. 管理空间</b>\n前往<b>系统设置 → 应用管理 → Capsulyric → 管理空间</b>进入<b>缓存管理</b>页面。点击页面左上角返回按钮可进入 Capsulyric 的<b>应用设置</b>；使用系统返回键则会回到系统设置。部分设备（如 HyperOS）上，管理空间按钮需要点击“清除数据”后才能看到。</string>
     <string name="faq_q_no_pinyin_translation">Q：为什么我接收不到拼音歌词/歌词翻译？</string>
-    <string name="faq_a_no_pinyin_translation">A：歌词翻译与拼音／罗马音可通过<b>在线歌词</b>、<b>SuperLyric API</b>和<b>词幕（Lyricon）API</b>获取。\n\n1. 打开<b>解析规则</b>，选择对应音乐应用。\n\n2. 启用实际使用的歌词源，点击其右侧箭头进入配置页。\n\n3. 为该歌词源开启<b>接收翻译</b>和／或<b>接收拼音歌词</b>。\n\n4. 歌词源需要实际提供这些字段，开启开关不会自动生成缺失内容。SuperLyric 旧版接口同样可以携带翻译、罗马音和逐行／逐字时间数据，时间轴能力按收到的数据启用。</string>
+    <string name="faq_a_no_pinyin_translation">A：歌词翻译与拼音／拼音歌词可通过<b>在线歌词</b>、<b>SuperLyric API</b>和<b>词幕（Lyricon）API</b>获取。\n\n1. 打开<b>解析规则</b>，选择对应音乐应用。\n\n2. 启用实际使用的歌词源，点击其右侧箭头进入配置页。\n\n3. 为该歌词源开启<b>接收翻译</b>和／或<b>接收拼音歌词</b>。\n\n4. 歌词源需要实际提供这些字段，开启开关不会自动生成缺失内容。SuperLyric 旧版接口同样可以携带翻译、拼音歌词和逐行／逐字时间数据，时间轴能力按收到的数据启用。</string>
 
     <!-- 通知设置 -->
     <string name="action_miplay">小米妙播</string>
@@ -951,6 +970,7 @@
     <string name="diag_lab_super_island_text_limits_desc">开启后，“胶囊与通知”页会显示左右两侧字数上限调节。</string>
     <string name="diag_lab_super_island_relaxed_text_limits_title">超级岛字数上限放宽</string>
     <string name="diag_lab_super_island_relaxed_text_limits_desc">开启后，超级岛字数上限调节可使用更大的范围。适合无中置遮挡设备自行测试。</string>
+    <string name="diag_lab_super_island_smart_settings_title">调整智能取色算法</string>
     <string name="diag_lab_super_island_smart_contrast_title">智能取色目标对比度</string>
     <string name="diag_lab_super_island_smart_contrast_desc">调高会让深色封面提亮得更明显，4.5 是普通文本的推荐值。</string>
     <string name="diag_lab_super_island_smart_white_title">智能取色最低混白比例</string>

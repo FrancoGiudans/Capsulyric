@@ -446,6 +446,7 @@ class FloatingLyricsRenderer(
         window.setType(WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY)
         window.setGravity(Gravity.TOP or Gravity.CENTER_HORIZONTAL)
         window.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+        window.setElevation(0f)
         window.clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
         window.addFlags(params.flags)
         window.attributes = params
@@ -585,6 +586,7 @@ class FloatingLyricsRenderer(
             buildExpandedView(interactive = false).apply {
                 visibility = View.VISIBLE
                 background = buildPanelBackground()
+                clipToExpandedPanelOutline()
             }
         } else {
             buildMinimalView(interactive = false)
@@ -1343,7 +1345,6 @@ class FloatingLyricsRenderer(
     private fun switchToMinimal() {
         if (currentState == DisplayState.EXPANDED) rememberLyricAnchor()
         dismissSettingsPopup()
-        clearWindowBlur()
         currentState = DisplayState.MINIMAL
         mainHandler.removeCallbacks(collapseAfterIdle)
         minimalContainer?.visibility  = View.VISIBLE
@@ -1355,7 +1356,6 @@ class FloatingLyricsRenderer(
 
     private fun switchToExpanded() {
         if (currentState == DisplayState.MINIMAL) rememberLyricAnchor()
-        clearWindowBlur()
         currentState = DisplayState.EXPANDED
         minimalContainer?.visibility  = View.GONE
         expandedContainer?.visibility = View.VISIBLE
@@ -1564,37 +1564,25 @@ class FloatingLyricsRenderer(
         }
     }
 
-    private fun clearWindowBlur() {
-        val window = overlayWindow ?: return
-        try {
-            window.setBackgroundBlurRadius(0)
-            window.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
-            window.decorView.clipToOutline = false
-        } catch (e: Exception) {
-            Log.w(TAG, "clearWindowBlur: ${e.message}")
-        }
-    }
-
     private fun updateWindowBlur() {
         val window = overlayWindow ?: return
         val supportsBlur = crossWindowBlurEnabled &&
             (miuixPanel == null || prefs().getBoolean(AppPreferences.Keys.CARD_BLUR_ENABLED, false))
-        val shouldBlur = currentState == DisplayState.EXPANDED && supportsBlur
+        val expanded = currentState == DisplayState.EXPANDED
+        val shouldBlur = expanded && supportsBlur
         miuixPanel?.blur = shouldBlur
         settingsBlur = supportsBlur
         val nextRadius = if (shouldBlur) dpToPx(chrome.expandedBlurRadiusDp) else 0
         try {
-            window.setBackgroundBlurRadius(nextRadius)
-            window.setBackgroundDrawable(
-                if (currentState == DisplayState.EXPANDED) {
-                    buildPanelBackground()
-                } else {
-                    ColorDrawable(Color.TRANSPARENT)
-                }
-            )
-            window.decorView.clipToOutline = shouldBlur
-            if (shouldBlur) {
-                window.decorView.outlineProvider = roundedOutline(chrome.expandedRadiusDp)
+            if (expanded) {
+                window.decorView.clipToExpandedPanelOutline()
+                // The window background also supplies Android's cross-window blur outline.
+                window.setBackgroundDrawable(buildPanelBackground())
+                window.setBackgroundBlurRadius(nextRadius)
+            } else {
+                window.setBackgroundBlurRadius(0)
+                window.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+                window.decorView.clipToOutline = false
             }
             settingsPopup?.window?.apply {
                 setBackgroundDrawable(buildPanelBackground())
@@ -1608,6 +1596,11 @@ class FloatingLyricsRenderer(
     private fun buildPanelBackground(): GradientDrawable {
         val color = if (miuixPanel != null) Color.TRANSPARENT else materialPanelColor()
         return roundedRect(color, chrome.expandedRadiusDp)
+    }
+
+    private fun View.clipToExpandedPanelOutline() {
+        outlineProvider = roundedOutline(chrome.expandedRadiusDp)
+        clipToOutline = true
     }
 
     private fun materialPanelColor(): Int =

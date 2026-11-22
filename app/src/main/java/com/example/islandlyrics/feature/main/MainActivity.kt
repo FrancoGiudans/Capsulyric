@@ -32,6 +32,8 @@ import com.example.islandlyrics.core.network.OfflineModeManager
 import com.example.islandlyrics.core.settings.AppPreferences
 import com.example.islandlyrics.core.settings.MiuixNavigationBarStyle
 import com.example.islandlyrics.runtime.service.MediaMonitorService
+import com.example.islandlyrics.feature.applemusic.material.AppleMusicSettingsScreen
+import com.example.islandlyrics.feature.applemusic.miuix.MiuixAppleMusicSettingsScreen
 import com.example.islandlyrics.feature.cache.material.CacheManagementScreen
 import com.example.islandlyrics.feature.cache.miuix.MiuixCacheManagementScreen
 import com.example.islandlyrics.feature.customsettings.material.CustomSettingsScreen
@@ -65,6 +67,8 @@ import com.example.islandlyrics.feature.navigation.MiuixTopLevelLiquidGlassNavig
 import com.example.islandlyrics.feature.navigation.MiuixTopLevelNavigationBar
 import com.example.islandlyrics.feature.navigation.TopLevelDestination
 import com.example.islandlyrics.feature.main.miuix.MiuixMainScreen
+import com.example.islandlyrics.feature.main.miuix.MiuixLyricsPlaybackScreen
+import com.example.islandlyrics.feature.main.miuix.LyricsPlaybackStart
 import com.example.islandlyrics.feature.onlinelyricdebug.material.OnlineLyricDebugScreen
 import com.example.islandlyrics.feature.onlinelyricdebug.miuix.MiuixOnlineLyricDebugScreen
 import com.example.islandlyrics.feature.oobe.OobeActivity
@@ -91,6 +95,7 @@ import com.example.islandlyrics.feature.update.material.UpdateDialog
 import com.example.islandlyrics.feature.update.miuix.MiuixUpdateDialog
 import com.example.islandlyrics.feature.main.material.MainScreen
 import com.example.islandlyrics.ui.navigation.PageStackHost
+import com.example.islandlyrics.ui.navigation.PageExpansion
 import com.example.islandlyrics.ui.theme.material.IslandLyricsMaterialTheme
 import android.content.Intent
 import android.content.SharedPreferences
@@ -103,6 +108,7 @@ import android.os.Looper
 import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.compose.setContent
+import androidx.activity.viewModels
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -132,10 +138,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.ViewModel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import top.yukonga.miuix.kmp.basic.Scaffold as MiuixScaffold
@@ -154,6 +164,7 @@ import com.kyant.backdrop.backdrops.rememberLayerBackdrop as rememberLiquidLayer
 class MainActivity : BaseActivity() {
 
     private val handler = Handler(Looper.getMainLooper())
+    private val lyricsPlaybackNavigation by viewModels<LyricsPlaybackNavigationState>()
 
     // Compose state for API dashboard
     private var versionText by mutableStateOf("...")
@@ -514,13 +525,16 @@ class MainActivity : BaseActivity() {
         val scope = rememberCoroutineScope()
         var bottomBarVisible by androidx.compose.runtime.remember { mutableStateOf(true) }
         val pageStack = remember {
-            androidx.compose.runtime.mutableStateListOf<AppPage>()
+            androidx.compose.runtime.mutableStateListOf<AppPage>().apply {
+                lyricsPlaybackNavigation.start?.let { add(AppPage.LyricsPlayback(expansion = null, start = it)) }
+            }
         }
         fun pushPage(page: AppPage) {
             pageStack.add(page)
+            if (page is AppPage.LyricsPlayback) lyricsPlaybackNavigation.start = page.start
         }
         fun popPage() {
-            if (pageStack.isNotEmpty()) pageStack.removeAt(pageStack.lastIndex)
+            if (pageStack.removeLastOrNull() is AppPage.LyricsPlayback) lyricsPlaybackNavigation.start = null
         }
         fun handleNavigate(action: SettingsSearchAction.Navigate) {
             when (action.target) {
@@ -532,13 +546,13 @@ class MainActivity : BaseActivity() {
                 SettingsNavigationTarget.CACHE_MANAGEMENT -> pushPage(AppPage.CacheManagement)
                 SettingsNavigationTarget.ONLINE_LYRIC_REMATCH -> pushPage(AppPage.OnlineLyricDebug)
                 SettingsNavigationTarget.LAST_FM -> pushPage(AppPage.LastFm)
-                SettingsNavigationTarget.APPLE_MUSIC -> startActivity(Intent(this@MainActivity, com.example.islandlyrics.feature.applemusic.AppleMusicSettingsActivity::class.java))
+                SettingsNavigationTarget.APPLE_MUSIC -> pushPage(AppPage.AppleMusic)
                 SettingsNavigationTarget.FAQ -> pushPage(AppPage.Faq)
                 SettingsNavigationTarget.COMMUNITY -> pushPage(AppPage.Community)
                 SettingsNavigationTarget.ABOUT -> pushPage(AppPage.About)
                 SettingsNavigationTarget.DIAGNOSTICS -> pushPage(AppPage.Diagnostics)
                 SettingsNavigationTarget.LAB -> pushPage(AppPage.Lab)
-                SettingsNavigationTarget.PARSER_RULES -> startActivity(Intent(this@MainActivity, com.example.islandlyrics.feature.parserrule.ParserRuleActivity::class.java))
+                SettingsNavigationTarget.PARSER_RULES -> pushPage(AppPage.ParserRules)
             }
         }
         val snackbarHostState = remember { MiuixSnackbarHostState() }
@@ -616,12 +630,16 @@ class MainActivity : BaseActivity() {
                 val targetBottomBarVisible =
                     (if (navigationBarStyle == MiuixNavigationBarStyle.NORMAL) true else bottomBarVisible) &&
                         pageStack.isEmpty()
+                var navigationBounds by remember { mutableStateOf(Rect.Zero) }
                 PageStackHost(
                     stack = pageStack,
                     onPop = ::popPage,
                     backdropColor = MiuixTheme.colorScheme.surface,
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier.fillMaxSize().onGloballyPositioned {
+                        navigationBounds = it.boundsInWindow()
+                    },
                     useMiuixNavForDefault = true,
+                    pageExpansion = { (it as? AppPage.LyricsPlayback)?.expansion },
                     backgroundContent = {
                     Box(
                         modifier = Modifier
@@ -655,7 +673,12 @@ class MainActivity : BaseActivity() {
                                         Toast.makeText(this@MainActivity, "Requesting Rebind...", Toast.LENGTH_SHORT).show()
                                     },
                                     onOpenOnlineLyricRematch = { pushPage(AppPage.OnlineLyricDebug) },
-                                    onBottomBarVisibilityChange = { bottomBarVisible = it }
+                                    onBottomBarVisibilityChange = { bottomBarVisible = it },
+                                    onOpenLyricsPlayback = { anchor, start ->
+                                        if (pageStack.isEmpty()) {
+                                            pushPage(AppPage.LyricsPlayback(PageExpansion.fromWindowBounds(anchor, navigationBounds), start))
+                                        }
+                                    },
                                 )
 
                                 TopLevelDestination.PARSER_RULES -> MiuixParserRuleScreen(
@@ -914,6 +937,7 @@ class MainActivity : BaseActivity() {
         onPushPage: (AppPage) -> Unit
     ) {
         when (page) {
+            is AppPage.LyricsPlayback -> Unit
             is AppPage.CustomSettings -> AppUiScreen(onBack = onBack)
             is AppPage.CapsuleNotification -> CapsuleNotificationScreen(onBack = onBack)
             is AppPage.DesktopLyrics -> DesktopLyricsScreen(onBack = onBack)
@@ -947,6 +971,8 @@ class MainActivity : BaseActivity() {
             )
             AppPage.OnlineLyricDebug -> OnlineLyricDebugScreen(onBack = onBack)
             AppPage.LastFm -> LastFmSettingsScreen(onBack = onBack)
+            AppPage.AppleMusic -> AppleMusicSettingsScreen(onBack = onBack)
+            AppPage.ParserRules -> ParserRuleScreen(onBack = onBack)
             AppPage.CacheManagement -> CacheManagementScreen(onBack = onBack)
             AppPage.Lab -> LabScreen(onBack = onBack, onOpenCapsuleNotification = { onPushPage(AppPage.CapsuleNotification()) })
             AppPage.LogViewer -> LogViewerScreen(onBack = onBack)
@@ -1011,6 +1037,11 @@ class MainActivity : BaseActivity() {
         onNavigate: (SettingsSearchAction.Navigate) -> Unit
     ) {
         when (page) {
+            is AppPage.LyricsPlayback -> MiuixLyricsPlaybackScreen(
+                start = page.start,
+                onBack = onBack,
+                onOpenOnlineLyricRematch = { onPushPage(AppPage.OnlineLyricDebug) },
+            )
             is AppPage.CustomSettings -> MiuixAppUiScreen(
                 onBack = onBack,
                 targetItemKey = page.targetItemKey,
@@ -1057,6 +1088,11 @@ class MainActivity : BaseActivity() {
             )
             AppPage.OnlineLyricDebug -> MiuixOnlineLyricDebugScreen(onBack = onBack)
             AppPage.LastFm -> MiuixLastFmSettingsScreen(onBack = onBack)
+            AppPage.AppleMusic -> MiuixAppleMusicSettingsScreen(onBack = onBack)
+            AppPage.ParserRules -> MiuixParserRuleScreen(
+                onBack = onBack,
+                onOpenFaq = { onPushPage(AppPage.Faq) },
+            )
             AppPage.CacheManagement -> MiuixCacheManagementScreen(onBack = onBack)
             AppPage.Lab -> MiuixLabScreen(onBack = onBack, onOpenCapsuleNotification = { onPushPage(AppPage.CapsuleNotification()) })
             AppPage.LogViewer -> MiuixLogViewerScreen(onBack = onBack)
@@ -1114,7 +1150,12 @@ class MainActivity : BaseActivity() {
     }
 }
 
+internal class LyricsPlaybackNavigationState : ViewModel() {
+    var start: LyricsPlaybackStart? = null
+}
+
 private sealed class AppPage {
+    data class LyricsPlayback(val expansion: PageExpansion?, val start: LyricsPlaybackStart) : AppPage()
     data class CustomSettings(val targetItemKey: String? = null) : AppPage()
     data class CapsuleNotification(val initialTab: CustomSettingsTab? = null, val targetItemKey: String? = null) : AppPage()
     data class DesktopLyrics(val targetItemKey: String? = null) : AppPage()
@@ -1125,6 +1166,8 @@ private sealed class AppPage {
     data object Diagnostics : AppPage()
     data object OnlineLyricDebug : AppPage()
     data object LastFm : AppPage()
+    data object AppleMusic : AppPage()
+    data object ParserRules : AppPage()
     data object CacheManagement : AppPage()
     data object Lab : AppPage()
     data object LogViewer : AppPage()

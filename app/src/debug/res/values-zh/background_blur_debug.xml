@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="debug_background_blur_title">背景模糊调试</string>
+    <string name="debug_background_blur_summary">用测试图或本地图片预览模糊效果</string>
+    <string name="debug_background_blur_mode">预览模式</string>
+    <string name="debug_background_blur_orbit">6×6 流光</string>
+    <string name="debug_background_blur_oklab">OKLab 光晕</string>
+    <string name="debug_background_blur_gaussian">高斯模糊</string>
+    <string name="debug_background_blur_original">原图</string>
+    <string name="debug_background_blur_follow_cover">跟随当前播放封面</string>
+    <string name="debug_background_blur_shader_unavailable">AGSL 预览不可用</string>
+    <string name="debug_background_blur_radius">模糊半径</string>
+    <string name="debug_background_blur_choose_image">选择图片</string>
+    <string name="debug_background_blur_test_image">使用测试图</string>
+    <string name="debug_background_blur_image_error">无法打开图片</string>
+</resources>

@@ -52,7 +52,21 @@ class LyricRepository private constructor() {
         val mediaId: String = "",
         val mediaUri: String = "",
         val trackNumber: Int = 0
+    ) {
+        internal val albumArtKey: AlbumArtKey
+            get() = AlbumArtKey(packageName, title, artist, duration, mediaId, mediaUri)
+    }
+
+    internal data class AlbumArtKey(
+        val packageName: String,
+        val title: String,
+        val artist: String,
+        val duration: Long,
+        val mediaId: String,
+        val mediaUri: String,
     )
+
+    internal data class TrackAlbumArt(val trackKey: AlbumArtKey, val bitmap: Bitmap?)
 
     // Atomic Lyric Container
     data class LyricInfo(
@@ -95,6 +109,7 @@ class LyricRepository private constructor() {
     val liveLyric = MutableLiveData<LyricInfo?>()
     val liveProgress = MutableLiveData<PlaybackProgress?>()
     val liveAlbumArt = MutableLiveData<Bitmap?>()
+    internal val liveTrackAlbumArt = MutableLiveData<TrackAlbumArt>()
     val liveSuperLyricDebug = MutableLiveData<SuperLyricDebugInfo?>()
 
     // Resolution state: distinguishes "still resolving" from "definitely no lyrics"
@@ -221,7 +236,7 @@ class LyricRepository private constructor() {
         mediaId: String = "",
         mediaUri: String = "",
         trackNumber: Int = 0
-    ) {
+    ): MediaInfo {
         val newInfo = MediaInfo(
             title = title,
             artist = artist,
@@ -235,7 +250,7 @@ class LyricRepository private constructor() {
             mediaUri = mediaUri,
             trackNumber = trackNumber
         )
-        if (liveMetadata.value == newInfo) return
+        if (liveMetadata.value == newInfo) return newInfo
 
         // Detect song change to clear old lyrics
         // FIX: Only clear if Title/Artist/Pkg actually changed significantly (not just tiny metadata ping)
@@ -251,6 +266,7 @@ class LyricRepository private constructor() {
 
         AppLogger.getInstance().log("Repo", "📝 Metadata Update: $title - $artist [$packageName]")
         postOrSet(liveMetadata, newInfo)
+        return newInfo
     }
 
     // Raw metadata for "Add Rule" suggestion (bypasses whitelist check in UI)
@@ -266,7 +282,8 @@ class LyricRepository private constructor() {
         postOrSet(liveProgress, newProgress)
     }
 
-    fun updateAlbumArt(bitmap: Bitmap?) {
+    internal fun updateAlbumArt(track: MediaInfo, bitmap: Bitmap?) {
+        postOrSet(liveTrackAlbumArt, TrackAlbumArt(track.albumArtKey, bitmap))
         val old = liveAlbumArt.value
         // Skip if same reference (e.g. duplicate metadata callback)
         if (old === bitmap) return

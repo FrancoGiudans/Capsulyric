@@ -33,6 +33,9 @@ import com.example.islandlyrics.rules.ParserRuleHelper
 import com.example.islandlyrics.lyrics.cache.OnlineLyricCacheStore
 import com.example.islandlyrics.lyrics.state.LyricRepository
 import com.example.islandlyrics.feature.main.HomeLyricPreviewDisplay
+import com.example.islandlyrics.feature.main.rememberHighlightedLyricPreview
+import com.example.islandlyrics.lyrics.online.OnlineLyricFetcher.LyricLine
+import com.example.islandlyrics.feature.main.rememberMediaSessionCards
 import com.example.islandlyrics.feature.main.MainActivity
 import com.example.islandlyrics.feature.onlinelyricdebug.OnlineLyricDebugActivity
 import com.example.islandlyrics.ui.material.blur.LocalMaterialBlurEnabled
@@ -85,6 +88,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.runtime.livedata.observeAsState
+import androidx.compose.ui.text.AnnotatedString
 import com.example.islandlyrics.core.theme.generatePalette
 import com.google.android.material.progressindicator.LinearProgressIndicator
 import kotlinx.coroutines.Dispatchers
@@ -135,7 +139,7 @@ fun MediaControlDialog(onDismiss: () -> Unit) {
     }
 
     // Filter by Whitelist
-    val whitelistedControllers = remember(activeControllers) {
+    val enabledControllers = remember(activeControllers) {
         val enabledPackages = ParserRuleHelper.getEnabledPackages(context)
         activeControllers.filter { enabledPackages.contains(it.packageName) }
     }
@@ -143,11 +147,14 @@ fun MediaControlDialog(onDismiss: () -> Unit) {
     // Repo for lyrics
     val repo = remember { LyricRepository.getInstance() }
     val repoMetadata by repo.liveMetadata.observeAsState()
+    val mediaCards = rememberMediaSessionCards(enabledControllers, repoMetadata)
+    val whitelistedControllers = mediaCards.controllers
 
     val repoLyric by repo.liveLyric.observeAsState()
     val repoProgress by repo.liveProgress.observeAsState()
     val repoParsedLyrics by repo.liveParsedLyrics.observeAsState()
     val repoCurrentLine by repo.liveCurrentLine.observeAsState()
+    val previewWordLine = HomeLyricPreviewDisplay.wordLine(repoCurrentLine, repoParsedLyrics, repoLyric)
     val repoLyricResolveState by repo.liveLyricResolveState.observeAsState(LyricRepository.LyricResolveState.PENDING)
     val homeLyricPreviewModes = remember { HomeLyricPreviewDisplay.read(AppPreferences.of(context)) }
     val repoNextLine = remember(repoParsedLyrics, repoCurrentLine) {
@@ -161,7 +168,7 @@ fun MediaControlDialog(onDismiss: () -> Unit) {
             if (index >= 0 && index + 1 < lines.size) lines[index + 1] else null
         }
     }
-    val homeLyricPreview = HomeLyricPreviewDisplay.previewText(
+    val homeLyricPreview = HomeLyricPreviewDisplay.preview(
         modes = homeLyricPreviewModes,
         currentLine = repoCurrentLine,
         lyricInfo = repoLyric,
@@ -347,7 +354,7 @@ fun MediaControlDialog(onDismiss: () -> Unit) {
 
                         // Small info icon for status
                         IconButton(onClick = {
-                            Toast.makeText(context, "$statusMessage (Whitelisted: ${whitelistedControllers.size})", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, "$statusMessage (Whitelisted: ${enabledControllers.size})", Toast.LENGTH_SHORT).show()
                         }) {
                             Icon(
                                 painter = painterResource(R.drawable.ic_info),
@@ -364,29 +371,29 @@ fun MediaControlDialog(onDismiss: () -> Unit) {
                         androidx.compose.foundation.pager.HorizontalPager(
                             state = pagerState,
                             contentPadding = PaddingValues(horizontal = 0.dp),
-                            pageSpacing = 16.dp
+                            pageSpacing = 16.dp,
+                            key = { page -> whitelistedControllers[page].sessionToken },
                         ) { page ->
-                            key(whitelistedControllers[page].packageName) {
-                                val controller = whitelistedControllers[page]
-                                val isPrimary = controller.packageName == repoMetadata?.packageName
+                            val controller = whitelistedControllers[page]
+                            val isPrimary = controller.sessionToken == mediaCards.primaryToken
 
-                                MediaSessionCard(
-                                    controller = controller,
-                                    context = context,
-                                    isPrimary = isPrimary,
-                                    primaryLyric = if (isPrimary) homeLyricPreview else null,
-                                    primaryHasTimeline = isPrimary && repoParsedLyrics?.lines?.isNotEmpty() == true,
-                                    primaryLyricResolveState = repoLyricResolveState,
-                                    primaryProgress = if (isPrimary) repoProgress else null,
-                                    primaryLyricSource = if (isPrimary) primaryLyricSource else null,
-                                    primaryIsInstrumental = isPrimary && isCurrentTrackInstrumental,
-                                    showOnlineLyricRematch = isPrimary && showOnlineLyricRematch,
-                                    onOpenOnlineLyricRematch = {
-                                        context.startActivity(Intent(context, OnlineLyricDebugActivity::class.java))
-                                        triggerDismiss()
-                                    }
-                                )
-                            }
+                            MediaSessionCard(
+                                controller = controller,
+                                context = context,
+                                isPrimary = isPrimary,
+                                primaryLyric = homeLyricPreview.takeIf { isPrimary },
+                                primaryWordLine = previewWordLine.takeIf { isPrimary },
+                                primaryHasTimeline = isPrimary && repoParsedLyrics?.lines?.isNotEmpty() == true,
+                                primaryLyricResolveState = repoLyricResolveState,
+                                primaryProgress = if (isPrimary) repoProgress else null,
+                                primaryLyricSource = if (isPrimary) primaryLyricSource else null,
+                                primaryIsInstrumental = isPrimary && isCurrentTrackInstrumental,
+                                showOnlineLyricRematch = isPrimary && showOnlineLyricRematch,
+                                onOpenOnlineLyricRematch = {
+                                    context.startActivity(Intent(context, OnlineLyricDebugActivity::class.java))
+                                    triggerDismiss()
+                                }
+                            )
                         }
 
                         if (whitelistedControllers.size > 1) {
@@ -437,12 +444,13 @@ fun MediaControlDialog(onDismiss: () -> Unit) {
     }
 }
 @Composable
-fun MediaSessionCard(
+private fun MediaSessionCard(
     controller: MediaController, 
     context: Context,
 
     isPrimary: Boolean,
-    primaryLyric: String?,
+    primaryLyric: HomeLyricPreviewDisplay.Preview?,
+    primaryWordLine: LyricLine?,
     primaryHasTimeline: Boolean,
     primaryLyricResolveState: LyricRepository.LyricResolveState,
     primaryProgress: LyricRepository.PlaybackProgress?,
@@ -666,9 +674,12 @@ fun MediaSessionCard(
                 }
 
                 Spacer(modifier = Modifier.height(18.dp))
-                val effectiveLyric = if (isPrimary && !primaryLyric.isNullOrBlank()) primaryLyric else parsedLyricFromTitle
                 MaterialLyricPanel(
-                    lyric = effectiveLyric,
+                    preview = primaryLyric,
+                    fallbackLyric = parsedLyricFromTitle,
+                    wordLine = primaryWordLine,
+                    playbackState = playbackState,
+                    fallbackPositionMs = primaryProgress?.position,
                     emptyText = if (isPrimary) {
                         when {
                             primaryIsInstrumental -> stringResource(R.string.main_no_lyrics)
@@ -832,10 +843,16 @@ private fun formatPlaybackTime(ms: Long): String {
 
 @Composable
 private fun MaterialLyricPanel(
-    lyric: String?,
+    preview: HomeLyricPreviewDisplay.Preview?,
+    fallbackLyric: String?,
+    wordLine: LyricLine?,
+    playbackState: PlaybackState?,
+    fallbackPositionMs: Long?,
     emptyText: String,
 ) {
     val context = LocalContext.current
+    val lyric = preview?.text ?: fallbackLyric
+    val lyricColor = Color(0xFF3D7DFF)
 
     Surface(
         shape = RoundedCornerShape(18.dp),
@@ -856,7 +873,7 @@ private fun MaterialLyricPanel(
                 Icon(
                     imageVector = Icons.Filled.AutoAwesome,
                     contentDescription = null,
-                    tint = Color(0xFF3D7DFF),
+                    tint = lyricColor,
                     modifier = Modifier.size(16.dp)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
@@ -869,11 +886,15 @@ private fun MaterialLyricPanel(
             Spacer(modifier = Modifier.height(8.dp))
             if (!lyric.isNullOrBlank()) {
                 Text(
-                    text = lyric,
+                    text = if (preview != null) {
+                        rememberHighlightedLyricPreview(preview, wordLine, lyricColor, playbackState, fallbackPositionMs)
+                    } else {
+                        AnnotatedString(lyric)
+                    },
                     style = MaterialTheme.typography.titleMedium,
                     fontSize = 18.sp,
                     lineHeight = 26.sp,
-                    color = Color(0xFF3D7DFF)
+                    color = lyricColor,
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(

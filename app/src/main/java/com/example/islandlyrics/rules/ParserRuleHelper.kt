@@ -221,11 +221,8 @@ object ParserRuleHelper {
      * Get all enabled packages (for whitelist integration).
      */
     fun getEnabledPackages(context: Context): Set<String> {
-        if (!cacheValid) loadRules(context)
-        return ruleCache.entries
-            .filter { it.value != null }
-            .map { it.key }
-            .toSet()
+        // Preference listeners can run during apply(), before saveRules() invalidates the cache.
+        return loadRules(context).filter { it.enabled }.mapTo(mutableSetOf()) { it.packageName }
     }
 
     fun hasEnabledSuperLyricRule(context: Context): Boolean {

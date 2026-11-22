@@ -6,6 +6,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -18,6 +19,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -47,9 +49,15 @@ internal fun FloatingLyricsSettingsPreview(
     val toggleLabel = stringResource(
         if (expanded) R.string.settings_floating_preview_collapse else R.string.settings_floating_preview_expand
     )
+    val previewClip = if (expanded) {
+        Modifier.clip(RoundedCornerShape(FloatingLyricsChrome.ExpandedPanelRadiusDp.dp))
+    } else {
+        Modifier
+    }
     Box(
         Modifier.fillMaxWidth()
             .padding(horizontal = 20.dp, vertical = 12.dp)
+            .then(previewClip)
             .semantics { contentDescription = previewLabel }
             .clickable(onClickLabel = toggleLabel) { expanded = !expanded }
     ) {

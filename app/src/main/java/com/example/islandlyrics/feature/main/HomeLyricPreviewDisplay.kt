@@ -89,20 +89,40 @@ object HomeLyricPreviewDisplay {
         currentLine: OnlineLyricFetcher.LyricLine?,
         lyricInfo: LyricRepository.LyricInfo?,
         nextLine: OnlineLyricFetcher.LyricLine? = null
-    ): String? {
+    ): String? = preview(modes, currentLine, lyricInfo, nextLine)?.text
+
+    internal data class Preview(
+        val primary: String,
+        val secondary: SecondaryTextResolver.Resolved?
+    ) {
+        val text: String
+            get() = secondary?.let { "$primary\n${it.text}" } ?: primary
+    }
+
+    internal fun wordLine(
+        currentLine: OnlineLyricFetcher.LyricLine?,
+        parsedLyrics: LyricRepository.ParsedLyricsInfo?,
+        lyricInfo: LyricRepository.LyricInfo?,
+    ): OnlineLyricFetcher.LyricLine? =
+        currentLine ?: parsedLyrics
+            ?.takeIf { it.timelineCapability == LyricRepository.TimelineCapability.ACTIVE_LINE_ONLY }
+            ?.lines?.firstOrNull()?.takeIf { it.text == lyricInfo?.lyric }
+
+    internal fun preview(
+        modes: List<SecondaryTextMode>,
+        currentLine: OnlineLyricFetcher.LyricLine?,
+        lyricInfo: LyricRepository.LyricInfo?,
+        nextLine: OnlineLyricFetcher.LyricLine?
+    ): Preview? {
         val primary = (currentLine?.text ?: lyricInfo?.lyric)
             ?.takeIf { !SecondaryTextResolver.isPlaceholder(it) }
             ?: return null
-        val secondary = SecondaryTextResolver.resolve(
+        val secondary = SecondaryTextResolver.resolveWithMode(
             modes = modes.ifEmpty { defaultModes },
             translation = currentLine?.translation ?: lyricInfo?.translation,
             romanization = currentLine?.roma ?: lyricInfo?.roma,
             nextLyric = nextLine?.text
         )
-        return if (secondary != null) {
-            "$primary\n$secondary"
-        } else {
-            primary
-        }
+        return Preview(primary, secondary)
     }
 }
