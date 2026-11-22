@@ -13,15 +13,19 @@ PR 标题示例：
 -->
 
 ## Release Metadata
-- **Preview**: `false`
+- **Preview**: `true`
 
 ## Release Highlights
 ### 🇨🇳
-- 新增液态玻璃样式导航栏，优化拖拽交互与视觉效果。
-- 新增设置项搜索与快捷跳转，更快找到并打开所需设置。
-- 全面优化在线歌词匹配，提高识别命中率，并完善罗马音、Sidecar 与 TTML 歌词支持。
+- 重构 Miuix 桌面歌词悬浮窗，优化收起、展开与快捷设置交互，支持从媒体控制弹窗快速开启及四档字重调节。
+- 新增全屏歌词播放页与首页播放卡片逐音节高亮，支持逐字扫光、横屏双栏布局、封面流光背景及独立显示设置。
+- 升级小米超级岛与实况胶囊显示，接入逐字歌词视觉中心，新增三行歌词卡片、收缩态进度环及右侧歌词校准引导。
+- 拓展歌词获取与导入能力，支持按平台歌曲 ID 精准匹配、Superlyric API v4.0 与增强 LRC（ELRC）格式，并新增 Lyrimuse 与 Lyricify 数据库导入。
+
 
 ### 🇬🇧
-- Added a liquid glass navigation bar with smoother dragging and refined visual effects.
-- Added settings search and quick navigation to help you find and open settings faster.
-- Improved online lyrics matching accuracy, including better support for romanized, sidecar, and TTML lyrics.
+- Redesigned the Miuix desktop lyrics floating window with refined collapse, expand, and quick-settings interactions, adding quick toggles from the media control sheet and four font weight options.
+- Added a full-screen lyrics view and syllable-by-syllable highlighting on the home playback card, featuring word-level sweep effects, a dual-pane landscape layout, dynamic cover-art backgrounds, and dedicated display customization.
+- Upgraded Xiaomi Super Island and Live Updates capsules with visual-center alignment for word-by-word lyrics, a three-line lyric card layout, a collapsed progress ring, and guided right-side lyric calibration.
+- Expanded lyric fetching and import capabilities with exact matching by platform track ID, support for Superlyric API v4.0 and Enhanced LRC (ELRC), and database imports from Lyrimuse and Lyricify.
+
