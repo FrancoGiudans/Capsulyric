@@ -1,8 +1,10 @@
 package com.example.islandlyrics.feature.main.miuix
 
 import com.example.islandlyrics.lyrics.online.OnlineLyricFetcher.LyricLine
+import com.example.islandlyrics.ui.overlay.model.WordProgressCalculator
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class LyricsPlaybackStateTest {
@@ -131,5 +133,85 @@ class LyricsPlaybackStateTest {
         assertEquals(PlaybackLyricDepth(1.1f, 0.7f, 0.50f, 0.28f), playbackLyricDepth(1f, landscape = true))
         assertEquals(PlaybackLyricDepth(1.9f, 1.2f, 0.42f, 0.22f), playbackLyricDepth(2f, landscape = true))
         assertEquals(PlaybackLyricDepth(2.5f, 1.5f, 0.35f, 0.18f), playbackLyricDepth(4f, landscape = true))
+    }
+
+    @Test
+    fun interruptedTransitionContinuesFromTheInFlightActivationAndDistance() {
+        val midFirstSwitch = PlaybackLyricFrame(focusedLine = 2, previousLine = 1, progress = 0.4f)
+        val interruptedStart = midFirstSwitch.asInterruptedStart()
+        val secondSwitchAtStart = PlaybackLyricFrame(
+            focusedLine = 3,
+            previousLine = midFirstSwitch.focusedLine,
+            progress = 0f,
+            interruptedFrom = interruptedStart,
+        )
+
+        assertEquals(midFirstSwitch.activation(1), secondSwitchAtStart.activation(1), 0.0001f)
+        assertEquals(midFirstSwitch.activation(2), secondSwitchAtStart.activation(2), 0.0001f)
+        assertEquals(midFirstSwitch.activation(3), secondSwitchAtStart.activation(3), 0.0001f)
+        assertEquals(midFirstSwitch.distance(1), secondSwitchAtStart.distance(1), 0.0001f)
+        assertEquals(midFirstSwitch.distance(2), secondSwitchAtStart.distance(2), 0.0001f)
+        assertEquals(midFirstSwitch.distance(3), secondSwitchAtStart.distance(3), 0.0001f)
+
+        val secondSwitchMid = secondSwitchAtStart.copy(progress = 0.5f)
+        assertEquals(0.3f, secondSwitchMid.activation(1), 0.0001f)
+        assertEquals(0.2f, secondSwitchMid.activation(2), 0.0001f)
+        assertEquals(0.5f, secondSwitchMid.activation(3), 0.0001f)
+    }
+
+    @Test
+    fun unsungTimedLyricsTransitionMonotonicallyWithoutMidSwitchFlash() {
+        var previousOnScreenUnsung = PlaybackNeighborMainAlpha
+        val steps = 20
+        for (step in 0..steps) {
+            val progress = step.toFloat() / steps
+            val frame = PlaybackLyricFrame(focusedLine = 1, previousLine = 0, progress = progress)
+            val activation = frame.activation(1)
+            val depth = playbackLyricDepth(frame.distance(1))
+            val layerAlpha = playbackLyricMainAlpha(depth.mainAlpha, activation, following = true)
+            val maskAlpha = playbackLyricUnsungMaskAlpha(depth.mainAlpha, activation, following = true)
+            val onScreenUnsung = layerAlpha * maskAlpha
+
+            assertTrue(
+                "Expected monotonic unsung alpha at step $step, got $onScreenUnsung after $previousOnScreenUnsung",
+                onScreenUnsung <= previousOnScreenUnsung + 0.0001f,
+            )
+            previousOnScreenUnsung = onScreenUnsung
+        }
+        assertEquals(WordProgressCalculator.UNSUNG_ALPHA, previousOnScreenUnsung, 0.0001f)
+    }
+
+    @Test
+    fun waveDelayCascadesInTheScrollDirectionAndCapsDistantRows() {
+        assertEquals(0L, playbackWaveDelayMillis(index = 3, pivotLine = 5, scrollDownwardInList = true))
+        assertEquals(0L, playbackWaveDelayMillis(index = 4, pivotLine = 5, scrollDownwardInList = true))
+        assertEquals(14L, playbackWaveDelayMillis(index = 5, pivotLine = 5, scrollDownwardInList = true))
+        assertEquals(36L, playbackWaveDelayMillis(index = 6, pivotLine = 5, scrollDownwardInList = true))
+        assertEquals(62L, playbackWaveDelayMillis(index = 7, pivotLine = 5, scrollDownwardInList = true))
+        assertEquals(160L, playbackWaveDelayMillis(index = 20, pivotLine = 5, scrollDownwardInList = true))
+
+        assertEquals(0L, playbackWaveDelayMillis(index = 6, pivotLine = 5, scrollDownwardInList = false))
+        assertEquals(14L, playbackWaveDelayMillis(index = 5, pivotLine = 5, scrollDownwardInList = false))
+        assertEquals(36L, playbackWaveDelayMillis(index = 4, pivotLine = 5, scrollDownwardInList = false))
+        assertEquals(62L, playbackWaveDelayMillis(index = 3, pivotLine = 5, scrollDownwardInList = false))
+    }
+
+    @Test
+    fun scaleActivationPreservesElasticOvershootAndInterruptedContinuity() {
+        val overshooting = PlaybackLyricFrame(focusedLine = 2, previousLine = 1, progress = 1f, scaleProgress = 1.025f)
+        assertEquals(1.025f, overshooting.scaleActivation(2), 0.0001f)
+        assertEquals(-0.025f, overshooting.scaleActivation(1), 0.0001f)
+        assertEquals(1f, overshooting.activation(2), 0.0001f)
+
+        val interrupted = PlaybackLyricFrame(
+            focusedLine = 3,
+            previousLine = 2,
+            progress = 0f,
+            scaleProgress = 0f,
+            interruptedFrom = overshooting.asInterruptedStart(),
+        )
+        assertEquals(1.025f, interrupted.scaleActivation(2), 0.0001f)
+        assertEquals(-0.025f, interrupted.scaleActivation(1), 0.0001f)
+        assertEquals(0f, interrupted.scaleActivation(3), 0.0001f)
     }
 }

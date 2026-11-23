@@ -23,6 +23,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.lerp as lerpColor
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.ResolvedTextDirection
@@ -72,11 +73,19 @@ internal fun PlaybackLyricText(
     style: TextStyle,
     modifier: Modifier = Modifier,
     sweepStrength: () -> Float = { 1f },
+    unsungAlpha: () -> Float = {
+        1f - (1f - WordProgressCalculator.UNSUNG_ALPHA) * sweepStrength().coerceIn(0f, 1f)
+    },
 ) {
     val timed = !line.syllables.isNullOrEmpty()
     val needsSweep = rememberUpdatedState(current)
     val textLayout = remember(line.text) { mutableStateOf<TextLayoutResult?>(null) }
     val onTextLayout = remember(textLayout) { { layout: TextLayoutResult -> textLayout.value = layout } }
+    val textColor = when {
+        !current -> color
+        color == Color.White -> Color.White
+        else -> lerpColor(color, Color.White, sweepStrength().coerceIn(0f, 1f))
+    }
     Text(
         text = line.text,
         modifier = modifier.then(if (timed) {
@@ -103,10 +112,10 @@ internal fun PlaybackLyricText(
                     onDrawWithContent {
                         drawContent()
                         if (!needsSweep.value) return@onDrawWithContent
-                        val strength = sweepStrength()
+                        val strength = sweepStrength().coerceIn(0f, 1f)
                         if (strength == 0f) return@onDrawWithContent
                         val playbackMs = position.value ?: return@onDrawWithContent
-                        if (width <= 0f || playbackMs >= line.endTime || playbackMs >= endTime) {
+                        if (width <= 0f || endTime <= 0L || playbackMs >= endTime) {
                             return@onDrawWithContent
                         }
 
@@ -122,8 +131,7 @@ internal fun PlaybackLyricText(
                         }
                         val swept = front / width * (width + feather)
                         drawIntoCanvas { it.saveLayer(Rect(Offset.Zero, size), maskPaint) }
-                        val unsungAlpha = 1f - (1f - WordProgressCalculator.UNSUNG_ALPHA) * strength
-                        drawRect(Color.White.copy(alpha = unsungAlpha))
+                        drawRect(Color.White.copy(alpha = unsungAlpha().coerceIn(0f, 1f)))
                         for (run in runs) drawSweepRun(run, swept - run.distance, feather)
                         drawIntoCanvas { it.restore() }
                     }
@@ -132,7 +140,7 @@ internal fun PlaybackLyricText(
             Modifier
         }),
         style = style,
-        color = color,
+        color = textColor,
         onTextLayout = onTextLayout.takeIf { timed },
     )
 }
