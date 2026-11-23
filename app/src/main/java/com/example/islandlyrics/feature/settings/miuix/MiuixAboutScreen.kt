@@ -680,6 +680,8 @@ private fun AboutSection(
     val feedbackOptions = listOf(
         stringResource(R.string.dialog_feedback_github) to
             "https://github.com/FrancoGiudans/Capsulyric/issues/new?template=bug_report.yml",
+        stringResource(R.string.dialog_feedback_gitee) to
+            "https://gitee.com/franklinsmithson/Capsulyric/issues/new?template=bug_report.yml",
         stringResource(R.string.dialog_feedback_wps) to "https://f.wps.cn/g/qACKW9I3/",
         stringResource(R.string.dialog_feedback_wjx) to "https://v.wjx.cn/vm/rGK24xY.aspx"
     )

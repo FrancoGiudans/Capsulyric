@@ -28,6 +28,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -38,6 +39,9 @@ import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.SmallTitle
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.theme.MiuixTheme
+
+internal val LocalRelatedSettingsNavigator =
+    staticCompositionLocalOf<((SettingsSearchAction.Navigate) -> Unit)?> { null }
 
 data class OtherSettingLink(
     @StringRes val titleRes: Int,
@@ -56,6 +60,7 @@ fun MiuixLookingForOtherSettings(
     modifier: Modifier = Modifier
 ) {
     if (links.isEmpty()) return
+    val navigate = onNavigate ?: LocalRelatedSettingsNavigator.current
 
     Column(modifier = modifier) {
         SmallTitle(text = stringResource(R.string.settings_looking_for_other))
@@ -78,10 +83,10 @@ fun MiuixLookingForOtherSettings(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clickable {
-                                if (link.onClick != null) {
-                                    link.onClick.invoke()
-                                } else if (link.action != null) {
-                                    onNavigate?.invoke(link.action)
+                                if (link.action != null && navigate != null) {
+                                    navigate(link.action)
+                                } else {
+                                    link.onClick?.invoke()
                                 }
                             }
                             .padding(horizontal = 16.dp, vertical = 14.dp)

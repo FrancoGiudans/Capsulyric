@@ -40,11 +40,15 @@ internal class CalibratedLyricWindowResolver {
         if (line != null) {
             val syllables = line.syllables
             if (syllablesEnabled && text == line.text && !syllables.isNullOrEmpty()) {
-                val focus = focusedIndex(text, syllables, position)
+                val focus = focusedRange(text, syllables, position)
                 if (focus != null) {
                     val last = syllables.lastOrNull { it.text.isNotBlank() }
-                    return Result(if (last != null && position >= last.startTime) window.suffix()
-                        else window.atFocus(focus, centered), false)
+                    val visible = if (last != null && position >= last.startTime) {
+                        window.suffix()
+                    } else {
+                        window.atFocus(focus, centered)
+                    }
+                    return Result(visible, false)
                 }
             }
             val duration = line.endTime - line.startTime
@@ -72,18 +76,20 @@ internal class CalibratedLyricWindowResolver {
         return Result(window.fromIndex(adaptiveStart), adaptiveTailAt > 0 && now - adaptiveTailAt >= finalPause)
     }
 
-    private fun focusedIndex(
+    private fun focusedRange(
         text: String, syllables: List<OnlineLyricFetcher.SyllableInfo>, position: Long
-    ): Int? {
+    ): IntRange? {
         val offsets = text.indices.filterNot { text[it].isWhitespace() || Character.isSpaceChar(text[it]) }
         val normalized = offsets.map { text[it] }.joinToString("")
         var offset = 0
-        var focus = 0
+        var focus = 0 until 0
         for (syllable in syllables) {
             val part = syllable.text.filterNot { it.isWhitespace() || Character.isSpaceChar(it) }
             if (part.isEmpty()) continue
             if (!normalized.regionMatches(offset, part, 0, part.length)) return null
-            if (position >= syllable.startTime) focus = offsets.getOrNull(offset) ?: return null
+            if (position >= syllable.startTime) {
+                focus = offsets[offset]..offsets[offset + part.lastIndex]
+            }
             offset += part.length
         }
         return focus.takeIf { offset == normalized.length }

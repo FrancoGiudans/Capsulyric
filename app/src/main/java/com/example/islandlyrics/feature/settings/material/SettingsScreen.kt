@@ -1599,6 +1599,31 @@ fun FeedbackSelectionDialog(onDismiss: () -> Unit) {
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable {
+                            val browserIntent = Intent(Intent.ACTION_VIEW, "https://gitee.com/franklinsmithson/Capsulyric/issues/new?template=bug_report.yml".toUri())
+                            context.startActivity(browserIntent)
+                            onDismiss()
+                        }
+                        .padding(vertical = 12.dp, horizontal = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(R.string.dialog_feedback_gitee),
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = stringResource(R.string.dialog_feedback_gitee_desc),
+                            fontSize = 14.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
                             val browserIntent = Intent(Intent.ACTION_VIEW, "https://f.wps.cn/g/qACKW9I3/".toUri())
                             context.startActivity(browserIntent)
                             onDismiss()

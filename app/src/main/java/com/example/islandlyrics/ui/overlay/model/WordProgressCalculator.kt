@@ -31,6 +31,19 @@ import com.example.islandlyrics.lyrics.online.OnlineLyricFetcher
 internal object WordProgressCalculator {
     const val UNSUNG_ALPHA = 0.42f
 
+    fun syllableFraction(syllable: OnlineLyricFetcher.SyllableInfo, position: Long): Float = when {
+        position >= syllable.endTime -> 1f
+        position <= syllable.startTime -> 0f
+        else -> {
+            val duration = syllable.endTime - syllable.startTime
+            if (duration > 0) {
+                ((position - syllable.startTime).toFloat() / duration).coerceIn(0f, 1f)
+            } else {
+                1f
+            }
+        }
+    }
+
     fun highlightAlpha(progress: Float): Float {
         val fraction = progress.coerceIn(0f, 1f)
         val eased = fraction * fraction * (3f - 2f * fraction)
@@ -59,19 +72,7 @@ internal object WordProgressCalculator {
                 val charStart = charOffset
                 charOffset += syllable.text.length
                 val charEnd = charOffset
-                val progress = when {
-                    position >= syllable.endTime -> 1f
-                    position <= syllable.startTime -> 0f
-                    else -> {
-                        val duration = syllable.endTime - syllable.startTime
-                        if (duration > 0) {
-                            ((position - syllable.startTime).toFloat() / duration.toFloat())
-                                .coerceIn(0f, 1f)
-                        } else {
-                            1f
-                        }
-                    }
-                }
+                val progress = syllableFraction(syllable, position)
                 add(
                     LyricPresentation.WordProgress.SyllableProgress(
                         text = syllable.text,

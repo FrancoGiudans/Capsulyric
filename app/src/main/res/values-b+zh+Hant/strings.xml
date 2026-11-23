@@ -487,6 +487,8 @@
     <string name="dialog_feedback_title">選擇意見回饋方式</string>
     <string name="dialog_feedback_github">GitHub Issues</string>
     <string name="dialog_feedback_github_desc">推薦方式，處理效率最高。</string>
+    <string name="dialog_feedback_gitee">Gitee Issues</string>
+    <string name="dialog_feedback_gitee_desc">國內推薦方式，處理效率高。</string>
     <string name="dialog_feedback_wps">WPS 表單</string>
     <string name="dialog_feedback_wps_desc">備用方式，可能需要登入。</string>
     <string name="dialog_feedback_wjx">問卷星</string>

@@ -487,6 +487,8 @@
     <string name="dialog_feedback_title">选择反馈方式</string>
     <string name="dialog_feedback_github">Github Issues</string>
     <string name="dialog_feedback_github_desc">推荐渠道。</string>
+    <string name="dialog_feedback_gitee">Gitee Issues</string>
+    <string name="dialog_feedback_gitee_desc">国内推荐渠道。</string>
     <string name="dialog_feedback_wps">WPS 表单</string>
     <string name="dialog_feedback_wps_desc">可能需要登录。</string>
     <string name="dialog_feedback_wjx">问卷星</string>

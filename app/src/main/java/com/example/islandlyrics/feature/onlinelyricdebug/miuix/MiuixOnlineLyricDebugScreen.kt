@@ -68,6 +68,8 @@ import androidx.compose.ui.unit.sp
 import android.content.Intent
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.islandlyrics.R
+import com.example.islandlyrics.core.settings.search.SettingsNavigationTarget
+import com.example.islandlyrics.core.settings.search.SettingsSearchAction
 import com.example.islandlyrics.core.network.OfflineModeManager
 import com.example.islandlyrics.feature.applemusic.AppleMusicSettingsActivity
 import com.example.islandlyrics.feature.cache.CacheManagementActivity
@@ -428,18 +430,21 @@ fun MiuixOnlineLyricDebugScreen(
                     links = listOf(
                         OtherSettingLink(
                             titleRes = R.string.apple_music_settings_title,
+                            action = SettingsSearchAction.Navigate(SettingsNavigationTarget.APPLE_MUSIC),
                             onClick = {
                                 context.startActivity(Intent(context, AppleMusicSettingsActivity::class.java))
                             }
                         ),
                         OtherSettingLink(
                             titleRes = R.string.settings_link_parser_rules,
+                            action = SettingsSearchAction.Navigate(SettingsNavigationTarget.PARSER_RULES),
                             onClick = {
                                 context.startActivity(Intent(context, ParserRuleActivity::class.java))
                             }
                         ),
                         OtherSettingLink(
                             titleRes = R.string.title_cache_management,
+                            action = SettingsSearchAction.Navigate(SettingsNavigationTarget.CACHE_MANAGEMENT),
                             onClick = {
                                 context.startActivity(Intent(context, CacheManagementActivity::class.java))
                             }

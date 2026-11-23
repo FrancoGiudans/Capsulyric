@@ -31,6 +31,7 @@ import com.example.islandlyrics.core.logging.AppLogger
 import com.example.islandlyrics.core.network.OfflineModeManager
 import com.example.islandlyrics.core.settings.AppPreferences
 import com.example.islandlyrics.core.settings.MiuixNavigationBarStyle
+import com.example.islandlyrics.ui.miuix.search.LocalRelatedSettingsNavigator
 import com.example.islandlyrics.runtime.service.MediaMonitorService
 import com.example.islandlyrics.feature.applemusic.material.AppleMusicSettingsScreen
 import com.example.islandlyrics.feature.applemusic.miuix.MiuixAppleMusicSettingsScreen
@@ -481,7 +482,8 @@ class MainActivity : BaseActivity() {
                         onOpenOnlineLyricRematch = { pushPage(AppPage.OnlineLyricDebug) },
                         onOpenLastFm = { pushPage(AppPage.LastFm) },
                         onOpenCacheManagement = { pushPage(AppPage.CacheManagement) },
-                        onOpenLab = { pushPage(AppPage.Lab) },
+                        onOpenLab = { pushPage(AppPage.Lab()) },
+                        onNavigateAction = { action -> action.toAppPage()?.let(::pushPage) },
                         showBackButton = false,
                         extraBottomPadding = bottomPadding
                     )
@@ -510,7 +512,8 @@ class MainActivity : BaseActivity() {
                 MaterialAppPage(
                     page = page,
                     onBack = ::popPage,
-                    onPushPage = ::pushPage
+                    onPushPage = ::pushPage,
+                    onNavigate = { action -> action.toAppPage()?.let(::pushPage) }
                 )
             }
         )
@@ -537,23 +540,7 @@ class MainActivity : BaseActivity() {
             if (pageStack.removeLastOrNull() is AppPage.LyricsPlayback) lyricsPlaybackNavigation.start = null
         }
         fun handleNavigate(action: SettingsSearchAction.Navigate) {
-            when (action.target) {
-                SettingsNavigationTarget.MAIN_SETTINGS -> Unit
-                SettingsNavigationTarget.CAPSULE_NOTIFICATION -> pushPage(AppPage.CapsuleNotification(initialTab = action.tab, targetItemKey = action.targetItemKey))
-                SettingsNavigationTarget.APP_UI -> pushPage(AppPage.CustomSettings(targetItemKey = action.targetItemKey))
-                SettingsNavigationTarget.DESKTOP_LYRICS -> pushPage(AppPage.DesktopLyrics(targetItemKey = action.targetItemKey))
-                SettingsNavigationTarget.LOCAL_LYRIC_DIRECTORIES -> pushPage(AppPage.LocalLyricDirectories)
-                SettingsNavigationTarget.CACHE_MANAGEMENT -> pushPage(AppPage.CacheManagement)
-                SettingsNavigationTarget.ONLINE_LYRIC_REMATCH -> pushPage(AppPage.OnlineLyricDebug)
-                SettingsNavigationTarget.LAST_FM -> pushPage(AppPage.LastFm)
-                SettingsNavigationTarget.APPLE_MUSIC -> pushPage(AppPage.AppleMusic)
-                SettingsNavigationTarget.FAQ -> pushPage(AppPage.Faq)
-                SettingsNavigationTarget.COMMUNITY -> pushPage(AppPage.Community)
-                SettingsNavigationTarget.ABOUT -> pushPage(AppPage.About)
-                SettingsNavigationTarget.DIAGNOSTICS -> pushPage(AppPage.Diagnostics)
-                SettingsNavigationTarget.LAB -> pushPage(AppPage.Lab)
-                SettingsNavigationTarget.PARSER_RULES -> pushPage(AppPage.ParserRules)
-            }
+            action.toAppPage()?.let(::pushPage)
         }
         val snackbarHostState = remember { MiuixSnackbarHostState() }
         val backdropBackground = MiuixTheme.colorScheme.surface
@@ -621,7 +608,8 @@ class MainActivity : BaseActivity() {
 
         CompositionLocalProvider(
             LocalMiuixBlurBackdrop provides backdrop,
-            LocalMiuixBlurEnabled provides blurEnabled
+            LocalMiuixBlurEnabled provides blurEnabled,
+            LocalRelatedSettingsNavigator provides ::handleNavigate
         ) {
             MiuixScaffold(
                 popupHost = { MiuixPopupHost() },
@@ -715,7 +703,7 @@ class MainActivity : BaseActivity() {
                                     onOpenOnlineLyricRematch = { pushPage(AppPage.OnlineLyricDebug) },
                                     onOpenLastFm = { pushPage(AppPage.LastFm) },
                                     onOpenCacheManagement = { pushPage(AppPage.CacheManagement) },
-                                    onOpenLab = { pushPage(AppPage.Lab) },
+                                    onOpenLab = { pushPage(AppPage.Lab()) },
                                     onNavigateAction = ::handleNavigate,
                                     showBackButton = false,
                                     onBottomBarVisibilityChange = { bottomBarVisible = it }
@@ -934,13 +922,21 @@ class MainActivity : BaseActivity() {
     private fun MaterialAppPage(
         page: AppPage,
         onBack: () -> Unit,
-        onPushPage: (AppPage) -> Unit
+        onPushPage: (AppPage) -> Unit,
+        onNavigate: (SettingsSearchAction.Navigate) -> Unit
     ) {
         when (page) {
             is AppPage.LyricsPlayback -> Unit
-            is AppPage.CustomSettings -> AppUiScreen(onBack = onBack)
-            is AppPage.CapsuleNotification -> CapsuleNotificationScreen(onBack = onBack)
-            is AppPage.DesktopLyrics -> DesktopLyricsScreen(onBack = onBack)
+            is AppPage.CustomSettings -> AppUiScreen(
+                onBack = onBack, targetItemKey = page.targetItemKey, onNavigate = onNavigate
+            )
+            is AppPage.CapsuleNotification -> CapsuleNotificationScreen(
+                onBack = onBack, initialTab = page.initialTab, targetItemKey = page.targetItemKey,
+                onNavigate = onNavigate
+            )
+            is AppPage.DesktopLyrics -> DesktopLyricsScreen(
+                onBack = onBack, targetItemKey = page.targetItemKey, onNavigate = onNavigate
+            )
             AppPage.Community -> CommunityScreen(onBack = onBack)
             AppPage.LocalLyricDirectories -> LocalLyricDirectoriesScreen(
                 onBack = onBack,
@@ -974,7 +970,10 @@ class MainActivity : BaseActivity() {
             AppPage.AppleMusic -> AppleMusicSettingsScreen(onBack = onBack)
             AppPage.ParserRules -> ParserRuleScreen(onBack = onBack)
             AppPage.CacheManagement -> CacheManagementScreen(onBack = onBack)
-            AppPage.Lab -> LabScreen(onBack = onBack, onOpenCapsuleNotification = { onPushPage(AppPage.CapsuleNotification()) })
+            is AppPage.Lab -> LabScreen(
+                onBack = onBack, targetItemKey = page.targetItemKey,
+                onOpenCapsuleNotification = { onPushPage(AppPage.CapsuleNotification()) }
+            )
             AppPage.LogViewer -> LogViewerScreen(onBack = onBack)
             is AppPage.LocalLyricDirectory -> LocalLyricDirectoryScreen(
                 directoryUri = page.directoryUri.toUri(),
@@ -1094,7 +1093,10 @@ class MainActivity : BaseActivity() {
                 onOpenFaq = { onPushPage(AppPage.Faq) },
             )
             AppPage.CacheManagement -> MiuixCacheManagementScreen(onBack = onBack)
-            AppPage.Lab -> MiuixLabScreen(onBack = onBack, onOpenCapsuleNotification = { onPushPage(AppPage.CapsuleNotification()) })
+            is AppPage.Lab -> MiuixLabScreen(
+                onBack = onBack, targetItemKey = page.targetItemKey,
+                onOpenCapsuleNotification = { onPushPage(AppPage.CapsuleNotification()) }
+            )
             AppPage.LogViewer -> MiuixLogViewerScreen(onBack = onBack)
             is AppPage.LocalLyricDirectory -> MiuixLocalLyricDirectoryScreen(
                 directoryUri = page.directoryUri.toUri(),
@@ -1169,7 +1171,7 @@ private sealed class AppPage {
     data object AppleMusic : AppPage()
     data object ParserRules : AppPage()
     data object CacheManagement : AppPage()
-    data object Lab : AppPage()
+    data class Lab(val targetItemKey: String? = null) : AppPage()
     data object LogViewer : AppPage()
     data class LocalLyricDirectory(
         val directoryUri: String,
@@ -1180,6 +1182,24 @@ private sealed class AppPage {
         val suggestedName: String?,
         val isTemplate: Boolean = false
     ) : AppPage()
+}
+
+private fun SettingsSearchAction.Navigate.toAppPage(): AppPage? = when (target) {
+    SettingsNavigationTarget.MAIN_SETTINGS -> null
+    SettingsNavigationTarget.CAPSULE_NOTIFICATION -> AppPage.CapsuleNotification(tab, targetItemKey)
+    SettingsNavigationTarget.APP_UI -> AppPage.CustomSettings(targetItemKey)
+    SettingsNavigationTarget.DESKTOP_LYRICS -> AppPage.DesktopLyrics(targetItemKey)
+    SettingsNavigationTarget.LOCAL_LYRIC_DIRECTORIES -> AppPage.LocalLyricDirectories
+    SettingsNavigationTarget.CACHE_MANAGEMENT -> AppPage.CacheManagement
+    SettingsNavigationTarget.ONLINE_LYRIC_REMATCH -> AppPage.OnlineLyricDebug
+    SettingsNavigationTarget.LAST_FM -> AppPage.LastFm
+    SettingsNavigationTarget.APPLE_MUSIC -> AppPage.AppleMusic
+    SettingsNavigationTarget.FAQ -> AppPage.Faq
+    SettingsNavigationTarget.COMMUNITY -> AppPage.Community
+    SettingsNavigationTarget.ABOUT -> AppPage.About
+    SettingsNavigationTarget.DIAGNOSTICS -> AppPage.Diagnostics
+    SettingsNavigationTarget.LAB -> AppPage.Lab(targetItemKey)
+    SettingsNavigationTarget.PARSER_RULES -> AppPage.ParserRules
 }
 
 

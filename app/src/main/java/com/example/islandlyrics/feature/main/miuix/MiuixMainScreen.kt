@@ -27,6 +27,7 @@ import com.example.islandlyrics.ui.miuix.blur.MiuixBlurTopAppBar
 import com.example.islandlyrics.ui.miuix.blur.MiuixBlurScaffold
 import android.graphics.Bitmap
 import com.example.islandlyrics.R
+import com.example.islandlyrics.runtime.media.openMediaApp
 import com.example.islandlyrics.core.network.OfflineModeManager
 import com.example.islandlyrics.runtime.service.MediaMonitorService
 import com.example.islandlyrics.rules.ParserRuleHelper
@@ -859,78 +860,8 @@ private fun MiuixMediaSessionCard(
             null
         }
     }
-    val displayName = appName.ifBlank { controller.packageName }
-    val sessionFailedFallbackText = stringResource(
-        R.string.media_control_cannot_open_session_failed_fallback,
-        displayName
-    )
-    val launchFailedTextPrefix = stringResource(
-        R.string.media_control_cannot_open_launch_failed,
-        displayName,
-        ""
-    )
-    val noEntryText = stringResource(R.string.media_control_cannot_open_no_entry, displayName)
     val copiedText = stringResource(R.string.toast_copied)
-    val openApp = {
-        val sessionActivity = controller.sessionActivity
-        val launchIntent = context.packageManager
-            .getLaunchIntentForPackage(controller.packageName)
-            ?.apply {
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
-            }
-
-        when {
-            sessionActivity != null -> {
-                val sessionLaunchResult = runCatching { sessionActivity.send() }
-                if (sessionLaunchResult.isFailure) {
-                    if (launchIntent != null) {
-                        val fallbackResult = runCatching { context.startActivity(launchIntent) }
-                        if (fallbackResult.isSuccess) {
-                            Toast.makeText(
-                                context,
-                                sessionFailedFallbackText,
-                                Toast.LENGTH_SHORT
-                            ).show()
-                        } else {
-                            val reason = fallbackResult.exceptionOrNull()?.localizedMessage
-                                ?: sessionLaunchResult.exceptionOrNull()?.localizedMessage
-                                ?: "unknown"
-                            Toast.makeText(
-                                context,
-                                launchFailedTextPrefix + reason,
-                                Toast.LENGTH_SHORT
-                            ).show()
-                        }
-                    } else {
-                        val reason = sessionLaunchResult.exceptionOrNull()?.localizedMessage ?: "unknown"
-                        Toast.makeText(
-                            context,
-                            launchFailedTextPrefix + reason,
-                            Toast.LENGTH_SHORT
-                        ).show()
-                    }
-                }
-            }
-            launchIntent != null -> {
-                val launchResult = runCatching { context.startActivity(launchIntent) }
-                if (launchResult.isFailure) {
-                    val reason = launchResult.exceptionOrNull()?.localizedMessage ?: "unknown"
-                    Toast.makeText(
-                        context,
-                        launchFailedTextPrefix + reason,
-                        Toast.LENGTH_SHORT
-                    ).show()
-                }
-            }
-            else -> {
-                Toast.makeText(
-                    context,
-                    noEntryText,
-                    Toast.LENGTH_SHORT
-                ).show()
-            }
-        }
-    }
+    val openApp = { openMediaApp(context, controller, appName) }
 
     // ── Palette accent from album art ──
     val dominantColor by produceState<Color?>(initialValue = null, key1 = albumArt, key2 = dynamicThemeEnabled) {

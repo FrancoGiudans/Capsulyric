@@ -10,6 +10,7 @@ import com.example.islandlyrics.lyrics.online.OnlineLyricFetcher.LyricLine
 import com.example.islandlyrics.lyrics.state.LyricRepository
 import com.example.islandlyrics.ui.overlay.display.TimingGapDisplayResolver
 import com.example.islandlyrics.ui.overlay.model.SecondaryTextResolver
+import com.example.islandlyrics.ui.overlay.model.WordProgressCalculator
 import kotlin.math.abs
 
 internal data class LyricsPlaybackStart(
@@ -83,6 +84,9 @@ internal data class PlaybackLyricDepth(
 )
 
 internal const val PlaybackFocusedSecondaryAlpha = 0.68f
+internal const val PlaybackNeighborMainAlpha = 0.50f
+internal const val PlaybackUnfollowedMainAlpha = 0.78f
+internal const val PlaybackUnfollowedSecondaryAlpha = 0.42f
 private val FocusedLyricDepth = PlaybackLyricDepth(0f, 0f, 1f, PlaybackFocusedSecondaryAlpha)
 
 private val PlaybackLyricDepthStops = listOf(
@@ -100,6 +104,9 @@ private val LandscapeLyricDepthStops = listOf(
 )
 
 internal const val LandscapeLyricFocusFraction = 0.39f
+
+internal fun playbackLyricBlurRadius(distance: Int, landscape: Boolean = false, strength: Float = 1f): Float =
+    playbackLyricDepth(distance.toFloat(), landscape).mainBlur * strength
 
 internal fun landscapeLyricDistance(center: Float, viewportStart: Int, viewportEnd: Int): Float {
     val height = (viewportEnd - viewportStart).coerceAtLeast(1)
@@ -125,6 +132,92 @@ internal fun playbackLyricDepth(distance: Float, landscape: Boolean = false): Pl
         mainAlpha = lerp(from.mainAlpha, to.mainAlpha, progress),
         secondaryAlpha = lerp(from.secondaryAlpha, to.secondaryAlpha, progress),
     )
+}
+
+internal data class PlaybackLyricFrame(
+    val focusedLine: Int,
+    val previousLine: Int = focusedLine,
+    val progress: Float = 1f,
+    val scaleProgress: Float = progress,
+    val interlude: PlaybackInterlude? = null,
+    val gapHeight: Float = 0f,
+    val dotAlpha: Float = 0f,
+    val dotScale: Float = 1f,
+    val interruptedFrom: PlaybackLyricFrame? = null,
+) {
+    fun activation(index: Int): Float {
+        val start = interruptedFrom?.activation(index) ?: if (index == previousLine) 1f else 0f
+        val end = if (index == focusedLine) 1f else 0f
+        return lerp(start, end, progress)
+    }
+
+    fun scaleActivation(index: Int): Float {
+        val start = interruptedFrom?.scaleActivation(index) ?: if (index == previousLine) 1f else 0f
+        val end = if (index == focusedLine) 1f else 0f
+        return lerp(start, end, scaleProgress)
+    }
+
+    fun distance(index: Int): Float {
+        val gapIndex = interlude?.beforeLineIndex
+        fun distanceTo(line: Int): Float =
+            when {
+                line >= 0 -> abs(index - line).toFloat()
+                gapIndex == null -> index + 1f
+                index < gapIndex -> (gapIndex - index).toFloat()
+                else -> index - gapIndex + 1f
+            }
+        val start = interruptedFrom?.distance(index) ?: distanceTo(previousLine)
+        return lerp(start, distanceTo(focusedLine), progress)
+    }
+
+    fun asInterruptedStart(): PlaybackLyricFrame? {
+        if (progress >= 1f && abs(scaleProgress - 1f) < 0.001f) return null
+        return if (interruptedFrom?.interruptedFrom != null) {
+            copy(interruptedFrom = interruptedFrom.copy(interruptedFrom = null))
+        } else {
+            this
+        }
+    }
+}
+
+internal enum class PlaybackWaveMode { Idle, Wave, Settle, Snap }
+
+internal data class PlaybackScrollWave(
+    val id: Int = 0,
+    val mode: PlaybackWaveMode = PlaybackWaveMode.Idle,
+    val targetScroll: Float = 0f,
+    val pivotLine: Int = -1,
+    val scrollDownwardInList: Boolean = true,
+    val startTimeNanos: Long = 0L,
+)
+
+internal fun playbackWaveDelayMillis(index: Int, pivotLine: Int, scrollDownwardInList: Boolean): Long {
+    if (pivotLine < 0) return 0L
+    val relative = if (scrollDownwardInList) index - pivotLine else pivotLine - index
+    return when {
+        relative < 0 -> 0L
+        relative == 0 -> 14L
+        else -> (36L + (relative - 1) * 26L).coerceAtMost(160L)
+    }
+}
+
+internal fun playbackLyricMainAlpha(depthAlpha: Float, activation: Float, following: Boolean): Float =
+    lerp(if (following) depthAlpha else PlaybackUnfollowedMainAlpha, 1f, activation.coerceIn(0f, 1f))
+
+internal fun playbackLyricSecondaryAlpha(depthAlpha: Float, activation: Float, following: Boolean): Float =
+    lerp(
+        if (following) depthAlpha else PlaybackUnfollowedSecondaryAlpha,
+        PlaybackFocusedSecondaryAlpha,
+        activation.coerceIn(0f, 1f),
+    )
+
+internal fun playbackLyricUnsungMaskAlpha(depthAlpha: Float, activation: Float, following: Boolean): Float {
+    val clampedActivation = activation.coerceIn(0f, 1f)
+    val layerAlpha = playbackLyricMainAlpha(depthAlpha, clampedActivation, following)
+    if (layerAlpha <= 0f) return 1f
+    val inactiveAlpha = if (following) minOf(depthAlpha, PlaybackNeighborMainAlpha) else PlaybackUnfollowedMainAlpha
+    val targetOnScreenAlpha = lerp(inactiveAlpha, WordProgressCalculator.UNSUNG_ALPHA, clampedActivation)
+    return (targetOnScreenAlpha / layerAlpha).coerceIn(0f, 1f)
 }
 
 internal fun List<LyricLine>.currentPlaybackLine(position: Long): Int {

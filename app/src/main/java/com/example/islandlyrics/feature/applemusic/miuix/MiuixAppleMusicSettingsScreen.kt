@@ -49,6 +49,8 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.core.content.edit
 import com.example.islandlyrics.R
+import com.example.islandlyrics.core.settings.search.SettingsNavigationTarget
+import com.example.islandlyrics.core.settings.search.SettingsSearchAction
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import com.example.islandlyrics.core.settings.AppPreferences
@@ -368,6 +370,7 @@ fun MiuixAppleMusicSettingsScreen(onBack: () -> Unit) {
                         ),
                         OtherSettingLink(
                             titleRes = R.string.online_lyric_rematch_title,
+                            action = SettingsSearchAction.Navigate(SettingsNavigationTarget.ONLINE_LYRIC_REMATCH),
                             onClick = {
                                 context.startActivity(Intent(context, OnlineLyricDebugActivity::class.java))
                             }
