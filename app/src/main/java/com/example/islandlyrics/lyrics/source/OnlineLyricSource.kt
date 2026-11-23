@@ -34,6 +34,7 @@ import com.example.islandlyrics.lyrics.cache.TrackIdentityCacheStore
 import com.example.islandlyrics.lyrics.online.OnlineLyricFetcher
 import com.example.islandlyrics.lyrics.online.OnlineLyricFetchSnapshotStore
 import com.example.islandlyrics.lyrics.online.provider.OnlineLyricProvider
+import com.example.islandlyrics.lyrics.online.parser.OnlineLyricPresentationProcessor
 import com.example.islandlyrics.lyrics.online.parser.OnlineLyricSidecarMerger
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -66,6 +67,7 @@ class OnlineLyricSource(private val context: Context) {
     private val identityCacheStore = TrackIdentityCacheStore(context)
     private val scope      = CoroutineScope(Dispatchers.Main + Job())
     private var fetchJob: Job? = null
+    private var reapplyJob: Job? = null
 
     // Track the last request so we can discard stale results
     private var pendingTitle  = ""
@@ -127,10 +129,12 @@ class OnlineLyricSource(private val context: Context) {
                     fetchedAt = hit.updatedAt, bestResult = hit.result, attempts = attempts,
                     usedCleanTitleFallback = false, fromCache = true
                 ))
+                val processed = OnlineLyricPresentationProcessor.prepare(context, hit.result, rule, metadata)
                 LyricRepository.getInstance().updateParsedLyrics(
-                    lines = OnlineLyricSidecarMerger.withSidecars(hit.result, rule), hasSyllable = hit.result.hasSyllable,
+                    lines = processed.lines, hasSyllable = hit.result.hasSyllable,
                     sourceLabel = "${hit.result.api} · Cache", apiPath = "Online Cache",
-                    timelineCapability = LyricRepository.TimelineCapability.MULTI_LINE
+                    timelineCapability = LyricRepository.TimelineCapability.MULTI_LINE,
+                    writers = processed.writers
                 )
                 onResolve(true)
             } catch (cancelled: kotlinx.coroutines.CancellationException) {
@@ -213,7 +217,7 @@ class OnlineLyricSource(private val context: Context) {
                         TAG,
                         "♻️ Online lyric cache hit [${cacheHit.result.api}] custom=${cacheHit.hasCustomMatch}"
                     )
-                    val lines = OnlineLyricSidecarMerger.withSidecars(cacheHit.result, rule)
+                    val processed = OnlineLyricPresentationProcessor.prepare(context, cacheHit.result, rule, metadata)
                     OnlineLyricFetchSnapshotStore.save(
                         OnlineLyricFetchSnapshotStore.Snapshot(
                             packageName = packageName,
@@ -234,11 +238,12 @@ class OnlineLyricSource(private val context: Context) {
                         )
                     )
                     LyricRepository.getInstance().updateParsedLyrics(
-                        lines = lines,
+                        lines = processed.lines,
                         hasSyllable = cacheHit.result.hasSyllable,
                         sourceLabel = "${cacheHit.result.api} · Cache",
                         apiPath = "Online Cache",
-                        timelineCapability = LyricRepository.TimelineCapability.MULTI_LINE
+                        timelineCapability = LyricRepository.TimelineCapability.MULTI_LINE,
+                        writers = processed.writers
                     )
                     onResolve?.invoke(true)
                     return@launch
@@ -341,8 +346,10 @@ class OnlineLyricSource(private val context: Context) {
                     result.parsedLines != null &&
                     result.parsedLines.isNotEmpty())
                 {
-                    val lines = OnlineLyricSidecarMerger.withSidecars(result, rule)
-                    val cacheResult = result.copy(parsedLines = lines)
+                    // Save raw unfiltered parsed lines to cache so toggling info-line filtering
+                    // or duet alignment later can reprocess losslessly without re-fetching.
+                    val rawLinesWithSidecars = OnlineLyricSidecarMerger.withSidecars(result, rule, filterInfoLines = false)
+                    val cacheResult = result.copy(parsedLines = rawLinesWithSidecars)
                     val currentMetadata = LyricRepository.getInstance().liveMetadata.value
                     if (currentMetadata?.packageName == packageName) {
                         withContext(Dispatchers.IO) {
@@ -354,15 +361,17 @@ class OnlineLyricSource(private val context: Context) {
                             )
                         }
                     }
+                    val processed = OnlineLyricPresentationProcessor.prepare(context, result, rule, currentMetadata)
                     AppLogger.getInstance().i(TAG,
-                        "✅ Online fetch OK [${result.api}] syllable=${result.hasSyllable} fallback=${outcome.usedCleanTitleFallback}")
+                        "✅ Online fetch OK [${result.api}] syllable=${result.hasSyllable} filtered=${processed.removedInfoLineCount} writers=${processed.writers.size} fallback=${outcome.usedCleanTitleFallback}")
                     LyricRepository.getInstance()
                         .updateParsedLyrics(
-                            lines = lines,
+                            lines = processed.lines,
                             hasSyllable = result.hasSyllable,
                             sourceLabel = result.api,
                             apiPath = "Online API",
-                            timelineCapability = LyricRepository.TimelineCapability.MULTI_LINE
+                            timelineCapability = LyricRepository.TimelineCapability.MULTI_LINE,
+                            writers = processed.writers
                         )
                     onResolve?.invoke(true)
                 } else {
@@ -378,10 +387,83 @@ class OnlineLyricSource(private val context: Context) {
         }
     }
 
+    /**
+     * Re-runs presentation post-processing (info-line filtering + duet alignment)
+     * on the currently playing online track from the in-memory snapshot or lossless cache,
+     * so toggling settings takes effect immediately without network requests.
+     */
+    fun reapplyForCurrentTrack() {
+        val repo = LyricRepository.getInstance()
+        val metadata = repo.liveMetadata.value ?: return
+        val currentParsed = repo.liveParsedLyrics.value ?: return
+        if (currentParsed.apiPath != "Online API" && currentParsed.apiPath != "Online Cache") return
+
+        val rule = ParserRuleHelper.getRuleForPackage(context, metadata.packageName)
+            ?: ParserRuleHelper.createDefaultRule(metadata.packageName)
+
+        reapplyJob?.cancel()
+        reapplyJob = scope.launch {
+            try {
+                val songState = resolveQuery(metadata.packageName, metadata.title, metadata.artist) ?: return@launch
+                if (songState.isInstrumental) return@launch
+                val queryTitle = songState.effectiveTitle
+                val queryArtist = songState.effectiveArtist
+
+                val snapshotResult = OnlineLyricFetchSnapshotStore.get(
+                    packageName = metadata.packageName,
+                    queryTitle = queryTitle,
+                    queryArtist = queryArtist
+                )?.bestResult
+                val rawResult = snapshotResult ?: withContext(Dispatchers.IO) {
+                    cacheStore.getCachedLyric(metadata, queryTitle, queryArtist)?.result
+                } ?: return@launch
+
+                coroutineContext.ensureActive()
+                if (!sameLyricRequestTrack(metadata, repo.liveMetadata.value)) return@launch
+
+                val apiPath = currentParsed.apiPath
+                val processed = OnlineLyricPresentationProcessor.prepare(context, rawResult, rule, metadata)
+                val accepted = repo.updateParsedLyrics(
+                    lines = processed.lines,
+                    hasSyllable = rawResult.hasSyllable,
+                    sourceLabel = currentParsed.sourceLabel ?: rawResult.api,
+                    apiPath = apiPath,
+                    timelineCapability = LyricRepository.TimelineCapability.MULTI_LINE,
+                    writers = processed.writers
+                )
+                if (accepted) {
+                    val position = repo.liveProgress.value?.position
+                    if (position != null) {
+                        val activeLine = processed.lines.firstOrNull { position >= it.startTime && position < it.endTime }
+                        repo.updateCurrentLine(activeLine)
+                        if (activeLine != null) {
+                            val appLabel = ParserRuleHelper.getAppNameForPackage(context, metadata.packageName)
+                            repo.updateLyric(
+                                lyric = activeLine.text,
+                                app = appLabel,
+                                apiPath = apiPath,
+                                translation = activeLine.translation,
+                                roma = activeLine.roma,
+                                receiveTranslation = currentParsed.receiveTranslation,
+                                receiveRomanization = currentParsed.receiveRomanization
+                            )
+                        }
+                    }
+                }
+            } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                throw cancelled
+            } catch (e: Exception) {
+                AppLogger.getInstance().e(TAG, "Reapply online lyrics failed: ${e.message}")
+            }
+        }
+    }
+
     /** Cancel any in-flight fetch immediately (call on song change or service stop). */
     fun cancel() {
         fetchJob?.cancel()
         fetchJob = null
+        reapplyJob?.cancel()
+        reapplyJob = null
     }
 
     companion object {

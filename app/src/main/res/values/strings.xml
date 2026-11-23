@@ -46,6 +46,12 @@
     <string name="settings_fullscreen_playback_auto_hide_controls_summary">Tap the bottom of the lyrics to show the controls again.</string>
     <string name="settings_fullscreen_playback_auto_follow">Automatically return to the current line</string>
     <string name="settings_fullscreen_playback_auto_follow_summary">While playing, resume following lyrics 5 seconds after you stop scrolling.</string>
+    <string name="settings_fullscreen_playback_show_writers">Show songwriters at the end</string>
+    <string name="settings_fullscreen_playback_show_writers_summary">Display Written by credits at the bottom of the lyrics when available.</string>
+    <string name="settings_fullscreen_playback_duet_alignment">Alternating duet alignment</string>
+    <string name="settings_fullscreen_playback_duet_alignment_summary">Right-align the second vocalist and hide speaker prefixes in duet lyrics.</string>
+    <string name="settings_filter_online_lyric_info_lines">Filter extra info in online lyrics</string>
+    <string name="settings_filter_online_lyric_info_lines_desc">Hide leading or trailing credits, titles, and copyright lines while extracting songwriter info.</string>
     <string name="lyrics_playback_show_controls">Show playback controls</string>
     <string name="lyrics_playback_volume">Media volume</string>
     <string name="main_instrumental_marked">Marked as instrumental</string>

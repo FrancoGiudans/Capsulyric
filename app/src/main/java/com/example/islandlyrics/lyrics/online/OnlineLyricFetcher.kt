@@ -65,6 +65,13 @@ class OnlineLyricFetcher(
         val mediaUri: String = ""
     )
     
+    /** 对唱/交替演唱的视觉对齐方向 */
+    enum class LyricAlignment {
+        UNSPECIFIED,
+        LEFT,
+        RIGHT
+    }
+
     // 歌词行数据类
     data class LyricLine(
         val startTime: Long,  // 毫秒
@@ -72,7 +79,8 @@ class OnlineLyricFetcher(
         val text: String,
         val syllables: List<SyllableInfo>? = null,  // 逐字信息
         val translation: String? = null,
-        val roma: String? = null
+        val roma: String? = null,
+        val alignment: LyricAlignment = LyricAlignment.UNSPECIFIED
     )
     
     // 逐字信息数据类

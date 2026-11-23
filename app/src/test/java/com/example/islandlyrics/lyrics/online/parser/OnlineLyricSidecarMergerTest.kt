@@ -5,6 +5,7 @@ import com.example.islandlyrics.lyrics.online.provider.OnlineLyricProvider
 import com.example.islandlyrics.rules.ParserRule
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Test
 
 class OnlineLyricSidecarMergerTest {
@@ -53,6 +54,38 @@ class OnlineLyricSidecarMergerTest {
         assertNotNull(lines.single().translation)
         assertEquals("翻译歌词", lines.single().translation)
         assertEquals("pin yin", lines.single().roma)
+    }
+
+    @Test
+    fun filtersSidecarCopyrightAndPlaceholdersWhenEnabled() {
+        val resultWithNoise = OnlineLyricFetcher.LyricResult(
+            api = "QQMusic",
+            lyrics = "[00:00.80]First sung line\n[00:05.00]Second sung line",
+            parsedLines = listOf(
+                OnlineLyricFetcher.LyricLine(startTime = 800L, endTime = 4_000L, text = "First sung line"),
+                OnlineLyricFetcher.LyricLine(startTime = 5_000L, endTime = 8_000L, text = "Second sung line")
+            ),
+            hasSyllable = false,
+            provider = OnlineLyricProvider.QQMusic,
+            translationLyrics = """
+                [00:00.00]腾讯音乐享有本翻译作品的著作权
+                [00:00.80]//
+                [00:05.00]第二句翻译
+            """.trimIndent()
+        )
+        val rule = ParserRule(
+            packageName = "test.music",
+            receiveOnlineTranslation = true
+        )
+
+        val filtered = OnlineLyricSidecarMerger.withSidecars(
+            result = resultWithNoise,
+            rule = rule,
+            filterInfoLines = true
+        )
+
+        assertNull(filtered[0].translation)
+        assertEquals("第二句翻译", filtered[1].translation)
     }
 
     private fun result(

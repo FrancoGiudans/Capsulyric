@@ -374,13 +374,20 @@ class OnlineLyricDebugViewModel(application: Application) : AndroidViewModel(app
     ) {
         val rule = ParserRuleHelper.getRuleForPackage(getApplication(), mediaInfo.packageName)
             ?: ParserRuleHelper.createDefaultRule(mediaInfo.packageName)
-        val lines = OnlineLyricSidecarMerger.withSidecars(result, rule)
+        val processed = com.example.islandlyrics.lyrics.online.parser.OnlineLyricPresentationProcessor.prepare(
+            context = getApplication(),
+            result = result,
+            rule = rule,
+            mediaInfo = mediaInfo
+        )
+        val lines = processed.lines
         repo.updateParsedLyrics(
             lines = lines,
             hasSyllable = result.hasSyllable,
             sourceLabel = result.api,
             apiPath = apiPath,
-            timelineCapability = LyricRepository.TimelineCapability.MULTI_LINE
+            timelineCapability = LyricRepository.TimelineCapability.MULTI_LINE,
+            writers = processed.writers
         )
 
         val appLabel = ParserRuleHelper.getAppNameForPackage(getApplication(), mediaInfo.packageName)

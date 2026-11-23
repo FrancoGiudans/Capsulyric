@@ -93,6 +93,7 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Ok
 import com.example.islandlyrics.feature.update.miuix.MiuixUpdateDialog
+import com.example.islandlyrics.core.settings.AppPreferences
 import com.example.islandlyrics.core.settings.LauncherAliasManager
 import com.example.islandlyrics.core.settings.SettingsBackupManager
 import com.example.islandlyrics.core.settings.SettingsBackupManager.ParserConflict
@@ -969,6 +970,19 @@ internal fun MiuixSettingsScreen(
                         onClick = {
                             onOpenCacheManagement?.invoke()
                                 ?: context.startActivity(Intent(context, com.example.islandlyrics.feature.cache.CacheManagementActivity::class.java))
+                        }
+                    )
+                    var filterOnlineLyricInfoLines by remember {
+                        mutableStateOf(AppPreferences.isOnlineLyricInfoFilterEnabled(prefs))
+                    }
+                    SuperSwitch(
+                        title = stringResource(R.string.settings_filter_online_lyric_info_lines),
+                        summary = stringResource(R.string.settings_filter_online_lyric_info_lines_desc),
+                        checked = filterOnlineLyricInfoLines,
+                        modifier = mainSettingModifier("key_filter_online_lyric_info_lines"),
+                        onCheckedChange = {
+                            filterOnlineLyricInfoLines = it
+                            prefs.edit { putBoolean(AppPreferences.Keys.FILTER_ONLINE_LYRIC_INFO_LINES, it) }
                         }
                     )
                     if (!offlineModeEnabled) {

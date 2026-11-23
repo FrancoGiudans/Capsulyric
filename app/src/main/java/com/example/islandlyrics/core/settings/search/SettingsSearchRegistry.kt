@@ -160,6 +160,17 @@ object SettingsSearchRegistry {
             action = SettingsSearchAction.Navigate(SettingsNavigationTarget.CACHE_MANAGEMENT)
         ),
         SettingsSearchItem(
+            id = "pref_filter_online_lyric_info_lines",
+            titleRes = R.string.settings_filter_online_lyric_info_lines,
+            summaryRes = R.string.settings_filter_online_lyric_info_lines_desc,
+            breadcrumbResList = listOf(R.string.settings_lyric_tools_header),
+            keywords = listOf("过滤多余信息", "过滤演职员", "作词作曲", "制作人", "版权声明", "在线歌词过滤", "filter credits", "info lines"),
+            action = SettingsSearchAction.Navigate(
+                target = SettingsNavigationTarget.MAIN_SETTINGS,
+                targetItemKey = "key_filter_online_lyric_info_lines"
+            )
+        ),
+        SettingsSearchItem(
             id = "page_online_rematch",
             titleRes = R.string.online_lyric_rematch_title,
             summaryRes = R.string.online_lyric_rematch_settings_desc,
@@ -426,6 +437,8 @@ object SettingsSearchRegistry {
                 "字号", "字体大小", "字重", "font size", "font weight",
                 "隐藏状态栏", "隐藏导航栏", "hide status bar", "hide navigation bar",
                 "自动回到当前句", "歌词跟随", "auto-follow lyrics",
+                "词曲作者", "作词作曲", "Written by", "songwriters", "writers",
+                "交替演唱", "对唱", "右对齐", "duet", "alternating vocals",
             ),
             supportedVariants = setOf(SettingsUiVariant.MIUIX),
             action = SettingsSearchAction.Navigate(

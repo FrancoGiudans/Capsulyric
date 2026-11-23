@@ -39,11 +39,12 @@ internal object OnlineLyricSidecarMerger {
 
     fun withSidecars(
         result: OnlineLyricFetcher.LyricResult,
-        rule: ParserRule
+        rule: ParserRule,
+        filterInfoLines: Boolean = false
     ): List<OnlineLyricFetcher.LyricLine> {
         val lines = result.parsedLines.orEmpty()
         if (lines.isEmpty()) return emptyList()
-        val sidecars = result.buildSidecars(rule)
+        val sidecars = result.buildSidecars(rule, filterInfoLines)
         if (sidecars.translationByTime.isEmpty() && sidecars.romanByTime.isEmpty()) return lines
 
         return lines.map { line ->
@@ -148,14 +149,17 @@ internal object OnlineLyricSidecarMerger {
         val romanByTime: Map<Long, String>
     )
 
-    private fun OnlineLyricFetcher.LyricResult.buildSidecars(rule: ParserRule): SidecarTimeline {
+    private fun OnlineLyricFetcher.LyricResult.buildSidecars(
+        rule: ParserRule,
+        filterInfoLines: Boolean
+    ): SidecarTimeline {
         val translationByTime = if (rule.receiveOnlineTranslation) {
-            translationLyrics?.let { parseSidecarLrc(it) }.orEmpty()
+            translationLyrics?.let { parseSidecarLrc(it, filterInfoLines) }.orEmpty()
         } else {
             emptyMap()
         }
         val romanByTime = if (rule.receiveOnlineRomanization) {
-            romanLyrics?.let { parseSidecarLrc(it) }.orEmpty()
+            romanLyrics?.let { parseSidecarLrc(it, filterInfoLines) }.orEmpty()
         } else {
             emptyMap()
         }
@@ -172,14 +176,14 @@ internal object OnlineLyricSidecarMerger {
             ?.takeIf { it.isNotBlank() }
     }
 
-    private fun parseSidecarLrc(content: String): Map<Long, String> {
-        val lrcLines = parseLrcTimestampLines(content)
+    private fun parseSidecarLrc(content: String, filterInfoLines: Boolean): Map<Long, String> {
+        val lrcLines = parseLrcTimestampLines(content, filterInfoLines)
         if (lrcLines.isNotEmpty()) return lrcLines
 
-        return parseQrcTimestampLines(content)
+        return parseQrcTimestampLines(content, filterInfoLines)
     }
 
-    private fun parseLrcTimestampLines(content: String): Map<Long, String> {
+    private fun parseLrcTimestampLines(content: String, filterInfoLines: Boolean): Map<Long, String> {
         val timestampRegex = Regex("""\[(\d{1,2}):(\d{2})(?:\.(\d{1,3}))?]""")
         return content.lineSequence()
             .mapNotNull { rawLine ->
@@ -187,13 +191,14 @@ internal object OnlineLyricSidecarMerger {
                 if (matches.isEmpty()) return@mapNotNull null
                 val text = rawLine.replace(timestampRegex, "").trim()
                 if (text.isBlank()) return@mapNotNull null
+                if (filterInfoLines && OnlineLyricInfoFilter.isSidecarNoiseLine(text)) return@mapNotNull null
                 matches.map { match -> match.toMillis() to text }
             }
             .flatten()
             .toMap()
     }
 
-    private fun parseQrcTimestampLines(content: String): Map<Long, String> {
+    private fun parseQrcTimestampLines(content: String, filterInfoLines: Boolean): Map<Long, String> {
         val lineHeaderRegex = Regex("""\[(\d+),(\d+)]""")
         val wordTokenRegex = Regex("""(?:<|\()\d+,\d+(?:,\d+)?(?:>|\))""")
         val headers = lineHeaderRegex.findAll(content).toList()
@@ -209,7 +214,13 @@ internal object OnlineLyricSidecarMerger {
                 .replace(wordTokenRegex, "")
                 .replace(Regex("""\[[^\u005D]+\]"""), "")
                 .trim()
-            if (text.isBlank()) null else startTime to text
+            if (text.isBlank()) {
+                null
+            } else if (filterInfoLines && OnlineLyricInfoFilter.isSidecarNoiseLine(text)) {
+                null
+            } else {
+                startTime to text
+            }
         }.toMap()
     }
 

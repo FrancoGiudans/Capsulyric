@@ -78,6 +78,7 @@ import kotlinx.coroutines.launch
 class LyricService : Service() {
 
     private var lastObservedTrackKey: String? = null
+    private var lastObservedMetadata: LyricRepository.MediaInfo? = null
 
     // ── Lyric sources (each handles one acquisition path) ────────────────────
     private lateinit var localLyricSource: LocalLyricSource
@@ -169,6 +170,9 @@ class LyricService : Service() {
     }
 
     private val metadataObserver = Observer<LyricRepository.MediaInfo?> { info ->
+        val current = info?.withoutRawMetadata()
+        if (lastObservedMetadata == current) return@Observer
+        lastObservedMetadata = current
         if (info != null) {
             progressSyncController.setDurationIfValid(info.duration)
             val trackKey = "${info.packageName}|${info.title}|${info.artist}"
@@ -286,6 +290,17 @@ class LyricService : Service() {
             syncPushLyricSources()
         } else if (key == AppPreferences.Keys.NOTIFICATION_LOCK_SCREEN_HIDDEN) {
             refreshLockScreenVisibility()
+        } else if (
+            key == AppPreferences.Keys.FILTER_ONLINE_LYRIC_INFO_LINES ||
+            key == AppPreferences.Keys.FULLSCREEN_PLAYBACK_DUET_ALIGNMENT
+        ) {
+            AppLogger.getInstance().log(TAG, "Online lyric presentation preference changed ($key) -> reapplying")
+            if (::progressSyncController.isInitialized) {
+                progressSyncController.resetLineIndex()
+            }
+            if (::onlineLyricSource.isInitialized) {
+                onlineLyricSource.reapplyForCurrentTrack()
+            }
         }
     }
 

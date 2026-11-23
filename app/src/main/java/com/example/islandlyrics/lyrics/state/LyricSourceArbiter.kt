@@ -193,7 +193,7 @@ internal class LyricSourceArbiter {
 
     private fun sourceTypeOf(apiPath: String?): SourceType {
         return when (apiPath?.trim()) {
-            "Notification" -> SourceType.NOTIFICATION
+            LyricRepository.API_PATH_NOTIFICATION -> SourceType.NOTIFICATION
             "SuperLyric" -> SourceType.SUPER_LYRIC
             "Lyricon" -> SourceType.LYRICON
             "Lyric Getter" -> SourceType.LYRIC_GETTER

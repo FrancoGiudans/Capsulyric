@@ -17,6 +17,7 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorProducer
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.Path
@@ -79,12 +80,13 @@ internal fun PlaybackLyricText(
 ) {
     val timed = !line.syllables.isNullOrEmpty()
     val needsSweep = rememberUpdatedState(current)
-    val textLayout = remember(line.text) { mutableStateOf<TextLayoutResult?>(null) }
+    val textLayout = remember(line.text, style.textAlign) { mutableStateOf<TextLayoutResult?>(null) }
     val onTextLayout = remember(textLayout) { { layout: TextLayoutResult -> textLayout.value = layout } }
-    val textColor = when {
-        !current -> color
-        color == Color.White -> Color.White
-        else -> lerpColor(color, Color.White, sweepStrength().coerceIn(0f, 1f))
+    val textColor = ColorProducer {
+        when {
+            !needsSweep.value || color == Color.White -> color
+            else -> lerpColor(color, Color.White, sweepStrength().coerceIn(0f, 1f))
+        }
     }
     Text(
         text = line.text,

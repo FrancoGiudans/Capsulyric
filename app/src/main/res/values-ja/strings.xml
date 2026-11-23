@@ -46,6 +46,12 @@
     <string name="settings_fullscreen_playback_auto_hide_controls_summary">歌詞の下部をタップするとコントロールが再表示されます。</string>
     <string name="settings_fullscreen_playback_auto_follow">再生中の行に自動で戻る</string>
     <string name="settings_fullscreen_playback_auto_follow_summary">再生中に歌詞のスクロールを止めると、5 秒後に追従を再開します。</string>
+    <string name="settings_fullscreen_playback_show_writers">末尾に作詞・作曲者を表示</string>
+    <string name="settings_fullscreen_playback_show_writers_summary">利用可能な場合、歌詞の最後に Written by クレジットを表示します。</string>
+    <string name="settings_fullscreen_playback_duet_alignment">デュエットの交互配置</string>
+    <string name="settings_fullscreen_playback_duet_alignment_summary">デュエット曲で後から歌うパートを右揃えにし、話者ラベルを非表示にします。</string>
+    <string name="settings_filter_online_lyric_info_lines">オンライン歌詞の余分な情報を除外</string>
+    <string name="settings_filter_online_lyric_info_lines_desc">先頭や末尾の曲名・クレジット・著作権表示を自動的に隠し、作詞作曲者を抽出します</string>
     <string name="lyrics_playback_show_controls">再生コントロールを表示</string>
     <string name="lyrics_playback_volume">メディアの音量</string>
     <string name="main_instrumental_marked">インストゥルメンタルとしてマーク済み</string>

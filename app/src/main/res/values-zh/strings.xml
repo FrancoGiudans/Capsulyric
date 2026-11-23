@@ -46,6 +46,12 @@
     <string name="settings_fullscreen_playback_auto_hide_controls_summary">轻点歌词区底部可重新显示控件。</string>
     <string name="settings_fullscreen_playback_auto_follow">自动回到当前句</string>
     <string name="settings_fullscreen_playback_auto_follow_summary">播放中停止滚动歌词 5 秒后，自动恢复跟随。</string>
+    <string name="settings_fullscreen_playback_show_writers">末尾显示词曲作者</string>
+    <string name="settings_fullscreen_playback_show_writers_summary">有词曲信息时，在歌词底部显示 Written by 署名。</string>
+    <string name="settings_fullscreen_playback_duet_alignment">交替演唱对齐</string>
+    <string name="settings_fullscreen_playback_duet_alignment_summary">识别对唱声部，将后登场演唱者右对齐并隐藏前缀标记。</string>
+    <string name="settings_filter_online_lyric_info_lines">过滤在线歌词多余信息</string>
+    <string name="settings_filter_online_lyric_info_lines_desc">自动隐藏开头或结尾的歌名、作词作曲、制作人员及版权声明，并提取词曲作者</string>
     <string name="lyrics_playback_show_controls">显示播放控件</string>
     <string name="lyrics_playback_volume">媒体音量</string>
     <string name="main_instrumental_marked">已标记为纯音乐</string>

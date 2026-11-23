@@ -46,6 +46,12 @@
     <string name="settings_fullscreen_playback_auto_hide_controls_summary">輕點歌詞區底部即可重新顯示控制項。</string>
     <string name="settings_fullscreen_playback_auto_follow">自動回到目前歌詞行</string>
     <string name="settings_fullscreen_playback_auto_follow_summary">播放時停止捲動歌詞 5 秒後，自動恢復跟隨。</string>
+    <string name="settings_fullscreen_playback_show_writers">末尾顯示詞曲作者</string>
+    <string name="settings_fullscreen_playback_show_writers_summary">有詞曲資訊時，在歌詞底部顯示 Written by 署名。</string>
+    <string name="settings_fullscreen_playback_duet_alignment">交替演唱對齊</string>
+    <string name="settings_fullscreen_playback_duet_alignment_summary">辨識對唱聲部，將後登場演唱者靠右對齊並隱藏前綴標記。</string>
+    <string name="settings_filter_online_lyric_info_lines">過濾線上歌詞多餘資訊</string>
+    <string name="settings_filter_online_lyric_info_lines_desc">自動隱藏開頭或結尾的歌名、作詞作曲、製作人員及版權聲明，並提取詞曲作者</string>
     <string name="lyrics_playback_show_controls">顯示播放控制項</string>
     <string name="lyrics_playback_volume">媒體音量</string>
     <string name="main_instrumental_marked">已標記為純音樂</string>

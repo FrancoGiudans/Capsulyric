@@ -37,6 +37,7 @@ import com.example.islandlyrics.core.feed.CommunityFeedAction
 import com.example.islandlyrics.core.feed.CommunityFeedActionStyle
 import com.example.islandlyrics.core.feed.CommunityFeedItem
 import com.example.islandlyrics.core.network.OfflineModeManager
+import com.example.islandlyrics.core.settings.AppPreferences
 import com.example.islandlyrics.core.theme.ThemeHelper
 import com.example.islandlyrics.core.platform.RomUtils
 import com.example.islandlyrics.feature.faq.FAQActivity
@@ -638,6 +639,7 @@ internal fun SettingsScreen(
             else -> stringResource(R.string.lang_sys_default)
         }
         var recommendMediaAppEnabled by remember { mutableStateOf(prefs.getBoolean("recommend_media_app", true)) }
+        var filterOnlineLyricInfoLines by remember { mutableStateOf(AppPreferences.isOnlineLyricInfoFilterEnabled(prefs)) }
         var hideRecentsEnabled by remember { mutableStateOf(prefs.getBoolean("hide_recents_enabled", false)) }
         var launcherHidden by remember { mutableStateOf(LauncherAliasManager.isHidden(context)) }
         var newPlayingAppAlertEnabled by remember { mutableStateOf(prefs.getBoolean(NewPlayingAppNotifier.PREF_ENABLED, false)) }
@@ -966,6 +968,17 @@ internal fun SettingsScreen(
                         onClick = {
                             onOpenCacheManagement?.invoke()
                                 ?: context.startActivity(Intent(context, com.example.islandlyrics.feature.cache.CacheManagementActivity::class.java))
+                        }
+                    )
+                    SettingsCardDivider()
+                    SettingsSwitchItem(
+                        title = stringResource(R.string.settings_filter_online_lyric_info_lines),
+                        subtitle = stringResource(R.string.settings_filter_online_lyric_info_lines_desc),
+                        checked = filterOnlineLyricInfoLines,
+                        modifier = mainSettingModifier("key_filter_online_lyric_info_lines"),
+                        onCheckedChange = {
+                            filterOnlineLyricInfoLines = it
+                            prefs.edit { putBoolean(AppPreferences.Keys.FILTER_ONLINE_LYRIC_INFO_LINES, it) }
                         }
                     )
                     if (!offlineModeEnabled) {

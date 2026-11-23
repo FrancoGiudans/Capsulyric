@@ -93,10 +93,13 @@ object AppPreferences {
         const val FULLSCREEN_PLAYBACK_HIDE_SYSTEM_BARS = "fullscreen_playback_hide_system_bars"
         const val FULLSCREEN_PLAYBACK_AUTO_HIDE_CONTROLS = "fullscreen_playback_auto_hide_controls"
         const val FULLSCREEN_PLAYBACK_AUTO_FOLLOW = "fullscreen_playback_auto_follow"
+        const val FULLSCREEN_PLAYBACK_SHOW_WRITERS = "fullscreen_playback_show_writers"
+        const val FULLSCREEN_PLAYBACK_DUET_ALIGNMENT = "fullscreen_playback_duet_alignment"
         const val FULLSCREEN_PLAYBACK_TRANSLATION = "fullscreen_playback_translation"
         const val FULLSCREEN_PLAYBACK_ROMANIZATION = "fullscreen_playback_romanization"
         const val FULLSCREEN_PLAYBACK_TEXT_SIZE = "fullscreen_playback_text_size"
         const val FULLSCREEN_PLAYBACK_TEXT_WEIGHT = "fullscreen_playback_text_weight"
+        const val FILTER_ONLINE_LYRIC_INFO_LINES = "filter_online_lyric_info_lines"
         const val THEME_FOLLOW_SYSTEM = "theme_follow_system"
         const val THEME_DARK_MODE = "theme_dark_mode"
         const val THEME_PURE_BLACK = "theme_pure_black"
@@ -302,5 +305,14 @@ object AppPreferences {
     fun materialBlurRadiusDp(prefs: SharedPreferences): Float =
         prefs.getFloat(Keys.MATERIAL_BLUR_RADIUS_DP, Defaults.MATERIAL_BLUR_RADIUS_DP)
             .coerceIn(0f, 64f)
+
+    fun isOnlineLyricInfoFilterEnabled(prefs: SharedPreferences): Boolean =
+        prefs.getBoolean(Keys.FILTER_ONLINE_LYRIC_INFO_LINES, true)
+
+    fun isFullscreenPlaybackShowWritersEnabled(prefs: SharedPreferences): Boolean =
+        prefs.getBoolean(Keys.FULLSCREEN_PLAYBACK_SHOW_WRITERS, true)
+
+    fun isFullscreenPlaybackDuetAlignmentEnabled(prefs: SharedPreferences): Boolean =
+        prefs.getBoolean(Keys.FULLSCREEN_PLAYBACK_DUET_ALIGNMENT, true)
 }
 

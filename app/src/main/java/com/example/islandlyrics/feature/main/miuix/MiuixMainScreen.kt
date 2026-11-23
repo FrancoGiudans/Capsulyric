@@ -249,7 +249,8 @@ internal fun MiuixMainScreen(
     val playbackStart = remember(repoMetadata, repoParsedLyrics) {
         val track = repoMetadata
         val lines = repoParsedLyrics.playbackLines()
-        if (track != null && lines.isNotEmpty()) LyricsPlaybackStart(track, lines) else null
+        val writers = repoParsedLyrics.playbackWriters()
+        if (track != null && lines.isNotEmpty()) LyricsPlaybackStart(track, lines, writers) else null
     }
 
     var listenerEnabled by remember {

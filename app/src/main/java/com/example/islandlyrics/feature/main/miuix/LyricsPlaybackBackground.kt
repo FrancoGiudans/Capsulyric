@@ -59,12 +59,14 @@ import kotlin.math.cos
 import kotlin.math.min
 import kotlin.math.sin
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 internal const val PlaybackCoverSampleSize = 64
 private const val FlowDownscale = 4f
+private const val FlowFramePeriodNanos = 1_000_000_000L / 30
 private const val CoverHueGroups = 12
 private const val BackgroundContrast = 8.0
 
@@ -130,8 +132,13 @@ internal fun LyricsPlaybackBackground(
         lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
             val accumulated = flowTime.longValue
             val start = withFrameNanos { it }
+            var frame = start
             while (isActive) {
-                withFrameNanos { flowTime.longValue = accumulated + it - start }
+                // Leave the display-rate frame clock available to lyric and control animations.
+                val remaining = frame + FlowFramePeriodNanos - System.nanoTime()
+                delay((remaining / 1_000_000L - 1).coerceAtLeast(1L))
+                frame = withFrameNanos { it }
+                flowTime.longValue = accumulated + frame - start
             }
         }
     }
@@ -158,7 +165,7 @@ private fun FlowPlaybackBackground(shader: RuntimeShader, time: LongState, curre
     DisposableEffect(layer) {
         onDispose { layer.node.discardDisplayList() }
     }
-    Canvas(Modifier.fillMaxSize()) {
+    Canvas(Modifier.fillMaxSize().graphicsLayer()) {
         // Only the incoming layer observes VSYNC. The outgoing layer retains its last recorded frame.
         val phase = if (current) time.longValue else layer.recordedTime
         val targetW = (size.width / FlowDownscale).toInt().coerceAtLeast(1)
