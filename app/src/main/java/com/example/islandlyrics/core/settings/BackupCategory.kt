@@ -52,6 +52,14 @@ object BackupCategories {
     /** All keys excluded from backup/restore (applied after category matching). */
     val EXCLUDED_KEYS = setOf("is_setup_complete")
 
+    internal const val FLOATING_LYRICS_LEAF_ID = "notif_floating"
+    internal const val LAB_LEAF_ID = "advanced_lab"
+    // New exports group these settings with floating lyrics. The original keys still match flat backups.
+    internal val FLOATING_LYRICS_LAB_KEYS = setOf(
+        LabFeatureManager.KEY_FLOATING_LYRICS_ENABLED,
+        LabFeatureManager.KEY_FLOATING_WORD_HIGH_FPS_ENABLED
+    )
+
     // ═══════════════════════════════════════════════════════════════════════
     // 1. 胶囊 (Capsule / Super Island)
     // ═══════════════════════════════════════════════════════════════════════
@@ -114,9 +122,7 @@ object BackupCategories {
             SubGroup("notif_dynamic_icon", listOf(
                 "dynamic_icon_enabled", "dynamic_icon_style"
             )),
-            SubGroup("notif_floating", listOf(
-                "floating_*"
-            )),
+            SubGroup(FLOATING_LYRICS_LEAF_ID, listOf("floating_*")),
             SubGroup("notif_appearance", listOf(
                 "progress_bar_color_enabled", "oneui_capsule_color_mode",
                 AppPreferences.Keys.LIVE_UPDATE_SHOW_PROGRESS_BAR
@@ -245,7 +251,7 @@ object BackupCategories {
             AppPreferences.Keys.XMSF_NETWORK_CUSTOM_DURATION_MS
         ),
         subGroups = listOf(
-            SubGroup("advanced_lab", listOf("lab_*")),
+            SubGroup(LAB_LEAF_ID, listOf("lab_*")),
             SubGroup("advanced_offline", listOf("fully_offline_mode")),
             SubGroup("advanced_dev", listOf("dev_mode_enabled", "log_record_level")),
             SubGroup("advanced_lyric_dir", listOf(
@@ -293,6 +299,7 @@ object BackupCategories {
     }
 
     fun categoryForKey(key: String): Category? {
+        if (key in FLOATING_LYRICS_LAB_KEYS) return NOTIFICATIONS
         return keyToCategory.entries.firstOrNull { (pattern, _) ->
             matchesPattern(key, pattern)
         }?.value
@@ -345,6 +352,9 @@ object BackupCategories {
         val patterns = patternsForLeafIds(leafIds)
         return allPrefKeys.filter { key ->
             if (key in EXCLUDED_KEYS) return@filter false
+            if (key in FLOATING_LYRICS_LAB_KEYS) {
+                return@filter FLOATING_LYRICS_LEAF_ID in leafIds
+            }
             patterns.any { pattern -> matchesPattern(key, pattern) }
         }.toSet()
     }

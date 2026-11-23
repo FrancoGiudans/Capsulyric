@@ -994,10 +994,6 @@
     <string name="settings_navigation_bar_style_normal">普通样式</string>
     <string name="settings_navigation_bar_style_floating">悬浮底栏</string>
     <string name="settings_navigation_bar_style_liquid">液态悬浮栏</string>
-    <string name="diag_lab_floating_lyrics_title">桌面歌词</string>
-    <string name="diag_lab_floating_lyrics_desc">启用桌面歌词悬浮窗。</string>
-    <string name="diag_lab_floating_word_high_fps_title">桌面歌词高帧率动画</string>
-    <string name="diag_lab_floating_word_high_fps_desc">以 60 FPS 刷新桌面歌词逐字动画（默认 30 FPS），更流畅但更耗电</string>
     <string name="diag_lab_feed_source_title">公告源</string>
     <string name="diag_lab_feed_source_desc">选择优先使用的社区 feed 源；如果失败，应用会自动回退到另一个源。</string>
     <string name="diag_lab_feed_source_github">GitHub</string>
@@ -1323,6 +1319,8 @@
     <string name="settings_floating_split_neighbor_alignment_desc">显示下一句时，两句歌词同字号，左右交替高亮</string>
     <string name="settings_floating_word_highlight">逐字高亮</string>
     <string name="settings_floating_word_highlight_desc">歌词源提供逐字时间轴时，按播放进度高亮已唱部分</string>
+    <string name="settings_floating_word_animation_fps">逐字动画帧率</string>
+    <string name="settings_floating_word_animation_fps_desc">设置桌面歌词的帧率，帧率越高越耗电。</string>
     <string name="settings_floating_follow_album_color">文字颜色跟随专辑图</string>
     <string name="settings_floating_follow_album_color_desc">从专辑封面取色，按背景调整文字对比度</string>
     <string name="settings_floating_text_color">歌词颜色</string>

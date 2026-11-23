@@ -438,6 +438,13 @@ object SettingsBackupManager {
         val all = prefs.all.toMutableMap()
         all[AppPreferences.Keys.MIUIX_NAVIGATION_BAR_STYLE] =
             AppPreferences.miuixNavigationBarStyle(prefs).preferenceValue
+        if (BackupCategories.FLOATING_LYRICS_LEAF_ID in selectedLeafIds) {
+            // Include both values even when the user is still using their defaults.
+            all[LabFeatureManager.KEY_FLOATING_LYRICS_ENABLED] =
+                LabFeatureManager.isFloatingLyricsEnabled(prefs)
+            all[LabFeatureManager.KEY_FLOATING_WORD_HIGH_FPS_ENABLED] =
+                LabFeatureManager.isFloatingWordHighFpsEnabled(prefs)
+        }
         val selectedKeys = BackupCategories.collectKeysForLeafIds(all.keys, selectedLeafIds)
 
         val categoriesJson = JSONObject()
@@ -692,7 +699,18 @@ object SettingsBackupManager {
                     while (keyIter.hasNext()) {
                         val key = keyIter.next()
                         if (key in BackupCategories.EXCLUDED_KEYS) continue
-                        if (!allowedPatterns.any { BackupCategories.matchesPattern(key, it) }) continue
+                        val selected = if (key in BackupCategories.FLOATING_LYRICS_LAB_KEYS) {
+                            when (catId) {
+                                BackupCategories.NOTIFICATIONS.id ->
+                                    BackupCategories.FLOATING_LYRICS_LEAF_ID in selectedLeafIds
+                                BackupCategories.ADVANCED.id ->
+                                    BackupCategories.LAB_LEAF_ID in selectedLeafIds
+                                else -> false
+                            }
+                        } else {
+                            allowedPatterns.any { BackupCategories.matchesPattern(key, it) }
+                        }
+                        if (!selected) continue
                         if (key == PREF_PARSER_RULES && hasStructuredParsers) continue
                         if (key == PREF_PARSER_RULE_TEMPLATE &&
                             parserRulesSelected &&
@@ -996,6 +1014,20 @@ object SettingsBackupManager {
         key: String,
         rawValue: Any?
     ): Boolean {
+        if (key in BackupCategories.FLOATING_LYRICS_LAB_KEYS) {
+            val value = if (rawValue is JSONObject && rawValue.optString("type") == "boolean") {
+                rawValue.opt("value")
+            } else {
+                rawValue
+            }
+            val enabled = when (value) {
+                is Boolean -> value
+                is String -> value.lowercase().toBooleanStrictOrNull() ?: return false
+                else -> return false
+            }
+            editor.putBoolean(key, enabled)
+            return true
+        }
         if (key == AppPreferences.Keys.MIUIX_NAVIGATION_BAR_STYLE) {
             editor.putString(key, unwrapStringValue(rawValue) ?: return false)
             editor.remove(AppPreferences.Keys.MIUIX_FLOATING_BOTTOM_BAR_ENABLED)
