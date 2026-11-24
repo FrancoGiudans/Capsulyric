@@ -72,13 +72,22 @@ class OnlineLyricCacheStore(context: Context) {
         val hasRomanization: Boolean,
         val cachedAt: Long,
         val updatedAt: Long,
-        val sizeBytes: Long
+        val sizeBytes: Long,
+        val hasCachedLyrics: Boolean = false,
+        val hasSyllable: Boolean = false,
+        val isInstrumental: Boolean = false
     )
 
     data class LyricCacheStats(
         val entryCount: Int = 0,
         val totalBytes: Long = 0L,
-        val lastUpdatedAt: Long? = null
+        val lastUpdatedAt: Long? = null,
+        val syllableCount: Int = 0,
+        val lineCount: Int = 0,
+        val instrumentalCount: Int = 0,
+        val matchOnlyCount: Int = 0,
+        val translationCount: Int = 0,
+        val romanizationCount: Int = 0
     )
 
     data class LyricCacheExportData(
@@ -806,6 +815,7 @@ class OnlineLyricCacheStore(context: Context) {
             }
             .sortedByDescending { (_, ie) -> ie.updatedAt }
             .map { (id, ie) ->
+                val hasCachedLyrics = !ie.instrumental && ie.cachedAt != null
                 LyricCacheEntrySummary(
                     id = id,
                     packageName = ie.packageName,
@@ -815,11 +825,14 @@ class OnlineLyricCacheStore(context: Context) {
                     queryArtist = ie.queryArtist.orEmpty(),
                     providerLabel = ie.api.orEmpty(),
                     hasCustomMatch = !ie.overrideTitle.isNullOrBlank() || !ie.overrideArtist.isNullOrBlank(),
-                    hasTranslation = ie.hasTranslation,
-                    hasRomanization = ie.hasRomanization,
+                    hasTranslation = hasCachedLyrics && ie.hasTranslation,
+                    hasRomanization = hasCachedLyrics && ie.hasRomanization,
                     cachedAt = ie.cachedAt ?: ie.updatedAt,
                     updatedAt = ie.updatedAt,
-                    sizeBytes = ie.sizeBytes
+                    sizeBytes = ie.sizeBytes,
+                    hasCachedLyrics = hasCachedLyrics,
+                    hasSyllable = hasCachedLyrics && ie.hasSyllable,
+                    isInstrumental = ie.instrumental
                 )
             }
     }
@@ -827,10 +840,32 @@ class OnlineLyricCacheStore(context: Context) {
     fun getLyricCacheStats(): LyricCacheStats = synchronized(lock) {
         ensureMigrated()
         val summaries = getLyricCacheSummaries()
+        var syllableCount = 0
+        var lineCount = 0
+        var instrumentalCount = 0
+        var matchOnlyCount = 0
+        var translationCount = 0
+        var romanizationCount = 0
+        for (summary in summaries) {
+            when {
+                summary.isInstrumental -> instrumentalCount++
+                summary.hasCachedLyrics && summary.hasSyllable -> syllableCount++
+                summary.hasCachedLyrics -> lineCount++
+                else -> matchOnlyCount++
+            }
+            if (summary.hasTranslation) translationCount++
+            if (summary.hasRomanization) romanizationCount++
+        }
         LyricCacheStats(
             entryCount = summaries.size,
             totalBytes = summaries.sumOf { it.sizeBytes },
-            lastUpdatedAt = summaries.maxOfOrNull { it.updatedAt }
+            lastUpdatedAt = summaries.maxOfOrNull { it.updatedAt },
+            syllableCount = syllableCount,
+            lineCount = lineCount,
+            instrumentalCount = instrumentalCount,
+            matchOnlyCount = matchOnlyCount,
+            translationCount = translationCount,
+            romanizationCount = romanizationCount
         )
     }
 
