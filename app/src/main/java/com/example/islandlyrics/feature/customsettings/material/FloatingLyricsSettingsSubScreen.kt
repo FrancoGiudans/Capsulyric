@@ -113,6 +113,9 @@ fun FloatingLyricsSettingsSubScreen(prefs: SharedPreferences) {
     val showSecondaryTextModeDialog = remember { mutableStateOf(false) }
     val showNeighborAlignmentDialog = remember { mutableStateOf(false) }
     var wordHighlight by remember { mutableStateOf(prefs.getBoolean(FloatingLyricsRenderer.PREF_WORD_HIGHLIGHT, true)) }
+    var wordAnimationHighFps by remember(prefs) {
+        mutableStateOf(LabFeatureManager.isFloatingWordHighFpsEnabled(context))
+    }
     var textSizeSp by remember { mutableFloatStateOf(prefs.getFloat(FloatingLyricsRenderer.PREF_TEXT_SIZE, 15f)) }
     var textWeight by remember(prefs) { mutableStateOf(FloatingLyricsTextWeight.read(prefs)) }
     var showFontSettings by remember { mutableStateOf(false) }
@@ -128,6 +131,8 @@ fun FloatingLyricsSettingsSubScreen(prefs: SharedPreferences) {
         val listener = SharedPreferences.OnSharedPreferenceChangeListener { updated, key ->
             when (key) {
                 LabFeatureManager.KEY_FLOATING_LYRICS_ENABLED -> featureEnabled = LabFeatureManager.isFloatingLyricsEnabled(updated)
+                LabFeatureManager.KEY_FLOATING_WORD_HIGH_FPS_ENABLED ->
+                    wordAnimationHighFps = LabFeatureManager.isFloatingWordHighFpsEnabled(updated)
                 FloatingLyricsVisibility.RECOVERY, FloatingLyricsVisibility.RESUME_NEXT_TRACK ->
                     recovery = FloatingLyricsVisibility.readRecovery(updated)
                 FloatingLyricsVisibility.KEEP_ON_PAUSE -> keepOnPause = updated.getBoolean(key, false)
@@ -169,6 +174,7 @@ fun FloatingLyricsSettingsSubScreen(prefs: SharedPreferences) {
             neighborAlignment = neighborAlignment,
             wordHighlight = wordHighlight
         ),
+        wordAnimationHighFps = wordAnimationHighFps,
         useMiuix = false
     )
 
@@ -293,6 +299,33 @@ fun FloatingLyricsSettingsSubScreen(prefs: SharedPreferences) {
                     prefs.edit { putBoolean(FloatingLyricsRenderer.PREF_WORD_HIGHLIGHT, it) }
                 }
         )
+
+        SettingsCardDivider()
+        var frameRateMenuExpanded by remember { mutableStateOf(false) }
+        val standardFrameRate = stringResource(R.string.settings_floating_word_animation_fps_value, 30)
+        val highFrameRate = stringResource(R.string.settings_floating_word_animation_fps_value, 60)
+        Box {
+            SettingsTextItem(
+                title = stringResource(R.string.settings_floating_word_animation_fps),
+                subtitle = stringResource(R.string.settings_floating_word_animation_fps_desc),
+                value = if (wordAnimationHighFps) highFrameRate else standardFrameRate,
+                onClick = { frameRateMenuExpanded = true }
+            )
+            MaterialBlurDropdownMenu(
+                expanded = frameRateMenuExpanded,
+                onDismissRequest = { frameRateMenuExpanded = false }
+            ) {
+                listOf(false to standardFrameRate, true to highFrameRate).forEach { (highFps, label) ->
+                    DropdownMenuItem(
+                        text = { Text(label) },
+                        onClick = {
+                            LabFeatureManager.setFloatingWordHighFpsEnabled(context, highFps)
+                            frameRateMenuExpanded = false
+                        }
+                    )
+                }
+            }
+        }
 
         SettingsCardDivider()
         SettingsSwitchItem(

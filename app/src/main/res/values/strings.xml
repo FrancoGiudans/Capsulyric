@@ -984,10 +984,6 @@ Within the log interface, select the share/export icon. You can specify a timefr
     <string name="settings_navigation_bar_style_normal">Standard Style</string>
     <string name="settings_navigation_bar_style_floating">Floating Bottom Bar</string>
     <string name="settings_navigation_bar_style_liquid">Liquid Floating Bar</string>
-    <string name="diag_lab_floating_lyrics_title">Desktop Lyrics</string>
-    <string name="diag_lab_floating_lyrics_desc">Enable the desktop lyrics overlay.</string>
-    <string name="diag_lab_floating_word_high_fps_title">Desktop Lyrics High-FPS Animation</string>
-    <string name="diag_lab_floating_word_high_fps_desc">Renders the word-by-word highlight at 60 FPS (default 30 FPS) for smoother motion, at higher battery cost</string>
     <string name="diag_lab_feed_source_title">Announcement Source</string>
     <string name="diag_lab_feed_source_desc">Choose the preferred community feed source. If it fails, the app automatically falls back to the other source.</string>
     <string name="diag_lab_feed_source_github">GitHub</string>
@@ -1313,6 +1309,9 @@ Within the log interface, select the share/export icon. You can specify a timefr
     <string name="settings_floating_split_neighbor_alignment_desc">Alternate same-size lyrics between the left and right sides when showing the next line</string>
     <string name="settings_floating_word_highlight">Word Highlight</string>
     <string name="settings_floating_word_highlight_desc">Highlight sung words for lyric sources with word-level timing</string>
+    <string name="settings_floating_word_animation_fps">Word Highlight Frame Rate</string>
+    <string name="settings_floating_word_animation_fps_desc">60 FPS makes word highlights smoother and uses more battery.</string>
+    <string name="settings_floating_word_animation_fps_value" translatable="false">%1$d FPS</string>
     <string name="settings_floating_follow_album_color">Follow Album Color</string>
     <string name="settings_floating_follow_album_color_desc">Use a color from the album art and adjust it for the background</string>
     <string name="settings_floating_text_color">Lyric Color</string>
