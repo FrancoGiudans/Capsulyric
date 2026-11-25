@@ -23,6 +23,7 @@
 package com.example.islandlyrics.feature.parserrule.material
 
 import android.content.Intent
+import android.net.Uri
 import android.widget.Toast
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
@@ -633,6 +634,7 @@ fun MaterialLyriconSourceConfigPage(
     onStateChange: (ParserRuleEditorState) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
     Column(modifier = modifier) {
         Spacer(modifier = Modifier.height(8.dp))
         SourceCard {
@@ -648,6 +650,34 @@ fun MaterialLyriconSourceConfigPage(
                 checked = state.receiveLyriconRomanization,
                 onCheckedChange = { onStateChange(state.copy(receiveLyriconRomanization = it)) }
             )
+        }
+        SourceCard {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable {
+                        try {
+                            context.startActivity(
+                                Intent(
+                                    Intent.ACTION_VIEW,
+                                    Uri.parse("https://github.com/tomakino/lyricon/releases/tag/core")
+                                )
+                            )
+                        } catch (_: Exception) {
+                        }
+                    }
+            ) {
+                Text(
+                    text = stringResource(R.string.parser_lyricon_core_service_title),
+                    style = MaterialTheme.typography.titleMedium
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = stringResource(R.string.parser_lyricon_core_service_desc),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
         Spacer(modifier = Modifier.height(24.dp))
     }

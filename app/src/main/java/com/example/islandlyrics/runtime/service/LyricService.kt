@@ -225,6 +225,7 @@ class LyricService : Service() {
             updateActiveHandler()
         }
         if (::superLyricSource.isInitialized) superLyricSource.onTrackChanged()
+        if (::lyriconSource.isInitialized) lyriconSource.onTrackChanged()
     }
 
     // ── SuperLyric API stub is now in SuperLyricSource ────────────────────────

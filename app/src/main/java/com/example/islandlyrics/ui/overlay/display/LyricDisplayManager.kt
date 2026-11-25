@@ -330,7 +330,11 @@ class LyricDisplayManager(private val context: Context) {
             isInstrumental = isInstrumental,
             parsedStateHash = parsedLyricState.hashCode()
         )
-        val progressPercent = if (duration > 0) ((currentPosition.toFloat() / duration.toFloat()) * 100).toInt() else -1
+        val progressPercent = if (duration > 0) {
+            ((currentPosition.toFloat() / duration.toFloat()) * 100).toInt().coerceIn(0, 100)
+        } else {
+            -1
+        }
         val progressChangedEnough = kotlin.math.abs(progressPercent - lastTickProgressPercent) >= 3
 
         if (tickInputHash == lastTickInputHash && !progressChangedEnough && lastTickInputHash != 0) {

@@ -379,6 +379,8 @@
     <string name="parser_superlyric_romanization_desc">Receive romanization or secondary lyrics when SuperLyric supplies them.</string>
     <string name="parser_lyricon_translation_desc">Receive translation fields when the active Lyricon provider sends them.</string>
     <string name="parser_lyricon_romanization_desc">Receive romanization or secondary lyric fields when the active Lyricon provider sends them.</string>
+    <string name="parser_lyricon_core_service_title">Requires Lyricon Core Service</string>
+    <string name="parser_lyricon_core_service_desc">Lyricon providers dispatch lyrics through System UI. If you do not enable the main Lyricon app, install and enable the standalone Lyricon Core Service (core-service) in LSPosed with System UI in scope. Tap to open releases.</string>
     <string name="parser_save">Save</string>
     <string name="parser_save_rule">Save Rule</string>
     <string name="parser_add_app_fmt">Add %s</string>
@@ -772,6 +774,8 @@ Within the log interface, select the share/export icon. You can specify a timefr
     <string name="faq_a_hide_launcher_entry">A: After hiding the launcher icon, you can still open Capsulyric in the following ways:\n\n<b>1. Quick Settings Tile</b>\nPull down the notification shade, tap the Capsulyric tile to open the app directly.\n\n<b>2. URL Scheme</b>\nType <b>capsulyric://settings</b> in any browser address bar and tap it to launch the app.\n\n<b>3. Manage Space</b>\nGo to <b>System Settings → Apps → Capsulyric → Manage Space</b> to open the <b>Cache Management</b> page. Tap the top-left back button there to enter Capsulyric\'s <b>App Settings</b>; using the system Back button returns to System Settings. On some devices (e.g. HyperOS), the Manage Space button may only appear after tapping \"Clear Data\".</string>
     <string name="faq_q_no_pinyin_translation">Q: Why am I not receiving romanization/translation lyrics?</string>
     <string name="faq_a_no_pinyin_translation">A: Translation and romanization can be received through <b>Online Lyrics</b>, <b>SuperLyric API</b>, and <b>Lyricon API</b>.\n\n1. Open <b>Parser Rules</b> and select your music app.\n\n2. Enable the source you use, then tap its right arrow to open source settings.\n\n3. Enable <b>Accept Translation</b> and/or <b>Accept Romanization</b> for that source.\n\n4. The source must provide these fields; enabling a switch does not generate missing content. SuperLyric legacy callbacks can also carry translation, romanization, and line or word timing. Timing support follows the received data.</string>
+    <string name="faq_q_lyricon_core_service">Q: Why can\'t Capsulyric receive Lyricon provider lyrics without enabling Lyricon?</string>
+    <string name="faq_a_lyricon_core_service">A: Lyricon providers and subscribers exchange data through a central service running inside <b>System UI</b>. If you do not want to enable the main Lyricon app (or its status-bar lyric UI), install the official standalone <a href="https://github.com/tomakino/lyricon/releases/tag/core">Lyricon Core Service (core-service)</a> module in LSPosed and add <b>System UI</b> to its scope.</string>
 
     <!-- Notification Action Buttons -->
     <string name="action_pause">Pause</string>

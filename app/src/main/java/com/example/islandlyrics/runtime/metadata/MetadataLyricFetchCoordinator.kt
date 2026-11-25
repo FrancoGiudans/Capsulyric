@@ -39,6 +39,15 @@ internal fun hasCurrentSuperLyricTimeline(
     parsed?.apiPath == "SuperLyric" && parsed.timelineCapability == LyricRepository.TimelineCapability.MULTI_LINE &&
     parsed.lines.any { it.startTime > 0 || it.endTime > it.startTime }
 
+internal fun hasCurrentLyriconTimeline(
+    expected: LyricRepository.MediaInfo,
+    current: LyricRepository.MediaInfo?,
+    parsed: LyricRepository.ParsedLyricsInfo?
+): Boolean = current != null && expected.packageName == current.packageName &&
+    expected.title == current.title && expected.artist == current.artist && expected.mediaId == current.mediaId &&
+    parsed?.apiPath == "Lyricon" && parsed.timelineCapability == LyricRepository.TimelineCapability.MULTI_LINE &&
+    parsed.lines.any { it.startTime > 0 || it.endTime > it.startTime }
+
 internal fun needsMetadataStabilizationDelay(info: LyricRepository.MediaInfo): Boolean =
     info.duration <= 0L && info.album.isBlank()
 
@@ -221,6 +230,10 @@ class MetadataLyricFetchCoordinator(
         val activeRule = ParserRuleHelper.getRuleForPackage(context, current.packageName)
             ?: ParserRuleHelper.createDefaultRule(current.packageName)
         if (activeRule.enabled && activeRule.useSuperLyricApi && hasCurrentSuperLyricTimeline(current, current, repo.liveParsedLyrics.value)) {
+            onResolve(true)
+            return
+        }
+        if (activeRule.enabled && activeRule.useLyriconApi && hasCurrentLyriconTimeline(current, current, repo.liveParsedLyrics.value)) {
             onResolve(true)
             return
         }

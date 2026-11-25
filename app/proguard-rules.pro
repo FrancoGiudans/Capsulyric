@@ -5,6 +5,9 @@
 -keep class cn.lyric.getter.api.data.** { *; }
 -keep class cn.lyric.getter.api.API { *; }
 
+# Lyricon Subscriber API (preserve AIDL Binder interfaces, Parcelable, and kotlinx.serialization models)
+-keep class io.github.proify.lyricon.** { *; }
+
 
 # Kotlin Coroutines rules are supplied by kotlinx-coroutines-core/android consumer rules.
 

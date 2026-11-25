@@ -57,6 +57,7 @@ import com.example.islandlyrics.ui.overlay.superisland.render.SuperIslandStandar
 import com.example.islandlyrics.ui.overlay.superisland.render.SuperIslandTemplate18TextResolver
 import com.example.islandlyrics.ui.overlay.superisland.render.SuperIslandTemplate18PlaybackInfo
 import com.example.islandlyrics.ui.overlay.superisland.render.SuperIslandTextResolver
+import com.example.islandlyrics.ui.overlay.superisland.render.sanitizeSuperIslandProgress
 import com.example.islandlyrics.ui.overlay.superisland.state.SuperIslandRenderStateTracker
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -210,7 +211,7 @@ class SuperIslandHandler(
         lastState = state
         val displayLyric = state.displayLyric
         val subText = if (state.artist.isNotBlank()) "${state.title} - ${state.artist}" else state.title
-        val progressPercent = state.progressCurrent
+        val progressPercent = sanitizeSuperIslandProgress(state.progressCurrent)
         val albumColor = state.albumColor
         val notificationVisibility = LockScreenNotificationPolicy.visibility(context)
         val visibilityChanged = notificationVisibility != lastNotifiedVisibility

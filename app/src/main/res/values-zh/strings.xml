@@ -336,6 +336,8 @@
     <string name="parser_superlyric_romanization_desc">接收 SuperLyric 提供的拼音、拼音歌词或副歌词。</string>
     <string name="parser_lyricon_translation_desc">在当前 Lyricon 提供方上报翻译字段时接收。</string>
     <string name="parser_lyricon_romanization_desc">在当前 Lyricon 提供方上报拼音歌词或 secondary 字段时接收。</string>
+    <string name="parser_lyricon_core_service_title">需启用词幕或词幕核心服务</string>
+    <string name="parser_lyricon_core_service_desc">词幕歌词提供器需通过系统界面中枢分发歌词。若不想启用词幕本体，请安装官方独立的 Lyricon 核心服务（core-service）并在 LSPosed 中勾选“系统界面”作用域。点击前往下载页。</string>
     <string name="parser_save">保存</string>
     <string name="parser_save_rule">保存规则</string>
     <string name="parser_add_app_fmt">添加 %s</string>
@@ -707,6 +709,8 @@
     <string name="faq_a_hide_launcher_entry">A：隐藏桌面图标后，你可以通过以下方式打开 Capsulyric：\n\n<b>1. 控制中心磁贴</b>\n下拉通知栏，点击 Capsulyric 磁贴即可直接打开应用。\n\n<b>2. URL Scheme</b>\n在任意浏览器地址栏输入 <b>capsulyric://settings</b> 并访问，即可唤醒应用。\n\n<b>3. 管理空间</b>\n前往<b>系统设置 → 应用管理 → Capsulyric → 管理空间</b>进入<b>缓存管理</b>页面。点击页面左上角返回按钮可进入 Capsulyric 的<b>应用设置</b>；使用系统返回键则会回到系统设置。部分设备（如 HyperOS）上，管理空间按钮需要点击“清除数据”后才能看到。</string>
     <string name="faq_q_no_pinyin_translation">Q：为什么我接收不到拼音歌词/歌词翻译？</string>
     <string name="faq_a_no_pinyin_translation">A：歌词翻译与拼音／拼音歌词可通过<b>在线歌词</b>、<b>SuperLyric API</b>和<b>词幕（Lyricon）API</b>获取。\n\n1. 打开<b>解析规则</b>，选择对应音乐应用。\n\n2. 启用实际使用的歌词源，点击其右侧箭头进入配置页。\n\n3. 为该歌词源开启<b>接收翻译</b>和／或<b>接收拼音歌词</b>。\n\n4. 歌词源需要实际提供这些字段，开启开关不会自动生成缺失内容。SuperLyric 旧版接口同样可以携带翻译、拼音歌词和逐行／逐字时间数据，时间轴能力按收到的数据启用。</string>
+    <string name="faq_q_lyricon_core_service">Q：不启用词幕时为什么收不到词幕歌词提供器的歌词？</string>
+    <string name="faq_a_lyricon_core_service">A：词幕的提供器与订阅端需要通过运行在<b>系统界面（System UI）</b>中的中枢服务转发数据。如果不想启用词幕本体，请在 LSPosed 中安装并启用官方独立的 <a href="https://github.com/tomakino/lyricon/releases/tag/core">Lyricon 核心服务（core-service）</a>，作用域勾选<b>系统界面</b>，再重启系统界面或设备即可。</string>
 
     <!-- 通知设置 -->
     <string name="action_miplay">小米妙播</string>

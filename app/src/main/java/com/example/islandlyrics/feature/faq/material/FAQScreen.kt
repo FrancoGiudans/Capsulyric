@@ -90,7 +90,8 @@ fun FAQScreen(onBack: () -> Unit) {
                     QAItem(context.resources.getText(R.string.faq_q_service_error), context.resources.getText(R.string.faq_a_service_error)),
                     QAItem(context.resources.getText(R.string.faq_q_how_to_diagnostics), context.resources.getText(R.string.faq_a_how_to_diagnostics)),
                     QAItem(context.resources.getText(R.string.faq_q_island_camera_overlap), context.resources.getText(R.string.faq_a_island_camera_overlap)),
-                    QAItem(context.resources.getText(R.string.faq_q_no_pinyin_translation), context.resources.getText(R.string.faq_a_no_pinyin_translation))
+                    QAItem(context.resources.getText(R.string.faq_q_no_pinyin_translation), context.resources.getText(R.string.faq_a_no_pinyin_translation)),
+                    QAItem(context.resources.getText(R.string.faq_q_lyricon_core_service), context.resources.getText(R.string.faq_a_lyricon_core_service))
                 )
             ),
             FAQCategory(
